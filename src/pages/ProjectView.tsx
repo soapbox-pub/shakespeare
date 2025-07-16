@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { fsManager, type Project } from '@/lib/fs';
 import { ChatPane } from '@/components/Shakespeare/ChatPane';
 import { PreviewPane } from '@/components/Shakespeare/PreviewPane';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Settings } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { AISettingsDialog } from '@/components/ai/AISettingsDialog';
 
@@ -15,22 +15,22 @@ export function ProjectView() {
   const [activeTab, setActiveTab] = useState<'preview' | 'code'>('preview');
   const navigate = useNavigate();
 
-  useEffect(() => {
-    loadProject();
-  }, [projectId]);
-
-  const loadProject = async () => {
+  const loadProject = useCallback(async () => {
     if (!projectId) return;
-    
+
     try {
       const projectData = await fsManager.getProject(projectId);
       setProject(projectData);
-    } catch (error) {
-      console.error('Failed to load project:', error);
+    } catch (_error) {
+      console.error('Failed to load project:', _error);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [projectId]);
+
+  useEffect(() => {
+    loadProject();
+  }, [loadProject]);
 
   if (isLoading) {
     return (
@@ -70,7 +70,7 @@ export function ProjectView() {
             <p className="text-sm text-muted-foreground">{project.id}</p>
           </div>
         </div>
-        
+
         <div className="flex items-center space-x-2">
           <AISettingsDialog />
           <div className="flex space-x-2">
@@ -97,9 +97,9 @@ export function ProjectView() {
           <ChatPane projectId={project.id} projectName={project.name} />
         </div>
         <div className="flex-1">
-          <PreviewPane 
-            projectId={project.id} 
-            activeTab={activeTab} 
+          <PreviewPane
+            projectId={project.id}
+            activeTab={activeTab}
           />
         </div>
       </div>

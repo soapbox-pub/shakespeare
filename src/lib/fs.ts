@@ -5,7 +5,7 @@ import { Buffer } from 'buffer';
 
 // Polyfill Buffer for browser
 if (typeof window !== 'undefined') {
-  (window as any).Buffer = Buffer;
+  (window as { Buffer?: typeof Buffer }).Buffer = Buffer;
 }
 
 export interface Project {
@@ -28,7 +28,7 @@ export class FileSystemManager {
   async init() {
     try {
       await this.fs.promises.mkdir(this.dir);
-    } catch (error) {
+    } catch {
       // Directory might already exist
     }
   }
@@ -71,8 +71,7 @@ export class FileSystemManager {
         singleBranch: true,
         depth: 1,
       });
-    } catch (error) {
-      console.error('Failed to clone template:', error);
+    } catch {
       // Create basic structure if clone fails
       await this.createBasicStructure(projectPath);
     }
@@ -146,7 +145,7 @@ export default defineConfig({
       const dir = filePath.split('/').slice(0, -1).join('/');
       try {
         await this.fs.promises.mkdir(dir);
-      } catch (error) {
+      } catch {
         // Directory might already exist
       }
       await this.fs.promises.writeFile(filePath, content);
@@ -170,13 +169,13 @@ export default defineConfig({
             createdAt: new Date(project.createdAt),
             lastModified: new Date(project.lastModified),
           });
-        } catch (error) {
+        } catch {
           // Skip invalid projects
         }
       }
 
       return projects.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-    } catch (error) {
+    } catch {
       return [];
     }
   }
@@ -191,7 +190,7 @@ export default defineConfig({
         createdAt: new Date(project.createdAt),
         lastModified: new Date(project.lastModified),
       };
-    } catch (error) {
+    } catch {
       return null;
     }
   }
@@ -221,7 +220,7 @@ export default defineConfig({
     const fullPath = `${this.dir}/${projectId}/${dirPath}`;
     try {
       return await this.fs.promises.readdir(fullPath);
-    } catch (error) {
+    } catch {
       return [];
     }
   }
@@ -252,7 +251,7 @@ export default defineConfig({
       const project = JSON.parse(projectData);
       project.lastModified = new Date().toISOString();
       await this.fs.promises.writeFile(projectFile, JSON.stringify(project, null, 2));
-    } catch (error) {
+    } catch {
       // Ignore errors updating last modified
     }
   }

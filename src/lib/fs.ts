@@ -204,7 +204,7 @@ export default defineConfig({
   async writeFile(projectId: string, filePath: string, content: string): Promise<void> {
     const fullPath = `${this.dir}/${projectId}/${filePath}`;
     const dir = fullPath.split('/').slice(0, -1).join('/');
-    await this.fs.promises.mkdir(dir, { recursive: true });
+    await this.fs.promises.mkdir(dir);
     await this.fs.promises.writeFile(fullPath, content);
 
     // Update last modified

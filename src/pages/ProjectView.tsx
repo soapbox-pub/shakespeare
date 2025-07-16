@@ -4,8 +4,9 @@ import { fsManager, type Project } from '@/lib/fs';
 import { ChatPane } from '@/components/Shakespeare/ChatPane';
 import { PreviewPane } from '@/components/Shakespeare/PreviewPane';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Settings } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { AISettingsDialog } from '@/components/ai/AISettingsDialog';
 
 export function ProjectView() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -70,21 +71,24 @@ export function ProjectView() {
           </div>
         </div>
         
-        <div className="flex space-x-2">
-          <Button
-            variant={activeTab === 'preview' ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => setActiveTab('preview')}
-          >
-            Preview
-          </Button>
-          <Button
-            variant={activeTab === 'code' ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => setActiveTab('code')}
-          >
-            Code
-          </Button>
+        <div className="flex items-center space-x-2">
+          <AISettingsDialog />
+          <div className="flex space-x-2">
+            <Button
+              variant={activeTab === 'preview' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setActiveTab('preview')}
+            >
+              Preview
+            </Button>
+            <Button
+              variant={activeTab === 'code' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setActiveTab('code')}
+            >
+              Code
+            </Button>
+          </div>
         </div>
       </header>
 

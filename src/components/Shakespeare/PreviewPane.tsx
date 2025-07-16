@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { fsManager } from '@/lib/fs';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Card } from '@/components/ui/card';
+
 import { FileTree } from './FileTree';
 import { FileEditor } from './FileEditor';
 
@@ -16,24 +16,24 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
   const [fileContent, setFileContent] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    if (selectedFile) {
-      loadFileContent(selectedFile);
-    }
-  }, [selectedFile, projectId]);
-
-  const loadFileContent = async (filePath: string) => {
+  const loadFileContent = useCallback(async (filePath: string) => {
     setIsLoading(true);
     try {
       const content = await fsManager.readFile(projectId, filePath);
       setFileContent(content);
-    } catch (error) {
-      console.error('Failed to load file:', error);
+    } catch (_error) {
+      console.error('Failed to load file:', _error);
       setFileContent('');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [projectId]);
+
+  useEffect(() => {
+    if (selectedFile) {
+      loadFileContent(selectedFile);
+    }
+  }, [selectedFile, loadFileContent]);
 
   const handleFileSelect = (filePath: string) => {
     setSelectedFile(filePath);
@@ -41,7 +41,7 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
 
   const handleFileSave = async (content: string) => {
     if (!selectedFile) return;
-    
+
     try {
       await fsManager.writeFile(projectId, selectedFile, content);
       setFileContent(content);
@@ -83,7 +83,7 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
                 />
               </ScrollArea>
             </div>
-            
+
             <div className="flex-1">
               {selectedFile ? (
                 <FileEditor

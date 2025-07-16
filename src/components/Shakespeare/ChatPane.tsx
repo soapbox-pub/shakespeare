@@ -10,12 +10,18 @@ import { useAISettings } from '@/contexts/AISettingsContext';
 import { aiTools } from '@/lib/ai-tools';
 import { z } from 'zod';
 
+interface ToolCall {
+  toolCallId: string;
+  toolName: string;
+  args: Record<string, unknown>;
+}
+
 interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
-  toolCalls?: any[];
+  toolCalls?: ToolCall[];
 }
 
 interface ChatPaneProps {
@@ -48,7 +54,7 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
     }
   }, [messages]);
 
-  const createAIChat = async (projectId: string, messages: any[]) => {
+  const createAIChat = async (projectId: string, messages: Array<{ role: 'user' | 'assistant'; content: string }>) => {
     if (!isConfigured) {
       throw new Error('AI settings not configured');
     }
@@ -224,9 +230,9 @@ When creating new components or pages, follow the existing patterns in the codeb
       ];
 
       const result = await createAIChat(projectId, aiMessages);
-      
+
       let assistantContent = '';
-      const toolCalls: any[] = [];
+      const toolCalls: ToolCall[] = [];
 
       for await (const part of result.fullStream) {
         if (part.type === 'text-delta') {
@@ -290,7 +296,7 @@ When creating new components or pages, follow the existing patterns in the codeb
             Settings
           </Button>
         </div>
-        
+
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center space-y-4">
             <Bot className="h-12 w-12 mx-auto text-muted-foreground" />
@@ -389,7 +395,7 @@ When creating new components or pages, follow the existing patterns in the codeb
               </div>
             </div>
           ))}
-          
+
           {isLoading && (
             <div className="flex gap-2">
               <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0">

@@ -13,7 +13,7 @@ const buildSchema = z.object({
   projectId: z.string(),
 });
 
-export async function createAIChat(projectId: string, messages: any[]) {
+export async function createAIChat(projectId: string, messages: Array<{ role: 'user' | 'assistant'; content: string }>) {
   const result = await streamText({
     model: openai('gpt-4-turbo-preview'),
     messages,

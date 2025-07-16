@@ -53,7 +53,6 @@ export function AISettingsProvider({ children }: { children: ReactNode }) {
 }
 
 
-// eslint-disable-next-line react-refresh/only-export-components
 export function useAISettings() {
   const context = useContext(AISettingsContext);
   if (!context) {

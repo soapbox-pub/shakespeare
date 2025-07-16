@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { fsManager } from '@/lib/fs';
 import { ChevronRight, ChevronDown, File, Folder } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -21,33 +21,17 @@ export function FileTree({ projectId, onFileSelect, selectedFile }: FileTreeProp
   const [tree, setTree] = useState<FileNode[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    loadFileTree();
-  }, [projectId]);
-
-  const loadFileTree = async () => {
-    setIsLoading(true);
-    try {
-      const structure = await buildFileTree(projectId, '');
-      setTree(structure);
-    } catch (error) {
-      console.error('Failed to load file tree:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const buildFileTree = async (projectId: string, dirPath: string): Promise<FileNode[]> => {
+  const buildFileTree = useCallback(async (projectId: string, dirPath: string): Promise<FileNode[]> => {
     const items = await fsManager.listFiles(projectId, dirPath);
     const nodes: FileNode[] = [];
 
     for (const item of items) {
       const itemPath = dirPath ? `${dirPath}/${item}` : item;
       const fullPath = `${fsManager['dir']}/${projectId}/${itemPath}`;
-      
+
       try {
         const stat = await fsManager['fs'].promises.stat(fullPath);
-        
+
         if (stat.isDirectory()) {
           const children = await buildFileTree(projectId, itemPath);
           nodes.push({
@@ -64,7 +48,7 @@ export function FileTree({ projectId, onFileSelect, selectedFile }: FileTreeProp
             type: 'file',
           });
         }
-      } catch (error) {
+      } catch {
         // Skip inaccessible items
       }
     }
@@ -75,7 +59,23 @@ export function FileTree({ projectId, onFileSelect, selectedFile }: FileTreeProp
       }
       return a.name.localeCompare(b.name);
     });
-  };
+  }, [projectId]);
+
+  const loadFileTree = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const structure = await buildFileTree(projectId, '');
+      setTree(structure);
+    } catch (_error) {
+      console.error('Failed to load file tree:', _error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [projectId, buildFileTree]);
+
+  useEffect(() => {
+    loadFileTree();
+  }, [loadFileTree]);
 
   const toggleDirectory = (path: string) => {
     const toggleNode = (nodes: FileNode[]): FileNode[] => {
@@ -103,7 +103,7 @@ export function FileTree({ projectId, onFileSelect, selectedFile }: FileTreeProp
 
   const renderNode = (node: FileNode, depth: number = 0) => {
     const isSelected = selectedFile === node.path;
-    
+
     return (
       <div key={node.path}>
         <div
@@ -132,7 +132,7 @@ export function FileTree({ projectId, onFileSelect, selectedFile }: FileTreeProp
           )}
           <span className="text-sm truncate">{node.name}</span>
         </div>
-        
+
         {node.type === 'directory' && node.isOpen && node.children && (
           <div>
             {node.children.map(child => renderNode(child, depth + 1))}

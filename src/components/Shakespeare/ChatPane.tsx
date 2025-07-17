@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { CoreMessage, generateText, CoreUserMessage, CoreAssistantMessage, CoreToolMessage } from 'ai';
+import { CoreMessage, generateText, CoreUserMessage, CoreAssistantMessage, CoreToolMessage, generateId } from 'ai';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -15,21 +15,37 @@ interface ChatPaneProps {
   projectName: string;
 }
 
+type AIMessage = (CoreUserMessage | CoreAssistantMessage | CoreToolMessage) & { id: string };
+
 export function ChatPane({ projectId, projectName }: ChatPaneProps) {
-  const [messages, setMessages] = useState<(CoreUserMessage | CoreAssistantMessage | CoreToolMessage)[]>([]);
+  const [messages, setMessages] = useState<AIMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const { settings, isConfigured } = useAISettings();
 
+  const addMessage = (message: AIMessage) => {
+    setMessages((prev) => {
+      const messageMap = new Map(prev.map(m => [m.id, m])).set(message.id, message);
+      return Array.from(messageMap.values());
+    });
+  };
+
+  const addMessages = (newMessages: AIMessage[]) => {
+    setMessages((prev) => {
+      const messageMap = new Map(prev.map(m => [m.id, m]));
+      newMessages.forEach(msg => messageMap.set(msg.id, msg));
+      return Array.from(messageMap.values());
+    });
+  };
+
   useEffect(() => {
     // Add welcome message
-    setMessages([
-      {
-        role: 'assistant',
-        content: `Hello! I'm here to help you build "${projectName}". I can help you edit files, add new features, and build your Nostr website. What would you like to work on?`,
-      },
-    ]);
+    addMessage({
+      id: generateId(),
+      role: 'assistant',
+      content: `Hello! I'm here to help you build "${projectName}". I can help you edit files, add new features, and build your Nostr website. What would you like to work on?`,
+    });
   }, [projectName, projectId]);
 
   useEffect(() => {
@@ -70,7 +86,7 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
       messages,
       maxSteps: 100,
       onStepFinish(stepResult) {
-        setMessages((prev) => [...prev, ...[...stepResult.response.messages]]);
+        addMessages(stepResult.response.messages);
       },
       tools: {
         readFile: toolSet.readFile,
@@ -108,29 +124,28 @@ When creating new components or pages, follow the existing patterns in the codeb
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
 
-    const userMessage: CoreUserMessage = {
+    const userMessage: AIMessage = {
+      id: generateId(),
       role: 'user',
       content: input,
     };
 
-    setMessages((prev) => [...prev, userMessage]);
+    addMessage(userMessage);
     setInput('');
     setIsLoading(true);
 
     try {
-      const aiMessages: (CoreUserMessage | CoreAssistantMessage | CoreToolMessage)[] = [
-        ...messages,
-        { role: 'user', content: input },
-      ];
+      const aiMessages: AIMessage[] = [...messages, userMessage];
 
       await createAIChat(projectId, aiMessages);
     } catch (error) {
       console.error('AI chat error:', error);
-      const errorMessage: CoreMessage = {
+      const errorMessage: AIMessage = {
+        id: generateId(),
         role: 'assistant',
         content: error instanceof Error ? error.message : 'Sorry, I encountered an error. Please try again.',
       };
-      setMessages((prev) => [...prev, errorMessage]);
+      addMessage(errorMessage);
     } finally {
       setIsLoading(false);
     }

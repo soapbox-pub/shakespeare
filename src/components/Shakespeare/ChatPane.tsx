@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { streamText, tool } from 'ai';
+import { tool, CoreMessage, generateText, CoreUserMessage, CoreAssistantMessage, CoreToolMessage } from 'ai';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -10,27 +10,13 @@ import { useAISettings } from '@/contexts/AISettingsContext';
 import { contextualAITools } from '@/lib/ai-tools';
 import { z } from 'zod';
 
-interface ToolCall {
-  toolCallId: string;
-  toolName: string;
-  args: Record<string, unknown>;
-}
-
-interface Message {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp: Date;
-  toolCalls?: ToolCall[];
-}
-
 interface ChatPaneProps {
   projectId: string;
   projectName: string;
 }
 
 export function ChatPane({ projectId, projectName }: ChatPaneProps) {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<(CoreUserMessage | CoreAssistantMessage | CoreToolMessage)[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -43,10 +29,8 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
     // Add welcome message
     setMessages([
       {
-        id: 'welcome',
         role: 'assistant',
         content: `Hello! I'm here to help you build "${projectName}". I can help you edit files, add new features, and build your Nostr website. What would you like to work on?`,
-        timestamp: new Date(),
       },
     ]);
   }, [projectName, projectId]);
@@ -57,7 +41,7 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
     }
   }, [messages]);
 
-  const createAIChat = async (projectId: string, messages: Array<{ role: 'user' | 'assistant'; content: string }>) => {
+  const createAIChat = async (projectId: string, messages: CoreMessage[]) => {
     if (!isConfigured) {
       throw new Error('AI settings not configured');
     }
@@ -89,10 +73,13 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
     });
     const provider = openai(settings.model);
 
-    return streamText({
+    return generateText({
       model: provider,
       messages,
       maxSteps: 100,
+      onStepFinish(stepResult) {
+        setMessages((prev) => [...prev, ...[...stepResult.response.messages]]);
+      },
       tools: {
         readFile: tool({
           description: 'Read the contents of a file in the project',
@@ -185,11 +172,9 @@ When creating new components or pages, follow the existing patterns in the codeb
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
 
-    const userMessage: Message = {
-      id: Date.now().toString(),
+    const userMessage: CoreUserMessage = {
       role: 'user',
       content: input,
-      timestamp: new Date(),
     };
 
     setMessages((prev) => [...prev, userMessage]);
@@ -197,45 +182,17 @@ When creating new components or pages, follow the existing patterns in the codeb
     setIsLoading(true);
 
     try {
-      const aiMessages = [
-        ...messages.map((msg) => ({
-          role: msg.role,
-          content: msg.content,
-        })),
-        { role: 'user' as const, content: input },
+      const aiMessages: (CoreUserMessage | CoreAssistantMessage | CoreToolMessage)[] = [
+        ...messages,
+        { role: 'user', content: input },
       ];
 
-      const result = await createAIChat(projectId, aiMessages);
-
-      let assistantContent = '';
-      const toolCalls: ToolCall[] = [];
-
-      for await (const part of result.fullStream) {
-        if (part.type === 'text-delta') {
-          assistantContent += part.textDelta;
-        } else if (part.type === 'tool-call') {
-          toolCalls.push(part);
-        } else if (part.type === 'tool-result') {
-          // Handle tool results if needed
-        }
-      }
-
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: assistantContent || 'I completed the requested changes.',
-        timestamp: new Date(),
-        toolCalls,
-      };
-
-      setMessages((prev) => [...prev, assistantMessage]);
+      await createAIChat(projectId, aiMessages);
     } catch (error) {
       console.error('AI chat error:', error);
-      const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
+      const errorMessage: CoreMessage = {
         role: 'assistant',
         content: error instanceof Error ? error.message : 'Sorry, I encountered an error. Please try again.',
-        timestamp: new Date(),
       };
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
@@ -300,6 +257,22 @@ When creating new components or pages, follow the existing patterns in the codeb
     );
   }
 
+  const renderPart = (part: (CoreUserMessage | CoreAssistantMessage | CoreToolMessage)['content'][0]) => {
+    if (typeof part === 'string') {
+      return <div className="whitespace-pre-wrap text-sm">{part}</div>;
+    }
+    switch (part.type) {
+      case 'text':
+        return <div className="whitespace-pre-wrap text-sm">{part.text}</div>;
+      case 'tool-call':
+        return <div className="text-sm text-blue-500">{part.toolName}</div>;
+      case 'tool-result':
+        return <div className="text-sm">{JSON.stringify(part.result)}</div>;
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="h-full flex flex-col">
       <div className="border-b px-4 py-3 flex justify-between items-center">
@@ -323,9 +296,9 @@ When creating new components or pages, follow the existing patterns in the codeb
 
       <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
         <div className="space-y-4">
-          {messages.map((message) => (
+          {messages.map((message, index) => (
             <div
-              key={message.id}
+              key={index}
               className={cn(
                 'flex gap-3',
                 message.role === 'user' ? 'justify-end' : 'justify-start'
@@ -359,12 +332,17 @@ When creating new components or pages, follow the existing patterns in the codeb
                       : 'bg-muted'
                   )}
                 >
-                  <div className="whitespace-pre-wrap text-sm">
-                    {message.content}
-                  </div>
-                  {message.toolCalls && message.toolCalls.length > 0 && (
-                    <div className="mt-2 text-xs opacity-75">
-                      Used {message.toolCalls.length} tool{message.toolCalls.length !== 1 ? 's' : ''}
+                  {typeof message.content === 'string' ? (
+                    <div className="whitespace-pre-wrap text-sm">
+                      {message.content}
+                    </div>
+                  ) : (
+                    <div className="whitespace-pre-wrap text-sm">
+                      {[...message.content].map((part, i) => (
+                        <span key={i} className="block">
+                          {renderPart(part)}
+                        </span>
+                      ))}
                     </div>
                   )}
                 </Card>

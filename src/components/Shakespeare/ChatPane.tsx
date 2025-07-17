@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { tool, CoreMessage, generateText, CoreUserMessage, CoreAssistantMessage, CoreToolMessage } from 'ai';
+import { CoreMessage, generateText, CoreUserMessage, CoreAssistantMessage, CoreToolMessage } from 'ai';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -7,8 +7,8 @@ import { Card } from '@/components/ui/card';
 import { Send, Bot, User, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAISettings } from '@/contexts/AISettingsContext';
-import { contextualAITools } from '@/lib/ai-tools';
-import { z } from 'zod';
+import { FsToolSet } from '@/lib/FsToolSet';
+import { fsManager } from '@/lib/fs';
 
 interface ChatPaneProps {
   projectId: string;
@@ -23,9 +23,6 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
   const { settings, isConfigured } = useAISettings();
 
   useEffect(() => {
-    // Set the current project ID for contextual AI tools
-    contextualAITools.setCurrentProjectId(projectId);
-
     // Add welcome message
     setMessages([
       {
@@ -46,13 +43,6 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
       throw new Error('AI settings not configured');
     }
 
-    const fileOperationSchema = z.object({
-      filePath: z.string(),
-      content: z.string().optional(),
-    });
-
-    const buildSchema = z.object({});
-
     // Create a custom fetch function for the AI provider
     const customFetch = async (url: string, options: RequestInit) => {
       return fetch(url, {
@@ -71,7 +61,9 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
       apiKey: settings.apiKey,
       fetch: settings.baseUrl.includes('openrouter.ai') ? customFetch : undefined,
     });
+
     const provider = openai(settings.model);
+    const toolSet = new FsToolSet(fsManager.fs.promises, `/projects/${projectId}`);
 
     return generateText({
       model: provider,
@@ -81,64 +73,8 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
         setMessages((prev) => [...prev, ...[...stepResult.response.messages]]);
       },
       tools: {
-        readFile: tool({
-          description: 'Read the contents of a file in the project',
-          parameters: fileOperationSchema,
-          execute: async ({ filePath }) => {
-            return await contextualAITools.readFile(filePath);
-          },
-        }),
-        writeFile: tool({
-          description: 'Write content to a file in the project',
-          parameters: fileOperationSchema,
-          execute: async ({ filePath, content }) => {
-            return await contextualAITools.writeFile(filePath, content || '');
-          },
-        }),
-        deleteFile: tool({
-          description: 'Delete a file from the project',
-          parameters: fileOperationSchema,
-          execute: async ({ filePath }) => {
-            return await contextualAITools.deleteFile(filePath);
-          },
-        }),
-        listFiles: tool({
-          description: 'List files in a directory',
-          parameters: fileOperationSchema,
-          execute: async ({ filePath }) => {
-            return await contextualAITools.listFiles(filePath);
-          },
-        }),
-        fileExists: tool({
-          description: 'Check if a file exists',
-          parameters: fileOperationSchema,
-          execute: async ({ filePath }) => {
-            return await contextualAITools.fileExists(filePath);
-          },
-        }),
-        buildProject: tool({
-          description: 'Build the project using Vite',
-          parameters: buildSchema,
-          execute: async () => {
-            return await contextualAITools.buildProject();
-          },
-        }),
-        getProjectStructure: tool({
-          description: 'Get the complete file structure of the project',
-          parameters: buildSchema,
-          execute: async () => {
-            return await contextualAITools.getProjectStructure();
-          },
-        }),
-        searchFiles: tool({
-          description: 'Search for files containing specific text',
-          parameters: z.object({
-            query: z.string(),
-          }),
-          execute: async ({ query }) => {
-            return await contextualAITools.searchFiles(query);
-          },
-        }),
+        readFile: toolSet.readFile,
+        writeFile: toolSet.writeFile,
       },
       system: `You are an AI assistant helping users build custom Nostr websites. You have access to tools that allow you to read, write, and manage files in the project, as well as build the project.
 

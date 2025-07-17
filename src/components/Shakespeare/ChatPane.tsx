@@ -1,14 +1,17 @@
+import { FileSystemTree, WebContainer } from '@webcontainer/api';
 import { useState, useRef, useEffect } from 'react';
 import { CoreMessage, generateText, CoreUserMessage, CoreAssistantMessage, CoreToolMessage, generateId } from 'ai';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card } from '@/components/ui/card';
-import { Send, Bot, User, Settings } from 'lucide-react';
+import { Send, Bot, User, Settings, Play } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAISettings } from '@/contexts/AISettingsContext';
 import { FsToolSet } from '@/lib/FsToolSet';
 import { fsManager } from '@/lib/fs';
+
+const webcontainerPromise = WebContainer.boot();
 
 interface ChatPaneProps {
   projectId: string;
@@ -37,6 +40,49 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
       newMessages.forEach(msg => messageMap.set(msg.id, msg));
       return Array.from(messageMap.values());
     });
+  };
+
+  const runBuild = async () => {
+    const webcontainer = await webcontainerPromise;
+
+    const buildFileTree = async (dirPath: string): Promise<FileSystemTree> => {
+      const tree: FileSystemTree = {};
+      const items = await fsManager.fs.promises.readdir(dirPath);
+
+      for (const item of items) {
+        const itemPath = `${dirPath}/${item}`;
+        const stat = await fsManager.fs.promises.stat(itemPath);
+
+        if (stat.isDirectory()) {
+          tree[item] = {
+            directory: await buildFileTree(itemPath),
+          };
+        } else {
+          const content = await fsManager.fs.promises.readFile(itemPath, 'utf8');
+          tree[item] = {
+            file: {
+              contents: content,
+            },
+          };
+        }
+      }
+
+      return tree;
+    };
+
+    const fsTree = await buildFileTree(`/projects/${projectId}`);
+    await webcontainer.mount(fsTree);
+
+    // Install dependencies and build
+    const proc = await webcontainer.spawn('npm', ['i']);
+    await proc.exit;
+
+    console.log(await webcontainer.fs.readdir('.'));
+
+    // Copy "node_moudles" out of the webcontainer back to the project directory
+
+
+    // const buildProcess = await webcontainer.spawn('npm', ['run', 'build']);
   };
 
   useEffect(() => {
@@ -235,13 +281,10 @@ When creating new components or pages, follow the existing patterns in the codeb
           variant="outline"
           size="sm"
           className="gap-2"
-          onClick={() => {
-            const event = new CustomEvent('openAISettings');
-            window.dispatchEvent(event);
-          }}
+          onClick={runBuild}
         >
-          <Settings className="h-4 w-4" />
-          Settings
+          <Play className="h-4 w-4" />
+          Build
         </Button>
       </div>
 

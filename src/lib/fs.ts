@@ -17,8 +17,8 @@ export interface Project {
 }
 
 export class FileSystemManager {
-  private fs: LightningFS;
-  private dir: string;
+  fs: LightningFS;
+  dir: string;
 
   constructor() {
     this.fs = new LightningFS('shakespeare-fs');
@@ -197,7 +197,15 @@ export default defineConfig({
 
   async readFile(projectId: string, filePath: string): Promise<string> {
     const fullPath = `${this.dir}/${projectId}/${filePath}`;
-    return await this.fs.promises.readFile(fullPath, 'utf8');
+    try {
+      return await this.fs.promises.readFile(fullPath, 'utf8');
+    } catch (error) {
+      const fsError = error as NodeJS.ErrnoException;
+      if (fsError.code === 'ENOENT') {
+        throw new Error(`File not found: ${filePath}`);
+      }
+      throw error;
+    }
   }
 
   async writeFile(projectId: string, filePath: string, content: string): Promise<void> {
@@ -220,8 +228,12 @@ export default defineConfig({
     const fullPath = `${this.dir}/${projectId}/${dirPath}`;
     try {
       return await this.fs.promises.readdir(fullPath);
-    } catch {
-      return [];
+    } catch (error) {
+      const fsError = error as NodeJS.ErrnoException;
+      if (fsError.code === 'ENOENT') {
+        return [];
+      }
+      throw error;
     }
   }
 
@@ -230,7 +242,12 @@ export default defineConfig({
       const fullPath = `${this.dir}/${projectId}/${filePath}`;
       await this.fs.promises.stat(fullPath);
       return true;
-    } catch {
+    } catch (error) {
+      const fsError = error as NodeJS.ErrnoException;
+      if (fsError.code === 'ENOENT') {
+        return false;
+      }
+      // For other errors, we still want to know the file doesn't exist
       return false;
     }
   }

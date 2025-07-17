@@ -17,29 +17,54 @@ class ContextualAITools {
 
   async readFile(filePath: string): Promise<string> {
     const projectId = this.getCurrentProjectId();
-    return await fsManager.readFile(projectId, filePath);
+    try {
+      return await fsManager.readFile(projectId, filePath);
+    } catch (error) {
+      const fsError = error as NodeJS.ErrnoException;
+      throw new Error(`Failed to read file "${filePath}": ${fsError.message}`);
+    }
   }
 
   async writeFile(filePath: string, content: string): Promise<{ success: boolean; message: string }> {
     const projectId = this.getCurrentProjectId();
-    await fsManager.writeFile(projectId, filePath, content);
-    return { success: true, message: `File ${filePath} written successfully` };
+    try {
+      await fsManager.writeFile(projectId, filePath, content);
+      return { success: true, message: `File ${filePath} written successfully` };
+    } catch (error) {
+      const fsError = error as NodeJS.ErrnoException;
+      throw new Error(`Failed to write file "${filePath}": ${fsError.message}`);
+    }
   }
 
   async deleteFile(filePath: string): Promise<{ success: boolean; message: string }> {
     const projectId = this.getCurrentProjectId();
-    await fsManager.deleteFile(projectId, filePath);
-    return { success: true, message: `File ${filePath} deleted successfully` };
+    try {
+      await fsManager.deleteFile(projectId, filePath);
+      return { success: true, message: `File ${filePath} deleted successfully` };
+    } catch (error) {
+      const fsError = error as NodeJS.ErrnoException;
+      throw new Error(`Failed to delete file "${filePath}": ${fsError.message}`);
+    }
   }
 
   async listFiles(dirPath: string = ''): Promise<string[]> {
     const projectId = this.getCurrentProjectId();
-    return await fsManager.listFiles(projectId, dirPath);
+    try {
+      return await fsManager.listFiles(projectId, dirPath);
+    } catch (error) {
+      const fsError = error as NodeJS.ErrnoException;
+      throw new Error(`Failed to list files in "${dirPath}": ${fsError.message}`);
+    }
   }
 
   async fileExists(filePath: string): Promise<boolean> {
     const projectId = this.getCurrentProjectId();
-    return await fsManager.fileExists(projectId, filePath);
+    try {
+      return await fsManager.fileExists(projectId, filePath);
+    } catch (error) {
+      const fsError = error as NodeJS.ErrnoException;
+      throw new Error(`Failed to check if file exists "${filePath}": ${fsError.message}`);
+    }
   }
 
   async buildProject(): Promise<{ success: boolean; message: string; url: string }> {

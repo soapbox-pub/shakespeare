@@ -79,8 +79,58 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
 
     console.log(await webcontainer.fs.readdir('.'));
 
-    // Copy "node_moudles" out of the webcontainer back to the project directory
+    // Copy "node_modules" out of the webcontainer back to the project directory
+    const copyNodeModules = async () => {
+      try {
+        // Read the node_modules directory from webcontainer
+        const nodeModulesContents = await webcontainer.fs.readdir('node_modules', { withFileTypes: true });
 
+        // Create node_modules directory in project if it doesn't exist
+        const nodeModulesPath = `/projects/${projectId}/node_modules`;
+        try {
+          await fsManager.fs.promises.mkdir(nodeModulesPath);
+        } catch {
+          // Directory might already exist, that's fine
+        }
+
+        // Helper function to copy directory recursively
+        const copyDirectory = async (sourcePath: string, destPath: string) => {
+          try {
+            const items = await webcontainer.fs.readdir(sourcePath, { withFileTypes: true });
+
+            for (const item of items) {
+              const sourceItemPath = `${sourcePath}/${item.name}`;
+              const destItemPath = `${destPath}/${item.name}`;
+
+              if (item.isDirectory()) {
+                await fsManager.fs.promises.mkdir(destItemPath);
+                await copyDirectory(sourceItemPath, destItemPath);
+              } else if (item.isFile()) {
+                const content = await webcontainer.fs.readFile(sourceItemPath);
+                await fsManager.fs.promises.writeFile(destItemPath, content);
+              }
+            }
+          } catch (error) {
+            console.warn(`Failed to copy ${sourcePath}:`, error);
+          }
+        };
+
+        // Copy each package in node_modules
+        for (const item of nodeModulesContents) {
+          if (item.isDirectory()) {
+            const sourcePath = `node_modules/${item.name}`;
+            const destPath = `${nodeModulesPath}/${item.name}`;
+            await copyDirectory(sourcePath, destPath);
+          }
+        }
+
+        console.log('Successfully copied node_modules from webcontainer');
+      } catch (error) {
+        console.error('Failed to copy node_modules:', error);
+      }
+    };
+
+    await copyNodeModules();
 
     // const buildProcess = await webcontainer.spawn('npm', ['run', 'build']);
   };

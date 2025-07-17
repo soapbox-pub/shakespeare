@@ -7,7 +7,7 @@ import { Card } from '@/components/ui/card';
 import { Send, Bot, User, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAISettings } from '@/contexts/AISettingsContext';
-import { aiTools } from '@/lib/ai-tools';
+import { contextualAITools } from '@/lib/ai-tools';
 import { z } from 'zod';
 
 interface ToolCall {
@@ -37,6 +37,9 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
   const { settings, isConfigured } = useAISettings();
 
   useEffect(() => {
+    // Set the current project ID for contextual AI tools
+    contextualAITools.setCurrentProjectId(projectId);
+
     // Add welcome message
     setMessages([
       {
@@ -46,7 +49,7 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
         timestamp: new Date(),
       },
     ]);
-  }, [projectName]);
+  }, [projectName, projectId]);
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -60,14 +63,11 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
     }
 
     const fileOperationSchema = z.object({
-      projectId: z.string(),
       filePath: z.string(),
       content: z.string().optional(),
     });
 
-    const buildSchema = z.object({
-      projectId: z.string(),
-    });
+    const buildSchema = z.object({});
 
     // Create a custom fetch function for the AI provider
     const customFetch = async (url: string, options: RequestInit) => {
@@ -92,88 +92,64 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
     return streamText({
       model: provider,
       messages,
+      maxSteps: 100,
       tools: {
         readFile: tool({
           description: 'Read the contents of a file in the project',
           parameters: fileOperationSchema,
-          execute: async ({ projectId, filePath }) => {
-            return await aiTools.executeOperation({
-              type: 'read',
-              projectId,
-              filePath,
-            });
+          execute: async ({ filePath }) => {
+            return await contextualAITools.readFile(filePath);
           },
         }),
         writeFile: tool({
           description: 'Write content to a file in the project',
           parameters: fileOperationSchema,
-          execute: async ({ projectId, filePath, content }) => {
-            return await aiTools.executeOperation({
-              type: 'write',
-              projectId,
-              filePath,
-              content: content || '',
-            });
+          execute: async ({ filePath, content }) => {
+            return await contextualAITools.writeFile(filePath, content || '');
           },
         }),
         deleteFile: tool({
           description: 'Delete a file from the project',
           parameters: fileOperationSchema,
-          execute: async ({ projectId, filePath }) => {
-            return await aiTools.executeOperation({
-              type: 'delete',
-              projectId,
-              filePath,
-            });
+          execute: async ({ filePath }) => {
+            return await contextualAITools.deleteFile(filePath);
           },
         }),
         listFiles: tool({
           description: 'List files in a directory',
           parameters: fileOperationSchema,
-          execute: async ({ projectId, filePath }) => {
-            return await aiTools.executeOperation({
-              type: 'list',
-              projectId,
-              filePath,
-            });
+          execute: async ({ filePath }) => {
+            return await contextualAITools.listFiles(filePath);
           },
         }),
         fileExists: tool({
           description: 'Check if a file exists',
           parameters: fileOperationSchema,
-          execute: async ({ projectId, filePath }) => {
-            return await aiTools.executeOperation({
-              type: 'exists',
-              projectId,
-              filePath,
-            });
+          execute: async ({ filePath }) => {
+            return await contextualAITools.fileExists(filePath);
           },
         }),
         buildProject: tool({
           description: 'Build the project using Vite',
           parameters: buildSchema,
-          execute: async ({ projectId }) => {
-            return await aiTools.executeOperation({
-              type: 'build',
-              projectId,
-            });
+          execute: async () => {
+            return await contextualAITools.buildProject();
           },
         }),
         getProjectStructure: tool({
           description: 'Get the complete file structure of the project',
           parameters: buildSchema,
-          execute: async ({ projectId }) => {
-            return await aiTools.getProjectStructure(projectId);
+          execute: async () => {
+            return await contextualAITools.getProjectStructure();
           },
         }),
         searchFiles: tool({
           description: 'Search for files containing specific text',
           parameters: z.object({
-            projectId: z.string(),
             query: z.string(),
           }),
-          execute: async ({ projectId, query }) => {
-            return await aiTools.searchFiles(projectId, query);
+          execute: async ({ query }) => {
+            return await contextualAITools.searchFiles(query);
           },
         }),
       },

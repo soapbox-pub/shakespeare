@@ -1,77 +1,50 @@
 import { fsManager } from './fs';
 
-export interface FileOperation {
-  type: 'read' | 'write' | 'delete' | 'list' | 'exists';
-  projectId: string;
-  filePath: string;
-  content?: string;
-}
+// Context-aware AI tools that automatically use the current project ID
+class ContextualAITools {
+  private currentProjectId: string | null = null;
 
-export interface BuildOperation {
-  type: 'build';
-  projectId: string;
-}
-
-export type AIToolOperation = FileOperation | BuildOperation;
-
-export class AITools {
-  async executeOperation(operation: AIToolOperation): Promise<unknown> {
-    try {
-      switch (operation.type) {
-        case 'read':
-          return await this.readFile(operation.projectId, operation.filePath);
-
-        case 'write':
-          if (!operation.content) {
-            throw new Error('Content is required for write operations');
-          }
-          await this.writeFile(operation.projectId, operation.filePath, operation.content);
-          return { success: true, message: 'File written successfully' };
-
-        case 'delete':
-          await this.deleteFile(operation.projectId, operation.filePath);
-          return { success: true, message: 'File deleted successfully' };
-
-        case 'list':
-          return await this.listFiles(operation.projectId, operation.filePath);
-
-        case 'exists':
-          return await this.fileExists(operation.projectId, operation.filePath);
-
-        case 'build':
-          return await this.buildProject(operation.projectId);
-
-        default:
-          throw new Error(`Unknown operation type: ${(operation as { type: string }).type}`);
-      }
-    } catch (error) {
-      return { error: error.message };
-    }
+  setCurrentProjectId(projectId: string) {
+    this.currentProjectId = projectId;
   }
 
-  private async readFile(projectId: string, filePath: string): Promise<string> {
+  getCurrentProjectId(): string {
+    if (!this.currentProjectId) {
+      throw new Error('No project context set. Please ensure you are in a project view.');
+    }
+    return this.currentProjectId;
+  }
+
+  async readFile(filePath: string): Promise<string> {
+    const projectId = this.getCurrentProjectId();
     return await fsManager.readFile(projectId, filePath);
   }
 
-  private async writeFile(projectId: string, filePath: string, content: string): Promise<void> {
+  async writeFile(filePath: string, content: string): Promise<{ success: boolean; message: string }> {
+    const projectId = this.getCurrentProjectId();
     await fsManager.writeFile(projectId, filePath, content);
+    return { success: true, message: `File ${filePath} written successfully` };
   }
 
-  private async deleteFile(projectId: string, filePath: string): Promise<void> {
+  async deleteFile(filePath: string): Promise<{ success: boolean; message: string }> {
+    const projectId = this.getCurrentProjectId();
     await fsManager.deleteFile(projectId, filePath);
+    return { success: true, message: `File ${filePath} deleted successfully` };
   }
 
-  private async listFiles(projectId: string, dirPath: string = ''): Promise<string[]> {
+  async listFiles(dirPath: string = ''): Promise<string[]> {
+    const projectId = this.getCurrentProjectId();
     return await fsManager.listFiles(projectId, dirPath);
   }
 
-  private async fileExists(projectId: string, filePath: string): Promise<boolean> {
+  async fileExists(filePath: string): Promise<boolean> {
+    const projectId = this.getCurrentProjectId();
     return await fsManager.fileExists(projectId, filePath);
   }
 
-  private async buildProject(projectId: string): Promise<{ success: boolean; message: string; url: string }> {
+  async buildProject(): Promise<{ success: boolean; message: string; url: string }> {
+    const projectId = this.getCurrentProjectId();
     // TODO: Implement Vite build in browser
-    // For now, return a stub
     return {
       success: true,
       message: 'Build started (stub implementation)',
@@ -79,7 +52,8 @@ export class AITools {
     };
   }
 
-  async getProjectStructure(projectId: string): Promise<Record<string, unknown>> {
+  async getProjectStructure(): Promise<Record<string, unknown>> {
+    const projectId = this.getCurrentProjectId();
     const structure: Record<string, unknown> = {};
 
     async function buildStructure(currentPath: string, obj: Record<string, unknown>) {
@@ -108,7 +82,8 @@ export class AITools {
     return structure;
   }
 
-  async searchFiles(projectId: string, query: string): Promise<Array<{path: string, content: string}>> {
+  async searchFiles(query: string): Promise<Array<{path: string, content: string}>> {
+    const projectId = this.getCurrentProjectId();
     const results: Array<{path: string, content: string}> = [];
 
     async function searchDirectory(dirPath: string) {
@@ -136,6 +111,63 @@ export class AITools {
 
     await searchDirectory('');
     return results;
+  }
+}
+
+// Create a singleton instance
+export const contextualAITools = new ContextualAITools();
+
+// Backward compatibility: export the old interface for existing code
+interface LegacyOperation {
+  type: string;
+  projectId?: string;
+  filePath?: string;
+  content?: string;
+  query?: string;
+}
+
+export class AITools {
+  async executeOperation(operation: LegacyOperation): Promise<unknown> {
+    try {
+      switch (operation.type) {
+        case 'read':
+          if (!operation.filePath) throw new Error('filePath is required');
+          return await contextualAITools.readFile(operation.filePath);
+
+        case 'write':
+          if (!operation.filePath) throw new Error('filePath is required');
+          if (!operation.content) {
+            throw new Error('Content is required for write operations');
+          }
+          return await contextualAITools.writeFile(operation.filePath, operation.content);
+
+        case 'delete':
+          if (!operation.filePath) throw new Error('filePath is required');
+          return await contextualAITools.deleteFile(operation.filePath);
+
+        case 'list':
+          return await contextualAITools.listFiles(operation.filePath);
+
+        case 'exists':
+          if (!operation.filePath) throw new Error('filePath is required');
+          return await contextualAITools.fileExists(operation.filePath);
+
+        case 'build':
+          return await contextualAITools.buildProject();
+
+        case 'getProjectStructure':
+          return await contextualAITools.getProjectStructure();
+
+        case 'searchFiles':
+          if (!operation.query) throw new Error('query is required');
+          return await contextualAITools.searchFiles(operation.query);
+
+        default:
+          throw new Error(`Unknown operation type: ${operation.type}`);
+      }
+    } catch (error) {
+      return { error: error.message };
+    }
   }
 }
 

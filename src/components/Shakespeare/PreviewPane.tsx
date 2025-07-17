@@ -43,7 +43,7 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
     if (!selectedFile) return;
 
     try {
-      await fsManager.writeFile(projectId, selectedFile, content);
+      await fsManager.fs.promises.writeFile(`/projects/${projectId}/${selectedFile}`, content);
       setFileContent(content);
     } catch (error) {
       console.error('Failed to save file:', error);

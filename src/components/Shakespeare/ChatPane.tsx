@@ -108,7 +108,11 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
               try {
                 if (item.isDirectory()) {
                   console.log(`Creating directory: ${destItemPath}`);
-                  await fsManager.fs.promises.mkdir(destItemPath, { recursive: true });
+                  try {
+                    await fsManager.fs.promises.mkdir(destItemPath);
+                  } catch {
+                    // Directory might already exist
+                  }
                   await copyDirectory(sourceItemPath, destItemPath);
                 } else {
                   console.log(`Copying file: ${sourceItemPath} -> ${destItemPath}`);
@@ -132,7 +136,11 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
           try {
             if (item.isDirectory()) {
               console.log(`Processing directory: ${item.name}`);
-              await fsManager.fs.promises.mkdir(destPath, { recursive: true });
+              try {
+                await fsManager.fs.promises.mkdir(destPath);
+              } catch {
+                // Directory might already exist
+              }
               await copyDirectory(sourcePath, destPath);
             } else {
               console.log(`Processing file: ${item.name}`);

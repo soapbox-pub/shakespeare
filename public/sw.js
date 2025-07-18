@@ -1,7 +1,8 @@
 // Service Worker for serving files from LightningFS filesystem
 const CACHE_NAME = 'shakespeare-fs-v1';
 
-console.log("HELLO?!?!? " + new Date().getMinutes());
+// Store pending file requests
+const pendingRequests = new Map();
 
 // Handle file requests from the virtual filesystem
 async function handleFileRequest(url) {
@@ -11,8 +12,6 @@ async function handleFileRequest(url) {
   if (!pathMatch) {
     return new Response('Not Found', { status: 404 });
   }
-
-  console.log(`Handling file request for ${url}`);
 
   const [, projectId, filePath] = pathMatch;
 
@@ -27,8 +26,6 @@ async function handleFileRequest(url) {
     // Determine content type based on file extension
     const contentType = getContentType(filePath);
 
-    console.log(`Serving file ${filePath} from project ${projectId}`);
-
     return new Response(fileContent, {
       status: 200,
       headers: {
@@ -37,7 +34,6 @@ async function handleFileRequest(url) {
       },
     });
   } catch (error) {
-    console.error('Failed to read file from main thread:', error);
     return new Response('File Not Found', { status: 404 });
   }
 }
@@ -47,17 +43,8 @@ async function requestFileFromMainThread(projectId, filePath) {
   return new Promise((resolve) => {
     const messageId = Math.random().toString(36).substr(2, 9);
 
-    // Set up message listener for response
-    const messageHandler = (event) => {
-      if (event.data.type === 'FILE_RESPONSE' && event.data.messageId === messageId) {
-        self.removeEventListener('message', messageHandler);
-        resolve(event.data.content);
-      }
-    };
-
-    self.addEventListener('message', messageHandler);
-
-    console.log(`Requesting file ${filePath} from project ${projectId}`);
+    // Store the resolver for this request
+    pendingRequests.set(messageId, resolve);
 
     // Send request to all clients
     self.clients.matchAll().then(clients => {
@@ -73,8 +60,10 @@ async function requestFileFromMainThread(projectId, filePath) {
 
     // Timeout after 5 seconds
     setTimeout(() => {
-      self.removeEventListener('message', messageHandler);
-      resolve(null);
+      if (pendingRequests.has(messageId)) {
+        pendingRequests.delete(messageId);
+        resolve(null);
+      }
     }, 5000);
   });
 }
@@ -106,6 +95,19 @@ function getContentType(filePath) {
   return mimeTypes[ext] || 'text/plain';
 }
 
+// Top-level message event listener - must be added during initial evaluation
+self.addEventListener('message', (event) => {
+  if (event.data.type === 'FILE_RESPONSE' && event.data.messageId) {
+    const messageId = event.data.messageId;
+    const resolver = pendingRequests.get(messageId);
+
+    if (resolver) {
+      pendingRequests.delete(messageId);
+      resolver(event.data.content);
+    }
+  }
+});
+
 // Service Worker event listeners
 self.addEventListener('install', (event) => {
   console.log('Service Worker installing...');
@@ -118,12 +120,10 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  console.log(`Service Worker fetching: ${event.request.url}`);
   const url = event.request.url;
 
   // Only handle requests for project files
   if (url.includes('/project/') && url.includes('/files/')) {
-    console.log(`Handling fetch request for ${url}`);
     event.respondWith(handleFileRequest(url));
   }
 });

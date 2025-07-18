@@ -58,24 +58,29 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
       const parser = new DOMParser();
       const doc = parser.parseFromString(html, 'text/html');
 
-      // Add base tag to resolve relative paths through service worker
-      const baseUrl = `/project/${projectId}/files/dist/`;
+      // Rewrite script src attributes
+      const scripts = doc.querySelectorAll('script[src]');
+      scripts.forEach((script) => {
+        const src = script.getAttribute('src');
+        if (src && !src.startsWith('http') && !src.startsWith('//')) {
+          // Convert relative path to raw file path
+          const cleanPath = src.startsWith('./') ? src.slice(2) : src.startsWith('/') ? src.slice(1) : src;
+          const newSrc = `/project/${projectId}/files/dist/${cleanPath}`;
+          script.setAttribute('src', newSrc);
+        }
+      });
 
-      // Remove existing base tag if present
-      const existingBase = doc.querySelector('base');
-      if (existingBase) {
-        existingBase.remove();
-      }
-
-      // Add new base tag
-      const baseTag = doc.createElement('base');
-      baseTag.href = baseUrl;
-
-      // Insert base tag as first child of head
-      const head = doc.querySelector('head');
-      if (head) {
-        head.insertBefore(baseTag, head.firstChild);
-      }
+      // Rewrite link href attributes (for stylesheets and other resources)
+      const links = doc.querySelectorAll('link[href]');
+      links.forEach((link) => {
+        const href = link.getAttribute('href');
+        if (href && !href.startsWith('http') && !href.startsWith('//')) {
+          // Convert relative path to raw file path
+          const cleanPath = href.startsWith('./') ? href.slice(2) : href.startsWith('/') ? href.slice(1) : href;
+          const newHref = `/project/${projectId}/files/dist/${cleanPath}`;
+          link.setAttribute('href', newHref);
+        }
+      });
 
       return doc.documentElement.outerHTML;
     } catch (error) {

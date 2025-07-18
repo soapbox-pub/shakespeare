@@ -8,6 +8,9 @@ if (typeof window !== 'undefined') {
   (window as { Buffer?: typeof Buffer }).Buffer = Buffer;
 }
 
+// const GIT_TEMPLATE_URL = 'https://relay.ngit.dev/npub1q3sle0kvfsehgsuexttt3ugjd8xdklxfwwkh559wxckmzddywnws6cd26p/mkstack.git';
+const GIT_TEMPLATE_URL = 'https://relay.ngit.dev/npub1q3sle0kvfsehgsuexttt3ugjd8xdklxfwwkh559wxckmzddywnws6cd26p/lovable-blank.git';
+
 export interface Project {
   id: string;
   name: string;
@@ -60,14 +63,12 @@ export class FileSystemManager {
   }
 
   async cloneTemplate(projectPath: string) {
-    const templateUrl = 'https://relay.ngit.dev/npub1q3sle0kvfsehgsuexttt3ugjd8xdklxfwwkh559wxckmzddywnws6cd26p/mkstack.git';
-
     try {
       await git.clone({
         fs: this.fs,
         http,
         dir: projectPath,
-        url: templateUrl,
+        url: GIT_TEMPLATE_URL,
         singleBranch: true,
         depth: 1,
       });

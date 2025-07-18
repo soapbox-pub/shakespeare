@@ -77,18 +77,19 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
     const proc = await webcontainer.spawn('npm', ['i']);
     await proc.exit;
 
-    console.log(await webcontainer.fs.readdir('.'));
+    const proc2 = await webcontainer.spawn('npm', ['run', 'build']);
+    await proc2.exit;
 
-    // Copy "node_modules" out of the webcontainer back to the project directory
-    const copyNodeModules = async () => {
+    // Copy "dist" out of the webcontainer back to the project directory
+    const copyDist = async () => {
       try {
-        // Read the node_modules directory from webcontainer
-        const nodeModulesContents = await webcontainer.fs.readdir('node_modules', { withFileTypes: true });
+        // Read the dist directory from webcontainer
+        const distContents = await webcontainer.fs.readdir('dist', { withFileTypes: true });
 
-        // Create node_modules directory in project if it doesn't exist
-        const nodeModulesPath = `/projects/${projectId}/node_modules`;
+        // Create dist directory in project if it doesn't exist
+        const distPath = `/projects/${projectId}/dist`;
         try {
-          await fsManager.fs.promises.mkdir(nodeModulesPath);
+          await fsManager.fs.promises.mkdir(distPath);
         } catch {
           // Directory might already exist, that's fine
         }
@@ -123,10 +124,10 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
           }
         };
 
-        // Copy each package in node_modules
-        for (const item of nodeModulesContents) {
-          const sourcePath = `node_modules/${item.name}`;
-          const destPath = `${nodeModulesPath}/${item.name}`;
+        // Copy each package in dist
+        for (const item of distContents) {
+          const sourcePath = `dist/${item.name}`;
+          const destPath = `${distPath}/${item.name}`;
 
           try {
             if (item.isDirectory()) {
@@ -149,9 +150,7 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
       }
     };
 
-    await copyNodeModules();
-
-    // const buildProcess = await webcontainer.spawn('npm', ['run', 'build']);
+    await copyDist();
   };
 
   useEffect(() => {

@@ -96,18 +96,26 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
         // Helper function to copy directory recursively
         const copyDirectory = async (sourcePath: string, destPath: string) => {
           try {
+            console.log(`Copying directory: ${sourcePath}`);
             const items = await webcontainer.fs.readdir(sourcePath, { withFileTypes: true });
+            console.log(`Found ${items.length} items in ${sourcePath}`);
 
             for (const item of items) {
               const sourceItemPath = `${sourcePath}/${item.name}`;
               const destItemPath = `${destPath}/${item.name}`;
 
-              if (item.isDirectory()) {
-                await fsManager.fs.promises.mkdir(destItemPath);
-                await copyDirectory(sourceItemPath, destItemPath);
-              } else if (item.isFile()) {
-                const content = await webcontainer.fs.readFile(sourceItemPath);
-                await fsManager.fs.promises.writeFile(destItemPath, content);
+              try {
+                if (item.isDirectory()) {
+                  console.log(`Creating directory: ${destItemPath}`);
+                  await fsManager.fs.promises.mkdir(destItemPath, { recursive: true });
+                  await copyDirectory(sourceItemPath, destItemPath);
+                } else {
+                  console.log(`Copying file: ${sourceItemPath} -> ${destItemPath}`);
+                  const content = await webcontainer.fs.readFile(sourceItemPath);
+                  await fsManager.fs.promises.writeFile(destItemPath, content);
+                }
+              } catch (itemError) {
+                console.warn(`Failed to copy item ${item.name}:`, itemError);
               }
             }
           } catch (error) {
@@ -117,10 +125,21 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
 
         // Copy each package in node_modules
         for (const item of nodeModulesContents) {
-          if (item.isDirectory()) {
-            const sourcePath = `node_modules/${item.name}`;
-            const destPath = `${nodeModulesPath}/${item.name}`;
-            await copyDirectory(sourcePath, destPath);
+          const sourcePath = `node_modules/${item.name}`;
+          const destPath = `${nodeModulesPath}/${item.name}`;
+
+          try {
+            if (item.isDirectory()) {
+              console.log(`Processing directory: ${item.name}`);
+              await fsManager.fs.promises.mkdir(destPath, { recursive: true });
+              await copyDirectory(sourcePath, destPath);
+            } else {
+              console.log(`Processing file: ${item.name}`);
+              const content = await webcontainer.fs.readFile(sourcePath);
+              await fsManager.fs.promises.writeFile(destPath, content);
+            }
+          } catch (itemError) {
+            console.warn(`Failed to process ${item.name}:`, itemError);
           }
         }
 

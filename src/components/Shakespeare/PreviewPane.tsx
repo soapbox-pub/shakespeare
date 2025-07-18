@@ -42,8 +42,8 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
         // Load the built HTML content
         const htmlContent = await fsManager.readFile(projectId, 'dist/index.html');
 
-        // Process the HTML to handle relative asset paths
-        const processedHtml = await processHtmlForPreview(htmlContent, projectId);
+        // Process the HTML to add base tag for asset resolution
+        const processedHtml = processHtmlForPreview(htmlContent, projectId);
         setPreviewHtml(processedHtml);
       }
     } catch (error) {
@@ -52,48 +52,29 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
     }
   }, [projectId]);
 
-  const processHtmlForPreview = async (html: string, projectId: string): Promise<string> => {
+  const processHtmlForPreview = (html: string, projectId: string): string => {
     try {
       // Create a temporary DOM to process the HTML
       const parser = new DOMParser();
       const doc = parser.parseFromString(html, 'text/html');
 
-      // Process script tags with relative paths
-      const scripts = doc.querySelectorAll('script[src]');
-      for (const script of scripts) {
-        const src = script.getAttribute('src');
-        if (src && !src.startsWith('http') && !src.startsWith('//')) {
-          try {
-            const assetPath = src.startsWith('/') ? `dist${src}` : `dist/${src}`;
-            const assetContent = await fsManager.readFile(projectId, assetPath);
+      // Add base tag to resolve relative paths through service worker
+      const baseUrl = `/project/${projectId}/files/dist/`;
 
-            // Replace the script tag with inline script
-            const inlineScript = doc.createElement('script');
-            inlineScript.textContent = assetContent;
-            script.parentNode?.replaceChild(inlineScript, script);
-          } catch (error) {
-            console.warn(`Failed to load script asset: ${src}`, error);
-          }
-        }
+      // Remove existing base tag if present
+      const existingBase = doc.querySelector('base');
+      if (existingBase) {
+        existingBase.remove();
       }
 
-      // Process CSS link tags
-      const links = doc.querySelectorAll('link[rel="stylesheet"]');
-      for (const link of links) {
-        const href = link.getAttribute('href');
-        if (href && !href.startsWith('http') && !href.startsWith('//')) {
-          try {
-            const assetPath = href.startsWith('/') ? `dist${href}` : `dist/${href}`;
-            const cssContent = await fsManager.readFile(projectId, assetPath);
+      // Add new base tag
+      const baseTag = doc.createElement('base');
+      baseTag.href = baseUrl;
 
-            // Replace the link tag with inline style
-            const style = doc.createElement('style');
-            style.textContent = cssContent;
-            link.parentNode?.replaceChild(style, link);
-          } catch (error) {
-            console.warn(`Failed to load CSS asset: ${href}`, error);
-          }
-        }
+      // Insert base tag as first child of head
+      const head = doc.querySelector('head');
+      if (head) {
+        head.insertBefore(baseTag, head.firstChild);
       }
 
       return doc.documentElement.outerHTML;

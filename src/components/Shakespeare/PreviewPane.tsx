@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { fsManager } from '@/lib/fs';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -7,7 +7,6 @@ import { RefreshCw } from 'lucide-react';
 
 import { FileTree } from './FileTree';
 import { FileEditor } from './FileEditor';
-import { getPublicKey, nip19 } from 'nostr-tools';
 
 interface PreviewPaneProps {
   projectId: string;
@@ -17,22 +16,88 @@ interface PreviewPaneProps {
 export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [fileContent, setFileContent] = useState<string>('');
-  const [projectUrl, setProjectUrl] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [hasBuiltProject, setHasBuiltProject] = useState(false);
+  const [previewHtml, setPreviewHtml] = useState<string>('');
+
+  const loadFileContent = useCallback(async (filePath: string) => {
+    setIsLoading(true);
+    try {
+      const content = await fsManager.readFile(projectId, filePath);
+      setFileContent(content);
+    } catch (_error) {
+      console.error('Failed to load file:', _error);
+      setFileContent('');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [projectId]);
+
+  const checkForBuiltProject = useCallback(async () => {
+    try {
+      const exists = await fsManager.fileExists(projectId, 'dist/index.html');
+      setHasBuiltProject(exists);
+
+      if (exists) {
+        // Load the built HTML content
+        const htmlContent = await fsManager.readFile(projectId, 'dist/index.html');
+
+        // Process the HTML to add base tag for asset resolution
+        const processedHtml = processHtmlForPreview(htmlContent, projectId);
+        setPreviewHtml(processedHtml);
+      }
+    } catch (error) {
+      console.error('Failed to check for built project:', error);
+      setHasBuiltProject(false);
+    }
+  }, [projectId]);
+
+  const processHtmlForPreview = (html: string, projectId: string): string => {
+    try {
+      // Create a temporary DOM to process the HTML
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+
+      // Rewrite script src attributes
+      const scripts = doc.querySelectorAll('script[src]');
+      scripts.forEach((script) => {
+        const src = script.getAttribute('src');
+        if (src && !src.startsWith('http') && !src.startsWith('//')) {
+          // Convert relative path to raw file path
+          const cleanPath = src.startsWith('./') ? src.slice(2) : src.startsWith('/') ? src.slice(1) : src;
+          const newSrc = `/project/${projectId}/files/dist/${cleanPath}`;
+          script.setAttribute('src', newSrc);
+        }
+      });
+
+      // Rewrite link href attributes (for stylesheets and other resources)
+      const links = doc.querySelectorAll('link[href]');
+      links.forEach((link) => {
+        const href = link.getAttribute('href');
+        if (href && !href.startsWith('http') && !href.startsWith('//')) {
+          // Convert relative path to raw file path
+          const cleanPath = href.startsWith('./') ? href.slice(2) : href.startsWith('/') ? href.slice(1) : href;
+          const newHref = `/project/${projectId}/files/dist/${cleanPath}`;
+          link.setAttribute('href', newHref);
+        }
+      });
+
+      return doc.documentElement.outerHTML;
+    } catch (error) {
+      console.error('Failed to process HTML for preview:', error);
+      return html; // Return original HTML if processing fails
+    }
+  };
 
   useEffect(() => {
-    (async () => {
-      const project = await fsManager.getProject(projectId);
-      if (!project) return;
+    if (selectedFile) {
+      loadFileContent(selectedFile);
+    }
+  }, [selectedFile, loadFileContent]);
 
-      const decoded = nip19.decode(project.nsec);
-      if (decoded.type !== 'nsec') return;
-
-      const pubkey = getPublicKey(decoded.data);
-      const npub = nip19.npubEncode(pubkey);
-
-      setProjectUrl(`https://${npub}.nostrdeploy.com/`);
-    })();
-  }, [projectId]);
+  useEffect(() => {
+    checkForBuiltProject();
+  }, [checkForBuiltProject]);
 
   const handleFileSelect = (filePath: string) => {
     setSelectedFile(filePath);
@@ -53,21 +118,21 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
     <div className="h-full">
       <Tabs value={activeTab} className="h-full">
         <TabsContent value="preview" className="h-full mt-0">
-          {projectUrl ? (
+          {hasBuiltProject ? (
             <div className="h-full w-full flex flex-col">
               <div className="flex items-center justify-between p-2 border-b bg-background">
                 <span className="text-sm text-muted-foreground">Project Preview</span>
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => {}}
+                  onClick={checkForBuiltProject}
                   className="h-8 w-8 p-0"
                 >
                   <RefreshCw className="h-4 w-4" />
                 </Button>
               </div>
               <iframe
-                src={projectUrl}
+                srcDoc={previewHtml}
                 className="w-full flex-1 border-0"
                 title="Project Preview"
               />
@@ -86,7 +151,7 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => {}}
+                    onClick={checkForBuiltProject}
                     className="gap-2"
                   >
                     <RefreshCw className="h-4 w-4" />
@@ -119,7 +184,7 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
                   filePath={selectedFile}
                   content={fileContent}
                   onSave={handleFileSave}
-                  isLoading={false} // Replace with actual loading state if needed
+                  isLoading={isLoading}
                 />
               ) : (
                 <div className="h-full flex items-center justify-center">

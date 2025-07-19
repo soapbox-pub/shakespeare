@@ -10,8 +10,6 @@ import { cn } from '@/lib/utils';
 import { useAISettings } from '@/contexts/AISettingsContext';
 import { FsToolSet } from '@/lib/FsToolSet';
 import { fsManager } from '@/lib/fs';
-import { getPublicKey, nip19 } from 'nostr-tools';
-import { bytesToHex } from 'nostr-tools/utils';
 
 const webcontainerPromise = WebContainer.boot();
 
@@ -45,22 +43,7 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
   };
 
   const runBuild = async () => {
-    const project = await fsManager.getProject(projectId);
-
-    if (!project) {
-      console.error('Project not found');
-      return;
-    }
-
-    const decoded = nip19.decode(project.nsec);
-    if (decoded.type !== 'nsec') {
-      console.error('Invalid NSEC key');
-      return;
-    }
-
     const webcontainer = await webcontainerPromise;
-
-    console.log('Deploying project');
 
     const buildFileTree = async (dirPath: string): Promise<FileSystemTree> => {
       const tree: FileSystemTree = {};
@@ -90,45 +73,92 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
     const fsTree = await buildFileTree(`/projects/${projectId}`);
     await webcontainer.mount(fsTree);
 
-    await webcontainer.fs.writeFile('.env.nostr-deploy.local', `# Nostr Deploy CLI Configuration
-# This file contains sensitive information - do not commit to version control
-
-# Nostr Authentication
-NOSTR_PRIVATE_KEY=${bytesToHex(decoded.data)}
-NOSTR_PUBLIC_KEY=${getPublicKey(decoded.data)}
-NOSTR_RELAYS=wss://relay.nostr.band,wss://relay.primal.net,wss://ditto.pub/relay
-
-# Blossom File Storage
-BLOSSOM_SERVERS=https://cdn.hzrd149.com,https://blossom.primal.net,https://blossom.band,https://blossom.f7z.io
-
-# Deployment Settings
-BASE_DOMAIN=nostrdeploy.com`);
-
-    const proc1 = await webcontainer.spawn('npm', ['install']);
-    proc1.output.pipeTo(new WritableStream({
-      write(data) {
-        console.log(data);
-      }
-    }));
-    await proc1.exit;
+    // Install dependencies and build
+    const proc = await webcontainer.spawn('npm', ['i']);
+    await proc.exit;
 
     const proc2 = await webcontainer.spawn('npm', ['run', 'build']);
-    proc2.output.pipeTo(new WritableStream({
-      write(data) {
-        console.log(data);
-      }
-    }));
     await proc2.exit;
 
-    const proc3 = await webcontainer.spawn('npx', ["-y", "nostr-deploy-cli", "deploy", "--skip-setup"]);
-    proc3.output.pipeTo(new WritableStream({
-      write(data) {
-        console.log(data);
-      }
-    }));
-    await proc3.exit;
+    // Copy "dist" out of the webcontainer back to the project directory
+    const copyDist = async () => {
+      try {
+        // Read the dist directory from webcontainer
+        const distContents = await webcontainer.fs.readdir('dist', { withFileTypes: true });
 
-    console.log('Project deployed');
+        // Create dist directory in project if it doesn't exist
+        const distPath = `/projects/${projectId}/dist`;
+        try {
+          await fsManager.fs.promises.mkdir(distPath);
+        } catch {
+          // Directory might already exist, that's fine
+        }
+
+        // Helper function to copy directory recursively
+        const copyDirectory = async (sourcePath: string, destPath: string) => {
+          try {
+            console.log(`Copying directory: ${sourcePath}`);
+            const items = await webcontainer.fs.readdir(sourcePath, { withFileTypes: true });
+            console.log(`Found ${items.length} items in ${sourcePath}`);
+
+            for (const item of items) {
+              const sourceItemPath = `${sourcePath}/${item.name}`;
+              const destItemPath = `${destPath}/${item.name}`;
+
+              try {
+                if (item.isDirectory()) {
+                  console.log(`Creating directory: ${destItemPath}`);
+                  try {
+                    await fsManager.fs.promises.mkdir(destItemPath);
+                  } catch {
+                    // Directory might already exist
+                  }
+                  await copyDirectory(sourceItemPath, destItemPath);
+                } else {
+                  console.log(`Copying file: ${sourceItemPath} -> ${destItemPath}`);
+                  const content = await webcontainer.fs.readFile(sourceItemPath);
+                  await fsManager.fs.promises.writeFile(destItemPath, content);
+                }
+              } catch (itemError) {
+                console.warn(`Failed to copy item ${item.name}:`, itemError);
+              }
+            }
+          } catch (error) {
+            console.warn(`Failed to copy ${sourcePath}:`, error);
+          }
+        };
+
+        // Copy each package in dist
+        for (const item of distContents) {
+          const sourcePath = `dist/${item.name}`;
+          const destPath = `${distPath}/${item.name}`;
+
+          try {
+            if (item.isDirectory()) {
+              console.log(`Processing directory: ${item.name}`);
+              try {
+                await fsManager.fs.promises.mkdir(destPath);
+              } catch {
+                // Directory might already exist
+              }
+              await copyDirectory(sourcePath, destPath);
+            } else {
+              console.log(`Processing file: ${item.name}`);
+              const content = await webcontainer.fs.readFile(sourcePath);
+              await fsManager.fs.promises.writeFile(destPath, content);
+            }
+          } catch (itemError) {
+            console.warn(`Failed to process ${item.name}:`, itemError);
+          }
+        }
+
+        console.log('Successfully copied node_modules from webcontainer');
+      } catch (error) {
+        console.error('Failed to copy node_modules:', error);
+      }
+    };
+
+    await copyDist();
   };
 
   useEffect(() => {

@@ -1,8 +1,10 @@
 // Service Worker for serving files from LightningFS filesystem
-const CACHE_NAME = 'shakespeare-fs-v1';
+// Import LightningFS using importScripts (ServiceWorker compatible)
+importScripts('https://unpkg.com/@isomorphic-git/lightning-fs@4.6.2/dist/lightning-fs.min.js');
 
-// Store pending file requests
-const pendingRequests = new Map();
+// Initialize LightningFS in the service worker
+const fs = new LightningFS('shakespeare-fs');
+const projectsDir = '/projects';
 
 // Handle file requests from the virtual filesystem
 async function handleFileRequest(url) {
@@ -16,12 +18,9 @@ async function handleFileRequest(url) {
   const [, projectId, filePath] = pathMatch;
 
   try {
-    // Request file content from main thread via message
-    const fileContent = await requestFileFromMainThread(projectId, filePath);
-
-    if (fileContent === null) {
-      return new Response('File Not Found', { status: 404 });
-    }
+    // Read file directly from LightningFS
+    const fullPath = `${projectsDir}/${projectId}/${filePath}`;
+    const fileContent = await fs.promises.readFile(fullPath, 'utf8');
 
     // Determine content type based on file extension
     const contentType = getContentType(filePath);
@@ -34,38 +33,9 @@ async function handleFileRequest(url) {
       },
     });
   } catch (error) {
+    console.error('Failed to read file:', error);
     return new Response('File Not Found', { status: 404 });
   }
-}
-
-// Request file content from main thread
-async function requestFileFromMainThread(projectId, filePath) {
-  return new Promise((resolve) => {
-    const messageId = Math.random().toString(36).substr(2, 9);
-
-    // Store the resolver for this request
-    pendingRequests.set(messageId, resolve);
-
-    // Send request to all clients
-    self.clients.matchAll().then(clients => {
-      clients.forEach(client => {
-        client.postMessage({
-          type: 'FILE_REQUEST',
-          messageId,
-          projectId,
-          filePath
-        });
-      });
-    });
-
-    // Timeout after 5 seconds
-    setTimeout(() => {
-      if (pendingRequests.has(messageId)) {
-        pendingRequests.delete(messageId);
-        resolve(null);
-      }
-    }, 5000);
-  });
 }
 
 // Get content type based on file extension
@@ -94,19 +64,6 @@ function getContentType(filePath) {
 
   return mimeTypes[ext] || 'text/plain';
 }
-
-// Top-level message event listener - must be added during initial evaluation
-self.addEventListener('message', (event) => {
-  if (event.data.type === 'FILE_RESPONSE' && event.data.messageId) {
-    const messageId = event.data.messageId;
-    const resolver = pendingRequests.get(messageId);
-
-    if (resolver) {
-      pendingRequests.delete(messageId);
-      resolver(event.data.content);
-    }
-  }
-});
 
 // Service Worker event listeners
 self.addEventListener('install', (event) => {

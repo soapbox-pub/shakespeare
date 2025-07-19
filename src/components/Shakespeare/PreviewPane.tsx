@@ -135,7 +135,6 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
                 srcDoc={previewHtml}
                 className="w-full flex-1 border-0"
                 title="Project Preview"
-                sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
               />
             </div>
           ) : (

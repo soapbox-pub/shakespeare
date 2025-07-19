@@ -2,6 +2,7 @@ import LightningFS from '@isomorphic-git/lightning-fs';
 import git from 'isomorphic-git';
 import http from 'isomorphic-git/http/web';
 import { Buffer } from 'buffer';
+import { generateSecretKey, nip19 } from 'nostr-tools';
 
 // Polyfill Buffer for browser
 if (typeof window !== 'undefined') {
@@ -15,6 +16,7 @@ export interface Project {
   id: string;
   name: string;
   path: string;
+  nsec: string;
   createdAt: Date;
   lastModified: Date;
 }
@@ -46,6 +48,7 @@ export class FileSystemManager {
       id,
       name,
       path: projectPath,
+      nsec: nip19.nsecEncode(generateSecretKey()),
       createdAt: new Date(),
       lastModified: new Date(),
     };

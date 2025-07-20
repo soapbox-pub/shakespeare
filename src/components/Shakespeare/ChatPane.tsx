@@ -1,4 +1,4 @@
-import { FileSystemTree, WebContainer } from '@webcontainer/api';
+import { FileSystemTree } from '@webcontainer/api';
 import { useState, useRef, useEffect } from 'react';
 import { CoreMessage, generateText, CoreUserMessage, CoreAssistantMessage, CoreToolMessage, generateId } from 'ai';
 import { Button } from '@/components/ui/button';
@@ -10,8 +10,9 @@ import { cn } from '@/lib/utils';
 import { useAISettings } from '@/hooks/useAISettings';
 import { FsToolSet } from '@/lib/FsToolSet';
 import { useFS } from '@/hooks/useFS';
-
-const webcontainerPromise = WebContainer.boot();
+import { useJSRuntime } from '@/hooks/useJSRuntime';
+import { copyDirectory } from '@/lib/copyFiles';
+import type { WebContainerAdapter } from '@/lib/WebContainerAdapter';
 
 interface ChatPaneProps {
   projectId: string;
@@ -27,6 +28,7 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const { settings, isConfigured } = useAISettings();
   const { fs } = useFS();
+  const { runtime } = useJSRuntime();
 
   const addMessage = (message: AIMessage) => {
     setMessages((prev) => {
@@ -44,8 +46,6 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
   };
 
   const runBuild = async () => {
-    const webcontainer = await webcontainerPromise;
-
     const buildFileTree = async (dirPath: string): Promise<FileSystemTree> => {
       const tree: FileSystemTree = {};
       const items = await fs.readdir(dirPath);
@@ -71,95 +71,28 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
       return tree;
     };
 
+    // Build file tree and mount to WebContainer
     const fsTree = await buildFileTree(`/projects/${projectId}`);
-    await webcontainer.mount(fsTree);
+
+    // Mount the file tree (this will boot the container if needed)
+    const webcontainerAdapter = runtime as WebContainerAdapter;
+    await webcontainerAdapter.mount(fsTree);
 
     // Install dependencies and build
-    const proc = await webcontainer.spawn('npm', ['i']);
+    const proc = await runtime.spawn('npm', ['i']);
     await proc.exit;
 
-    const proc2 = await webcontainer.spawn('npm', ['run', 'build']);
+    const proc2 = await runtime.spawn('npm', ['run', 'build']);
     await proc2.exit;
 
-    // Copy "dist" out of the webcontainer back to the project directory
-    const copyDist = async () => {
-      try {
-        // Read the dist directory from webcontainer
-        const distContents = await webcontainer.fs.readdir('dist', { withFileTypes: true });
-
-        // Create dist directory in project if it doesn't exist
-        const distPath = `/projects/${projectId}/dist`;
-        try {
-          await fs.mkdir(distPath);
-        } catch {
-          // Directory might already exist, that's fine
-        }
-
-        // Helper function to copy directory recursively
-        const copyDirectory = async (sourcePath: string, destPath: string) => {
-          try {
-            console.log(`Copying directory: ${sourcePath}`);
-            const items = await webcontainer.fs.readdir(sourcePath, { withFileTypes: true });
-            console.log(`Found ${items.length} items in ${sourcePath}`);
-
-            for (const item of items) {
-              const sourceItemPath = `${sourcePath}/${item.name}`;
-              const destItemPath = `${destPath}/${item.name}`;
-
-              try {
-                if (item.isDirectory()) {
-                  console.log(`Creating directory: ${destItemPath}`);
-                  try {
-                    await fs.mkdir(destItemPath);
-                  } catch {
-                    // Directory might already exist
-                  }
-                  await copyDirectory(sourceItemPath, destItemPath);
-                } else {
-                  console.log(`Copying file: ${sourceItemPath} -> ${destItemPath}`);
-                  const content = await webcontainer.fs.readFile(sourceItemPath);
-                  await fs.writeFile(destItemPath, content);
-                }
-              } catch (itemError) {
-                console.warn(`Failed to copy item ${item.name}:`, itemError);
-              }
-            }
-          } catch (error) {
-            console.warn(`Failed to copy ${sourcePath}:`, error);
-          }
-        };
-
-        // Copy each package in dist
-        for (const item of distContents) {
-          const sourcePath = `dist/${item.name}`;
-          const destPath = `${distPath}/${item.name}`;
-
-          try {
-            if (item.isDirectory()) {
-              console.log(`Processing directory: ${item.name}`);
-              try {
-                await fs.mkdir(destPath);
-              } catch {
-                // Directory might already exist
-              }
-              await copyDirectory(sourcePath, destPath);
-            } else {
-              console.log(`Processing file: ${item.name}`);
-              const content = await webcontainer.fs.readFile(sourcePath);
-              await fs.writeFile(destPath, content);
-            }
-          } catch (itemError) {
-            console.warn(`Failed to process ${item.name}:`, itemError);
-          }
-        }
-
-        console.log('Successfully copied node_modules from webcontainer');
-      } catch (error) {
-        console.error('Failed to copy node_modules:', error);
-      }
-    };
-
-    await copyDist();
+    // Copy "dist" directory from runtime back to project filesystem
+    const distPath = `/projects/${projectId}/dist`;
+    try {
+      await copyDirectory(runtime.fs, fs, 'dist', distPath);
+      console.log('Successfully copied dist from runtime');
+    } catch (error) {
+      console.error('Failed to copy dist:', error);
+    }
   };
 
   useEffect(() => {

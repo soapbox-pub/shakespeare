@@ -15,6 +15,8 @@ import { AppProvider } from '@/components/AppProvider';
 import { AppConfig } from '@/contexts/AppContext';
 import { AISettingsProvider } from '@/components/AISettingsProvider';
 import { FSProvider } from '@/components/FSProvider';
+import { JSRuntimeProvider } from '@/components/JSRuntimeProvider';
+import { WebContainerAdapter } from '@/lib/WebContainerAdapter';
 import AppRouter from './AppRouter';
 
 const head = createHead({
@@ -49,26 +51,31 @@ const presetRelays = [
 const lightningFS = new LightningFS('shakespeare-fs');
 const fs = lightningFS.promises;
 
+// Initialize JSRuntime with WebContainer adapter
+const jsRuntime = new WebContainerAdapter();
+
 export function App() {
   return (
     <UnheadProvider head={head}>
       <AppProvider storageKey="nostr:app-config" defaultConfig={defaultConfig} presetRelays={presetRelays}>
         <FSProvider fs={fs}>
-          <QueryClientProvider client={queryClient}>
-            <NostrLoginProvider storageKey='nostr:login'>
-              <NostrProvider>
-                <AISettingsProvider>
-                  <TooltipProvider>
-                    <Toaster />
-                    <Sonner />
-                    <Suspense>
-                      <AppRouter />
-                    </Suspense>
-                  </TooltipProvider>
-                </AISettingsProvider>
-              </NostrProvider>
-            </NostrLoginProvider>
-          </QueryClientProvider>
+          <JSRuntimeProvider runtime={jsRuntime}>
+            <QueryClientProvider client={queryClient}>
+              <NostrLoginProvider storageKey='nostr:login'>
+                <NostrProvider>
+                  <AISettingsProvider>
+                    <TooltipProvider>
+                      <Toaster />
+                      <Sonner />
+                      <Suspense>
+                        <AppRouter />
+                      </Suspense>
+                    </TooltipProvider>
+                  </AISettingsProvider>
+                </NostrProvider>
+              </NostrLoginProvider>
+            </QueryClientProvider>
+          </JSRuntimeProvider>
         </FSProvider>
       </AppProvider>
     </UnheadProvider>

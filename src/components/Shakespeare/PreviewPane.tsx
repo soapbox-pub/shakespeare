@@ -16,20 +16,29 @@ interface PreviewPaneProps {
 interface JSONRPCRequest {
   jsonrpc: '2.0';
   method: string;
-  params: { path: string };
+  params: {
+    request: {
+      url: string;
+      method: string;
+      headers: Record<string, string>;
+      body: string | null;
+    }
+  };
   id: number;
 }
 
 interface JSONRPCResponse {
   jsonrpc: '2.0';
   result?: {
-    content: string;
-    contentType: string;
+    status: number;
+    statusText: string;
+    headers: Record<string, string>;
+    body: string | null;
   };
   error?: {
     code: number;
     message: string;
-    data?: { path: string };
+    data?: Record<string, unknown>;
   };
   id: number;
 }
@@ -90,74 +99,139 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
     }
   }, [projectId]);
 
-  const handleReadFile = useCallback(async (request: JSONRPCRequest) => {
-    const { params, id } = request;
-    const { path } = params;
+  const sendResponse = useCallback((message: JSONRPCResponse) => {
+    if (iframeRef.current?.contentWindow) {
+      console.log(`Sending response to iframe:`, message);
+      const targetOrigin = `https://${projectId}.local-shakespeare.dev`;
+      iframeRef.current.contentWindow.postMessage(message, targetOrigin);
+    }
+  }, [projectId]);
 
-    console.log(`Preview iframe requesting file: ${path}`);
-    
+  const sendError = useCallback((message: JSONRPCResponse) => {
+    if (iframeRef.current?.contentWindow) {
+      const targetOrigin = `https://${projectId}.local-shakespeare.dev`;
+      iframeRef.current.contentWindow.postMessage(message, targetOrigin);
+    }
+  }, [projectId]);
+
+  const handleFetch = useCallback(async (request: JSONRPCRequest) => {
+    const { params, id } = request;
+    const { request: fetchRequest } = params;
+
+    console.log(`Preview iframe requesting: ${fetchRequest.url}`);
+
     try {
-      const file = await fsManager.readFile(projectId, 'dist' + path);
-      console.log(`Serving file: ${path}`);
-      sendResponse({
-        jsonrpc: '2.0',
-        result: {
-          content: file,
-          contentType: getContentType(path),
-        },
-        id
-      });
-    } catch {
-      console.log(`File not found: ${path}`);
+      // Parse the URL and validate origin
+      const url = new URL(fetchRequest.url);
+      const expectedOrigin = `https://${projectId}.local-shakespeare.dev`;
+
+      if (url.origin !== expectedOrigin) {
+        console.log(`Invalid origin: ${url.origin}, expected: ${expectedOrigin}`);
+        sendError({
+          jsonrpc: '2.0',
+          error: {
+            code: -32003,
+            message: 'Invalid URL - origin mismatch',
+            data: { url: fetchRequest.url, expectedOrigin }
+          },
+          id
+        });
+        return;
+      }
+
+      const path = url.pathname;
+      const filePath = path;
+
+      // SPA routing: try to serve the exact file first
+      try {
+        const file = await fsManager.readFile(projectId, 'dist' + filePath);
+        console.log(`Serving file: ${filePath}`);
+        sendResponse({
+          jsonrpc: '2.0',
+          result: {
+            status: 200,
+            statusText: 'OK',
+            headers: {
+              'Content-Type': getContentType(filePath),
+              'Cache-Control': 'no-cache',
+            },
+            body: file,
+          },
+          id
+        });
+        return;
+      } catch {
+        // File not found, try SPA fallback to index.html
+        console.log(`File not found: ${filePath}, trying index.html fallback`);
+      }
+
+      // SPA fallback: serve index.html for non-file requests
+      try {
+        const indexFile = await fsManager.readFile(projectId, 'dist/index.html');
+        console.log(`Serving index.html fallback for: ${path}`);
+        sendResponse({
+          jsonrpc: '2.0',
+          result: {
+            status: 200,
+            statusText: 'OK',
+            headers: {
+              'Content-Type': 'text/html',
+              'Cache-Control': 'no-cache',
+            },
+            body: indexFile,
+          },
+          id
+        });
+      } catch {
+        // Even index.html doesn't exist
+        console.log(`No files found, returning 404 for: ${path}`);
+        sendResponse({
+          jsonrpc: '2.0',
+          result: {
+            status: 404,
+            statusText: 'Not Found',
+            headers: {
+              'Content-Type': 'text/plain',
+            },
+            body: `File not found: ${path}`,
+          },
+          id
+        });
+      }
+    } catch (error) {
+      console.error('Error processing fetch request:', error);
       sendError({
         jsonrpc: '2.0',
         error: {
-          code: -32001,
-          message: 'File not found',
-          data: { path }
+          code: -32002,
+          message: 'Request processing error',
+          data: { url: fetchRequest.url, error: String(error) }
         },
         id
       });
     }
-  }, [projectId]);
+  }, [projectId, sendResponse, sendError]);
 
   // Setup messaging protocol for iframe communication
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       // Verify origin for security
-      if (event.origin !== 'https://delicate-snowflake-b476.gleasonator.workers.dev') {
+      const expectedOrigin = `https://${projectId}.local-shakespeare.dev`;
+      if (event.origin !== expectedOrigin) {
+        console.log(`Ignoring message from unexpected origin: ${event.origin}, expected: ${expectedOrigin}`);
         return;
       }
 
       const message = event.data;
       console.log('Received message from iframe:', message);
-      if (message.jsonrpc === '2.0' && message.method === 'readFile') {
-        handleReadFile(message);
+      if (message.jsonrpc === '2.0' && message.method === 'fetch') {
+        handleFetch(message);
       }
     };
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [handleReadFile]);
-
-  const sendResponse = (message: JSONRPCResponse) => {
-    if (iframeRef.current?.contentWindow) {
-      console.log(`Sending response to iframe:`, message);
-      iframeRef.current.contentWindow.postMessage(
-        message,
-        'https://delicate-snowflake-b476.gleasonator.workers.dev'
-      );
-    }
-  };
-
-  const sendError = (message: JSONRPCResponse) => {
-    if (iframeRef.current?.contentWindow) {
-      iframeRef.current.contentWindow.postMessage(
-        message,
-        'https://delicate-snowflake-b476.gleasonator.workers.dev'
-      );
-    }
-  };
+  }, [handleFetch, projectId]);
 
   useEffect(() => {
     if (selectedFile) {
@@ -203,9 +277,10 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
               </div>
               <iframe
                 ref={iframeRef}
-                src="https://delicate-snowflake-b476.gleasonator.workers.dev/"
+                src={`https://${projectId}.local-shakespeare.dev/`}
                 className="w-full flex-1 border-0"
                 title="Project Preview"
+                sandbox="allow-scripts allow-same-origin"
               />
             </div>
           ) : (

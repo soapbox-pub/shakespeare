@@ -13,8 +13,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { NostrLoginProvider } from '@nostrify/react/login';
 import { AppProvider } from '@/components/AppProvider';
 import { AppConfig } from '@/contexts/AppContext';
-import { AISettingsProvider } from '@/contexts/AISettingsContext';
-import { FSProvider } from '@/contexts/FSContext';
+import { AISettingsProvider } from '@/components/AISettingsProvider';
+import { FSProvider } from '@/components/FSProvider';
 import AppRouter from './AppRouter';
 
 const head = createHead({

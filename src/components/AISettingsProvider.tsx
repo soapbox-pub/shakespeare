@@ -1,18 +1,9 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { ReactNode, useState, useEffect } from 'react';
+import { AISettingsContext, type AISettings, type AISettingsContextType } from '@/contexts/AISettingsContext';
 
-export interface AISettings {
-  apiKey: string;
-  baseUrl: string;
-  model: string;
+interface AISettingsProviderProps {
+  children: ReactNode;
 }
-
-interface AISettingsContextType {
-  settings: AISettings;
-  updateSettings: (settings: Partial<AISettings>) => void;
-  isConfigured: boolean;
-}
-
-const AISettingsContext = createContext<AISettingsContextType | undefined>(undefined);
 
 const DEFAULT_SETTINGS: AISettings = {
   apiKey: '',
@@ -22,7 +13,7 @@ const DEFAULT_SETTINGS: AISettings = {
 
 const STORAGE_KEY = 'ai-settings';
 
-export function AISettingsProvider({ children }: { children: ReactNode }) {
+export function AISettingsProvider({ children }: AISettingsProviderProps) {
   const [settings, setSettings] = useState<AISettings>(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
@@ -45,18 +36,15 @@ export function AISettingsProvider({ children }: { children: ReactNode }) {
 
   const isConfigured = Boolean(settings.apiKey);
 
+  const contextValue: AISettingsContextType = {
+    settings,
+    updateSettings,
+    isConfigured,
+  };
+
   return (
-    <AISettingsContext.Provider value={{ settings, updateSettings, isConfigured }}>
+    <AISettingsContext.Provider value={contextValue}>
       {children}
     </AISettingsContext.Provider>
   );
-}
-
-
-export function useAISettings() {
-  const context = useContext(AISettingsContext);
-  if (!context) {
-    throw new Error('useAISettings must be used within AISettingsProvider');
-  }
-  return context;
 }

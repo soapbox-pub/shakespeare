@@ -199,7 +199,12 @@ export default defineConfig({
   async readFile(projectId: string, filePath: string): Promise<string> {
     const fullPath = `${this.dir}/${projectId}/${filePath}`;
     try {
-      return await this.fs.promises.readFile(fullPath, 'utf8');
+      const stat = await this.fs.promises.stat(fullPath);
+      if (stat.isFile()) {
+        return await this.fs.promises.readFile(fullPath, 'utf8');
+      } else {
+        throw new Error(`Path is not a file: ${filePath}`);
+      }
     } catch (error) {
       const fsError = error as NodeJS.ErrnoException;
       if (fsError.code === 'ENOENT') {

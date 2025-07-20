@@ -63,7 +63,6 @@ export class ProjectsManager {
   }
 
   async cloneTemplate(projectPath: string) {
-    // Create a LightningFS instance for git operations
     await git.clone({
       fs: this.fs,
       http,

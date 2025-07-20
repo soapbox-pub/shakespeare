@@ -7,16 +7,13 @@ import type { JSRuntime, JSRuntimeFS, DirectoryEntry } from './JSRuntime';
 export class WebContainerAdapter implements JSRuntime {
   private webcontainer: WebContainer | null = null;
   private bootPromise: Promise<WebContainer> | null = null;
-  private _fs: JSRuntimeFS | null = null;
 
   /**
    * Get the filesystem interface
    */
-  get fs(): JSRuntimeFS {
-    if (!this._fs) {
-      throw new Error('WebContainer not initialized. Call spawn() first to initialize.');
-    }
-    return this._fs;
+  async fs(): Promise<JSRuntimeFS> {
+    const webcontainer = await this.ensureBooted();
+    return new WebContainerFSAdapter(webcontainer);
   }
 
   /**
@@ -32,7 +29,6 @@ export class WebContainerAdapter implements JSRuntime {
     }
 
     this.webcontainer = await this.bootPromise;
-    this._fs = new WebContainerFSAdapter(this.webcontainer);
     return this.webcontainer;
   }
 

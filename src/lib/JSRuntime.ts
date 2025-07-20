@@ -56,7 +56,7 @@ export interface JSRuntime {
   /**
    * Filesystem access
    */
-  readonly fs: JSRuntimeFS;
+  fs(): Promise<JSRuntimeFS>;
 
   /**
    * Spawn a process in the runtime environment

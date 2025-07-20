@@ -46,11 +46,12 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
 
   const runBuild = async () => {
     console.log('Running build for project:', projectId);
+    const runtimeFS = await runtime.fs();
 
     // Copy project files to runtime filesystem
     const projectPath = `/projects/${projectId}`;
     try {
-      await copyDirectory(fs, runtime.fs, projectPath, '.');
+      await copyDirectory(fs, runtimeFS, projectPath, '.');
       console.log('Successfully copied project to runtime');
     } catch (error) {
       console.error('Failed to copy project to runtime:', error);
@@ -67,7 +68,7 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
     // Copy "dist" directory from runtime back to project filesystem
     const distPath = `/projects/${projectId}/dist`;
     try {
-      await copyDirectory(runtime.fs, fs, 'dist', distPath);
+      await copyDirectory(runtimeFS, fs, 'dist', distPath);
       console.log('Successfully copied dist from runtime');
     } catch (error) {
       console.error('Failed to copy dist:', error);

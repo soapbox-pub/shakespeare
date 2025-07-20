@@ -77,9 +77,9 @@ class WebContainerFSAdapter implements JSRuntimeFS {
   async readdir(path: string, options?: { withFileTypes?: boolean }): Promise<string[] | DirectoryEntry[]>;
   async readdir(path: string, options?: { withFileTypes?: boolean }): Promise<string[] | DirectoryEntry[]> {
     if (options?.withFileTypes) {
-      return this.webcontainer.fs.readdir(path, { withFileTypes: true }) as Promise<DirectoryEntry[]>;
+      return this.webcontainer.fs.readdir(path, { withFileTypes: true });
     } else {
-      return this.webcontainer.fs.readdir(path) as Promise<string[]>;
+      return this.webcontainer.fs.readdir(path);
     }
   }
 
@@ -155,5 +155,15 @@ class WebContainerFSAdapter implements JSRuntimeFS {
     await this.webcontainer.fs.writeFile(newPath, content);
     // Note: We can't delete the old file since WebContainer doesn't expose unlink
     console.warn('WebContainer rename: copied file but could not delete original');
+  }
+
+  async readlink(_path: string): Promise<string> {
+    // WebContainer doesn't support symlinks, so we'll throw an error
+    throw new Error('readlink operation not supported in WebContainer');
+  }
+
+  async symlink(_target: string, _path: string): Promise<void> {
+    // WebContainer doesn't support symlinks, so we'll throw an error
+    throw new Error('symlink operation not supported in WebContainer');
   }
 }

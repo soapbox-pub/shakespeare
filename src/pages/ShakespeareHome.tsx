@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ProjectsManager, type Project } from '@/lib/fs';
-import { useFS } from '@/hooks/useFS';
+import { type Project } from '@/lib/fs';
+import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,8 +14,7 @@ export function ShakespeareHome() {
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const navigate = useNavigate();
-  const { fs } = useFS();
-  const projectsManager = useMemo(() => new ProjectsManager(fs), [fs]);
+  const projectsManager = useProjectsManager();
 
   const loadProjects = useCallback(async () => {
     try {

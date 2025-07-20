@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
-import { fsManager, type Project } from '@/lib/fs';
+import { ProjectsManager, type Project } from '@/lib/fs';
+import { useFS } from '@/hooks/useFS';
 import { ChatPane } from '@/components/Shakespeare/ChatPane';
 import { PreviewPane } from '@/components/Shakespeare/PreviewPane';
 import { Button } from '@/components/ui/button';
@@ -13,20 +14,22 @@ export function ProjectView() {
   const [project, setProject] = useState<Project | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'preview' | 'code'>('preview');
+  const { fs } = useFS();
+  const projectsManager = new ProjectsManager(fs);
   const navigate = useNavigate();
 
   const loadProject = useCallback(async () => {
     if (!projectId) return;
 
     try {
-      const projectData = await fsManager.getProject(projectId);
+      const projectData = await projectsManager.getProject(projectId);
       setProject(projectData);
     } catch (_error) {
       console.error('Failed to load project:', _error);
     } finally {
       setIsLoading(false);
     }
-  }, [projectId]);
+  }, [projectId, projectsManager]);
 
   useEffect(() => {
     loadProject();

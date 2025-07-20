@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { fsManager } from '@/lib/fs';
+import { ProjectsManager } from '@/lib/fs';
+import { useFS } from '@/hooks/useFS';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
@@ -49,11 +50,13 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [hasBuiltProject, setHasBuiltProject] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const { fs } = useFS();
+  const projectsManager = new ProjectsManager(fs);
 
   const loadFileContent = useCallback(async (filePath: string) => {
     setIsLoading(true);
     try {
-      const content = await fsManager.readFile(projectId, filePath);
+      const content = await projectsManager.readFile(projectId, filePath);
       setFileContent(content);
     } catch (_error) {
       console.error('Failed to load file:', _error);
@@ -61,7 +64,7 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [projectId]);
+  }, [projectId, projectsManager]);
 
   const getContentType = (filename: string): string => {
     const ext = filename.split('.').pop()?.toLowerCase();
@@ -91,13 +94,13 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
 
   const checkForBuiltProject = useCallback(async () => {
     try {
-      const exists = await fsManager.fileExists(projectId, 'dist/index.html');
+      const exists = await projectsManager.fileExists(projectId, 'dist/index.html');
       setHasBuiltProject(exists);
     } catch (error) {
       console.error('Failed to check for built project:', error);
       setHasBuiltProject(false);
     }
-  }, [projectId]);
+  }, [projectId, projectsManager]);
 
   const refreshIframe = useCallback(() => {
     if (iframeRef.current) {
@@ -158,7 +161,7 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
 
       // SPA routing: try to serve the exact file first
       try {
-        const file = await fsManager.readFile(projectId, 'dist' + filePath);
+        const file = await projectsManager.readFile(projectId, 'dist' + filePath);
         console.log(`Serving file: ${filePath}`);
         sendResponse({
           jsonrpc: '2.0',
@@ -181,7 +184,7 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
 
       // SPA fallback: serve index.html for non-file requests
       try {
-        const indexFile = await fsManager.readFile(projectId, 'dist/index.html');
+        const indexFile = await projectsManager.readFile(projectId, 'dist/index.html');
         console.log(`Serving index.html fallback for: ${path}`);
         sendResponse({
           jsonrpc: '2.0',
@@ -224,7 +227,7 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
         id
       });
     }
-  }, [projectId, sendResponse, sendError]);
+  }, [projectId, projectsManager, sendResponse, sendError]);
 
   // Setup messaging protocol for iframe communication
   useEffect(() => {
@@ -265,7 +268,7 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
     if (!selectedFile) return;
 
     try {
-      await fsManager.fs.promises.writeFile(`/projects/${projectId}/${selectedFile}`, content);
+      await fs.writeFile(`/projects/${projectId}/${selectedFile}`, content);
       setFileContent(content);
     } catch (error) {
       console.error('Failed to save file:', error);

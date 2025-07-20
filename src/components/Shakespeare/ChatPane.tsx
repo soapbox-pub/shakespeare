@@ -9,7 +9,7 @@ import { Send, Bot, User, Settings, Play } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAISettings } from '@/contexts/AISettingsContext';
 import { FsToolSet } from '@/lib/FsToolSet';
-import { fsManager } from '@/lib/fs';
+import { useFS } from '@/hooks/useFS';
 
 const webcontainerPromise = WebContainer.boot();
 
@@ -26,6 +26,7 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
   const [isLoading, setIsLoading] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const { settings, isConfigured } = useAISettings();
+  const { fs } = useFS();
 
   const addMessage = (message: AIMessage) => {
     setMessages((prev) => {
@@ -47,18 +48,18 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
 
     const buildFileTree = async (dirPath: string): Promise<FileSystemTree> => {
       const tree: FileSystemTree = {};
-      const items = await fsManager.fs.promises.readdir(dirPath);
+      const items = await fs.readdir(dirPath);
 
       for (const item of items) {
         const itemPath = `${dirPath}/${item}`;
-        const stat = await fsManager.fs.promises.stat(itemPath);
+        const stat = await fs.stat(itemPath);
 
         if (stat.isDirectory()) {
           tree[item] = {
             directory: await buildFileTree(itemPath),
           };
         } else {
-          const content = await fsManager.fs.promises.readFile(itemPath, 'utf8');
+          const content = await fs.readFile(itemPath, 'utf8');
           tree[item] = {
             file: {
               contents: content,
@@ -89,7 +90,7 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
         // Create dist directory in project if it doesn't exist
         const distPath = `/projects/${projectId}/dist`;
         try {
-          await fsManager.fs.promises.mkdir(distPath);
+          await fs.mkdir(distPath);
         } catch {
           // Directory might already exist, that's fine
         }
@@ -109,7 +110,7 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
                 if (item.isDirectory()) {
                   console.log(`Creating directory: ${destItemPath}`);
                   try {
-                    await fsManager.fs.promises.mkdir(destItemPath);
+                    await fs.mkdir(destItemPath);
                   } catch {
                     // Directory might already exist
                   }
@@ -117,7 +118,7 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
                 } else {
                   console.log(`Copying file: ${sourceItemPath} -> ${destItemPath}`);
                   const content = await webcontainer.fs.readFile(sourceItemPath);
-                  await fsManager.fs.promises.writeFile(destItemPath, content);
+                  await fs.writeFile(destItemPath, content);
                 }
               } catch (itemError) {
                 console.warn(`Failed to copy item ${item.name}:`, itemError);
@@ -137,7 +138,7 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
             if (item.isDirectory()) {
               console.log(`Processing directory: ${item.name}`);
               try {
-                await fsManager.fs.promises.mkdir(destPath);
+                await fs.mkdir(destPath);
               } catch {
                 // Directory might already exist
               }
@@ -145,7 +146,7 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
             } else {
               console.log(`Processing file: ${item.name}`);
               const content = await webcontainer.fs.readFile(sourcePath);
-              await fsManager.fs.promises.writeFile(destPath, content);
+              await fs.writeFile(destPath, content);
             }
           } catch (itemError) {
             console.warn(`Failed to process ${item.name}:`, itemError);
@@ -201,7 +202,7 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
     });
 
     const provider = openai(settings.model);
-    const toolSet = new FsToolSet(fsManager.fs.promises, `/projects/${projectId}`);
+    const toolSet = new FsToolSet(fs, `/projects/${projectId}`);
 
     return generateText({
       model: provider,

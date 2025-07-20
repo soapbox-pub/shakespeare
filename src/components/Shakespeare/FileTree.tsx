@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { fsManager } from '@/lib/fs';
+import { ProjectsManager } from '@/lib/fs';
+import { useFS } from '@/hooks/useFS';
 import { ChevronRight, ChevronDown, File, Folder } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -20,17 +21,19 @@ interface FileNode {
 export function FileTree({ projectId, onFileSelect, selectedFile }: FileTreeProps) {
   const [tree, setTree] = useState<FileNode[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { fs } = useFS();
+  const projectsManager = new ProjectsManager(fs);
 
   const buildFileTree = useCallback(async (projectId: string, dirPath: string): Promise<FileNode[]> => {
-    const items = await fsManager.listFiles(projectId, dirPath);
+    const items = await projectsManager.listFiles(projectId, dirPath);
     const nodes: FileNode[] = [];
 
     for (const item of items) {
       const itemPath = dirPath ? `${dirPath}/${item}` : item;
-      const fullPath = `${fsManager['dir']}/${projectId}/${itemPath}`;
+      const fullPath = `${projectsManager['dir']}/${projectId}/${itemPath}`;
 
       try {
-        const stat = await fsManager['fs'].promises.stat(fullPath);
+        const stat = await fs.stat(fullPath);
 
         if (stat.isDirectory()) {
           const children = await buildFileTree(projectId, itemPath);
@@ -59,7 +62,7 @@ export function FileTree({ projectId, onFileSelect, selectedFile }: FileTreeProp
       }
       return a.name.localeCompare(b.name);
     });
-  }, [projectId]);
+  }, [projectsManager, fs]);
 
   const loadFileTree = useCallback(async () => {
     setIsLoading(true);

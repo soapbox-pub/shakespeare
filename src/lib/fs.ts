@@ -19,18 +19,18 @@ export interface Project {
   lastModified: Date;
 }
 
-export class FileSystemManager {
-  fs: LightningFS;
+export class ProjectsManager {
+  fs: LightningFS.PromisifiedFS;
   dir: string;
 
-  constructor() {
-    this.fs = new LightningFS('shakespeare-fs');
+  constructor(fs: LightningFS.PromisifiedFS) {
+    this.fs = fs;
     this.dir = '/projects';
   }
 
   async init() {
     try {
-      await this.fs.promises.mkdir(this.dir);
+      await this.fs.mkdir(this.dir);
     } catch {
       // Directory might already exist
     }
@@ -40,7 +40,7 @@ export class FileSystemManager {
     const id = this.generateProjectId(name);
     const projectPath = `${this.dir}/${id}`;
 
-    await this.fs.promises.mkdir(projectPath);
+    await this.fs.mkdir(projectPath);
 
     const project: Project = {
       id,
@@ -51,7 +51,7 @@ export class FileSystemManager {
     };
 
     // Save project metadata
-    await this.fs.promises.writeFile(
+    await this.fs.writeFile(
       `${projectPath}/.project.json`,
       JSON.stringify(project, null, 2)
     );
@@ -63,99 +63,21 @@ export class FileSystemManager {
   }
 
   async cloneTemplate(projectPath: string) {
-    try {
-      await git.clone({
-        fs: this.fs,
-        http,
-        dir: projectPath,
-        url: GIT_TEMPLATE_URL,
-        singleBranch: true,
-        depth: 1,
-      });
-    } catch {
-      // Create basic structure if clone fails
-      await this.createBasicStructure(projectPath);
-    }
-  }
-
-  async createBasicStructure(projectPath: string) {
-    const files = {
-      'package.json': JSON.stringify({
-        name: 'shakespeare-project',
-        version: '0.1.0',
-        type: 'module',
-        scripts: {
-          dev: 'vite',
-          build: 'vite build',
-          preview: 'vite preview'
-        },
-        dependencies: {
-          react: '^18.2.0',
-          'react-dom': '^18.2.0'
-        },
-        devDependencies: {
-          '@types/react': '^18.2.0',
-          '@types/react-dom': '^18.2.0',
-          '@vitejs/plugin-react': '^4.0.0',
-          vite: '^4.4.0'
-        }
-      }, null, 2),
-      'index.html': `<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Shakespeare Project</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
-</html>`,
-      'src/main.jsx': `import React from 'react'
-import ReactDOM from 'react-dom/client'
-import App from './App.jsx'
-
-ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
-)`,
-      'src/App.jsx': `import React from 'react'
-
-function App() {
-  return (
-    <div className="App">
-      <h1>Welcome to your Shakespeare project!</h1>
-      <p>This is a basic React app template.</p>
-    </div>
-  )
-}
-
-export default App`,
-      'vite.config.js': `import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-
-export default defineConfig({
-  plugins: [react()],
-})`
-    };
-
-    for (const [filename, content] of Object.entries(files)) {
-      const filePath = `${projectPath}/${filename}`;
-      const dir = filePath.split('/').slice(0, -1).join('/');
-      try {
-        await this.fs.promises.mkdir(dir);
-      } catch {
-        // Directory might already exist
-      }
-      await this.fs.promises.writeFile(filePath, content);
-    }
+    // Create a LightningFS instance for git operations
+    const gitFS = new LightningFS('shakespeare-fs');
+    await git.clone({
+      fs: gitFS,
+      http,
+      dir: projectPath,
+      url: GIT_TEMPLATE_URL,
+      singleBranch: true,
+      depth: 1,
+    });
   }
 
   async getProjects(): Promise<Project[]> {
     try {
-      const projectDirs = await this.fs.promises.readdir(this.dir);
+      const projectDirs = await this.fs.readdir(this.dir);
       const projects: Project[] = [];
 
       for (const dir of projectDirs) {
@@ -163,7 +85,7 @@ export default defineConfig({
         const projectFile = `${projectPath}/.project.json`;
 
         try {
-          const projectData = await this.fs.promises.readFile(projectFile, 'utf8');
+          const projectData = await this.fs.readFile(projectFile, 'utf8');
           const project = JSON.parse(projectData);
           projects.push({
             ...project,
@@ -184,7 +106,7 @@ export default defineConfig({
   async getProject(id: string): Promise<Project | null> {
     try {
       const projectFile = `${this.dir}/${id}/.project.json`;
-      const projectData = await this.fs.promises.readFile(projectFile, 'utf8');
+      const projectData = await this.fs.readFile(projectFile, 'utf8');
       const project = JSON.parse(projectData);
       return {
         ...project,
@@ -199,9 +121,9 @@ export default defineConfig({
   async readFile(projectId: string, filePath: string): Promise<string> {
     const fullPath = `${this.dir}/${projectId}/${filePath}`;
     try {
-      const stat = await this.fs.promises.stat(fullPath);
+      const stat = await this.fs.stat(fullPath);
       if (stat.isFile()) {
-        return await this.fs.promises.readFile(fullPath, 'utf8');
+        return await this.fs.readFile(fullPath, 'utf8');
       } else {
         throw new Error(`Path is not a file: ${filePath}`);
       }
@@ -217,8 +139,8 @@ export default defineConfig({
   async writeFile(projectId: string, filePath: string, content: string): Promise<void> {
     const fullPath = `${this.dir}/${projectId}/${filePath}`;
     const dir = fullPath.split('/').slice(0, -1).join('/');
-    await this.fs.promises.mkdir(dir);
-    await this.fs.promises.writeFile(fullPath, content);
+    await this.fs.mkdir(dir);
+    await this.fs.writeFile(fullPath, content);
 
     // Update last modified
     await this.updateProjectLastModified(projectId);
@@ -226,14 +148,14 @@ export default defineConfig({
 
   async deleteFile(projectId: string, filePath: string): Promise<void> {
     const fullPath = `${this.dir}/${projectId}/${filePath}`;
-    await this.fs.promises.unlink(fullPath);
+    await this.fs.unlink(fullPath);
     await this.updateProjectLastModified(projectId);
   }
 
   async listFiles(projectId: string, dirPath: string = ''): Promise<string[]> {
     const fullPath = `${this.dir}/${projectId}/${dirPath}`;
     try {
-      return await this.fs.promises.readdir(fullPath);
+      return await this.fs.readdir(fullPath);
     } catch (error) {
       const fsError = error as NodeJS.ErrnoException;
       if (fsError.code === 'ENOENT') {
@@ -246,7 +168,7 @@ export default defineConfig({
   async fileExists(projectId: string, filePath: string): Promise<boolean> {
     try {
       const fullPath = `${this.dir}/${projectId}/${filePath}`;
-      await this.fs.promises.stat(fullPath);
+      await this.fs.stat(fullPath);
       return true;
     } catch (error) {
       const fsError = error as NodeJS.ErrnoException;
@@ -270,14 +192,12 @@ export default defineConfig({
   private async updateProjectLastModified(projectId: string): Promise<void> {
     try {
       const projectFile = `${this.dir}/${projectId}/.project.json`;
-      const projectData = await this.fs.promises.readFile(projectFile, 'utf8');
+      const projectData = await this.fs.readFile(projectFile, 'utf8');
       const project = JSON.parse(projectData);
       project.lastModified = new Date().toISOString();
-      await this.fs.promises.writeFile(projectFile, JSON.stringify(project, null, 2));
+      await this.fs.writeFile(projectFile, JSON.stringify(project, null, 2));
     } catch {
       // Ignore errors updating last modified
     }
   }
 }
-
-export const fsManager = new FileSystemManager();

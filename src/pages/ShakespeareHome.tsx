@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fsManager, type Project } from '@/lib/fs';
+import { ProjectsManager, type Project } from '@/lib/fs';
+import { useFS } from '@/hooks/useFS';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,29 +14,31 @@ export function ShakespeareHome() {
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const navigate = useNavigate();
+  const { fs } = useFS();
+  const projectsManager = new ProjectsManager(fs);
 
-  useEffect(() => {
-    loadProjects();
-  }, []);
-
-  const loadProjects = async () => {
+  const loadProjects = useCallback(async () => {
     try {
-      await fsManager.init();
-      const projectList = await fsManager.getProjects();
+      await projectsManager.init();
+      const projectList = await projectsManager.getProjects();
       setProjects(projectList);
     } catch (error) {
       console.error('Failed to load projects:', error);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [projectsManager]);
+
+  useEffect(() => {
+    loadProjects();
+  }, [loadProjects]);
 
   const handleCreateProject = async () => {
     if (!prompt.trim()) return;
 
     setIsCreating(true);
     try {
-      const project = await fsManager.createProject(prompt.trim());
+      const project = await projectsManager.createProject(prompt.trim());
       navigate(`/project/${project.id}`);
     } catch (error) {
       console.error('Failed to create project:', error);

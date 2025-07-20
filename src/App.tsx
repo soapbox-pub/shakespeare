@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createHead, UnheadProvider } from '@unhead/react/client';
 import { InferSeoMetaPlugin } from '@unhead/addons';
 import { Suspense } from 'react';
+import LightningFS from '@isomorphic-git/lightning-fs';
 import NostrProvider from '@/components/NostrProvider';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -13,6 +14,7 @@ import { NostrLoginProvider } from '@nostrify/react/login';
 import { AppProvider } from '@/components/AppProvider';
 import { AppConfig } from '@/contexts/AppContext';
 import { AISettingsProvider } from '@/contexts/AISettingsContext';
+import { FSProvider } from '@/contexts/FSContext';
 import AppRouter from './AppRouter';
 
 const head = createHead({
@@ -43,25 +45,31 @@ const presetRelays = [
   { url: 'wss://relay.primal.net', name: 'Primal' },
 ];
 
+// Initialize LightningFS
+const lightningFS = new LightningFS('shakespeare-fs');
+const fs = lightningFS.promises;
+
 export function App() {
   return (
     <UnheadProvider head={head}>
       <AppProvider storageKey="nostr:app-config" defaultConfig={defaultConfig} presetRelays={presetRelays}>
-        <QueryClientProvider client={queryClient}>
-          <NostrLoginProvider storageKey='nostr:login'>
-            <NostrProvider>
-              <AISettingsProvider>
-                <TooltipProvider>
-                  <Toaster />
-                  <Sonner />
-                  <Suspense>
-                    <AppRouter />
-                  </Suspense>
-                </TooltipProvider>
-              </AISettingsProvider>
-            </NostrProvider>
-          </NostrLoginProvider>
-        </QueryClientProvider>
+        <FSProvider fs={fs}>
+          <QueryClientProvider client={queryClient}>
+            <NostrLoginProvider storageKey='nostr:login'>
+              <NostrProvider>
+                <AISettingsProvider>
+                  <TooltipProvider>
+                    <Toaster />
+                    <Sonner />
+                    <Suspense>
+                      <AppRouter />
+                    </Suspense>
+                  </TooltipProvider>
+                </AISettingsProvider>
+              </NostrProvider>
+            </NostrLoginProvider>
+          </QueryClientProvider>
+        </FSProvider>
       </AppProvider>
     </UnheadProvider>
   );

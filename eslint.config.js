@@ -47,7 +47,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ["**/*.html"],
+    files: ["index.html"],
     plugins: {
       "@html-eslint": htmlEslint,
       "custom": customRules,

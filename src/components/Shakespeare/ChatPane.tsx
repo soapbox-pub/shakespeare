@@ -11,7 +11,7 @@ import { useAISettings } from '@/hooks/useAISettings';
 import { FsToolSet } from '@/lib/FsToolSet';
 import { useFS } from '@/hooks/useFS';
 import { useJSRuntime } from '@/hooks/useJSRuntime';
-import { copyDirectory, copyToRuntime } from '@/lib/copyFiles';
+import { copyDirectory } from '@/lib/copyFiles';
 
 interface ChatPaneProps {
   projectId: string;
@@ -48,7 +48,7 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
     // Copy project files to runtime filesystem
     const projectPath = `/projects/${projectId}`;
     try {
-      await copyToRuntime(fs, runtime.fs, projectPath, '.');
+      await copyDirectory(fs, runtime.fs, projectPath, '.');
       console.log('Successfully copied project to runtime');
     } catch (error) {
       console.error('Failed to copy project to runtime:', error);

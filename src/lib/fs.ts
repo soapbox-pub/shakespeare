@@ -1,7 +1,7 @@
-import LightningFS from '@isomorphic-git/lightning-fs';
 import git from 'isomorphic-git';
 import http from 'isomorphic-git/http/web';
 import { Buffer } from 'buffer';
+import type { JSRuntimeFS } from '@/lib/JSRuntime';
 
 // Polyfill Buffer for browser
 if (typeof window !== 'undefined') {
@@ -20,10 +20,10 @@ export interface Project {
 }
 
 export class ProjectsManager {
-  fs: LightningFS.PromisifiedFS;
+  fs: JSRuntimeFS;
   dir: string;
 
-  constructor(fs: LightningFS.PromisifiedFS) {
+  constructor(fs: JSRuntimeFS) {
     this.fs = fs;
     this.dir = '/projects';
   }
@@ -64,9 +64,8 @@ export class ProjectsManager {
 
   async cloneTemplate(projectPath: string) {
     // Create a LightningFS instance for git operations
-    const gitFS = new LightningFS('shakespeare-fs');
     await git.clone({
-      fs: gitFS,
+      fs: this.fs,
       http,
       dir: projectPath,
       url: GIT_TEMPLATE_URL,

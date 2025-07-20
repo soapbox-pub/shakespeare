@@ -1,4 +1,4 @@
-import type LightningFS from '@isomorphic-git/lightning-fs';
+import type { JSRuntimeFS } from '@/lib/JSRuntime';
 import { join } from "@std/path/posix/join";
 import { dirname } from "@std/path/posix/dirname";
 import { relative } from "@std/path/posix/relative";
@@ -7,7 +7,7 @@ import { tool } from "ai";
 import z from 'zod';
 
 export class FsToolSet {
-  constructor(readonly fs: LightningFS.PromisifiedFS, private cwd?: string) {}
+  constructor(readonly fs: JSRuntimeFS, private cwd?: string) {}
 
   readonly readFile = tool({
     description: 'Read the contents of a file in the project',
@@ -32,7 +32,7 @@ export class FsToolSet {
         // Ensure directory exists
         const dir = dirname(filepath);
         await this.ensureDirectory(dir);
-        
+
         await this.fs.writeFile(filepath, args.content, 'utf8');
         return { success: true, message: `File ${args.filePath} written successfully` };
       } catch (error) {
@@ -120,7 +120,7 @@ export class FsToolSet {
         // Ensure destination directory exists
         const destDir = dirname(destPath);
         await this.ensureDirectory(destDir);
-        
+
         await this.fs.rename(sourcePath, destPath);
         return { success: true, message: `Moved ${args.sourcePath} to ${args.destinationPath}` };
       } catch (error) {
@@ -139,7 +139,7 @@ export class FsToolSet {
         // Ensure destination directory exists
         const destDir = dirname(destPath);
         await this.ensureDirectory(destDir);
-        
+
         const content = await this.fs.readFile(sourcePath);
         await this.fs.writeFile(destPath, content);
         return { success: true, message: `Copied ${args.sourcePath} to ${args.destinationPath}` };

@@ -1,4 +1,4 @@
-import { WebContainer, type WebContainerProcess, type FileSystemTree } from '@webcontainer/api';
+import { WebContainer, type WebContainerProcess } from '@webcontainer/api';
 import type { JSRuntime, JSRuntimeFS, DirectoryEntry } from './JSRuntime';
 
 /**
@@ -43,15 +43,6 @@ export class WebContainerAdapter implements JSRuntime {
   async spawn(command: string, args: string[] = [], options: Record<string, unknown> = {}): Promise<WebContainerProcess> {
     const webcontainer = await this.ensureBooted();
     return webcontainer.spawn(command, args, options);
-  }
-
-  /**
-   * Mount a file tree in the WebContainer
-   * This is a convenience method for setting up the container
-   */
-  async mount(tree: FileSystemTree): Promise<void> {
-    const webcontainer = await this.ensureBooted();
-    return webcontainer.mount(tree);
   }
 }
 

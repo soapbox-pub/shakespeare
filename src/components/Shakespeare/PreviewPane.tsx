@@ -99,6 +99,20 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
     }
   }, [projectId]);
 
+  const refreshIframe = useCallback(() => {
+    if (iframeRef.current) {
+      // Force reload the iframe by updating its src
+      const currentSrc = iframeRef.current.src;
+      iframeRef.current.src = '';
+      // Use a small timeout to ensure the src is cleared before setting it back
+      setTimeout(() => {
+        if (iframeRef.current) {
+          iframeRef.current.src = currentSrc;
+        }
+      }, 10);
+    }
+  }, []);
+
   const sendResponse = useCallback((message: JSONRPCResponse) => {
     if (iframeRef.current?.contentWindow) {
       console.log(`Sending response to iframe:`, message);
@@ -269,7 +283,7 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={checkForBuiltProject}
+                  onClick={refreshIframe}
                   className="h-8 w-8 p-0"
                 >
                   <RefreshCw className="h-4 w-4" />

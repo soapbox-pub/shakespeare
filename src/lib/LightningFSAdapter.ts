@@ -35,8 +35,8 @@ export class LightningFSAdapter implements JSRuntimeFS {
           const stat = await this.lightningFS.stat(itemPath);
           entries.push({
             name: item,
-            isDirectory: stat.isDirectory.bind(stat),
-            isFile: stat.isFile.bind(stat),
+            isDirectory: () => stat.isDirectory(),
+            isFile: () => stat.isFile(),
           });
         } catch {
           // If stat fails, assume it's a file
@@ -101,5 +101,13 @@ export class LightningFSAdapter implements JSRuntimeFS {
 
   async rename(oldPath: string, newPath: string): Promise<void> {
     return this.lightningFS.rename(oldPath, newPath);
+  }
+
+  async readlink(path: string): Promise<string> {
+    return this.lightningFS.readlink(path);
+  }
+
+  async symlink(target: string, path: string): Promise<void> {
+    return this.lightningFS.symlink(target, path);
   }
 }

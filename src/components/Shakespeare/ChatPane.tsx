@@ -45,6 +45,8 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
   };
 
   const runBuild = async () => {
+    console.log('Running build for project:', projectId);
+
     // Copy project files to runtime filesystem
     const projectPath = `/projects/${projectId}`;
     try {

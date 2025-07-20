@@ -45,6 +45,8 @@ export interface JSRuntimeFS {
   unlink(path: string): Promise<void>;
   rmdir(path: string): Promise<void>;
   rename(oldPath: string, newPath: string): Promise<void>;
+  readlink(path: string): Promise<string>;
+  symlink(target: string, path: string): Promise<void>;
 }
 
 /**

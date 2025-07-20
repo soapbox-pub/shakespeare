@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useAISettings } from '@/contexts/AISettingsContext';
+import { useAISettings } from '@/hooks/useAISettings';
 
 export function AISettingsDialog() {
   const { settings, updateSettings, isConfigured } = useAISettings();

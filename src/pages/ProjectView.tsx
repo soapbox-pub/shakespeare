@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { ProjectsManager, type Project } from '@/lib/fs';
 import { useFS } from '@/hooks/useFS';
@@ -15,7 +15,7 @@ export function ProjectView() {
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'preview' | 'code'>('preview');
   const { fs } = useFS();
-  const projectsManager = new ProjectsManager(fs);
+  const projectsManager = useMemo(() => new ProjectsManager(fs), [fs]);
   const navigate = useNavigate();
 
   const loadProject = useCallback(async () => {

@@ -6,7 +6,7 @@ import { NostrLoginProvider } from '@nostrify/react/login';
 import NostrProvider from '@/components/NostrProvider';
 import { AppProvider } from '@/components/AppProvider';
 import { AppConfig } from '@/contexts/AppContext';
-import { FSProvider } from '@/contexts/FSContext';
+import { FSProvider } from '@/components/FSProvider';
 
 interface TestAppProps {
   children: React.ReactNode;

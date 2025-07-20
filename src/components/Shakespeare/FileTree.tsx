@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { ProjectsManager } from '@/lib/fs';
 import { useFS } from '@/hooks/useFS';
 import { ChevronRight, ChevronDown, File, Folder } from 'lucide-react';
@@ -22,7 +22,7 @@ export function FileTree({ projectId, onFileSelect, selectedFile }: FileTreeProp
   const [tree, setTree] = useState<FileNode[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { fs } = useFS();
-  const projectsManager = new ProjectsManager(fs);
+  const projectsManager = useMemo(() => new ProjectsManager(fs), [fs]);
 
   const buildFileTree = useCallback(async (projectId: string, dirPath: string): Promise<FileNode[]> => {
     const items = await projectsManager.listFiles(projectId, dirPath);

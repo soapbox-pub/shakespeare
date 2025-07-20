@@ -7,7 +7,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card } from '@/components/ui/card';
 import { Send, Bot, User, Settings, Play } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useAISettings } from '@/contexts/AISettingsContext';
+import { useAISettings } from '@/hooks/useAISettings';
 import { FsToolSet } from '@/lib/FsToolSet';
 import { useFS } from '@/hooks/useFS';
 

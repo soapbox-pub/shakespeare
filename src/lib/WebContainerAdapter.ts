@@ -52,6 +52,10 @@ export class WebContainerAdapter implements JSRuntime {
 class WebContainerFSAdapter implements JSRuntimeFS {
   constructor(private webcontainer: WebContainer) {}
 
+  async readFile(path: string): Promise<Uint8Array>;
+  async readFile(path: string, encoding: 'utf8'): Promise<string>;
+  async readFile(path: string, encoding: string): Promise<string>;
+  async readFile(path: string, encoding?: string): Promise<string | Uint8Array>;
   async readFile(path: string, encoding?: string): Promise<string | Uint8Array> {
     if (encoding) {
       return this.webcontainer.fs.readFile(path, encoding as 'utf8');
@@ -60,10 +64,17 @@ class WebContainerFSAdapter implements JSRuntimeFS {
     }
   }
 
-  async writeFile(path: string, data: string | Uint8Array): Promise<void> {
-    return this.webcontainer.fs.writeFile(path, data);
+  async writeFile(path: string, data: string | Uint8Array, encoding?: string): Promise<void> {
+    if (encoding) {
+      return this.webcontainer.fs.writeFile(path, data, encoding as 'utf8');
+    } else {
+      return this.webcontainer.fs.writeFile(path, data);
+    }
   }
 
+  async readdir(path: string): Promise<string[]>;
+  async readdir(path: string, options: { withFileTypes: true }): Promise<DirectoryEntry[]>;
+  async readdir(path: string, options?: { withFileTypes?: boolean }): Promise<string[] | DirectoryEntry[]>;
   async readdir(path: string, options?: { withFileTypes?: boolean }): Promise<string[] | DirectoryEntry[]> {
     if (options?.withFileTypes) {
       return this.webcontainer.fs.readdir(path, { withFileTypes: true }) as Promise<DirectoryEntry[]>;
@@ -80,7 +91,12 @@ class WebContainerFSAdapter implements JSRuntimeFS {
     }
   }
 
-  async stat(path: string): Promise<{ isDirectory(): boolean; isFile(): boolean }> {
+  async stat(path: string): Promise<{
+    isDirectory(): boolean;
+    isFile(): boolean;
+    size?: number;
+    mtimeMs?: number;
+  }> {
     // WebContainer doesn't have a stat method, so we'll implement a workaround
     try {
       // Try to read as directory first
@@ -88,13 +104,56 @@ class WebContainerFSAdapter implements JSRuntimeFS {
       return {
         isDirectory: () => true,
         isFile: () => false,
+        size: undefined,
+        mtimeMs: undefined,
       };
     } catch {
       // If readdir fails, assume it's a file
-      return {
-        isDirectory: () => false,
-        isFile: () => true,
-      };
+      try {
+        const content = await this.webcontainer.fs.readFile(path) as string | Uint8Array;
+        const size = typeof content === 'string' ? content.length : content.byteLength;
+        return {
+          isDirectory: () => false,
+          isFile: () => true,
+          size,
+          mtimeMs: Date.now(), // WebContainer doesn't provide modification time
+        };
+      } catch {
+        return {
+          isDirectory: () => false,
+          isFile: () => true,
+          size: undefined,
+          mtimeMs: undefined,
+        };
+      }
     }
+  }
+
+  async lstat(path: string): Promise<{
+    isDirectory(): boolean;
+    isFile(): boolean;
+    size?: number;
+    mtimeMs?: number;
+  }> {
+    // WebContainer doesn't have a lstat method, so we can use stat directly
+    return this.stat(path);
+  }
+
+  async unlink(_path: string): Promise<void> {
+    // WebContainer doesn't expose unlink, so we'll throw an error for now
+    throw new Error('unlink operation not supported in WebContainer');
+  }
+
+  async rmdir(_path: string): Promise<void> {
+    // WebContainer doesn't expose rmdir, so we'll throw an error for now
+    throw new Error('rmdir operation not supported in WebContainer');
+  }
+
+  async rename(oldPath: string, newPath: string): Promise<void> {
+    // WebContainer doesn't expose rename, so we'll implement it by copying and deleting
+    const content = await this.webcontainer.fs.readFile(oldPath);
+    await this.webcontainer.fs.writeFile(newPath, content);
+    // Note: We can't delete the old file since WebContainer doesn't expose unlink
+    console.warn('WebContainer rename: copied file but could not delete original');
   }
 }

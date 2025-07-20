@@ -1,8 +1,8 @@
 import { createContext } from 'react';
-import type LightningFS from '@isomorphic-git/lightning-fs';
+import type { JSRuntimeFS } from '@/lib/JSRuntime';
 
 export interface FSContextType {
-  fs: LightningFS.PromisifiedFS;
+  fs: JSRuntimeFS;
 }
 
 export const FSContext = createContext<FSContextType | undefined>(undefined);

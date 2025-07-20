@@ -1,16 +1,15 @@
-import type { JSRuntimeFS, DirectoryEntry } from './JSRuntime';
-import type LightningFS from '@isomorphic-git/lightning-fs';
+import type { JSRuntimeFS } from './JSRuntime';
 
 /**
  * Copy files and directories between two filesystem instances
- * @param sourceFS Source filesystem (e.g., WebContainer fs)
- * @param targetFS Target filesystem (e.g., LightningFS)
+ * @param sourceFS Source filesystem
+ * @param targetFS Target filesystem
  * @param sourcePath Source directory path
  * @param targetPath Target directory path
  */
 export async function copyFiles(
   sourceFS: JSRuntimeFS,
-  targetFS: LightningFS.PromisifiedFS,
+  targetFS: JSRuntimeFS,
   sourcePath: string,
   targetPath: string
 ): Promise<void> {
@@ -18,12 +17,12 @@ export async function copyFiles(
     console.log(`Copying: ${sourcePath} -> ${targetPath}`);
 
     // Get source directory contents
-    const items = await sourceFS.readdir(sourcePath, { withFileTypes: true }) as DirectoryEntry[];
+    const items = await sourceFS.readdir(sourcePath, { withFileTypes: true });
     console.log(`Found ${items.length} items in ${sourcePath}`);
 
     // Ensure target directory exists
     try {
-      await targetFS.mkdir(targetPath);
+      await targetFS.mkdir(targetPath, { recursive: true });
     } catch {
       // Directory might already exist, that's fine
     }
@@ -37,7 +36,7 @@ export async function copyFiles(
         if (item.isDirectory()) {
           console.log(`Creating directory: ${targetItemPath}`);
           try {
-            await targetFS.mkdir(targetItemPath);
+            await targetFS.mkdir(targetItemPath, { recursive: true });
           } catch {
             // Directory might already exist
           }
@@ -61,12 +60,12 @@ export async function copyFiles(
 }
 
 /**
- * Copy a directory from JSRuntime filesystem to LightningFS
+ * Copy a directory between JSRuntime filesystems
  * Convenience wrapper for copyFiles with better error handling
  */
 export async function copyDirectory(
   sourceFS: JSRuntimeFS,
-  targetFS: LightningFS.PromisifiedFS,
+  targetFS: JSRuntimeFS,
   sourcePath: string,
   targetPath: string
 ): Promise<void> {
@@ -80,67 +79,6 @@ export async function copyDirectory(
     await copyFiles(sourceFS, targetFS, sourcePath, targetPath);
   } catch (error) {
     console.error(`Failed to copy directory ${sourcePath} to ${targetPath}:`, error);
-    throw error;
-  }
-}
-
-/**
- * Copy files from LightningFS to JSRuntime filesystem
- * @param sourceFS Source filesystem (LightningFS)
- * @param targetFS Target filesystem (JSRuntime)
- * @param sourcePath Source directory path
- * @param targetPath Target directory path
- */
-export async function copyToRuntime(
-  sourceFS: LightningFS.PromisifiedFS,
-  targetFS: JSRuntimeFS,
-  sourcePath: string,
-  targetPath: string
-): Promise<void> {
-  try {
-    console.log(`Copying to runtime: ${sourcePath} -> ${targetPath}`);
-
-    // Get source directory contents
-    const items = await sourceFS.readdir(sourcePath);
-    console.log(`Found ${items.length} items in ${sourcePath}`);
-
-    // Ensure target directory exists
-    try {
-      await targetFS.mkdir(targetPath, { recursive: true });
-    } catch {
-      // Directory might already exist, that's fine
-    }
-
-    // Copy each item
-    for (const item of items) {
-      const sourceItemPath = `${sourcePath}/${item}`;
-      const targetItemPath = `${targetPath}/${item}`;
-
-      try {
-        const stat = await sourceFS.stat(sourceItemPath);
-
-        if (stat.isDirectory()) {
-          console.log(`Creating directory: ${targetItemPath}`);
-          try {
-            await targetFS.mkdir(targetItemPath);
-          } catch {
-            // Directory might already exist
-          }
-          // Recursively copy directory contents
-          await copyToRuntime(sourceFS, targetFS, sourceItemPath, targetItemPath);
-        } else {
-          console.log(`Copying file: ${sourceItemPath} -> ${targetItemPath}`);
-          const content = await sourceFS.readFile(sourceItemPath);
-          await targetFS.writeFile(targetItemPath, content);
-        }
-      } catch (itemError) {
-        console.warn(`Failed to copy item ${item}:`, itemError);
-      }
-    }
-
-    console.log(`Successfully copied ${sourcePath} to runtime`);
-  } catch (error) {
-    console.error(`Failed to copy ${sourcePath} to runtime:`, error);
     throw error;
   }
 }

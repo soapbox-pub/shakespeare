@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { ProjectsManager } from '@/lib/fs';
+import { ProjectsManager } from '@/lib/ProjectsManager';
 import { useFS } from '@/hooks/useFS';
 
 /**
@@ -8,8 +8,8 @@ import { useFS } from '@/hooks/useFS';
  */
 export function useProjectsManager() {
   const { fs } = useFS();
-  
+
   const projectsManager = useMemo(() => new ProjectsManager(fs), [fs]);
-  
+
   return projectsManager;
 }

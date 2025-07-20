@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
-import { ProjectsManager, type Project } from '@/lib/fs';
-import { useFS } from '@/hooks/useFS';
+import { type Project } from '@/lib/fs';
+import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { ChatPane } from '@/components/Shakespeare/ChatPane';
 import { PreviewPane } from '@/components/Shakespeare/PreviewPane';
 import { Button } from '@/components/ui/button';
@@ -14,8 +14,7 @@ export function ProjectView() {
   const [project, setProject] = useState<Project | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'preview' | 'code'>('preview');
-  const { fs } = useFS();
-  const projectsManager = useMemo(() => new ProjectsManager(fs), [fs]);
+  const projectsManager = useProjectsManager();
   const navigate = useNavigate();
 
   const loadProject = useCallback(async () => {

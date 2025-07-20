@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { ProjectsManager } from '@/lib/fs';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { useFS } from '@/hooks/useFS';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -51,7 +51,7 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
   const [hasBuiltProject, setHasBuiltProject] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const { fs } = useFS();
-  const projectsManager = useMemo(() => new ProjectsManager(fs), [fs]);
+  const projectsManager = useProjectsManager();
 
   const loadFileContent = useCallback(async (filePath: string) => {
     setIsLoading(true);

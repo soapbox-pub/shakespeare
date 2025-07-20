@@ -50,14 +50,15 @@ export class ProjectsManager {
       lastModified: new Date(),
     };
 
-    // Save project metadata
+    // Clone the template first
+    await this.cloneTemplate(projectPath);
+
+    // Save project metadata in .git directory to keep it out of source tree
+    const gitDir = `${projectPath}/.git`;
     await this.fs.writeFile(
-      `${projectPath}/.project.json`,
+      `${gitDir}/project.json`,
       JSON.stringify(project, null, 2)
     );
-
-    // Clone the template
-    await this.cloneTemplate(projectPath);
 
     return project;
   }
@@ -80,7 +81,7 @@ export class ProjectsManager {
 
       for (const dir of projectDirs) {
         const projectPath = `${this.dir}/${dir}`;
-        const projectFile = `${projectPath}/.project.json`;
+        const projectFile = `${projectPath}/.git/project.json`;
 
         try {
           const projectData = await this.fs.readFile(projectFile, 'utf8');
@@ -103,7 +104,7 @@ export class ProjectsManager {
 
   async getProject(id: string): Promise<Project | null> {
     try {
-      const projectFile = `${this.dir}/${id}/.project.json`;
+      const projectFile = `${this.dir}/${id}/.git/project.json`;
       const projectData = await this.fs.readFile(projectFile, 'utf8');
       const project = JSON.parse(projectData);
       return {
@@ -189,7 +190,7 @@ export class ProjectsManager {
 
   private async updateProjectLastModified(projectId: string): Promise<void> {
     try {
-      const projectFile = `${this.dir}/${projectId}/.project.json`;
+      const projectFile = `${this.dir}/${projectId}/.git/project.json`;
       const projectData = await this.fs.readFile(projectFile, 'utf8');
       const project = JSON.parse(projectData);
       project.lastModified = new Date().toISOString();

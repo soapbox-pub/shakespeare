@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { fsManager } from '@/lib/fs';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -13,12 +13,33 @@ interface PreviewPaneProps {
   activeTab: 'preview' | 'code';
 }
 
+interface JSONRPCRequest {
+  jsonrpc: '2.0';
+  method: string;
+  params: { path: string };
+  id: number;
+}
+
+interface JSONRPCResponse {
+  jsonrpc: '2.0';
+  result?: {
+    content: string;
+    contentType: string;
+  };
+  error?: {
+    code: number;
+    message: string;
+    data?: { path: string };
+  };
+  id: number;
+}
+
 export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [fileContent, setFileContent] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
   const [hasBuiltProject, setHasBuiltProject] = useState(false);
-  const [previewHtml, setPreviewHtml] = useState<string>('');
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const loadFileContent = useCallback(async (filePath: string) => {
     setIsLoading(true);
@@ -33,59 +54,108 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
     }
   }, [projectId]);
 
+  const getContentType = (filename: string): string => {
+    const ext = filename.split('.').pop()?.toLowerCase();
+    const mimeTypes: Record<string, string> = {
+      'html': 'text/html',
+      'js': 'application/javascript',
+      'mjs': 'application/javascript',
+      'css': 'text/css',
+      'json': 'application/json',
+      'png': 'image/png',
+      'jpg': 'image/jpeg',
+      'jpeg': 'image/jpeg',
+      'gif': 'image/gif',
+      'svg': 'image/svg+xml',
+      'ico': 'image/x-icon',
+      'woff': 'font/woff',
+      'woff2': 'font/woff2',
+      'ttf': 'font/ttf',
+      'eot': 'application/vnd.ms-fontobject',
+      'txt': 'text/plain',
+      'xml': 'application/xml',
+      'pdf': 'application/pdf',
+      'zip': 'application/zip',
+    };
+    return mimeTypes[ext || ''] || 'application/octet-stream';
+  };
+
   const checkForBuiltProject = useCallback(async () => {
     try {
       const exists = await fsManager.fileExists(projectId, 'dist/index.html');
       setHasBuiltProject(exists);
-
-      if (exists) {
-        // Load the built HTML content
-        const htmlContent = await fsManager.readFile(projectId, 'dist/index.html');
-
-        // Process the HTML to add base tag for asset resolution
-        const processedHtml = processHtmlForPreview(htmlContent, projectId);
-        setPreviewHtml(processedHtml);
-      }
     } catch (error) {
       console.error('Failed to check for built project:', error);
       setHasBuiltProject(false);
     }
   }, [projectId]);
 
-  const processHtmlForPreview = (html: string, projectId: string): string => {
+  const handleReadFile = useCallback(async (request: JSONRPCRequest) => {
+    const { params, id } = request;
+    const { path } = params;
+
+    console.log(`Preview iframe requesting file: ${path}`);
+    
     try {
-      // Create a temporary DOM to process the HTML
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(html, 'text/html');
-
-      // Rewrite script src attributes
-      const scripts = doc.querySelectorAll('script[src]');
-      scripts.forEach((script) => {
-        const src = script.getAttribute('src');
-        if (src && !src.startsWith('http') && !src.startsWith('//')) {
-          // Convert relative path to raw file path
-          const cleanPath = src.startsWith('./') ? src.slice(2) : src.startsWith('/') ? src.slice(1) : src;
-          const newSrc = `/project/${projectId}/files/dist/${cleanPath}`;
-          script.setAttribute('src', newSrc);
-        }
+      const file = await fsManager.readFile(projectId, 'dist' + path);
+      console.log(`Serving file: ${path}`);
+      sendResponse({
+        jsonrpc: '2.0',
+        result: {
+          content: file,
+          contentType: getContentType(path),
+        },
+        id
       });
-
-      // Rewrite link href attributes (for stylesheets and other resources)
-      const links = doc.querySelectorAll('link[href]');
-      links.forEach((link) => {
-        const href = link.getAttribute('href');
-        if (href && !href.startsWith('http') && !href.startsWith('//')) {
-          // Convert relative path to raw file path
-          const cleanPath = href.startsWith('./') ? href.slice(2) : href.startsWith('/') ? href.slice(1) : href;
-          const newHref = `/project/${projectId}/files/dist/${cleanPath}`;
-          link.setAttribute('href', newHref);
-        }
+    } catch {
+      console.log(`File not found: ${path}`);
+      sendError({
+        jsonrpc: '2.0',
+        error: {
+          code: -32001,
+          message: 'File not found',
+          data: { path }
+        },
+        id
       });
+    }
+  }, [projectId]);
 
-      return doc.documentElement.outerHTML;
-    } catch (error) {
-      console.error('Failed to process HTML for preview:', error);
-      return html; // Return original HTML if processing fails
+  // Setup messaging protocol for iframe communication
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      // Verify origin for security
+      if (event.origin !== 'https://delicate-snowflake-b476.gleasonator.workers.dev') {
+        return;
+      }
+
+      const message = event.data;
+      console.log('Received message from iframe:', message);
+      if (message.jsonrpc === '2.0' && message.method === 'readFile') {
+        handleReadFile(message);
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [handleReadFile]);
+
+  const sendResponse = (message: JSONRPCResponse) => {
+    if (iframeRef.current?.contentWindow) {
+      console.log(`Sending response to iframe:`, message);
+      iframeRef.current.contentWindow.postMessage(
+        message,
+        'https://delicate-snowflake-b476.gleasonator.workers.dev'
+      );
+    }
+  };
+
+  const sendError = (message: JSONRPCResponse) => {
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        message,
+        'https://delicate-snowflake-b476.gleasonator.workers.dev'
+      );
     }
   };
 
@@ -132,7 +202,8 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
                 </Button>
               </div>
               <iframe
-                srcDoc={previewHtml}
+                ref={iframeRef}
+                src="https://delicate-snowflake-b476.gleasonator.workers.dev/"
                 className="w-full flex-1 border-0"
                 title="Project Preview"
               />

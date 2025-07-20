@@ -1,4 +1,4 @@
-import { FileSystemTree } from '@webcontainer/api';
+
 import { useState, useRef, useEffect } from 'react';
 import { CoreMessage, generateText, CoreUserMessage, CoreAssistantMessage, CoreToolMessage, generateId } from 'ai';
 import { Button } from '@/components/ui/button';
@@ -11,8 +11,7 @@ import { useAISettings } from '@/hooks/useAISettings';
 import { FsToolSet } from '@/lib/FsToolSet';
 import { useFS } from '@/hooks/useFS';
 import { useJSRuntime } from '@/hooks/useJSRuntime';
-import { copyDirectory } from '@/lib/copyFiles';
-import type { WebContainerAdapter } from '@/lib/WebContainerAdapter';
+import { copyDirectory, copyToRuntime } from '@/lib/copyFiles';
 
 interface ChatPaneProps {
   projectId: string;
@@ -46,37 +45,15 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
   };
 
   const runBuild = async () => {
-    const buildFileTree = async (dirPath: string): Promise<FileSystemTree> => {
-      const tree: FileSystemTree = {};
-      const items = await fs.readdir(dirPath);
-
-      for (const item of items) {
-        const itemPath = `${dirPath}/${item}`;
-        const stat = await fs.stat(itemPath);
-
-        if (stat.isDirectory()) {
-          tree[item] = {
-            directory: await buildFileTree(itemPath),
-          };
-        } else {
-          const content = await fs.readFile(itemPath, 'utf8');
-          tree[item] = {
-            file: {
-              contents: content,
-            },
-          };
-        }
-      }
-
-      return tree;
-    };
-
-    // Build file tree and mount to WebContainer
-    const fsTree = await buildFileTree(`/projects/${projectId}`);
-
-    // Mount the file tree (this will boot the container if needed)
-    const webcontainerAdapter = runtime as WebContainerAdapter;
-    await webcontainerAdapter.mount(fsTree);
+    // Copy project files to runtime filesystem
+    const projectPath = `/projects/${projectId}`;
+    try {
+      await copyToRuntime(fs, runtime.fs, projectPath, '.');
+      console.log('Successfully copied project to runtime');
+    } catch (error) {
+      console.error('Failed to copy project to runtime:', error);
+      return;
+    }
 
     // Install dependencies and build
     const proc = await runtime.spawn('npm', ['i']);

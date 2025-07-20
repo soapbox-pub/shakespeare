@@ -7,6 +7,7 @@ import NostrProvider from '@/components/NostrProvider';
 import { AppProvider } from '@/components/AppProvider';
 import { AppConfig } from '@/contexts/AppContext';
 import { FSProvider } from '@/components/FSProvider';
+import { LightningFSAdapter } from '@/lib/LightningFSAdapter';
 
 interface TestAppProps {
   children: React.ReactNode;
@@ -29,7 +30,7 @@ export function TestApp({ children }: TestAppProps) {
 
   // Initialize LightningFS for testing
   const lightningFS = new LightningFS('test-fs');
-  const fs = lightningFS.promises;
+  const fs = new LightningFSAdapter(lightningFS.promises);
 
   return (
     <UnheadProvider head={head}>

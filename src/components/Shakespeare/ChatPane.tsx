@@ -3,10 +3,7 @@ import { useState, useRef, useEffect } from 'react';
 import { CoreMessage, generateText, CoreUserMessage, CoreAssistantMessage, CoreToolMessage, generateId } from 'ai';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Card } from '@/components/ui/card';
-import { Send, Bot, User, Settings, Play, CloudUpload } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Send, Settings, Play, CloudUpload } from 'lucide-react';
 import { useAISettings } from '@/hooks/useAISettings';
 import { FsToolSet } from '@/lib/FsToolSet';
 import { useFS } from '@/hooks/useFS';
@@ -14,6 +11,7 @@ import { useJSRuntime } from '@/hooks/useJSRuntime';
 import { copyDirectory } from '@/lib/copyFiles';
 import { generateSecretKey, getPublicKey, nip19 } from 'nostr-tools';
 import { bytesToHex } from 'nostr-tools/utils';
+import { MessageItem } from '@/components/ai/MessageItem';
 
 interface ChatPaneProps {
   projectId: string;
@@ -129,10 +127,18 @@ BASE_DOMAIN=nostrdeploy.com`);
   }, [projectName, projectId]);
 
   useEffect(() => {
-    if (scrollAreaRef.current) {
-      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+    if (scrollAreaRef.current && messages) {
+      // Check if user was already at or near the bottom (within 100px threshold)
+      const threshold = 100;
+      const container = scrollAreaRef.current;
+      const isNearBottom = container.scrollTop + container.clientHeight >= container.scrollHeight - threshold;
+
+      // Only auto-scroll if user was already near the bottom
+      if (isNearBottom) {
+        container.scrollTop = container.scrollHeight;
+      }
     }
-  }, [messages]);
+  }, [messages, isLoading]);
 
   const createAIChat = async (projectId: string, messages: CoreMessage[]) => {
     if (!isConfigured) {
@@ -288,21 +294,7 @@ When creating new components or pages, follow the existing patterns in the codeb
     );
   }
 
-  const renderPart = (part: (CoreUserMessage | CoreAssistantMessage | CoreToolMessage)['content'][0]) => {
-    if (typeof part === 'string') {
-      return <div className="whitespace-pre-wrap text-sm">{part}</div>;
-    }
-    switch (part.type) {
-      case 'text':
-        return <div className="whitespace-pre-wrap text-sm">{part.text}</div>;
-      case 'tool-call':
-        return <div className="text-sm text-blue-500">{part.toolName}</div>;
-      case 'tool-result':
-        return <div className="text-sm">{JSON.stringify(part.result)}</div>;
-      default:
-        return null;
-    }
-  };
+
 
   return (
     <div className="h-full flex flex-col">
@@ -333,93 +325,54 @@ When creating new components or pages, follow the existing patterns in the codeb
         </div>
       </div>
 
-      <ScrollArea className="flex-1 p-3 sm:p-4" ref={scrollAreaRef}>
-        <div className="space-y-3 sm:space-y-4">
+      <div className="flex-1 overflow-y-scroll overflow-x-hidden" ref={scrollAreaRef}>
+        <div className="p-4 space-y-4">
           {messages.map((message, index) => (
-            <div
+            <MessageItem
               key={index}
-              className={cn(
-                'flex gap-2 sm:gap-3',
-                message.role === 'user' ? 'justify-end' : 'justify-start'
-              )}
-            >
-              <div
-                className={cn(
-                  'flex gap-2 max-w-[85%] sm:max-w-[80%]',
-                  message.role === 'user' ? 'flex-row-reverse' : 'flex-row'
-                )}
-              >
-                <div
-                  className={cn(
-                    'w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center flex-shrink-0',
-                    message.role === 'user'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted'
-                  )}
-                >
-                  {message.role === 'user' ? (
-                    <User className="h-3 w-3 sm:h-4 sm:w-4" />
-                  ) : (
-                    <Bot className="h-3 w-3 sm:h-4 sm:w-4" />
-                  )}
-                </div>
-                <Card
-                  className={cn(
-                    'px-3 py-2 sm:px-4',
-                    message.role === 'user'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted'
-                  )}
-                >
-                  {typeof message.content === 'string' ? (
-                    <div className="whitespace-pre-wrap text-sm">
-                      {message.content}
-                    </div>
-                  ) : (
-                    <div className="whitespace-pre-wrap text-sm">
-                      {[...message.content].map((part, i) => (
-                        <span key={i} className="block">
-                          {renderPart(part)}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </Card>
-              </div>
-            </div>
+              message={message}
+              userDisplayName="You"
+              allMessages={messages}
+            />
           ))}
 
           {isLoading && (
-            <div className="flex gap-2">
-              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-                <Bot className="h-3 w-3 sm:h-4 sm:w-4" />
-              </div>
-              <Card className="px-3 py-2 sm:px-4 bg-muted">
+            <div className="flex gap-3">
+              <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
                 <div className="flex space-x-1">
-                  <div className="h-2 w-2 bg-current rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-                  <div className="h-2 w-2 bg-current rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-                  <div className="h-2 w-2 bg-current rounded-full animate-bounce"></div>
+                  <div className="h-1 w-1 bg-current rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                  <div className="h-1 w-1 bg-current rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                  <div className="h-1 w-1 bg-current rounded-full animate-bounce"></div>
                 </div>
-              </Card>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="font-medium text-sm">Assistant</span>
+                  <span className="text-xs text-muted-foreground">AI</span>
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  Thinking...
+                </div>
+              </div>
             </div>
           )}
         </div>
-      </ScrollArea>
+      </div>
 
-      <div className="border-t p-3 sm:p-4">
+      <div className="border-t p-4">
         <div className="flex gap-2">
           <Textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Ask me to add features, edit files, or build your project..."
-            className="min-h-[60px] resize-none touch-action-manipulation overscroll-contain focus-ring"
+            className="min-h-[60px] resize-none"
             disabled={isLoading}
           />
           <Button
             onClick={handleSend}
             disabled={!input.trim() || isLoading}
-            className="self-end focus-ring"
+            className="self-end"
             size="icon"
           >
             <Send className="h-4 w-4" />

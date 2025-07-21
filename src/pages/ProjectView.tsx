@@ -92,6 +92,7 @@ export function ProjectView() {
                   setProject(selectedProject);
                   setIsSidebarVisible(false);
                   if (selectedProject) {
+                    setMobileView('chat'); // Switch to chat view when selecting a project
                     navigate(`/project/${selectedProject.id}`);
                   } else {
                     navigate('/');

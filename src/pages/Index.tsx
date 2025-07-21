@@ -18,10 +18,16 @@ export default function Index() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
-  const [isSidebarVisible, setIsSidebarVisible] = useState(true);
   const navigate = useNavigate();
   const projectsManager = useProjectsManager();
   const isMobile = useIsMobile();
+  const [isSidebarVisible, setIsSidebarVisible] = useState(() => {
+    // Check if we're on mobile immediately to set correct initial state
+    if (typeof window !== 'undefined') {
+      return window.innerWidth >= 768; // Desktop starts open, mobile starts closed
+    }
+    return false; // Default to closed for SSR
+  });
 
   useSeoMeta({
     title: 'Shakespeare - AI-Powered Nostr Development',
@@ -64,6 +70,7 @@ export default function Index() {
 
   const handleProjectSelect = (project: Project | null) => {
     if (project) {
+      setIsSidebarVisible(false); // Collapse sidebar on mobile navigation
       navigate(`/project/${project.id}`);
     }
   };
@@ -89,16 +96,21 @@ export default function Index() {
         {/* Mobile Sidebar Overlay */}
         {isSidebarVisible && (
           <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm">
-            <div className="fixed left-0 top-0 h-full w-80 max-w-[80vw] bg-background border-r shadow-lg">
-              <ProjectSidebar
-                selectedProject={null}
-                onSelectProject={handleProjectSelect}
-              />
-            </div>
+            {/* Backdrop - only covers the area not occupied by the sidebar */}
             <div
               className="absolute inset-0"
               onClick={() => setIsSidebarVisible(false)}
             />
+            {/* Sidebar - positioned above the backdrop */}
+            <div className="relative left-0 top-0 h-full w-80 max-w-[80vw] bg-background border-r shadow-lg z-10">
+              <ProjectSidebar
+                selectedProject={null}
+                onSelectProject={(project) => {
+                  setIsSidebarVisible(false); // Always collapse sidebar on mobile navigation
+                  handleProjectSelect(project);
+                }}
+              />
+            </div>
           </div>
         )}
 

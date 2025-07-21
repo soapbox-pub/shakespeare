@@ -57,41 +57,51 @@ export default function Index() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8">
+    <div className="min-h-dvh bg-gradient-to-br from-primary/5 to-accent/5">
+      <div className="container mx-auto px-4 py-6 md:py-8">
         <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-12">
-            <h1 className="text-4xl font-bold mb-4">Shakespeare</h1>
-            <p className="text-xl text-muted-foreground mb-2">
+          <div className="text-center mb-8 md:mb-12">
+            <div className="text-4xl md:text-6xl mb-4 md:mb-6">🎭</div>
+            <h1 className="text-3xl md:text-4xl font-bold mb-3 md:mb-4 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+              Shakespeare
+            </h1>
+            <p className="text-lg md:text-xl text-muted-foreground mb-2">
               Build custom Nostr websites with AI assistance
             </p>
             <p className="text-sm text-muted-foreground">
-              <a href="https://soapbox.pub/mkstack" className="hover:underline">
+              <a href="https://soapbox.pub/mkstack" className="hover:underline focus-ring text-primary">
                 Vibed with MKStack
               </a>
             </p>
           </div>
 
-          <div className="mb-12">
-            <Card>
+          <div className="mb-8 md:mb-12">
+            <Card className="bg-gradient-to-br from-card to-card/50 border-primary/20 shadow-lg">
               <CardHeader>
-                <CardTitle>Create a New Project</CardTitle>
-                <CardDescription>
-                  Describe what kind of Nostr website you want to build
-                </CardDescription>
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2 bg-primary/10 rounded-lg">
+                    <Plus className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-xl">Create a New Project</CardTitle>
+                    <CardDescription className="text-base">
+                      Describe what kind of Nostr website you want to build
+                    </CardDescription>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 <Textarea
                   placeholder="e.g., Create a farming equipment marketplace for local farmers to buy and sell tractors, tools, and supplies..."
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
-                  className="min-h-[100px]"
+                  className="min-h-[120px] touch-action-manipulation overscroll-contain text-base leading-relaxed"
                   disabled={isCreating}
                 />
                 <Button
                   onClick={handleCreateProject}
                   disabled={!prompt.trim() || isCreating}
-                  className="w-full"
+                  className="w-full focus-ring bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80 shadow-lg"
                   size="lg"
                 >
                   {isCreating ? (
@@ -111,13 +121,13 @@ export default function Index() {
           </div>
 
           <div>
-            <h2 className="text-2xl font-semibold mb-6">Your Projects</h2>
+            <h2 className="text-xl md:text-2xl font-semibold mb-4 md:mb-6">Your Projects</h2>
 
             {isLoading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {[...Array(6)].map((_, i) => (
                   <Card key={i}>
-                    <CardContent className="p-6">
+                    <CardContent className="p-4 md:p-6">
                       <Skeleton className="h-4 w-3/4 mb-2" />
                       <Skeleton className="h-3 w-1/2" />
                     </CardContent>
@@ -125,26 +135,37 @@ export default function Index() {
                 ))}
               </div>
             ) : projects.length === 0 ? (
-              <div className="text-center py-12">
-                <Folder className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                <p className="text-muted-foreground">No projects yet. Create your first project above!</p>
-              </div>
+              <Card className="bg-gradient-to-br from-muted/50 to-muted/20 border-dashed border-2 border-muted-foreground/20">
+                <CardContent className="text-center py-8 md:py-12">
+                  <div className="flex items-center justify-center gap-2 mb-4">
+                    <Folder className="h-10 w-10 md:h-12 md:w-12 text-muted-foreground" />
+                  </div>
+                  <p className="text-muted-foreground text-sm md:text-base">No projects yet. Create your first project above!</p>
+                </CardContent>
+              </Card>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {projects.map((project) => (
                   <Card
                     key={project.id}
-                    className="cursor-pointer hover:shadow-lg transition-shadow"
+                    className="cursor-pointer hover:shadow-xl hover:shadow-primary/10 transition-all duration-300 focus-ring bg-gradient-to-br from-card to-card/80 border-primary/10 hover:border-primary/20 hover:scale-[1.02]"
                     onClick={() => handleProjectClick(project.id)}
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        handleProjectClick(project.id);
+                      }
+                    }}
                   >
-                    <CardHeader>
-                      <CardTitle className="text-lg">{project.name}</CardTitle>
-                      <CardDescription>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-base md:text-lg">{project.name}</CardTitle>
+                      <CardDescription className="text-sm">
                         Created {project.createdAt.toLocaleDateString()}
                       </CardDescription>
                     </CardHeader>
-                    <CardContent>
-                      <p className="text-sm text-muted-foreground">
+                    <CardContent className="pt-0">
+                      <p className="text-xs md:text-sm text-muted-foreground">
                         Last modified {project.lastModified.toLocaleDateString()}
                       </p>
                     </CardContent>

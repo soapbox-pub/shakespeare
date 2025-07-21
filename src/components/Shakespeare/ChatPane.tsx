@@ -95,7 +95,7 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
 # Nostr Authentication
 NOSTR_PRIVATE_KEY=${bytesToHex(sk)}
 NOSTR_PUBLIC_KEY=${pubkey}
-NOSTR_RELAYS=wss://relay.nostr.band,wss://relay.primal.net,wss://ditto.pub/relay
+NOSTR_RELAYS=wss://relay.nostr.band,wss://nostrue.com,wss://purplerelay.com,wss://relay.primal.net,wss://ditto.pub/relay
 
 # Blossom File Storage
 BLOSSOM_SERVERS=https://cdn.hzrd149.com,https://blossom.primal.net,https://blossom.band,https://blossom.f7z.io

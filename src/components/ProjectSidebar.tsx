@@ -52,6 +52,7 @@ export function ProjectSidebar({
   }, [projectsManager]);
 
   const handleNewProject = () => {
+    onSelectProject(null);
     navigate('/');
   };
 

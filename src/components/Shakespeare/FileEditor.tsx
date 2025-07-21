@@ -86,7 +86,7 @@ export function FileEditor({ filePath, content, onSave, isLoading }: FileEditorP
                 </>
               ) : (
                 <>
-                  <Save className="mr-1 sm:mr-2 h-4 w-4" />
+                  <Save className="sm:mr-2 h-4 w-4" />
                   <span className="hidden sm:inline">Save</span>
                 </>
               )}

@@ -17,11 +17,17 @@ export function ProjectView() {
   const [project, setProject] = useState<Project | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'preview' | 'code'>('preview');
-  const [mobileView, setMobileView] = useState<'chat' | 'preview' | 'code'>('preview');
-  const [isSidebarVisible, setIsSidebarVisible] = useState(true);
+  const [mobileView, setMobileView] = useState<'chat' | 'preview' | 'code'>('chat');
   const projectsManager = useProjectsManager();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const [isSidebarVisible, setIsSidebarVisible] = useState(() => {
+    // Check if we're on mobile immediately to set correct initial state
+    if (typeof window !== 'undefined') {
+      return window.innerWidth >= 768; // Desktop starts open, mobile starts closed
+    }
+    return false; // Default to closed for SSR
+  });
 
   const loadProject = useCallback(async () => {
     if (!projectId) return;
@@ -85,12 +91,18 @@ export function ProjectView() {
         {/* Mobile Sidebar Overlay */}
         {isSidebarVisible && (
           <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm">
-            <div className="fixed left-0 top-0 h-full w-80 max-w-[80vw] bg-background border-r shadow-lg">
+            {/* Backdrop - only covers the area not occupied by the sidebar */}
+            <div
+              className="absolute inset-0"
+              onClick={() => setIsSidebarVisible(false)}
+            />
+            {/* Sidebar - positioned above the backdrop */}
+            <div className="relative left-0 top-0 h-full w-80 max-w-[80vw] bg-background border-r shadow-lg z-10">
               <ProjectSidebar
                 selectedProject={project}
                 onSelectProject={(selectedProject) => {
                   setProject(selectedProject);
-                  setIsSidebarVisible(false);
+                  setIsSidebarVisible(false); // Always collapse sidebar on mobile navigation
                   if (selectedProject) {
                     setMobileView('chat'); // Switch to chat view when selecting a project
                     navigate(`/project/${selectedProject.id}`);
@@ -100,10 +112,6 @@ export function ProjectView() {
                 }}
               />
             </div>
-            <div
-              className="absolute inset-0"
-              onClick={() => setIsSidebarVisible(false)}
-            />
           </div>
         )}
 

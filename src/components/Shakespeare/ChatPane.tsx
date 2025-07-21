@@ -241,15 +241,15 @@ When creating new components or pages, follow the existing patterns in the codeb
   if (!isConfigured) {
     return (
       <div className="h-full flex flex-col">
-        <div className="border-b px-4 py-3 flex justify-between items-center">
+        <div className="border-b bg-gradient-to-r from-primary/5 to-accent/5 px-4 py-3 flex justify-between items-center">
           <div>
-            <h2 className="font-semibold">AI Assistant</h2>
+            <h2 className="font-semibold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">AI Assistant</h2>
             <p className="text-sm text-muted-foreground">Chat to build your project</p>
           </div>
           <Button
             variant="outline"
             size="sm"
-            className="gap-2"
+            className="gap-2 hover:bg-primary/10 hover:border-primary/20"
             onClick={() => {
               // This will be handled by the AISettingsDialog component
               const event = new CustomEvent('openAISettings');
@@ -261,18 +261,18 @@ When creating new components or pages, follow the existing patterns in the codeb
           </Button>
         </div>
 
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center space-y-4">
-            <Bot className="h-12 w-12 mx-auto text-muted-foreground" />
+        <div className="flex-1 flex items-center justify-center bg-gradient-to-br from-primary/5 to-accent/5">
+          <div className="text-center space-y-4 max-w-md mx-auto p-6">
+            <div className="text-4xl mb-4">🤖</div>
             <div>
-              <h3 className="text-lg font-semibold mb-2">AI Assistant Not Configured</h3>
+              <h3 className="text-lg font-semibold mb-2 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">AI Assistant Not Configured</h3>
               <p className="text-sm text-muted-foreground mb-4">
                 Please configure your AI settings to start building with AI assistance.
               </p>
               <Button
                 variant="outline"
                 size="sm"
-                className="gap-2"
+                className="gap-2 hover:bg-primary/10 hover:border-primary/20"
                 onClick={() => {
                   const event = new CustomEvent('openAISettings');
                   window.dispatchEvent(event);
@@ -306,64 +306,66 @@ When creating new components or pages, follow the existing patterns in the codeb
 
   return (
     <div className="h-full flex flex-col">
-      <div className="border-b px-4 py-3 flex justify-between items-center">
-        <div>
-          <h2 className="font-semibold">AI Assistant</h2>
-          <p className="text-sm text-muted-foreground">Chat to build your project</p>
+      <div className="border-b bg-gradient-to-r from-primary/5 to-accent/5 px-4 py-3 flex justify-between items-center">
+        <div className="min-w-0 flex-1">
+          <h2 className="font-semibold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">AI Assistant</h2>
+          <p className="text-sm text-muted-foreground hidden sm:block">Chat to build your project</p>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          className="gap-2"
-          onClick={runBuild}
-        >
-          <Play className="h-4 w-4" />
-          Build
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          className="gap-2"
-          onClick={runDeploy}
-        >
-          <CloudUpload className="h-4 w-4" />
-          Deploy
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1 sm:gap-2 hover:bg-primary/10 hover:border-primary/20"
+            onClick={runBuild}
+          >
+            <Play className="h-4 w-4" />
+            <span className="hidden sm:inline">Build</span>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1 sm:gap-2 hover:bg-accent/10 hover:border-accent/20"
+            onClick={runDeploy}
+          >
+            <CloudUpload className="h-4 w-4" />
+            <span className="hidden sm:inline">Deploy</span>
+          </Button>
+        </div>
       </div>
 
-      <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
-        <div className="space-y-4">
+      <ScrollArea className="flex-1 p-3 sm:p-4" ref={scrollAreaRef}>
+        <div className="space-y-3 sm:space-y-4">
           {messages.map((message, index) => (
             <div
               key={index}
               className={cn(
-                'flex gap-3',
+                'flex gap-2 sm:gap-3',
                 message.role === 'user' ? 'justify-end' : 'justify-start'
               )}
             >
               <div
                 className={cn(
-                  'flex gap-2 max-w-[80%]',
+                  'flex gap-2 max-w-[85%] sm:max-w-[80%]',
                   message.role === 'user' ? 'flex-row-reverse' : 'flex-row'
                 )}
               >
                 <div
                   className={cn(
-                    'w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0',
+                    'w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center flex-shrink-0',
                     message.role === 'user'
                       ? 'bg-primary text-primary-foreground'
                       : 'bg-muted'
                   )}
                 >
                   {message.role === 'user' ? (
-                    <User className="h-4 w-4" />
+                    <User className="h-3 w-3 sm:h-4 sm:w-4" />
                   ) : (
-                    <Bot className="h-4 w-4" />
+                    <Bot className="h-3 w-3 sm:h-4 sm:w-4" />
                   )}
                 </div>
                 <Card
                   className={cn(
-                    'px-4 py-2',
+                    'px-3 py-2 sm:px-4',
                     message.role === 'user'
                       ? 'bg-primary text-primary-foreground'
                       : 'bg-muted'
@@ -389,10 +391,10 @@ When creating new components or pages, follow the existing patterns in the codeb
 
           {isLoading && (
             <div className="flex gap-2">
-              <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-                <Bot className="h-4 w-4" />
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                <Bot className="h-3 w-3 sm:h-4 sm:w-4" />
               </div>
-              <Card className="px-4 py-2 bg-muted">
+              <Card className="px-3 py-2 sm:px-4 bg-muted">
                 <div className="flex space-x-1">
                   <div className="h-2 w-2 bg-current rounded-full animate-bounce [animation-delay:-0.3s]"></div>
                   <div className="h-2 w-2 bg-current rounded-full animate-bounce [animation-delay:-0.15s]"></div>
@@ -404,20 +406,20 @@ When creating new components or pages, follow the existing patterns in the codeb
         </div>
       </ScrollArea>
 
-      <div className="border-t p-4">
+      <div className="border-t p-3 sm:p-4">
         <div className="flex gap-2">
           <Textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Ask me to add features, edit files, or build your project..."
-            className="min-h-[60px] resize-none"
+            className="min-h-[60px] resize-none touch-action-manipulation overscroll-contain focus-ring"
             disabled={isLoading}
           />
           <Button
             onClick={handleSend}
             disabled={!input.trim() || isLoading}
-            className="self-end"
+            className="self-end focus-ring"
             size="icon"
           >
             <Send className="h-4 w-4" />

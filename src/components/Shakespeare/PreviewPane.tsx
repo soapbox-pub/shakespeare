@@ -4,7 +4,8 @@ import { useFS } from '@/hooks/useFS';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, FolderOpen, ArrowLeft } from 'lucide-react';
+import { useIsMobile } from '@/hooks/useIsMobile';
 
 import { FileTree } from './FileTree';
 import { FileEditor } from './FileEditor';
@@ -48,6 +49,8 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [fileContent, setFileContent] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
+  const [mobileCodeView, setMobileCodeView] = useState<'explorer' | 'editor'>('explorer');
+  const isMobile = useIsMobile();
   const [hasBuiltProject, setHasBuiltProject] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const { fs } = useFS();
@@ -262,6 +265,9 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
 
   const handleFileSelect = (filePath: string) => {
     setSelectedFile(filePath);
+    if (isMobile) {
+      setMobileCodeView('editor');
+    }
   };
 
   const handleFileSave = async (content: string) => {
@@ -281,13 +287,13 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
         <TabsContent value="preview" className="h-full mt-0">
           {hasBuiltProject ? (
             <div className="h-full w-full flex flex-col">
-              <div className="flex items-center justify-between p-2 border-b bg-background">
-                <span className="text-sm text-muted-foreground">Project Preview</span>
+              <div className="flex items-center justify-between p-2 border-b bg-gradient-to-r from-primary/5 to-accent/5">
+                <span className="text-sm font-medium bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">Project Preview</span>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={refreshIframe}
-                  className="h-8 w-8 p-0"
+                  className="h-8 w-8 p-0 hover:bg-primary/10"
                 >
                   <RefreshCw className="h-4 w-4" />
                 </Button>
@@ -327,39 +333,101 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
         </TabsContent>
 
         <TabsContent value="code" className="h-full mt-0">
-          <div className="h-full flex">
-            <div className="w-1/3 border-r">
-              <div className="p-4 border-b">
-                <h3 className="font-semibold">File Explorer</h3>
-              </div>
-              <ScrollArea className="h-[calc(100%-60px)]">
-                <FileTree
-                  projectId={projectId}
-                  onFileSelect={handleFileSelect}
-                  selectedFile={selectedFile}
-                />
-              </ScrollArea>
-            </div>
-
-            <div className="flex-1">
-              {selectedFile ? (
-                <FileEditor
-                  filePath={selectedFile}
-                  content={fileContent}
-                  onSave={handleFileSave}
-                  isLoading={isLoading}
-                />
-              ) : (
-                <div className="h-full flex items-center justify-center">
-                  <div className="text-center">
-                    <p className="text-muted-foreground">
-                      Select a file from the explorer to edit
-                    </p>
+          {isMobile ? (
+            <div className="h-full flex flex-col">
+              {mobileCodeView === 'explorer' ? (
+                <>
+                  <div className="p-3 border-b bg-gradient-to-r from-primary/5 to-accent/5">
+                    <h3 className="font-semibold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">File Explorer</h3>
                   </div>
-                </div>
+                  <ScrollArea className="flex-1">
+                    <FileTree
+                      projectId={projectId}
+                      onFileSelect={handleFileSelect}
+                      selectedFile={selectedFile}
+                    />
+                  </ScrollArea>
+                </>
+              ) : (
+                <>
+                  <div className="p-3 border-b bg-gradient-to-r from-primary/5 to-accent/5 flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setMobileCodeView('explorer')}
+                      className="p-1"
+                    >
+                      <ArrowLeft className="h-4 w-4" />
+                    </Button>
+                    <h3 className="font-semibold flex-1 truncate bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                      {selectedFile ? selectedFile.split('/').pop() : 'File Editor'}
+                    </h3>
+                  </div>
+                  <div className="flex-1">
+                    {selectedFile ? (
+                      <FileEditor
+                        filePath={selectedFile}
+                        content={fileContent}
+                        onSave={handleFileSave}
+                        isLoading={isLoading}
+                      />
+                    ) : (
+                      <div className="h-full flex items-center justify-center">
+                        <div className="text-center">
+                          <FolderOpen className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                          <p className="text-muted-foreground">
+                            Select a file from the explorer to edit
+                          </p>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setMobileCodeView('explorer')}
+                            className="mt-4"
+                          >
+                            Open File Explorer
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </>
               )}
             </div>
-          </div>
+          ) : (
+            <div className="h-full flex">
+              <div className="w-1/3 border-r">
+                <div className="p-4 border-b bg-gradient-to-r from-primary/5 to-accent/5">
+                  <h3 className="font-semibold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">File Explorer</h3>
+                </div>
+                <ScrollArea className="h-[calc(100%-60px)]">
+                  <FileTree
+                    projectId={projectId}
+                    onFileSelect={handleFileSelect}
+                    selectedFile={selectedFile}
+                  />
+                </ScrollArea>
+              </div>
+
+              <div className="flex-1">
+                {selectedFile ? (
+                  <FileEditor
+                    filePath={selectedFile}
+                    content={fileContent}
+                    onSave={handleFileSave}
+                    isLoading={isLoading}
+                  />
+                ) : (
+                  <div className="h-full flex items-center justify-center">
+                    <div className="text-center">
+                      <p className="text-muted-foreground">
+                        Select a file from the explorer to edit
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </TabsContent>
       </Tabs>
     </div>

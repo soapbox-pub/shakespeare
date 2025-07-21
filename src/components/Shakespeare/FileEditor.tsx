@@ -66,27 +66,28 @@ export function FileEditor({ filePath, content, onSave, isLoading }: FileEditorP
 
   return (
     <div className="h-full flex flex-col">
-      <CardHeader className="border-b py-3">
+      <CardHeader className="border-b py-2 sm:py-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-base">{filePath}</CardTitle>
-          <div className="flex items-center space-x-2">
+          <CardTitle className="text-sm sm:text-base truncate flex-1 mr-2">{filePath}</CardTitle>
+          <div className="flex items-center space-x-1 sm:space-x-2">
             {hasChanges && (
-              <span className="text-sm text-muted-foreground">Unsaved changes</span>
+              <span className="text-xs sm:text-sm text-muted-foreground hidden sm:inline">Unsaved changes</span>
             )}
             <Button
               onClick={handleSave}
               disabled={!hasChanges || isSaving || isLoading}
               size="sm"
+              className="focus-ring"
             >
               {isSaving ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
+                  <Loader2 className="mr-1 sm:mr-2 h-4 w-4 animate-spin" />
+                  <span className="hidden sm:inline">Saving...</span>
                 </>
               ) : (
                 <>
-                  <Save className="mr-2 h-4 w-4" />
-                  Save
+                  <Save className="mr-1 sm:mr-2 h-4 w-4" />
+                  <span className="hidden sm:inline">Save</span>
                 </>
               )}
             </Button>
@@ -109,6 +110,7 @@ export function FileEditor({ filePath, content, onSave, isLoading }: FileEditorP
             className={cn(
               'w-full h-full resize-none border-0 rounded-none',
               'focus:outline-none focus:ring-0',
+              'touch-action-manipulation overscroll-contain',
               getMonospaceFont()
             )}
             placeholder={`// Edit ${filePath}...`}

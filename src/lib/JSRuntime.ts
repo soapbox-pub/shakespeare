@@ -14,7 +14,7 @@ export interface JSRuntime {
    * @param options Spawn options
    * @returns Process handle
    */
-  spawn(command: string, args?: string[], options?: Record<string, unknown>): Promise<JSRuntimeChildProcess>;
+  spawn(command: string, args?: string[], options?: SpawnOptions): Promise<JSRuntimeChildProcess>;
 }
 
 /**
@@ -87,4 +87,18 @@ export interface JSRuntimeChildProcess {
    * Kills the process.
    */
   kill(): void;
+}
+
+/**
+ * Options that control process spawning.
+ */
+export interface SpawnOptions {
+  /**
+   * Current working directory for the process, relative to the workdir of this instance.
+   */
+  cwd?: string;
+  /**
+   * Environment variables to set for the process.
+   */
+  env?: Record<string, string | number | boolean>;
 }

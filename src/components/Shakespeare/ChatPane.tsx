@@ -5,13 +5,15 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card } from '@/components/ui/card';
-import { Send, Bot, User, Settings, Play } from 'lucide-react';
+import { Send, Bot, User, Settings, Play, CloudUpload } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAISettings } from '@/hooks/useAISettings';
 import { FsToolSet } from '@/lib/FsToolSet';
 import { useFS } from '@/hooks/useFS';
 import { useJSRuntime } from '@/hooks/useJSRuntime';
 import { copyDirectory } from '@/lib/copyFiles';
+import { generateSecretKey, getPublicKey, nip19 } from 'nostr-tools';
+import { bytesToHex } from 'nostr-tools/utils';
 
 interface ChatPaneProps {
   projectId: string;
@@ -26,7 +28,7 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
   const [isLoading, setIsLoading] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const { settings, isConfigured } = useAISettings();
-  const { fs } = useFS();
+  const { fs: browserFS } = useFS();
   const { runtime } = useJSRuntime();
 
   const addMessage = (message: AIMessage) => {
@@ -51,7 +53,7 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
     // Copy project files to runtime filesystem
     const projectPath = `/projects/${projectId}`;
     try {
-      await copyDirectory(fs, runtimeFS, projectPath, '.');
+      await copyDirectory(browserFS, runtimeFS, projectPath, '.');
       console.log('Successfully copied project to runtime');
     } catch (error) {
       console.error('Failed to copy project to runtime:', error);
@@ -68,11 +70,53 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
     // Copy "dist" directory from runtime back to project filesystem
     const distPath = `/projects/${projectId}/dist`;
     try {
-      await copyDirectory(runtimeFS, fs, 'dist', distPath);
+      await copyDirectory(runtimeFS, browserFS, 'dist', distPath);
       console.log('Successfully copied dist from runtime');
     } catch (error) {
       console.error('Failed to copy dist:', error);
     }
+  };
+
+  const runDeploy = async () => {
+    const runtimeFS = await runtime.fs();
+
+    const sk = generateSecretKey();
+    const pubkey = getPublicKey(sk);
+    const npub = nip19.npubEncode(pubkey);
+
+    const projectUrl = `https://${npub}.nostrdeploy.com`;
+    console.log('Running deploy for project:', projectId, 'at', projectUrl);
+
+    await runtimeFS.mkdir('dist', { recursive: true });
+
+    await runtimeFS.writeFile('.env.nostr-deploy.local', `# Nostr Deploy CLI Configuration
+# This file contains sensitive information - do not commit to version control
+
+# Nostr Authentication
+NOSTR_PRIVATE_KEY=${bytesToHex(sk)}
+NOSTR_PUBLIC_KEY=${pubkey}
+NOSTR_RELAYS=wss://relay.nostr.band,wss://relay.primal.net,wss://ditto.pub/relay
+
+# Blossom File Storage
+BLOSSOM_SERVERS=https://cdn.hzrd149.com,https://blossom.primal.net,https://blossom.band,https://blossom.f7z.io
+
+# Deployment Settings
+BASE_DOMAIN=nostrdeploy.com`);
+
+    // Copy "dist" files to runtime filesystem
+    const distPath = `/projects/${projectId}/dist`;
+    try {
+      await copyDirectory(browserFS, runtimeFS, distPath, 'dist');
+      console.log('Successfully copied dist to runtime');
+    } catch (error) {
+      console.error('Failed to copy dist to runtime:', error);
+      return;
+    }
+
+    const proc = await runtime.spawn('npx', ["-y", "nostr-deploy-cli", "deploy"]);
+    await proc.exit;
+
+    console.log('Project deployed:', projectUrl);
   };
 
   useEffect(() => {
@@ -115,7 +159,7 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
     });
 
     const provider = openai(settings.model);
-    const toolSet = new FsToolSet(fs, `/projects/${projectId}`);
+    const toolSet = new FsToolSet(browserFS, `/projects/${projectId}`);
 
     return generateText({
       model: provider,
@@ -275,6 +319,15 @@ When creating new components or pages, follow the existing patterns in the codeb
         >
           <Play className="h-4 w-4" />
           Build
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-2"
+          onClick={runDeploy}
+        >
+          <CloudUpload className="h-4 w-4" />
+          Deploy
         </Button>
       </div>
 

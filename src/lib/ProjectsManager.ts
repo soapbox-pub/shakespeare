@@ -179,6 +179,37 @@ export class ProjectsManager {
     }
   }
 
+  async deleteProject(projectId: string): Promise<void> {
+    const projectPath = `${this.dir}/${projectId}`;
+
+    // Recursively delete the project directory
+    await this.deleteDirectory(projectPath);
+  }
+
+  private async deleteDirectory(dirPath: string): Promise<void> {
+    try {
+      const files = await this.fs.readdir(dirPath);
+
+      for (const file of files) {
+        const fullPath = `${dirPath}/${file}`;
+        const stat = await this.fs.stat(fullPath);
+
+        if (stat.isDirectory()) {
+          await this.deleteDirectory(fullPath);
+        } else {
+          await this.fs.unlink(fullPath);
+        }
+      }
+
+      await this.fs.rmdir(dirPath);
+    } catch (error) {
+      const fsError = error as NodeJS.ErrnoException;
+      if (fsError.code !== 'ENOENT') {
+        throw error;
+      }
+    }
+  }
+
   private generateProjectId(name: string): string {
     const timestamp = Date.now().toString(36);
     const slug = name

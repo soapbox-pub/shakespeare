@@ -1,5 +1,5 @@
 import { WebContainer } from '@webcontainer/api';
-import type { JSRuntime, JSRuntimeFS, JSRuntimeChildProcess, DirectoryEntry } from './JSRuntime';
+import type { JSRuntime, JSRuntimeFS, JSRuntimeChildProcess, DirectoryEntry, SpawnOptions } from './JSRuntime';
 
 /**
  * WebContainer adapter that implements the JSRuntime interface
@@ -36,7 +36,7 @@ export class WebContainerAdapter implements JSRuntime {
    * Spawn a process in the WebContainer
    * Automatically boots the container on first call
    */
-  async spawn(command: string, args: string[] = [], options: Record<string, unknown> = {}): Promise<JSRuntimeChildProcess> {
+  async spawn(command: string, args: string[] = [], options: SpawnOptions = {}): Promise<JSRuntimeChildProcess> {
     const webcontainer = await this.ensureBooted();
     return webcontainer.spawn(command, args, options);
   }

@@ -60,6 +60,41 @@ export async function copyFiles(
 }
 
 /**
+ * Copy a single file between JSRuntime filesystems
+ * @param sourceFS Source filesystem
+ * @param targetFS Target filesystem
+ * @param sourcePath Source file path
+ * @param targetPath Target file path
+ */
+export async function copyFile(
+  sourceFS: JSRuntimeFS,
+  targetFS: JSRuntimeFS,
+  sourcePath: string,
+  targetPath: string
+): Promise<void> {
+  try {
+    console.log(`Copying file: ${sourcePath} -> ${targetPath}`);
+
+    // Check if source exists and is a file
+    const sourceStat = await sourceFS.stat(sourcePath);
+    if (!sourceStat.isFile()) {
+      throw new Error(`Source path ${sourcePath} is not a file`);
+    }
+
+    // Read the file content
+    const content = await sourceFS.readFile(sourcePath);
+
+    // Write to target
+    await targetFS.writeFile(targetPath, content);
+
+    console.log(`Successfully copied file ${sourcePath} to ${targetPath}`);
+  } catch (error) {
+    console.error(`Failed to copy file ${sourcePath} to ${targetPath}:`, error);
+    throw error;
+  }
+}
+
+/**
  * Copy a directory between JSRuntime filesystems
  * Convenience wrapper for copyFiles with better error handling
  */

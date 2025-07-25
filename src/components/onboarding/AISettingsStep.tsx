@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, ArrowRight, Settings, CheckCircle, Bot } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Settings, Bot } from 'lucide-react';
 import { useAISettings } from '@/hooks/useAISettings';
 
 interface AISettingsStepProps {
@@ -13,9 +13,8 @@ interface AISettingsStepProps {
 }
 
 export function AISettingsStep({ onNext, onPrevious, onSkip }: AISettingsStepProps) {
-  const { settings, updateSettings, isConfigured } = useAISettings();
+  const { settings, updateSettings } = useAISettings();
   const [localSettings, setLocalSettings] = useState(settings);
-  const [isTesting, setIsTesting] = useState(false);
 
   const handleSave = () => {
     updateSettings(localSettings);

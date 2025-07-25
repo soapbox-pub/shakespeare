@@ -11,6 +11,7 @@ import { copyDirectory, copyFile } from '@/lib/copyFiles';
 import { generateSecretKey, getPublicKey, nip19 } from 'nostr-tools';
 import { bytesToHex } from 'nostr-tools/utils';
 import { MessageItem } from '@/components/ai/MessageItem';
+import { GitHistoryDialog } from '@/components/ai/GitHistoryDialog';
 import { TextEditorViewTool } from '@/lib/tools/TextEditorViewTool';
 import { TextEditorWriteTool } from '@/lib/tools/TextEditorWriteTool';
 import { TextEditorStrReplaceTool } from '@/lib/tools/TextEditorStrReplaceTool';
@@ -326,6 +327,7 @@ When creating new components or pages, follow the existing patterns in the codeb
           <p className="text-sm text-muted-foreground hidden sm:block">Chat to build your project</p>
         </div>
         <div className="flex gap-2">
+          <GitHistoryDialog projectId={projectId} />
           <Button
             variant="outline"
             size="sm"

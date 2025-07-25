@@ -3,8 +3,10 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { History, GitCommit, User, Calendar, Hash } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { History, GitCommit, User, Calendar, Hash, RotateCcw, AlertTriangle } from 'lucide-react';
 import { useFS } from '@/hooks/useFS';
+import { useToast } from '@/hooks/useToast';
 import git from 'isomorphic-git';
 
 interface GitCommit {
@@ -33,7 +35,9 @@ export function GitHistoryDialog({ projectId }: GitHistoryDialogProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const [isRollingBack, setIsRollingBack] = useState<string | null>(null);
   const { fs } = useFS();
+  const { toast } = useToast();
 
   const loadGitHistory = useCallback(async () => {
     if (!fs) return;
@@ -67,6 +71,162 @@ export function GitHistoryDialog({ projectId }: GitHistoryDialogProps) {
       setIsLoading(false);
     }
   }, [fs, projectId]);
+
+  const rollbackToCommit = useCallback(async (targetCommit: GitCommit) => {
+    if (!fs) return;
+
+    setIsRollingBack(targetCommit.oid);
+
+    try {
+      const projectPath = `/projects/${projectId}`;
+
+      // Get the current HEAD commit
+      const currentCommit = await git.resolveRef({
+        fs,
+        dir: projectPath,
+        ref: 'HEAD',
+      });
+
+      // If we're already at this commit, no need to rollback
+      if (currentCommit === targetCommit.oid) {
+        toast({
+          title: "Already at this commit",
+          description: "The codebase is already at this commit.",
+        });
+        return;
+      }
+
+      // Get all commits between the target commit and HEAD
+      const allCommits = await git.log({
+        fs,
+        dir: projectPath,
+        depth: 1000,
+      });
+
+      // Find the index of target commit and current HEAD
+      const targetIndex = allCommits.findIndex(c => c.oid === targetCommit.oid);
+      const currentIndex = allCommits.findIndex(c => c.oid === currentCommit);
+
+      if (targetIndex === -1) {
+        throw new Error('Target commit not found in history');
+      }
+
+      if (currentIndex === -1) {
+        throw new Error('Current commit not found in history');
+      }
+
+      // Get commits to revert (from current back to target, exclusive)
+      const commitsToRevert = allCommits.slice(currentIndex, targetIndex);
+
+      if (commitsToRevert.length === 0) {
+        toast({
+          title: "No commits to revert",
+          description: "The target commit is ahead of the current commit.",
+        });
+        return;
+      }
+
+      // Simple approach: checkout the target commit's tree and create a new commit
+      // This effectively "reverts" to that state without complex merge logic
+
+      // Get all files from the target commit
+      const targetFiles = await git.listFiles({
+        fs,
+        dir: projectPath,
+        ref: targetCommit.oid,
+      });
+
+      // Get current files to know what to remove
+      const currentFiles = await git.listFiles({
+        fs,
+        dir: projectPath,
+        ref: 'HEAD',
+      });
+
+      // Remove files that don't exist in target commit
+      for (const filepath of currentFiles) {
+        if (!targetFiles.includes(filepath)) {
+          try {
+            await fs.unlink(`${projectPath}/${filepath}`);
+            await git.remove({
+              fs,
+              dir: projectPath,
+              filepath,
+            });
+          } catch (err) {
+            // File might not exist, continue
+            console.warn(`Could not remove ${filepath}:`, err);
+          }
+        }
+      }
+
+      // Restore all files from target commit
+      for (const filepath of targetFiles) {
+        try {
+          const { blob } = await git.readBlob({
+            fs,
+            dir: projectPath,
+            oid: targetCommit.oid,
+            filepath,
+          });
+
+          // Ensure directory exists
+          const dirPath = filepath.split('/').slice(0, -1).join('/');
+          if (dirPath) {
+            await fs.mkdir(`${projectPath}/${dirPath}`, { recursive: true });
+          }
+
+          // Write the file
+          await fs.writeFile(`${projectPath}/${filepath}`, blob);
+
+          // Stage the file
+          await git.add({
+            fs,
+            dir: projectPath,
+            filepath,
+          });
+        } catch (err) {
+          console.error(`Failed to restore ${filepath}:`, err);
+        }
+      }
+
+      // Create a revert commit
+      const revertMessage = `Revert to ${targetCommit.oid.substring(0, 7)}: ${targetCommit.commit.message}
+
+This reverts the codebase back to the state at commit ${targetCommit.oid.substring(0, 7)}.
+
+Reverted ${commitsToRevert.length} commit(s):
+${commitsToRevert.map(c => `- ${c.oid.substring(0, 7)}: ${c.commit.message}`).join('\n')}`;
+
+      await git.commit({
+        fs,
+        dir: projectPath,
+        message: revertMessage,
+        author: {
+          name: 'Shakespeare AI',
+          email: 'ai@shakespeare.dev',
+        },
+      });
+
+      toast({
+        title: "Rollback successful",
+        description: `Reverted ${commitsToRevert.length} commit(s) back to ${targetCommit.oid.substring(0, 7)}`,
+      });
+
+      // Reload the git history to show the new commit
+      await loadGitHistory();
+
+    } catch (err) {
+      console.error('Failed to rollback:', err);
+      toast({
+        title: "Rollback failed",
+        description: err instanceof Error ? err.message : 'Failed to rollback to this commit',
+        variant: "destructive",
+      });
+    } finally {
+      setIsRollingBack(null);
+    }
+  }, [fs, projectId, toast, loadGitHistory]);
 
   useEffect(() => {
     if (isOpen) {
@@ -162,10 +322,70 @@ export function GitHistoryDialog({ projectId }: GitHistoryDialogProps) {
                           <h3 className="font-medium text-sm leading-relaxed">
                             {commit.commit.message}
                           </h3>
-                          <Badge variant="secondary" className="text-xs font-mono">
-                            <Hash className="h-3 w-3 mr-1" />
-                            {commit.oid.substring(0, 7)}
-                          </Badge>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="secondary" className="text-xs font-mono">
+                              <Hash className="h-3 w-3 mr-1" />
+                              {commit.oid.substring(0, 7)}
+                            </Badge>
+                            {index > 0 && ( // Don't show rollback for the most recent commit
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-6 px-2 text-xs gap-1 hover:bg-destructive/10 hover:border-destructive/20 hover:text-destructive"
+                                    disabled={isRollingBack !== null}
+                                  >
+                                    <RotateCcw className="h-3 w-3" />
+                                    Rollback
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle className="flex items-center gap-2">
+                                      <AlertTriangle className="h-5 w-5 text-destructive" />
+                                      Confirm Rollback
+                                    </AlertDialogTitle>
+                                    <AlertDialogDescription className="space-y-2">
+                                      <p>
+                                        This will create a new commit that reverts the codebase back to:
+                                      </p>
+                                      <div className="bg-muted p-3 rounded-md text-sm">
+                                        <div className="font-medium">{commit.commit.message}</div>
+                                        <div className="text-muted-foreground text-xs mt-1">
+                                          {commit.oid.substring(0, 7)} • {formatRelativeTime(commit.commit.author.timestamp)}
+                                        </div>
+                                      </div>
+                                      <p className="text-sm">
+                                        This action will revert <strong>{index} commit(s)</strong> and cannot be undone easily.
+                                        A new commit will be created with the reverted changes.
+                                      </p>
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() => rollbackToCommit(commit)}
+                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                      disabled={isRollingBack !== null}
+                                    >
+                                      {isRollingBack === commit.oid ? (
+                                        <>
+                                          <div className="h-3 w-3 animate-spin rounded-full border border-current border-t-transparent mr-1" />
+                                          Rolling back...
+                                        </>
+                                      ) : (
+                                        <>
+                                          <RotateCcw className="h-3 w-3 mr-1" />
+                                          Rollback
+                                        </>
+                                      )}
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            )}
+                          </div>
                         </div>
 
                         <div className="flex items-center gap-4 text-xs text-muted-foreground">

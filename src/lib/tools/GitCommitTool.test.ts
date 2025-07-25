@@ -74,12 +74,12 @@ describe('GitCommitTool', () => {
       dir: '/test/project',
       message: 'Add new feature',
       author: {
-        name: 'Shakespeare User',
-        email: 'user@shakespeare.dev',
+        name: 'shakespeare.diy',
+        email: 'assistant@shakespeare.diy',
       },
       committer: {
-        name: 'Shakespeare User',
-        email: 'user@shakespeare.dev',
+        name: 'shakespeare.diy',
+        email: 'assistant@shakespeare.diy',
       },
     });
     expect(result.isError).toBe(false);

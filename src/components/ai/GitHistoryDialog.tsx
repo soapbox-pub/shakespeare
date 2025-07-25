@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { History, GitCommit, User, Calendar, Hash, RotateCcw, AlertTriangle } from 'lucide-react';
+import { History, GitCommit, RotateCcw, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
 import { useFS } from '@/hooks/useFS';
 import { useToast } from '@/hooks/useToast';
 import git from 'isomorphic-git';
@@ -36,6 +36,7 @@ export function GitHistoryDialog({ projectId }: GitHistoryDialogProps) {
   const [error, setError] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [isRollingBack, setIsRollingBack] = useState<string | null>(null);
+  const [expandedCommits, setExpandedCommits] = useState<Set<string>>(new Set());
   const { fs } = useFS();
   const { toast } = useToast();
 
@@ -234,10 +235,6 @@ ${commitsToRevert.map(c => `- ${c.oid.substring(0, 7)}: ${c.commit.message}`).jo
     }
   }, [isOpen, loadGitHistory]);
 
-  const formatDate = (timestamp: number) => {
-    return new Date(timestamp * 1000).toLocaleString();
-  };
-
   const formatRelativeTime = (timestamp: number) => {
     const now = Date.now();
     const commitTime = timestamp * 1000;
@@ -254,6 +251,27 @@ ${commitsToRevert.map(c => `- ${c.oid.substring(0, 7)}: ${c.commit.message}`).jo
     } else {
       return `${diffDays} days ago`;
     }
+  };
+
+  const getCommitMessageLines = (message: string) => {
+    const lines = message.split('\n').filter(line => line.trim() !== '');
+    return {
+      firstLine: lines[0] || '',
+      hasMoreLines: lines.length > 1,
+      fullMessage: message,
+    };
+  };
+
+  const toggleCommitExpansion = (commitOid: string) => {
+    setExpandedCommits(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(commitOid)) {
+        newSet.delete(commitOid);
+      } else {
+        newSet.add(commitOid);
+      }
+      return newSet;
+    });
   };
 
   return (
@@ -309,108 +327,119 @@ ${commitsToRevert.map(c => `- ${c.oid.substring(0, 7)}: ${c.commit.message}`).jo
             </div>
           ) : (
             <ScrollArea className="h-[60vh]">
-              <div className="space-y-4 pr-4">
-                {commits.map((commit, index) => (
-                  <div key={commit.oid} className="space-y-3">
-                    <div className="flex items-start gap-3 p-4 rounded-lg border bg-card">
-                      <div className="flex-shrink-0 mt-1">
-                        <div className="h-2 w-2 rounded-full bg-primary" />
-                      </div>
+              <div className="space-y-1 pr-4">
+                {commits.map((commit, index) => {
+                  const { firstLine, hasMoreLines, fullMessage } = getCommitMessageLines(commit.commit.message);
+                  const isExpanded = expandedCommits.has(commit.oid);
 
-                      <div className="flex-1 min-w-0 space-y-2">
-                        <div className="flex items-start justify-between gap-2">
-                          <h3 className="font-medium text-sm leading-relaxed">
-                            {commit.commit.message}
-                          </h3>
-                          <div className="flex items-center gap-2">
-                            <Badge variant="secondary" className="text-xs font-mono">
-                              <Hash className="h-3 w-3 mr-1" />
-                              {commit.oid.substring(0, 7)}
-                            </Badge>
-                            {index > 0 && ( // Don't show rollback for the most recent commit
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="h-6 px-2 text-xs gap-1 hover:bg-destructive/10 hover:border-destructive/20 hover:text-destructive"
-                                    disabled={isRollingBack !== null}
-                                  >
-                                    <RotateCcw className="h-3 w-3" />
-                                    Rollback
-                                  </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle className="flex items-center gap-2">
-                                      <AlertTriangle className="h-5 w-5 text-destructive" />
-                                      Confirm Rollback
-                                    </AlertDialogTitle>
-                                    <AlertDialogDescription className="space-y-2">
-                                      <p>
-                                        This will create a new commit that reverts the codebase back to:
-                                      </p>
-                                      <div className="bg-muted p-3 rounded-md text-sm">
-                                        <div className="font-medium">{commit.commit.message}</div>
-                                        <div className="text-muted-foreground text-xs mt-1">
-                                          {commit.oid.substring(0, 7)} • {formatRelativeTime(commit.commit.author.timestamp)}
-                                        </div>
-                                      </div>
-                                      <p className="text-sm">
-                                        This action will revert <strong>{index} commit(s)</strong> and cannot be undone easily.
-                                        A new commit will be created with the reverted changes.
-                                      </p>
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction
-                                      onClick={() => rollbackToCommit(commit)}
-                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                      disabled={isRollingBack !== null}
-                                    >
-                                      {isRollingBack === commit.oid ? (
-                                        <>
-                                          <div className="h-3 w-3 animate-spin rounded-full border border-current border-t-transparent mr-1" />
-                                          Rolling back...
-                                        </>
-                                      ) : (
-                                        <>
-                                          <RotateCcw className="h-3 w-3 mr-1" />
-                                          Rollback
-                                        </>
-                                      )}
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
+                  return (
+                    <div key={commit.oid} className="group hover:bg-muted/50 rounded-md p-3 transition-colors">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0 space-y-1">
+                          <div className="flex items-start gap-2">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <h3 className="font-medium text-sm text-foreground break-words">
+                                  {firstLine}
+                                </h3>
+                                <Badge variant="secondary" className="text-xs font-mono shrink-0">
+                                  {commit.oid.substring(0, 7)}
+                                </Badge>
+                              </div>
+
+                              {isExpanded && hasMoreLines && (
+                                <div className="text-sm text-muted-foreground whitespace-pre-wrap break-words mt-2 pl-2 border-l-2 border-muted">
+                                  {fullMessage.split('\n').slice(1).join('\n').trim()}
+                                </div>
+                              )}
+                            </div>
+
+                            {hasMoreLines && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0 shrink-0 opacity-60 hover:opacity-100"
+                                onClick={() => toggleCommitExpansion(commit.oid)}
+                              >
+                                {isExpanded ? (
+                                  <ChevronUp className="h-3 w-3" />
+                                ) : (
+                                  <ChevronDown className="h-3 w-3" />
+                                )}
+                              </Button>
                             )}
                           </div>
-                        </div>
 
-                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                          <div className="flex items-center gap-1">
-                            <User className="h-3 w-3" />
-                            <span>{commit.commit.author.name}</span>
-                          </div>
-
-                          <div className="flex items-center gap-1">
-                            <Calendar className="h-3 w-3" />
-                            <span title={formatDate(commit.commit.author.timestamp)}>
-                              {formatRelativeTime(commit.commit.author.timestamp)}
-                            </span>
+                          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                            <span className="font-medium">{commit.commit.author.name}</span>
+                            <span>committed {formatRelativeTime(commit.commit.author.timestamp)}</span>
                           </div>
                         </div>
+
+                        {index > 0 && ( // Don't show rollback for the most recent commit
+                          <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-7 px-2 text-xs gap-1 hover:bg-destructive/10 hover:border-destructive/20 hover:text-destructive"
+                                  disabled={isRollingBack !== null}
+                                >
+                                  <RotateCcw className="h-3 w-3" />
+                                  Rollback
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle className="flex items-center gap-2">
+                                    <AlertTriangle className="h-5 w-5 text-destructive" />
+                                    Confirm Rollback
+                                  </AlertDialogTitle>
+                                  <AlertDialogDescription className="space-y-2">
+                                    <p>
+                                      This will create a new commit that reverts the codebase back to:
+                                    </p>
+                                    <div className="bg-muted p-3 rounded-md text-sm">
+                                      <div className="font-medium break-words">{firstLine}</div>
+                                      <div className="text-muted-foreground text-xs mt-1">
+                                        {commit.oid.substring(0, 7)} • {formatRelativeTime(commit.commit.author.timestamp)}
+                                      </div>
+                                    </div>
+                                    <p className="text-sm">
+                                      This action will revert <strong>{index} commit(s)</strong> and cannot be undone easily.
+                                      A new commit will be created with the reverted changes.
+                                    </p>
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => rollbackToCommit(commit)}
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                    disabled={isRollingBack !== null}
+                                  >
+                                    {isRollingBack === commit.oid ? (
+                                      <>
+                                        <div className="h-3 w-3 animate-spin rounded-full border border-current border-t-transparent mr-1" />
+                                        Rolling back...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <RotateCcw className="h-3 w-3 mr-1" />
+                                        Rollback
+                                      </>
+                                    )}
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        )}
                       </div>
                     </div>
-
-                    {index < commits.length - 1 && (
-                      <div className="flex justify-center">
-                        <div className="h-4 w-px bg-border" />
-                      </div>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </ScrollArea>
           )}

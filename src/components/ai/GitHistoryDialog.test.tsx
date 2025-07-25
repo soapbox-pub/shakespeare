@@ -128,4 +128,48 @@ describe('GitHistoryDialog', () => {
     const rollbackButtons = screen.getAllByText('Rollback');
     expect(rollbackButtons).toHaveLength(1);
   });
+
+  it('handles multi-line commit messages with expand/collapse', async () => {
+    const mockCommits = [
+      {
+        oid: 'commit1',
+        commit: {
+          message: 'Add new feature\n\nThis commit adds a new feature with the following changes:\n- Added component A\n- Updated component B\n- Fixed bug in component C',
+          author: { name: 'User', email: 'user@example.com', timestamp: Math.floor(Date.now() / 1000), timezoneOffset: 0 },
+          committer: { name: 'User', email: 'user@example.com', timestamp: Math.floor(Date.now() / 1000), timezoneOffset: 0 },
+          parent: [],
+          tree: 'tree1',
+        },
+        payload: '',
+      },
+    ];
+
+    const git = await import('isomorphic-git');
+    vi.mocked(git.default.log).mockResolvedValue(mockCommits);
+
+    render(
+      <TestApp>
+        <GitHistoryDialog projectId="test-project" />
+      </TestApp>
+    );
+
+    const historyButton = screen.getByRole('button', { name: /history/i });
+    fireEvent.click(historyButton);
+
+    await waitFor(() => {
+      expect(screen.getByText('Add new feature')).toBeInTheDocument();
+    });
+
+    // Should show expand button for multi-line commit
+    const expandButton = screen.getByRole('button', { name: '' }); // ChevronDown button
+    expect(expandButton).toBeInTheDocument();
+
+    // Click to expand
+    fireEvent.click(expandButton);
+
+    // Should show the expanded content
+    await waitFor(() => {
+      expect(screen.getByText(/This commit adds a new feature/)).toBeInTheDocument();
+    });
+  });
 });

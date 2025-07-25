@@ -336,29 +336,15 @@ ${commitsToRevert.map(c => `- ${c.oid.substring(0, 7)}: ${c.commit.message}`).jo
                     <div key={commit.oid} className="group hover:bg-muted/50 rounded-md p-3 transition-colors">
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 min-w-0 space-y-1">
-                          <div className="flex items-start gap-2">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-1">
-                                <h3 className="font-medium text-sm text-foreground break-words">
-                                  {firstLine}
-                                </h3>
-                                <Badge variant="secondary" className="text-xs font-mono shrink-0">
-                                  {commit.oid.substring(0, 7)}
-                                </Badge>
-                              </div>
-
-                              {isExpanded && hasMoreLines && (
-                                <div className="text-sm text-muted-foreground whitespace-pre-wrap break-words mt-2 pl-2 border-l-2 border-muted">
-                                  {fullMessage.split('\n').slice(1).join('\n').trim()}
-                                </div>
-                              )}
-                            </div>
-
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className="font-medium text-sm text-foreground break-words">
+                              {firstLine}
+                            </h3>
                             {hasMoreLines && (
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-6 w-6 p-0 shrink-0 opacity-60 hover:opacity-100"
+                                className="h-7 w-7 p-0 shrink-0 opacity-60 hover:opacity-100"
                                 onClick={() => toggleCommitExpansion(commit.oid)}
                               >
                                 {isExpanded ? (
@@ -370,14 +356,20 @@ ${commitsToRevert.map(c => `- ${c.oid.substring(0, 7)}: ${c.commit.message}`).jo
                             )}
                           </div>
 
+                          {isExpanded && hasMoreLines && (
+                            <div className="text-sm text-muted-foreground whitespace-pre-wrap break-words mt-2 pl-2 border-l-2 border-muted">
+                              {fullMessage.split('\n').slice(1).join('\n').trim()}
+                            </div>
+                          )}
+
                           <div className="flex items-center gap-3 text-xs text-muted-foreground">
                             <span className="font-medium">{commit.commit.author.name}</span>
                             <span>committed {formatRelativeTime(commit.commit.author.timestamp)}</span>
                           </div>
                         </div>
 
-                        {index > 0 && ( // Don't show rollback for the most recent commit
-                          <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex items-center gap-2 shrink-0">
+                          {index > 0 && ( // Don't show rollback for the most recent commit
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
                                 <Button
@@ -434,8 +426,12 @@ ${commitsToRevert.map(c => `- ${c.oid.substring(0, 7)}: ${c.commit.message}`).jo
                                 </AlertDialogFooter>
                               </AlertDialogContent>
                             </AlertDialog>
-                          </div>
-                        )}
+                          )}
+
+                          <Badge variant="secondary" className="text-xs font-mono">
+                            {commit.oid.substring(0, 7)}
+                          </Badge>
+                        </div>
                       </div>
                     </div>
                   );

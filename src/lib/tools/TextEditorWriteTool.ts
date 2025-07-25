@@ -1,21 +1,8 @@
-import { join } from "@std/path";
+import { join, dirname } from "@std/path";
 import { z } from "zod";
 
 import type { Tool, CallToolResult } from "./Tool";
 import type { JSRuntimeFS } from "../JSRuntime";
-
-// Simple dirname implementation that works in browser environments
-function dirname(path: string): string {
-  if (path === '' || path === '.') return '.';
-
-  // Handle Windows and Unix paths
-  const lastSlash = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
-
-  if (lastSlash === -1) return '.';
-  if (lastSlash === 0) return '/';
-
-  return path.slice(0, lastSlash);
-}
 
 interface TextEditorWriteParams {
   path: string;

@@ -7,7 +7,7 @@ import { Send, Settings, Play, CloudUpload } from 'lucide-react';
 import { useAISettings } from '@/hooks/useAISettings';
 import { useFS } from '@/hooks/useFS';
 import { useJSRuntime } from '@/hooks/useJSRuntime';
-import { copyDirectory } from '@/lib/copyFiles';
+import { copyDirectory, copyFile } from '@/lib/copyFiles';
 import { generateSecretKey, getPublicKey, nip19 } from 'nostr-tools';
 import { bytesToHex } from 'nostr-tools/utils';
 import { MessageItem } from '@/components/ai/MessageItem';
@@ -76,6 +76,15 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
       console.log('Successfully copied dist from runtime');
     } catch (error) {
       console.error('Failed to copy dist:', error);
+    }
+
+    // Copy package-lock.json from runtime back to project filesystem
+    const packageLockPath = `/projects/${projectId}/package-lock.json`;
+    try {
+      await copyFile(runtimeFS, browserFS, 'package-lock.json', packageLockPath);
+      console.log('Successfully copied package-lock.json from runtime');
+    } catch (error) {
+      console.error('Failed to copy package-lock.json:', error);
     }
   };
 

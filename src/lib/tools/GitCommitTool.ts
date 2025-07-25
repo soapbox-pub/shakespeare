@@ -111,8 +111,8 @@ export class GitCommitTool implements Tool<GitCommitParams> {
 
       // Get author info (use default if not configured)
       const author = {
-        name: 'Shakespeare User',
-        email: 'user@shakespeare.dev',
+        name: 'shakespeare.diy',
+        email: 'assistant@shakespeare.diy',
       };
 
       // Try to get configured author from git config

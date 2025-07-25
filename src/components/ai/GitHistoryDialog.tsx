@@ -208,8 +208,8 @@ ${commitsToRevert.map(c => {
         dir: projectPath,
         message: revertMessage,
         author: {
-          name: 'Shakespeare AI',
-          email: 'ai@shakespeare.dev',
+          name: 'shakespeare.diy',
+          email: 'assistant@shakespeare.diy',
         },
       });
 

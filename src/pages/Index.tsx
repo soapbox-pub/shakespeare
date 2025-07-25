@@ -2,13 +2,15 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { type Project } from '@/lib/ProjectsManager';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
+import { useOnboarding } from '@/hooks/useOnboarding';
 import { ProjectSidebar } from '@/components/ProjectSidebar';
+import { OnboardingDialog } from '@/components/onboarding';
 
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, Folder, Menu, Columns2 } from 'lucide-react';
+import { Plus, Folder, Menu, Columns2, Sparkles } from 'lucide-react';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { useSeoMeta } from '@unhead/react';
 import { cn } from '@/lib/utils';
@@ -21,6 +23,15 @@ export default function Index() {
   const navigate = useNavigate();
   const projectsManager = useProjectsManager();
   const isMobile = useIsMobile();
+  const {
+    hasCompletedOnboarding,
+    currentStep,
+    isOnboardingOpen,
+    setIsOnboardingOpen,
+    handleNextStep,
+    handlePreviousStep,
+    handleCompleteOnboarding,
+  } = useOnboarding();
   const [isSidebarVisible, setIsSidebarVisible] = useState(() => {
     // Check if we're on mobile immediately to set correct initial state
     if (typeof window !== 'undefined') {
@@ -129,6 +140,17 @@ export default function Index() {
                   Vibed with MKStack
                 </a>
               </p>
+              {hasCompletedOnboarding && (
+                <Button
+                  onClick={() => setIsOnboardingOpen(true)}
+                  variant="ghost"
+                  size="sm"
+                  className="mt-4 gap-2"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  Restart Onboarding
+                </Button>
+              )}
             </div>
 
             <div className="mb-8 md:mb-12">
@@ -237,7 +259,20 @@ export default function Index() {
   }
 
   return (
-    <div className="h-screen flex bg-background">
+    <>
+      <OnboardingDialog
+        open={isOnboardingOpen}
+        onOpenChange={setIsOnboardingOpen}
+        currentStep={currentStep}
+        onNextStep={handleNextStep}
+        onPreviousStep={handlePreviousStep}
+        onComplete={handleCompleteOnboarding}
+        onProjectCreated={(projectId) => {
+          // Handle project creation during onboarding
+          console.log('Project created during onboarding:', projectId);
+        }}
+      />
+      <div className="h-screen flex bg-background">
       {/* Fixed Sidebar */}
       <div className={cn("w-80 border-r bg-sidebar transition-all duration-300", isSidebarVisible ? "block" : "hidden")}>
         <ProjectSidebar
@@ -389,5 +424,6 @@ export default function Index() {
           </div>
         </div>
       </div>
+    </>
   );
 }

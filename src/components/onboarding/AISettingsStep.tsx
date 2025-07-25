@@ -22,32 +22,6 @@ export function AISettingsStep({ onNext, onPrevious, onSkip }: AISettingsStepPro
     onNext();
   };
 
-  const handleTestConnection = async () => {
-    setIsTesting(true);
-    try {
-      // Basic validation - in a real app, you'd test the API connection
-      if (!localSettings.apiKey.trim()) {
-        throw new Error('API key is required');
-      }
-      if (!localSettings.baseUrl.trim()) {
-        throw new Error('Base URL is required');
-      }
-      if (!localSettings.model.trim()) {
-        throw new Error('Model is required');
-      }
-
-      // Simulate API test
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // If we get here, save the settings
-      updateSettings(localSettings);
-    } catch (error) {
-      console.error('Failed to test connection:', error);
-    } finally {
-      setIsTesting(false);
-    }
-  };
-
   const isValid = localSettings.apiKey.trim() && localSettings.baseUrl.trim() && localSettings.model.trim();
 
   return (
@@ -112,32 +86,6 @@ export function AISettingsStep({ onNext, onPrevious, onSkip }: AISettingsStepPro
                 className="text-sm h-9"
               />
             </div>
-          </div>
-
-          {isConfigured && (
-            <div className="flex items-center gap-2 text-green-600">
-              <CheckCircle className="h-3 w-3" />
-              <span className="text-xs font-medium">Configured</span>
-            </div>
-          )}
-
-          <div className="flex gap-2">
-            <Button
-              onClick={handleTestConnection}
-              disabled={!isValid || isTesting}
-              variant="outline"
-              size="sm"
-              className="flex-1 h-8 text-sm"
-            >
-              {isTesting ? (
-                <>
-                  <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current mr-1"></div>
-                  Testing...
-                </>
-              ) : (
-                'Test & Save'
-              )}
-            </Button>
           </div>
         </CardContent>
       </Card>

@@ -70,7 +70,7 @@ export function ProjectStep({ onPrevious, onComplete, onProjectCreated }: Projec
 
           <div className="space-y-2">
             <h3 className="font-medium text-sm">Example prompts:</h3>
-            <ul className="text-sm text-muted-foreground space-y-1">
+            <ul className="text-xs text-muted-foreground space-y-1">
               <li>• "Build a social media platform for photographers to share their work and connect with clients"</li>
               <li>• "Create a blog platform with markdown support and Nostr-based comments"</li>
               <li>• "Design a marketplace for vintage clothing with categories, filters, and user ratings"</li>
@@ -79,33 +79,33 @@ export function ProjectStep({ onPrevious, onComplete, onProjectCreated }: Projec
         </CardContent>
       </Card>
 
-      <div className="flex justify-center gap-3 pt-2">
-        <Button
-          onClick={onPrevious}
-          variant="outline"
-          size="sm"
-          className="gap-1 h-8 text-sm"
-        >
-          <ArrowLeft className="h-3 w-3" />
-          Back
-        </Button>
+      <div className="flex flex-col items-center gap-2 pt-4">
         <Button
           onClick={handleCreateProject}
           disabled={!prompt.trim() || isCreating}
-          size="sm"
-          className="gap-1 h-8 text-sm bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80"
+          size="lg"
+          className="gap-2 bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80"
         >
           {isCreating ? (
             <>
-              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-1"></div>
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-1"></div>
               Creating...
             </>
           ) : (
             <>
-              <Plus className="h-3 w-3" />
+              <Plus className="h-4 w-4" />
               Create Project
             </>
           )}
+        </Button>
+        <Button
+          onClick={onPrevious}
+          variant="ghost"
+          size="sm"
+          className="text-muted-foreground text-xs h-7"
+        >
+          <ArrowLeft className="h-3 w-3" />
+          Back
         </Button>
       </div>
     </div>

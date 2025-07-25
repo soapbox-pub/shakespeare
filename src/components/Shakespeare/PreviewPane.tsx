@@ -263,6 +263,21 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
     checkForBuiltProject();
   }, [checkForBuiltProject]);
 
+  // Listen for build completion events to refresh the iframe
+  useEffect(() => {
+    const handleBuildComplete = (event: CustomEvent) => {
+      if (event.detail?.projectId === projectId) {
+        console.log('Build completed for project, refreshing preview');
+        // Check for built project and refresh iframe
+        checkForBuiltProject();
+        refreshIframe();
+      }
+    };
+
+    window.addEventListener('buildComplete', handleBuildComplete as EventListener);
+    return () => window.removeEventListener('buildComplete', handleBuildComplete as EventListener);
+  }, [projectId, checkForBuiltProject, refreshIframe]);
+
   const handleFileSelect = (filePath: string) => {
     setSelectedFile(filePath);
     if (isMobile) {

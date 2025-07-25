@@ -68,7 +68,7 @@ export class TextEditorViewTool implements Tool<TextEditorViewParams> {
       }
 
       // If it's a file, read and return its contents
-      let content = await this.fs.readFile(absolutePath, "utf-8");
+      let content = await this.fs.readFile(absolutePath, "utf8");
 
       // Apply line filtering if start_line or end_line are provided
       if (start_line !== undefined || end_line !== undefined) {
@@ -225,7 +225,7 @@ export class TextEditorViewTool implements Tool<TextEditorViewParams> {
 
     try {
       // Try to read .gitignore file
-      const gitignoreContent = await this.fs.readFile(".gitignore", "utf-8");
+      const gitignoreContent = await this.fs.readFile(".gitignore", "utf8");
       ig.add(gitignoreContent);
     } catch {
       // If there's an error reading .gitignore, fall back to defaults

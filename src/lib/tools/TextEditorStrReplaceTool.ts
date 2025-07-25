@@ -74,7 +74,7 @@ export class TextEditorStrReplaceTool implements Tool<TextEditorStrReplaceParams
 
     try {
       const absolutePath = join(this.cwd, path);
-      const content = await this.fs.readFile(absolutePath, "utf-8");
+      const content = await this.fs.readFile(absolutePath, "utf8");
 
       // Helper function to normalize whitespace
       const normalizeWhitespace = (str: string): string => {
@@ -177,7 +177,7 @@ export class TextEditorStrReplaceTool implements Tool<TextEditorStrReplaceParams
         newContent = content.replace(old_str, new_str);
       }
 
-      await this.fs.writeFile(absolutePath, newContent, "utf-8");
+      await this.fs.writeFile(absolutePath, newContent, "utf8");
 
       let successMessage = `String successfully replaced in ${path}`;
       if (occurrences > 1) {

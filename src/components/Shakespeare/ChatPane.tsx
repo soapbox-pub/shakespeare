@@ -14,6 +14,8 @@ import { MessageItem } from '@/components/ai/MessageItem';
 import { TextEditorViewTool } from '@/lib/tools/TextEditorViewTool';
 import { TextEditorWriteTool } from '@/lib/tools/TextEditorWriteTool';
 import { TextEditorStrReplaceTool } from '@/lib/tools/TextEditorStrReplaceTool';
+import { NpmAddPackageTool } from '@/lib/tools/NpmAddPackageTool';
+import { NpmRemovePackageTool } from '@/lib/tools/NpmRemovePackageTool';
 
 interface ChatPaneProps {
   projectId: string;
@@ -180,8 +182,10 @@ BASE_DOMAIN=nostrdeploy.com`);
         text_editor_view: new TextEditorViewTool(browserFS, `/projects/${projectId}`),
         text_editor_write: new TextEditorWriteTool(browserFS, `/projects/${projectId}`),
         text_editor_str_replace: new TextEditorStrReplaceTool(browserFS, `/projects/${projectId}`),
+        npm_add_package: new NpmAddPackageTool(browserFS, `/projects/${projectId}`),
+        npm_remove_package: new NpmRemovePackageTool(browserFS, `/projects/${projectId}`),
       },
-      system: `You are an AI assistant helping users build custom Nostr websites. You have access to tools that allow you to read, write, and manage files in the project, as well as build the project.
+      system: `You are an AI assistant helping users build custom Nostr websites. You have access to tools that allow you to read, write, and manage files in the project, as well as build the project and manage npm packages.
 
 Key capabilities:
 - Read and write files in the project
@@ -190,6 +194,8 @@ Key capabilities:
 - Build the project using Vite
 - Get project structure overview
 - Search through files
+- Add and remove npm packages
+- Install dependencies and dev dependencies
 
 Guidelines:
 - Always check if files exist before writing to avoid overwriting

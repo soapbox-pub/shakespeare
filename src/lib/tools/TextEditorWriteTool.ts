@@ -71,7 +71,7 @@ export class TextEditorWriteTool implements Tool<TextEditorWriteParams> {
     try {
       const absolutePath = join(this.cwd, path);
       await this.fs.mkdir(dirname(absolutePath), { recursive: true });
-      await this.fs.writeFile(absolutePath, file_text, "utf-8");
+      await this.fs.writeFile(absolutePath, file_text, "utf8");
       return {
         content: [{
           type: "text",

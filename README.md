@@ -36,6 +36,8 @@ The AI assistant can:
 - Build the project
 - Search through files
 - Provide project structure overview
+- Add and remove npm packages
+- Install dependencies and dev dependencies
 
 ## Usage
 

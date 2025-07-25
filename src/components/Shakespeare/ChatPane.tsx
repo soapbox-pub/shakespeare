@@ -16,6 +16,7 @@ import { TextEditorWriteTool } from '@/lib/tools/TextEditorWriteTool';
 import { TextEditorStrReplaceTool } from '@/lib/tools/TextEditorStrReplaceTool';
 import { NpmAddPackageTool } from '@/lib/tools/NpmAddPackageTool';
 import { NpmRemovePackageTool } from '@/lib/tools/NpmRemovePackageTool';
+import { GitCommitTool } from '@/lib/tools/GitCommitTool';
 
 interface ChatPaneProps {
   projectId: string;
@@ -189,6 +190,7 @@ BASE_DOMAIN=nostrdeploy.com`);
         addMessages(stepResult.response.messages);
       },
       tools: {
+        git_commit: new GitCommitTool(browserFS, cwd),
         text_editor_view: new TextEditorViewTool(browserFS, cwd),
         text_editor_write: new TextEditorWriteTool(browserFS, cwd),
         text_editor_str_replace: new TextEditorStrReplaceTool(browserFS, cwd),
@@ -206,6 +208,7 @@ Key capabilities:
 - Search through files
 - Add and remove npm packages
 - Install dependencies and dev dependencies
+- Commit changes to git with automatic staging
 
 Guidelines:
 - Always check if files exist before writing to avoid overwriting

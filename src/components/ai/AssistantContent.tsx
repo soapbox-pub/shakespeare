@@ -9,34 +9,13 @@ import { FileViewer } from '@/components/ai/FileViewer';
 import { FileWriter } from '@/components/ai/FileWriter';
 import { ShellCommand } from '@/components/ai/ShellCommand';
 import { PackageManager } from '@/components/ai/PackageManager';
-import type { CoreAssistantMessage, CoreToolMessage } from 'ai';
+import type { CoreAssistantMessage } from 'ai';
 
 interface AssistantContentProps {
   content: CoreAssistantMessage['content'];
-  allMessages?: unknown[];
 }
 
-export const AssistantContent = memo(({ content, allMessages = [] }: AssistantContentProps) => {
-  // Helper function to find tool result for a given tool call
-  const findToolResult = (toolCallId: string) => {
-    // Look through all tool messages to find the one with our toolCallId
-    for (const msg of allMessages) {
-      if ((msg as { role: string }).role === 'tool') {
-        const toolMessage = msg as CoreToolMessage;
-        if (Array.isArray(toolMessage.content)) {
-          const toolResultPart = toolMessage.content.find(
-            part => part.type === 'tool-result' && part.toolCallId === toolCallId
-          );
-          if (toolResultPart) {
-            return toolResultPart;
-          }
-        }
-      }
-    }
-    return undefined;
-  };
-
-
+export const AssistantContent = memo(({ content }: AssistantContentProps) => {
   // Handle string content (simple text messages)
   if (typeof content === 'string') {
     return (
@@ -136,8 +115,8 @@ export const AssistantContent = memo(({ content, allMessages = [] }: AssistantCo
             </div>
           );
         } else if (item.type === 'tool-call') {
-          // Special rendering for js-dev__text_editor_str_replace tool
-          if (item.toolName === 'js-dev__text_editor_str_replace' && item.args) {
+          // Special rendering for text_editor_str_replace tool
+          if (item.toolName === 'text_editor_str_replace' && item.args) {
             const { path, old_str, new_str } = item.args as { path: string; old_str: string; new_str: string };
             return (
               <DiffRenderer
@@ -149,8 +128,8 @@ export const AssistantContent = memo(({ content, allMessages = [] }: AssistantCo
             );
           }
 
-          // Special rendering for js-dev__run_script tool
-          if (item.toolName === 'js-dev__run_script' && item.args) {
+          // Special rendering for run_script tool
+          if (item.toolName === 'run_script' && item.args) {
             const { script } = item.args as { script: string };
             return (
               <ScriptRunner
@@ -160,71 +139,8 @@ export const AssistantContent = memo(({ content, allMessages = [] }: AssistantCo
             );
           }
 
-          // Special rendering for readFile tool
-          if (item.toolName === 'readFile' && item.args) {
-            const { filePath } = item.args as { filePath: string };
-            const toolResultPart = findToolResult(item.toolCallId);
-            let result: string | undefined;
-            const isError = toolResultPart?.isError || false;
-
-            if (toolResultPart && toolResultPart.result) {
-              if (typeof toolResultPart.result === 'string') {
-                result = toolResultPart.result;
-              } else if (toolResultPart.result && typeof toolResultPart.result === 'object') {
-                // Handle FsToolSet readFile result format: { content, success }
-                const resultObj = toolResultPart.result as Record<string, unknown>;
-                if (resultObj.content && typeof resultObj.content === 'string') {
-                  result = resultObj.content;
-                } else {
-                  result = JSON.stringify(toolResultPart.result);
-                }
-              }
-            }
-
-            return (
-              <FileViewer
-                key={index}
-                path={filePath}
-                result={result}
-                isError={isError}
-              />
-            );
-          }
-
-          // Special rendering for writeFile tool
-          if (item.toolName === 'writeFile' && item.args) {
-            const { filePath, content } = item.args as { filePath: string; content: string };
-            const toolResultPart = findToolResult(item.toolCallId);
-            let result: string | undefined;
-            const isError = toolResultPart?.isError || false;
-
-            if (toolResultPart && toolResultPart.result) {
-              if (typeof toolResultPart.result === 'string') {
-                result = toolResultPart.result;
-              } else if (toolResultPart.result && typeof toolResultPart.result === 'object') {
-                // Handle FsToolSet writeFile result format: { success, message }
-                const resultObj = toolResultPart.result as Record<string, unknown>;
-                if (resultObj.message && typeof resultObj.message === 'string') {
-                  result = resultObj.message;
-                } else {
-                  result = JSON.stringify(toolResultPart.result);
-                }
-              }
-            }
-
-            return (
-              <FileWriter
-                key={index}
-                path={filePath}
-                fileText={content}
-                result={result}
-                isError={isError}
-              />
-            );
-          }
-
-          // Special rendering for js-dev__text_editor_view tool
-          if (item.toolName === 'js-dev__text_editor_view' && item.args) {
+          // Special rendering for text_editor_view tool
+          if (item.toolName === 'text_editor_view' && item.args) {
             const { path } = item.args as { path: string };
             return (
               <FileViewer
@@ -234,8 +150,8 @@ export const AssistantContent = memo(({ content, allMessages = [] }: AssistantCo
             );
           }
 
-          // Special rendering for js-dev__text_editor_write tool
-          if (item.toolName === 'js-dev__text_editor_write' && item.args) {
+          // Special rendering for text_editor_write tool
+          if (item.toolName === 'text_editor_write' && item.args) {
             const { path, file_text } = item.args as { path: string; file_text: string };
             return (
               <FileWriter
@@ -246,8 +162,8 @@ export const AssistantContent = memo(({ content, allMessages = [] }: AssistantCo
             );
           }
 
-          // Special rendering for js-dev__shell tool
-          if (item.toolName === 'js-dev__shell' && item.args) {
+          // Special rendering for shell tool
+          if (item.toolName === 'shell' && item.args) {
             const { command } = item.args as { command: string };
             return (
               <ShellCommand
@@ -257,8 +173,8 @@ export const AssistantContent = memo(({ content, allMessages = [] }: AssistantCo
             );
           }
 
-          // Special rendering for js-dev__npm_add_package tool
-          if (item.toolName === 'js-dev__npm_add_package' && item.args) {
+          // Special rendering for npm_add_package tool
+          if (item.toolName === 'npm_add_package' && item.args) {
             const { name, version, dev } = item.args as { name: string; version?: string; dev?: boolean };
             return (
               <PackageManager
@@ -272,8 +188,8 @@ export const AssistantContent = memo(({ content, allMessages = [] }: AssistantCo
             );
           }
 
-          // Special rendering for js-dev__npm_remove_package tool
-          if (item.toolName === 'js-dev__npm_remove_package' && item.args) {
+          // Special rendering for npm_remove_package tool
+          if (item.toolName === 'npm_remove_package' && item.args) {
             const { name } = item.args as { name: string };
             return (
               <PackageManager
@@ -285,8 +201,8 @@ export const AssistantContent = memo(({ content, allMessages = [] }: AssistantCo
             );
           }
 
-          // Special rendering for js-dev__jsr_add_package tool
-          if (item.toolName === 'js-dev__jsr_add_package' && item.args) {
+          // Special rendering for jsr_add_package tool
+          if (item.toolName === 'jsr_add_package' && item.args) {
             const { name, version, dev } = item.args as { name: string; version?: string; dev?: boolean };
             return (
               <PackageManager
@@ -300,8 +216,8 @@ export const AssistantContent = memo(({ content, allMessages = [] }: AssistantCo
             );
           }
 
-          // Special rendering for js-dev__jsr_remove_package tool
-          if (item.toolName === 'js-dev__jsr_remove_package' && item.args) {
+          // Special rendering for jsr_remove_package tool
+          if (item.toolName === 'jsr_remove_package' && item.args) {
             const { name } = item.args as { name: string };
             return (
               <PackageManager

@@ -5,13 +5,15 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Send, Settings, Play, CloudUpload } from 'lucide-react';
 import { useAISettings } from '@/hooks/useAISettings';
-import { FsToolSet } from '@/lib/FsToolSet';
 import { useFS } from '@/hooks/useFS';
 import { useJSRuntime } from '@/hooks/useJSRuntime';
 import { copyDirectory } from '@/lib/copyFiles';
 import { generateSecretKey, getPublicKey, nip19 } from 'nostr-tools';
 import { bytesToHex } from 'nostr-tools/utils';
 import { MessageItem } from '@/components/ai/MessageItem';
+import { TextEditorViewTool } from '@/lib/tools/TextEditorViewTool';
+import { TextEditorWriteTool } from '@/lib/tools/TextEditorWriteTool';
+import { TextEditorStrReplaceTool } from '@/lib/tools/TextEditorStrReplaceTool';
 
 interface ChatPaneProps {
   projectId: string;
@@ -165,18 +167,19 @@ BASE_DOMAIN=nostrdeploy.com`);
     });
 
     const provider = openai(settings.model);
-    const toolSet = new FsToolSet(browserFS, `/projects/${projectId}`);
 
     return generateText({
       model: provider,
       messages,
       maxSteps: 100,
       onStepFinish(stepResult) {
+        console.log(stepResult);
         addMessages(stepResult.response.messages);
       },
       tools: {
-        readFile: toolSet.readFile,
-        writeFile: toolSet.writeFile,
+        text_editor_view: new TextEditorViewTool(browserFS, `/projects/${projectId}`),
+        text_editor_write: new TextEditorWriteTool(browserFS, `/projects/${projectId}`),
+        text_editor_str_replace: new TextEditorStrReplaceTool(browserFS, `/projects/${projectId}`),
       },
       system: `You are an AI assistant helping users build custom Nostr websites. You have access to tools that allow you to read, write, and manage files in the project, as well as build the project.
 
@@ -332,7 +335,6 @@ When creating new components or pages, follow the existing patterns in the codeb
               key={index}
               message={message}
               userDisplayName="You"
-              allMessages={messages}
             />
           ))}
 

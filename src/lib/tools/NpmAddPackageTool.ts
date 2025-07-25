@@ -138,7 +138,7 @@ export class NpmAddPackageTool implements Tool<NpmAddPackageParams> {
       return {
         content: [{
           type: "text",
-          text: `✅ Successfully added ${name}@${targetVersion} to ${dependencyKey} in package.json\n\n📦 Package: ${name}\n🏷️ Version: ^${targetVersion}\n📁 Type: ${dev ? 'Development dependency' : 'Production dependency'}\n\n⚠️ **Next step**: Run \`npm install\` to install the package and update package-lock.json`,
+          text: `✅ Successfully added ${name}@${targetVersion} to ${dependencyKey} in package.json\n\n📦 Package: ${name}\n🏷️ Version: ^${targetVersion}\n📁 Type: ${dev ? 'Development dependency' : 'Production dependency'}`,
         }],
         isError: false,
       };

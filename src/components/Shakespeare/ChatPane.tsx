@@ -178,6 +178,7 @@ BASE_DOMAIN=nostrdeploy.com`);
     });
 
     const provider = openai(settings.model);
+    const cwd = `/projects/${projectId}`;
 
     return generateText({
       model: provider,
@@ -188,11 +189,11 @@ BASE_DOMAIN=nostrdeploy.com`);
         addMessages(stepResult.response.messages);
       },
       tools: {
-        text_editor_view: new TextEditorViewTool(browserFS, `/projects/${projectId}`),
-        text_editor_write: new TextEditorWriteTool(browserFS, `/projects/${projectId}`),
-        text_editor_str_replace: new TextEditorStrReplaceTool(browserFS, `/projects/${projectId}`),
-        npm_add_package: new NpmAddPackageTool(browserFS, `/projects/${projectId}`),
-        npm_remove_package: new NpmRemovePackageTool(browserFS, `/projects/${projectId}`),
+        text_editor_view: new TextEditorViewTool(browserFS, cwd),
+        text_editor_write: new TextEditorWriteTool(browserFS, cwd),
+        text_editor_str_replace: new TextEditorStrReplaceTool(browserFS, cwd),
+        npm_add_package: new NpmAddPackageTool(browserFS, cwd),
+        npm_remove_package: new NpmRemovePackageTool(browserFS, cwd),
       },
       system: `You are an AI assistant helping users build custom Nostr websites. You have access to tools that allow you to read, write, and manage files in the project, as well as build the project and manage npm packages.
 
@@ -345,13 +346,31 @@ When creating new components or pages, follow the existing patterns in the codeb
 
       <div className="flex-1 overflow-y-scroll overflow-x-hidden" ref={scrollAreaRef}>
         <div className="p-4 space-y-4">
-          {messages.map((message, index) => (
-            <MessageItem
-              key={index}
-              message={message}
-              userDisplayName="You"
-            />
-          ))}
+          {messages.map((message, index) => {
+            // For assistant messages, find corresponding tool results
+            const toolResults: CoreToolMessage[] = [];
+            if (message.role === 'assistant') {
+              // Look for tool messages that come after this assistant message
+              for (let i = index + 1; i < messages.length; i++) {
+                const nextMessage = messages[i];
+                if (nextMessage?.role === 'tool') {
+                  toolResults.push(nextMessage);
+                } else if (nextMessage?.role === 'assistant' || nextMessage?.role === 'user') {
+                  // Stop looking when we hit the next non-tool message
+                  break;
+                }
+              }
+            }
+
+            return (
+              <MessageItem
+                key={index}
+                message={message}
+                userDisplayName="You"
+                toolResults={toolResults}
+              />
+            );
+          })}
 
           {isLoading && (
             <div className="flex gap-3">

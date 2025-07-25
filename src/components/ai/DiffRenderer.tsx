@@ -7,11 +7,12 @@ interface DiffRendererProps {
   path: string;
   oldStr: string;
   newStr: string;
+  result?: string;
   isError?: boolean;
   className?: string;
 }
 
-export function DiffRenderer({ path, oldStr, newStr, isError = false, className }: DiffRendererProps) {
+export function DiffRenderer({ path, oldStr, newStr, result, isError = false, className }: DiffRendererProps) {
   // Split strings into lines for diff rendering
   const oldLines = oldStr.split('\n');
   const newLines = newStr.split('\n');
@@ -145,6 +146,18 @@ export function DiffRenderer({ path, oldStr, newStr, isError = false, className 
             </span>
           )}
         </div>
+
+        {/* Tool Result */}
+        {result && (
+          <div className={cn(
+            "mt-3 p-3 rounded-md text-sm",
+            isError
+              ? "bg-destructive/10 text-destructive border border-destructive/20"
+              : "bg-muted/30 text-muted-foreground"
+          )}>
+            <pre className="whitespace-pre-wrap break-words">{result}</pre>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

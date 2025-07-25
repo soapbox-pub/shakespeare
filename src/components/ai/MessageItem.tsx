@@ -8,12 +8,14 @@ interface MessageItemProps {
   message: (CoreUserMessage | CoreAssistantMessage | CoreToolMessage) & { id: string };
   userDisplayName?: string;
   userProfileImage?: string;
+  toolResults?: CoreToolMessage[];
 }
 
 export const MessageItem = memo(({
   message,
   userDisplayName = 'You',
-  userProfileImage
+  userProfileImage,
+  toolResults = []
 }: MessageItemProps) => {
   // Don't render tool messages as separate items - they're integrated into assistant messages
   if (message.role === 'tool') {
@@ -60,6 +62,7 @@ export const MessageItem = memo(({
           ) : message.role === 'assistant' ? (
             <AssistantContent
               content={(message as CoreAssistantMessage).content}
+              toolResults={toolResults}
             />
           ) : null}
         </div>

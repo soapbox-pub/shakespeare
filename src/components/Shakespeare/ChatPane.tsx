@@ -94,6 +94,13 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
       } catch (error) {
         console.error('Failed to copy package-lock.json:', error);
       }
+
+      // Dispatch build complete event to refresh the preview iframe
+      const buildCompleteEvent = new CustomEvent('buildComplete', {
+        detail: { projectId }
+      });
+      window.dispatchEvent(buildCompleteEvent);
+      console.log('Build completed successfully, dispatched refresh event');
     } catch (error) {
       console.error('Build failed:', error);
     } finally {

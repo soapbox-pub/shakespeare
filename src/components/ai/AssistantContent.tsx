@@ -9,13 +9,60 @@ import { FileViewer } from '@/components/ai/FileViewer';
 import { FileWriter } from '@/components/ai/FileWriter';
 import { ShellCommand } from '@/components/ai/ShellCommand';
 import { PackageManager } from '@/components/ai/PackageManager';
-import type { CoreAssistantMessage } from 'ai';
+import type { CoreAssistantMessage, CoreToolMessage } from 'ai';
 
 interface AssistantContentProps {
   content: CoreAssistantMessage['content'];
+  toolResults?: CoreToolMessage[];
 }
 
-export const AssistantContent = memo(({ content }: AssistantContentProps) => {
+export const AssistantContent = memo(({ content, toolResults = [] }: AssistantContentProps) => {
+  // Helper function to find tool result by call ID
+  const findToolResult = (toolCallId: string) => {
+    for (const toolMessage of toolResults) {
+      if (toolMessage.content) {
+        for (const resultPart of toolMessage.content) {
+          if (resultPart.toolCallId === toolCallId) {
+            return resultPart;
+          }
+        }
+      }
+    }
+    return null;
+  };
+
+  // Helper function to extract result text and error status
+  const extractToolResult = (toolCallId: string): { result?: string; isError: boolean } => {
+    const toolResult = findToolResult(toolCallId);
+
+    if (!toolResult) {
+      return { isError: false };
+    }
+
+    // Handle direct string results
+    if (typeof toolResult.result === 'string') {
+      return {
+        result: toolResult.result,
+        isError: toolResult.isError || false
+      };
+    }
+
+    // Handle CallToolResult structure
+    if (toolResult.result && typeof toolResult.result === 'object') {
+      const callResult = toolResult.result as {
+        content?: Array<{ type: string; text: string }>;
+        isError?: boolean;
+      };
+      if (callResult.content && Array.isArray(callResult.content) && callResult.content[0]?.text) {
+        return {
+          result: callResult.content[0].text,
+          isError: callResult.isError || false
+        };
+      }
+    }
+
+    return { isError: toolResult.isError || false };
+  };
   // Handle string content (simple text messages)
   if (typeof content === 'string') {
     return (
@@ -118,12 +165,16 @@ export const AssistantContent = memo(({ content }: AssistantContentProps) => {
           // Special rendering for text_editor_str_replace tool
           if (item.toolName === 'text_editor_str_replace' && item.args) {
             const { path, old_str, new_str } = item.args as { path: string; old_str: string; new_str: string };
+            const { result, isError } = extractToolResult(item.toolCallId);
+
             return (
               <DiffRenderer
                 key={index}
                 path={path}
                 oldStr={old_str}
                 newStr={new_str}
+                result={result}
+                isError={isError}
               />
             );
           }
@@ -131,10 +182,14 @@ export const AssistantContent = memo(({ content }: AssistantContentProps) => {
           // Special rendering for run_script tool
           if (item.toolName === 'run_script' && item.args) {
             const { script } = item.args as { script: string };
+            const { result, isError } = extractToolResult(item.toolCallId);
+
             return (
               <ScriptRunner
                 key={index}
                 script={script}
+                result={result}
+                isError={isError}
               />
             );
           }
@@ -142,10 +197,14 @@ export const AssistantContent = memo(({ content }: AssistantContentProps) => {
           // Special rendering for text_editor_view tool
           if (item.toolName === 'text_editor_view' && item.args) {
             const { path } = item.args as { path: string };
+            const { result, isError } = extractToolResult(item.toolCallId);
+
             return (
               <FileViewer
                 key={index}
                 path={path}
+                result={result}
+                isError={isError}
               />
             );
           }
@@ -153,11 +212,15 @@ export const AssistantContent = memo(({ content }: AssistantContentProps) => {
           // Special rendering for text_editor_write tool
           if (item.toolName === 'text_editor_write' && item.args) {
             const { path, file_text } = item.args as { path: string; file_text: string };
+            const { result, isError } = extractToolResult(item.toolCallId);
+
             return (
               <FileWriter
                 key={index}
                 path={path}
                 fileText={file_text}
+                result={result}
+                isError={isError}
               />
             );
           }
@@ -165,10 +228,14 @@ export const AssistantContent = memo(({ content }: AssistantContentProps) => {
           // Special rendering for shell tool
           if (item.toolName === 'shell' && item.args) {
             const { command } = item.args as { command: string };
+            const { result, isError } = extractToolResult(item.toolCallId);
+
             return (
               <ShellCommand
                 key={index}
                 command={command}
+                result={result}
+                isError={isError}
               />
             );
           }
@@ -176,6 +243,8 @@ export const AssistantContent = memo(({ content }: AssistantContentProps) => {
           // Special rendering for npm_add_package tool
           if (item.toolName === 'npm_add_package' && item.args) {
             const { name, version, dev } = item.args as { name: string; version?: string; dev?: boolean };
+            const { result, isError } = extractToolResult(item.toolCallId);
+
             return (
               <PackageManager
                 key={index}
@@ -184,6 +253,8 @@ export const AssistantContent = memo(({ content }: AssistantContentProps) => {
                 packageName={name}
                 version={version}
                 dev={dev}
+                result={result}
+                isError={isError}
               />
             );
           }
@@ -191,12 +262,16 @@ export const AssistantContent = memo(({ content }: AssistantContentProps) => {
           // Special rendering for npm_remove_package tool
           if (item.toolName === 'npm_remove_package' && item.args) {
             const { name } = item.args as { name: string };
+            const { result, isError } = extractToolResult(item.toolCallId);
+
             return (
               <PackageManager
                 key={index}
                 action="remove"
                 registry="npm"
                 packageName={name}
+                result={result}
+                isError={isError}
               />
             );
           }
@@ -204,6 +279,8 @@ export const AssistantContent = memo(({ content }: AssistantContentProps) => {
           // Special rendering for jsr_add_package tool
           if (item.toolName === 'jsr_add_package' && item.args) {
             const { name, version, dev } = item.args as { name: string; version?: string; dev?: boolean };
+            const { result, isError } = extractToolResult(item.toolCallId);
+
             return (
               <PackageManager
                 key={index}
@@ -212,6 +289,8 @@ export const AssistantContent = memo(({ content }: AssistantContentProps) => {
                 packageName={name}
                 version={version}
                 dev={dev}
+                result={result}
+                isError={isError}
               />
             );
           }
@@ -219,12 +298,16 @@ export const AssistantContent = memo(({ content }: AssistantContentProps) => {
           // Special rendering for jsr_remove_package tool
           if (item.toolName === 'jsr_remove_package' && item.args) {
             const { name } = item.args as { name: string };
+            const { result, isError } = extractToolResult(item.toolCallId);
+
             return (
               <PackageManager
                 key={index}
                 action="remove"
                 registry="jsr"
                 packageName={name}
+                result={result}
+                isError={isError}
               />
             );
           }

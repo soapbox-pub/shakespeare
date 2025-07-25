@@ -192,12 +192,16 @@ export function GitHistoryDialog({ projectId }: GitHistoryDialogProps) {
       }
 
       // Create a revert commit
-      const revertMessage = `Revert to ${targetCommit.oid.substring(0, 7)}: ${targetCommit.commit.message}
+      const targetFirstLine = getCommitMessageLines(targetCommit.commit.message).firstLine;
+      const revertMessage = `Revert to ${targetCommit.oid.substring(0, 7)}: ${targetFirstLine}
 
 This reverts the codebase back to the state at commit ${targetCommit.oid.substring(0, 7)}.
 
 Reverted ${commitsToRevert.length} commit(s):
-${commitsToRevert.map(c => `- ${c.oid.substring(0, 7)}: ${c.commit.message}`).join('\n')}`;
+${commitsToRevert.map(c => {
+  const commitFirstLine = getCommitMessageLines(c.commit.message).firstLine;
+  return `- ${c.oid.substring(0, 7)}: ${commitFirstLine}`;
+}).join('\n')}`;
 
       await git.commit({
         fs,

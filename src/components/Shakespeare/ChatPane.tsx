@@ -3,7 +3,7 @@ import { useState, useRef, useEffect } from 'react';
 import { CoreMessage, generateText, CoreUserMessage, CoreAssistantMessage, CoreToolMessage, generateId } from 'ai';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Send, Settings, Play, CloudUpload } from 'lucide-react';
+import { Send, Settings, Play, CloudUpload, Loader2 } from 'lucide-react';
 import { useAISettings } from '@/hooks/useAISettings';
 import { useFS } from '@/hooks/useFS';
 import { useJSRuntime } from '@/hooks/useJSRuntime';
@@ -30,6 +30,8 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
   const [messages, setMessages] = useState<AIMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isBuildLoading, setIsBuildLoading] = useState(false);
+  const [isDeployLoading, setIsDeployLoading] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const { settings, isConfigured } = useAISettings();
   const { fs: browserFS } = useFS();
@@ -51,58 +53,71 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
   };
 
   const runBuild = async () => {
-    console.log('Running build for project:', projectId);
-    const runtimeFS = await runtime.fs();
+    if (isBuildLoading) return;
 
-    // Copy project files to runtime filesystem
-    const projectPath = `/projects/${projectId}`;
+    setIsBuildLoading(true);
     try {
-      await copyDirectory(browserFS, runtimeFS, projectPath, '.');
-      console.log('Successfully copied project to runtime');
+      console.log('Running build for project:', projectId);
+      const runtimeFS = await runtime.fs();
+
+      // Copy project files to runtime filesystem
+      const projectPath = `/projects/${projectId}`;
+      try {
+        await copyDirectory(browserFS, runtimeFS, projectPath, '.');
+        console.log('Successfully copied project to runtime');
+      } catch (error) {
+        console.error('Failed to copy project to runtime:', error);
+        return;
+      }
+
+      // Install dependencies and build
+      const proc = await runtime.spawn('npm', ['i']);
+      await proc.exit;
+
+      const proc2 = await runtime.spawn('npm', ['run', 'build']);
+      await proc2.exit;
+
+      // Copy "dist" directory from runtime back to project filesystem
+      const distPath = `/projects/${projectId}/dist`;
+      try {
+        await copyDirectory(runtimeFS, browserFS, 'dist', distPath);
+        console.log('Successfully copied dist from runtime');
+      } catch (error) {
+        console.error('Failed to copy dist:', error);
+      }
+
+      // Copy package-lock.json from runtime back to project filesystem
+      const packageLockPath = `/projects/${projectId}/package-lock.json`;
+      try {
+        await copyFile(runtimeFS, browserFS, 'package-lock.json', packageLockPath);
+        console.log('Successfully copied package-lock.json from runtime');
+      } catch (error) {
+        console.error('Failed to copy package-lock.json:', error);
+      }
     } catch (error) {
-      console.error('Failed to copy project to runtime:', error);
-      return;
-    }
-
-    // Install dependencies and build
-    const proc = await runtime.spawn('npm', ['i']);
-    await proc.exit;
-
-    const proc2 = await runtime.spawn('npm', ['run', 'build']);
-    await proc2.exit;
-
-    // Copy "dist" directory from runtime back to project filesystem
-    const distPath = `/projects/${projectId}/dist`;
-    try {
-      await copyDirectory(runtimeFS, browserFS, 'dist', distPath);
-      console.log('Successfully copied dist from runtime');
-    } catch (error) {
-      console.error('Failed to copy dist:', error);
-    }
-
-    // Copy package-lock.json from runtime back to project filesystem
-    const packageLockPath = `/projects/${projectId}/package-lock.json`;
-    try {
-      await copyFile(runtimeFS, browserFS, 'package-lock.json', packageLockPath);
-      console.log('Successfully copied package-lock.json from runtime');
-    } catch (error) {
-      console.error('Failed to copy package-lock.json:', error);
+      console.error('Build failed:', error);
+    } finally {
+      setIsBuildLoading(false);
     }
   };
 
   const runDeploy = async () => {
-    const runtimeFS = await runtime.fs();
+    if (isDeployLoading) return;
 
-    const sk = generateSecretKey();
-    const pubkey = getPublicKey(sk);
-    const npub = nip19.npubEncode(pubkey);
+    setIsDeployLoading(true);
+    try {
+      const runtimeFS = await runtime.fs();
 
-    const projectUrl = `https://${npub}.nostrdeploy.com`;
-    console.log('Running deploy for project:', projectId, 'at', projectUrl);
+      const sk = generateSecretKey();
+      const pubkey = getPublicKey(sk);
+      const npub = nip19.npubEncode(pubkey);
 
-    await runtimeFS.mkdir('dist', { recursive: true });
+      const projectUrl = `https://${npub}.nostrdeploy.com`;
+      console.log('Running deploy for project:', projectId, 'at', projectUrl);
 
-    await runtimeFS.writeFile('.env.nostr-deploy.local', `# Nostr Deploy CLI Configuration
+      await runtimeFS.mkdir('dist', { recursive: true });
+
+      await runtimeFS.writeFile('.env.nostr-deploy.local', `# Nostr Deploy CLI Configuration
 # This file contains sensitive information - do not commit to version control
 
 # Nostr Authentication
@@ -116,20 +131,25 @@ BLOSSOM_SERVERS=https://cdn.hzrd149.com,https://blossom.primal.net,https://bloss
 # Deployment Settings
 BASE_DOMAIN=nostrdeploy.com`);
 
-    // Copy "dist" files to runtime filesystem
-    const distPath = `/projects/${projectId}/dist`;
-    try {
-      await copyDirectory(browserFS, runtimeFS, distPath, 'dist');
-      console.log('Successfully copied dist to runtime');
+      // Copy "dist" files to runtime filesystem
+      const distPath = `/projects/${projectId}/dist`;
+      try {
+        await copyDirectory(browserFS, runtimeFS, distPath, 'dist');
+        console.log('Successfully copied dist to runtime');
+      } catch (error) {
+        console.error('Failed to copy dist to runtime:', error);
+        return;
+      }
+
+      const proc = await runtime.spawn('npx', ["-y", "nostr-deploy-cli", "deploy"]);
+      await proc.exit;
+
+      console.log('Project deployed:', projectUrl);
     } catch (error) {
-      console.error('Failed to copy dist to runtime:', error);
-      return;
+      console.error('Deploy failed:', error);
+    } finally {
+      setIsDeployLoading(false);
     }
-
-    const proc = await runtime.spawn('npx', ["-y", "nostr-deploy-cli", "deploy"]);
-    await proc.exit;
-
-    console.log('Project deployed:', projectUrl);
   };
 
   useEffect(() => {
@@ -333,18 +353,32 @@ When creating new components or pages, follow the existing patterns in the codeb
             size="sm"
             className="gap-1 sm:gap-2 hover:bg-primary/10 hover:border-primary/20"
             onClick={runBuild}
+            disabled={isBuildLoading || isDeployLoading}
           >
-            <Play className="h-4 w-4" />
-            <span className="hidden sm:inline">Build</span>
+            {isBuildLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Play className="h-4 w-4" />
+            )}
+            <span className="hidden sm:inline">
+              {isBuildLoading ? 'Building...' : 'Build'}
+            </span>
           </Button>
           <Button
             variant="outline"
             size="sm"
             className="gap-1 sm:gap-2 hover:bg-accent/10 hover:border-accent/20"
             onClick={runDeploy}
+            disabled={isDeployLoading || isBuildLoading}
           >
-            <CloudUpload className="h-4 w-4" />
-            <span className="hidden sm:inline">Deploy</span>
+            {isDeployLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <CloudUpload className="h-4 w-4" />
+            )}
+            <span className="hidden sm:inline">
+              {isDeployLoading ? 'Deploying...' : 'Deploy'}
+            </span>
           </Button>
         </div>
       </div>

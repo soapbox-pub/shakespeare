@@ -9,6 +9,7 @@ import { FileViewer } from '@/components/ai/FileViewer';
 import { FileWriter } from '@/components/ai/FileWriter';
 import { ShellCommand } from '@/components/ai/ShellCommand';
 import { PackageManager } from '@/components/ai/PackageManager';
+import { GitCommit } from '@/components/ai/GitCommit';
 import type { CoreAssistantMessage, CoreToolMessage } from 'ai';
 
 interface AssistantContentProps {
@@ -306,6 +307,21 @@ export const AssistantContent = memo(({ content, toolResults = [] }: AssistantCo
                 action="remove"
                 registry="jsr"
                 packageName={name}
+                result={result}
+                isError={isError}
+              />
+            );
+          }
+
+          // Special rendering for git_commit tool
+          if (item.toolName === 'git_commit' && item.args) {
+            const { message } = item.args as { message: string };
+            const { result, isError } = extractToolResult(item.toolCallId);
+
+            return (
+              <GitCommit
+                key={index}
+                message={message}
                 result={result}
                 isError={isError}
               />

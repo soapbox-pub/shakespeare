@@ -4,8 +4,8 @@ import { Plus, Loader2, Info, MoreVertical, Trash2, Eye, Star, Bug, Folder } fro
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+
+
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { LoginArea } from '@/components/auth/LoginArea';
@@ -190,9 +190,8 @@ export function ProjectSidebar({
               <p className="text-xs">Create your first project to get started</p>
             </div>
           ) : (
-            <TooltipProvider>
-              <div className="space-y-1">
-                {sortedProjects.map((project) => (
+            <div className="space-y-1">
+              {sortedProjects.map((project) => (
                   <div
                     key={project.id}
                     className={cn(
@@ -208,17 +207,6 @@ export function ProjectSidebar({
                       className="w-full p-3 text-left text-sidebar-foreground"
                     >
                       <div className="flex items-center gap-3">
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <div className="relative flex items-center">
-                              <div className="w-2 h-2 rounded-full shrink-0 bg-green-500" />
-                            </div>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Ready</p>
-                          </TooltipContent>
-                        </Tooltip>
-
                         <div className="flex items-start justify-between gap-2 flex-1 min-w-0">
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2 mb-1">
@@ -229,9 +217,6 @@ export function ProjectSidebar({
                                 {isFavorite(project.id) && (
                                   <Star className="h-3 w-3 text-yellow-500 fill-current" />
                                 )}
-                                <Badge variant="secondary" className="text-xs flex-shrink-0">
-                                  {project.lastModified.toLocaleDateString()}
-                                </Badge>
                               </div>
                             </div>
                           </div>
@@ -309,8 +294,7 @@ export function ProjectSidebar({
                     </button>
                   </div>
                 ))}
-              </div>
-            </TooltipProvider>
+            </div>
           )}
         </div>
       </div>

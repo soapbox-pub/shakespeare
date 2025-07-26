@@ -149,7 +149,13 @@ export function ProjectSidebar({
       const url = URL.createObjectURL(content);
       const link = document.createElement('a');
       link.href = url;
-      link.download = selectedProject ? `${selectedProject.name}-files.zip` : 'project-files.zip';
+
+      // Generate filename with date
+      const now = new Date();
+      const dateStr = now.toISOString().split('T')[0]; // YYYY-MM-DD format
+      const projectName = selectedProject?.name || 'shakespeare';
+      link.download = `${projectName}-${dateStr}.zip`;
+
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -213,7 +219,7 @@ export function ProjectSidebar({
               <DropdownMenuContent align="end" className="w-48">
                 <DropdownMenuItem
                   onClick={handleExportFiles}
-                  disabled={isExporting || !selectedProject}
+                  disabled={isExporting}
                   className="flex items-center gap-2 w-full"
                 >
                   <Download className="h-4 w-4" />

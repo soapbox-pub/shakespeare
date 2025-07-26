@@ -19,6 +19,12 @@ export interface Project {
   lastModified: Date;
 }
 
+interface ProjectMetadata {
+  name: string;
+  createdAt: string;
+  lastModified: string;
+}
+
 export class ProjectsManager {
   fs: JSRuntimeFS;
   dir: string;
@@ -42,12 +48,11 @@ export class ProjectsManager {
 
     await this.fs.mkdir(projectPath);
 
-    const project: Project = {
-      id,
+    const now = new Date();
+    const metadata: ProjectMetadata = {
       name,
-      path: projectPath,
-      createdAt: new Date(),
-      lastModified: new Date(),
+      createdAt: now.toISOString(),
+      lastModified: now.toISOString(),
     };
 
     // Clone the template first
@@ -57,10 +62,17 @@ export class ProjectsManager {
     const gitDir = `${projectPath}/.git`;
     await this.fs.writeFile(
       `${gitDir}/project.json`,
-      JSON.stringify(project, null, 2)
+      JSON.stringify(metadata, null, 2)
     );
 
-    return project;
+    // Return the full project object with dynamically generated properties
+    return {
+      id,
+      name,
+      path: projectPath,
+      createdAt: now,
+      lastModified: now,
+    };
   }
 
   async cloneTemplate(projectPath: string) {
@@ -85,12 +97,18 @@ export class ProjectsManager {
 
         try {
           const projectData = await this.fs.readFile(projectFile, 'utf8');
-          const project = JSON.parse(projectData);
-          projects.push({
-            ...project,
-            createdAt: new Date(project.createdAt),
-            lastModified: new Date(project.lastModified),
-          });
+          const metadata: ProjectMetadata = JSON.parse(projectData);
+
+          // Generate dynamic properties
+          const project: Project = {
+            id: dir, // basename of the path
+            name: metadata.name,
+            path: projectPath,
+            createdAt: new Date(metadata.createdAt),
+            lastModified: new Date(metadata.lastModified),
+          };
+
+          projects.push(project);
         } catch {
           // Skip invalid projects
         }
@@ -104,13 +122,18 @@ export class ProjectsManager {
 
   async getProject(id: string): Promise<Project | null> {
     try {
-      const projectFile = `${this.dir}/${id}/.git/project.json`;
+      const projectPath = `${this.dir}/${id}`;
+      const projectFile = `${projectPath}/.git/project.json`;
       const projectData = await this.fs.readFile(projectFile, 'utf8');
-      const project = JSON.parse(projectData);
+      const metadata: ProjectMetadata = JSON.parse(projectData);
+
+      // Generate dynamic properties
       return {
-        ...project,
-        createdAt: new Date(project.createdAt),
-        lastModified: new Date(project.lastModified),
+        id, // basename of the path
+        name: metadata.name,
+        path: projectPath,
+        createdAt: new Date(metadata.createdAt),
+        lastModified: new Date(metadata.lastModified),
       };
     } catch {
       return null;
@@ -243,9 +266,9 @@ export class ProjectsManager {
     try {
       const projectFile = `${this.dir}/${projectId}/.git/project.json`;
       const projectData = await this.fs.readFile(projectFile, 'utf8');
-      const project = JSON.parse(projectData);
-      project.lastModified = new Date().toISOString();
-      await this.fs.writeFile(projectFile, JSON.stringify(project, null, 2));
+      const metadata: ProjectMetadata = JSON.parse(projectData);
+      metadata.lastModified = new Date().toISOString();
+      await this.fs.writeFile(projectFile, JSON.stringify(metadata, null, 2));
     } catch {
       // Ignore errors updating last modified
     }

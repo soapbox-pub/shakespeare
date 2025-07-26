@@ -37,7 +37,7 @@ export class ProjectsManager {
   }
 
   async createProject(name: string): Promise<Project> {
-    const id = this.generateProjectId(name);
+    const id = await this.generateUniqueProjectId(name);
     const projectPath = `${this.dir}/${id}`;
 
     await this.fs.mkdir(projectPath);
@@ -210,13 +210,33 @@ export class ProjectsManager {
     }
   }
 
-  private generateProjectId(name: string): string {
-    const timestamp = Date.now().toString(36);
-    const slug = name
+  private async generateUniqueProjectId(name: string): Promise<string> {
+    const baseSlug = name
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '');
-    return `${slug}-${timestamp}`;
+
+    // First try the base slug
+    let slug = baseSlug;
+    let counter = 1;
+
+    // Check if the directory already exists, if so, add a number
+    while (await this.projectExists(slug)) {
+      slug = `${baseSlug}-${counter}`;
+      counter++;
+    }
+
+    return slug;
+  }
+
+  private async projectExists(id: string): Promise<boolean> {
+    try {
+      const projectPath = `${this.dir}/${id}`;
+      await this.fs.stat(projectPath);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   private async updateProjectLastModified(projectId: string): Promise<void> {

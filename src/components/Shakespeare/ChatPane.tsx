@@ -45,9 +45,9 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
     artist: `Working on ${projectName}...`,
     artwork: [
       {
-        src: '/favicon.ico',
-        sizes: '32x32',
-        type: 'image/x-icon'
+        src: '/favicon.png',
+        sizes: '512x512',
+        type: 'image/png'
       }
     ]
   });

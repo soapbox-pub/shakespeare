@@ -7,6 +7,7 @@ import { Send, Settings, Play, CloudUpload, Loader2 } from 'lucide-react';
 import { useAISettings } from '@/hooks/useAISettings';
 import { useFS } from '@/hooks/useFS';
 import { useJSRuntime } from '@/hooks/useJSRuntime';
+import { useKeepAlive } from '@/hooks/useKeepAlive';
 import { copyDirectory, copyFile } from '@/lib/copyFiles';
 import { generateSecretKey, getPublicKey, nip19 } from 'nostr-tools';
 import { bytesToHex } from 'nostr-tools/utils';
@@ -37,6 +38,20 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
   const { fs: browserFS } = useFS();
   const { runtime } = useJSRuntime();
 
+  // Keep-alive functionality to prevent tab throttling during AI processing
+  const { updateMetadata } = useKeepAlive({
+    enabled: isLoading || isBuildLoading || isDeployLoading,
+    title: 'Shakespeare',
+    artist: `Working on ${projectName}...`,
+    artwork: [
+      {
+        src: '/favicon.ico',
+        sizes: '32x32',
+        type: 'image/x-icon'
+      }
+    ]
+  });
+
   const addMessage = (message: AIMessage) => {
     setMessages((prev) => {
       const messageMap = new Map(prev.map(m => [m.id, m])).set(message.id, message);
@@ -56,6 +71,7 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
     if (isBuildLoading) return;
 
     setIsBuildLoading(true);
+    updateMetadata('Shakespeare', `Building ${projectName}...`);
     try {
       console.log('Running build for project:', projectId);
       const runtimeFS = await runtime.fs();
@@ -112,6 +128,7 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
     if (isDeployLoading) return;
 
     setIsDeployLoading(true);
+    updateMetadata('Shakespeare', `Deploying ${projectName}...`);
     try {
       const runtimeFS = await runtime.fs();
 
@@ -216,6 +233,15 @@ BASE_DOMAIN=nostrdeploy.com`);
       onStepFinish(stepResult) {
         console.log(stepResult);
         addMessages(stepResult.response.messages);
+
+        // Update media session with current step info
+        const lastMessage = stepResult.response.messages[stepResult.response.messages.length - 1];
+        if (lastMessage?.role === 'tool') {
+          const toolName = lastMessage.content?.[0]?.toolName;
+          if (toolName) {
+            updateMetadata('Shakespeare', `Working on ${projectName} - ${toolName}`);
+          }
+        }
       },
       tools: {
         git_commit: new GitCommitTool(browserFS, cwd),
@@ -272,6 +298,7 @@ When creating new components or pages, follow the existing patterns in the codeb
 
     try {
       const aiMessages: AIMessage[] = [...messages, userMessage];
+      updateMetadata('Shakespeare', `Processing your request for ${projectName}...`);
 
       await createAIChat(projectId, aiMessages);
     } catch (error) {
@@ -292,6 +319,12 @@ When creating new components or pages, follow the existing patterns in the codeb
       e.preventDefault();
       handleSend();
     }
+  };
+
+  // Handle first user interaction to enable audio context
+  const handleFirstInteraction = () => {
+    // This will be handled automatically by the useKeepAlive hook
+    // when isLoading becomes true after user interaction
   };
 
   if (!isConfigured) {
@@ -360,6 +393,7 @@ When creating new components or pages, follow the existing patterns in the codeb
             size="sm"
             className="gap-1 sm:gap-2 hover:bg-primary/10 hover:border-primary/20"
             onClick={runBuild}
+            onMouseDown={handleFirstInteraction}
             disabled={isBuildLoading || isDeployLoading}
           >
             {isBuildLoading ? (
@@ -376,6 +410,7 @@ When creating new components or pages, follow the existing patterns in the codeb
             size="sm"
             className="gap-1 sm:gap-2 hover:bg-accent/10 hover:border-accent/20"
             onClick={runDeploy}
+            onMouseDown={handleFirstInteraction}
             disabled={isDeployLoading || isBuildLoading}
           >
             {isDeployLoading ? (
@@ -447,12 +482,14 @@ When creating new components or pages, follow the existing patterns in the codeb
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
+            onFocus={handleFirstInteraction}
             placeholder="Ask me to add features, edit files, or build your project..."
             className="min-h-[60px] resize-none"
             disabled={isLoading}
           />
           <Button
             onClick={handleSend}
+            onMouseDown={handleFirstInteraction}
             disabled={!input.trim() || isLoading}
             className="self-end"
             size="icon"

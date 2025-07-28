@@ -100,25 +100,25 @@ export function OnboardingDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto p-0 w-[95vw] md:w-full">
-        <div className="sticky top-0 bg-background border-b p-6 pb-4 z-10">
+      <DialogContent className="max-w-lg w-[95vw] max-h-[90vh] overflow-y-auto p-0 sm:max-w-xl md:max-w-4xl">
+        <div className="sticky top-0 bg-background border-b p-4 sm:p-5 pb-3 z-10">
           <DialogTitle className="sr-only">Getting Started Onboarding</DialogTitle>
           <DialogDescription className="sr-only">Complete the onboarding process to get started with Shakespeare</DialogDescription>
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold">Getting Started</h2>
-              <span className="text-sm text-muted-foreground">
-                Step {currentStep + 1} of {STEPS.length}
+              <h2 className="text-base sm:text-lg font-semibold">Getting Started</h2>
+              <span className="text-xs sm:text-sm text-muted-foreground">
+                {currentStep + 1} / {STEPS.length}
               </span>
             </div>
             <div className="relative">
-              <Progress value={progress} className="h-2" />
+              <Progress value={progress} className="h-1.5" />
             </div>
-            <div className="flex justify-between text-xs text-muted-foreground">
+            <div className="flex justify-between text-[10px] sm:text-xs text-muted-foreground">
               {STEPS.map((step, index) => (
                 <span
                   key={step.id}
-                  className={index <= currentStep ? 'text-primary font-medium' : ''}
+                  className={`${index <= currentStep ? 'text-primary font-medium' : ''} truncate`}
                 >
                   {step.title}
                 </span>
@@ -127,7 +127,7 @@ export function OnboardingDialog({
           </div>
         </div>
 
-        <div className="p-6 pt-4">
+        <div className="px-2 sm:p-6">
           {renderStep()}
         </div>
       </DialogContent>

@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useLocalStorage } from './useLocalStorage';
-import { useCurrentUser } from './useCurrentUser';
 
 export function useOnboarding() {
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useLocalStorage(
@@ -9,14 +8,13 @@ export function useOnboarding() {
   );
   const [currentStep, setCurrentStep] = useState(0);
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
-  const { user } = useCurrentUser();
 
   // Check if onboarding should be shown on first load
   useEffect(() => {
-    if (!hasCompletedOnboarding && user) {
+    if (!hasCompletedOnboarding) {
       setIsOnboardingOpen(true);
     }
-  }, [hasCompletedOnboarding, user]);
+  }, [hasCompletedOnboarding]);
 
   const handleNextStep = () => {
     setCurrentStep(prev => Math.min(prev + 1, 2));

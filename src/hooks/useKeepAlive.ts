@@ -12,7 +12,7 @@ interface UseKeepAliveOptions {
 }
 
 /**
- * Hook to keep the tab alive using a silent sine wave and Media Session API.
+ * Hook to keep the tab alive using a silent audio element and Media Session API.
  * This prevents the browser from throttling the tab when the user locks their phone
  * or navigates away, allowing AI processing to continue in the background.
  */
@@ -22,50 +22,29 @@ export function useKeepAlive({
   artist,
   artwork = []
 }: UseKeepAliveOptions) {
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const oscillatorRef = useRef<OscillatorNode | null>(null);
-  const gainNodeRef = useRef<GainNode | null>(null);
+  const audioElementRef = useRef<HTMLAudioElement | null>(null);
   const isActiveRef = useRef(false);
 
   const startKeepAlive = useCallback(async () => {
     if (isActiveRef.current || !enabled) return;
 
     try {
-      // Create audio context
-      const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-      if (!AudioContextClass) {
-        throw new Error('AudioContext not supported');
-      }
-      audioContextRef.current = new AudioContextClass();
-      const audioContext = audioContextRef.current;
+      // Create audio element and add it to the DOM
+      audioElementRef.current = document.createElement('audio');
+      const audio = audioElementRef.current;
 
-      // Resume audio context if suspended (required for user interaction)
-      if (audioContext.state === 'suspended') {
-        await audioContext.resume();
-      }
+      // Configure audio element to use the provided audio file
+      audio.src = '/sine.mp3';
+      audio.loop = true;
+      audio.volume = 0.01; // Very low volume but not completely muted
+      audio.preload = 'auto';
+      audio.style.display = 'none'; // Hide the audio element
+      audio.setAttribute('aria-hidden', 'true'); // Hide from screen readers
 
-      // Create oscillator for silent sine wave
-      oscillatorRef.current = audioContext.createOscillator();
-      gainNodeRef.current = audioContext.createGain();
+      // Add to DOM (required for proper media session support)
+      document.body.appendChild(audio);
 
-      const oscillator = oscillatorRef.current;
-      const gainNode = gainNodeRef.current;
-
-      // Configure oscillator
-      oscillator.type = 'sine';
-      oscillator.frequency.setValueAtTime(20000, audioContext.currentTime); // 20kHz - above human hearing range
-
-      // Set volume to nearly silent but not completely muted
-      gainNode.gain.setValueAtTime(0.001, audioContext.currentTime);
-
-      // Connect nodes
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-
-      // Start oscillator
-      oscillator.start();
-
-      // Set up Media Session API
+      // Set up Media Session API before playing
       if ('mediaSession' in navigator) {
         navigator.mediaSession.metadata = new MediaMetadata({
           title,
@@ -73,25 +52,72 @@ export function useKeepAlive({
           artwork
         });
 
-        // Set playback state
-        navigator.mediaSession.playbackState = 'playing';
-
         // Handle media session actions
         navigator.mediaSession.setActionHandler('play', () => {
-          // Already playing, do nothing
+          if (audioElementRef.current) {
+            audioElementRef.current.play().catch(console.error);
+          }
         });
 
         navigator.mediaSession.setActionHandler('pause', () => {
-          stopKeepAlive();
+          if (audioElementRef.current) {
+            audioElementRef.current.pause();
+            audioElementRef.current.currentTime = 0;
+            audioElementRef.current.src = '';
+            audioElementRef.current.load();
+
+            // Remove from DOM
+            if (audioElementRef.current.parentNode) {
+              audioElementRef.current.parentNode.removeChild(audioElementRef.current);
+            }
+
+            audioElementRef.current = null;
+          }
+          if ('mediaSession' in navigator) {
+            navigator.mediaSession.metadata = null;
+            navigator.mediaSession.playbackState = 'none';
+            navigator.mediaSession.setActionHandler('play', null);
+            navigator.mediaSession.setActionHandler('pause', null);
+            navigator.mediaSession.setActionHandler('stop', null);
+          }
+          isActiveRef.current = false;
         });
 
         navigator.mediaSession.setActionHandler('stop', () => {
-          stopKeepAlive();
+          if (audioElementRef.current) {
+            audioElementRef.current.pause();
+            audioElementRef.current.currentTime = 0;
+            audioElementRef.current.src = '';
+            audioElementRef.current.load();
+
+            // Remove from DOM
+            if (audioElementRef.current.parentNode) {
+              audioElementRef.current.parentNode.removeChild(audioElementRef.current);
+            }
+
+            audioElementRef.current = null;
+          }
+          if ('mediaSession' in navigator) {
+            navigator.mediaSession.metadata = null;
+            navigator.mediaSession.playbackState = 'none';
+            navigator.mediaSession.setActionHandler('play', null);
+            navigator.mediaSession.setActionHandler('pause', null);
+            navigator.mediaSession.setActionHandler('stop', null);
+          }
+          isActiveRef.current = false;
         });
       }
 
+      // Start playing
+      await audio.play();
+
+      // Set playback state after successful play
+      if ('mediaSession' in navigator) {
+        navigator.mediaSession.playbackState = 'playing';
+      }
+
       isActiveRef.current = true;
-      console.log('Keep-alive started with silent audio and media session');
+      console.log('Keep-alive started with silent audio element and media session');
     } catch (error) {
       console.error('Failed to start keep-alive:', error);
     }
@@ -101,23 +127,19 @@ export function useKeepAlive({
     if (!isActiveRef.current) return;
 
     try {
-      // Stop oscillator
-      if (oscillatorRef.current) {
-        oscillatorRef.current.stop();
-        oscillatorRef.current.disconnect();
-        oscillatorRef.current = null;
-      }
+      // Stop and cleanup audio element
+      if (audioElementRef.current) {
+        audioElementRef.current.pause();
+        audioElementRef.current.currentTime = 0;
+        audioElementRef.current.src = '';
+        audioElementRef.current.load(); // Reset the audio element
 
-      // Disconnect gain node
-      if (gainNodeRef.current) {
-        gainNodeRef.current.disconnect();
-        gainNodeRef.current = null;
-      }
+        // Remove from DOM
+        if (audioElementRef.current.parentNode) {
+          audioElementRef.current.parentNode.removeChild(audioElementRef.current);
+        }
 
-      // Close audio context
-      if (audioContextRef.current) {
-        audioContextRef.current.close();
-        audioContextRef.current = null;
+        audioElementRef.current = null;
       }
 
       // Clear media session

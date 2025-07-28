@@ -113,21 +113,25 @@ export default function Index() {
       <div className="min-h-dvh bg-gradient-to-br from-primary/5 to-accent/5">
         {/* Mobile Header */}
         <header className="border-b bg-gradient-to-r from-primary/10 via-accent/5 to-primary/10 backdrop-blur px-4 py-3 flex items-center justify-between">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsSidebarVisible(!isSidebarVisible)}
-          >
-            <Menu className="h-4 w-4" />
-          </Button>
+          {projects.length > 0 ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsSidebarVisible(!isSidebarVisible)}
+            >
+              <Menu className="h-4 w-4" />
+            </Button>
+          ) : (
+            <div className="w-8" /> /* Spacer when no sidebar */
+          )}
           <h1 className="text-lg font-semibold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
             Shakespeare
           </h1>
           <div className="w-8" /> {/* Spacer */}
         </header>
 
-        {/* Mobile Sidebar Overlay */}
-        {isSidebarVisible && (
+        {/* Mobile Sidebar Overlay - only show if user has projects */}
+        {projects.length > 0 && isSidebarVisible && (
           <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm">
             {/* Backdrop - only covers the area not occupied by the sidebar */}
             <div
@@ -306,20 +310,22 @@ export default function Index() {
         }}
       />
       <div className="h-screen flex bg-background">
-      {/* Fixed Sidebar */}
-      <div className={cn("w-80 border-r bg-sidebar transition-all duration-300", isSidebarVisible ? "block" : "hidden")}>
-        <ProjectSidebar
-          selectedProject={null}
-          onSelectProject={handleProjectSelect}
-          className="h-full"
-        />
-      </div>
+      {/* Fixed Sidebar - only show if user has created projects */}
+      {projects.length > 0 && (
+        <div className={cn("w-80 border-r bg-sidebar transition-all duration-300", isSidebarVisible ? "block" : "hidden")}>
+          <ProjectSidebar
+            selectedProject={null}
+            onSelectProject={handleProjectSelect}
+            className="h-full"
+          />
+        </div>
+      )}
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden bg-background">
         <div className="min-h-full bg-gradient-to-br from-primary/5 to-accent/5">
-            {/* Header */}
-            {!isSidebarVisible && (
+            {/* Header - only show toggle button if user has projects */}
+            {!isSidebarVisible && projects.length > 0 && (
               <header className="border-b bg-gradient-to-r from-primary/10 via-accent/5 to-primary/10 backdrop-blur px-4 py-3 flex items-center">
                 <Button
                   variant="ghost"

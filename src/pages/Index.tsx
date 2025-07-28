@@ -64,7 +64,12 @@ export default function Index() {
     loadProjects();
   }, [loadProjects]);
 
-
+  // Restore prompt from local storage on mount
+  useEffect(() => {
+    if (storedPrompt) {
+      setPrompt(storedPrompt);
+    }
+  }, [storedPrompt]);
 
   // Sync prompt with local storage
   const handlePromptChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {

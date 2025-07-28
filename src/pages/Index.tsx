@@ -273,6 +273,20 @@ export default function Index() {
             </div>
           </div>
         </div>
+
+        <OnboardingDialog
+          open={isOnboardingOpen}
+          onOpenChange={setIsOnboardingOpen}
+          currentStep={currentStep}
+          onNextStep={handleNextStep}
+          onPreviousStep={handlePreviousStep}
+          onComplete={handleCompleteOnboarding}
+          initialPrompt={storedPrompt}
+          onProjectCreated={(projectId) => {
+            console.log('Project created during onboarding:', projectId);
+            setStoredPrompt('');
+          }}
+        />
       </div>
     );
   }

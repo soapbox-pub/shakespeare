@@ -100,7 +100,7 @@ export function OnboardingDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto p-0">
+      <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto p-0 w-[95vw] md:w-full">
         <div className="sticky top-0 bg-background border-b p-6 pb-4 z-10">
           <DialogTitle className="sr-only">Getting Started Onboarding</DialogTitle>
           <DialogDescription className="sr-only">Complete the onboarding process to get started with Shakespeare</DialogDescription>

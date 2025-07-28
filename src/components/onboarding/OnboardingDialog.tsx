@@ -114,11 +114,11 @@ export function OnboardingDialog({
             <div className="relative">
               <Progress value={progress} className="h-1.5" />
             </div>
-            <div className="flex justify-between text-[10px] sm:text-xs text-muted-foreground">
+            <div className="grid grid-cols-3 gap-2 text-[10px] sm:text-xs text-muted-foreground">
               {STEPS.map((step, index) => (
                 <span
                   key={step.id}
-                  className={`${index <= currentStep ? 'text-primary font-medium' : ''} truncate`}
+                  className={`text-center ${index <= currentStep ? 'text-primary font-medium' : ''} truncate`}
                 >
                   {step.title}
                 </span>

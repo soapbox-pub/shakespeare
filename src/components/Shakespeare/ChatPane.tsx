@@ -1,6 +1,7 @@
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { CoreMessage, generateText, CoreUserMessage, CoreAssistantMessage, CoreToolMessage, generateId } from 'ai';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Send, Settings, Play, CloudUpload, Loader2 } from 'lucide-react';
@@ -28,15 +29,22 @@ interface ChatPaneProps {
 type AIMessage = (CoreUserMessage | CoreAssistantMessage | CoreToolMessage) & { id: string };
 
 export function ChatPane({ projectId, projectName }: ChatPaneProps) {
-  const [messages, setMessages] = useState<AIMessage[]>([]);
+  const [messages, setMessages] = useLocalStorage<AIMessage[]>(
+    `shakespeare-chat-${projectId}`,
+    []
+  );
   const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useLocalStorage<boolean>(
+    `shakespeare-loading-${projectId}`,
+    false
+  );
   const [isBuildLoading, setIsBuildLoading] = useState(false);
   const [isDeployLoading, setIsDeployLoading] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const { settings, isConfigured } = useAISettings();
   const { fs: browserFS } = useFS();
   const { runtime } = useJSRuntime();
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Keep-alive functionality to prevent tab throttling during AI processing
   const { updateMetadata } = useKeepAlive({
@@ -52,20 +60,20 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
     ]
   });
 
-  const addMessage = (message: AIMessage) => {
+  const addMessage = useCallback((message: AIMessage) => {
     setMessages((prev) => {
       const messageMap = new Map(prev.map(m => [m.id, m])).set(message.id, message);
       return Array.from(messageMap.values());
     });
-  };
+  }, [setMessages]);
 
-  const addMessages = (newMessages: AIMessage[]) => {
+  const addMessages = useCallback((newMessages: AIMessage[]) => {
     setMessages((prev) => {
       const messageMap = new Map(prev.map(m => [m.id, m]));
       newMessages.forEach(msg => messageMap.set(msg.id, msg));
       return Array.from(messageMap.values());
     });
-  };
+  }, [setMessages]);
 
   const runBuild = async () => {
     if (isBuildLoading) return;
@@ -177,13 +185,123 @@ BASE_DOMAIN=nostrdeploy.com`);
   };
 
   useEffect(() => {
-    // Add welcome message
-    addMessage({
-      id: generateId(),
-      role: 'assistant',
-      content: `Hello! I'm here to help you build "${projectName}". I can help you edit files, add new features, and build your Nostr website. What would you like to work on?`,
-    });
-  }, [projectName, projectId]);
+    // Add welcome message only if there are no existing messages
+    if (messages.length === 0) {
+      addMessage({
+        id: generateId(),
+        role: 'assistant',
+        content: `Hello! I'm here to help you build "${projectName}". I can help you edit files, add new features, and build your Nostr website. What would you like to work on?`,
+      });
+    }
+
+    // Resume interrupted AI processing if we were loading
+    if (isLoading && messages.length > 0) {
+      const lastMessage = messages[messages.length - 1];
+      if (lastMessage?.role === 'user') {
+        // We have an incomplete conversation - resume processing
+        // Define resume function inline to avoid circular dependency
+        const resumeProcessing = async () => {
+          if (!isConfigured || messages.length === 0) return;
+
+          const lastMsg = messages[messages.length - 1];
+          if (lastMsg?.role !== 'user') return;
+
+          setIsLoading(true);
+          updateMetadata('Shakespeare', `Resuming processing for ${projectName}...`);
+
+          try {
+            const aiMessages: AIMessage[] = messages;
+            // Use a direct implementation instead of createAIChat to avoid circular dependency
+            if (!isConfigured) {
+              throw new Error('AI settings not configured');
+            }
+
+            const abortController = new AbortController();
+            abortControllerRef.current = abortController;
+
+            // Create a custom fetch function for the AI provider
+            const customFetch = async (url: string, options: RequestInit) => {
+              const signal = AbortSignal.any([
+                options.signal || new AbortController().signal,
+                abortController.signal
+              ]);
+
+              return fetch(url, {
+                ...options,
+                signal,
+                headers: {
+                  ...options.headers,
+                  'Authorization': `Bearer ${settings.apiKey}`,
+                },
+              });
+            };
+
+            const { createOpenAI } = await import('@ai-sdk/openai');
+            const openai = createOpenAI({
+              baseURL: settings.baseUrl,
+              apiKey: settings.apiKey,
+              fetch: settings.baseUrl.includes('openrouter.ai') ? customFetch : undefined,
+            });
+
+            const provider = openai(settings.model);
+            const cwd = `/projects/${projectId}`;
+
+            await generateText({
+              model: provider,
+              messages: aiMessages,
+              maxSteps: 100,
+              abortSignal: abortController.signal,
+              onStepFinish(stepResult) {
+                console.log(stepResult);
+                addMessages(stepResult.response.messages);
+
+                const lastMsg = stepResult.response.messages[stepResult.response.messages.length - 1];
+                if (lastMsg?.role === 'tool') {
+                  const toolName = lastMsg.content?.[0]?.toolName;
+                  if (toolName) {
+                    updateMetadata('Shakespeare', `Working on ${projectName} - ${toolName}`);
+                  }
+                }
+              },
+              tools: {
+                git_commit: new GitCommitTool(browserFS, cwd),
+                text_editor_view: new TextEditorViewTool(browserFS, cwd),
+                text_editor_write: new TextEditorWriteTool(browserFS, cwd),
+                text_editor_str_replace: new TextEditorStrReplaceTool(browserFS, cwd),
+                npm_add_package: new NpmAddPackageTool(browserFS, cwd),
+                npm_remove_package: new NpmRemovePackageTool(browserFS, cwd),
+              },
+              system: `You are an AI assistant helping users build custom Nostr websites. You have access to tools that allow you to read, write, and manage files in the project, as well as build the project and manage npm packages.`
+            });
+          } catch (error) {
+            console.error('AI resume error:', error);
+            if (error instanceof Error && error.name !== 'AbortError') {
+              const errorMessage: AIMessage = {
+                id: generateId(),
+                role: 'assistant',
+                content: error.message,
+              };
+              addMessage(errorMessage);
+            }
+          } finally {
+            setIsLoading(false);
+          }
+        };
+        resumeProcessing();
+      } else {
+        // Loading flag is stale, clear it
+        setIsLoading(false);
+      }
+    }
+
+    // Cleanup abort controller on unmount
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+    };
+  }, [projectName, projectId, messages, isLoading, addMessage, setIsLoading, isConfigured, settings, browserFS, updateMetadata, addMessages]);
 
   useEffect(() => {
     if (scrollAreaRef.current && messages) {
@@ -204,10 +322,19 @@ BASE_DOMAIN=nostrdeploy.com`);
       throw new Error('AI settings not configured');
     }
 
+    // Create a new abort controller for this request
+    abortControllerRef.current = new AbortController();
+
     // Create a custom fetch function for the AI provider
     const customFetch = async (url: string, options: RequestInit) => {
+      const signal = AbortSignal.any([
+        options.signal || new AbortController().signal,
+        abortControllerRef.current!.signal
+      ]);
+
       return fetch(url, {
         ...options,
+        signal,
         headers: {
           ...options.headers,
           'Authorization': `Bearer ${settings.apiKey}`,
@@ -230,6 +357,7 @@ BASE_DOMAIN=nostrdeploy.com`);
       model: provider,
       messages,
       maxSteps: 100,
+      abortSignal: abortControllerRef.current.signal,
       onStepFinish(stepResult) {
         console.log(stepResult);
         addMessages(stepResult.response.messages);
@@ -283,7 +411,9 @@ When creating new components or pages, follow the existing patterns in the codeb
     });
   };
 
-  const handleSend = async () => {
+
+
+  const handleSend = useCallback(async () => {
     if (!input.trim() || isLoading) return;
 
     const userMessage: AIMessage = {
@@ -303,16 +433,19 @@ When creating new components or pages, follow the existing patterns in the codeb
       await createAIChat(projectId, aiMessages);
     } catch (error) {
       console.error('AI chat error:', error);
-      const errorMessage: AIMessage = {
-        id: generateId(),
-        role: 'assistant',
-        content: error instanceof Error ? error.message : 'Sorry, I encountered an error. Please try again.',
-      };
-      addMessage(errorMessage);
+      if (error instanceof Error && error.name !== 'AbortError') {
+        const errorMessage: AIMessage = {
+          id: generateId(),
+          role: 'assistant',
+          content: error.message,
+        };
+        addMessage(errorMessage);
+      }
     } finally {
       setIsLoading(false);
+      abortControllerRef.current = null;
     }
-  };
+  }, [input, isLoading, messages, projectId, projectName, addMessage, setIsLoading]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {

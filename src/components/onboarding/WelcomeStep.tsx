@@ -9,7 +9,7 @@ interface WelcomeStepProps {
 
 export function WelcomeStep({ onNext, onSkip }: WelcomeStepProps) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-4">
       <div className="text-center space-y-4">
         <div className="text-6xl mb-4">🎭</div>
         <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">

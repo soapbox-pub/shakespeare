@@ -196,11 +196,6 @@ export function ProjectSidebar({
           for (const entry of entries) {
             const fullPath = `${dirPath}/${entry.name}`;
 
-            // Skip .git directory to avoid including git metadata
-            if (entry.name === '.git') {
-              continue;
-            }
-
             if (entry.isDirectory()) {
               // Create folder in zip and recursively add its contents
               const folder = zipFolder.folder(entry.name);

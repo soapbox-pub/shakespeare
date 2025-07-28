@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { type Project } from '@/lib/ProjectsManager';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { useOnboarding } from '@/hooks/useOnboarding';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { ProjectSidebar } from '@/components/ProjectSidebar';
 import { OnboardingDialog } from '@/components/onboarding';
 
@@ -20,6 +21,7 @@ export default function Index() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
+  const [storedPrompt, setStoredPrompt] = useLocalStorage('shakespeare-draft-prompt', '');
   const navigate = useNavigate();
   const projectsManager = useProjectsManager();
   const isMobile = useIsMobile();
@@ -32,6 +34,7 @@ export default function Index() {
     handlePreviousStep,
     handleCompleteOnboarding,
   } = useOnboarding();
+
   const [isSidebarVisible, setIsSidebarVisible] = useState(() => {
     // Check if we're on mobile immediately to set correct initial state
     if (typeof window !== 'undefined') {
@@ -61,8 +64,25 @@ export default function Index() {
     loadProjects();
   }, [loadProjects]);
 
+  // Restore prompt from local storage on mount
+  useEffect(() => {
+    if (storedPrompt) {
+      setPrompt(storedPrompt);
+    }
+  }, [storedPrompt]);
+
+  // Sync prompt with local storage
+  const handlePromptChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newPrompt = e.target.value;
+    setPrompt(newPrompt);
+    setStoredPrompt(newPrompt);
+  };
+
   const handleCreateProject = async () => {
     if (!prompt.trim()) return;
+
+    // Clear stored prompt when creating project
+    setStoredPrompt('');
 
     setIsCreating(true);
     try {
@@ -91,21 +111,25 @@ export default function Index() {
       <div className="min-h-dvh bg-gradient-to-br from-primary/5 to-accent/5">
         {/* Mobile Header */}
         <header className="border-b bg-gradient-to-r from-primary/10 via-accent/5 to-primary/10 backdrop-blur px-4 py-3 flex items-center justify-between">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsSidebarVisible(!isSidebarVisible)}
-          >
-            <Menu className="h-4 w-4" />
-          </Button>
+          {projects.length > 0 ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsSidebarVisible(!isSidebarVisible)}
+            >
+              <Menu className="h-4 w-4" />
+            </Button>
+          ) : (
+            <div className="w-8" /> /* Spacer when no sidebar */
+          )}
           <h1 className="text-lg font-semibold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
             Shakespeare
           </h1>
           <div className="w-8" /> {/* Spacer */}
         </header>
 
-        {/* Mobile Sidebar Overlay */}
-        {isSidebarVisible && (
+        {/* Mobile Sidebar Overlay - only show if user has projects */}
+        {projects.length > 0 && isSidebarVisible && (
           <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm">
             {/* Backdrop - only covers the area not occupied by the sidebar */}
             <div
@@ -172,7 +196,7 @@ export default function Index() {
                   <Textarea
                     placeholder="e.g., Create a farming equipment marketplace for local farmers to buy and sell tractors, tools, and supplies..."
                     value={prompt}
-                    onChange={(e) => setPrompt(e.target.value)}
+                    onChange={handlePromptChange}
                     className="min-h-[120px] touch-action-manipulation overscroll-contain text-base leading-relaxed"
                     disabled={isCreating}
                   />
@@ -254,6 +278,20 @@ export default function Index() {
             </div>
           </div>
         </div>
+
+        <OnboardingDialog
+          open={isOnboardingOpen}
+          onOpenChange={setIsOnboardingOpen}
+          currentStep={currentStep}
+          onNextStep={handleNextStep}
+          onPreviousStep={handlePreviousStep}
+          onComplete={handleCompleteOnboarding}
+          initialPrompt={storedPrompt}
+          onProjectCreated={(projectId) => {
+            console.log('Project created during onboarding:', projectId);
+            setStoredPrompt('');
+          }}
+        />
       </div>
     );
   }
@@ -267,26 +305,30 @@ export default function Index() {
         onNextStep={handleNextStep}
         onPreviousStep={handlePreviousStep}
         onComplete={handleCompleteOnboarding}
+        initialPrompt={storedPrompt}
         onProjectCreated={(projectId) => {
           // Handle project creation during onboarding
           console.log('Project created during onboarding:', projectId);
+          setStoredPrompt(''); // Clear stored prompt after project creation
         }}
       />
       <div className="h-screen flex bg-background">
-      {/* Fixed Sidebar */}
-      <div className={cn("w-80 border-r bg-sidebar transition-all duration-300", isSidebarVisible ? "block" : "hidden")}>
-        <ProjectSidebar
-          selectedProject={null}
-          onSelectProject={handleProjectSelect}
-          className="h-full"
-        />
-      </div>
+      {/* Fixed Sidebar - only show if user has created projects */}
+      {projects.length > 0 && (
+        <div className={cn("w-80 border-r bg-sidebar transition-all duration-300", isSidebarVisible ? "block" : "hidden")}>
+          <ProjectSidebar
+            selectedProject={null}
+            onSelectProject={handleProjectSelect}
+            className="h-full"
+          />
+        </div>
+      )}
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden bg-background">
         <div className="min-h-full bg-gradient-to-br from-primary/5 to-accent/5">
-            {/* Header */}
-            {!isSidebarVisible && (
+            {/* Header - only show toggle button if user has projects */}
+            {!isSidebarVisible && projects.length > 0 && (
               <header className="border-b bg-gradient-to-r from-primary/10 via-accent/5 to-primary/10 backdrop-blur px-4 py-3 flex items-center">
                 <Button
                   variant="ghost"
@@ -339,7 +381,7 @@ export default function Index() {
                       <Textarea
                         placeholder="e.g., Create a farming equipment marketplace for local farmers to buy and sell tractors, tools, and supplies..."
                         value={prompt}
-                        onChange={(e) => setPrompt(e.target.value)}
+                        onChange={handlePromptChange}
                         className="min-h-[120px] touch-action-manipulation overscroll-contain text-base leading-relaxed"
                         disabled={isCreating}
                       />

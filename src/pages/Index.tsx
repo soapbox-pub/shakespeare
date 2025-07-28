@@ -3,8 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { type Project } from '@/lib/ProjectsManager';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { useOnboarding } from '@/hooks/useOnboarding';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { ProjectSidebar } from '@/components/ProjectSidebar';
 import { OnboardingDialog } from '@/components/onboarding';
+import { LoginArea } from '@/components/auth/LoginArea';
 
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -20,6 +23,7 @@ export default function Index() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
+  const [storedPrompt, setStoredPrompt] = useLocalStorage('shakespeare-draft-prompt', '');
   const navigate = useNavigate();
   const projectsManager = useProjectsManager();
   const isMobile = useIsMobile();
@@ -32,6 +36,7 @@ export default function Index() {
     handlePreviousStep,
     handleCompleteOnboarding,
   } = useOnboarding();
+  const { user } = useCurrentUser();
   const [isSidebarVisible, setIsSidebarVisible] = useState(() => {
     // Check if we're on mobile immediately to set correct initial state
     if (typeof window !== 'undefined') {
@@ -61,8 +66,25 @@ export default function Index() {
     loadProjects();
   }, [loadProjects]);
 
+  // Restore prompt from storage when user logs in
+  useEffect(() => {
+    if (user && storedPrompt && !prompt) {
+      setPrompt(storedPrompt);
+    }
+  }, [user, storedPrompt, prompt]);
+
+  // Sync prompt with local storage
+  const handlePromptChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newPrompt = e.target.value;
+    setPrompt(newPrompt);
+    setStoredPrompt(newPrompt);
+  };
+
   const handleCreateProject = async () => {
     if (!prompt.trim()) return;
+
+    // Clear stored prompt when creating project
+    setStoredPrompt('');
 
     setIsCreating(true);
     try {
@@ -172,28 +194,37 @@ export default function Index() {
                   <Textarea
                     placeholder="e.g., Create a farming equipment marketplace for local farmers to buy and sell tractors, tools, and supplies..."
                     value={prompt}
-                    onChange={(e) => setPrompt(e.target.value)}
+                    onChange={handlePromptChange}
                     className="min-h-[120px] touch-action-manipulation overscroll-contain text-base leading-relaxed"
                     disabled={isCreating}
                   />
-                  <Button
-                    onClick={handleCreateProject}
-                    disabled={!prompt.trim() || isCreating}
-                    className="w-full focus-ring bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80 shadow-lg"
-                    size="lg"
-                  >
-                    {isCreating ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                        Creating Project...
-                      </>
-                    ) : (
-                      <>
-                        <Plus className="mr-2 h-4 w-4" />
-                        Create Project
-                      </>
-                    )}
-                  </Button>
+                  {user ? (
+                    <Button
+                      onClick={handleCreateProject}
+                      disabled={!prompt.trim() || isCreating}
+                      className="w-full focus-ring bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80 shadow-lg"
+                      size="lg"
+                    >
+                      {isCreating ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          Creating Project...
+                        </>
+                      ) : (
+                        <>
+                          <Plus className="mr-2 h-4 w-4" />
+                          Create Project
+                        </>
+                      )}
+                    </Button>
+                  ) : (
+                    <div className="text-center space-y-4">
+                      <p className="text-muted-foreground">
+                        Log in or sign up to create your first project
+                      </p>
+                      <LoginArea className="max-w-xs mx-auto" />
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -267,9 +298,11 @@ export default function Index() {
         onNextStep={handleNextStep}
         onPreviousStep={handlePreviousStep}
         onComplete={handleCompleteOnboarding}
+        initialPrompt={storedPrompt}
         onProjectCreated={(projectId) => {
           // Handle project creation during onboarding
           console.log('Project created during onboarding:', projectId);
+          setStoredPrompt(''); // Clear stored prompt after project creation
         }}
       />
       <div className="h-screen flex bg-background">
@@ -339,28 +372,37 @@ export default function Index() {
                       <Textarea
                         placeholder="e.g., Create a farming equipment marketplace for local farmers to buy and sell tractors, tools, and supplies..."
                         value={prompt}
-                        onChange={(e) => setPrompt(e.target.value)}
+                        onChange={handlePromptChange}
                         className="min-h-[120px] touch-action-manipulation overscroll-contain text-base leading-relaxed"
                         disabled={isCreating}
                       />
-                      <Button
-                        onClick={handleCreateProject}
-                        disabled={!prompt.trim() || isCreating}
-                        className="w-full focus-ring bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80 shadow-lg"
-                        size="lg"
-                      >
-                        {isCreating ? (
-                          <>
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                            Creating Project...
-                          </>
-                        ) : (
-                          <>
-                            <Plus className="mr-2 h-4 w-4" />
-                            Create Project
-                          </>
-                        )}
-                      </Button>
+                      {user ? (
+                        <Button
+                          onClick={handleCreateProject}
+                          disabled={!prompt.trim() || isCreating}
+                          className="w-full focus-ring bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80 shadow-lg"
+                          size="lg"
+                        >
+                          {isCreating ? (
+                            <>
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                              Creating Project...
+                            </>
+                          ) : (
+                            <>
+                              <Plus className="mr-2 h-4 w-4" />
+                              Create Project
+                            </>
+                          )}
+                        </Button>
+                      ) : (
+                        <div className="text-center space-y-4">
+                          <p className="text-muted-foreground">
+                            Log in or sign up to create your first project
+                          </p>
+                          <LoginArea className="max-w-xs mx-auto" />
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 </div>

@@ -11,10 +11,11 @@ interface ProjectStepProps {
   onPrevious: () => void;
   onComplete: () => void;
   onProjectCreated?: (projectId: string) => void;
+  initialPrompt?: string;
 }
 
-export function ProjectStep({ onPrevious, onComplete, onProjectCreated }: ProjectStepProps) {
-  const [prompt, setPrompt] = useState('');
+export function ProjectStep({ onPrevious, onComplete, onProjectCreated, initialPrompt = '' }: ProjectStepProps) {
+  const [prompt, setPrompt] = useState(initialPrompt);
   const [isCreating, setIsCreating] = useState(false);
   const projectsManager = useProjectsManager();
   const navigate = useNavigate();

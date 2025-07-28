@@ -13,6 +13,7 @@ interface OnboardingDialogProps {
   currentStep: number;
   onNextStep: () => void;
   onPreviousStep: () => void;
+  initialPrompt?: string;
 }
 
 const STEPS = [
@@ -28,7 +29,8 @@ export function OnboardingDialog({
   onComplete,
   currentStep: propCurrentStep,
   onNextStep,
-  onPreviousStep
+  onPreviousStep,
+  initialPrompt = ''
 }: OnboardingDialogProps) {
   const [localStep, setLocalStep] = useState(propCurrentStep);
 
@@ -88,6 +90,7 @@ export function OnboardingDialog({
             onPrevious={handlePrevious}
             onComplete={handleComplete}
             onProjectCreated={onProjectCreated}
+            initialPrompt={initialPrompt}
           />
         );
       default:

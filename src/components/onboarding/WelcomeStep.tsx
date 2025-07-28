@@ -20,7 +20,7 @@ export function WelcomeStep({ onNext, onSkip }: WelcomeStepProps) {
         </p>
       </div>
 
-      <div className="grid md:grid-cols-3 gap-4 max-w-4xl mx-auto">
+      <div className="hidden md:grid md:grid-cols-3 gap-4 max-w-4xl mx-auto">
         <Card className="text-center">
           <CardHeader>
             <div className="flex justify-center mb-2">

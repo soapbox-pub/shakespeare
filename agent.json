@@ -1,5 +1,5 @@
 {
-  "model": "claude-sonnet-4",
+  "model": "claude-sonnet-4-0",
   "temperature": 0.2,
   "mcpServers": {
     "js-dev": {

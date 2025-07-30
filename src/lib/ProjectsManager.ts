@@ -96,6 +96,7 @@ export class ProjectsManager {
         const projectFile = `${projectPath}/.git/project.json`;
 
         try {
+          // Try to read the project metadata file first
           const projectData = await this.fs.readFile(projectFile, 'utf8');
           const metadata: ProjectMetadata = JSON.parse(projectData);
 
@@ -110,7 +111,24 @@ export class ProjectsManager {
 
           projects.push(project);
         } catch {
-          // Skip invalid projects
+          // If metadata file doesn't exist, treat any directory as a project
+          try {
+            const stats = await this.fs.stat(projectPath);
+            if (stats.isDirectory()) {
+              const modifiedDate = stats.mtimeMs ? new Date(stats.mtimeMs) : new Date();
+              const fallbackProject: Project = {
+                id: dir,
+                name: this.formatProjectName(dir), // Convert directory name to readable format
+                path: projectPath,
+                createdAt: modifiedDate, // Use modified time as creation time fallback
+                lastModified: modifiedDate,
+              };
+
+              projects.push(fallbackProject);
+            }
+          } catch {
+            // Skip if we can't stat the directory
+          }
         }
       }
 
@@ -124,17 +142,40 @@ export class ProjectsManager {
     try {
       const projectPath = `${this.dir}/${id}`;
       const projectFile = `${projectPath}/.git/project.json`;
-      const projectData = await this.fs.readFile(projectFile, 'utf8');
-      const metadata: ProjectMetadata = JSON.parse(projectData);
 
-      // Generate dynamic properties
-      return {
-        id, // basename of the path
-        name: metadata.name,
-        path: projectPath,
-        createdAt: new Date(metadata.createdAt),
-        lastModified: new Date(metadata.lastModified),
-      };
+      try {
+        // Try to read the project metadata file first
+        const projectData = await this.fs.readFile(projectFile, 'utf8');
+        const metadata: ProjectMetadata = JSON.parse(projectData);
+
+        // Generate dynamic properties
+        return {
+          id, // basename of the path
+          name: metadata.name,
+          path: projectPath,
+          createdAt: new Date(metadata.createdAt),
+          lastModified: new Date(metadata.lastModified),
+        };
+      } catch {
+        // If metadata file doesn't exist, treat any directory as a project
+        try {
+          const stats = await this.fs.stat(projectPath);
+          if (stats.isDirectory()) {
+            const modifiedDate = stats.mtimeMs ? new Date(stats.mtimeMs) : new Date();
+            return {
+              id,
+              name: this.formatProjectName(id), // Convert directory name to readable format
+              path: projectPath,
+              createdAt: modifiedDate, // Use modified time as creation time fallback
+              lastModified: modifiedDate,
+            };
+          }
+        } catch {
+          // Directory doesn't exist
+        }
+
+        return null;
+      }
     } catch {
       return null;
     }
@@ -291,5 +332,15 @@ export class ProjectsManager {
     } catch {
       // Ignore errors updating last modified
     }
+  }
+
+
+
+  private formatProjectName(dirName: string): string {
+    // Convert directory name to a more readable format
+    return dirName
+      .split('-')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
   }
 }

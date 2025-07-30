@@ -285,7 +285,7 @@ export default function Index() {
             {/* Nostr Repositories Section - Mobile */}
             {user && (
               <div className="mt-8">
-                <NostrRepos excludeProjectIds={nostrEnabledProjectIds} />
+                <NostrRepos excludeProjectIds={nostrEnabledProjectIds} onProjectCloned={loadProjects} />
               </div>
             )}
           </div>
@@ -477,7 +477,7 @@ export default function Index() {
                 {/* Nostr Repositories Section - Desktop */}
                 {user && (
                   <div className="mt-8">
-                    <NostrRepos excludeProjectIds={nostrEnabledProjectIds} />
+                    <NostrRepos excludeProjectIds={nostrEnabledProjectIds} onProjectCloned={loadProjects} />
                   </div>
                 )}
               </div>

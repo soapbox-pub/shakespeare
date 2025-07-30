@@ -262,6 +262,25 @@ export class ProjectsManager {
     }
   }
 
+  async getNostrRepoAddress(projectId: string): Promise<string | null> {
+    try {
+      const projectPath = `${this.dir}/${projectId}`;
+      const config = await git.getConfig({
+        fs: this.fs,
+        dir: projectPath,
+        path: 'nostr.repo',
+      });
+      return config || null;
+    } catch {
+      return null;
+    }
+  }
+
+  async isNostrEnabled(projectId: string): Promise<boolean> {
+    const naddr = await this.getNostrRepoAddress(projectId);
+    return naddr !== null;
+  }
+
   private async updateProjectLastModified(projectId: string): Promise<void> {
     try {
       const projectFile = `${this.dir}/${projectId}/.git/project.json`;

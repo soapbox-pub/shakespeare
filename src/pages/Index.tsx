@@ -4,8 +4,11 @@ import { type Project } from '@/lib/ProjectsManager';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { useOnboarding } from '@/hooks/useOnboarding';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useNostrEnabledProjects } from '@/hooks/useNostrEnabledProjects';
 import { ProjectSidebar } from '@/components/ProjectSidebar';
 import { OnboardingDialog } from '@/components/onboarding';
+import { NostrRepos } from '@/components/NostrRepos';
 
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -25,6 +28,8 @@ export default function Index() {
   const navigate = useNavigate();
   const projectsManager = useProjectsManager();
   const isMobile = useIsMobile();
+  const { user } = useCurrentUser();
+  const { data: nostrEnabledProjectIds = [] } = useNostrEnabledProjects();
   const {
     hasCompletedOnboarding,
     currentStep,
@@ -276,6 +281,13 @@ export default function Index() {
                 </div>
               )}
             </div>
+
+            {/* Nostr Repositories Section - Mobile */}
+            {user && (
+              <div className="mt-8">
+                <NostrRepos excludeProjectIds={nostrEnabledProjectIds} />
+              </div>
+            )}
           </div>
         </div>
 
@@ -312,21 +324,21 @@ export default function Index() {
           setStoredPrompt(''); // Clear stored prompt after project creation
         }}
       />
-      <div className="h-screen flex bg-background">
+      <div className="min-h-screen flex bg-background">
       {/* Fixed Sidebar - only show if user has created projects */}
       {projects.length > 0 && (
         <div className={cn("w-80 border-r bg-sidebar transition-all duration-300", isSidebarVisible ? "block" : "hidden")}>
           <ProjectSidebar
             selectedProject={null}
             onSelectProject={handleProjectSelect}
-            className="h-full"
+            className="h-screen sticky top-0"
           />
         </div>
       )}
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col overflow-hidden bg-background">
-        <div className="min-h-full bg-gradient-to-br from-primary/5 to-accent/5">
+      <div className="flex-1 flex flex-col bg-background">
+        <div className="min-h-screen bg-gradient-to-br from-primary/5 to-accent/5">
             {/* Header - only show toggle button if user has projects */}
             {!isSidebarVisible && projects.length > 0 && (
               <header className="border-b bg-gradient-to-r from-primary/10 via-accent/5 to-primary/10 backdrop-blur px-4 py-3 flex items-center">
@@ -461,6 +473,13 @@ export default function Index() {
                     </div>
                   )}
                 </div>
+
+                {/* Nostr Repositories Section - Desktop */}
+                {user && (
+                  <div className="mt-8">
+                    <NostrRepos excludeProjectIds={nostrEnabledProjectIds} />
+                  </div>
+                )}
               </div>
             </div>
           </div>

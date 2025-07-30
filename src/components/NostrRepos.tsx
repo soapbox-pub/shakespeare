@@ -15,9 +15,10 @@ import http from 'isomorphic-git/http/web';
 interface NostrReposProps {
   className?: string;
   excludeProjectIds?: string[]; // Project IDs that are already "nostr enabled"
+  onProjectCloned?: () => void; // Callback when a project is successfully cloned
 }
 
-export function NostrRepos({ className, excludeProjectIds = [] }: NostrReposProps) {
+export function NostrRepos({ className, excludeProjectIds = [], onProjectCloned }: NostrReposProps) {
   const { data: repos, isLoading, error } = useNostrRepos();
   const projectsManager = useProjectsManager();
   const { toast } = useToast();
@@ -90,8 +91,12 @@ export function NostrRepos({ className, excludeProjectIds = [] }: NostrReposProp
         description: `${repo.name} has been cloned to your projects.`,
       });
 
-      // Refresh the page to update the projects list
-      window.location.reload();
+      // Call the callback to refresh the projects list, or fall back to page reload
+      if (onProjectCloned) {
+        onProjectCloned();
+      } else {
+        window.location.reload();
+      }
     } catch (error) {
       console.error('Failed to clone repository:', error);
       toast({

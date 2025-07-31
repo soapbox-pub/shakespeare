@@ -5,10 +5,10 @@ import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { useOnboarding } from '@/hooks/useOnboarding';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
-import { useNostrEnabledProjects } from '@/hooks/useNostrEnabledProjects';
+import { useRepos } from '@/hooks/useRepos';
 import { ProjectSidebar } from '@/components/ProjectSidebar';
 import { OnboardingDialog } from '@/components/onboarding';
-import { NostrRepos } from '@/components/NostrRepos';
+import { RepoCard } from '@/components/RepoCard';
 
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -22,14 +22,13 @@ import { cn } from '@/lib/utils';
 export default function Index() {
   const [prompt, setPrompt] = useState('');
   const [projects, setProjects] = useState<Project[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const [storedPrompt, setStoredPrompt] = useLocalStorage('shakespeare-draft-prompt', '');
   const navigate = useNavigate();
   const projectsManager = useProjectsManager();
   const isMobile = useIsMobile();
-  const { user } = useCurrentUser();
-  const { data: nostrEnabledProjectIds = [] } = useNostrEnabledProjects();
+  const { user: _user } = useCurrentUser();
+  const { data: repos = [], isLoading, error, refetch } = useRepos();
   const {
     hasCompletedOnboarding,
     currentStep,
@@ -60,8 +59,6 @@ export default function Index() {
       setProjects(projectList);
     } catch (error) {
       console.error('Failed to load projects:', error);
-    } finally {
-      setIsLoading(false);
     }
   }, [projectsManager]);
 
@@ -92,6 +89,8 @@ export default function Index() {
     setIsCreating(true);
     try {
       const project = await projectsManager.createProject(prompt.trim());
+      // Refresh repos after creating a new project
+      refetch();
       navigate(`/project/${project.id}`);
     } catch (error) {
       console.error('Failed to create project:', error);
@@ -100,8 +99,9 @@ export default function Index() {
     }
   };
 
-  const handleProjectClick = (projectId: string) => {
-    navigate(`/project/${projectId}`);
+  const handleRepoRefresh = () => {
+    refetch();
+    loadProjects();
   };
 
   const handleProjectSelect = (project: Project | null) => {
@@ -133,7 +133,7 @@ export default function Index() {
           <div className="w-8" /> {/* Spacer */}
         </header>
 
-        {/* Mobile Sidebar Overlay - only show if user has projects */}
+        {/* Mobile Sidebar Overlay - only show if user has local projects */}
         {projects.length > 0 && isSidebarVisible && (
           <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm">
             {/* Backdrop - only covers the area not occupied by the sidebar */}
@@ -228,7 +228,7 @@ export default function Index() {
             </div>
 
             <div>
-              <h2 className="text-xl md:text-2xl font-semibold mb-4 md:mb-6">Your Projects</h2>
+              <h2 className="text-xl md:text-2xl font-semibold mb-4 md:mb-6">Your Repositories</h2>
 
               {isLoading ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -241,49 +241,33 @@ export default function Index() {
                     </Card>
                   ))}
                 </div>
-              ) : projects.length === 0 ? (
+              ) : error ? (
+                <Card className="border-destructive/20">
+                  <CardContent className="py-6 text-center">
+                    <p className="text-destructive">Failed to load repositories</p>
+                  </CardContent>
+                </Card>
+              ) : repos.length === 0 ? (
                 <Card className="bg-gradient-to-br from-muted/50 to-muted/20 border-dashed border-2 border-muted-foreground/20">
                   <CardContent className="text-center py-8 md:py-12">
                     <div className="flex items-center justify-center gap-2 mb-4">
                       <Folder className="h-10 w-10 md:h-12 md:w-12 text-muted-foreground" />
                     </div>
-                    <p className="text-muted-foreground text-sm md:text-base">No projects yet. Create your first project above!</p>
+                    <p className="text-muted-foreground text-sm md:text-base">No repositories yet. Create your first project above!</p>
                   </CardContent>
                 </Card>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {projects.map((project) => (
-                    <Card
-                      key={project.id}
-                      className="cursor-pointer hover:shadow-xl hover:shadow-primary/10 transition-all duration-300 focus-ring bg-gradient-to-br from-card to-card/80 border-primary/10 hover:border-primary/20 hover:scale-[1.02]"
-                      onClick={() => handleProjectClick(project.id)}
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          handleProjectClick(project.id);
-                        }
-                      }}
-                    >
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-base md:text-lg">{project.name}</CardTitle>
-                        <CardDescription className="text-sm">
-                          Modified {project.lastModified.toLocaleDateString()}
-                        </CardDescription>
-                      </CardHeader>
-
-                    </Card>
+                  {repos.map((repo) => (
+                    <RepoCard
+                      key={repo.id}
+                      repo={repo}
+                      onRepoCloned={handleRepoRefresh}
+                    />
                   ))}
                 </div>
               )}
             </div>
-
-            {/* Nostr Repositories Section - Mobile */}
-            {user && (
-              <div className="mt-8">
-                <NostrRepos excludeProjectIds={nostrEnabledProjectIds} onProjectCloned={loadProjects} />
-              </div>
-            )}
           </div>
         </div>
 
@@ -298,6 +282,7 @@ export default function Index() {
           onProjectCreated={(projectId) => {
             console.log('Project created during onboarding:', projectId);
             setStoredPrompt('');
+            handleRepoRefresh();
           }}
         />
       </div>
@@ -318,10 +303,11 @@ export default function Index() {
           // Handle project creation during onboarding
           console.log('Project created during onboarding:', projectId);
           setStoredPrompt(''); // Clear stored prompt after project creation
+          handleRepoRefresh();
         }}
       />
       <div className="min-h-screen flex bg-background">
-      {/* Fixed Sidebar - only show if user has created projects */}
+      {/* Fixed Sidebar - only show if user has created local projects */}
       {projects.length > 0 && (
         <div className={cn("w-80 border-r bg-sidebar transition-all duration-300", isSidebarVisible ? "block" : "hidden")}>
           <ProjectSidebar
@@ -335,7 +321,7 @@ export default function Index() {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col bg-background">
         <div className="min-h-screen bg-gradient-to-br from-primary/5 to-accent/5">
-            {/* Header - only show toggle button if user has projects */}
+            {/* Header - only show toggle button if user has local projects */}
             {!isSidebarVisible && projects.length > 0 && (
               <header className="border-b bg-gradient-to-r from-primary/10 via-accent/5 to-primary/10 backdrop-blur px-4 py-3 flex items-center">
                 <Button
@@ -416,7 +402,7 @@ export default function Index() {
                 </div>
 
                 <div>
-                  <h2 className="text-xl md:text-2xl font-semibold mb-4 md:mb-6">Your Projects</h2>
+                  <h2 className="text-xl md:text-2xl font-semibold mb-4 md:mb-6">Your Repositories</h2>
 
                   {isLoading ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -429,49 +415,33 @@ export default function Index() {
                         </Card>
                       ))}
                     </div>
-                  ) : projects.length === 0 ? (
+                  ) : error ? (
+                    <Card className="border-destructive/20">
+                      <CardContent className="py-6 text-center">
+                        <p className="text-destructive">Failed to load repositories</p>
+                      </CardContent>
+                    </Card>
+                  ) : repos.length === 0 ? (
                     <Card className="bg-gradient-to-br from-muted/50 to-muted/20 border-dashed border-2 border-muted-foreground/20">
                       <CardContent className="text-center py-8 md:py-12">
                         <div className="flex items-center justify-center gap-2 mb-4">
                           <Folder className="h-10 w-10 md:h-12 md:w-12 text-muted-foreground" />
                         </div>
-                        <p className="text-muted-foreground text-sm md:text-base">No projects yet. Create your first project above!</p>
+                        <p className="text-muted-foreground text-sm md:text-base">No repositories yet. Create your first project above!</p>
                       </CardContent>
                     </Card>
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {projects.map((project) => (
-                        <Card
-                          key={project.id}
-                          className="cursor-pointer hover:shadow-xl hover:shadow-primary/10 transition-all duration-300 focus-ring bg-gradient-to-br from-card to-card/80 border-primary/10 hover:border-primary/20 hover:scale-[1.02]"
-                          onClick={() => handleProjectClick(project.id)}
-                          tabIndex={0}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                              e.preventDefault();
-                              handleProjectClick(project.id);
-                            }
-                          }}
-                        >
-                          <CardHeader className="pb-2">
-                            <CardTitle className="text-base md:text-lg">{project.name}</CardTitle>
-                            <CardDescription className="text-sm">
-                              Modified {project.lastModified.toLocaleDateString()}
-                            </CardDescription>
-                          </CardHeader>
-
-                        </Card>
+                      {repos.map((repo) => (
+                        <RepoCard
+                          key={repo.id}
+                          repo={repo}
+                          onRepoCloned={handleRepoRefresh}
+                        />
                       ))}
                     </div>
                   )}
                 </div>
-
-                {/* Nostr Repositories Section - Desktop */}
-                {user && (
-                  <div className="mt-8">
-                    <NostrRepos excludeProjectIds={nostrEnabledProjectIds} onProjectCloned={loadProjects} />
-                  </div>
-                )}
               </div>
             </div>
           </div>

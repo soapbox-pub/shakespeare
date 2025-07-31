@@ -71,20 +71,7 @@ export function NostrRepos({ className, excludeProjectIds = [], onProjectCloned 
         value: naddr,
       });
 
-      // Create project metadata
-      const now = new Date();
-      const metadata = {
-        name: repo.name,
-        createdAt: now.toISOString(),
-        lastModified: now.toISOString(),
-      };
-
-      // Save project metadata in .git directory
-      const gitDir = `${projectPath}/.git`;
-      await projectsManager.fs.writeFile(
-        `${gitDir}/project.json`,
-        JSON.stringify(metadata, null, 2)
-      );
+      // No need to create project metadata - using filesystem stats and basename
 
       toast({
         title: "Repository cloned",

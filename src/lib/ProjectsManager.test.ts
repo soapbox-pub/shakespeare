@@ -96,29 +96,11 @@ describe('ProjectsManager', () => {
     projectsManager = new ProjectsManager(fs as unknown as import('./JSRuntime').JSRuntimeFS);
   });
 
-  describe('getProjects with fallback detection', () => {
-    it('should detect projects with metadata files', async () => {
+  describe('getProjects', () => {
+    it('should detect any directory as a project', async () => {
       await projectsManager.init();
 
-      // Create a project with metadata
-      await fs.mkdir('/projects/test-project');
-      await fs.mkdir('/projects/test-project/.git');
-      await fs.writeFile('/projects/test-project/.git/project.json', JSON.stringify({
-        name: 'Test Project',
-        createdAt: '2024-01-01T00:00:00.000Z',
-        lastModified: '2024-01-01T00:00:00.000Z',
-      }));
-
-      const projects = await projectsManager.getProjects();
-      expect(projects).toHaveLength(1);
-      expect(projects[0].name).toBe('Test Project');
-      expect(projects[0].id).toBe('test-project');
-    });
-
-    it('should detect any directory as a project without metadata files', async () => {
-      await projectsManager.init();
-
-      // Create any directory without metadata
+      // Create any directory
       await fs.mkdir('/projects/cloned-repo');
 
       const projects = await projectsManager.getProjects();
@@ -165,33 +147,17 @@ describe('ProjectsManager', () => {
     });
   });
 
-  describe('getProject with fallback detection', () => {
-    it('should get project with metadata file', async () => {
+  describe('getProject', () => {
+    it('should get any directory as a project', async () => {
       await projectsManager.init();
 
-      // Create a project with metadata
-      await fs.mkdir('/projects/test-project');
-      await fs.mkdir('/projects/test-project/.git');
-      await fs.writeFile('/projects/test-project/.git/project.json', JSON.stringify({
-        name: 'Test Project',
-        createdAt: '2024-01-01T00:00:00.000Z',
-        lastModified: '2024-01-01T00:00:00.000Z',
-      }));
-
-      const project = await projectsManager.getProject('test-project');
-      expect(project).not.toBeNull();
-      expect(project?.name).toBe('Test Project');
-    });
-
-    it('should get any directory as a project without metadata file', async () => {
-      await projectsManager.init();
-
-      // Create any directory without metadata
+      // Create any directory
       await fs.mkdir('/projects/cloned-repo');
 
       const project = await projectsManager.getProject('cloned-repo');
       expect(project).not.toBeNull();
       expect(project?.name).toBe('Cloned Repo');
+      expect(project?.id).toBe('cloned-repo');
     });
 
     it('should return null for non-existent projects', async () => {

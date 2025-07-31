@@ -19,12 +19,6 @@ export interface Project {
   lastModified: Date;
 }
 
-interface ProjectMetadata {
-  name: string;
-  createdAt: string;
-  lastModified: string;
-}
-
 export class ProjectsManager {
   fs: JSRuntimeFS;
   dir: string;
@@ -48,30 +42,20 @@ export class ProjectsManager {
 
     await this.fs.mkdir(projectPath);
 
-    const now = new Date();
-    const metadata: ProjectMetadata = {
-      name,
-      createdAt: now.toISOString(),
-      lastModified: now.toISOString(),
-    };
-
     // Clone the template first
     await this.cloneTemplate(projectPath);
 
-    // Save project metadata in .git directory to keep it out of source tree
-    const gitDir = `${projectPath}/.git`;
-    await this.fs.writeFile(
-      `${gitDir}/project.json`,
-      JSON.stringify(metadata, null, 2)
-    );
+    // Get filesystem stats for timestamps
+    const stats = await this.fs.stat(projectPath);
+    const timestamp = stats.mtimeMs ? new Date(stats.mtimeMs) : new Date();
 
     // Return the full project object with dynamically generated properties
     return {
       id,
-      name,
+      name: this.formatProjectName(id), // Use formatted directory name
       path: projectPath,
-      createdAt: now,
-      lastModified: now,
+      createdAt: timestamp,
+      lastModified: timestamp,
     };
   }
 
@@ -93,46 +77,27 @@ export class ProjectsManager {
 
       for (const dir of projectDirs) {
         const projectPath = `${this.dir}/${dir}`;
-        const projectFile = `${projectPath}/.git/project.json`;
 
         try {
-          // Try to read the project metadata file first
-          const projectData = await this.fs.readFile(projectFile, 'utf8');
-          const metadata: ProjectMetadata = JSON.parse(projectData);
+          const stats = await this.fs.stat(projectPath);
+          if (stats.isDirectory()) {
+            const modifiedDate = stats.mtimeMs ? new Date(stats.mtimeMs) : new Date();
+            const project: Project = {
+              id: dir, // basename of the path
+              name: this.formatProjectName(dir), // Convert directory name to readable format
+              path: projectPath,
+              createdAt: modifiedDate, // Use modified time as creation time
+              lastModified: modifiedDate,
+            };
 
-          // Generate dynamic properties
-          const project: Project = {
-            id: dir, // basename of the path
-            name: metadata.name,
-            path: projectPath,
-            createdAt: new Date(metadata.createdAt),
-            lastModified: new Date(metadata.lastModified),
-          };
-
-          projects.push(project);
-        } catch {
-          // If metadata file doesn't exist, treat any directory as a project
-          try {
-            const stats = await this.fs.stat(projectPath);
-            if (stats.isDirectory()) {
-              const modifiedDate = stats.mtimeMs ? new Date(stats.mtimeMs) : new Date();
-              const fallbackProject: Project = {
-                id: dir,
-                name: this.formatProjectName(dir), // Convert directory name to readable format
-                path: projectPath,
-                createdAt: modifiedDate, // Use modified time as creation time fallback
-                lastModified: modifiedDate,
-              };
-
-              projects.push(fallbackProject);
-            }
-          } catch {
-            // Skip if we can't stat the directory
+            projects.push(project);
           }
+        } catch {
+          // Skip if we can't stat the directory
         }
       }
 
-      return projects.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      return projects.sort((a, b) => b.lastModified.getTime() - a.lastModified.getTime());
     } catch {
       return [];
     }
@@ -141,41 +106,20 @@ export class ProjectsManager {
   async getProject(id: string): Promise<Project | null> {
     try {
       const projectPath = `${this.dir}/${id}`;
-      const projectFile = `${projectPath}/.git/project.json`;
+      const stats = await this.fs.stat(projectPath);
 
-      try {
-        // Try to read the project metadata file first
-        const projectData = await this.fs.readFile(projectFile, 'utf8');
-        const metadata: ProjectMetadata = JSON.parse(projectData);
-
-        // Generate dynamic properties
+      if (stats.isDirectory()) {
+        const modifiedDate = stats.mtimeMs ? new Date(stats.mtimeMs) : new Date();
         return {
           id, // basename of the path
-          name: metadata.name,
+          name: this.formatProjectName(id), // Convert directory name to readable format
           path: projectPath,
-          createdAt: new Date(metadata.createdAt),
-          lastModified: new Date(metadata.lastModified),
+          createdAt: modifiedDate, // Use modified time as creation time
+          lastModified: modifiedDate,
         };
-      } catch {
-        // If metadata file doesn't exist, treat any directory as a project
-        try {
-          const stats = await this.fs.stat(projectPath);
-          if (stats.isDirectory()) {
-            const modifiedDate = stats.mtimeMs ? new Date(stats.mtimeMs) : new Date();
-            return {
-              id,
-              name: this.formatProjectName(id), // Convert directory name to readable format
-              path: projectPath,
-              createdAt: modifiedDate, // Use modified time as creation time fallback
-              lastModified: modifiedDate,
-            };
-          }
-        } catch {
-          // Directory doesn't exist
-        }
-
-        return null;
       }
+
+      return null;
     } catch {
       return null;
     }
@@ -204,15 +148,11 @@ export class ProjectsManager {
     const dir = fullPath.split('/').slice(0, -1).join('/');
     await this.fs.mkdir(dir);
     await this.fs.writeFile(fullPath, content);
-
-    // Update last modified
-    await this.updateProjectLastModified(projectId);
   }
 
   async deleteFile(projectId: string, filePath: string): Promise<void> {
     const fullPath = `${this.dir}/${projectId}/${filePath}`;
     await this.fs.unlink(fullPath);
-    await this.updateProjectLastModified(projectId);
   }
 
   async listFiles(projectId: string, dirPath: string = ''): Promise<string[]> {
@@ -322,17 +262,7 @@ export class ProjectsManager {
     return naddr !== null;
   }
 
-  private async updateProjectLastModified(projectId: string): Promise<void> {
-    try {
-      const projectFile = `${this.dir}/${projectId}/.git/project.json`;
-      const projectData = await this.fs.readFile(projectFile, 'utf8');
-      const metadata: ProjectMetadata = JSON.parse(projectData);
-      metadata.lastModified = new Date().toISOString();
-      await this.fs.writeFile(projectFile, JSON.stringify(metadata, null, 2));
-    } catch {
-      // Ignore errors updating last modified
-    }
-  }
+
 
 
 

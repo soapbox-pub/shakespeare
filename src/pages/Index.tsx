@@ -268,14 +268,10 @@ export default function Index() {
                       <CardHeader className="pb-2">
                         <CardTitle className="text-base md:text-lg">{project.name}</CardTitle>
                         <CardDescription className="text-sm">
-                          Created {project.createdAt.toLocaleDateString()}
+                          Modified {project.lastModified.toLocaleDateString()}
                         </CardDescription>
                       </CardHeader>
-                      <CardContent className="pt-0">
-                        <p className="text-xs md:text-sm text-muted-foreground">
-                          Last modified {project.lastModified.toLocaleDateString()}
-                        </p>
-                      </CardContent>
+
                     </Card>
                   ))}
                 </div>
@@ -460,14 +456,10 @@ export default function Index() {
                           <CardHeader className="pb-2">
                             <CardTitle className="text-base md:text-lg">{project.name}</CardTitle>
                             <CardDescription className="text-sm">
-                              Created {project.createdAt.toLocaleDateString()}
+                              Modified {project.lastModified.toLocaleDateString()}
                             </CardDescription>
                           </CardHeader>
-                          <CardContent className="pt-0">
-                            <p className="text-xs md:text-sm text-muted-foreground">
-                              Last modified {project.lastModified.toLocaleDateString()}
-                            </p>
-                          </CardContent>
+
                         </Card>
                       ))}
                     </div>

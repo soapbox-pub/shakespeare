@@ -1,9 +1,23 @@
 import { useQuery } from '@tanstack/react-query';
 import { useProjectsManager } from './useProjectsManager';
-import { useNostrRepos, type NostrRepo } from './useNostrRepos';
 import { useCurrentUser } from './useCurrentUser';
+import { useNostr } from '@nostrify/react';
 import { nip19 } from 'nostr-tools';
 import type { Project } from '@/lib/ProjectsManager';
+import type { NostrEvent } from '@nostrify/nostrify';
+
+export interface NostrRepo {
+  event: NostrEvent;
+  id: string; // d tag value
+  name: string;
+  description?: string;
+  webUrls: string[];
+  cloneUrls: string[];
+  relays: string[];
+  maintainers: string[];
+  tags: string[];
+  earliestCommit?: string;
+}
 
 export type RepoStatus =
   | 'local-only'      // Exists only locally, not published to Nostr
@@ -32,17 +46,91 @@ export interface UnifiedRepo {
   relays: string[];
 }
 
+function parseRepoEvent(event: NostrEvent): NostrRepo | null {
+  // Validate that this is a repository announcement event
+  if (event.kind !== 30617) return null;
+
+  const dTag = event.tags.find(([name]) => name === 'd')?.[1];
+  if (!dTag) return null;
+
+  const name = event.tags.find(([name]) => name === 'name')?.[1] || dTag;
+  const description = event.tags.find(([name]) => name === 'description')?.[1];
+
+  const webUrls = event.tags
+    .filter(([name]) => name === 'web')
+    .map(([, url]) => url)
+    .filter(Boolean);
+
+  const cloneUrls = event.tags
+    .filter(([name]) => name === 'clone')
+    .map(([, url]) => url)
+    .filter(Boolean);
+
+  const relays = event.tags
+    .filter(([name]) => name === 'relays')
+    .map(([, relay]) => relay)
+    .filter(Boolean);
+
+  const maintainers = event.tags
+    .filter(([name]) => name === 'maintainers')
+    .map(([, pubkey]) => pubkey)
+    .filter(Boolean);
+
+  const tags = event.tags
+    .filter(([name]) => name === 't')
+    .map(([, tag]) => tag)
+    .filter(Boolean);
+
+  const earliestCommit = event.tags
+    .find(([name, , marker]) => name === 'r' && marker === 'euc')?.[1];
+
+  return {
+    event,
+    id: dTag,
+    name,
+    description,
+    webUrls,
+    cloneUrls,
+    relays,
+    maintainers,
+    tags,
+    earliestCommit,
+  };
+}
+
 export function useRepos() {
   const projectsManager = useProjectsManager();
   const { user } = useCurrentUser();
-  const { data: nostrRepos = [] } = useNostrRepos();
+  const { nostr } = useNostr();
 
   return useQuery({
     queryKey: ['unified-repos', user?.pubkey],
-    queryFn: async () => {
+    queryFn: async (c) => {
       try {
-        await projectsManager.init();
-        const localProjects = await projectsManager.getProjects();
+        if (!user?.pubkey) return [];
+
+        const signal = AbortSignal.any([c.signal, AbortSignal.timeout(3000)]);
+
+        // Fetch Nostr repos and local projects in parallel
+        const [events, localProjects] = await Promise.all([
+          nostr.query([
+            {
+              kinds: [30617], // Repository announcements
+              authors: [user.pubkey],
+              limit: 50,
+            }
+          ], { signal }),
+          (async () => {
+            await projectsManager.init();
+            return projectsManager.getProjects();
+          })()
+        ]);
+
+        // Parse and validate Nostr events
+        const nostrRepos = events
+          .map(parseRepoEvent)
+          .filter((repo): repo is NostrRepo => repo !== null)
+          .sort((a, b) => b.event.created_at - a.event.created_at);
 
         // Create a map to track repos by their identifier
         const repoMap = new Map<string, UnifiedRepo>();

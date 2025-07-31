@@ -263,10 +263,7 @@ export class ProjectsManager {
 
 
   private formatProjectName(dirName: string): string {
-    // Convert directory name to a more readable format
-    return dirName
-      .split('-')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
+    // Return the original directory name without formatting
+    return dirName;
   }
 }

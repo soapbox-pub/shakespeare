@@ -105,7 +105,7 @@ describe('ProjectsManager', () => {
 
       const projects = await projectsManager.getProjects();
       expect(projects).toHaveLength(1);
-      expect(projects[0].name).toBe('Cloned Repo'); // Formatted from directory name
+      expect(projects[0].name).toBe('cloned-repo'); // Preserve original directory name
       expect(projects[0].id).toBe('cloned-repo');
     });
 
@@ -121,10 +121,10 @@ describe('ProjectsManager', () => {
       expect(projects).toHaveLength(3);
 
       const projectNames = projects.map(p => p.name).sort();
-      expect(projectNames).toEqual(['Another Project', 'Empty Folder', 'My Project']);
+      expect(projectNames).toEqual(['another-project', 'empty-folder', 'my-project']);
     });
 
-    it('should format project names correctly', async () => {
+    it('should preserve original project names', async () => {
       await projectsManager.init();
 
       // Create projects with various naming patterns
@@ -142,8 +142,8 @@ describe('ProjectsManager', () => {
       const awesomeProject = projects.find(p => p.id === 'my-awesome-project');
       const simpleProject = projects.find(p => p.id === 'simple-name');
 
-      expect(awesomeProject?.name).toBe('My Awesome Project');
-      expect(simpleProject?.name).toBe('Simple Name');
+      expect(awesomeProject?.name).toBe('my-awesome-project');
+      expect(simpleProject?.name).toBe('simple-name');
     });
   });
 
@@ -156,7 +156,7 @@ describe('ProjectsManager', () => {
 
       const project = await projectsManager.getProject('cloned-repo');
       expect(project).not.toBeNull();
-      expect(project?.name).toBe('Cloned Repo');
+      expect(project?.name).toBe('cloned-repo');
       expect(project?.id).toBe('cloned-repo');
     });
 

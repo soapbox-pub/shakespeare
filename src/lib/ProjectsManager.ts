@@ -15,7 +15,6 @@ export interface Project {
   id: string;
   name: string;
   path: string;
-  createdAt: Date;
   lastModified: Date;
 }
 
@@ -54,7 +53,6 @@ export class ProjectsManager {
       id,
       name: this.formatProjectName(id), // Use formatted directory name
       path: projectPath,
-      createdAt: timestamp,
       lastModified: timestamp,
     };
   }
@@ -86,7 +84,6 @@ export class ProjectsManager {
               id: dir, // basename of the path
               name: this.formatProjectName(dir), // Convert directory name to readable format
               path: projectPath,
-              createdAt: modifiedDate, // Use modified time as creation time
               lastModified: modifiedDate,
             };
 
@@ -114,7 +111,6 @@ export class ProjectsManager {
           id, // basename of the path
           name: this.formatProjectName(id), // Convert directory name to readable format
           path: projectPath,
-          createdAt: modifiedDate, // Use modified time as creation time
           lastModified: modifiedDate,
         };
       }

@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { CoreMessage, generateText, CoreUserMessage, CoreAssistantMessage, CoreToolMessage, generateId } from 'ai';
 import { Button } from '@/components/ui/button';
@@ -8,7 +7,7 @@ import { useAISettings } from '@/hooks/useAISettings';
 import { useFS } from '@/hooks/useFS';
 import { useJSRuntime } from '@/hooks/useJSRuntime';
 import { useKeepAlive } from '@/hooks/useKeepAlive';
-import { copyDirectory, copyFile } from '@/lib/copyFiles';
+import { copyDirectory } from '@/lib/copyFiles';
 import { generateSecretKey, getPublicKey, nip19 } from 'nostr-tools';
 import { bytesToHex } from 'nostr-tools/utils';
 import { MessageItem } from '@/components/ai/MessageItem';
@@ -19,6 +18,7 @@ import { TextEditorStrReplaceTool } from '@/lib/tools/TextEditorStrReplaceTool';
 import { NpmAddPackageTool } from '@/lib/tools/NpmAddPackageTool';
 import { NpmRemovePackageTool } from '@/lib/tools/NpmRemovePackageTool';
 import { GitCommitTool } from '@/lib/tools/GitCommitTool';
+import { buildProject } from "@/lib/build";
 
 interface ChatPaneProps {
   projectId: string;
@@ -72,56 +72,27 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
 
     setIsBuildLoading(true);
     updateMetadata('Shakespeare', `Building ${projectName}...`);
+
+    const dist = await buildProject(browserFS, projectId);
+
+    console.log(dist);
+
+    // Delete all existing files in "dist" directory
     try {
-      console.log('Running build for project:', projectId);
-      const runtimeFS = await runtime.fs();
-
-      // Copy project files to runtime filesystem
-      const projectPath = `/projects/${projectId}`;
-      try {
-        await copyDirectory(browserFS, runtimeFS, projectPath, '.');
-        console.log('Successfully copied project to runtime');
-      } catch (error) {
-        console.error('Failed to copy project to runtime:', error);
-        return;
+      for (const file of await browserFS.readdir(`/projects/${projectId}/dist`)) {
+        await browserFS.unlink(`/projects/${projectId}/dist/${file}`);
       }
-
-      // Install dependencies and build
-      const proc = await runtime.spawn('npm', ['i']);
-      await proc.exit;
-
-      const proc2 = await runtime.spawn('npm', ['run', 'build']);
-      await proc2.exit;
-
-      // Copy "dist" directory from runtime back to project filesystem
-      const distPath = `/projects/${projectId}/dist`;
-      try {
-        await copyDirectory(runtimeFS, browserFS, 'dist', distPath);
-        console.log('Successfully copied dist from runtime');
-      } catch (error) {
-        console.error('Failed to copy dist:', error);
-      }
-
-      // Copy package-lock.json from runtime back to project filesystem
-      const packageLockPath = `/projects/${projectId}/package-lock.json`;
-      try {
-        await copyFile(runtimeFS, browserFS, 'package-lock.json', packageLockPath);
-        console.log('Successfully copied package-lock.json from runtime');
-      } catch (error) {
-        console.error('Failed to copy package-lock.json:', error);
-      }
-
-      // Dispatch build complete event to refresh the preview iframe
-      const buildCompleteEvent = new CustomEvent('buildComplete', {
-        detail: { projectId }
-      });
-      window.dispatchEvent(buildCompleteEvent);
-      console.log('Build completed successfully, dispatched refresh event');
-    } catch (error) {
-      console.error('Build failed:', error);
-    } finally {
-      setIsBuildLoading(false);
+    } catch {
+      // Ignore errors (e.g., directory doesn't exist)
     }
+
+    await browserFS.mkdir(`/projects/${projectId}/dist`, { recursive: true });
+
+    for (const [path, contents] of Object.entries(dist)) {
+      await browserFS.writeFile(`/projects/${projectId}/dist/${path}`, contents);
+    }
+
+    setIsBuildLoading(false);
   };
 
   const runDeploy = async () => {

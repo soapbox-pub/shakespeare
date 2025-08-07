@@ -104,9 +104,12 @@ function updateIndexHtml(originalHtml: string, jsFiles: string[], cssFiles: stri
     const script = doc.createElement('script');
     script.type = 'module';
     script.src = `/${file}`;
-    script.defer = true;
     body.appendChild(script);
   });
+
+  const tailwindScript = doc.createElement('script');
+  tailwindScript.src = 'https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4';
+  head.appendChild(tailwindScript);
 
   return '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
 }

@@ -16,7 +16,11 @@ export function esmShPlugin(dependencies: Record<string, string>): Plugin {
         const packagePath = args.path.slice(packageName.length);
 
         if (version.startsWith(jsrPrefix)) {
-          const specifier = "@" + version.slice(jsrPrefix.length).replace('__', '/');
+          const baseSpecifier = "@" + version.slice(jsrPrefix.length).replace('__', '/');
+
+          const specifier = packagePath
+            ? `${baseSpecifier}${packagePath}`
+            : baseSpecifier;
 
           return {
             path: `https://esm.sh/jsr/${specifier}?external=react,react-dom`,

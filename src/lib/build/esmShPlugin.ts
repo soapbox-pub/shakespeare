@@ -19,7 +19,7 @@ export function esmShPlugin(dependencies: Record<string, string>): Plugin {
             : `${packageName}@${version}`;
 
             return {
-            path: `https://esm.sh/${specifier}`,
+            path: `https://esm.sh/${specifier}?external=react,react-dom`,
             namespace: 'http',
           };
         }
@@ -28,9 +28,10 @@ export function esmShPlugin(dependencies: Record<string, string>): Plugin {
       // Handle relative or absolute imports inside esm.sh modules
       build.onResolve({ filter: /.*/, namespace: 'http' }, (args) => {
         const baseURL = new URL(args.importer); // e.g., https://esm.sh/react-dom/client
-        const fullURL = new URL(args.path, baseURL).toString(); // resolve "/x" → full URL
+        const fullURL = new URL(args.path, baseURL); // resolve "/x" → full URL
+        fullURL.searchParams.set('external', 'react,react-dom'); // ensure react is external
         return {
-          path: fullURL,
+          path: fullURL.toString(),
           namespace: 'http',
         };
       });

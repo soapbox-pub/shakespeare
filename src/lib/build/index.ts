@@ -12,6 +12,7 @@ await esbuild.initialize({
 
 export async function buildProject(fs: JSRuntimeFS, projectId: string): Promise<Record<string, Uint8Array>> {
   const indexHtml = await fs.readFile(`/projects/${projectId}/index.html`, 'utf8');
+  const packageJson = await fs.readFile(`/projects/${projectId}/package.json`, 'utf8');
 
   // Parse index.html to find the main script entry point
   const entryPoints = parseEntryPoints(indexHtml);
@@ -29,7 +30,7 @@ export async function buildProject(fs: JSRuntimeFS, projectId: string): Promise<
     jsx: 'automatic',
     plugins: [
       lightningFsPlugin(fs, `/projects/${projectId}/src`),
-      esmShPlugin(),
+      esmShPlugin(JSON.parse(packageJson).dependencies || {}),
     ],
   });
 

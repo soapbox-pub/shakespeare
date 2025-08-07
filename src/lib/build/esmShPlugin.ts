@@ -1,14 +1,29 @@
 import type { Plugin } from 'esbuild-wasm';
 
-export function esmShPlugin(): Plugin {
+export function esmShPlugin(dependencies: Record<string, string>): Plugin {
   return {
     name: 'esm-sh',
     setup(build) {
       // Handle bare imports like "react"
-      build.onResolve({ filter: /^[^./].*/ }, (args) => ({
-        path: `https://esm.sh/${args.path}`,
-        namespace: 'http',
-      }));
+      build.onResolve({ filter: /^[^./].*/ }, async (args) => {
+        const packageName = args.path.startsWith('@')
+          ? args.path.split('/').slice(0, 2).join('/')
+          : args.path.split('/')[0];
+
+        const version = dependencies[packageName];
+        const packagePath = args.path.slice(packageName.length);
+
+        if (version) {
+          const specifier = packagePath
+            ? `${packageName}@${version}${packagePath}`
+            : `${packageName}@${version}`;
+
+            return {
+            path: `https://esm.sh/${specifier}`,
+            namespace: 'http',
+          };
+        }
+      });
 
       // Handle relative or absolute imports inside esm.sh modules
       build.onResolve({ filter: /.*/, namespace: 'http' }, (args) => {

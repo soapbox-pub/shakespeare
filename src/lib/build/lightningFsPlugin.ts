@@ -12,10 +12,12 @@ export function lightningFsPlugin(fs: JSRuntimeFS, cwd: string): Plugin {
 
         if (args.path.startsWith('@/')) {
           resolved = path.join(cwd, args.path.slice(2));
-        } else if (args.path.startsWith('/')) {
-          resolved = args.path;
+        } else if (args.resolveDir === '/') {
+          resolved = path.join(cwd, args.path);
+        } else if (args.importer) {
+          resolved = path.join(path.dirname(args.importer), args.path);
         } else {
-          resolved = path.join(cwd, args.resolveDir, args.path);
+          return;
         }
 
         try {

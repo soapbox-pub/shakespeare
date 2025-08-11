@@ -1,18 +1,19 @@
-import path from 'path-browserify';
+import path from "path-browserify";
 
-import type { Loader, Plugin } from 'esbuild-wasm';
+import type { Loader, Plugin } from "esbuild-wasm";
 import type { JSRuntimeFS } from '@/lib/JSRuntime';
 
-export function lightningFsPlugin(fs: JSRuntimeFS, cwd: string): Plugin {
+export function fsPlugin(fs: JSRuntimeFS, cwd: string): Plugin {
   return {
-    name: 'lightning-fs',
+    name: "fs",
+
     setup(build) {
       build.onResolve({ filter: /.*/ }, async (args) => {
         let resolved: string;
 
-        if (args.path.startsWith('@/')) {
+        if (args.path.startsWith("@/")) {
           resolved = path.join(cwd, args.path.slice(2));
-        } else if (args.resolveDir === '/') {
+        } else if (args.kind === "entry-point") {
           resolved = path.join(cwd, args.path);
         } else if (args.importer) {
           resolved = path.join(path.dirname(args.importer), args.path);
@@ -28,28 +29,34 @@ export function lightningFsPlugin(fs: JSRuntimeFS, cwd: string): Plugin {
 
         return {
           path: resolved,
-          namespace: 'lightning-fs',
+          namespace: "fs",
         };
       });
 
-      build.onLoad({ filter: /.*/, namespace: 'lightning-fs' }, async (args) => {
-        const ext = path.extname(args.path).slice(1);
+      build.onLoad(
+        { filter: /.*/, namespace: "fs" },
+        async (args) => {
+          const ext = path.extname(args.path).slice(1);
 
-        if (!['ts', 'tsx', 'js', 'jsx', 'css'].includes(ext)) {
-          return;
-        }
+          if (!["ts", "tsx", "js", "jsx", "css"].includes(ext)) {
+            return;
+          }
 
-        return {
-          contents: await fs.readFile(args.path, 'utf8'),
-          loader: ext as Loader,
-        };
-      });
+          return {
+            contents: await fs.readFile(args.path, "utf8"),
+            loader: ext as Loader,
+          };
+        },
+      );
     },
   };
 }
 
-async function tryFileVariants(fs: JSRuntimeFS, basePath: string): Promise<string> {
-  const extensions = ['.ts', '.tsx', '.js', '.jsx', '.css'];
+async function tryFileVariants(
+  fs: JSRuntimeFS,
+  basePath: string,
+): Promise<string> {
+  const extensions = [".ts", ".tsx", ".js", ".jsx", ".css"];
 
   try {
     await fs.stat(basePath);
@@ -71,7 +78,7 @@ async function tryFileVariants(fs: JSRuntimeFS, basePath: string): Promise<strin
 
   // Try directory index files
   for (const ext of extensions) {
-    const indexFile = path.join(basePath, 'index' + ext);
+    const indexFile = path.join(basePath, "index" + ext);
     try {
       await fs.stat(indexFile);
       return indexFile;
@@ -80,5 +87,5 @@ async function tryFileVariants(fs: JSRuntimeFS, basePath: string): Promise<strin
     }
   }
 
-  throw new Error('File not found');
+  throw new Error("File not found");
 }

@@ -1,14 +1,9 @@
-import * as esbuild from "esbuild-wasm";
+import { getEsbuild } from "@/lib/esbuild";
 
 import { esmPlugin } from "./esmPlugin";
 import { fsPlugin } from "./fsPlugin";
 
 import type { JSRuntimeFS } from '@/lib/JSRuntime';
-
-const esbuildInitPromise = esbuild.initialize({
-  worker: false,
-  wasmURL: "https://esm.sh/esbuild-wasm@0.25.8/esbuild.wasm",
-});
 
 export interface BuildProjectOptions {
   fs: JSRuntimeFS;
@@ -20,7 +15,7 @@ export interface BuildProjectOptions {
 export async function buildProject(
   options: BuildProjectOptions,
 ): Promise<Record<string, Uint8Array>> {
-  await esbuildInitPromise;
+  const esbuild = await getEsbuild();
 
   const { fs, projectPath, domParser, target } = options;
 

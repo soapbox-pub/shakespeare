@@ -1,115 +1,100 @@
-import * as esbuild from 'esbuild-wasm';
+import * as esbuild from "esbuild-wasm";
 
-import { esmShPlugin } from './esmShPlugin';
-import { lightningFsPlugin } from './lightningFsPlugin';
+import { esmPlugin } from "./esmPlugin";
+import { fsPlugin } from "./fsPlugin";
 
 import type { JSRuntimeFS } from '@/lib/JSRuntime';
 
-await esbuild.initialize({
+const esbuildInitPromise = esbuild.initialize({
   worker: false,
-  wasmURL: 'https://unpkg.com/esbuild-wasm/esbuild.wasm',
+  wasmURL: "https://esm.sh/esbuild-wasm@0.25.8/esbuild.wasm",
 });
 
-export async function buildProject(fs: JSRuntimeFS, projectId: string): Promise<Record<string, Uint8Array>> {
-  const indexHtml = await fs.readFile(`/projects/${projectId}/index.html`, 'utf8');
-  const packageJson = await fs.readFile(`/projects/${projectId}/package.json`, 'utf8');
+export interface BuildProjectOptions {
+  fs: JSRuntimeFS;
+  projectPath: string;
+  domParser: DOMParser;
+  target?: string;
+}
 
-  // Parse index.html to find the main script entry point
-  const entryPoints = parseEntryPoints(indexHtml);
-  if (!entryPoints.length) {
-    throw new Error('No entry point script found in index.html');
-  }
+export async function buildProject(
+  options: BuildProjectOptions,
+): Promise<Record<string, Uint8Array>> {
+  await esbuildInitPromise;
+
+  const { fs, projectPath, domParser, target } = options;
+
+  const indexHtmlText = await fs.readFile(
+    `${projectPath}/index.html`,
+    "utf8",
+  );
+  const packageLockText = await fs.readFile(
+    `${projectPath}/package-lock.json`,
+    "utf8",
+  );
+
+  const doc = domParser.parseFromString(indexHtmlText, "text/html");
 
   const results = await esbuild.build({
-    entryPoints,
+    entryPoints: ["./main.tsx"],
     bundle: true,
     write: false,
-    format: 'esm',
-    target: 'esnext',
-    outdir: 'dist',
-    jsx: 'automatic',
+    format: "esm",
+    target: target ?? "esnext",
+    outdir: "/",
+    jsx: "automatic",
     plugins: [
-      lightningFsPlugin(fs, `/projects/${projectId}/src`),
-      esmShPlugin(JSON.parse(packageJson).dependencies || {}),
+      fsPlugin(fs, `${projectPath}/src`),
+      esmPlugin(JSON.parse(packageLockText), target),
     ],
   });
 
   const dist: Record<string, Uint8Array> = {};
 
-  // Process output files
-  const jsFiles: string[] = [];
-  const cssFiles: string[] = [];
-
   for (const file of results.outputFiles) {
-    const relativePath = file.path.replace(/^\/dist\//, '');
+    const relativePath = file.path.replace(/^\//, "");
     dist[relativePath] = file.contents;
-
-    // Track JS and CSS files for HTML injection
-    if (relativePath.endsWith('.js')) {
-      jsFiles.push(relativePath);
-    } else if (relativePath.endsWith('.css')) {
-      cssFiles.push(relativePath);
-    }
   }
 
   // Update index.html with proper script and link tags
-  const updatedHtml = updateIndexHtml(indexHtml, jsFiles, cssFiles);
-  dist['index.html'] = new TextEncoder().encode(updatedHtml);
+  updateIndexHtml(doc);
+
+  const updatedHtml = "<!DOCTYPE html>\n" + doc.documentElement.outerHTML;
+  dist["index.html"] = new TextEncoder().encode(updatedHtml);
 
   return dist;
 }
 
-function parseEntryPoints(html: string): string[] {
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(html, 'text/html');
+function updateIndexHtml(doc: Document): void {
+  const entrypoint = doc.querySelector('script[src="/src/main.tsx"]');
 
-  // Look for script tags with type="module" and src attribute
-  const scripts = doc.getElementsByTagName('script');
-
-  return Array.from(scripts)
-    .filter((script) => new URL(script.src).origin === location.origin) // Only include same-origin scripts
-    .map((script) => new URL(script.src).pathname.replace(/^\/src\//, ''));
-}
-
-function updateIndexHtml(originalHtml: string, jsFiles: string[], cssFiles: string[]): string {
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(originalHtml, 'text/html');
-
-  // Remove existing script tags that reference our built files
-  for (const elem of doc.getElementsByTagName('script')) {
-    if (new URL(elem.src).origin === location.origin) {
-      elem.remove();
-    }
+  if (!entrypoint) {
+    throw new Error("No entrypoint script found in index.html");
   }
 
-  // Remove existing link tags that reference our built CSS files
-  for (const elem of doc.getElementsByTagName('link')) {
-    if (elem.rel === 'stylesheet' && new URL(elem.href).origin === location.origin) {
-      elem.remove();
-    }
+  entrypoint.setAttribute("src", "/main.js");
+
+  const style = doc.createElement("link");
+  style.setAttribute("rel", "stylesheet");
+  style.setAttribute("href", "/main.css");
+  doc.head.appendChild(style);
+
+  const tailwindScript = doc.createElement("script");
+  tailwindScript.setAttribute(
+    "src",
+    "https://esm.sh/@tailwindcss/browser@4",
+  );
+  tailwindScript.setAttribute("type", "module");
+  doc.head.appendChild(tailwindScript);
+
+  const csp = doc.querySelector('meta[http-equiv="content-security-policy"]');
+  if (csp) {
+    csp.setAttribute(
+      "content",
+      csp.getAttribute("content")?.replace(
+        "script-src 'self'",
+        "script-src 'self' https://esm.sh"
+      ) ?? ""
+    );
   }
-
-  // Add CSS files to the head
-  const head = doc.head;
-  cssFiles.forEach((file) => {
-    const link = doc.createElement('link');
-    link.rel = 'stylesheet';
-    link.href = `/${file}`;
-    head.appendChild(link);
-  });
-
-  // Add JS files before the closing body tag
-  const body = doc.body;
-  jsFiles.forEach((file) => {
-    const script = doc.createElement('script');
-    script.type = 'module';
-    script.src = `/${file}`;
-    body.appendChild(script);
-  });
-
-  const tailwindScript = doc.createElement('script');
-  tailwindScript.src = 'https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4';
-  head.appendChild(tailwindScript);
-
-  return '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
 }

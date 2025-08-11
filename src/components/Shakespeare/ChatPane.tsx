@@ -73,7 +73,12 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
     setIsBuildLoading(true);
     updateMetadata('Shakespeare', `Building ${projectName}...`);
 
-    const dist = await buildProject(browserFS, projectId);
+    const dist = await buildProject({
+      fs: browserFS,
+      projectPath: `/projects/${projectId}`,
+      domParser: new DOMParser(),
+      target: "esnext",
+    });
 
     console.log(dist);
 

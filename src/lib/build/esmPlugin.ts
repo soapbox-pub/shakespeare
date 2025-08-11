@@ -96,6 +96,10 @@ export function esmPlugin(packageLock: PackageLock, target?: string): Plugin {
       build.onLoad({ filter: /.*/, namespace: "esm" }, async (args) => {
         const res = await fetch(args.path);
 
+        if (res.redirected) {
+          redirectedURLs.set(args.path, res.url);
+        }
+
         if (!res.ok) {
           throw new Error(`Failed to fetch ${args.path}`);
         }

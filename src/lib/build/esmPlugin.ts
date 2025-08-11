@@ -36,6 +36,14 @@ export function esmPlugin(packageLock: PackageLock, target?: string): Plugin {
     name: "esm",
 
     setup(build) {
+      // http(s) imports
+      build.onResolve({ filter: /^https?:\/\// }, async (args) => {
+        return {
+          path: args.path,
+          namespace: "esm",
+        };
+      });
+
       // Handle bare imports like "react"
       build.onResolve({ filter: /^[^./].*/ }, (args) => {
         const packageName = args.path.startsWith("@")

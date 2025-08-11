@@ -36,7 +36,15 @@ export async function buildProject(
   const doc = domParser.parseFromString(indexHtmlText, "text/html");
 
   const results = await esbuild.build({
-    entryPoints: ["./main.tsx"],
+    stdin: {
+      contents: `
+        import "@/main.tsx";
+        import tailwindConfig from "@/../tailwind.config.ts";
+        import "https://esm.sh/tailwindcss-cdn@3";
+        tailwind.config = tailwindConfig;
+      `,
+      loader: "tsx",
+    },
     bundle: true,
     write: false,
     format: "esm",
@@ -53,7 +61,13 @@ export async function buildProject(
 
   for (const file of results.outputFiles) {
     const relativePath = file.path.replace(/^\//, "");
-    dist[relativePath] = file.contents;
+    if (relativePath === "stdin.js") {
+      dist["main.js"] = file.contents;
+    } else if (relativePath === "stdin.css") {
+      dist["main.css"] = file.contents;
+    } else {
+      dist[relativePath] = file.contents;
+    }
   }
 
   // Update index.html with proper script and link tags
@@ -78,23 +92,4 @@ function updateIndexHtml(doc: Document): void {
   style.setAttribute("rel", "stylesheet");
   style.setAttribute("href", "/main.css");
   doc.head.appendChild(style);
-
-  const tailwindScript = doc.createElement("script");
-  tailwindScript.setAttribute(
-    "src",
-    "https://esm.sh/@tailwindcss/browser@4",
-  );
-  tailwindScript.setAttribute("type", "module");
-  doc.head.appendChild(tailwindScript);
-
-  const csp = doc.querySelector('meta[http-equiv="content-security-policy"]');
-  if (csp) {
-    csp.setAttribute(
-      "content",
-      csp.getAttribute("content")?.replace(
-        "script-src 'self'",
-        "script-src 'self' https://esm.sh"
-      ) ?? ""
-    );
-  }
 }

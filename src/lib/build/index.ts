@@ -50,6 +50,9 @@ export async function buildProject(
       fsPlugin(fs, `${projectPath}/src`),
       esmPlugin(JSON.parse(packageLockText), target),
     ],
+    define: {
+      "import.meta.env": JSON.stringify({}),
+    },
   });
 
   const dist: Record<string, Uint8Array> = {};

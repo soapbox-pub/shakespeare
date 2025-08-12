@@ -57,35 +57,45 @@ async function tryFileVariants(
   basePath: string,
 ): Promise<string> {
   const extensions = [".ts", ".tsx", ".js", ".jsx", ".css"];
+  const stat = await statSafe(fs, basePath);
 
-  try {
-    await fs.stat(basePath);
+  // If it's a file, check if it exists
+  if (stat.isFile()) {
     return basePath;
-  } catch {
-    // Ignore
+  }
+
+  // If it's a directory, try index files
+  if (stat.isDirectory()) {
+    for (const ext of extensions) {
+      const indexFile = path.join(basePath, "index" + ext);
+      const indexStat = await statSafe(fs, indexFile);
+      if (indexStat.isFile()) {
+        return indexFile;
+      }
+    }
+    throw new Error("Directory without index file");
   }
 
   // Try direct file with extensions
   for (const ext of extensions) {
     const full = basePath + ext;
-    try {
-      await fs.stat(full);
+    const fullStat = await statSafe(fs, full);
+    if (fullStat.isFile()) {
       return full;
-    } catch {
-      // Ignore
     }
   }
 
-  // Try directory index files
-  for (const ext of extensions) {
-    const indexFile = path.join(basePath, "index" + ext);
-    try {
-      await fs.stat(indexFile);
-      return indexFile;
-    } catch {
-      // Ignore
-    }
-  }
-
+  // If no file found, throw an error
   throw new Error("File not found");
+}
+
+async function statSafe(fs: JSRuntimeFS, filePath: string): Promise<{ isFile(): boolean; isDirectory(): boolean }> {
+  try {
+    return await fs.stat(filePath);
+  } catch {
+    return {
+      isFile: () => false,
+      isDirectory: () => false,
+    };
+  }
 }

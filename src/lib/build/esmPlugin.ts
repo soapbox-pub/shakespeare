@@ -50,7 +50,17 @@ export function esmPlugin(packageLock: PackageLock, target?: string): Plugin {
           ? args.path.split("/").slice(0, 2).join("/")
           : args.path.split("/")[0];
 
-        const packageInfo = packageLock.packages["node_modules/" + packageName];
+        let packageKey = `node_modules/${packageName}`;
+        if (args.importer.startsWith("https://esm.sh/")) {
+          try {
+            const importerPackage = new URL(args.importer).pathname.split('/')[1]?.split('@')[0].replace(/^\*/, '');
+            packageKey = `node_modules/${importerPackage}/node_modules/${packageName}`;
+          } catch {
+            // fallthrough
+          }
+        }
+
+        const packageInfo = packageLock.packages[packageKey] || packageLock.packages[`node_modules/${packageName}`];
         const packagePath = args.path.slice(packageName.length);
         const version = packageInfo?.version;
 

@@ -37,7 +37,7 @@ export function esmPlugin(packageLock: PackageLock, target?: string): Plugin {
 
     setup(build) {
       // http(s) imports
-      build.onResolve({ filter: /^https?:\/\// }, async (args) => {
+      build.onResolve({ filter: /^https?:\/\// }, (args) => {
         return {
           path: args.path,
           namespace: "esm",
@@ -50,17 +50,23 @@ export function esmPlugin(packageLock: PackageLock, target?: string): Plugin {
           ? args.path.split("/").slice(0, 2).join("/")
           : args.path.split("/")[0];
 
-        let packageKey = `node_modules/${packageName}`;
-        if (args.importer.startsWith("https://esm.sh/")) {
-          try {
-            const importerPackage = new URL(args.importer).pathname.split('/')[1]?.split('@')[0].replace(/^\*/, '');
-            packageKey = `node_modules/${importerPackage}/node_modules/${packageName}`;
-          } catch {
-            // fallthrough
-          }
+        // Handle transitive dependency versions
+        const keys: string[] = [];
+        try {
+          const importerPackage = extractPackageName(args.importer);
+          keys.push(
+            `node_modules/${importerPackage}/node_modules/${packageName}`,
+          );
+        } catch {
+          // fallthrough
         }
 
-        const packageInfo = packageLock.packages[packageKey] || packageLock.packages[`node_modules/${packageName}`];
+        keys.push(`node_modules/${packageName}`);
+
+        const packageInfo = keys
+          .map((key) => packageLock.packages[key])
+          .find((info) => info);
+
         const packagePath = args.path.slice(packageName.length);
         const version = packageInfo?.version;
 
@@ -144,4 +150,20 @@ export function esmPlugin(packageLock: PackageLock, target?: string): Plugin {
       });
     },
   };
+}
+
+/** Extract package name from esm.sh-style URL */
+function extractPackageName(esmShURL: string): string {
+  const full = new URL(esmShURL)
+    .pathname
+    .slice(1)
+    .replace(/^\*/, "");
+
+  const base = full.startsWith("@")
+    ? full.split("/").slice(0, 2).join("/")
+    : full.split("/")[0];
+
+  return full.startsWith("@")
+    ? base.split("@").splice(0, 2).join("@")
+    : base.split("@")[0];
 }

@@ -145,26 +145,23 @@ describe('TextEditorViewTool', () => {
   it('should handle viewing current directory without ignore library errors', async () => {
     const result = await tool.execute({ path: '.' });
 
-    expect(result.isError).toBe(false);
-    expect(result.content[0].text).toContain('src/');
-    expect(result.content[0].text).toContain('package.json');
+    expect(result).toContain('src/');
+    expect(result).toContain('package.json');
     // .git should be filtered out by gitignore, but .gitignore should be present
-    expect(result.content[0].text).toContain('.gitignore');
-    expect(result.content[0].text).not.toContain('.git/'); // Check for .git directory specifically
+    expect(result).toContain('.gitignore');
+    expect(result).not.toContain('.git/'); // Check for .git directory specifically
   });
 
   it('should handle viewing subdirectory', async () => {
     const result = await tool.execute({ path: 'src' });
 
-    expect(result.isError).toBe(false);
-    expect(result.content[0].text).toContain('index.ts');
+    expect(result).toContain('index.ts');
   });
 
   it('should handle viewing a file', async () => {
     const result = await tool.execute({ path: 'src/index.ts' });
 
-    expect(result.isError).toBe(false);
-    expect(result.content[0].text).toBe('console.log("hello");');
+    expect(result).toBe('console.log("hello");');
   });
 
   it('should handle line filtering', async () => {
@@ -174,7 +171,6 @@ describe('TextEditorViewTool', () => {
       end_line: 1
     });
 
-    expect(result.isError).toBe(false);
-    expect(result.content[0].text).toBe('console.log("hello");');
+    expect(result).toBe('console.log("hello");');
   });
 });

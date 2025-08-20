@@ -1,7 +1,7 @@
 import { z } from "zod";
 import git from 'isomorphic-git';
 
-import type { Tool, CallToolResult } from "./Tool";
+import type { Tool } from "./Tool";
 import type { JSRuntimeFS } from "../JSRuntime";
 
 interface GitCommitParams {
@@ -14,7 +14,7 @@ export class GitCommitTool implements Tool<GitCommitParams> {
 
   readonly description = "Commit changes to git with a commit message. Automatically adds all unstaged files.";
 
-  readonly parameters = z.object({
+  readonly inputSchema = z.object({
     message: z.string().describe('Commit message text'),
   });
 
@@ -23,7 +23,7 @@ export class GitCommitTool implements Tool<GitCommitParams> {
     this.cwd = cwd;
   }
 
-  async execute(args: GitCommitParams): Promise<CallToolResult> {
+  async execute(args: GitCommitParams): Promise<string> {
     const { message } = args;
 
     try {
@@ -31,24 +31,12 @@ export class GitCommitTool implements Tool<GitCommitParams> {
       try {
         await this.fs.stat(`${this.cwd}/.git`);
       } catch {
-        return {
-          content: [{
-            type: "text",
-            text: `❌ Not a git repository. Initialize git first with 'git init'.`,
-          }],
-          isError: true,
-        };
+        throw new Error(`❌ Not a git repository. Initialize git first with 'git init'.`);
       }
 
       // Validate commit message
       if (!message.trim()) {
-        return {
-          content: [{
-            type: "text",
-            text: `❌ Commit message cannot be empty.`,
-          }],
-          isError: true,
-        };
+        throw new Error(`❌ Commit message cannot be empty.`);
       }
 
       // Get git status to see what files have changed
@@ -66,13 +54,7 @@ export class GitCommitTool implements Tool<GitCommitParams> {
       });
 
       if (changedFiles.length === 0) {
-        return {
-          content: [{
-            type: "text",
-            text: `ℹ️ No changes to commit. Working tree is clean.`,
-          }],
-          isError: false,
-        };
+        return `ℹ️ No changes to commit. Working tree is clean.`;
       }
 
       // Add all changed files to staging
@@ -170,21 +152,9 @@ export class GitCommitTool implements Tool<GitCommitParams> {
       if (modifiedFiles > 0) details += `  • ${modifiedFiles} file${modifiedFiles !== 1 ? 's' : ''} modified\n`;
       if (deletedFiles > 0) details += `  • ${deletedFiles} file${deletedFiles !== 1 ? 's' : ''} deleted\n`;
 
-      return {
-        content: [{
-          type: "text",
-          text: `${summary}\n\n${details}`,
-        }],
-        isError: false,
-      };
+      return `${summary}\n\n${details}`;
     } catch (error) {
-      return {
-        content: [{
-          type: "text",
-          text: `❌ Error committing changes: ${String(error)}`,
-        }],
-        isError: true,
-      };
+      throw new Error(`❌ Error committing changes: ${String(error)}`);
     }
   }
 }

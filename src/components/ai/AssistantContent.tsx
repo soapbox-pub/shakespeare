@@ -41,28 +41,14 @@ export const AssistantContent = memo(({ content, toolResults = [] }: AssistantCo
     }
 
     // Handle direct string results
-    if (typeof toolResult.result === 'string') {
+    if (toolResult.output.type === 'text') {
       return {
-        result: toolResult.result,
-        isError: toolResult.isError || false
+        result: toolResult.output.value,
+        isError: false
       };
     }
 
-    // Handle CallToolResult structure
-    if (toolResult.result && typeof toolResult.result === 'object') {
-      const callResult = toolResult.result as {
-        content?: Array<{ type: string; text: string }>;
-        isError?: boolean;
-      };
-      if (callResult.content && Array.isArray(callResult.content) && callResult.content[0]?.text) {
-        return {
-          result: callResult.content[0].text,
-          isError: callResult.isError || false
-        };
-      }
-    }
-
-    return { isError: toolResult.isError || false };
+    return { isError: true };
   };
   // Handle string content (simple text messages)
   if (typeof content === 'string') {
@@ -164,8 +150,8 @@ export const AssistantContent = memo(({ content, toolResults = [] }: AssistantCo
           );
         } else if (item.type === 'tool-call') {
           // Special rendering for text_editor_str_replace tool
-          if (item.toolName === 'text_editor_str_replace' && item.args) {
-            const { path, old_str, new_str } = item.args as { path: string; old_str: string; new_str: string };
+          if (item.toolName === 'text_editor_str_replace' && item.input) {
+            const { path, old_str, new_str } = item.input as { path: string; old_str: string; new_str: string };
             const { result, isError } = extractToolResult(item.toolCallId);
 
             return (
@@ -181,8 +167,8 @@ export const AssistantContent = memo(({ content, toolResults = [] }: AssistantCo
           }
 
           // Special rendering for run_script tool
-          if (item.toolName === 'run_script' && item.args) {
-            const { script } = item.args as { script: string };
+          if (item.toolName === 'run_script' && item.input) {
+            const { script } = item.input as { script: string };
             const { result, isError } = extractToolResult(item.toolCallId);
 
             return (
@@ -196,8 +182,8 @@ export const AssistantContent = memo(({ content, toolResults = [] }: AssistantCo
           }
 
           // Special rendering for text_editor_view tool
-          if (item.toolName === 'text_editor_view' && item.args) {
-            const { path } = item.args as { path: string };
+          if (item.toolName === 'text_editor_view' && item.input) {
+            const { path } = item.input as { path: string };
             const { result, isError } = extractToolResult(item.toolCallId);
 
             return (
@@ -211,8 +197,8 @@ export const AssistantContent = memo(({ content, toolResults = [] }: AssistantCo
           }
 
           // Special rendering for text_editor_write tool
-          if (item.toolName === 'text_editor_write' && item.args) {
-            const { path, file_text } = item.args as { path: string; file_text: string };
+          if (item.toolName === 'text_editor_write' && item.input) {
+            const { path, file_text } = item.input as { path: string; file_text: string };
             const { result, isError } = extractToolResult(item.toolCallId);
 
             return (
@@ -227,8 +213,8 @@ export const AssistantContent = memo(({ content, toolResults = [] }: AssistantCo
           }
 
           // Special rendering for shell tool
-          if (item.toolName === 'shell' && item.args) {
-            const { command } = item.args as { command: string };
+          if (item.toolName === 'shell' && item.input) {
+            const { command } = item.input as { command: string };
             const { result, isError } = extractToolResult(item.toolCallId);
 
             return (
@@ -242,8 +228,8 @@ export const AssistantContent = memo(({ content, toolResults = [] }: AssistantCo
           }
 
           // Special rendering for npm_add_package tool
-          if (item.toolName === 'npm_add_package' && item.args) {
-            const { name, version, dev } = item.args as { name: string; version?: string; dev?: boolean };
+          if (item.toolName === 'npm_add_package' && item.input) {
+            const { name, version, dev } = item.input as { name: string; version?: string; dev?: boolean };
             const { result, isError } = extractToolResult(item.toolCallId);
 
             return (
@@ -261,8 +247,8 @@ export const AssistantContent = memo(({ content, toolResults = [] }: AssistantCo
           }
 
           // Special rendering for npm_remove_package tool
-          if (item.toolName === 'npm_remove_package' && item.args) {
-            const { name } = item.args as { name: string };
+          if (item.toolName === 'npm_remove_package' && item.input) {
+            const { name } = item.input as { name: string };
             const { result, isError } = extractToolResult(item.toolCallId);
 
             return (
@@ -278,8 +264,8 @@ export const AssistantContent = memo(({ content, toolResults = [] }: AssistantCo
           }
 
           // Special rendering for jsr_add_package tool
-          if (item.toolName === 'jsr_add_package' && item.args) {
-            const { name, version, dev } = item.args as { name: string; version?: string; dev?: boolean };
+          if (item.toolName === 'jsr_add_package' && item.input) {
+            const { name, version, dev } = item.input as { name: string; version?: string; dev?: boolean };
             const { result, isError } = extractToolResult(item.toolCallId);
 
             return (
@@ -297,8 +283,8 @@ export const AssistantContent = memo(({ content, toolResults = [] }: AssistantCo
           }
 
           // Special rendering for jsr_remove_package tool
-          if (item.toolName === 'jsr_remove_package' && item.args) {
-            const { name } = item.args as { name: string };
+          if (item.toolName === 'jsr_remove_package' && item.input) {
+            const { name } = item.input as { name: string };
             const { result, isError } = extractToolResult(item.toolCallId);
 
             return (
@@ -314,8 +300,8 @@ export const AssistantContent = memo(({ content, toolResults = [] }: AssistantCo
           }
 
           // Special rendering for git_commit tool
-          if (item.toolName === 'git_commit' && item.args) {
-            const { message } = item.args as { message: string };
+          if (item.toolName === 'git_commit' && item.input) {
+            const { message } = item.input as { message: string };
             const { result, isError } = extractToolResult(item.toolCallId);
 
             return (
@@ -336,10 +322,10 @@ export const AssistantContent = memo(({ content, toolResults = [] }: AssistantCo
                   <Code className="h-4 w-4 flex-shrink-0" />
                   <span className="font-mono text-sm break-all">{String(item.toolName)}</span>
                 </div>
-                {item.args && typeof item.args === 'object' && item.args !== null && Object.keys(item.args).length > 0 ? (
+                {item.input && typeof item.input === 'object' && item.input !== null && Object.keys(item.input).length > 0 ? (
                   <div className="text-xs text-muted-foreground mb-2">
                     <pre className="overflow-hidden text-ellipsis">
-                      {JSON.stringify(item.args, null, 2)}
+                      {JSON.stringify(item.input, null, 2)}
                     </pre>
                   </div>
                 ) : null}

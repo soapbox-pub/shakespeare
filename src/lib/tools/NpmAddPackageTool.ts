@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import type { Tool, CallToolResult } from "./Tool";
+import type { Tool } from "./Tool";
 import type { JSRuntimeFS } from "../JSRuntime";
 
 interface NpmAddPackageParams {
@@ -21,7 +21,7 @@ export class NpmAddPackageTool implements Tool<NpmAddPackageParams> {
 
   readonly description = "Safely add an npm package to the project in the current directory.";
 
-  readonly parameters = z.object({
+  readonly inputSchema = z.object({
     name: z.string().describe('Name of the npm package to add, eg "lodash"'),
     version: z.string().optional().describe("Version (optional)"),
     dev: z.boolean().optional().describe("If true, add to devDependencies (default: false)"),
@@ -32,7 +32,7 @@ export class NpmAddPackageTool implements Tool<NpmAddPackageParams> {
     this.cwd = cwd;
   }
 
-  async execute(args: NpmAddPackageParams): Promise<CallToolResult> {
+  async execute(args: NpmAddPackageParams): Promise<string> {
     const { name, version, dev = false } = args;
 
     try {
@@ -43,13 +43,7 @@ export class NpmAddPackageTool implements Tool<NpmAddPackageParams> {
       try {
         packageJsonContent = await this.fs.readFile(packageJsonPath, "utf8");
       } catch {
-        return {
-          content: [{
-            type: "text",
-            text: `❌ Could not read package.json at ${packageJsonPath}. Make sure you're in a valid npm project.`,
-          }],
-          isError: true,
-        };
+        throw new Error(`❌ Could not read package.json at ${packageJsonPath}. Make sure you're in a valid npm project.`);
       }
 
       // Parse package.json
@@ -57,13 +51,7 @@ export class NpmAddPackageTool implements Tool<NpmAddPackageParams> {
       try {
         packageJson = JSON.parse(packageJsonContent);
       } catch {
-        return {
-          content: [{
-            type: "text",
-            text: `❌ Invalid package.json format. Could not parse JSON.`,
-          }],
-          isError: true,
-        };
+        throw new Error(`❌ Invalid package.json format. Could not parse JSON.`);
       }
 
       // Determine version to use
@@ -72,13 +60,7 @@ export class NpmAddPackageTool implements Tool<NpmAddPackageParams> {
         try {
           targetVersion = await this.fetchLatestVersion(name);
         } catch (error) {
-          return {
-            content: [{
-              type: "text",
-              text: `❌ Could not fetch latest version for ${name}. Package may not exist or npm registry is unavailable.\n\nError: ${String(error)}`,
-            }],
-            isError: true,
-          };
+          throw new Error(`❌ Could not fetch latest version for ${name}. Package may not exist or npm registry is unavailable.\n\nError: ${String(error)}`);
         }
       }
 
@@ -89,13 +71,7 @@ export class NpmAddPackageTool implements Tool<NpmAddPackageParams> {
       if (packageJson[dependencyKey]?.[name]) {
         const currentVersion = packageJson[dependencyKey][name];
         if (currentVersion === `^${targetVersion}`) {
-          return {
-            content: [{
-              type: "text",
-              text: `ℹ️ Package ${name}@${targetVersion} is already installed in ${dependencyKey}.`,
-            }],
-            isError: false,
-          };
+          return `ℹ️ Package ${name}@${targetVersion} is already installed in ${dependencyKey}.`;
         }
       }
 
@@ -135,21 +111,9 @@ export class NpmAddPackageTool implements Tool<NpmAddPackageParams> {
       const updatedContent = JSON.stringify(packageJson, null, 2) + '\n';
       await this.fs.writeFile(packageJsonPath, updatedContent, "utf8");
 
-      return {
-        content: [{
-          type: "text",
-          text: `✅ Successfully added ${name}@${targetVersion} to ${dependencyKey} in package.json\n\n📦 Package: ${name}\n🏷️ Version: ^${targetVersion}\n📁 Type: ${dev ? 'Development dependency' : 'Production dependency'}`,
-        }],
-        isError: false,
-      };
+      return `✅ Successfully added ${name}@${targetVersion} to ${dependencyKey} in package.json\n\n📦 Package: ${name}\n🏷️ Version: ^${targetVersion}\n📁 Type: ${dev ? 'Development dependency' : 'Production dependency'}`;
     } catch (error) {
-      return {
-        content: [{
-          type: "text",
-          text: `❌ Error adding package ${name}: ${String(error)}`,
-        }],
-        isError: true,
-      };
+      throw new Error(`❌ Error adding package ${name}: ${String(error)}`);
     }
   }
 

@@ -25,9 +25,9 @@ describe('NpmRemovePackageTool', () => {
     tool = new NpmRemovePackageTool(mockFS, '/test/project');
   });
 
-  it('should have correct description and parameters', () => {
+  it('should have correct description and inputSchema', () => {
     expect(tool.description).toBe('Safely remove an npm package from the project in the current directory.');
-    expect(tool.parameters).toBeDefined();
+    expect(tool.inputSchema).toBeDefined();
   });
 
   it('should successfully remove package from dependencies', async () => {
@@ -51,8 +51,7 @@ describe('NpmRemovePackageTool', () => {
 
     expect(writtenPackageJson.dependencies.lodash).toBeUndefined();
     expect(writtenPackageJson.dependencies.axios).toBe('^1.0.0');
-    expect(result.isError).toBe(false);
-    expect(result.content[0].text).toContain('✅ Successfully removed lodash from dependencies');
+    expect(result).toContain('✅ Successfully removed lodash from dependencies');
   });
 
   it('should successfully remove package from devDependencies', async () => {
@@ -78,8 +77,7 @@ describe('NpmRemovePackageTool', () => {
     expect(writtenPackageJson.devDependencies.typescript).toBeUndefined();
     expect(writtenPackageJson.devDependencies.eslint).toBe('^8.0.0');
     expect(writtenPackageJson.dependencies.react).toBe('^18.0.0');
-    expect(result.isError).toBe(false);
-    expect(result.content[0].text).toContain('✅ Successfully removed typescript from devDependencies');
+    expect(result).toContain('✅ Successfully removed typescript from devDependencies');
   });
 
   it('should remove empty dependencies object', async () => {
@@ -99,7 +97,7 @@ describe('NpmRemovePackageTool', () => {
     const writtenPackageJson = JSON.parse(writtenContent);
 
     expect(writtenPackageJson.dependencies).toBeUndefined();
-    expect(result.isError).toBe(false);
+    expect(result).toContain('✅ Successfully removed');
   });
 
   it('should remove empty devDependencies object', async () => {
@@ -123,7 +121,7 @@ describe('NpmRemovePackageTool', () => {
 
     expect(writtenPackageJson.devDependencies).toBeUndefined();
     expect(writtenPackageJson.dependencies.react).toBe('^18.0.0');
-    expect(result.isError).toBe(false);
+    expect(result).toContain('✅ Successfully removed');
   });
 
   it('should handle package not found', async () => {
@@ -140,26 +138,19 @@ describe('NpmRemovePackageTool', () => {
     const result = await tool.execute({ name: 'nonexistent-package' });
 
     expect(mockFS.writeFile).not.toHaveBeenCalled();
-    expect(result.isError).toBe(false);
-    expect(result.content[0].text).toContain('ℹ️ Package nonexistent-package was not found');
+    expect(result).toContain('ℹ️ Package nonexistent-package was not found');
   });
 
   it('should handle missing package.json', async () => {
     vi.mocked(mockFS.readFile).mockRejectedValue(new Error('File not found'));
 
-    const result = await tool.execute({ name: 'lodash' });
-
-    expect(result.isError).toBe(true);
-    expect(result.content[0].text).toContain('❌ Could not read package.json');
+    await expect(tool.execute({ name: 'lodash' })).rejects.toThrow('❌ Could not read package.json');
   });
 
   it('should handle invalid package.json', async () => {
     vi.mocked(mockFS.readFile).mockResolvedValue('invalid json');
 
-    const result = await tool.execute({ name: 'lodash' });
-
-    expect(result.isError).toBe(true);
-    expect(result.content[0].text).toContain('❌ Invalid package.json format');
+    await expect(tool.execute({ name: 'lodash' })).rejects.toThrow('❌ Invalid package.json format');
   });
 
   it('should sort remaining dependencies alphabetically', async () => {
@@ -182,7 +173,7 @@ describe('NpmRemovePackageTool', () => {
     const dependencyKeys = Object.keys(writtenPackageJson.dependencies);
 
     expect(dependencyKeys).toEqual(['axios', 'zlib']);
-    expect(result.isError).toBe(false);
+    expect(result).toContain('✅ Successfully removed');
   });
 
   it('should include version information in success message', async () => {
@@ -198,7 +189,7 @@ describe('NpmRemovePackageTool', () => {
 
     const result = await tool.execute({ name: 'lodash' });
 
-    expect(result.content[0].text).toContain('🏷️ Version: ^4.17.21');
-    expect(result.content[0].text).toContain('📁 Removed from: dependencies');
+    expect(result).toContain('🏷️ Version: ^4.17.21');
+    expect(result).toContain('📁 Removed from: dependencies');
   });
 });

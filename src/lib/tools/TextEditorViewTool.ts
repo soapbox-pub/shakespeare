@@ -2,7 +2,7 @@ import { join } from "@std/path";
 import ignore from "ignore";
 import { z } from "zod";
 
-import type { Tool, CallToolResult } from "./Tool";
+import type { Tool } from "./Tool";
 import type { JSRuntimeFS } from "../JSRuntime";
 
 interface TextEditorViewParams {
@@ -17,7 +17,7 @@ export class TextEditorViewTool implements Tool<TextEditorViewParams> {
 
   readonly description = "View the contents of a text file or directory";
 
-  readonly parameters = z.object({
+  readonly inputSchema = z.object({
     path: z.string().describe(
       'Path of the file or directory to view, eg "src/index.ts" or "src/"',
     ),
@@ -34,19 +34,13 @@ export class TextEditorViewTool implements Tool<TextEditorViewParams> {
     this.cwd = cwd;
   }
 
-  async execute(args: TextEditorViewParams): Promise<CallToolResult> {
+  async execute(args: TextEditorViewParams): Promise<string> {
     const { path, start_line, end_line } = args;
 
     try {
       // Check for absolute paths and provide helpful error
       if (path.startsWith('/') || path.startsWith('\\') || /^[A-Za-z]:[\\/]/.test(path)) {
-        return {
-          content: [{
-            type: "text",
-            text: `❌ Absolute paths are not supported.\n\nThe path "${path}" appears to be an absolute path.\n\n💡 Please use a relative path instead. Examples:\n- "src/index.ts" (relative to current directory)\n- "./src/index.ts" (explicit relative path)\n- "../other-project/src/index.ts" (relative to parent directory)\n\nCurrent working directory: ${this.cwd}`,
-          }],
-          isError: true,
-        };
+        throw new Error(`❌ Absolute paths are not supported.\n\nThe path "${path}" appears to be an absolute path.\n\n💡 Please use a relative path instead. Examples:\n- "src/index.ts" (relative to current directory)\n- "./src/index.ts" (explicit relative path)\n- "../other-project/src/index.ts" (relative to parent directory)\n\nCurrent working directory: ${this.cwd}`);
       }
 
       const absolutePath = join(this.cwd, path);
@@ -58,13 +52,7 @@ export class TextEditorViewTool implements Tool<TextEditorViewParams> {
         // If it's a directory, generate a tree-like listing
         // Note: start_line and end_line are ignored for directories
         const tree = await this.generateDirectoryTree(absolutePath);
-        return {
-          content: [{
-            type: "text",
-            text: tree,
-          }],
-          isError: false,
-        };
+        return tree;
       }
 
       // If it's a file, read and return its contents
@@ -76,43 +64,19 @@ export class TextEditorViewTool implements Tool<TextEditorViewParams> {
 
         // Validate line numbers first
         if (start_line !== undefined && start_line < 1) {
-          return {
-            content: [{
-              type: "text",
-              text: "Error: start_line must be >= 1",
-            }],
-            isError: true,
-          };
+          throw new Error("Error: start_line must be >= 1");
         }
 
         if (end_line !== undefined && end_line < 1) {
-          return {
-            content: [{
-              type: "text",
-              text: "Error: end_line must be >= 1",
-            }],
-            isError: true,
-          };
+          throw new Error("Error: end_line must be >= 1");
         }
 
         if (start_line !== undefined && end_line !== undefined && start_line > end_line) {
-          return {
-            content: [{
-              type: "text",
-              text: "Error: start_line cannot be greater than end_line",
-            }],
-            isError: true,
-          };
+          throw new Error("Error: start_line cannot be greater than end_line");
         }
 
         if (start_line !== undefined && start_line > lines.length) {
-          return {
-            content: [{
-              type: "text",
-              text: `Error: start_line ${start_line} is beyond the end of the file (${lines.length} lines)`,
-            }],
-            isError: true,
-          };
+          throw new Error(`Error: start_line ${start_line} is beyond the end of the file (${lines.length} lines)`);
         }
 
         const startIdx = start_line !== undefined ? start_line - 1 : 0;
@@ -121,21 +85,9 @@ export class TextEditorViewTool implements Tool<TextEditorViewParams> {
         content = lines.slice(startIdx, endIdx).join('\n');
       }
 
-      return {
-        content: [{
-          type: "text",
-          text: content,
-        }],
-        isError: false,
-      };
+      return content;
     } catch (error) {
-      return {
-        content: [{
-          type: "text",
-          text: String(error),
-        }],
-        isError: true,
-      };
+      throw new Error(String(error));
     }
   }
 

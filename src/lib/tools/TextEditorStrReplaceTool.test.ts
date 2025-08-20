@@ -116,33 +116,25 @@ describe('TextEditorStrReplaceTool', () => {
       new_str: 'hello universe'
     });
 
-    expect(result.isError).toBe(false);
-    expect(result.content[0].text).toContain('String successfully replaced in src/test.ts');
+    expect(result).toContain('String successfully replaced in src/test.ts');
     expect(mockFS.getFileContent('/project/src/test.ts')).toContain('hello universe');
     expect(mockFS.getFileContent('/project/src/test.ts')).not.toContain('hello world');
   });
 
   it('should handle string not found', async () => {
-    const result = await tool.execute({
+    await expect(tool.execute({
       path: 'src/test.ts',
       old_str: 'nonexistent string',
       new_str: 'replacement'
-    });
-
-    expect(result.isError).toBe(true);
-    expect(result.content[0].text).toContain('The string to replace was not found in src/test.ts');
+    })).rejects.toThrow('The string to replace was not found in src/test.ts');
   });
 
   it('should reject absolute paths with helpful error message', async () => {
-    const result = await tool.execute({
+    await expect(tool.execute({
       path: '/absolute/path/test.ts',
       old_str: 'old',
       new_str: 'new'
-    });
-
-    expect(result.isError).toBe(true);
-    expect(result.content[0].text).toContain('❌ Absolute paths are not supported');
-    expect(result.content[0].text).toContain('Current working directory: /project');
+    })).rejects.toThrow('❌ Absolute paths are not supported');
   });
 
   it('should handle whitespace normalization', async () => {
@@ -153,7 +145,7 @@ describe('TextEditorStrReplaceTool', () => {
       normalize_whitespace: true
     });
 
-    expect(result.isError).toBe(false);
+    expect(result).toContain('String successfully replaced');
     expect(mockFS.getFileContent('/project/src/test.ts')).toContain('const greeting = "hello universe";');
   });
 });

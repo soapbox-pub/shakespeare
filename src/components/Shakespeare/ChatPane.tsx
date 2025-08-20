@@ -1,6 +1,6 @@
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import { useState, useRef, useEffect } from 'react';
-import { ModelMessage, generateText, CoreUserMessage, CoreAssistantMessage, CoreToolMessage, generateId } from 'ai';
+import { ModelMessage, generateText, UserModelMessage, AssistantModelMessage, ToolModelMessage, generateId } from 'ai';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Send, Settings, Play, CloudUpload, Loader2 } from 'lucide-react';
@@ -26,7 +26,7 @@ interface ChatPaneProps {
   projectName: string;
 }
 
-type AIMessage = (CoreUserMessage | CoreAssistantMessage | CoreToolMessage) & { id: string };
+type AIMessage = (UserModelMessage | AssistantModelMessage | ToolModelMessage) & { id: string };
 
 export function ChatPane({ projectId, projectName }: ChatPaneProps) {
   const [messages, setMessages] = useState<AIMessage[]>([]);
@@ -393,7 +393,7 @@ When creating new components or pages, follow the existing patterns in the codeb
         <div className="p-4 space-y-4">
           {messages.map((message, index) => {
             // For assistant messages, find corresponding tool results
-            const toolResults: CoreToolMessage[] = [];
+            const toolResults: ToolModelMessage[] = [];
             if (message.role === 'assistant') {
               // Look for tool messages that come after this assistant message
               for (let i = index + 1; i < messages.length; i++) {

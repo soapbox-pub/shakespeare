@@ -40,6 +40,7 @@ export class ProjectsManager {
   }
 
   async cloneProject(name: string, repoUrl: string): Promise<Project> {
+    const url = new URL(repoUrl);
     const id = await this.generateUniqueProjectId(name);
     const projectPath = `${this.dir}/${id}`;
 
@@ -53,6 +54,11 @@ export class ProjectsManager {
       url: repoUrl,
       singleBranch: true,
       depth: 1,
+      // Use the CORS proxy only for GitHub and GitLab URLs
+      // More info: https://github.com/isomorphic-git/isomorphic-git#cors-support
+      corsProxy: url.hostname === 'github.com' || url.hostname === 'gitlab.com'
+        ? 'https://cors.isomorphic-git.org'
+        : undefined,
     });
 
     // Get filesystem stats for timestamps

@@ -5,16 +5,13 @@ import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { useOnboarding } from '@/hooks/useOnboarding';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
-import { useRepos } from '@/hooks/useRepos';
 import { ProjectSidebar } from '@/components/ProjectSidebar';
 import { OnboardingDialog } from '@/components/onboarding';
-import { RepoCard } from '@/components/RepoCard';
 
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, Folder, Menu, Columns2, Sparkles } from 'lucide-react';
+import { Plus, Menu, Columns2, Sparkles } from 'lucide-react';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { useSeoMeta } from '@unhead/react';
 import { cn } from '@/lib/utils';
@@ -28,7 +25,6 @@ export default function Index() {
   const projectsManager = useProjectsManager();
   const isMobile = useIsMobile();
   const { user: _user } = useCurrentUser();
-  const { data: repos = [], isLoading, error, refetch } = useRepos();
   const {
     hasCompletedOnboarding,
     currentStep,
@@ -89,8 +85,6 @@ export default function Index() {
     setIsCreating(true);
     try {
       const project = await projectsManager.createProject(prompt.trim());
-      // Refresh repos after creating a new project
-      refetch();
       navigate(`/project/${project.id}`);
     } catch (error) {
       console.error('Failed to create project:', error);
@@ -99,10 +93,7 @@ export default function Index() {
     }
   };
 
-  const handleRepoRefresh = () => {
-    refetch();
-    loadProjects();
-  };
+
 
   const handleProjectSelect = (project: Project | null) => {
     if (project) {
@@ -227,47 +218,7 @@ export default function Index() {
               </Card>
             </div>
 
-            <div>
-              <h2 className="text-xl md:text-2xl font-semibold mb-4 md:mb-6">Your Repositories</h2>
 
-              {isLoading ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {[...Array(6)].map((_, i) => (
-                    <Card key={i}>
-                      <CardContent className="p-4 md:p-6">
-                        <Skeleton className="h-4 w-3/4 mb-2" />
-                        <Skeleton className="h-3 w-1/2" />
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              ) : error ? (
-                <Card className="border-destructive/20">
-                  <CardContent className="py-6 text-center">
-                    <p className="text-destructive">Failed to load repositories</p>
-                  </CardContent>
-                </Card>
-              ) : repos.length === 0 ? (
-                <Card className="bg-gradient-to-br from-muted/50 to-muted/20 border-dashed border-2 border-muted-foreground/20">
-                  <CardContent className="text-center py-8 md:py-12">
-                    <div className="flex items-center justify-center gap-2 mb-4">
-                      <Folder className="h-10 w-10 md:h-12 md:w-12 text-muted-foreground" />
-                    </div>
-                    <p className="text-muted-foreground text-sm md:text-base">No repositories yet. Create your first project above!</p>
-                  </CardContent>
-                </Card>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {repos.map((repo) => (
-                    <RepoCard
-                      key={repo.id}
-                      repo={repo}
-                      onRepoCloned={handleRepoRefresh}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
           </div>
         </div>
 
@@ -282,7 +233,7 @@ export default function Index() {
           onProjectCreated={(projectId) => {
             console.log('Project created during onboarding:', projectId);
             setStoredPrompt('');
-            handleRepoRefresh();
+            loadProjects();
           }}
         />
       </div>
@@ -303,7 +254,7 @@ export default function Index() {
           // Handle project creation during onboarding
           console.log('Project created during onboarding:', projectId);
           setStoredPrompt(''); // Clear stored prompt after project creation
-          handleRepoRefresh();
+          loadProjects();
         }}
       />
       <div className="min-h-screen flex bg-background">
@@ -401,47 +352,7 @@ export default function Index() {
                   </Card>
                 </div>
 
-                <div>
-                  <h2 className="text-xl md:text-2xl font-semibold mb-4 md:mb-6">Your Repositories</h2>
 
-                  {isLoading ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {[...Array(6)].map((_, i) => (
-                        <Card key={i}>
-                          <CardContent className="p-4 md:p-6">
-                            <Skeleton className="h-4 w-3/4 mb-2" />
-                            <Skeleton className="h-3 w-1/2" />
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-                  ) : error ? (
-                    <Card className="border-destructive/20">
-                      <CardContent className="py-6 text-center">
-                        <p className="text-destructive">Failed to load repositories</p>
-                      </CardContent>
-                    </Card>
-                  ) : repos.length === 0 ? (
-                    <Card className="bg-gradient-to-br from-muted/50 to-muted/20 border-dashed border-2 border-muted-foreground/20">
-                      <CardContent className="text-center py-8 md:py-12">
-                        <div className="flex items-center justify-center gap-2 mb-4">
-                          <Folder className="h-10 w-10 md:h-12 md:w-12 text-muted-foreground" />
-                        </div>
-                        <p className="text-muted-foreground text-sm md:text-base">No repositories yet. Create your first project above!</p>
-                      </CardContent>
-                    </Card>
-                  ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {repos.map((repo) => (
-                        <RepoCard
-                          key={repo.id}
-                          repo={repo}
-                          onRepoCloned={handleRepoRefresh}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </div>
               </div>
             </div>
           </div>

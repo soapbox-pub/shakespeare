@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Loader2, Info, MoreVertical, Trash2, Eye, Star, Bug, Folder, Download } from 'lucide-react';
+import { Plus, Loader2, Info, MoreVertical, Trash2, Eye, Star, Bug, Folder, Download, GitBranch } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
@@ -309,6 +309,13 @@ export function ProjectSidebar({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem
+                  onClick={() => navigate('/clone')}
+                  className="flex items-center gap-2 w-full"
+                >
+                  <GitBranch className="h-4 w-4" />
+                  Import Repository
+                </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={handleExportFiles}
                   disabled={isExporting}

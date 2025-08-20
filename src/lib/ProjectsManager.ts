@@ -36,13 +36,24 @@ export class ProjectsManager {
   }
 
   async createProject(name: string): Promise<Project> {
+    return this.cloneProject(name, GIT_TEMPLATE_URL);
+  }
+
+  async cloneProject(name: string, repoUrl: string): Promise<Project> {
     const id = await this.generateUniqueProjectId(name);
     const projectPath = `${this.dir}/${id}`;
 
     await this.fs.mkdir(projectPath);
 
-    // Clone the template first
-    await this.cloneTemplate(projectPath);
+    // Clone the repository
+    await git.clone({
+      fs: this.fs,
+      http,
+      dir: projectPath,
+      url: repoUrl,
+      singleBranch: true,
+      depth: 1,
+    });
 
     // Get filesystem stats for timestamps
     const stats = await this.fs.stat(projectPath);
@@ -57,16 +68,7 @@ export class ProjectsManager {
     };
   }
 
-  async cloneTemplate(projectPath: string) {
-    await git.clone({
-      fs: this.fs,
-      http,
-      dir: projectPath,
-      url: GIT_TEMPLATE_URL,
-      singleBranch: true,
-      depth: 1,
-    });
-  }
+
 
   async getProjects(): Promise<Project[]> {
     try {
@@ -187,27 +189,20 @@ export class ProjectsManager {
   }
 
   private async deleteDirectory(dirPath: string): Promise<void> {
-    try {
-      const files = await this.fs.readdir(dirPath);
+    const files = await this.fs.readdir(dirPath);
 
-      for (const file of files) {
-        const fullPath = `${dirPath}/${file}`;
-        const stat = await this.fs.stat(fullPath);
+    for (const file of files) {
+      const fullPath = `${dirPath}/${file}`;
+      const stat = await this.fs.lstat(fullPath);
 
-        if (stat.isDirectory()) {
-          await this.deleteDirectory(fullPath);
-        } else {
-          await this.fs.unlink(fullPath);
-        }
-      }
-
-      await this.fs.rmdir(dirPath);
-    } catch (error) {
-      const fsError = error as NodeJS.ErrnoException;
-      if (fsError.code !== 'ENOENT') {
-        throw error;
+      if (stat.isDirectory()) {
+        await this.deleteDirectory(fullPath);
+      } else {
+        await this.fs.unlink(fullPath);
       }
     }
+
+    await this.fs.rmdir(dirPath);
   }
 
   private async generateUniqueProjectId(name: string): Promise<string> {

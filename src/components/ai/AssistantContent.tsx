@@ -67,36 +67,43 @@ export const AssistantContent = memo(({ content, toolResults = [] }: AssistantCo
     return { isError: toolResult.isError || false };
   };
 
-  // Helper function to check and render build action
+  // Helper function to check if text represents a build action
+  const isBuildAction = (text: string): boolean => {
+    return /(✅|❌|⏸️|🎉)/.test(text) && /(Agent completed successfully|Auto-build|Build|Deploy|Building|Deploying)/i.test(text);
+  };
+
+  // Helper function to determine build action type
+  const getActionType = (text: string): 'BUILD' | 'DEPLOY' | 'AUTO_BUILD' => {
+    if (text.includes('Auto-build') || text.includes('Auto-building') ||
+        (text.includes('Agent completed successfully') && text.includes('built'))) {
+      return 'AUTO_BUILD';
+    }
+    if (text.includes('Deploy') || text.includes('Deploying')) {
+      return 'DEPLOY';
+    }
+    return 'BUILD';
+  };
+
+  // Helper function to determine build action status
+  const getActionStatus = (text: string): { isError: boolean; isLoading: boolean } => {
+    const icon = text.match(/(✅|❌|⏸️|🎉)/)?.[1];
+    const hasFailed = icon === '❌' || text.toLowerCase().includes('failed');
+    const isRunning = icon === '⏸️' || /(Building|Deploying)/i.test(text);
+
+    return {
+      isError: hasFailed,
+      isLoading: isRunning && !hasFailed
+    };
+  };
+
+  // Helper function to render build action
   const renderBuildAction = (text: string, key: number | string) => {
-    if (!/(✅|❌|⏸️|🔄|🎉|🎉)/.test(text) || !/(Agent completed successfully|Auto-build|Build|Deploy|Building|Deploying)/i.test(text)) {
+    if (!isBuildAction(text)) {
       return null;
     }
 
-    const getActionType = (): 'BUILD' | 'DEPLOY' | 'AUTO_BUILD' => {
-      if (text.includes('Auto-build') || text.includes('Auto-building') || (text.includes('Agent completed successfully') && text.includes('built'))) {
-        return 'AUTO_BUILD';
-      }
-      if (text.includes('Deploy') || text.includes('Deploying')) {
-        return 'DEPLOY';
-      }
-      return 'BUILD';
-    };
-
-    const getStatus = () => {
-      const icon = text.match(/(✅|❌|⏸️|🔄|🎉)/)?.[1];
-
-      if (icon === '❌' || text.includes('failed')) {
-        return { isError: true, isLoading: false };
-      }
-      if (icon === '⏸️' || icon === '🔄' || /(Building|Deploying)/i.test(text)) {
-        return { isError: false, isLoading: true };
-      }
-      return { isError: false, isLoading: false };
-    };
-
-    const actionType = getActionType();
-    const { isError, isLoading } = getStatus();
+    const actionType = getActionType(text);
+    const { isError, isLoading } = getActionStatus(text);
 
     return (
       <BuildAction

@@ -10,6 +10,7 @@ import { FileWriter } from '@/components/ai/FileWriter';
 import { ShellCommand } from '@/components/ai/ShellCommand';
 import { PackageManager } from '@/components/ai/PackageManager';
 import { GitCommit } from '@/components/ai/GitCommit';
+import { BuildAction } from '@/components/ai/BuildAction';
 import type { CoreAssistantMessage, CoreToolMessage } from 'ai';
 
 interface AssistantContentProps {
@@ -64,8 +65,60 @@ export const AssistantContent = memo(({ content, toolResults = [] }: AssistantCo
 
     return { isError: toolResult.isError || false };
   };
+
+  // Helper function to check and render build action
+  const renderBuildAction = (text: string, key: number | string) => {
+    const buildActionMatch = text.match(/(✅|❌|⏸️|🔄|🎉|⚠️|👀).*?(Agent completed successfully|Auto-building|Build|Deploy|Auto-fix|Building|Deploying|Fixing|Preview updated)/i);
+
+    if (buildActionMatch) {
+      const icon = buildActionMatch[1];
+      const fullText = text;
+
+      console.log('BuildAction Detection - Match found:', { icon, fullText });
+
+      let actionType: 'build' | 'deploy' | 'auto-build' | 'auto-fix' = 'build';
+      let isError = false;
+      let isLoading = false;
+
+      // Determine action type and status based on full text content
+      if (fullText.includes('Auto-build') || fullText.includes('Auto-building')) {
+        actionType = 'auto-build';
+      } else if (fullText.includes('Auto-fix') || fullText.includes('Fixing')) {
+        actionType = 'auto-fix';
+      } else if (fullText.includes('Deploy') || fullText.includes('Deploying')) {
+        actionType = 'deploy';
+      }
+
+      // Determine status
+      if (icon === '❌' || fullText.includes('failed')) {
+        isError = true;
+      } else if (icon === '⏸️' || icon === '🔄' || fullText.includes('Building') || fullText.includes('Deploying') || fullText.includes('Fixing')) {
+        isLoading = true;
+      } else if (icon === '✅' || icon === '🎉' || icon === '👀') {
+        // Success state - no loading or error
+      }
+
+      return (
+        <BuildAction
+          key={key}
+          action={actionType}
+          result={fullText}
+          isError={isError}
+          isLoading={isLoading}
+        />
+      );
+    }
+    return null;
+  };
+
   // Handle string content (simple text messages)
   if (typeof content === 'string') {
+    // Check if this is a build action message
+    const buildAction = renderBuildAction(content, 'string-content');
+    if (buildAction) {
+      return buildAction;
+    }
+
     return (
       <div className="prose prose-sm max-w-none dark:prose-invert">
         <ReactMarkdown
@@ -117,6 +170,12 @@ export const AssistantContent = memo(({ content, toolResults = [] }: AssistantCo
     <>
       {content.map((item, index) => {
         if (item.type === 'text') {
+          // Check if this is a build action message
+          const buildAction = renderBuildAction(item.text, index);
+          if (buildAction) {
+            return buildAction;
+          }
+
           return (
             <div key={index} className="prose prose-sm max-w-none dark:prose-invert">
               <ReactMarkdown

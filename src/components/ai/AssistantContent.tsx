@@ -81,7 +81,7 @@ export const AssistantContent = memo(({ content, toolResults = [] }: AssistantCo
       let isLoading = false;
 
       // Determine action type and status based on full text content
-      if (fullText.includes('Auto-build') || fullText.includes('Auto-building')) {
+      if (fullText.includes('Auto-build') || fullText.includes('Auto-building') || (fullText.includes('Agent completed successfully') && fullText.includes('built'))) {
         actionType = 'auto-build';
       } else if (fullText.includes('Auto-fix') || fullText.includes('Fixing')) {
         actionType = 'auto-fix';

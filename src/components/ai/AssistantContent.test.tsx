@@ -9,7 +9,7 @@ describe('AssistantContent', () => {
 
   describe('Build Action Detection', () => {
     it('should render build action for string content with auto-build message', () => {
-      const content = '✅ Agent completed successfully. Auto-building project and checking deployment preview...';
+      const content = '✅ Agent completed successfully. Project built and preview updated!';
 
       render(
         <TestApp>
@@ -22,7 +22,7 @@ describe('AssistantContent', () => {
     });
 
     it('should render build action for string content with build success message', () => {
-      const content = '🎉 Project built successfully! Checking deployment preview...';
+      const content = '✅ Agent completed successfully. Project built! Switch to the "Preview" tab to see your changes.';
 
       render(
         <TestApp>
@@ -35,7 +35,7 @@ describe('AssistantContent', () => {
     });
 
     it('should render build action for string content with preview updated message', () => {
-      const content = '👀 Preview updated! Your changes are now visible in the preview pane.';
+      const content = '✅ Agent completed successfully. Project built and preview updated!';
 
       render(
         <TestApp>
@@ -62,7 +62,7 @@ describe('AssistantContent', () => {
 
     it('should render build action for array content with auto-build message', () => {
       const content = [
-        { type: 'text' as const, text: '✅ Agent completed successfully. Auto-building project and checking deployment preview...' }
+        { type: 'text' as const, text: '✅ Agent completed successfully. Project built and preview updated!' }
       ];
 
       render(

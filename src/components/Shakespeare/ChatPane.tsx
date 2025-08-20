@@ -235,14 +235,6 @@ BASE_DOMAIN=nostrdeploy.com`);
           // Reset auto-fix attempts on successful completion
           autoFixAttemptsRef.current = 0;
 
-          // Add a system message to indicate auto-build is starting
-          const autoBuildMessage: AIMessage = {
-            id: generateId(),
-            role: 'assistant',
-            content: '✅ Agent completed successfully. Auto-building project and checking deployment preview...',
-          };
-          addMessage(autoBuildMessage);
-
           // Auto-build the project after a short delay
           setTimeout(async () => {
             try {
@@ -267,14 +259,6 @@ BASE_DOMAIN=nostrdeploy.com`);
               window.dispatchEvent(buildCompleteEvent);
               console.log('Dispatched buildComplete event for project:', projectId);
 
-              // Add success message
-              const buildSuccessMessage: AIMessage = {
-                id: generateId(),
-                role: 'assistant',
-                content: '🎉 Project built successfully! Checking deployment preview...',
-              };
-              addMessage(buildSuccessMessage);
-
               // Switch to preview tab to show the updated deployment
               setTimeout(() => {
                 try {
@@ -291,14 +275,14 @@ BASE_DOMAIN=nostrdeploy.com`);
                     previewButton.click();
                     console.log('Switched to preview tab');
 
-                    // Add final success message
+                    // Add single consolidated success message
                     setTimeout(() => {
-                      const finalMessage: AIMessage = {
+                      const successMessage: AIMessage = {
                         id: generateId(),
                         role: 'assistant',
-                        content: '👀 Preview updated! Your changes are now visible in the preview pane.',
+                        content: '✅ Agent completed successfully. Project built and preview updated!',
                       };
-                      addMessage(finalMessage);
+                      addMessage(successMessage);
                     }, 1000);
                   } else {
                     console.log('Preview tab button not found');
@@ -306,7 +290,7 @@ BASE_DOMAIN=nostrdeploy.com`);
                     const manualSwitchMessage: AIMessage = {
                       id: generateId(),
                       role: 'assistant',
-                      content: '📱 Project built successfully! Switch to the "Preview" tab to see your changes.',
+                      content: '✅ Agent completed successfully. Project built! Switch to the "Preview" tab to see your changes.',
                     };
                     addMessage(manualSwitchMessage);
                   }
@@ -373,7 +357,7 @@ Please fix this issue and ensure the project builds successfully.`,
 
                   // Get the current messages state using ref to ensure we have the latest
                   const currentMessages = messagesRef.current;
-                  const aiMessages: AIMessage[] = [...currentMessages, autoBuildMessage, buildErrorMessage, errorFixRequest];
+                  const aiMessages: AIMessage[] = [...currentMessages, buildErrorMessage, errorFixRequest];
                   await createAIChat(projectId, aiMessages);
                 } catch (fixError) {
                   console.error('Failed to get AI to fix build error:', fixError);
@@ -388,7 +372,7 @@ Please fix this issue and ensure the project builds successfully.`,
                 }
               }, 1000);
             }
-          }, 1000); // Small delay to show the auto-build message first
+          }, 1000); // Small delay before starting auto-build
         }
       },
       tools: {

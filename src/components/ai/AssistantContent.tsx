@@ -11,7 +11,6 @@ import { ShellCommand } from '@/components/ai/ShellCommand';
 import { PackageManager } from '@/components/ai/PackageManager';
 import { GitCommit } from '@/components/ai/GitCommit';
 import { BuildAction } from '@/components/ai/BuildAction';
-
 import type { CoreAssistantMessage, CoreToolMessage } from 'ai';
 
 interface AssistantContentProps {

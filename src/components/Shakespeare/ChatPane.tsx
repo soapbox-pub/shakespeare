@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
 import { CoreMessage, generateText, CoreUserMessage, CoreAssistantMessage, CoreToolMessage, generateId } from 'ai';
-
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Send, Settings, Play, CloudUpload, Loader2 } from 'lucide-react';

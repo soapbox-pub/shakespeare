@@ -25,14 +25,9 @@ interface ChatPaneProps {
   projectName: string;
 }
 
-interface ValidationErrorIssue {
-  path: (string | number)[];
-  message: string;
-}
-
 interface ValidationError {
   name: string;
-  issues?: ValidationErrorIssue[];
+  issues?: Array<{ path: (string | number)[]; message: string }>;
   cause?: ValidationError;
 }
 
@@ -100,18 +95,15 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
 
 
 
-  // Unified auto-fix handler to eliminate code duplication
+  // Unified auto-fix handler
   const handleAutoFix = async (errorType: 'build' | 'api', error: unknown) => {
-    // Check if we've exceeded auto-fix attempts
     if (autoFixAttemptsRef.current >= 3) {
-      console.log('Auto-fix attempt limit reached, stopping auto-fix');
       const errorDetails = error instanceof Error ? error.message : 'Unknown error';
-      const limitMessage: AIMessage = {
+      addMessage({
         id: generateId(),
         role: 'assistant',
         content: `⚠️ Auto-fix attempt limit reached. Please ${errorType === 'build' ? 'fix the build error' : 'try rephrasing your request'} manually: ${errorDetails}`,
-      };
-      addMessage(limitMessage);
+      });
       setIsLoading(false);
       return;
     }
@@ -121,23 +113,24 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
 
     const errorDetails = error instanceof Error ? error.message : 'Unknown error';
 
-    // Generate error-specific messages
-    let errorMessage: AIMessage;
-    let fixRequest: AIMessage;
-
-    if (errorType === 'build') {
-      const buildErrorContent = typeof error === 'object' && error !== null && 'toString' in error ? error.toString() : errorDetails;
-
-      errorMessage = {
+    const createFixMessages = (): [AIMessage, AIMessage] => {
+      const baseErrorMessage = {
         id: generateId(),
-        role: 'assistant',
-        content: `❌ Auto-build failed. Analyzing error and attempting to fix automatically...`,
+        role: 'assistant' as const,
+        content: errorType === 'build'
+          ? `❌ Auto-build failed. Analyzing error and attempting to fix automatically...`
+          : `❌ AI response error detected. Analyzing and attempting to fix automatically...`,
       };
 
-      fixRequest = {
-        id: generateId(),
-        role: 'user',
-        content: `The build failed with the following error. Please analyze this error and fix the issue:
+      if (errorType === 'build') {
+        const buildErrorContent = typeof error === 'object' && error !== null && 'toString' in error
+          ? error.toString()
+          : errorDetails;
+
+        const fixRequest: AIMessage = {
+          id: generateId(),
+          role: 'user',
+          content: `The build failed with the following error. Please analyze this error and fix the issue:
 
 \`\`\`
 ${buildErrorContent}
@@ -150,31 +143,26 @@ Common issues to check:
 - Configuration issues (update config files)
 
 Please fix this issue and ensure the project builds successfully.`,
-      };
-    } else {
+        };
+
+        return [baseErrorMessage, fixRequest];
+      }
+
       const caughtError = error as ValidationError;
       const errorCause = caughtError.cause;
       let validationErrors = '';
 
-      if (caughtError.name === 'AI_TypeValidationError' || caughtError.name === 'ZodError') {
-        if (caughtError.issues && Array.isArray(caughtError.issues)) {
-          validationErrors = caughtError.issues
-            .map((issue: ValidationErrorIssue) => `- ${issue.path.join('.')}: ${issue.message}`)
-            .join('\n');
-        } else if (errorCause && errorCause.issues && Array.isArray(errorCause.issues)) {
-          validationErrors = errorCause.issues
-            .map((issue: ValidationErrorIssue) => `- ${issue.path.join('.')}: ${issue.message}`)
-            .join('\n');
-        }
+      if ((caughtError.name === 'AI_TypeValidationError' || caughtError.name === 'ZodError') && caughtError.issues) {
+        validationErrors = caughtError.issues
+          .map(issue => `- ${issue.path.join('.')}: ${issue.message}`)
+          .join('\n');
+      } else if (errorCause?.issues) {
+        validationErrors = errorCause.issues
+          .map(issue => `- ${issue.path.join('.')}: ${issue.message}`)
+          .join('\n');
       }
 
-      errorMessage = {
-        id: generateId(),
-        role: 'assistant',
-        content: `❌ AI response error detected. Analyzing and attempting to fix automatically...`,
-      };
-
-      fixRequest = {
+      const fixRequest: AIMessage = {
         id: generateId(),
         role: 'user',
         content: `The AI generated an invalid response that caused an error. Please analyze this error and regenerate a valid response:
@@ -200,25 +188,25 @@ Please regenerate your response with the same intent but ensure it's properly fo
 3. All required arguments are provided
 4. The JSON structure is valid`,
       };
-    }
 
+      return [baseErrorMessage, fixRequest];
+    };
+
+    const [errorMessage, fixRequest] = createFixMessages();
     addMessage(errorMessage);
     addMessage(fixRequest);
 
     try {
       updateMetadata('Shakespeare', `Fixing ${errorType} error for ${projectName}...`);
-
       const currentMessages = messagesRef.current;
-      const aiMessages: AIMessage[] = [...currentMessages, errorMessage, fixRequest];
-      await createAIChat(projectId, aiMessages);
+      await createAIChat(projectId, [...currentMessages, errorMessage, fixRequest]);
     } catch (fixError) {
       console.error('Failed to get AI to fix error:', fixError);
-      const fixErrorMessage: AIMessage = {
+      addMessage({
         id: generateId(),
         role: 'assistant',
         content: `❌ Failed to auto-fix the ${errorType} error. Please ${errorType === 'build' ? 'try fixing manually' : 'try rephrasing your request or try again later'}: ${errorDetails}`,
-      };
-      addMessage(fixErrorMessage);
+      });
     } finally {
       setIsLoading(false);
     }
@@ -382,52 +370,34 @@ BASE_DOMAIN=nostrdeploy.com`);
         // Check if this is the final step with a successful finish reason
         if (stepResult.finishReason === 'stop' && stepResult.response.messages.length > 0) {
           console.log('Agent finished successfully, auto-building project...');
-
-          // Reset auto-fix attempts on successful completion
           autoFixAttemptsRef.current = 0;
 
-          // Auto-build the project after a short delay
           setTimeout(async () => {
-            try {
-              // Check if build is already running to avoid conflicts
-              if (isBuildLoading || isDeployLoading) {
-                console.log('Build or deploy already in progress, skipping auto-build');
-                const skipMessage: AIMessage = {
-                  id: generateId(),
-                  role: 'assistant',
-                  content: '⏸️ Build or deploy already in progress. Skipping auto-build.',
-                };
-                addMessage(skipMessage);
-                return;
-              }
+            if (isBuildLoading || isDeployLoading) {
+              addMessage({
+                id: generateId(),
+                role: 'assistant',
+                content: '⏸️ Build or deploy already in progress. Skipping auto-build.',
+              });
+              return;
+            }
 
+            try {
               await runBuild();
 
-              // Dispatch build complete event to refresh preview
-              const buildCompleteEvent = new CustomEvent('buildComplete', {
-                detail: { projectId },
-              });
-              window.dispatchEvent(buildCompleteEvent);
-              console.log('Dispatched buildComplete event for project:', projectId);
-
-              // Signal to switch to preview tab
+              window.dispatchEvent(new CustomEvent('buildComplete', { detail: { projectId } }));
               setShouldSwitchToPreview(true);
-              console.log('Signaled to switch to preview tab');
 
-              // Add success message
-              const successMessage: AIMessage = {
+              addMessage({
                 id: generateId(),
                 role: 'assistant',
                 content: '✅ Agent completed successfully. Project built! Switch to the "Preview" tab to see your changes.',
-              };
-              addMessage(successMessage);
-
+              });
             } catch (error) {
               console.error('Auto-build failed:', error);
-
               await handleAutoFix('build', error);
             }
-          }, 1000); // Small delay before starting auto-build
+          }, 1000);
         }
       },
       tools: {
@@ -483,7 +453,7 @@ When creating new components or pages, follow the existing patterns in the codeb
     setInput('');
     setIsLoading(true);
 
-    const _isAutoFixCase = { value: false };
+
 
     try {
       const aiMessages: AIMessage[] = [...messages, userMessage];

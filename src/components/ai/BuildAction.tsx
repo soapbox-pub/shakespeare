@@ -12,50 +12,24 @@ interface BuildActionProps {
 }
 
 export const BuildAction = memo(({ action, result, isError = false, isLoading = false }: BuildActionProps) => {
+  const actionConfig = {
+    build: { title: 'Build Project', verb: 'build' },
+    deploy: { title: 'Deploy Project', verb: 'deploy' },
+    'auto-build': { title: 'Auto-Build Project', verb: 'auto-build' },
+    'auto-fix': { title: 'Auto-Fix Error', verb: 'auto-fix' },
+  }[action] || { title: 'Build Action', verb: 'process' };
+
   const getActionIcon = () => {
     if (isLoading) return <Loader2 className="h-4 w-4 animate-spin" />;
     if (isError) return <XCircle className="h-4 w-4 text-destructive" />;
     return <Play className="h-4 w-4" />;
   };
 
-  const getActionTitle = () => {
-    if (action === 'build') return 'Build Project';
-    if (action === 'deploy') return 'Deploy Project';
-    if (action === 'auto-build') return 'Auto-Build Project';
-    if (action === 'auto-fix') return 'Auto-Fix Error';
-    return 'Build Action';
-  };
-
   const getActionDescription = () => {
-    if (isLoading) {
-      if (action === 'build') return 'Building project...';
-      if (action === 'deploy') return 'Deploying project...';
-      if (action === 'auto-build') return 'Auto-building project...';
-      if (action === 'auto-fix') return 'Auto-fixing error...';
-      return 'Processing...';
-    }
-
-    if (isError) {
-      if (action === 'build') return 'Build failed';
-      if (action === 'deploy') return 'Deploy failed';
-      if (action === 'auto-build') return 'Auto-build failed';
-      if (action === 'auto-fix') return 'Auto-fix failed';
-      return 'Action failed';
-    }
-
-    if (result) {
-      if (action === 'build') return 'Build completed';
-      if (action === 'deploy') return 'Deploy completed';
-      if (action === 'auto-build') return 'Auto-build completed';
-      if (action === 'auto-fix') return 'Auto-fix completed';
-      return 'Action completed';
-    }
-
-    if (action === 'build') return 'Starting build process...';
-    if (action === 'deploy') return 'Starting deploy process...';
-    if (action === 'auto-build') return 'Starting auto-build process...';
-    if (action === 'auto-fix') return 'Starting auto-fix process...';
-    return 'Starting action...';
+    if (isLoading) return `${actionConfig.verb.charAt(0).toUpperCase() + actionConfig.verb.slice(1)}${action === 'auto-fix' ? 'ing error' : 'ing project'}...`;
+    if (isError) return `${actionConfig.verb.charAt(0).toUpperCase() + actionConfig.verb.slice(1)} failed`;
+    if (result) return `${actionConfig.verb.charAt(0).toUpperCase() + actionConfig.verb.slice(1)} completed`;
+    return `Starting ${actionConfig.verb} process...`;
   };
 
   return (
@@ -64,7 +38,7 @@ export const BuildAction = memo(({ action, result, isError = false, isLoading = 
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             {getActionIcon()}
-            <span className="font-mono text-sm font-medium">{getActionTitle()}</span>
+            <span className="font-mono text-sm font-medium">{actionConfig.title}</span>
           </div>
           <div className="flex items-center gap-2">
             {isLoading ? (

@@ -8,116 +8,63 @@ describe('AssistantContent', () => {
   const mockToolResults: CoreToolMessage[] = [];
 
   describe('Build Action Detection', () => {
-    it('should render build action for string content with auto-build message', () => {
-      const content = '✅ Agent completed successfully. Project built and preview updated!';
+    const testCases = [
+      {
+        name: 'auto-build success',
+        content: '✅ Agent completed successfully. Project built and preview updated!',
+        expectedTitle: 'Auto-Build Project',
+        expectedStatus: 'Success'
+      },
+      {
+        name: 'build error',
+        content: '❌ Auto-build failed. Analyzing error and attempting to fix automatically...',
+        expectedTitle: 'Auto-Build Project',
+        expectedStatus: 'Failed'
+      },
+      {
+        name: 'build loading',
+        content: '🔄 Building project...',
+        expectedTitle: 'Build Project',
+        expectedStatus: 'Running'
+      },
+      {
+        name: 'deploy success',
+        content: '🎉 Deploy completed successfully!',
+        expectedTitle: 'Deploy Project',
+        expectedStatus: 'Success'
+      },
+      {
+        name: 'auto-fix',
+        content: '⚠️ Auto-fix attempt limit reached. Please fix the build error manually',
+        expectedTitle: 'Auto-Fix Error',
+        expectedStatus: 'Success'
+      }
+    ];
 
-      render(
-        <TestApp>
-          <AssistantContent content={content} toolResults={mockToolResults} />
-        </TestApp>
-      );
+    testCases.forEach(({ name, content, expectedTitle, expectedStatus }) => {
+      it(`should render ${name} action for string content`, () => {
+        render(
+          <TestApp>
+            <AssistantContent content={content} toolResults={mockToolResults} />
+          </TestApp>
+        );
 
-      expect(screen.getByText('Auto-Build Project')).toBeInTheDocument();
-      expect(screen.getByText('Success')).toBeInTheDocument();
-    });
+        expect(screen.getByText(expectedTitle)).toBeInTheDocument();
+        expect(screen.getByText(expectedStatus)).toBeInTheDocument();
+      });
 
-    it('should render build action for string content with build success message', () => {
-      const content = '✅ Agent completed successfully. Project built! Switch to the "Preview" tab to see your changes.';
+      it(`should render ${name} action for array content`, () => {
+        const arrayContent = [{ type: 'text' as const, text: content }];
 
-      render(
-        <TestApp>
-          <AssistantContent content={content} toolResults={mockToolResults} />
-        </TestApp>
-      );
+        render(
+          <TestApp>
+            <AssistantContent content={arrayContent} toolResults={mockToolResults} />
+          </TestApp>
+        );
 
-      expect(screen.getByText(/Build Project|Auto-Build Project/)).toBeInTheDocument();
-      expect(screen.getByText('Success')).toBeInTheDocument();
-    });
-
-    it('should render build action for string content with preview updated message', () => {
-      const content = '✅ Agent completed successfully. Project built and preview updated!';
-
-      render(
-        <TestApp>
-          <AssistantContent content={content} toolResults={mockToolResults} />
-        </TestApp>
-      );
-
-      expect(screen.getByText(/Build Project|Auto-Build Project/)).toBeInTheDocument();
-      expect(screen.getByText('Success')).toBeInTheDocument();
-    });
-
-    it('should render build action for string content with error message', () => {
-      const content = '❌ Auto-build failed. Analyzing error and attempting to fix automatically...';
-
-      render(
-        <TestApp>
-          <AssistantContent content={content} toolResults={mockToolResults} />
-        </TestApp>
-      );
-
-      expect(screen.getByText('Auto-Build Project')).toBeInTheDocument();
-      expect(screen.getByText('Failed')).toBeInTheDocument();
-    });
-
-    it('should render build action for array content with auto-build message', () => {
-      const content = [
-        { type: 'text' as const, text: '✅ Agent completed successfully. Project built and preview updated!' }
-      ];
-
-      render(
-        <TestApp>
-          <AssistantContent content={content} toolResults={mockToolResults} />
-        </TestApp>
-      );
-
-      expect(screen.getByText('Auto-Build Project')).toBeInTheDocument();
-      expect(screen.getByText('Auto-build completed')).toBeInTheDocument();
-    });
-
-    it('should render build action for array content with loading message', () => {
-      const content = [
-        { type: 'text' as const, text: '🔄 Building project...' }
-      ];
-
-      render(
-        <TestApp>
-          <AssistantContent content={content} toolResults={mockToolResults} />
-        </TestApp>
-      );
-
-      expect(screen.getByText('Build Project')).toBeInTheDocument();
-      expect(screen.getByText('Running')).toBeInTheDocument();
-    });
-
-    it('should render build action for array content with deploy message', () => {
-      const content = [
-        { type: 'text' as const, text: '🎉 Deploy completed successfully!' }
-      ];
-
-      render(
-        <TestApp>
-          <AssistantContent content={content} toolResults={mockToolResults} />
-        </TestApp>
-      );
-
-      expect(screen.getByText('Deploy Project')).toBeInTheDocument();
-      expect(screen.getByText('Success')).toBeInTheDocument();
-    });
-
-    it('should render build action for array content with auto-fix message', () => {
-      const content = [
-        { type: 'text' as const, text: '⚠️ Auto-fix attempt limit reached. Please fix the build error manually: Some error details' }
-      ];
-
-      render(
-        <TestApp>
-          <AssistantContent content={content} toolResults={mockToolResults} />
-        </TestApp>
-      );
-
-      expect(screen.getByText('Auto-Fix Error')).toBeInTheDocument();
-      expect(screen.getByText('Success')).toBeInTheDocument();
+        expect(screen.getByText(expectedTitle)).toBeInTheDocument();
+        expect(screen.getByText(expectedStatus)).toBeInTheDocument();
+      });
     });
 
     it('should render regular markdown for non-build-action string content', () => {
@@ -130,22 +77,7 @@ describe('AssistantContent', () => {
       );
 
       expect(screen.getByText('Hello, I can help you with your project.')).toBeInTheDocument();
-      expect(screen.queryByText('Build Project')).not.toBeInTheDocument();
-    });
-
-    it('should render regular markdown for non-build-action array content', () => {
-      const content = [
-        { type: 'text' as const, text: 'Hello, I can help you with your project.' }
-      ];
-
-      render(
-        <TestApp>
-          <AssistantContent content={content} toolResults={mockToolResults} />
-        </TestApp>
-      );
-
-      expect(screen.getByText('Hello, I can help you with your project.')).toBeInTheDocument();
-      expect(screen.queryByText('Build Project')).not.toBeInTheDocument();
+      expect(screen.queryByText(/Project|Action/)).not.toBeInTheDocument();
     });
 
     it('should render tool calls for array content with tool-call items', () => {

@@ -68,47 +68,47 @@ export const AssistantContent = memo(({ content, toolResults = [] }: AssistantCo
 
   // Helper function to check and render build action
   const renderBuildAction = (text: string, key: number | string) => {
-    const buildActionMatch = text.match(/(✅|❌|⏸️|🔄|🎉|⚠️|👀).*?(Agent completed successfully|Auto-building|Build|Deploy|Auto-fix|Building|Deploying|Fixing|Preview updated)/i);
-
-    if (buildActionMatch) {
-      const icon = buildActionMatch[1];
-      const fullText = text;
-
-      console.log('BuildAction Detection - Match found:', { icon, fullText });
-
-      let actionType: 'build' | 'deploy' | 'auto-build' | 'auto-fix' = 'build';
-      let isError = false;
-      let isLoading = false;
-
-      // Determine action type and status based on full text content
-      if (fullText.includes('Auto-build') || fullText.includes('Auto-building') || (fullText.includes('Agent completed successfully') && fullText.includes('built'))) {
-        actionType = 'auto-build';
-      } else if (fullText.includes('Auto-fix') || fullText.includes('Fixing')) {
-        actionType = 'auto-fix';
-      } else if (fullText.includes('Deploy') || fullText.includes('Deploying')) {
-        actionType = 'deploy';
-      }
-
-      // Determine status
-      if (icon === '❌' || fullText.includes('failed')) {
-        isError = true;
-      } else if (icon === '⏸️' || icon === '🔄' || fullText.includes('Building') || fullText.includes('Deploying') || fullText.includes('Fixing')) {
-        isLoading = true;
-      } else if (icon === '✅' || icon === '🎉' || icon === '👀') {
-        // Success state - no loading or error
-      }
-
-      return (
-        <BuildAction
-          key={key}
-          action={actionType}
-          result={fullText}
-          isError={isError}
-          isLoading={isLoading}
-        />
-      );
+    if (!/(✅|❌|⏸️|🔄|🎉|⚠️|👀).*?(Agent completed successfully|Auto-building|Build|Deploy|Auto-fix|Building|Deploying|Fixing|Preview updated)/i.test(text)) {
+      return null;
     }
-    return null;
+
+    const getActionType = (): 'build' | 'deploy' | 'auto-build' | 'auto-fix' => {
+      if (text.includes('Auto-build') || text.includes('Auto-building') || (text.includes('Agent completed successfully') && text.includes('built'))) {
+        return 'auto-build';
+      }
+      if (text.includes('Auto-fix') || text.includes('Fixing')) {
+        return 'auto-fix';
+      }
+      if (text.includes('Deploy') || text.includes('Deploying')) {
+        return 'deploy';
+      }
+      return 'build';
+    };
+
+    const getStatus = () => {
+      const icon = text.match(/(✅|❌|⏸️|🔄|🎉|⚠️|👀)/)?.[1];
+
+      if (icon === '❌' || text.includes('failed')) {
+        return { isError: true, isLoading: false };
+      }
+      if (icon === '⏸️' || icon === '🔄' || /(Building|Deploying|Fixing)/i.test(text)) {
+        return { isError: false, isLoading: true };
+      }
+      return { isError: false, isLoading: false };
+    };
+
+    const actionType = getActionType();
+    const { isError, isLoading } = getStatus();
+
+    return (
+      <BuildAction
+        key={key}
+        action={actionType}
+        result={text}
+        isError={isError}
+        isLoading={isLoading}
+      />
+    );
   };
 
   // Handle string content (simple text messages)

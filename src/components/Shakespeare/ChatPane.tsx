@@ -25,6 +25,17 @@ interface ChatPaneProps {
   projectName: string;
 }
 
+interface ValidationErrorIssue {
+  path: (string | number)[];
+  message: string;
+}
+
+interface ValidationError {
+  name: string;
+  issues?: ValidationErrorIssue[];
+  cause?: ValidationError;
+}
+
 type AIMessage = (CoreUserMessage | CoreAssistantMessage | CoreToolMessage) & { id: string };
 
 export function ChatPane({ projectId, projectName }: ChatPaneProps) {
@@ -36,6 +47,20 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const messagesRef = useRef<AIMessage[]>([]);
   const autoFixAttemptsRef = useRef(0);
+  const [shouldSwitchToPreview, setShouldSwitchToPreview] = useState(false);
+
+  // Handle preview tab switching via React state instead of DOM manipulation
+  useEffect(() => {
+    if (shouldSwitchToPreview) {
+      // This will be handled by the parent component that controls tabs
+      // We'll emit a custom event that the parent can listen to
+      const switchEvent = new CustomEvent('switchToPreview', {
+        detail: { projectId },
+      });
+      window.dispatchEvent(switchEvent);
+      setShouldSwitchToPreview(false);
+    }
+  }, [shouldSwitchToPreview, projectId]);
   const { settings, isConfigured } = useAISettings();
   const { fs: browserFS } = useFS();
   const { runtime } = useJSRuntime();
@@ -71,6 +96,132 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
       messagesRef.current = updatedMessages;
       return updatedMessages;
     });
+  };
+
+
+
+  // Unified auto-fix handler to eliminate code duplication
+  const handleAutoFix = async (errorType: 'build' | 'api', error: unknown) => {
+    // Check if we've exceeded auto-fix attempts
+    if (autoFixAttemptsRef.current >= 3) {
+      console.log('Auto-fix attempt limit reached, stopping auto-fix');
+      const errorDetails = error instanceof Error ? error.message : 'Unknown error';
+      const limitMessage: AIMessage = {
+        id: generateId(),
+        role: 'assistant',
+        content: `⚠️ Auto-fix attempt limit reached. Please ${errorType === 'build' ? 'fix the build error' : 'try rephrasing your request'} manually: ${errorDetails}`,
+      };
+      addMessage(limitMessage);
+      setIsLoading(false);
+      return;
+    }
+
+    autoFixAttemptsRef.current++;
+    console.log(`Auto-fix ${errorType} error attempt ${autoFixAttemptsRef.current}/3`);
+
+    const errorDetails = error instanceof Error ? error.message : 'Unknown error';
+
+    // Generate error-specific messages
+    let errorMessage: AIMessage;
+    let fixRequest: AIMessage;
+
+    if (errorType === 'build') {
+      const buildErrorContent = typeof error === 'object' && error !== null && 'toString' in error ? error.toString() : errorDetails;
+
+      errorMessage = {
+        id: generateId(),
+        role: 'assistant',
+        content: `❌ Auto-build failed. Analyzing error and attempting to fix automatically...`,
+      };
+
+      fixRequest = {
+        id: generateId(),
+        role: 'user',
+        content: `The build failed with the following error. Please analyze this error and fix the issue:
+
+\`\`\`
+${buildErrorContent}
+\`\`\`
+
+Common issues to check:
+- Missing npm dependencies (install with npm_add_package tool)
+- TypeScript errors (fix type definitions or imports)
+- Missing files (create necessary files)
+- Configuration issues (update config files)
+
+Please fix this issue and ensure the project builds successfully.`,
+      };
+    } else {
+      const caughtError = error as ValidationError;
+      const errorCause = caughtError.cause;
+      let validationErrors = '';
+
+      if (caughtError.name === 'AI_TypeValidationError' || caughtError.name === 'ZodError') {
+        if (caughtError.issues && Array.isArray(caughtError.issues)) {
+          validationErrors = caughtError.issues
+            .map((issue: ValidationErrorIssue) => `- ${issue.path.join('.')}: ${issue.message}`)
+            .join('\n');
+        } else if (errorCause && errorCause.issues && Array.isArray(errorCause.issues)) {
+          validationErrors = errorCause.issues
+            .map((issue: ValidationErrorIssue) => `- ${issue.path.join('.')}: ${issue.message}`)
+            .join('\n');
+        }
+      }
+
+      errorMessage = {
+        id: generateId(),
+        role: 'assistant',
+        content: `❌ AI response error detected. Analyzing and attempting to fix automatically...`,
+      };
+
+      fixRequest = {
+        id: generateId(),
+        role: 'user',
+        content: `The AI generated an invalid response that caused an error. Please analyze this error and regenerate a valid response:
+
+\`\`\`
+Error Type: ${caughtError.name}
+Error Details: ${errorDetails}
+${validationErrors ? `Validation Errors:\n${validationErrors}` : ''}
+${errorCause ? `Cause: ${JSON.stringify(errorCause, null, 2)}` : ''}
+\`\`\`
+
+Common issues to check:
+- Malformed tool calls (ensure all tool calls have proper 'name' and 'arguments' fields)
+- Invalid JSON structure in responses
+- Missing required fields in function calls
+- Improperly formatted arguments
+- Tool call name is undefined or empty
+- Arguments are missing or malformed
+
+Please regenerate your response with the same intent but ensure it's properly formatted and valid. Make sure all tool calls are complete and correctly structured. Double-check that:
+1. Every tool call has a 'name' field with the exact tool name
+2. Every tool call has an 'arguments' field with valid JSON
+3. All required arguments are provided
+4. The JSON structure is valid`,
+      };
+    }
+
+    addMessage(errorMessage);
+    addMessage(fixRequest);
+
+    try {
+      updateMetadata('Shakespeare', `Fixing ${errorType} error for ${projectName}...`);
+
+      const currentMessages = messagesRef.current;
+      const aiMessages: AIMessage[] = [...currentMessages, errorMessage, fixRequest];
+      await createAIChat(projectId, aiMessages);
+    } catch (fixError) {
+      console.error('Failed to get AI to fix error:', fixError);
+      const fixErrorMessage: AIMessage = {
+        id: generateId(),
+        role: 'assistant',
+        content: `❌ Failed to auto-fix the ${errorType} error. Please ${errorType === 'build' ? 'try fixing manually' : 'try rephrasing your request or try again later'}: ${errorDetails}`,
+      };
+      addMessage(fixErrorMessage);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const runBuild = async () => {
@@ -259,118 +410,22 @@ BASE_DOMAIN=nostrdeploy.com`);
               window.dispatchEvent(buildCompleteEvent);
               console.log('Dispatched buildComplete event for project:', projectId);
 
-              // Switch to preview tab to show the updated deployment
-              setTimeout(() => {
-                try {
-                  // Find and click the preview tab button
-                  const previewButtons = Array.from(document.querySelectorAll('button'));
-                  const previewButton = previewButtons.find(button =>
-                    button.textContent?.includes('Preview') &&
-                    button.getAttribute('variant') === 'default'
-                  ) || previewButtons.find(button =>
-                    button.textContent?.includes('Preview')
-                  );
+              // Signal to switch to preview tab
+              setShouldSwitchToPreview(true);
+              console.log('Signaled to switch to preview tab');
 
-                  if (previewButton) {
-                    previewButton.click();
-                    console.log('Switched to preview tab');
-
-                    // Add single consolidated success message
-                    setTimeout(() => {
-                      const successMessage: AIMessage = {
-                        id: generateId(),
-                        role: 'assistant',
-                        content: '✅ Agent completed successfully. Project built and preview updated!',
-                      };
-                      addMessage(successMessage);
-                    }, 1000);
-                  } else {
-                    console.log('Preview tab button not found');
-                    // Add message about manual preview switch
-                    const manualSwitchMessage: AIMessage = {
-                      id: generateId(),
-                      role: 'assistant',
-                      content: '✅ Agent completed successfully. Project built! Switch to the "Preview" tab to see your changes.',
-                    };
-                    addMessage(manualSwitchMessage);
-                  }
-                } catch (switchError) {
-                  console.error('Error switching to preview tab:', switchError);
-                }
-              }, 500);
+              // Add success message
+              const successMessage: AIMessage = {
+                id: generateId(),
+                role: 'assistant',
+                content: '✅ Agent completed successfully. Project built! Switch to the "Preview" tab to see your changes.',
+              };
+              addMessage(successMessage);
 
             } catch (error) {
               console.error('Auto-build failed:', error);
 
-              // Extract build error details
-              const errorDetails = error instanceof Error ? error.message : 'Unknown error';
-              const buildErrorContent = typeof error === 'object' && error !== null && 'toString' in error ? error.toString() : errorDetails;
-
-              // Add error message to show user what happened
-              const buildErrorMessage: AIMessage = {
-                id: generateId(),
-                role: 'assistant',
-                content: `❌ Auto-build failed. Analyzing error and attempting to fix automatically...`,
-              };
-              addMessage(buildErrorMessage);
-
-              // Feed the build error back to the AI agent as a new problem to solve
-              const errorFixRequest: AIMessage = {
-                id: generateId(),
-                role: 'user',
-                content: `The build failed with the following error. Please analyze this error and fix the issue:
-
-\`\`\`
-${buildErrorContent}
-\`\`\`
-
-Common issues to check:
-- Missing npm dependencies (install with npm_add_package tool)
-- TypeScript errors (fix type definitions or imports)
-- Missing files (create necessary files)
-- Configuration issues (update config files)
-
-Please fix this issue and ensure the project builds successfully.`,
-              };
-              addMessage(errorFixRequest);
-
-              // Trigger the AI to fix the error
-              setTimeout(async () => {
-                // Check if we've exceeded auto-fix attempts
-                if (autoFixAttemptsRef.current >= 3) {
-                  console.log('Auto-fix attempt limit reached, stopping auto-fix');
-                  const limitMessage: AIMessage = {
-                    id: generateId(),
-                    role: 'assistant',
-                    content: `⚠️ Auto-fix attempt limit reached. Please fix the build error manually: ${errorDetails}`,
-                  };
-                  addMessage(limitMessage);
-                  return;
-                }
-
-                autoFixAttemptsRef.current++;
-                console.log(`Auto-fix attempt ${autoFixAttemptsRef.current}/3`);
-
-                try {
-                  setIsLoading(true);
-                  updateMetadata('Shakespeare', `Fixing build error for ${projectName}...`);
-
-                  // Get the current messages state using ref to ensure we have the latest
-                  const currentMessages = messagesRef.current;
-                  const aiMessages: AIMessage[] = [...currentMessages, buildErrorMessage, errorFixRequest];
-                  await createAIChat(projectId, aiMessages);
-                } catch (fixError) {
-                  console.error('Failed to get AI to fix build error:', fixError);
-                  const fixErrorMessage: AIMessage = {
-                    id: generateId(),
-                    role: 'assistant',
-                    content: `❌ Failed to auto-fix the build error. Please try fixing manually: ${errorDetails}`,
-                  };
-                  addMessage(fixErrorMessage);
-                } finally {
-                  setIsLoading(false);
-                }
-              }, 1000);
+              await handleAutoFix('build', error);
             }
           }, 1000); // Small delay before starting auto-build
         }
@@ -438,108 +493,13 @@ When creating new components or pages, follow the existing patterns in the codeb
     } catch (caughtError) {
       console.error('AI chat error:', caughtError);
 
-      const _isAutoFixCase = { value: false };
-
       // Check if this is an AI API error that can be auto-fixed
       if (caughtError && typeof caughtError === 'object' && 'name' in caughtError &&
           (caughtError.name === 'AI_APICallError' || caughtError.name === 'AI_TypeValidationError' ||
            caughtError.name === 'ZodError')) {
 
-        _isAutoFixCase.value = true;
-
-        const errorDetails = caughtError instanceof Error ? caughtError.message : JSON.stringify(caughtError);
-        const errorCause = 'cause' in caughtError && caughtError.cause ? caughtError.cause : undefined;
-
-        // Extract specific validation error details if available
-        let validationErrors = '';
-        if (caughtError.name === 'AI_TypeValidationError' || caughtError.name === 'ZodError') {
-          if ('issues' in caughtError && Array.isArray(caughtError.issues)) {
-            validationErrors = caughtError.issues
-              .map((issue: { path: (string | number)[]; message: string }) => `- ${issue.path.join('.')}: ${issue.message}`)
-              .join('\n');
-          } else if ('cause' in caughtError && caughtError.cause && 'issues' in caughtError.cause) {
-            validationErrors = caughtError.cause.issues
-              .map((issue: { path: (string | number)[]; message: string }) => `- ${issue.path.join('.')}: ${issue.message}`)
-              .join('\n');
-          }
-        }
-
-        // Add error message to show user what happened
-        const apiErrorMessage: AIMessage = {
-          id: generateId(),
-          role: 'assistant',
-          content: `❌ AI response error detected. Analyzing and attempting to fix automatically...`,
-        };
-        addMessage(apiErrorMessage);
-
-        // Feed the API error back to the AI agent as a new problem to solve
-        const errorFixRequest: AIMessage = {
-          id: generateId(),
-          role: 'user',
-          content: `The AI generated an invalid response that caused an error. Please analyze this error and regenerate a valid response:
-
-\`\`\`
-Error Type: ${caughtError.name}
-Error Details: ${errorDetails}
-${validationErrors ? `Validation Errors:\n${validationErrors}` : ''}
-${errorCause ? `Cause: ${JSON.stringify(errorCause, null, 2)}` : ''}
-\`\`\`
-
-Common issues to check:
-- Malformed tool calls (ensure all tool calls have proper 'name' and 'arguments' fields)
-- Invalid JSON structure in responses
-- Missing required fields in function calls
-- Improperly formatted arguments
-- Tool call name is undefined or empty
-- Arguments are missing or malformed
-
-Please regenerate your response with the same intent but ensure it's properly formatted and valid. Make sure all tool calls are complete and correctly structured. Double-check that:
-1. Every tool call has a 'name' field with the exact tool name
-2. Every tool call has an 'arguments' field with valid JSON
-3. All required arguments are provided
-4. The JSON structure is valid`,
-        };
-        addMessage(errorFixRequest);
-
-        // Trigger the AI to fix the error
-        setTimeout(async () => {
-          // Check if we've exceeded auto-fix attempts
-          if (autoFixAttemptsRef.current >= 3) {
-            console.log('Auto-fix attempt limit reached for API error, stopping auto-fix');
-            const limitMessage: AIMessage = {
-              id: generateId(),
-              role: 'assistant',
-              content: `⚠️ Auto-fix attempt limit reached for API error. Please try rephrasing your request or try again later.`,
-            };
-            addMessage(limitMessage);
-            setIsLoading(false);
-            return;
-          }
-
-          autoFixAttemptsRef.current++;
-          console.log(`Auto-fix API error attempt ${autoFixAttemptsRef.current}/3`);
-
-          try {
-            updateMetadata('Shakespeare', `Fixing AI response error for ${projectName}...`);
-
-            // Get the current messages state using ref to ensure we have the latest
-            const currentMessages = messagesRef.current;
-            const aiMessages: AIMessage[] = [...currentMessages, apiErrorMessage, errorFixRequest];
-            await createAIChat(projectId, aiMessages);
-          } catch (fixError) {
-            console.error('Failed to get AI to fix API error:', fixError);
-            const fixErrorMessage: AIMessage = {
-              id: generateId(),
-              role: 'assistant',
-              content: `❌ Failed to auto-fix the AI response error. Please try rephrasing your request or try again later.`,
-            };
-            addMessage(fixErrorMessage);
-          } finally {
-            setIsLoading(false);
-          }
-        }, 1000);
-
-        return; // Don't set isLoading(false) here as it's handled in the timeout
+        await handleAutoFix('api', caughtError);
+        return; // Don't set isLoading(false) here as it's handled in handleAutoFix
       }
 
       // Handle other types of errors with the original logic
@@ -550,10 +510,7 @@ Please regenerate your response with the same intent but ensure it's properly fo
       };
       addMessage(errorMessage);
     } finally {
-      // Only set loading to false if we're not handling an auto-fix case
-      if (!_isAutoFixCase.value) {
-        setIsLoading(false);
-      }
+      setIsLoading(false);
     }
   };
 
@@ -619,8 +576,6 @@ Please regenerate your response with the same intent but ensure it's properly fo
       </div>
     );
   }
-
-
 
   return (
     <div className="h-full flex flex-col">

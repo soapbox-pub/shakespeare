@@ -27,8 +27,6 @@ interface ChatPaneProps {
   onBuildComplete?: (projectId: string) => void;
 }
 
-
-
 type AIMessage = (CoreUserMessage | CoreAssistantMessage | CoreToolMessage) & { id: string };
 
 export function ChatPane({ projectId, projectName, onBuildComplete }: ChatPaneProps) {
@@ -71,8 +69,6 @@ export function ChatPane({ projectId, projectName, onBuildComplete }: ChatPanePr
       return Array.from(messageMap.values());
     });
   };
-
-
 
   const runBuild = async () => {
     if (isBuildLoading) return;
@@ -186,8 +182,6 @@ BASE_DOMAIN=nostrdeploy.com`);
     if (!isConfigured) {
       throw new Error('AI settings not configured');
     }
-
-
 
     // Create a custom fetch function for the AI provider
     const customFetch = async (url: string, options: RequestInit) => {
@@ -326,9 +320,6 @@ When creating new components or pages, follow the existing patterns in the codeb
     } catch (error) {
       console.error('AI chat error:', error);
 
-
-
-      // Handle other types of errors with the original logic
       const errorMessage: AIMessage = {
         id: generateId(),
         role: 'assistant',

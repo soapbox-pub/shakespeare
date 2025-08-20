@@ -67,8 +67,6 @@ export const AssistantContent = memo(({ content, toolResults = [] }: AssistantCo
     return { isError: toolResult.isError || false };
   };
 
-
-
   // Helper function to check and render build action
   const renderBuildAction = (text: string, key: number | string) => {
     if (!/(✅|❌|⏸️|🔄|🎉|🎉)/.test(text) || !/(Agent completed successfully|Auto-build|Build|Deploy|Building|Deploying)/i.test(text)) {
@@ -118,6 +116,7 @@ export const AssistantContent = memo(({ content, toolResults = [] }: AssistantCo
     if (buildAction) {
       return buildAction;
     }
+
     return (
       <div className="prose prose-sm max-w-none dark:prose-invert">
         <ReactMarkdown

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import type { Tool, CallToolResult } from "./Tool";
+import type { Tool } from "./Tool";
 import type { JSRuntimeFS } from "../JSRuntime";
 
 interface NpmRemovePackageParams {
@@ -19,7 +19,7 @@ export class NpmRemovePackageTool implements Tool<NpmRemovePackageParams> {
 
   readonly description = "Safely remove an npm package from the project in the current directory.";
 
-  readonly parameters = z.object({
+  readonly inputSchema = z.object({
     name: z.string().describe("Name of the npm package to remove"),
   });
 
@@ -28,7 +28,7 @@ export class NpmRemovePackageTool implements Tool<NpmRemovePackageParams> {
     this.cwd = cwd;
   }
 
-  async execute(args: NpmRemovePackageParams): Promise<CallToolResult> {
+  async execute(args: NpmRemovePackageParams): Promise<string> {
     const { name } = args;
 
     try {
@@ -39,13 +39,7 @@ export class NpmRemovePackageTool implements Tool<NpmRemovePackageParams> {
       try {
         packageJsonContent = await this.fs.readFile(packageJsonPath, "utf8");
       } catch {
-        return {
-          content: [{
-            type: "text",
-            text: `❌ Could not read package.json at ${packageJsonPath}. Make sure you're in a valid npm project.`,
-          }],
-          isError: true,
-        };
+        throw new Error(`❌ Could not read package.json at ${packageJsonPath}. Make sure you're in a valid npm project.`);
       }
 
       // Parse package.json
@@ -53,13 +47,7 @@ export class NpmRemovePackageTool implements Tool<NpmRemovePackageParams> {
       try {
         packageJson = JSON.parse(packageJsonContent);
       } catch {
-        return {
-          content: [{
-            type: "text",
-            text: `❌ Invalid package.json format. Could not parse JSON.`,
-          }],
-          isError: true,
-        };
+        throw new Error(`❌ Invalid package.json format. Could not parse JSON.`);
       }
 
       // Check if package exists in dependencies or devDependencies
@@ -87,13 +75,7 @@ export class NpmRemovePackageTool implements Tool<NpmRemovePackageParams> {
       }
 
       if (!foundIn) {
-        return {
-          content: [{
-            type: "text",
-            text: `ℹ️ Package ${name} was not found in package.json dependencies or devDependencies.`,
-          }],
-          isError: false,
-        };
+        return `ℹ️ Package ${name} was not found in package.json dependencies or devDependencies.`;
       }
 
       // Sort remaining dependencies alphabetically
@@ -117,21 +99,9 @@ export class NpmRemovePackageTool implements Tool<NpmRemovePackageParams> {
       const updatedContent = JSON.stringify(packageJson, null, 2) + '\n';
       await this.fs.writeFile(packageJsonPath, updatedContent, "utf8");
 
-      return {
-        content: [{
-          type: "text",
-          text: `✅ Successfully removed ${name} from ${foundIn} in package.json\n\n📦 Package: ${name}\n🏷️ Version: ${removedVersion}\n📁 Removed from: ${foundIn}\n\n⚠️ **Next step**: Run \`npm install\` to update node_modules and package-lock.json`,
-        }],
-        isError: false,
-      };
+      return `✅ Successfully removed ${name} from ${foundIn} in package.json\n\n📦 Package: ${name}\n🏷️ Version: ${removedVersion}\n📁 Removed from: ${foundIn}\n\n⚠️ **Next step**: Run \`npm install\` to update node_modules and package-lock.json`;
     } catch (error) {
-      return {
-        content: [{
-          type: "text",
-          text: `❌ Error removing package ${name}: ${String(error)}`,
-        }],
-        isError: true,
-      };
+      throw new Error(`❌ Error removing package ${name}: ${String(error)}`);
     }
   }
 }

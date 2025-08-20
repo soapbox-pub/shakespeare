@@ -1,5 +1,6 @@
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import { useState, useRef, useEffect } from 'react';
-import { CoreMessage, generateText, CoreUserMessage, CoreAssistantMessage, CoreToolMessage, generateId } from 'ai';
+import { ModelMessage, generateText, CoreUserMessage, CoreAssistantMessage, CoreToolMessage, generateId } from 'ai';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Send, Settings, Play, CloudUpload, Loader2 } from 'lucide-react';
@@ -175,28 +176,16 @@ BASE_DOMAIN=nostrdeploy.com`);
     }
   }, [messages, isLoading]);
 
-  const createAIChat = async (projectId: string, messages: CoreMessage[]) => {
+  const createAIChat = async (projectId: string, messages: ModelMessage[]) => {
     if (!isConfigured) {
       throw new Error('AI settings not configured');
     }
 
-    // Create a custom fetch function for the AI provider
-    const customFetch = async (url: string, options: RequestInit) => {
-      return fetch(url, {
-        ...options,
-        headers: {
-          ...options.headers,
-          'Authorization': `Bearer ${settings.apiKey}`,
-        },
-      });
-    };
-
     // Import the appropriate provider based on the base URL
-    const { createOpenAI } = await import('@ai-sdk/openai');
-    const openai = createOpenAI({
+    const openai = createOpenAICompatible({
+      name: 'custom',
       baseURL: settings.baseUrl,
       apiKey: settings.apiKey,
-      fetch: settings.baseUrl.includes('openrouter.ai') ? customFetch : undefined,
     });
 
     const provider = openai(settings.model);
@@ -205,10 +194,9 @@ BASE_DOMAIN=nostrdeploy.com`);
     return generateText({
       model: provider,
       messages,
-      maxSteps: 100,
       onStepFinish(stepResult) {
         console.log(stepResult);
-        addMessages(stepResult.response.messages);
+        addMessages(stepResult.response.messages.map(msg => ({ ...msg, id: generateId() })));
 
         // Update media session with current step info
         const lastMessage = stepResult.response.messages[stepResult.response.messages.length - 1];

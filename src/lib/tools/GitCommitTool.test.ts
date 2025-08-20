@@ -49,9 +49,9 @@ describe('GitCommitTool', () => {
     vi.mocked(git.getConfig).mockRejectedValue(new Error('Config not found'));
   });
 
-  it('should have correct description and parameters', () => {
+  it('should have correct description and inputSchema', () => {
     expect(tool.description).toBe('Commit changes to git with a commit message. Automatically adds all unstaged files.');
-    expect(tool.parameters).toBeDefined();
+    expect(tool.inputSchema).toBeDefined();
   });
 
   it('should successfully commit changes', async () => {
@@ -82,9 +82,8 @@ describe('GitCommitTool', () => {
         email: 'assistant@shakespeare.diy',
       },
     });
-    expect(result.isError).toBe(false);
-    expect(result.content[0].text).toContain('✅ Successfully committed 2 files (abcd123)');
-    expect(result.content[0].text).toContain('Add new feature');
+    expect(result).toContain('✅ Successfully committed 2 files (abcd123)');
+    expect(result).toContain('Add new feature');
   });
 
   it('should handle empty commit message', async () => {
@@ -94,10 +93,7 @@ describe('GitCommitTool', () => {
       isFile: () => false,
     });
 
-    const result = await tool.execute({ message: '' });
-
-    expect(result.isError).toBe(true);
-    expect(result.content[0].text).toContain('❌ Commit message cannot be empty');
+    await expect(tool.execute({ message: '' })).rejects.toThrow('❌ Commit message cannot be empty');
   });
 
   it('should handle whitespace-only commit message', async () => {
@@ -107,22 +103,15 @@ describe('GitCommitTool', () => {
       isFile: () => false,
     });
 
-    const result = await tool.execute({ message: '   ' });
-
-    expect(result.isError).toBe(true);
-    expect(result.content[0].text).toContain('❌ Commit message cannot be empty');
+    await expect(tool.execute({ message: '   ' })).rejects.toThrow('❌ Commit message cannot be empty');
   });
 
   it('should handle not being in a git repository', async () => {
     // Mock .git directory does not exist
     vi.mocked(mockFS.stat).mockRejectedValue(new Error('File not found'));
 
-    const result = await tool.execute({ message: 'Test commit' });
-
+    await expect(tool.execute({ message: 'Test commit' })).rejects.toThrow('❌ Not a git repository');
     expect(mockFS.stat).toHaveBeenCalledWith('/test/project/.git');
-    expect(result.isError).toBe(true);
-    expect(result.content[0].text).toContain('❌ Not a git repository');
-    expect(result.content[0].text).toContain('git init');
   });
 
   it('should handle commit with special characters in message', async () => {
@@ -138,9 +127,8 @@ describe('GitCommitTool', () => {
     expect(git.commit).toHaveBeenCalledWith(expect.objectContaining({
       message: specialMessage,
     }));
-    expect(result.isError).toBe(false);
-    expect(result.content[0].text).toContain('✅ Successfully committed');
-    expect(result.content[0].text).toContain(specialMessage);
+    expect(result).toContain('✅ Successfully committed');
+    expect(result).toContain(specialMessage);
   });
 
   it('should handle multiline commit message', async () => {
@@ -154,9 +142,8 @@ describe('GitCommitTool', () => {
     const result = await tool.execute({ message: multilineMessage });
 
     expect(git.commit).toHaveBeenCalled();
-    expect(result.isError).toBe(false);
-    expect(result.content[0].text).toContain('✅ Successfully committed');
-    expect(result.content[0].text).toContain('Add new feature');
+    expect(result).toContain('✅ Successfully committed');
+    expect(result).toContain('Add new feature');
   });
 
   it('should handle no changes to commit', async () => {
@@ -171,8 +158,7 @@ describe('GitCommitTool', () => {
 
     const result = await tool.execute({ message: 'Update documentation' });
 
-    expect(result.isError).toBe(false);
-    expect(result.content[0].text).toContain('ℹ️ No changes to commit. Working tree is clean.');
+    expect(result).toContain('ℹ️ No changes to commit. Working tree is clean.');
     expect(git.commit).not.toHaveBeenCalled();
   });
 
@@ -185,11 +171,10 @@ describe('GitCommitTool', () => {
 
     const result = await tool.execute({ message: 'Update documentation' });
 
-    expect(result.isError).toBe(false);
-    expect(result.content[0].text).toContain('📝 Commit: "Update documentation"');
-    expect(result.content[0].text).toContain('🔗 Hash:');
-    expect(result.content[0].text).toContain('🌿 Branch:');
-    expect(result.content[0].text).toContain('📊 Changes:');
+    expect(result).toContain('📝 Commit: "Update documentation"');
+    expect(result).toContain('🔗 Hash:');
+    expect(result).toContain('🌿 Branch:');
+    expect(result).toContain('📊 Changes:');
   });
 
   it('should use git config when available', async () => {
@@ -219,7 +204,7 @@ describe('GitCommitTool', () => {
         email: 'john@example.com',
       },
     });
-    expect(result.isError).toBe(false);
+    expect(result).toContain('✅ Successfully committed');
   });
 
   it('should handle very long commit message', async () => {
@@ -232,7 +217,6 @@ describe('GitCommitTool', () => {
     const longMessage = 'A'.repeat(1000); // Very long commit message
     const result = await tool.execute({ message: longMessage });
 
-    expect(result.isError).toBe(false);
-    expect(result.content[0].text).toContain('✅ Successfully committed');
+    expect(result).toContain('✅ Successfully committed');
   });
 });

@@ -33,9 +33,9 @@ describe('NpmAddPackageTool', () => {
     vi.restoreAllMocks();
   });
 
-  it('should have correct description and parameters', () => {
+  it('should have correct description and inputSchema', () => {
     expect(tool.description).toBe('Safely add an npm package to the project in the current directory.');
-    expect(tool.parameters).toBeDefined();
+    expect(tool.inputSchema).toBeDefined();
   });
 
   it('should successfully add a new package', async () => {
@@ -60,8 +60,7 @@ describe('NpmAddPackageTool', () => {
       expect.stringContaining('"lodash": "^4.17.21"'),
       'utf8'
     );
-    expect(result.isError).toBe(false);
-    expect(result.content[0].text).toContain('✅ Successfully added lodash@4.17.21');
+    expect(result).toContain('✅ Successfully added lodash@4.17.21');
   });
 
   it('should add package with specific version', async () => {
@@ -81,8 +80,7 @@ describe('NpmAddPackageTool', () => {
       expect.stringContaining('"lodash": "^4.17.20"'),
       'utf8'
     );
-    expect(result.isError).toBe(false);
-    expect(result.content[0].text).toContain('✅ Successfully added lodash@4.17.20');
+    expect(result).toContain('✅ Successfully added lodash@4.17.20');
   });
 
   it('should add dev dependency', async () => {
@@ -113,8 +111,7 @@ describe('NpmAddPackageTool', () => {
     expect(writtenPackageJson.devDependencies.typescript).toBe('^5.0.0');
     expect(writtenPackageJson.dependencies?.typescript).toBeUndefined();
 
-    expect(result.isError).toBe(false);
-    expect(result.content[0].text).toContain('Development dependency');
+    expect(result).toContain('Development dependency');
   });
 
   it('should move package from dependencies to devDependencies', async () => {
@@ -141,7 +138,7 @@ describe('NpmAddPackageTool', () => {
     expect(writtenPackageJson.devDependencies.typescript).toBe('^5.0.0');
     // dependencies object should be empty or not contain typescript
     expect(writtenPackageJson.dependencies?.typescript).toBeUndefined();
-    expect(result.isError).toBe(false);
+    expect(result).toContain('✅ Successfully added');
   });
 
   it('should handle package already installed', async () => {
@@ -162,26 +159,19 @@ describe('NpmAddPackageTool', () => {
     const result = await tool.execute({ name: 'lodash' });
 
     expect(mockFS.writeFile).not.toHaveBeenCalled();
-    expect(result.isError).toBe(false);
-    expect(result.content[0].text).toContain('ℹ️ Package lodash@4.17.21 is already installed');
+    expect(result).toContain('ℹ️ Package lodash@4.17.21 is already installed');
   });
 
   it('should handle missing package.json', async () => {
     vi.mocked(mockFS.readFile).mockRejectedValue(new Error('File not found'));
 
-    const result = await tool.execute({ name: 'lodash' });
-
-    expect(result.isError).toBe(true);
-    expect(result.content[0].text).toContain('❌ Could not read package.json');
+    await expect(tool.execute({ name: 'lodash' })).rejects.toThrow('❌ Could not read package.json');
   });
 
   it('should handle invalid package.json', async () => {
     vi.mocked(mockFS.readFile).mockResolvedValue('invalid json');
 
-    const result = await tool.execute({ name: 'lodash' });
-
-    expect(result.isError).toBe(true);
-    expect(result.content[0].text).toContain('❌ Invalid package.json format');
+    await expect(tool.execute({ name: 'lodash' })).rejects.toThrow('❌ Invalid package.json format');
   });
 
   it('should handle npm registry errors', async () => {
@@ -198,11 +188,7 @@ describe('NpmAddPackageTool', () => {
       statusText: 'Not Found'
     });
 
-    const result = await tool.execute({ name: 'nonexistent-package' });
-
-    expect(result.isError).toBe(true);
-    expect(result.content[0].text).toContain('❌ Could not fetch latest version');
-    expect(result.content[0].text).toContain('HTTP 404: Not Found');
+    await expect(tool.execute({ name: 'nonexistent-package' })).rejects.toThrow('❌ Could not fetch latest version');
   });
 
   it('should sort dependencies alphabetically', async () => {
@@ -228,6 +214,6 @@ describe('NpmAddPackageTool', () => {
     const dependencyKeys = Object.keys(writtenPackageJson.dependencies);
 
     expect(dependencyKeys).toEqual(['axios', 'lodash', 'zlib']);
-    expect(result.isError).toBe(false);
+    expect(result).toContain('✅ Successfully added');
   });
 });

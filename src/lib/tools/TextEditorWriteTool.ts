@@ -1,7 +1,7 @@
 import { join, dirname } from "@std/path";
 import { z } from "zod";
 
-import type { Tool, CallToolResult } from "./Tool";
+import type { Tool } from "./Tool";
 import type { JSRuntimeFS } from "../JSRuntime";
 
 interface TextEditorWriteParams {
@@ -15,7 +15,7 @@ export class TextEditorWriteTool implements Tool<TextEditorWriteParams> {
 
   readonly description = "Create or overwrite a file with new content";
 
-  readonly parameters = z.object({
+  readonly inputSchema = z.object({
     path: z.string().describe(
       'Path of the file to write, eg "src/index.ts"',
     ),
@@ -27,53 +27,28 @@ export class TextEditorWriteTool implements Tool<TextEditorWriteParams> {
     this.cwd = cwd;
   }
 
-  async execute(args: TextEditorWriteParams): Promise<CallToolResult> {
+  async execute(args: TextEditorWriteParams): Promise<string> {
     const { path, file_text } = args;
 
     // Check for absolute paths and provide helpful error
     if (path.startsWith('/') || path.startsWith('\\') || /^[A-Za-z]:[\\/]/.test(path)) {
-      return {
-        content: [{
-          type: "text",
-          text: `❌ Absolute paths are not supported.\n\nThe path "${path}" appears to be an absolute path.\n\n💡 Please use a relative path instead. Examples:\n- "src/index.ts" (relative to current directory)\n- "./src/index.ts" (explicit relative path)\n- "../other-project/src/index.ts" (relative to parent directory)\n\nCurrent working directory: ${this.cwd}`,
-        }],
-        isError: true,
-      };
+      throw new Error(`❌ Absolute paths are not supported.\n\nThe path "${path}" appears to be an absolute path.\n\n💡 Please use a relative path instead. Examples:\n- "src/index.ts" (relative to current directory)\n- "./src/index.ts" (explicit relative path)\n- "../other-project/src/index.ts" (relative to parent directory)\n\nCurrent working directory: ${this.cwd}`);
     }
 
     if (
       path === "package.json" || path.endsWith("/package.json") ||
       path.endsWith("\\package.json")
     ) {
-      return {
-        content: [{
-          type: "text",
-          text:
-            `🔒 Direct writes to package.json are disallowed.\n👉 Please use \`npm_add_package\` or \`npm_remove_package\` tools instead.`,
-        }],
-        isError: true,
-      };
+      throw new Error(`🔒 Direct writes to package.json are disallowed.\n👉 Please use \`npm_add_package\` or \`npm_remove_package\` tools instead.`);
     }
 
     try {
       const absolutePath = join(this.cwd, path);
       await this.fs.mkdir(dirname(absolutePath), { recursive: true });
       await this.fs.writeFile(absolutePath, file_text, "utf8");
-      return {
-        content: [{
-          type: "text",
-          text: `File successfully written to ${path}`,
-        }],
-        isError: false,
-      };
+      return `File successfully written to ${path}`;
     } catch (error) {
-      return {
-        content: [{
-          type: "text",
-          text: String(error),
-        }],
-        isError: true,
-      };
+      throw new Error(String(error));
     }
   }
 }

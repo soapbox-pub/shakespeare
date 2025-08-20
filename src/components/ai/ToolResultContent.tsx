@@ -29,8 +29,13 @@ export const ToolResultContent = memo(({ content }: ToolResultContentProps) => {
     <>
       {content.map((item, index) => {
         if (item.type === 'tool-result') {
-          const isError = item.isError || false;
-          const result = typeof item.result === 'string' ? item.result : JSON.stringify(item.result);
+          const isError = item.output.type === 'error-text' || item.output.type === 'error-json';
+          const result = item.output.type === 'content'
+            ? item.output.value
+              .map((part) => part.type === 'text' ? part.text : undefined)
+              .filter(Boolean)
+              .join('\n')
+            : JSON.stringify(item.output);
 
           return (
             <Card key={index} className="mt-2 bg-muted/50">

@@ -1,7 +1,7 @@
 import { join } from "@std/path";
 import { z } from "zod";
 
-import type { Tool, CallToolResult } from "./Tool";
+import type { Tool } from "./Tool";
 import type { JSRuntimeFS } from "../JSRuntime";
 
 interface TextEditorStrReplaceParams {
@@ -17,7 +17,7 @@ export class TextEditorStrReplaceTool implements Tool<TextEditorStrReplaceParams
 
   readonly description = "Replace a string in a file with a new string";
 
-  readonly parameters = z.object({
+  readonly inputSchema = z.object({
     path: z.string().describe('Path to the file, eg "src/index.ts"'),
     old_str: z.string().describe("The string to replace"),
     new_str: z.string().describe("The new string to insert"),
@@ -31,18 +31,12 @@ export class TextEditorStrReplaceTool implements Tool<TextEditorStrReplaceParams
     this.cwd = cwd;
   }
 
-  async execute(args: TextEditorStrReplaceParams): Promise<CallToolResult> {
+  async execute(args: TextEditorStrReplaceParams): Promise<string> {
     const { path, old_str, new_str, normalize_whitespace = true } = args;
 
     // Check for absolute paths and provide helpful error
     if (path.startsWith('/') || path.startsWith('\\') || /^[A-Za-z]:[\\/]/.test(path)) {
-      return {
-        content: [{
-          type: "text",
-          text: `❌ Absolute paths are not supported.\n\nThe path "${path}" appears to be an absolute path.\n\n💡 Please use a relative path instead. Examples:\n- "src/index.ts" (relative to current directory)\n- "./src/index.ts" (explicit relative path)\n- "../other-project/src/index.ts" (relative to parent directory)\n\nCurrent working directory: ${this.cwd}`,
-        }],
-        isError: true,
-      };
+      throw new Error(`❌ Absolute paths are not supported.\n\nThe path "${path}" appears to be an absolute path.\n\n💡 Please use a relative path instead. Examples:\n- "src/index.ts" (relative to current directory)\n- "./src/index.ts" (explicit relative path)\n- "../other-project/src/index.ts" (relative to parent directory)\n\nCurrent working directory: ${this.cwd}`);
     }
 
     // Ban editing dependencies in package.json
@@ -61,14 +55,7 @@ export class TextEditorStrReplaceTool implements Tool<TextEditorStrReplaceParams
           old_str.includes(key) || new_str.includes(key)
         )
       ) {
-        return {
-          content: [{
-            type: "text",
-            text:
-              `🔒 Direct edits to dependencies in package.json are disallowed.\n👉 Please use npm_add_package or npm_remove_package tools for these changes.`,
-          }],
-          isError: true,
-        };
+        throw new Error(`🔒 Direct edits to dependencies in package.json are disallowed.\n👉 Please use npm_add_package or npm_remove_package tools for these changes.`);
       }
     }
 
@@ -136,13 +123,7 @@ export class TextEditorStrReplaceTool implements Tool<TextEditorStrReplaceParams
           errorMessage += `\n\nNote: Whitespace normalization was applied. Try setting normalize_whitespace to false if the replacement still fails.`;
         }
 
-        return {
-          content: [{
-            type: "text",
-            text: errorMessage,
-          }],
-          isError: true,
-        };
+        throw new Error(errorMessage);
       }
 
       // Count occurrences (simple string counting)
@@ -184,21 +165,9 @@ export class TextEditorStrReplaceTool implements Tool<TextEditorStrReplaceParams
         successMessage += ` (${occurrences} occurrences found, only first occurrence replaced)`;
       }
 
-      return {
-        content: [{
-          type: "text",
-          text: successMessage,
-        }],
-        isError: false,
-      };
+      return successMessage;
     } catch (error) {
-      return {
-        content: [{
-          type: "text",
-          text: String(error),
-        }],
-        isError: true,
-      };
+      throw new Error(String(error));
     }
   }
 }

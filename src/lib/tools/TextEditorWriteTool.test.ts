@@ -119,30 +119,22 @@ describe('TextEditorWriteTool', () => {
       file_text: 'console.log("test");'
     });
 
-    expect(result.isError).toBe(false);
-    expect(result.content[0].text).toContain('File successfully written to src/test.ts');
+    expect(result).toContain('File successfully written to src/test.ts');
     expect(mockFS.hasFile('/project/src/test.ts')).toBe(true);
     expect(mockFS.getFileContent('/project/src/test.ts')).toBe('console.log("test");');
   });
 
   it('should reject absolute paths with helpful error message', async () => {
-    const result = await tool.execute({
+    await expect(tool.execute({
       path: '/absolute/path/test.ts',
       file_text: 'test content'
-    });
-
-    expect(result.isError).toBe(true);
-    expect(result.content[0].text).toContain('❌ Absolute paths are not supported');
-    expect(result.content[0].text).toContain('Current working directory: /project');
+    })).rejects.toThrow('❌ Absolute paths are not supported');
   });
 
   it('should reject package.json writes', async () => {
-    const result = await tool.execute({
+    await expect(tool.execute({
       path: 'package.json',
       file_text: '{"name": "test"}'
-    });
-
-    expect(result.isError).toBe(true);
-    expect(result.content[0].text).toContain('🔒 Direct writes to package.json are disallowed');
+    })).rejects.toThrow('🔒 Direct writes to package.json are disallowed');
   });
 });

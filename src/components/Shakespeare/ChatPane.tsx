@@ -205,7 +205,7 @@ BASE_DOMAIN=nostrdeploy.com`);
     const provider = openai(settings.model);
     const cwd = `/projects/${projectId}`;
 
-    return generateText({
+    const result = await generateText({
       model: provider,
       messages,
       maxSteps: 100,
@@ -220,41 +220,6 @@ BASE_DOMAIN=nostrdeploy.com`);
           if (toolName) {
             updateMetadata('Shakespeare', `Working on ${projectName} - ${toolName}`);
           }
-        }
-
-        // Check if this is the final step with a successful finish reason
-        if (stepResult.finishReason === 'stop' && stepResult.response.messages.length > 0) {
-          console.log('Agent finished successfully, auto-building project...');
-
-          setTimeout(async () => {
-            if (isBuildLoading || isDeployLoading) {
-              addMessage({
-                id: generateId(),
-                role: 'assistant',
-                content: '⏸️ Build or deploy already in progress. Skipping auto-build.',
-              });
-              return;
-            }
-
-            try {
-              await runBuild();
-              if (onBuildComplete) {
-                onBuildComplete(projectId);
-              }
-              addMessage({
-                id: generateId(),
-                role: 'assistant',
-                content: '✅ Agent completed successfully. Project built! Switch to the "Preview" tab to see your changes.',
-              });
-            } catch (error) {
-              console.error('Auto-build failed:', error);
-              addMessage({
-                id: generateId(),
-                role: 'assistant',
-                content: `❌ Auto-build failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-              });
-            }
-          }, 1000);
         }
       },
       tools: {
@@ -295,6 +260,56 @@ The project uses:
 
 When creating new components or pages, follow the existing patterns in the codebase.`
     });
+
+    // After the entire generation is complete, check if we should auto-build
+    console.log('Agent finished with reason:', result.finishReason);
+
+    // Only auto-build if:
+    // 1. The agent completed successfully (not stopped due to errors or limits)
+    // 2. The previous response before the stop was from the assistant invoking tool calls
+    //    (meaning actual work was performed, not just conversational response)
+    const responseMessages = result.response.messages;
+    const hasToolResults = responseMessages.some(msg => msg.role === 'tool');
+
+    if (result.finishReason === 'stop' && hasToolResults) {
+      console.log('Agent performed tool work successfully, auto-building project...');
+
+      setTimeout(async () => {
+        if (isBuildLoading || isDeployLoading) {
+          addMessage({
+            id: generateId(),
+            role: 'assistant',
+            content: '⏸️ Build or deploy already in progress. Skipping auto-build.',
+          });
+          return;
+        }
+
+        try {
+          await runBuild();
+          if (onBuildComplete) {
+            onBuildComplete(projectId);
+          }
+          addMessage({
+            id: generateId(),
+            role: 'assistant',
+            content: '✅ Agent completed successfully. Project built! Switch to the "Preview" tab to see your changes.',
+          });
+        } catch (error) {
+          console.error('Auto-build failed:', error);
+          addMessage({
+            id: generateId(),
+            role: 'assistant',
+            content: `❌ Auto-build failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          });
+        }
+      }, 1000);
+    } else if (result.finishReason === 'stop' && !hasToolResults) {
+      console.log('Agent completed but no tool work was performed - skipping auto-build');
+    } else {
+      console.log('Agent finished with reason:', result.finishReason, '- skipping auto-build');
+    }
+
+    return result;
   };
 
   const handleSend = async () => {

@@ -18,8 +18,14 @@ export function ProjectView() {
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'preview' | 'code'>('preview');
 
-  const handleBuildComplete = useCallback(() => {
+  const handleBuildComplete = useCallback((projectId: string) => {
     setActiveTab('preview');
+    // Dispatch custom event to notify PreviewPane that build is complete
+    const event = new CustomEvent('buildComplete', {
+      detail: { projectId }
+    });
+    window.dispatchEvent(event);
+    console.log('Dispatched buildComplete event for project:', projectId);
   }, []);
   const [mobileView, setMobileView] = useState<'chat' | 'preview' | 'code'>('chat');
   const projectsManager = useProjectsManager();

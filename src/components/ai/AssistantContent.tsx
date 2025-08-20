@@ -73,15 +73,15 @@ export const AssistantContent = memo(({ content, toolResults = [] }: AssistantCo
   };
 
   // Helper function to determine build action type
-  const getActionType = (text: string): 'BUILD' | 'DEPLOY' | 'AUTO_BUILD' => {
+  const getActionType = (text: string): 'build' | 'deploy' | 'auto-build' => {
     if (text.includes('Auto-build') || text.includes('Auto-building') ||
         (text.includes('Agent completed successfully') && text.includes('built'))) {
-      return 'AUTO_BUILD';
+      return 'auto-build';
     }
     if (text.includes('Deploy') || text.includes('Deploying')) {
-      return 'DEPLOY';
+      return 'deploy';
     }
-    return 'BUILD';
+    return 'build';
   };
 
   // Helper function to determine build action status

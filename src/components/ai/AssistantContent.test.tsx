@@ -18,8 +18,8 @@ describe('AssistantContent', () => {
         </TestApp>
       );
 
-      // Check if BuildAction component is rendered
-      expect(screen.queryByText(/Project/)).toBeInTheDocument();
+      // Check if BuildAction component is rendered with auto-build title
+      expect(screen.getByText('Auto-Build Project')).toBeInTheDocument();
     });
 
     it('should render regular markdown for non-build-action string content', () => {

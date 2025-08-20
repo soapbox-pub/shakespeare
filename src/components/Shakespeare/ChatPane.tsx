@@ -325,8 +325,6 @@ When creating new components or pages, follow the existing patterns in the codeb
     setInput('');
     setIsLoading(true);
 
-
-
     try {
       const aiMessages: AIMessage[] = [...messages, userMessage];
       updateMetadata('Shakespeare', `Processing your request for ${projectName}...`);

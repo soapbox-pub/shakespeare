@@ -1,9 +1,12 @@
 import { memo } from 'react';
 import { ActionCard } from './shared/ActionCard';
-import type { BuildActionComponentProps } from '@/types/build';
 
-interface BuildActionProps extends BuildActionComponentProps {
+interface BuildActionProps {
+  action: 'build' | 'deploy' | 'auto-build';
   result?: string;
+  status?: 'RUNNING' | 'SUCCESS' | 'FAILED' | 'PENDING';
+  isError?: boolean;
+  isLoading?: boolean;
 }
 
 export const BuildAction = memo(({ action, result, status, isError, isLoading }: BuildActionProps) => {

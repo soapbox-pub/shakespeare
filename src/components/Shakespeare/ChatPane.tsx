@@ -93,9 +93,6 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
     });
   };
 
-
-
-  // Unified auto-fix handler
   const handleAutoFix = async (errorType: 'build' | 'api', error: unknown) => {
     if (autoFixAttemptsRef.current >= 3) {
       const errorDetails = error instanceof Error ? error.message : 'Unknown error';
@@ -460,15 +457,15 @@ When creating new components or pages, follow the existing patterns in the codeb
       updateMetadata('Shakespeare', `Processing your request for ${projectName}...`);
 
       await createAIChat(projectId, aiMessages);
-    } catch (caughtError) {
-      console.error('AI chat error:', caughtError);
+    } catch (error) {
+      console.error('AI chat error:', error);
 
       // Check if this is an AI API error that can be auto-fixed
-      if (caughtError && typeof caughtError === 'object' && 'name' in caughtError &&
-          (caughtError.name === 'AI_APICallError' || caughtError.name === 'AI_TypeValidationError' ||
-           caughtError.name === 'ZodError')) {
+      if (error && typeof error === 'object' && 'name' in error &&
+          (error.name === 'AI_APICallError' || error.name === 'AI_TypeValidationError' ||
+           error.name === 'ZodError')) {
 
-        await handleAutoFix('api', caughtError);
+        await handleAutoFix('api', error);
         return; // Don't set isLoading(false) here as it's handled in handleAutoFix
       }
 
@@ -476,7 +473,7 @@ When creating new components or pages, follow the existing patterns in the codeb
       const errorMessage: AIMessage = {
         id: generateId(),
         role: 'assistant',
-        content: caughtError instanceof Error ? caughtError.message : 'Sorry, I encountered an error. Please try again.',
+        content: error instanceof Error ? error.message : 'Sorry, I encountered an error. Please try again.',
       };
       addMessage(errorMessage);
     } finally {

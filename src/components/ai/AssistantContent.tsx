@@ -11,6 +11,7 @@ import { ShellCommand } from '@/components/ai/ShellCommand';
 import { PackageManager } from '@/components/ai/PackageManager';
 import { GitCommit } from '@/components/ai/GitCommit';
 import { BuildAction } from '@/components/ai/BuildAction';
+
 import type { CoreAssistantMessage, CoreToolMessage } from 'ai';
 
 interface AssistantContentProps {
@@ -66,32 +67,31 @@ export const AssistantContent = memo(({ content, toolResults = [] }: AssistantCo
     return { isError: toolResult.isError || false };
   };
 
+
+
   // Helper function to check and render build action
   const renderBuildAction = (text: string, key: number | string) => {
-    if (!/(✅|❌|⏸️|🔄|🎉|⚠️|👀).*?(Agent completed successfully|Auto-building|Build|Deploy|Auto-fix|Building|Deploying|Fixing|Preview updated)/i.test(text)) {
+    if (!/(✅|❌|⏸️|🔄|🎉|🎉)/.test(text) || !/(Agent completed successfully|Auto-build|Build|Deploy|Building|Deploying)/i.test(text)) {
       return null;
     }
 
-    const getActionType = (): 'build' | 'deploy' | 'auto-build' | 'auto-fix' => {
+    const getActionType = (): 'BUILD' | 'DEPLOY' | 'AUTO_BUILD' => {
       if (text.includes('Auto-build') || text.includes('Auto-building') || (text.includes('Agent completed successfully') && text.includes('built'))) {
-        return 'auto-build';
-      }
-      if (text.includes('Auto-fix') || text.includes('Fixing')) {
-        return 'auto-fix';
+        return 'AUTO_BUILD';
       }
       if (text.includes('Deploy') || text.includes('Deploying')) {
-        return 'deploy';
+        return 'DEPLOY';
       }
-      return 'build';
+      return 'BUILD';
     };
 
     const getStatus = () => {
-      const icon = text.match(/(✅|❌|⏸️|🔄|🎉|⚠️|👀)/)?.[1];
+      const icon = text.match(/(✅|❌|⏸️|🔄|🎉)/)?.[1];
 
       if (icon === '❌' || text.includes('failed')) {
         return { isError: true, isLoading: false };
       }
-      if (icon === '⏸️' || icon === '🔄' || /(Building|Deploying|Fixing)/i.test(text)) {
+      if (icon === '⏸️' || icon === '🔄' || /(Building|Deploying)/i.test(text)) {
         return { isError: false, isLoading: true };
       }
       return { isError: false, isLoading: false };
@@ -118,7 +118,6 @@ export const AssistantContent = memo(({ content, toolResults = [] }: AssistantCo
     if (buildAction) {
       return buildAction;
     }
-
     return (
       <div className="prose prose-sm max-w-none dark:prose-invert">
         <ReactMarkdown

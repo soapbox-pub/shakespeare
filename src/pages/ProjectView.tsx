@@ -17,6 +17,10 @@ export function ProjectView() {
   const [project, setProject] = useState<Project | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'preview' | 'code'>('preview');
+
+  const handleBuildComplete = useCallback(() => {
+    setActiveTab('preview');
+  }, []);
   const [mobileView, setMobileView] = useState<'chat' | 'preview' | 'code'>('chat');
   const projectsManager = useProjectsManager();
   const navigate = useNavigate();
@@ -117,7 +121,11 @@ export function ProjectView() {
 
         <div className="flex-1 overflow-hidden">
           {mobileView === 'chat' && (
-            <ChatPane projectId={project.id} projectName={project.name} />
+            <ChatPane
+              projectId={project.id}
+              projectName={project.name}
+              onBuildComplete={handleBuildComplete}
+            />
           )}
           {(mobileView === 'preview' || mobileView === 'code') && (
             <PreviewPane
@@ -221,7 +229,11 @@ export function ProjectView() {
 
                 {/* Chat Content */}
                 <div className="flex-1 overflow-hidden">
-                  <ChatPane projectId={project.id} projectName={project.name} />
+                  <ChatPane
+                    projectId={project.id}
+                    projectName={project.name}
+                    onBuildComplete={handleBuildComplete}
+                  />
                 </div>
               </div>
             </ResizablePanel>

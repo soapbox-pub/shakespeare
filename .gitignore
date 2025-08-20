@@ -6,6 +6,7 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+.ai/
 
 node_modules
 dist
@@ -29,4 +30,4 @@ dist-ssr
 .env
 .env.*
 !.env.example
-.ai/
+

@@ -1,7 +1,5 @@
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { GitCommit as GitCommitIcon, CheckCircle, XCircle, GitBranch, Plus, Minus, Edit } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { ActionCard } from './shared/ActionCard';
+import { GitCommit as GitCommitIcon, GitBranch, Plus, Minus, Edit } from 'lucide-react';
 
 interface GitCommitProps {
   message: string;
@@ -80,61 +78,33 @@ export function GitCommit({
   const firstLine = getFirstLine(message);
   const commitEmoji = getCommitEmoji(message);
 
-  return (
-    <Card className={cn("mt-2", isError ? "border-destructive/50" : "border-muted", className)}>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <GitCommitIcon className="h-4 w-4 text-muted-foreground" />
-              <span className="text-lg">{commitEmoji}</span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="font-mono text-sm font-medium truncate">
-                {firstLine}
-              </div>
-              <div className="text-xs text-muted-foreground">
-                Git commit
-                {stats?.branch && (
-                  <span className="ml-2 inline-flex items-center gap-1">
-                    <GitBranch className="h-3 w-3" />
-                    {stats.branch}
-                  </span>
-                )}
-                {stats?.hash && (
-                  <span className="ml-2 font-mono">
-                    {stats.hash}
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            {result !== undefined ? (
-              isError ? (
-                <Badge variant="destructive" className="text-xs">
-                  <XCircle className="h-3 w-3 mr-1" />
-                  Failed
-                </Badge>
-              ) : (
-                <Badge variant="secondary" className="text-xs bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400">
-                  <CheckCircle className="h-3 w-3 mr-1" />
-                  Committed
-                </Badge>
-              )
-            ) : (
-              <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400">
-                <GitCommitIcon className="h-3 w-3 mr-1" />
-                Committing
-              </Badge>
-            )}
-          </div>
-        </div>
-      </CardHeader>
+  const getCommitDescription = () => {
+    let desc = 'Git commit';
+    if (stats?.branch) {
+      desc += ` • ${stats.branch} branch`;
+    }
+    if (stats?.hash) {
+      desc += ` • ${stats.hash}`;
+    }
+    return desc;
+  };
 
+  return (
+    <ActionCard
+      title={firstLine}
+      description={getCommitDescription()}
+      icon={<span className="text-lg">{commitEmoji}</span>}
+      result={result}
+      isError={isError}
+      className={className}
+      showResult={false}
+      runningIcon={<GitCommitIcon className="h-3 w-3" />}
+      runningLabel="Committing"
+      successLabel="Committed"
+    >
       {/* Full commit message - only show if multi-line */}
       {message.includes('\n') && (
-        <CardContent className="pt-0">
+        <div className="mb-3">
           <details className="group">
             <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground transition-colors mb-2 flex items-center gap-1">
               <span className="group-open:rotate-90 transition-transform">▶</span>
@@ -148,19 +118,14 @@ export function GitCommit({
               </div>
             </div>
           </details>
-        </CardContent>
+        </div>
       )}
 
       {result && (
-        <CardContent className={cn("pt-0", message.includes('\n') ? "pt-3" : "")}>
+        <>
           {/* Summary */}
           {summary && (
-            <div className={cn(
-              "mb-3 p-3 rounded-md text-sm font-medium",
-              isError
-                ? "bg-destructive/10 text-destructive border border-destructive/20"
-                : "bg-green-50 text-green-800 dark:bg-green-900/20 dark:text-green-400 border border-green-200 dark:border-green-800/30"
-            )}>
+            <div className="mb-3 p-3 rounded-md text-sm font-muted-foreground">
               {summary}
             </div>
           )}
@@ -207,8 +172,8 @@ export function GitCommit({
               </span>
             )}
           </div>
-        </CardContent>
+        </>
       )}
-    </Card>
+    </ActionCard>
   );
 }

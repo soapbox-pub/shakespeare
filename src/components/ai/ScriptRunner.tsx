@@ -1,7 +1,5 @@
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Play, CheckCircle, XCircle } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { ActionCard } from './shared/ActionCard';
+import { Play } from 'lucide-react';
 
 interface ScriptRunnerProps {
   script: string;
@@ -104,52 +102,21 @@ export function ScriptRunner({ script, result, isError = false, className }: Scr
   const { summary, details } = parseOutput(result || '');
 
   return (
-    <Card className={cn("mt-2", isError ? "border-destructive/50" : "border-muted", className)}>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <Play className="h-4 w-4 text-muted-foreground" />
-              <span className="text-lg">{scriptInfo.icon}</span>
-            </div>
-            <div>
-              <div className="font-mono text-sm font-medium">npm run {script}</div>
-              <div className="text-xs text-muted-foreground">{scriptInfo.description}</div>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            {result !== undefined ? (
-              isError ? (
-                <Badge variant="destructive" className="text-xs">
-                  <XCircle className="h-3 w-3 mr-1" />
-                  Failed
-                </Badge>
-              ) : (
-                <Badge variant="secondary" className="text-xs bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400">
-                  <CheckCircle className="h-3 w-3 mr-1" />
-                  Success
-                </Badge>
-              )
-            ) : (
-              <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400">
-                <Play className="h-3 w-3 mr-1" />
-                Running
-              </Badge>
-            )}
-          </div>
-        </div>
-      </CardHeader>
-
+    <ActionCard
+      title={`npm run ${script}`}
+      description={scriptInfo.description}
+      icon={<span className="text-lg">{scriptInfo.icon}</span>}
+      result={result}
+      isError={isError}
+      className={className}
+      runningIcon={<Play className="h-3 w-3" />}
+      runningLabel="Running"
+    >
       {result && (
-        <CardContent className="pt-0">
+        <>
           {/* Summary */}
           {summary && (
-            <div className={cn(
-              "mb-3 p-3 rounded-md text-sm font-medium",
-              isError
-                ? "bg-destructive/10 text-destructive border border-destructive/20"
-                : "bg-green-50 text-green-800 dark:bg-green-900/20 dark:text-green-400 border border-green-200 dark:border-green-800/30"
-            )}>
+            <div className="mb-3 p-3 rounded-md text-sm font-muted-foreground">
               {summary}
             </div>
           )}
@@ -201,8 +168,8 @@ export function ScriptRunner({ script, result, isError = false, className }: Scr
               )}
             </div>
           )}
-        </CardContent>
+        </>
       )}
-    </Card>
+    </ActionCard>
   );
 }

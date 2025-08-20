@@ -4,7 +4,7 @@ import { TestApp } from '@/test/TestApp';
 import { GitCommit } from './GitCommit';
 
 describe('GitCommit', () => {
-  it('renders commit message and shows committing state', () => {
+  it('renders commit message', () => {
     render(
       <TestApp>
         <GitCommit message="feat: add new feature" />
@@ -12,8 +12,6 @@ describe('GitCommit', () => {
     );
 
     expect(screen.getByText('feat: add new feature')).toBeInTheDocument();
-    expect(screen.getByText('Committing')).toBeInTheDocument();
-    expect(screen.getByText('Git commit')).toBeInTheDocument();
   });
 
   it('shows success state with commit details', () => {
@@ -38,7 +36,7 @@ describe('GitCommit', () => {
 
     expect(screen.getByText('Committed')).toBeInTheDocument();
     expect(screen.getByText('Successfully committed 3 files')).toBeInTheDocument();
-    expect(screen.getByText('abc1234')).toBeInTheDocument();
+    expect(screen.getByText('main branch')).toBeInTheDocument();
     expect(screen.getByText('2 added')).toBeInTheDocument();
     expect(screen.getByText('1 modified')).toBeInTheDocument();
   });

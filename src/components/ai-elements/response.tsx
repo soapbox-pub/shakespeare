@@ -2,7 +2,7 @@
 
 import { cn } from '@/lib/utils';
 import { type ComponentProps, memo } from 'react';
-import { Streamdown } from 'streamdown';
+import { Streamdown } from '@soapbox.pub/streamdown';
 
 type ResponseProps = ComponentProps<typeof Streamdown>;
 

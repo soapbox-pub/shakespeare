@@ -76,10 +76,14 @@ export function useStreamingChat({
     });
   }, []);
 
-  const updateMessage = useCallback((id: string, updates: Partial<StreamingMessage>) => {
-    setMessages(prev => prev.map(msg =>
-      msg.id === id ? { ...msg, ...updates } : msg
-    ));
+  const updateMessage = useCallback((id: string, updates: Partial<StreamingMessage> | ((prev: StreamingMessage) => Partial<StreamingMessage>)) => {
+    setMessages(prev => prev.map(msg => {
+      if (msg.id === id) {
+        const updatesObj = typeof updates === 'function' ? updates(msg) : updates;
+        return { ...msg, ...updatesObj };
+      }
+      return msg;
+    }));
   }, []);
 
   const sendMessage = useCallback(async (content: string) => {
@@ -94,20 +98,10 @@ export function useStreamingChat({
     };
 
     addMessage(userMessage);
-
-    // Create assistant message for streaming
-    const assistantMessageId = generateId();
-    const assistantMessage: StreamingMessage = {
-      id: assistantMessageId,
-      role: 'assistant',
-      content: '',
-      isStreaming: true,
-      timestamp: Date.now()
-    };
-
-    addMessage(assistantMessage);
-    setCurrentStreamingMessageId(assistantMessageId);
     setIsStreaming(true);
+
+    // Track current assistant message for this step
+    let currentAssistantMessageId: string | null = null;
 
     try {
       // Create abort controller for this request
@@ -137,31 +131,38 @@ export function useStreamingChat({
         onStepFinish: (stepResult) => {
           console.log('Step finished:', stepResult);
 
-          // Handle tool calls and results
-          if (stepResult.toolCalls && stepResult.toolCalls.length > 0) {
-            updateMessage(assistantMessageId, {
-              toolCalls: stepResult.toolCalls.map(tc => ({
-                id: tc.toolCallId,
-                toolName: tc.toolName,
-                input: tc.input
-              }))
+          // Finalize current assistant message if it exists
+          if (currentAssistantMessageId) {
+            updateMessage(currentAssistantMessageId, {
+              isStreaming: false
             });
           }
 
+          // Handle tool calls and results
+          if (stepResult.toolCalls && stepResult.toolCalls.length > 0) {
+            // Update the current message with tool calls
+            if (currentAssistantMessageId) {
+              updateMessage(currentAssistantMessageId, {
+                toolCalls: stepResult.toolCalls.map(tc => ({
+                  id: tc.toolCallId,
+                  toolName: tc.toolName,
+                  input: tc.input
+                }))
+              });
+            }
+          }
+
           if (stepResult.toolResults && stepResult.toolResults.length > 0) {
-            // Add tool results as separate message
-            const toolMessage: StreamingMessage = {
-              id: generateId(),
-              role: 'tool',
-              content: '',
-              toolResults: stepResult.toolResults.map(tr => ({
-                toolCallId: tr.toolCallId,
-                toolName: tr.toolName,
-                output: tr.output
-              })),
-              timestamp: Date.now()
-            };
-            addMessage(toolMessage);
+            // Add tool results to the current assistant message
+            if (currentAssistantMessageId) {
+              updateMessage(currentAssistantMessageId, {
+                toolResults: stepResult.toolResults.map(tr => ({
+                  toolCallId: tr.toolCallId,
+                  toolName: tr.toolName,
+                  output: tr.output
+                }))
+              });
+            }
           }
 
           // Update metadata if callback provided
@@ -174,42 +175,120 @@ export function useStreamingChat({
           if (onStepFinish) {
             onStepFinish(stepResult);
           }
+
+          // Reset current assistant message ID for next step
+          currentAssistantMessageId = null;
         }
       });
 
-      // Stream the text content
-      let streamedContent = '';
-
-      for await (const chunk of result.textStream) {
+      // Stream the content step by step using fullStream
+      for await (const chunk of result.fullStream) {
         if (abortControllerRef.current?.signal.aborted) {
           break;
         }
 
-        streamedContent += chunk;
-        updateMessage(assistantMessageId, {
-          content: streamedContent,
-          isStreaming: true
-        });
+        switch (chunk.type) {
+          case 'text-delta': {
+            // Create new assistant message if we don't have one for this step
+            if (!currentAssistantMessageId) {
+              currentAssistantMessageId = generateId();
+              const assistantMessage: StreamingMessage = {
+                id: currentAssistantMessageId,
+                role: 'assistant',
+                content: '',
+                isStreaming: true,
+                timestamp: Date.now()
+              };
+              addMessage(assistantMessage);
+              setCurrentStreamingMessageId(currentAssistantMessageId);
+            }
+
+            // Update the current message with new text
+            updateMessage(currentAssistantMessageId, (prev) => ({
+              content: (prev.content || '') + chunk.text,
+              isStreaming: true
+            }));
+            break;
+          }
+
+          case 'tool-call': {
+            // Create new assistant message if we don't have one for this step
+            if (!currentAssistantMessageId) {
+              currentAssistantMessageId = generateId();
+              const assistantMessage: StreamingMessage = {
+                id: currentAssistantMessageId,
+                role: 'assistant',
+                content: '',
+                isStreaming: true,
+                timestamp: Date.now()
+              };
+              addMessage(assistantMessage);
+              setCurrentStreamingMessageId(currentAssistantMessageId);
+            }
+
+            // Add tool call to current message
+            updateMessage(currentAssistantMessageId, (prev) => ({
+              toolCalls: [
+                ...(prev.toolCalls || []),
+                {
+                  id: chunk.toolCallId,
+                  toolName: chunk.toolName,
+                  input: chunk.input
+                }
+              ]
+            }));
+            break;
+          }
+
+          case 'tool-result': {
+            // Add tool result to current message
+            if (currentAssistantMessageId) {
+              updateMessage(currentAssistantMessageId, (prev) => ({
+                toolResults: [
+                  ...(prev.toolResults || []),
+                  {
+                    toolCallId: chunk.toolCallId,
+                    toolName: chunk.toolName,
+                    output: chunk.output
+                  }
+                ]
+              }));
+            }
+            break;
+          }
+
+          case 'finish': {
+            // Finalize the last assistant message
+            if (currentAssistantMessageId) {
+              updateMessage(currentAssistantMessageId, {
+                isStreaming: false
+              });
+            }
+            break;
+          }
+        }
       }
-
-      // Wait for the final result
-      const finalResult = await result;
-      const finalText = await finalResult.text;
-
-      // Update final message
-      updateMessage(assistantMessageId, {
-        content: finalText,
-        isStreaming: false
-      });
 
     } catch (error) {
       console.error('Streaming error:', error);
 
-      // Handle error - update the assistant message with error content
-      updateMessage(assistantMessageId, {
-        content: error instanceof Error ? error.message : 'Sorry, I encountered an error. Please try again.',
-        isStreaming: false
-      });
+      // Handle error - create or update assistant message with error content
+      if (currentAssistantMessageId) {
+        updateMessage(currentAssistantMessageId, {
+          content: error instanceof Error ? error.message : 'Sorry, I encountered an error. Please try again.',
+          isStreaming: false
+        });
+      } else {
+        // Create error message if no assistant message exists
+        const errorMessageId = generateId();
+        addMessage({
+          id: errorMessageId,
+          role: 'assistant',
+          content: error instanceof Error ? error.message : 'Sorry, I encountered an error. Please try again.',
+          isStreaming: false,
+          timestamp: Date.now()
+        });
+      }
     } finally {
       setIsStreaming(false);
       setCurrentStreamingMessageId(null);

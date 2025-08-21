@@ -39,7 +39,7 @@ export class ReadWebpageTool implements Tool<ReadWebpageParams> {
         const codeElement = node.querySelector("code");
         if (codeElement) {
           const language = codeElement.className.match(/language-(\w+)/)?.[1] || "";
-          return `\n\n\`\`\`${language}\n${codeElement.textContent || content}\n\`\`\`\n\n`;
+          return `\n\n\`\`\`${language}\n${content}\n\`\`\`\n\n`;
         }
         return `\n\n\`\`\`\n${content}\n\`\`\`\n\n`;
       },

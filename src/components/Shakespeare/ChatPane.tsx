@@ -153,14 +153,21 @@ BASE_DOMAIN=nostrdeploy.com`);
     }
   };
 
+  // Clear messages when navigating between projects
+  useEffect(() => {
+    setMessages([]);
+  }, [projectId])
+
   useEffect(() => {
     // Add welcome message
-    addMessage({
-      id: generateId(),
-      role: 'assistant',
-      content: `Hello! I'm here to help you build "${projectName}". I can help you edit files, add new features, and build your Nostr website. What would you like to work on?`,
-    });
-  }, [projectName, projectId]);
+    if (!messages.length) {
+      addMessage({
+        id: generateId(),
+        role: 'assistant',
+        content: `Hello! I'm here to help you build "${projectName}". I can help you edit files, add new features, and build your Nostr website. What would you like to work on?`,
+      });
+    }
+  }, [projectName, messages]);
 
   useEffect(() => {
     if (scrollAreaRef.current && messages) {

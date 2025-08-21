@@ -9,6 +9,10 @@
       "type": "stdio",
       "command": "npx",
       "args": ["-y", "@nostrbook/mcp@latest"]
+    },
+    "fetch": {
+      "command": "uvx",
+      "args": ["mcp-server-fetch", "--ignore-robots-txt"]
     }
   }
 }

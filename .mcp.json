@@ -11,6 +11,7 @@
       "args": ["-y", "@nostrbook/mcp@latest"]
     },
     "fetch": {
+      "type":"stdio",
       "command": "uvx",
       "args": ["mcp-server-fetch", "--ignore-robots-txt"]
     }

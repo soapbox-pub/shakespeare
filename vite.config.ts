@@ -22,6 +22,7 @@ export default defineConfig(() => ({
     env: {
       DEBUG_PRINT_LIMIT: '0', // Suppress DOM output that exceeds AI context windows
     },
+    css: true
   },
   resolve: {
     alias: {

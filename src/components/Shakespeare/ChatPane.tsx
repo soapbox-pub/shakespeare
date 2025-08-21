@@ -1,6 +1,5 @@
-import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import { useState, useRef, useEffect } from 'react';
-import { ModelMessage, generateText, UserModelMessage, AssistantModelMessage, ToolModelMessage, generateId } from 'ai';
+import { generateId } from 'ai';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Send, Settings, Play, CloudUpload, Loader2 } from 'lucide-react';
@@ -8,10 +7,11 @@ import { useAISettings } from '@/hooks/useAISettings';
 import { useFS } from '@/hooks/useFS';
 import { useJSRuntime } from '@/hooks/useJSRuntime';
 import { useKeepAlive } from '@/hooks/useKeepAlive';
+import { useStreamingChat } from '@/hooks/useStreamingChat';
 import { copyDirectory } from '@/lib/copyFiles';
 import { generateSecretKey, getPublicKey, nip19 } from 'nostr-tools';
 import { bytesToHex } from 'nostr-tools/utils';
-import { MessageItem } from '@/components/ai/MessageItem';
+import { StreamingMessageItem } from '@/components/ai/StreamingMessageItem';
 import { GitHistoryDialog } from '@/components/ai/GitHistoryDialog';
 import { TextEditorViewTool } from '@/lib/tools/TextEditorViewTool';
 import { TextEditorWriteTool } from '@/lib/tools/TextEditorWriteTool';
@@ -26,22 +26,77 @@ interface ChatPaneProps {
   projectName: string;
 }
 
-type AIMessage = (UserModelMessage | AssistantModelMessage | ToolModelMessage) & { id: string };
-
 export function ChatPane({ projectId, projectName }: ChatPaneProps) {
-  const [messages, setMessages] = useState<AIMessage[]>([]);
   const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
   const [isBuildLoading, setIsBuildLoading] = useState(false);
   const [isDeployLoading, setIsDeployLoading] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const { settings, isConfigured } = useAISettings();
+  const { isConfigured } = useAISettings();
   const { fs: browserFS } = useFS();
   const { runtime } = useJSRuntime();
 
+  // Initialize streaming chat with tools
+  const cwd = `/projects/${projectId}`;
+  const tools = {
+    git_commit: new GitCommitTool(browserFS, cwd),
+    text_editor_view: new TextEditorViewTool(browserFS, cwd),
+    text_editor_write: new TextEditorWriteTool(browserFS, cwd),
+    text_editor_str_replace: new TextEditorStrReplaceTool(browserFS, cwd),
+    npm_add_package: new NpmAddPackageTool(browserFS, cwd),
+    npm_remove_package: new NpmRemovePackageTool(browserFS, cwd),
+  };
+
+  const systemPrompt = `You are an AI assistant helping users build custom Nostr websites. You have access to tools that allow you to read, write, and manage files in the project, as well as build the project and manage npm packages.
+
+Key capabilities:
+- Read and write files in the project
+- List directory contents
+- Check if files exist
+- Build the project using Vite
+- Get project structure overview
+- Search through files
+- Add and remove npm packages
+- Install dependencies and dev dependencies
+- Commit changes to git with automatic staging
+
+Guidelines:
+- Always check if files exist before writing to avoid overwriting
+- Provide helpful explanations of what you're doing
+- Suggest improvements and best practices
+- Use modern React patterns and TypeScript
+- Follow Nostr protocol standards when relevant
+- Ensure the project builds successfully
+
+The project uses:
+- React 18 with TypeScript
+- Vite for building
+- TailwindCSS for styling
+- Nostrify for Nostr integration
+- shadcn/ui components
+
+When creating new components or pages, follow the existing patterns in the codebase.`;
+
+  const {
+    messages,
+    isStreaming,
+    currentStreamingMessageId,
+    sendMessage,
+    stopStreaming,
+    clearMessages,
+    addMessage
+  } = useStreamingChat({
+    projectId,
+    projectName,
+    tools,
+    systemPrompt,
+    onUpdateMetadata: (title, description) => {
+      updateMetadata(title, description);
+    }
+  });
+
   // Keep-alive functionality to prevent tab throttling during AI processing
   const { updateMetadata } = useKeepAlive({
-    enabled: isLoading || isBuildLoading || isDeployLoading,
+    enabled: isStreaming || isBuildLoading || isDeployLoading,
     title: 'Shakespeare',
     artist: `Working on ${projectName}...`,
     artwork: [
@@ -52,21 +107,6 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
       }
     ]
   });
-
-  const addMessage = (message: AIMessage) => {
-    setMessages((prev) => {
-      const messageMap = new Map(prev.map(m => [m.id, m])).set(message.id, message);
-      return Array.from(messageMap.values());
-    });
-  };
-
-  const addMessages = (newMessages: AIMessage[]) => {
-    setMessages((prev) => {
-      const messageMap = new Map(prev.map(m => [m.id, m]));
-      newMessages.forEach(msg => messageMap.set(msg.id, msg));
-      return Array.from(messageMap.values());
-    });
-  };
 
   const runBuild = async () => {
     if (isBuildLoading) return;
@@ -155,8 +195,8 @@ BASE_DOMAIN=nostrdeploy.com`);
 
   // Clear messages when navigating between projects
   useEffect(() => {
-    setMessages([]);
-  }, [projectId])
+    clearMessages();
+  }, [projectId, clearMessages]);
 
   useEffect(() => {
     // Add welcome message
@@ -165,9 +205,10 @@ BASE_DOMAIN=nostrdeploy.com`);
         id: generateId(),
         role: 'assistant',
         content: `Hello! I'm here to help you build "${projectName}". I can help you edit files, add new features, and build your Nostr website. What would you like to work on?`,
+        timestamp: Date.now()
       });
     }
-  }, [projectName, messages]);
+  }, [projectName, messages, addMessage]);
 
   useEffect(() => {
     if (scrollAreaRef.current && messages) {
@@ -181,107 +222,19 @@ BASE_DOMAIN=nostrdeploy.com`);
         container.scrollTop = container.scrollHeight;
       }
     }
-  }, [messages, isLoading]);
-
-  const createAIChat = async (projectId: string, messages: ModelMessage[]) => {
-    if (!isConfigured) {
-      throw new Error('AI settings not configured');
-    }
-
-    // Import the appropriate provider based on the base URL
-    const openai = createOpenAICompatible({
-      name: 'custom',
-      baseURL: settings.baseUrl,
-      apiKey: settings.apiKey,
-    });
-
-    const provider = openai(settings.model);
-    const cwd = `/projects/${projectId}`;
-
-    return generateText({
-      model: provider,
-      messages,
-      onStepFinish(stepResult) {
-        console.log(stepResult);
-        addMessages(stepResult.response.messages.map(msg => ({ ...msg, id: generateId() })));
-
-        // Update media session with current step info
-        const lastMessage = stepResult.response.messages[stepResult.response.messages.length - 1];
-        if (lastMessage?.role === 'tool') {
-          const toolName = lastMessage.content?.[0]?.toolName;
-          if (toolName) {
-            updateMetadata('Shakespeare', `Working on ${projectName} - ${toolName}`);
-          }
-        }
-      },
-      tools: {
-        git_commit: new GitCommitTool(browserFS, cwd),
-        text_editor_view: new TextEditorViewTool(browserFS, cwd),
-        text_editor_write: new TextEditorWriteTool(browserFS, cwd),
-        text_editor_str_replace: new TextEditorStrReplaceTool(browserFS, cwd),
-        npm_add_package: new NpmAddPackageTool(browserFS, cwd),
-        npm_remove_package: new NpmRemovePackageTool(browserFS, cwd),
-      },
-      system: `You are an AI assistant helping users build custom Nostr websites. You have access to tools that allow you to read, write, and manage files in the project, as well as build the project and manage npm packages.
-
-Key capabilities:
-- Read and write files in the project
-- List directory contents
-- Check if files exist
-- Build the project using Vite
-- Get project structure overview
-- Search through files
-- Add and remove npm packages
-- Install dependencies and dev dependencies
-- Commit changes to git with automatic staging
-
-Guidelines:
-- Always check if files exist before writing to avoid overwriting
-- Provide helpful explanations of what you're doing
-- Suggest improvements and best practices
-- Use modern React patterns and TypeScript
-- Follow Nostr protocol standards when relevant
-- Ensure the project builds successfully
-
-The project uses:
-- React 18 with TypeScript
-- Vite for building
-- TailwindCSS for styling
-- Nostrify for Nostr integration
-- shadcn/ui components
-
-When creating new components or pages, follow the existing patterns in the codebase.`
-    });
-  };
+  }, [messages, isStreaming]);
 
   const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+    if (!input.trim() || isStreaming) return;
 
-    const userMessage: AIMessage = {
-      id: generateId(),
-      role: 'user',
-      content: input,
-    };
-
-    addMessage(userMessage);
+    const messageContent = input;
     setInput('');
-    setIsLoading(true);
 
     try {
-      const aiMessages: AIMessage[] = [...messages, userMessage];
-      updateMetadata('Shakespeare', `Processing your request for ${projectName}...`);
-
-      await createAIChat(projectId, aiMessages);
+      await sendMessage(messageContent);
     } catch (error) {
       console.error('AI chat error:', error);
-      const errorMessage: AIMessage = {
-        id: generateId(),
-        role: 'assistant',
-        content: error instanceof Error ? error.message : 'Sorry, I encountered an error. Please try again.',
-      };
-      addMessage(errorMessage);
-    } finally {
-      setIsLoading(false);
+      // Error handling is done in the useStreamingChat hook
     }
   };
 
@@ -365,7 +318,7 @@ When creating new components or pages, follow the existing patterns in the codeb
             className="gap-1 sm:gap-2 hover:bg-primary/10 hover:border-primary/20"
             onClick={runBuild}
             onMouseDown={handleFirstInteraction}
-            disabled={isBuildLoading || isDeployLoading}
+            disabled={isBuildLoading || isDeployLoading || isStreaming}
           >
             {isBuildLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -382,7 +335,7 @@ When creating new components or pages, follow the existing patterns in the codeb
             className="gap-1 sm:gap-2 hover:bg-accent/10 hover:border-accent/20"
             onClick={runDeploy}
             onMouseDown={handleFirstInteraction}
-            disabled={isDeployLoading || isBuildLoading}
+            disabled={isDeployLoading || isBuildLoading || isStreaming}
           >
             {isDeployLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -398,52 +351,15 @@ When creating new components or pages, follow the existing patterns in the codeb
 
       <div className="flex-1 overflow-y-scroll overflow-x-hidden" ref={scrollAreaRef}>
         <div className="p-4 space-y-4">
-          {messages.map((message, index) => {
-            // For assistant messages, find corresponding tool results
-            const toolResults: ToolModelMessage[] = [];
-            if (message.role === 'assistant') {
-              // Look for tool messages that come after this assistant message
-              for (let i = index + 1; i < messages.length; i++) {
-                const nextMessage = messages[i];
-                if (nextMessage?.role === 'tool') {
-                  toolResults.push(nextMessage);
-                } else if (nextMessage?.role === 'assistant' || nextMessage?.role === 'user') {
-                  // Stop looking when we hit the next non-tool message
-                  break;
-                }
-              }
-            }
-
-            return (
-              <MessageItem
-                key={index}
-                message={message}
-                userDisplayName="You"
-                toolResults={toolResults}
-              />
-            );
-          })}
-
-          {isLoading && (
-            <div className="flex gap-3">
-              <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-                <div className="flex space-x-1">
-                  <div className="h-1 w-1 bg-current rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-                  <div className="h-1 w-1 bg-current rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-                  <div className="h-1 w-1 bg-current rounded-full animate-bounce"></div>
-                </div>
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="font-medium text-sm">Assistant</span>
-                  <span className="text-xs text-muted-foreground">AI</span>
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  Thinking...
-                </div>
-              </div>
-            </div>
-          )}
+          {messages.map((message) => (
+            <StreamingMessageItem
+              key={message.id}
+              message={message}
+              userDisplayName="You"
+              isCurrentlyStreaming={isStreaming && message.id === currentStreamingMessageId}
+              onStopStreaming={stopStreaming}
+            />
+          ))}
         </div>
       </div>
 
@@ -456,12 +372,12 @@ When creating new components or pages, follow the existing patterns in the codeb
             onFocus={handleFirstInteraction}
             placeholder="Ask me to add features, edit files, or build your project..."
             className="min-h-[60px] resize-none"
-            disabled={isLoading}
+            disabled={isStreaming}
           />
           <Button
             onClick={handleSend}
             onMouseDown={handleFirstInteraction}
-            disabled={!input.trim() || isLoading}
+            disabled={!input.trim() || isStreaming}
             className="self-end"
             size="icon"
           >

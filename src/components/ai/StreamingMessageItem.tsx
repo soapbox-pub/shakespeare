@@ -3,12 +3,11 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Bot, User, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Response } from '@/components/ai-elements/response';
-import { StreamingMessage } from '@/hooks/useStreamingChat';
+import { ChatMessage } from '@/hooks/useStreamingChat';
 import { AssistantContent } from '@/components/ai/AssistantContent';
-import { CoreToolMessage } from 'ai';
 
 interface StreamingMessageItemProps {
-  message: StreamingMessage;
+  message: ChatMessage;
   userDisplayName?: string;
   userProfileImage?: string;
   isCurrentlyStreaming?: boolean;
@@ -48,10 +47,10 @@ export const StreamingMessageItem = memo(({
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">
           <span className="font-medium text-sm">
-            {message.role === 'user' ? userDisplayName : 'Assistant'}
+            {message.role === 'user' ? userDisplayName : message.role === 'assistant' ? 'Assistant' : 'System'}
           </span>
           <span className="text-xs text-muted-foreground">
-            {message.role === 'user' ? 'User' : 'AI'}
+            {message.role === 'user' ? 'User' : message.role === 'assistant' ? 'AI' : 'System'}
           </span>
           {isCurrentlyStreaming && onStopStreaming && (
             <Button
@@ -68,12 +67,15 @@ export const StreamingMessageItem = memo(({
         <div className="text-sm">
           {message.role === 'user' ? (
             <div className="whitespace-pre-wrap break-words">
-              {message.content}
+              {typeof message.content === 'string' ? message.content : 
+               Array.isArray(message.content) ? 
+                 message.content.map(part => part.type === 'text' ? part.text : '').join('') : 
+                 ''}
             </div>
           ) : message.role === 'assistant' ? (
             <div>
-              {/* Text content */}
-              {message.content && (
+              {/* Handle assistant content */}
+              {typeof message.content === 'string' ? (
                 <div className="mb-2">
                   {message.isStreaming ? (
                     <Response>{message.content}</Response>
@@ -86,59 +88,64 @@ export const StreamingMessageItem = memo(({
                     <span className="inline-block w-2 h-4 bg-current animate-pulse ml-1" />
                   )}
                 </div>
-              )}
-              
-              {/* Tool calls */}
-              {message.toolCalls && message.toolCalls.length > 0 && (
+              ) : Array.isArray(message.content) ? (
                 <div className="space-y-2">
-                  {message.toolCalls.map((toolCall) => {
-                    // Create a mock CoreToolMessage for compatibility with AssistantContent
-                    const mockToolResults: CoreToolMessage[] = message.toolResults ? [
-                      {
-                        role: 'tool',
-                        content: message.toolResults
-                          .filter(result => result.toolCallId === toolCall.id)
-                          .map(result => ({
-                            type: 'tool-result' as const,
-                            toolCallId: result.toolCallId,
-                            toolName: result.toolName,
-                            output: {
-                              type: 'text' as const,
-                              value: typeof result.output === 'string' ? result.output : JSON.stringify(result.output)
-                            }
-                          }))
-                      }
-                    ] : [];
-
-                    return (
-                      <AssistantContent
-                        key={toolCall.id}
-                        content={[
-                          {
-                            type: 'tool-call',
-                            toolCallId: toolCall.id,
-                            toolName: toolCall.toolName,
-                            input: toolCall.input
-                          }
-                        ]}
-                        toolResults={mockToolResults}
-                      />
-                    );
+                  {message.content.map((part, index) => {
+                    if (part.type === 'text') {
+                      return (
+                        <div key={index} className="mb-2">
+                          {message.isStreaming ? (
+                            <Response>{part.text}</Response>
+                          ) : (
+                            <div className="prose prose-sm max-w-none dark:prose-invert">
+                              <Response>{part.text}</Response>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    } else if (part.type === 'tool-call') {
+                      return (
+                        <AssistantContent
+                          key={index}
+                          content={[part]}
+                          toolResults={[]}
+                        />
+                      );
+                    } else if (part.type === 'tool-result') {
+                      return (
+                        <AssistantContent
+                          key={index}
+                          content={[]}
+                          toolResults={[{
+                            role: 'tool',
+                            content: [part]
+                          }]}
+                        />
+                      );
+                    }
+                    return null;
                   })}
+                  {message.isStreaming && (
+                    <span className="inline-block w-2 h-4 bg-current animate-pulse ml-1" />
+                  )}
                 </div>
-              )}
-              
-              {/* Streaming indicator for when there's no content yet */}
-              {message.isStreaming && !message.content && !message.toolCalls?.length && (
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <div className="flex space-x-1">
-                    <div className="h-1 w-1 bg-current rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-                    <div className="h-1 w-1 bg-current rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-                    <div className="h-1 w-1 bg-current rounded-full animate-bounce"></div>
+              ) : (
+                /* Streaming indicator for when there's no content yet */
+                message.isStreaming && (
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <div className="flex space-x-1">
+                      <div className="h-1 w-1 bg-current rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                      <div className="h-1 w-1 bg-current rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                      <div className="h-1 w-1 bg-current rounded-full animate-bounce"></div>
+                    </div>
+                    <span className="text-xs">Thinking...</span>
                   </div>
-                  <span className="text-xs">Thinking...</span>
-                </div>
+                )
               )}
+            </div>
+          ) : message.role === 'system' ? (
+            <div className="whitespace-pre-wrap break-words text-muted-foreground">
+              {typeof message.content === 'string' ? message.content : ''}
             </div>
           ) : null}
         </div>

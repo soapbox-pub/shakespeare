@@ -1,22 +1,12 @@
 import { useState, useCallback, useRef } from 'react';
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import { streamText, ModelMessage, generateId, Tool, stepCountIs } from 'ai';
+import type { TextPart, ToolCallPart, ToolResultPart } from 'ai';
 import { useAISettings } from '@/hooks/useAISettings';
 
-export interface StreamingMessage {
+// Extend ModelMessage with additional UI state
+export type ChatMessage = ModelMessage & {
   id: string;
-  role: 'user' | 'assistant' | 'tool';
-  content: string;
-  toolCalls?: Array<{
-    id: string;
-    toolName: string;
-    input: unknown;
-  }>;
-  toolResults?: Array<{
-    toolCallId: string;
-    toolName: string;
-    output: unknown;
-  }>;
   isStreaming?: boolean;
   timestamp?: number;
 }
@@ -37,38 +27,18 @@ export function useStreamingChat({
   onStepFinish,
   onUpdateMetadata
 }: UseStreamingChatOptions) {
-  const [messages, setMessages] = useState<StreamingMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [currentStreamingMessageId, setCurrentStreamingMessageId] = useState<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const { settings, isConfigured } = useAISettings();
 
-  // Convert StreamingMessage to ModelMessage for AI SDK
-  const convertToModelMessages = useCallback((streamingMessages: StreamingMessage[]): ModelMessage[] => {
-    const modelMessages: ModelMessage[] = [];
-
-    for (const msg of streamingMessages) {
-      if (msg.role === 'user') {
-        modelMessages.push({
-          role: 'user',
-          content: msg.content
-        });
-      } else if (msg.role === 'assistant') {
-        // For assistant messages, just use text content for now
-        // Tool calls will be handled by the AI SDK automatically
-        if (msg.content) {
-          modelMessages.push({
-            role: 'assistant',
-            content: msg.content
-          });
-        }
-      }
-    }
-
-    return modelMessages;
+  // Convert ChatMessage to ModelMessage for AI SDK
+  const convertToModelMessages = useCallback((chatMessages: ChatMessage[]): ModelMessage[] => {
+    return chatMessages.map(({ id, isStreaming, timestamp, ...modelMessage }) => modelMessage as ModelMessage);
   }, []);
 
-  const addMessage = useCallback((message: StreamingMessage) => {
+  const addMessage = useCallback((message: ChatMessage) => {
     setMessages(prev => {
       const messageMap = new Map(prev.map(m => [m.id, m]));
       messageMap.set(message.id, message);
@@ -76,11 +46,11 @@ export function useStreamingChat({
     });
   }, []);
 
-  const updateMessage = useCallback((id: string, updates: Partial<StreamingMessage> | ((prev: StreamingMessage) => Partial<StreamingMessage>)) => {
+  const updateMessage = useCallback((id: string, updates: Partial<ChatMessage> | ((prev: ChatMessage) => Partial<ChatMessage>)) => {
     setMessages(prev => prev.map(msg => {
       if (msg.id === id) {
         const updatesObj = typeof updates === 'function' ? updates(msg) : updates;
-        return { ...msg, ...updatesObj };
+        return { ...msg, ...updatesObj } as ChatMessage;
       }
       return msg;
     }));
@@ -90,7 +60,7 @@ export function useStreamingChat({
     if (!isConfigured || isStreaming) return;
 
     // Add user message
-    const userMessage: StreamingMessage = {
+    const userMessage: ChatMessage = {
       id: generateId(),
       role: 'user',
       content,
@@ -138,32 +108,7 @@ export function useStreamingChat({
             });
           }
 
-          // Handle tool calls and results
-          if (stepResult.toolCalls && stepResult.toolCalls.length > 0) {
-            // Update the current message with tool calls
-            if (currentAssistantMessageId) {
-              updateMessage(currentAssistantMessageId, {
-                toolCalls: stepResult.toolCalls.map(tc => ({
-                  id: tc.toolCallId,
-                  toolName: tc.toolName,
-                  input: tc.input
-                }))
-              });
-            }
-          }
-
-          if (stepResult.toolResults && stepResult.toolResults.length > 0) {
-            // Add tool results to the current assistant message
-            if (currentAssistantMessageId) {
-              updateMessage(currentAssistantMessageId, {
-                toolResults: stepResult.toolResults.map(tr => ({
-                  toolCallId: tr.toolCallId,
-                  toolName: tr.toolName,
-                  output: tr.output
-                }))
-              });
-            }
-          }
+          // Tool calls and results are now handled in the streaming chunks
 
           // Update metadata if callback provided
           if (onUpdateMetadata && stepResult.toolCalls && stepResult.toolCalls.length > 0) {
@@ -192,7 +137,7 @@ export function useStreamingChat({
             // Create new assistant message if we don't have one for this step
             if (!currentAssistantMessageId) {
               currentAssistantMessageId = generateId();
-              const assistantMessage: StreamingMessage = {
+              const assistantMessage: ChatMessage = {
                 id: currentAssistantMessageId,
                 role: 'assistant',
                 content: '',
@@ -204,10 +149,31 @@ export function useStreamingChat({
             }
 
             // Update the current message with new text
-            updateMessage(currentAssistantMessageId, (prev) => ({
-              content: (prev.content || '') + chunk.text,
-              isStreaming: true
-            }));
+            updateMessage(currentAssistantMessageId, (prev) => {
+              const currentContent = prev.content;
+              if (typeof currentContent === 'string') {
+                return {
+                  content: currentContent + chunk.text,
+                  isStreaming: true
+                };
+              } else {
+                // If content is an array, find the last text part or add a new one
+                const content = Array.isArray(currentContent) ?
+                  currentContent.filter((part): part is TextPart | ToolCallPart | ToolResultPart =>
+                    part.type === 'text' || part.type === 'tool-call' || part.type === 'tool-result'
+                  ) : [];
+                const lastPart = content[content.length - 1];
+                if (lastPart && lastPart.type === 'text') {
+                  lastPart.text += chunk.text;
+                } else {
+                  content.push({ type: 'text' as const, text: chunk.text });
+                }
+                return {
+                  content,
+                  isStreaming: true
+                };
+              }
+            });
             break;
           }
 
@@ -215,7 +181,7 @@ export function useStreamingChat({
             // Create new assistant message if we don't have one for this step
             if (!currentAssistantMessageId) {
               currentAssistantMessageId = generateId();
-              const assistantMessage: StreamingMessage = {
+              const assistantMessage: ChatMessage = {
                 id: currentAssistantMessageId,
                 role: 'assistant',
                 content: '',
@@ -227,32 +193,46 @@ export function useStreamingChat({
             }
 
             // Add tool call to current message
-            updateMessage(currentAssistantMessageId, (prev) => ({
-              toolCalls: [
-                ...(prev.toolCalls || []),
-                {
-                  id: chunk.toolCallId,
-                  toolName: chunk.toolName,
-                  input: chunk.input
-                }
-              ]
-            }));
+            updateMessage(currentAssistantMessageId, (prev) => {
+              const currentContent = prev.content;
+              const content: Array<TextPart | ToolCallPart | ToolResultPart> = Array.isArray(currentContent) ?
+                currentContent.filter((part): part is TextPart | ToolCallPart | ToolResultPart =>
+                  part.type === 'text' || part.type === 'tool-call' || part.type === 'tool-result'
+                ) :
+                typeof currentContent === 'string' && currentContent ? [{ type: 'text' as const, text: currentContent }] : [];
+
+              content.push({
+                type: 'tool-call' as const,
+                toolCallId: chunk.toolCallId,
+                toolName: chunk.toolName,
+                input: chunk.input
+              });
+
+              return { content };
+            });
             break;
           }
 
           case 'tool-result': {
             // Add tool result to current message
             if (currentAssistantMessageId) {
-              updateMessage(currentAssistantMessageId, (prev) => ({
-                toolResults: [
-                  ...(prev.toolResults || []),
-                  {
-                    toolCallId: chunk.toolCallId,
-                    toolName: chunk.toolName,
-                    output: chunk.output
-                  }
-                ]
-              }));
+              updateMessage(currentAssistantMessageId, (prev) => {
+                const currentContent = prev.content;
+                const content: Array<TextPart | ToolCallPart | ToolResultPart> = Array.isArray(currentContent) ?
+                  currentContent.filter((part): part is TextPart | ToolCallPart | ToolResultPart =>
+                    part.type === 'text' || part.type === 'tool-call' || part.type === 'tool-result'
+                  ) :
+                  typeof currentContent === 'string' && currentContent ? [{ type: 'text' as const, text: currentContent }] : [];
+
+                content.push({
+                  type: 'tool-result' as const,
+                  toolCallId: chunk.toolCallId,
+                  toolName: chunk.toolName,
+                  output: chunk.output
+                });
+
+                return { content };
+              });
             }
             break;
           }

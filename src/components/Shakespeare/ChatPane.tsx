@@ -203,7 +203,7 @@ BASE_DOMAIN=nostrdeploy.com`);
     if (!messages.length) {
       addMessage({
         id: generateId(),
-        role: 'assistant',
+        role: 'assistant' as const,
         content: `Hello! I'm here to help you build "${projectName}". I can help you edit files, add new features, and build your Nostr website. What would you like to work on?`,
         timestamp: Date.now()
       });

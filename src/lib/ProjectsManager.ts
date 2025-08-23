@@ -2,6 +2,7 @@ import git from 'isomorphic-git';
 import http from 'isomorphic-git/http/web';
 import { Buffer } from 'buffer';
 import type { JSRuntimeFS } from '@/lib/JSRuntime';
+import { DotAI } from './DotAI';
 
 // Polyfill Buffer for browser
 if (typeof window !== 'undefined') {
@@ -36,7 +37,10 @@ export class ProjectsManager {
   }
 
   async createProject(name: string): Promise<Project> {
-    return this.cloneProject(name, GIT_TEMPLATE_URL);
+    const project = await this.cloneProject(name, GIT_TEMPLATE_URL);
+    const dotAI = new DotAI(this.fs, project.path);
+    await dotAI.setupAiHistoryDir();
+    return project;
   }
 
   async cloneProject(name: string, repoUrl: string): Promise<Project> {
@@ -73,8 +77,6 @@ export class ProjectsManager {
       lastModified: timestamp,
     };
   }
-
-
 
   async getProjects(): Promise<Project[]> {
     try {
@@ -258,10 +260,6 @@ export class ProjectsManager {
     const naddr = await this.getNostrRepoAddress(projectId);
     return naddr !== null;
   }
-
-
-
-
 
   private formatProjectName(dirName: string): string {
     // Return the original directory name without formatting

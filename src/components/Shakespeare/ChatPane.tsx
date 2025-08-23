@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect } from 'react';
-import { generateId } from 'ai';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Send, Settings, Play, CloudUpload, Loader2 } from 'lucide-react';
@@ -83,7 +82,6 @@ When creating new components or pages, follow the existing patterns in the codeb
     sendMessage,
     stopStreaming,
     clearMessages,
-    addMessage
   } = useStreamingChat({
     projectId,
     projectName,
@@ -197,18 +195,6 @@ BASE_DOMAIN=nostrdeploy.com`);
   useEffect(() => {
     clearMessages();
   }, [projectId, clearMessages]);
-
-  useEffect(() => {
-    // Add welcome message
-    if (!messages.length) {
-      addMessage({
-        id: generateId(),
-        role: 'assistant' as const,
-        content: `Hello! I'm here to help you build "${projectName}". I can help you edit files, add new features, and build your Nostr website. What would you like to work on?`,
-        timestamp: Date.now()
-      });
-    }
-  }, [projectName, messages, addMessage]);
 
   useEffect(() => {
     if (scrollAreaRef.current && messages) {

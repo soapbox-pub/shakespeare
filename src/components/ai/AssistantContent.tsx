@@ -1,8 +1,7 @@
 import { memo } from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
 import { Code } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
+import { Response } from '@/components/ai-elements/response';
 import { DiffRenderer } from '@/components/ai/DiffRenderer';
 import { ScriptRunner } from '@/components/ai/ScriptRunner';
 import { FileViewer } from '@/components/ai/FileViewer';
@@ -10,22 +9,19 @@ import { FileWriter } from '@/components/ai/FileWriter';
 import { ShellCommand } from '@/components/ai/ShellCommand';
 import { PackageManager } from '@/components/ai/PackageManager';
 import { GitCommit } from '@/components/ai/GitCommit';
-import type { CoreAssistantMessage, CoreToolMessage } from 'ai';
+import type { AssistantModelMessage } from 'ai';
 
 interface AssistantContentProps {
-  content: CoreAssistantMessage['content'];
-  toolResults?: CoreToolMessage[];
+  content: AssistantModelMessage['content'];
 }
 
-export const AssistantContent = memo(({ content, toolResults = [] }: AssistantContentProps) => {
+export const AssistantContent = memo(({ content }: AssistantContentProps) => {
   // Helper function to find tool result by call ID
   const findToolResult = (toolCallId: string) => {
-    for (const toolMessage of toolResults) {
-      if (toolMessage.content) {
-        for (const resultPart of toolMessage.content) {
-          if (resultPart.toolCallId === toolCallId) {
-            return resultPart;
-          }
+    if (Array.isArray(content)) {
+      for (const part of content) {
+        if (part.type === 'tool-result' && part.toolCallId === toolCallId) {
+          return part;
         }
       }
     }
@@ -41,9 +37,9 @@ export const AssistantContent = memo(({ content, toolResults = [] }: AssistantCo
     }
 
     // Handle direct string results
-    if (toolResult.output.type === 'text') {
+    if (typeof toolResult.output === 'string') {
       return {
-        result: toolResult.output.value,
+        result: toolResult.output,
         isError: false
       };
     }
@@ -54,47 +50,7 @@ export const AssistantContent = memo(({ content, toolResults = [] }: AssistantCo
   if (typeof content === 'string') {
     return (
       <div className="prose prose-sm max-w-none dark:prose-invert">
-        <ReactMarkdown
-          remarkPlugins={[remarkGfm]}
-          components={{
-            // Customize code blocks to match the existing tool styling
-            pre: ({ children }) => (
-              <pre className="bg-muted/50 rounded p-3 overflow-x-auto text-sm">
-                {children}
-              </pre>
-            ),
-            code: ({ children, className }) => {
-              const isInline = !className;
-              if (isInline) {
-                return (
-                  <code className="bg-muted px-1.5 py-0.5 rounded text-sm font-mono">
-                    {children}
-                  </code>
-                );
-              }
-              return <code className={className}>{children}</code>;
-            },
-            // Style links
-            a: ({ href, children }) => (
-              <a
-                href={href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary hover:underline"
-              >
-                {children}
-              </a>
-            ),
-            // Style blockquotes
-            blockquote: ({ children }) => (
-              <blockquote className="border-l-4 border-muted-foreground/20 pl-4 italic text-muted-foreground">
-                {children}
-              </blockquote>
-            ),
-          }}
-        >
-          {content}
-        </ReactMarkdown>
+        <Response>{content}</Response>
       </div>
     );
   }
@@ -105,47 +61,7 @@ export const AssistantContent = memo(({ content, toolResults = [] }: AssistantCo
         if (item.type === 'text') {
           return (
             <div key={index} className="prose prose-sm max-w-none dark:prose-invert">
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
-                components={{
-                  // Customize code blocks to match the existing tool styling
-                  pre: ({ children }) => (
-                    <pre className="bg-muted/50 rounded p-3 overflow-x-auto text-sm">
-                      {children}
-                    </pre>
-                  ),
-                  code: ({ children, className }) => {
-                    const isInline = !className;
-                    if (isInline) {
-                      return (
-                        <code className="bg-muted px-1.5 py-0.5 rounded text-sm font-mono">
-                          {children}
-                        </code>
-                      );
-                    }
-                    return <code className={className}>{children}</code>;
-                  },
-                  // Style links
-                  a: ({ href, children }) => (
-                    <a
-                      href={href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-primary hover:underline"
-                    >
-                      {children}
-                    </a>
-                  ),
-                  // Style blockquotes
-                  blockquote: ({ children }) => (
-                    <blockquote className="border-l-4 border-muted-foreground/20 pl-4 italic text-muted-foreground">
-                      {children}
-                    </blockquote>
-                  ),
-                }}
-              >
-                {item.text}
-              </ReactMarkdown>
+              <Response>{item.text}</Response>
             </div>
           );
         } else if (item.type === 'tool-call') {

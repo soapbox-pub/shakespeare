@@ -37,9 +37,9 @@ export const AssistantContent = memo(({ content }: AssistantContentProps) => {
     }
 
     // Handle direct string results
-    if (typeof toolResult.output === 'string') {
+    if (toolResult.output.type === 'text') {
       return {
-        result: toolResult.output,
+        result: toolResult.output.value,
         isError: false
       };
     }

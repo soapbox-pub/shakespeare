@@ -340,21 +340,28 @@ export function useStreamingChat({
             // Add tool result to current message
             if (currentAssistantMessageId) {
               updateMessage(currentAssistantMessageId, (prev) => {
-                const currentContent = prev.content;
-                const content: Array<TextPart | ToolCallPart | ToolResultPart> = Array.isArray(currentContent) ?
-                  currentContent.filter((part): part is TextPart | ToolCallPart | ToolResultPart =>
-                    part.type === 'text' || part.type === 'tool-call' || part.type === 'tool-result'
-                  ) :
-                  typeof currentContent === 'string' && currentContent ? [{ type: 'text' as const, text: currentContent }] : [];
+                if (prev.role === 'assistant') {
+                  let content = prev.content;
 
-                content.push({
-                  type: 'tool-result' as const,
-                  toolCallId: chunk.toolCallId,
-                  toolName: chunk.toolName,
-                  output: chunk.output
-                });
+                  if (typeof content === 'string') {
+                    content = [{ type: 'text', text: content }];
+                  }
 
-                return { content };
+                  content.push({
+                    type: 'tool-result',
+                    toolCallId: chunk.toolCallId,
+                    toolName: chunk.toolName,
+                    output: {
+                      type: 'text',
+                      value: String(chunk.output),
+                    },
+                  });
+
+                  return { content };
+                } else {
+                  console.warn(`Streaming message should be an assistant message. Was a ${prev.role} message.`)
+                  return prev;
+                }
               });
             }
             break;

@@ -1,8 +1,10 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import { streamText, ModelMessage, generateId, Tool, stepCountIs } from 'ai';
 import type { TextPart, ToolCallPart, ToolResultPart } from 'ai';
 import { useAISettings } from '@/hooks/useAISettings';
+import { useFS } from '@/hooks/useFS';
+import { DotAI } from '@/lib/DotAI';
 
 // Extend ModelMessage with additional UI state
 export type ChatMessage = ModelMessage & {
@@ -21,6 +23,7 @@ interface UseStreamingChatOptions {
 }
 
 export function useStreamingChat({
+  projectId,
   projectName,
   tools = {},
   systemPrompt,
@@ -30,8 +33,116 @@ export function useStreamingChat({
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [currentStreamingMessageId, setCurrentStreamingMessageId] = useState<string | null>(null);
+  const [sessionName, setSessionName] = useState<string>('');
+  const [isHistoryLoaded, setIsHistoryLoaded] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
   const { settings, isConfigured } = useAISettings();
+  const { fs } = useFS();
+  const dotAIRef = useRef<DotAI | null>(null);
+
+  // Initialize DotAI for this project
+  useEffect(() => {
+    const initializeDotAI = async () => {
+      try {
+        const dotAI = new DotAI(fs, `/projects/${projectId}`);
+        dotAIRef.current = dotAI;
+
+        // Generate session name if not already set
+        if (!sessionName) {
+          setSessionName(DotAI.generateSessionName());
+        }
+      } catch (error) {
+        console.warn('Failed to initialize DotAI:', error);
+      }
+    };
+
+    initializeDotAI();
+  }, [fs, projectId, sessionName]);
+
+  // Load message history when project changes
+  useEffect(() => {
+    const loadMessageHistory = async () => {
+      if (!dotAIRef.current || isHistoryLoaded) return;
+
+      try {
+        const historyDir = `/projects/${projectId}/.ai/history`;
+
+        // Check if history directory exists
+        try {
+          await fs.stat(historyDir);
+        } catch {
+          // History directory doesn't exist, no history to load
+          setIsHistoryLoaded(true);
+          return;
+        }
+
+        // Get all session files
+        const files = await fs.readdir(historyDir);
+        const sessionFiles = files.filter(file => file.endsWith('.jsonl'));
+
+        if (sessionFiles.length === 0) {
+          setIsHistoryLoaded(true);
+          return;
+        }
+
+        // Sort by filename (which includes timestamp) to get the latest session
+        sessionFiles.sort();
+        const latestSessionFile = sessionFiles[sessionFiles.length - 1];
+        const latestSessionName = latestSessionFile.replace('.jsonl', '');
+
+        // Load messages from the latest session
+        const sessionPath = `${historyDir}/${latestSessionFile}`;
+        const sessionContent = await fs.readFile(sessionPath, 'utf8');
+
+        const loadedMessages: ChatMessage[] = [];
+        const lines = sessionContent.split('\n').filter(line => line.trim());
+
+        for (const line of lines) {
+          try {
+            const messageData = JSON.parse(line);
+            // Convert to ChatMessage format
+            const chatMessage: ChatMessage = {
+              id: generateId(),
+              role: messageData.role,
+              content: messageData.content,
+              timestamp: Date.now()
+            };
+            loadedMessages.push(chatMessage);
+          } catch (error) {
+            console.warn('Failed to parse message from history:', error);
+          }
+        }
+
+        if (loadedMessages.length > 0) {
+          setMessages(loadedMessages);
+          setSessionName(latestSessionName);
+        }
+      } catch (error) {
+        console.warn('Failed to load message history:', error);
+      } finally {
+        setIsHistoryLoaded(true);
+      }
+    };
+
+    loadMessageHistory();
+  }, [fs, projectId, isHistoryLoaded]);
+
+  // Save message to history
+  const saveMessageToHistory = useCallback(async (message: ChatMessage) => {
+    if (!dotAIRef.current || !sessionName) return;
+
+    try {
+      // Convert ChatMessage to DotAI format
+      const aiMessage = {
+        role: message.role,
+        content: message.content
+      };
+
+      await dotAIRef.current.addToHistory(sessionName, aiMessage);
+    } catch (error) {
+      console.warn('Failed to save message to history:', error);
+    }
+  }, [sessionName]);
 
   // Convert ChatMessage to ModelMessage for AI SDK
   const convertToModelMessages = useCallback((chatMessages: ChatMessage[]): ModelMessage[] => {
@@ -44,17 +155,27 @@ export function useStreamingChat({
       messageMap.set(message.id, message);
       return Array.from(messageMap.values());
     });
-  }, []);
+
+    // Save to history (async, don't block UI)
+    saveMessageToHistory(message);
+  }, [saveMessageToHistory]);
 
   const updateMessage = useCallback((id: string, updates: Partial<ChatMessage> | ((prev: ChatMessage) => Partial<ChatMessage>)) => {
     setMessages(prev => prev.map(msg => {
       if (msg.id === id) {
         const updatesObj = typeof updates === 'function' ? updates(msg) : updates;
-        return { ...msg, ...updatesObj } as ChatMessage;
+        const updatedMessage = { ...msg, ...updatesObj } as ChatMessage;
+
+        // Save to history when message is finalized (streaming stops)
+        if (updatesObj.isStreaming === false && msg.isStreaming === true) {
+          saveMessageToHistory(updatedMessage);
+        }
+
+        return updatedMessage;
       }
       return msg;
     }));
-  }, []);
+  }, [saveMessageToHistory]);
 
   const sendMessage = useCallback(async (content: string) => {
     if (!isConfigured || isStreaming) return;
@@ -297,6 +418,8 @@ export function useStreamingChat({
 
   const clearMessages = useCallback(() => {
     setMessages([]);
+    // Start a new session when clearing messages
+    setSessionName(DotAI.generateSessionName());
   }, []);
 
   return {

@@ -1,7 +1,7 @@
 import { join } from "@std/path";
 import { JSRuntimeFS } from "./JSRuntime";
 
-interface AIMessage {
+export interface AIMessage {
   role: string;
   content: string | { type: string }[];
 }

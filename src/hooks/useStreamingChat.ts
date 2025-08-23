@@ -34,7 +34,7 @@ export function useStreamingChat({
   const [isStreaming, setIsStreaming] = useState(false);
   const [currentStreamingMessageId, setCurrentStreamingMessageId] = useState<string | null>(null);
   const [sessionName, setSessionName] = useState<string>('');
-  const [isHistoryLoaded, setIsHistoryLoaded] = useState(false);
+  const [loadedProjectId, setLoadedProjectId] = useState<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const { settings, isConfigured } = useAISettings();
   const { fs } = useFS();
@@ -62,7 +62,12 @@ export function useStreamingChat({
   // Load message history when project changes
   useEffect(() => {
     const loadMessageHistory = async () => {
-      if (!dotAIRef.current || isHistoryLoaded) return;
+      // Only load if we haven't loaded this project yet or if the project has changed
+      if (!dotAIRef.current || loadedProjectId === projectId) return;
+
+      // Clear messages when switching to a new project
+      setMessages([]);
+      setSessionName('');
 
       try {
         const historyDir = `/projects/${projectId}/.ai/history`;
@@ -72,7 +77,7 @@ export function useStreamingChat({
           await fs.stat(historyDir);
         } catch {
           // History directory doesn't exist, no history to load
-          setIsHistoryLoaded(true);
+          setLoadedProjectId(projectId);
           return;
         }
 
@@ -81,7 +86,7 @@ export function useStreamingChat({
         const sessionFiles = files.filter(file => file.endsWith('.jsonl'));
 
         if (sessionFiles.length === 0) {
-          setIsHistoryLoaded(true);
+          setLoadedProjectId(projectId);
           return;
         }
 
@@ -120,12 +125,12 @@ export function useStreamingChat({
       } catch (error) {
         console.warn('Failed to load message history:', error);
       } finally {
-        setIsHistoryLoaded(true);
+        setLoadedProjectId(projectId);
       }
     };
 
     loadMessageHistory();
-  }, [fs, projectId, isHistoryLoaded]);
+  }, [fs, projectId, loadedProjectId]);
 
   // Save message to history
   const saveMessageToHistory = useCallback(async (message: ChatMessage) => {
@@ -420,6 +425,8 @@ export function useStreamingChat({
     setMessages([]);
     // Start a new session when clearing messages
     setSessionName(DotAI.generateSessionName());
+    // Reset loaded project ID so history can be loaded again
+    setLoadedProjectId(null);
   }, []);
 
   return {

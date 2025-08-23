@@ -81,7 +81,6 @@ When creating new components or pages, follow the existing patterns in the codeb
     currentStreamingMessageId,
     sendMessage,
     stopStreaming,
-    clearMessages,
   } = useStreamingChat({
     projectId,
     projectName,
@@ -191,10 +190,7 @@ BASE_DOMAIN=nostrdeploy.com`);
     }
   };
 
-  // Clear messages when navigating between projects
-  useEffect(() => {
-    clearMessages();
-  }, [projectId, clearMessages]);
+  // Note: Message clearing and history loading is now handled in useStreamingChat hook
 
   useEffect(() => {
     if (scrollAreaRef.current && messages) {

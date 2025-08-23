@@ -76,14 +76,8 @@ export const StreamingMessageItem = memo(({
             <div>
               {/* Handle assistant content */}
               {typeof message.content === 'string' ? (
-                <div className="mb-2">
-                  {message.isStreaming ? (
-                    <Response>{message.content}</Response>
-                  ) : (
-                    <div className="prose prose-sm max-w-none dark:prose-invert">
-                      <Response>{message.content}</Response>
-                    </div>
-                  )}
+                <div className="mb-2 prose prose-sm max-w-none dark:prose-invert">
+                  <Response>{message.content}</Response>
                   {message.isStreaming && (
                     <span className="inline-block w-2 h-4 bg-current animate-pulse ml-1" />
                   )}
@@ -93,13 +87,10 @@ export const StreamingMessageItem = memo(({
                   {message.content.map((part, index) => {
                     if (part.type === 'text') {
                       return (
-                        <div key={index} className="mb-2">
-                          {message.isStreaming ? (
-                            <Response>{part.text}</Response>
-                          ) : (
-                            <div className="prose prose-sm max-w-none dark:prose-invert">
-                              <Response>{part.text}</Response>
-                            </div>
+                        <div className="mb-2 prose prose-sm max-w-none dark:prose-invert">
+                          <Response>{part.text}</Response>
+                          {message.isStreaming && (
+                            <span className="inline-block w-2 h-4 bg-current animate-pulse ml-1" />
                           )}
                         </div>
                       );

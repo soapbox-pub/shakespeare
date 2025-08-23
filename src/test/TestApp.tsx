@@ -8,6 +8,7 @@ import { AppProvider } from '@/components/AppProvider';
 import { AppConfig } from '@/contexts/AppContext';
 import { FSProvider } from '@/components/FSProvider';
 import { LightningFSAdapter } from '@/lib/LightningFSAdapter';
+import { AISettingsProvider } from '@/components/AISettingsProvider';
 
 interface TestAppProps {
   children: React.ReactNode;
@@ -35,17 +36,19 @@ export function TestApp({ children }: TestAppProps) {
   return (
     <UnheadProvider head={head}>
       <AppProvider storageKey='test-app-config' defaultConfig={defaultConfig}>
-        <FSProvider fs={fs}>
-          <QueryClientProvider client={queryClient}>
-            <NostrLoginProvider storageKey='test-login'>
-              <NostrProvider>
-                <BrowserRouter>
-                  {children}
-                </BrowserRouter>
-              </NostrProvider>
-            </NostrLoginProvider>
-          </QueryClientProvider>
-        </FSProvider>
+        <AISettingsProvider>
+          <FSProvider fs={fs}>
+            <QueryClientProvider client={queryClient}>
+              <NostrLoginProvider storageKey='test-login'>
+                <NostrProvider>
+                  <BrowserRouter>
+                    {children}
+                  </BrowserRouter>
+                </NostrProvider>
+              </NostrLoginProvider>
+            </QueryClientProvider>
+          </FSProvider>
+        </AISettingsProvider>
       </AppProvider>
     </UnheadProvider>
   );

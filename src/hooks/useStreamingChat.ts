@@ -161,8 +161,11 @@ export function useStreamingChat({
       return Array.from(messageMap.values());
     });
 
-    // Save to history (async, don't block UI)
-    saveMessageToHistory(message);
+    // Only save to history if the message is not currently streaming
+    // Streaming messages will be saved when they're completed
+    if (!message.isStreaming) {
+      saveMessageToHistory(message);
+    }
   }, [saveMessageToHistory]);
 
   const updateMessage = useCallback((id: string, updates: Partial<ChatMessage> | ((prev: ChatMessage) => Partial<ChatMessage>)) => {
@@ -171,7 +174,7 @@ export function useStreamingChat({
         const updatesObj = typeof updates === 'function' ? updates(msg) : updates;
         const updatedMessage = { ...msg, ...updatesObj } as ChatMessage;
 
-        // Save to history when message is finalized (streaming stops)
+        // Save to history only when message stops streaming (is completed)
         if (updatesObj.isStreaming === false && msg.isStreaming === true) {
           saveMessageToHistory(updatedMessage);
         }
@@ -227,15 +230,6 @@ export function useStreamingChat({
         onStepFinish: (stepResult) => {
           console.log('Step finished:', stepResult);
 
-          // Finalize current assistant message if it exists
-          if (currentAssistantMessageId) {
-            updateMessage(currentAssistantMessageId, {
-              isStreaming: false
-            });
-          }
-
-          // Tool calls and results are now handled in the streaming chunks
-
           // Update metadata if callback provided
           if (onUpdateMetadata && stepResult.toolCalls && stepResult.toolCalls.length > 0) {
             const toolName = stepResult.toolCalls[0].toolName;
@@ -246,9 +240,6 @@ export function useStreamingChat({
           if (onStepFinish) {
             onStepFinish(stepResult);
           }
-
-          // Reset current assistant message ID for next step
-          currentAssistantMessageId = null;
         }
       });
 
@@ -363,13 +354,17 @@ export function useStreamingChat({
             break;
           }
 
-          case 'finish': {
+          case 'finish-step': {
             // Finalize the last assistant message
             if (currentAssistantMessageId) {
               updateMessage(currentAssistantMessageId, {
                 isStreaming: false
               });
             }
+
+            // Reset current assistant message ID for next step
+            currentAssistantMessageId = null;
+
             break;
           }
         }

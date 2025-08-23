@@ -2,7 +2,6 @@ import { memo } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Bot, User, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Response } from '@/components/ai-elements/response';
 import { ChatMessage } from '@/hooks/useStreamingChat';
 import { AssistantContent } from '@/components/ai/AssistantContent';
 
@@ -73,67 +72,7 @@ export const StreamingMessageItem = memo(({
                  ''}
             </div>
           ) : message.role === 'assistant' ? (
-            <div>
-              {/* Handle assistant content */}
-              {typeof message.content === 'string' ? (
-                <div className="mb-2 prose prose-sm max-w-none dark:prose-invert">
-                  <Response>{message.content}</Response>
-                  {message.isStreaming && (
-                    <span className="inline-block w-2 h-4 bg-current animate-pulse ml-1" />
-                  )}
-                </div>
-              ) : Array.isArray(message.content) ? (
-                <div className="space-y-2">
-                  {message.content.map((part, index) => {
-                    if (part.type === 'text') {
-                      return (
-                        <div className="mb-2 prose prose-sm max-w-none dark:prose-invert">
-                          <Response>{part.text}</Response>
-                          {message.isStreaming && (
-                            <span className="inline-block w-2 h-4 bg-current animate-pulse ml-1" />
-                          )}
-                        </div>
-                      );
-                    } else if (part.type === 'tool-call') {
-                      return (
-                        <AssistantContent
-                          key={index}
-                          content={[part]}
-                          toolResults={[]}
-                        />
-                      );
-                    } else if (part.type === 'tool-result') {
-                      return (
-                        <AssistantContent
-                          key={index}
-                          content={[]}
-                          toolResults={[{
-                            role: 'tool',
-                            content: [part]
-                          }]}
-                        />
-                      );
-                    }
-                    return null;
-                  })}
-                  {message.isStreaming && (
-                    <span className="inline-block w-2 h-4 bg-current animate-pulse ml-1" />
-                  )}
-                </div>
-              ) : (
-                /* Streaming indicator for when there's no content yet */
-                message.isStreaming && (
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <div className="flex space-x-1">
-                      <div className="h-1 w-1 bg-current rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-                      <div className="h-1 w-1 bg-current rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-                      <div className="h-1 w-1 bg-current rounded-full animate-bounce"></div>
-                    </div>
-                    <span className="text-xs">Thinking...</span>
-                  </div>
-                )
-              )}
-            </div>
+            <AssistantContent content={message.content} />
           ) : message.role === 'system' ? (
             <div className="whitespace-pre-wrap break-words text-muted-foreground">
               {typeof message.content === 'string' ? message.content : ''}

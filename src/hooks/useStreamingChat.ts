@@ -33,7 +33,7 @@ export function useStreamingChat({
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [currentStreamingMessageId, setCurrentStreamingMessageId] = useState<string | null>(null);
-  const [sessionName, setSessionName] = useState<string>('');
+  const [sessionName, setSessionName] = useState<string>(DotAI.generateSessionName());
   const [loadedProjectId, setLoadedProjectId] = useState<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const { settings, isConfigured } = useAISettings();
@@ -67,7 +67,7 @@ export function useStreamingChat({
 
       // Clear messages when switching to a new project
       setMessages([]);
-      setSessionName('');
+      setSessionName(DotAI.generateSessionName());
 
       try {
         const historyDir = `/projects/${projectId}/.ai/history`;
@@ -134,7 +134,13 @@ export function useStreamingChat({
 
   // Save message to history
   const saveMessageToHistory = useCallback(async (message: ChatMessage) => {
-    if (!dotAIRef.current || !sessionName) return;
+    if (!dotAIRef.current || !sessionName) {
+      console.error("Unable to save message to history:", {
+        dotAIRef,
+        sessionName,
+      });
+      return;
+    }
 
     try {
       // Convert ChatMessage to DotAI format

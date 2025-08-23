@@ -4,7 +4,7 @@ import { streamText, ModelMessage, generateId, Tool, stepCountIs } from 'ai';
 import type { TextPart, ToolCallPart, ToolResultPart } from 'ai';
 import { useAISettings } from '@/hooks/useAISettings';
 import { useFS } from '@/hooks/useFS';
-import { DotAI } from '@/lib/DotAI';
+import { AIMessage, DotAI } from '@/lib/DotAI';
 
 // Extend ModelMessage with additional UI state
 export type ChatMessage = ModelMessage & {
@@ -133,7 +133,7 @@ export function useStreamingChat({
   }, [fs, projectId, loadedProjectId]);
 
   // Save message to history
-  const saveMessageToHistory = useCallback(async (message: ChatMessage) => {
+  const saveMessageToHistory = useCallback(async (message: AIMessage) => {
     if (!dotAIRef.current || !sessionName) {
       console.error("Unable to save message to history:", {
         dotAIRef,
@@ -166,30 +166,18 @@ export function useStreamingChat({
       messageMap.set(message.id, message);
       return Array.from(messageMap.values());
     });
-
-    // Only save to history if the message is not currently streaming
-    // Streaming messages will be saved when they're completed
-    if (!message.isStreaming) {
-      saveMessageToHistory(message);
-    }
-  }, [saveMessageToHistory]);
+  }, []);
 
   const updateMessage = useCallback((id: string, updates: Partial<ChatMessage> | ((prev: ChatMessage) => Partial<ChatMessage>)) => {
     setMessages(prev => prev.map(msg => {
       if (msg.id === id) {
         const updatesObj = typeof updates === 'function' ? updates(msg) : updates;
         const updatedMessage = { ...msg, ...updatesObj } as ChatMessage;
-
-        // Save to history only when message stops streaming (is completed)
-        if (updatesObj.isStreaming === false && msg.isStreaming === true) {
-          saveMessageToHistory(updatedMessage);
-        }
-
         return updatedMessage;
       }
       return msg;
     }));
-  }, [saveMessageToHistory]);
+  }, []);
 
   const sendMessage = useCallback(async (content: string) => {
     if (!isConfigured || isStreaming) return;
@@ -203,6 +191,7 @@ export function useStreamingChat({
     };
 
     addMessage(userMessage);
+    await saveMessageToHistory(userMessage);
     setIsStreaming(true);
 
     // Track current assistant message for this step
@@ -233,13 +222,20 @@ export function useStreamingChat({
         system: systemPrompt,
         abortSignal: abortControllerRef.current.signal,
         stopWhen: stepCountIs(50),
-        onStepFinish: (stepResult) => {
+        onStepFinish: async (stepResult) => {
           console.log('Step finished:', stepResult);
 
           // Update metadata if callback provided
           if (onUpdateMetadata && stepResult.toolCalls && stepResult.toolCalls.length > 0) {
             const toolName = stepResult.toolCalls[0].toolName;
             onUpdateMetadata('Shakespeare', `Working on ${projectName} - ${toolName}`);
+          }
+
+          // Save messages to history after step is finished
+          if (stepResult.finishReason === 'stop') {
+            for (const message of stepResult.response.messages) {
+              await saveMessageToHistory(message);
+            }
           }
 
           // Call custom step finish handler
@@ -336,37 +332,6 @@ export function useStreamingChat({
             break;
           }
 
-          case 'tool-result': {
-            // Add tool result to current message
-            if (currentAssistantMessageId) {
-              updateMessage(currentAssistantMessageId, (prev) => {
-                if (prev.role === 'assistant') {
-                  let content = prev.content;
-
-                  if (typeof content === 'string') {
-                    content = [{ type: 'text', text: content }];
-                  }
-
-                  content.push({
-                    type: 'tool-result',
-                    toolCallId: chunk.toolCallId,
-                    toolName: chunk.toolName,
-                    output: {
-                      type: 'text',
-                      value: String(chunk.output),
-                    },
-                  });
-
-                  return { content };
-                } else {
-                  console.warn(`Streaming message should be an assistant message. Was a ${prev.role} message.`)
-                  return prev;
-                }
-              });
-            }
-            break;
-          }
-
           case 'finish-step': {
             // Finalize the last assistant message
             if (currentAssistantMessageId) {
@@ -408,20 +373,7 @@ export function useStreamingChat({
       setCurrentStreamingMessageId(null);
       abortControllerRef.current = null;
     }
-  }, [
-    isConfigured,
-    isStreaming,
-    messages,
-    settings,
-    tools,
-    systemPrompt,
-    projectName,
-    convertToModelMessages,
-    addMessage,
-    updateMessage,
-    onStepFinish,
-    onUpdateMetadata
-  ]);
+  }, [isConfigured, isStreaming, addMessage, saveMessageToHistory, messages, convertToModelMessages, settings.baseUrl, settings.apiKey, settings.model, tools, systemPrompt, onUpdateMetadata, onStepFinish, projectName, updateMessage]);
 
   const stopStreaming = useCallback(() => {
     if (abortControllerRef.current) {

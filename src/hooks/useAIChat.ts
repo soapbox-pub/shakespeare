@@ -1,19 +1,15 @@
 import { useState, useCallback, useRef } from 'react';
-import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
-import { generateText, Tool } from 'ai';
+import OpenAI from 'openai';
 import { useAISettings } from '@/hooks/useAISettings';
 
-export interface AIMessage {
-  id: string;
-  role: 'user' | 'assistant' | 'system';
-  content: string;
-  timestamp: number;
-}
+// Use OpenAI's native message type
+export type AIMessage = OpenAI.Chat.Completions.ChatCompletionMessageParam;
 
 interface UseAIChatOptions {
   projectId: string;
   projectName: string;
-  tools?: Record<string, Tool>;
+  tools?: Record<string, OpenAI.Chat.Completions.ChatCompletionTool>;
+  customTools?: Record<string, { execute: (args: unknown) => Promise<unknown> }>;
   systemPrompt?: string;
   onUpdateMetadata?: (title: string, description: string) => void;
 }
@@ -22,6 +18,7 @@ export function useAIChat({
   projectId: _projectId,
   projectName,
   tools = {},
+  customTools = {},
   systemPrompt,
   onUpdateMetadata
 }: UseAIChatOptions) {
@@ -39,10 +36,8 @@ export function useAIChat({
 
     // Add user message
     const userMessage: AIMessage = {
-      id: crypto.randomUUID(),
       role: 'user',
-      content,
-      timestamp: Date.now()
+      content
     };
 
     addMessage(userMessage);
@@ -54,53 +49,133 @@ export function useAIChat({
 
       // Get all messages including the new user message
       const allMessages = [...messages, userMessage];
-      const modelMessages = allMessages.map(msg => ({
-        role: msg.role,
-        content: msg.content
-      }));
 
-      // Initialize OpenAI provider
-      const openai = createOpenAICompatible({
-        name: 'custom',
+      // Use messages directly as they're already in OpenAI format
+      const modelMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = allMessages;
+
+      // Add system message if provided
+      if (systemPrompt) {
+        modelMessages.unshift({
+          role: 'system',
+          content: systemPrompt
+        });
+      }
+
+      // Initialize OpenAI client
+      const openai = new OpenAI({
         baseURL: settings.baseUrl,
         apiKey: settings.apiKey,
+        dangerouslyAllowBrowser: true
       });
-
-      const provider = openai(settings.model);
 
       // Update metadata
       if (onUpdateMetadata) {
         onUpdateMetadata('Shakespeare', `Working on ${projectName}...`);
       }
 
-      // Generate response
-      const result = await generateText({
-        model: provider,
+      // Prepare chat completion options
+      const completionOptions: OpenAI.Chat.Completions.ChatCompletionCreateParams = {
+        model: settings.model,
         messages: modelMessages,
-        tools,
-        system: systemPrompt,
-        abortSignal: abortControllerRef.current.signal,
+        tools: tools ? Object.values(tools) : undefined,
+        tool_choice: tools && Object.keys(tools).length > 0 ? 'auto' : undefined
+      };
+
+      // Generate response
+      const completion = await openai.chat.completions.create(completionOptions, {
+        signal: abortControllerRef.current.signal
       });
+
+      const response = completion.choices[0];
+      if (!response) {
+        throw new Error('No response from AI');
+      }
+
+      const responseMessage = completion.choices[0].message;
 
       // Add assistant message
       const assistantMessage: AIMessage = {
-        id: crypto.randomUUID(),
         role: 'assistant',
-        content: result.text,
-        timestamp: Date.now()
+        content: responseMessage.content || '',
+        ...(responseMessage.tool_calls && { tool_calls: responseMessage.tool_calls })
       };
 
       addMessage(assistantMessage);
+
+      // Handle tool calls if present
+      if (responseMessage.tool_calls && responseMessage.tool_calls.length > 0) {
+        for (const toolCall of responseMessage.tool_calls) {
+          if (toolCall.type !== 'function') continue;
+
+          const toolName = toolCall.function.name;
+          let toolArgs;
+
+          try {
+            toolArgs = JSON.parse(toolCall.function.arguments);
+          } catch (parseError) {
+            console.error(`Failed to parse tool arguments for ${toolName}:`, parseError);
+
+            const toolErrorMessage: AIMessage = {
+              role: 'tool',
+              content: `Error parsing arguments for tool ${toolName}: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`,
+              tool_call_id: toolCall.id
+            };
+
+            addMessage(toolErrorMessage);
+            continue;
+          }
+
+          // Execute tool if it exists in customTools
+          if (customTools && customTools[toolName]) {
+            try {
+              console.log(`Executing tool: ${toolName}`, toolArgs);
+
+              // Execute the custom tool
+              const tool = customTools[toolName];
+              const result = await tool.execute(toolArgs);
+
+              // Convert result to string
+              const resultString = typeof result === 'string' ? result : JSON.stringify(result, null, 2);
+
+              // Add tool result message
+              const toolResultMessage: AIMessage = {
+                role: 'tool',
+                content: resultString,
+                tool_call_id: toolCall.id
+              };
+
+              addMessage(toolResultMessage);
+            } catch (toolError) {
+              console.error(`Tool execution error for ${toolName}:`, toolError);
+
+              const toolErrorMessage: AIMessage = {
+                role: 'tool',
+                content: `Error executing tool ${toolName}: ${toolError instanceof Error ? toolError.message : 'Unknown error'}`,
+                tool_call_id: toolCall.id
+              };
+
+              addMessage(toolErrorMessage);
+            }
+          } else {
+            // Tool not found
+            const toolNotFoundMessage: AIMessage = {
+              role: 'tool',
+              content: `Tool ${toolName} not found`,
+              tool_call_id: toolCall.id
+            };
+
+            addMessage(toolNotFoundMessage);
+          }
+        }
+      }
 
     } catch (error) {
       console.error('AI chat error:', error);
 
       // Add error message
       const errorMessage: AIMessage = {
-        id: crypto.randomUUID(),
         role: 'assistant',
-        content: error instanceof Error ? error.message : 'Sorry, I encountered an error. Please try again.',
-        timestamp: Date.now()
+        content: error instanceof Error ? error.message : 'Sorry, I encountered an error. Please try again.'
       };
 
       addMessage(errorMessage);
@@ -108,7 +183,7 @@ export function useAIChat({
       setIsLoading(false);
       abortControllerRef.current = null;
     }
-  }, [isConfigured, isLoading, addMessage, messages, settings.baseUrl, settings.apiKey, settings.model, tools, systemPrompt, onUpdateMetadata, projectName]);
+  }, [isConfigured, isLoading, addMessage, messages, settings.baseUrl, settings.apiKey, settings.model, tools, customTools, systemPrompt, onUpdateMetadata, projectName]);
 
   const stopGeneration = useCallback(() => {
     if (abortControllerRef.current) {

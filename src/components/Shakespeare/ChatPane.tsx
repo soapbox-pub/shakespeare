@@ -18,6 +18,9 @@ import { TextEditorStrReplaceTool } from '@/lib/tools/TextEditorStrReplaceTool';
 import { NpmAddPackageTool } from '@/lib/tools/NpmAddPackageTool';
 import { NpmRemovePackageTool } from '@/lib/tools/NpmRemovePackageTool';
 import { GitCommitTool } from '@/lib/tools/GitCommitTool';
+import { toolToOpenAI } from '@/lib/tools/openai-adapter';
+import { Tool } from '@/lib/tools/Tool';
+import OpenAI from 'openai';
 import { buildProject } from "@/lib/build";
 
 interface ChatPaneProps {
@@ -36,7 +39,7 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
 
   // Initialize AI chat with tools
   const cwd = `/projects/${projectId}`;
-  const tools = {
+  const customTools = {
     git_commit: new GitCommitTool(browserFS, cwd),
     text_editor_view: new TextEditorViewTool(browserFS, cwd),
     text_editor_write: new TextEditorWriteTool(browserFS, cwd),
@@ -44,6 +47,12 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
     npm_add_package: new NpmAddPackageTool(browserFS, cwd),
     npm_remove_package: new NpmRemovePackageTool(browserFS, cwd),
   };
+
+  // Convert tools to OpenAI format
+  const tools: Record<string, OpenAI.Chat.Completions.ChatCompletionTool> = {};
+  for (const [name, tool] of Object.entries(customTools)) {
+    tools[name] = toolToOpenAI(name, tool as Tool<unknown>);
+  }
 
   const systemPrompt = `You are an AI assistant helping users build custom Nostr websites. You have access to tools that allow you to read, write, and manage files in the project, as well as build the project and manage npm packages.
 
@@ -84,6 +93,7 @@ When creating new components or pages, follow the existing patterns in the codeb
     projectId,
     projectName,
     tools,
+    customTools,
     systemPrompt,
     onUpdateMetadata: (title, description) => {
       updateMetadata(title, description);
@@ -330,9 +340,9 @@ BASE_DOMAIN=nostrdeploy.com`);
 
       <div className="flex-1 overflow-y-scroll overflow-x-hidden" ref={scrollAreaRef}>
         <div className="p-4 space-y-4">
-          {messages.map((message) => (
+          {messages.map((message, index) => (
             <AIMessageItem
-              key={message.id}
+              key={`${index}-${message.role}-${typeof message.content === 'string' ? message.content.slice(0, 50) : 'content'}`}
               message={message}
               userDisplayName="You"
               isCurrentlyLoading={isLoading && message.role === 'assistant'}

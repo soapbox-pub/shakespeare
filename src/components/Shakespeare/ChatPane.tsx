@@ -86,6 +86,7 @@ When creating new components or pages, follow the existing patterns in the codeb
 
   const {
     messages,
+    streamingMessage,
     isLoading,
     sendMessage,
     stopGeneration,
@@ -201,7 +202,7 @@ BASE_DOMAIN=nostrdeploy.com`);
   };
 
   useEffect(() => {
-    if (scrollAreaRef.current && messages) {
+    if (scrollAreaRef.current && (messages || streamingMessage)) {
       // Check if user was already at or near the bottom (within 100px threshold)
       const threshold = 100;
       const container = scrollAreaRef.current;
@@ -212,7 +213,7 @@ BASE_DOMAIN=nostrdeploy.com`);
         container.scrollTop = container.scrollHeight;
       }
     }
-  }, [messages, isLoading]);
+  }, [messages, streamingMessage, isLoading]);
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
@@ -357,10 +358,19 @@ BASE_DOMAIN=nostrdeploy.com`);
               key={`${index}-${message.role}-${typeof message.content === 'string' ? message.content.slice(0, 50) : 'content'}`}
               message={message}
               userDisplayName="You"
-              isCurrentlyLoading={isLoading && message.role === 'assistant'}
+              isCurrentlyLoading={false}
               onStopGeneration={stopGeneration}
             />
           ))}
+          {streamingMessage && (
+            <AIMessageItem
+              key="streaming-message"
+              message={streamingMessage}
+              userDisplayName="You"
+              isCurrentlyLoading={true}
+              onStopGeneration={stopGeneration}
+            />
+          )}
         </div>
       </div>
 

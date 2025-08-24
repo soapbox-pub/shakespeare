@@ -14,6 +14,7 @@ interface UseAIChatOptions {
   customTools?: Record<string, { execute: (args: unknown) => Promise<unknown> }>;
   systemPrompt?: string;
   onUpdateMetadata?: (title: string, description: string) => void;
+  maxSteps?: number;
 }
 
 export function useAIChat({
@@ -22,7 +23,8 @@ export function useAIChat({
   tools = {},
   customTools = {},
   systemPrompt,
-  onUpdateMetadata
+  onUpdateMetadata,
+  maxSteps = 50
 }: UseAIChatOptions) {
   const [messages, setMessages] = useState<AIMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -120,100 +122,128 @@ export function useAIChat({
         onUpdateMetadata('Shakespeare', `Working on ${projectName}...`);
       }
 
-      // Prepare chat completion options
-      const completionOptions: OpenAI.Chat.Completions.ChatCompletionCreateParams = {
-        model: settings.model,
-        messages: modelMessages,
-        tools: tools ? Object.values(tools) : undefined,
-        tool_choice: tools && Object.keys(tools).length > 0 ? 'auto' : undefined
-      };
+      // Keep track of current messages for this conversation
+      const currentMessages = [...modelMessages];
+      let stepCount = 0;
 
-      // Generate response
-      const completion = await openai.chat.completions.create(completionOptions, {
-        signal: abortControllerRef.current.signal
-      });
+      // Main loop for handling multiple steps with tool calls
+      while (stepCount < maxSteps) {
+        stepCount++;
+        console.log(`AI Chat Step ${stepCount}/${maxSteps}`);
 
-      const response = completion.choices[0];
-      if (!response) {
-        throw new Error('No response from AI');
-      }
+        // Prepare chat completion options
+        const completionOptions: OpenAI.Chat.Completions.ChatCompletionCreateParams = {
+          model: settings.model,
+          messages: currentMessages,
+          tools: tools ? Object.values(tools) : undefined,
+          tool_choice: tools && Object.keys(tools).length > 0 ? 'auto' : undefined
+        };
 
-      const responseMessage = response.message;
+        // Generate response
+        const completion = await openai.chat.completions.create(completionOptions, {
+          signal: abortControllerRef.current.signal
+        });
 
-      // Add assistant message
-      const assistantMessage: AIMessage = {
-        role: 'assistant',
-        content: responseMessage.content || '',
-        ...(responseMessage.tool_calls && { tool_calls: responseMessage.tool_calls })
-      };
+        const response = completion.choices[0];
+        if (!response) {
+          throw new Error('No response from AI');
+        }
 
-      addMessage(assistantMessage);
+        const responseMessage = response.message;
 
-      // Handle tool calls if present
-      if (responseMessage.tool_calls && responseMessage.tool_calls.length > 0) {
-        for (const toolCall of responseMessage.tool_calls) {
-          if (toolCall.type !== 'function') continue;
+        // Add assistant message
+        const assistantMessage: AIMessage = {
+          role: 'assistant',
+          content: responseMessage.content || '',
+          ...(responseMessage.tool_calls && { tool_calls: responseMessage.tool_calls })
+        };
 
-          const toolName = toolCall.function.name;
-          let toolArgs;
+        addMessage(assistantMessage);
+        currentMessages.push(assistantMessage);
 
-          try {
-            toolArgs = JSON.parse(toolCall.function.arguments);
-          } catch (parseError) {
-            console.error(`Failed to parse tool arguments for ${toolName}:`, parseError);
+        // Check if we should stop (no tool calls or finish reason is "stop")
+        if (response.finish_reason === 'stop' || !responseMessage.tool_calls || responseMessage.tool_calls.length === 0) {
+          console.log(`AI Chat completed after ${stepCount} steps. Finish reason: ${response.finish_reason}`);
+          break;
+        }
 
-            const toolErrorMessage: AIMessage = {
-              role: 'tool',
-              content: `Error parsing arguments for tool ${toolName}: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`,
-              tool_call_id: toolCall.id
-            };
+        // Handle tool calls if present
+        if (responseMessage.tool_calls && responseMessage.tool_calls.length > 0) {
+          console.log(`Processing ${responseMessage.tool_calls.length} tool calls in step ${stepCount}`);
 
-            addMessage(toolErrorMessage);
-            continue;
-          }
+          for (const toolCall of responseMessage.tool_calls) {
+            if (toolCall.type !== 'function') continue;
 
-          // Execute tool if it exists in customTools
-          if (customTools && customTools[toolName]) {
+            const toolName = toolCall.function.name;
+            let toolArgs;
+
             try {
-              console.log(`Executing tool: ${toolName}`, toolArgs);
-
-              // Execute the custom tool
-              const tool = customTools[toolName];
-              const result = await tool.execute(toolArgs);
-
-              // Convert result to string
-              const resultString = typeof result === 'string' ? result : JSON.stringify(result, null, 2);
-
-              // Add tool result message
-              const toolResultMessage: AIMessage = {
-                role: 'tool',
-                content: resultString,
-                tool_call_id: toolCall.id
-              };
-
-              addMessage(toolResultMessage);
-            } catch (toolError) {
-              console.error(`Tool execution error for ${toolName}:`, toolError);
+              toolArgs = JSON.parse(toolCall.function.arguments);
+            } catch (parseError) {
+              console.error(`Failed to parse tool arguments for ${toolName}:`, parseError);
 
               const toolErrorMessage: AIMessage = {
                 role: 'tool',
-                content: `Error executing tool ${toolName}: ${toolError instanceof Error ? toolError.message : 'Unknown error'}`,
+                content: `Error parsing arguments for tool ${toolName}: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`,
                 tool_call_id: toolCall.id
               };
 
               addMessage(toolErrorMessage);
+              currentMessages.push(toolErrorMessage);
+              continue;
             }
-          } else {
-            // Tool not found
-            const toolNotFoundMessage: AIMessage = {
-              role: 'tool',
-              content: `Tool ${toolName} not found`,
-              tool_call_id: toolCall.id
-            };
 
-            addMessage(toolNotFoundMessage);
+            // Execute tool if it exists in customTools
+            if (customTools && customTools[toolName]) {
+              try {
+                console.log(`Executing tool: ${toolName}`, toolArgs);
+
+                // Execute the custom tool
+                const tool = customTools[toolName];
+                const result = await tool.execute(toolArgs);
+
+                // Convert result to string
+                const resultString = typeof result === 'string' ? result : JSON.stringify(result, null, 2);
+
+                // Add tool result message
+                const toolResultMessage: AIMessage = {
+                  role: 'tool',
+                  content: resultString,
+                  tool_call_id: toolCall.id
+                };
+
+                addMessage(toolResultMessage);
+                currentMessages.push(toolResultMessage);
+              } catch (toolError) {
+                console.error(`Tool execution error for ${toolName}:`, toolError);
+
+                const toolErrorMessage: AIMessage = {
+                  role: 'tool',
+                  content: `Error executing tool ${toolName}: ${toolError instanceof Error ? toolError.message : 'Unknown error'}`,
+                  tool_call_id: toolCall.id
+                };
+
+                addMessage(toolErrorMessage);
+                currentMessages.push(toolErrorMessage);
+              }
+            } else {
+              // Tool not found
+              const toolNotFoundMessage: AIMessage = {
+                role: 'tool',
+                content: `Tool ${toolName} not found`,
+                tool_call_id: toolCall.id
+              };
+
+              addMessage(toolNotFoundMessage);
+              currentMessages.push(toolNotFoundMessage);
+            }
           }
         }
+      }
+
+      // If we reached maxSteps, log a warning
+      if (stepCount >= maxSteps) {
+        console.warn(`AI Chat reached maximum steps (${maxSteps}). Conversation may be incomplete.`);
       }
 
     } catch (error) {
@@ -230,7 +260,7 @@ export function useAIChat({
       setIsLoading(false);
       abortControllerRef.current = null;
     }
-  }, [isConfigured, isLoading, addMessage, messages, settings.baseUrl, settings.apiKey, settings.model, tools, customTools, systemPrompt, onUpdateMetadata, projectName]);
+  }, [isConfigured, isLoading, addMessage, messages, settings.baseUrl, settings.apiKey, settings.model, tools, customTools, systemPrompt, onUpdateMetadata, projectName, maxSteps]);
 
   const stopGeneration = useCallback(() => {
     if (abortControllerRef.current) {

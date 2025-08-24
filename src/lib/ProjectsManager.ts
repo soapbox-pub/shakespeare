@@ -2,7 +2,7 @@ import git from 'isomorphic-git';
 import http from 'isomorphic-git/http/web';
 import { Buffer } from 'buffer';
 import type { JSRuntimeFS } from '@/lib/JSRuntime';
-import { DotAI } from './DotAI';
+
 
 // Polyfill Buffer for browser
 if (typeof window !== 'undefined') {
@@ -38,8 +38,6 @@ export class ProjectsManager {
 
   async createProject(name: string): Promise<Project> {
     const project = await this.cloneProject(name, GIT_TEMPLATE_URL);
-    const dotAI = new DotAI(this.fs, project.path);
-    await dotAI.setupAiHistoryDir();
     return project;
   }
 

@@ -6,11 +6,11 @@ import { useAISettings } from '@/hooks/useAISettings';
 import { useFS } from '@/hooks/useFS';
 import { useJSRuntime } from '@/hooks/useJSRuntime';
 import { useKeepAlive } from '@/hooks/useKeepAlive';
-import { useStreamingChat } from '@/hooks/useStreamingChat';
+import { useAIChat } from '@/hooks/useAIChat';
 import { copyDirectory } from '@/lib/copyFiles';
 import { generateSecretKey, getPublicKey, nip19 } from 'nostr-tools';
 import { bytesToHex } from 'nostr-tools/utils';
-import { StreamingMessageItem } from '@/components/ai/StreamingMessageItem';
+import { AIMessageItem } from '@/components/AIMessageItem';
 import { GitHistoryDialog } from '@/components/ai/GitHistoryDialog';
 import { TextEditorViewTool } from '@/lib/tools/TextEditorViewTool';
 import { TextEditorWriteTool } from '@/lib/tools/TextEditorWriteTool';
@@ -34,7 +34,7 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
   const { fs: browserFS } = useFS();
   const { runtime } = useJSRuntime();
 
-  // Initialize streaming chat with tools
+  // Initialize AI chat with tools
   const cwd = `/projects/${projectId}`;
   const tools = {
     git_commit: new GitCommitTool(browserFS, cwd),
@@ -77,11 +77,10 @@ When creating new components or pages, follow the existing patterns in the codeb
 
   const {
     messages,
-    isStreaming,
-    currentStreamingMessageId,
+    isLoading,
     sendMessage,
-    stopStreaming,
-  } = useStreamingChat({
+    stopGeneration,
+  } = useAIChat({
     projectId,
     projectName,
     tools,
@@ -93,7 +92,7 @@ When creating new components or pages, follow the existing patterns in the codeb
 
   // Keep-alive functionality to prevent tab throttling during AI processing
   const { updateMetadata } = useKeepAlive({
-    enabled: isStreaming || isBuildLoading || isDeployLoading,
+    enabled: isLoading || isBuildLoading || isDeployLoading,
     title: 'Shakespeare',
     artist: `Working on ${projectName}...`,
     artwork: [
@@ -190,8 +189,6 @@ BASE_DOMAIN=nostrdeploy.com`);
     }
   };
 
-  // Note: Message clearing and history loading is now handled in useStreamingChat hook
-
   useEffect(() => {
     if (scrollAreaRef.current && messages) {
       // Check if user was already at or near the bottom (within 100px threshold)
@@ -204,10 +201,10 @@ BASE_DOMAIN=nostrdeploy.com`);
         container.scrollTop = container.scrollHeight;
       }
     }
-  }, [messages, isStreaming]);
+  }, [messages, isLoading]);
 
   const handleSend = async () => {
-    if (!input.trim() || isStreaming) return;
+    if (!input.trim() || isLoading) return;
 
     const messageContent = input;
     setInput('');
@@ -216,7 +213,7 @@ BASE_DOMAIN=nostrdeploy.com`);
       await sendMessage(messageContent);
     } catch (error) {
       console.error('AI chat error:', error);
-      // Error handling is done in the useStreamingChat hook
+      // Error handling is done in the useAIChat hook
     }
   };
 
@@ -300,7 +297,7 @@ BASE_DOMAIN=nostrdeploy.com`);
             className="gap-1 sm:gap-2 hover:bg-primary/10 hover:border-primary/20"
             onClick={runBuild}
             onMouseDown={handleFirstInteraction}
-            disabled={isBuildLoading || isDeployLoading || isStreaming}
+            disabled={isBuildLoading || isDeployLoading || isLoading}
           >
             {isBuildLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -317,7 +314,7 @@ BASE_DOMAIN=nostrdeploy.com`);
             className="gap-1 sm:gap-2 hover:bg-accent/10 hover:border-accent/20"
             onClick={runDeploy}
             onMouseDown={handleFirstInteraction}
-            disabled={isDeployLoading || isBuildLoading || isStreaming}
+            disabled={isDeployLoading || isBuildLoading || isLoading}
           >
             {isDeployLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -334,12 +331,12 @@ BASE_DOMAIN=nostrdeploy.com`);
       <div className="flex-1 overflow-y-scroll overflow-x-hidden" ref={scrollAreaRef}>
         <div className="p-4 space-y-4">
           {messages.map((message) => (
-            <StreamingMessageItem
+            <AIMessageItem
               key={message.id}
               message={message}
               userDisplayName="You"
-              isCurrentlyStreaming={isStreaming && message.id === currentStreamingMessageId}
-              onStopStreaming={stopStreaming}
+              isCurrentlyLoading={isLoading && message.role === 'assistant'}
+              onStopGeneration={stopGeneration}
             />
           ))}
         </div>
@@ -354,12 +351,12 @@ BASE_DOMAIN=nostrdeploy.com`);
             onFocus={handleFirstInteraction}
             placeholder="Ask me to add features, edit files, or build your project..."
             className="min-h-[60px] resize-none"
-            disabled={isStreaming}
+            disabled={isLoading}
           />
           <Button
             onClick={handleSend}
             onMouseDown={handleFirstInteraction}
-            disabled={!input.trim() || isStreaming}
+            disabled={!input.trim() || isLoading}
             className="self-end"
             size="icon"
           >

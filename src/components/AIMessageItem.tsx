@@ -2,29 +2,23 @@ import { memo } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Bot, User, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { ChatMessage } from '@/hooks/useStreamingChat';
-import { AssistantContent } from '@/components/ai/AssistantContent';
+import { AIMessage } from '@/hooks/useAIChat';
 
-interface StreamingMessageItemProps {
-  message: ChatMessage;
+interface AIMessageItemProps {
+  message: AIMessage;
   userDisplayName?: string;
   userProfileImage?: string;
-  isCurrentlyStreaming?: boolean;
-  onStopStreaming?: () => void;
+  isCurrentlyLoading?: boolean;
+  onStopGeneration?: () => void;
 }
 
-export const StreamingMessageItem = memo(({
+export const AIMessageItem = memo(({
   message,
   userDisplayName = 'You',
   userProfileImage,
-  isCurrentlyStreaming = false,
-  onStopStreaming
-}: StreamingMessageItemProps) => {
-  // Don't render tool messages as separate items - they're integrated into assistant messages
-  if (message.role === 'tool') {
-    return null;
-  }
-
+  isCurrentlyLoading = false,
+  onStopGeneration
+}: AIMessageItemProps) => {
   return (
     <div className="flex gap-3">
       <Avatar className="h-8 w-8 flex-shrink-0">
@@ -51,11 +45,11 @@ export const StreamingMessageItem = memo(({
           <span className="text-xs text-muted-foreground">
             {message.role === 'user' ? 'User' : message.role === 'assistant' ? 'AI' : 'System'}
           </span>
-          {isCurrentlyStreaming && onStopStreaming && (
+          {isCurrentlyLoading && onStopGeneration && (
             <Button
               variant="outline"
               size="sm"
-              onClick={onStopStreaming}
+              onClick={onStopGeneration}
               className="ml-auto gap-1 h-6 px-2 text-xs"
             >
               <Square className="h-3 w-3" />
@@ -64,24 +58,13 @@ export const StreamingMessageItem = memo(({
           )}
         </div>
         <div className="text-sm">
-          {message.role === 'user' ? (
-            <div className="whitespace-pre-wrap break-words">
-              {typeof message.content === 'string' ? message.content : 
-               Array.isArray(message.content) ? 
-                 message.content.map(part => part.type === 'text' ? part.text : '').join('') : 
-                 ''}
-            </div>
-          ) : message.role === 'assistant' ? (
-            <AssistantContent content={message.content} />
-          ) : message.role === 'system' ? (
-            <div className="whitespace-pre-wrap break-words text-muted-foreground">
-              {typeof message.content === 'string' ? message.content : ''}
-            </div>
-          ) : null}
+          <div className="whitespace-pre-wrap break-words">
+            {message.content}
+          </div>
         </div>
       </div>
     </div>
   );
 });
 
-StreamingMessageItem.displayName = 'StreamingMessageItem';
+AIMessageItem.displayName = 'AIMessageItem';

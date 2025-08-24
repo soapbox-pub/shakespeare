@@ -135,7 +135,7 @@ export function useAIChat({
         throw new Error('No response from AI');
       }
 
-      const responseMessage = completion.choices[0].message;
+      const responseMessage = response.message;
 
       // Add assistant message
       const assistantMessage: AIMessage = {

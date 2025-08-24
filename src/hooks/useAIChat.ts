@@ -1,6 +1,8 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import OpenAI from 'openai';
 import { useAISettings } from '@/hooks/useAISettings';
+import { useFS } from '@/hooks/useFS';
+import { DotAI } from '@/lib/DotAI';
 
 // Use OpenAI's native message type
 export type AIMessage = OpenAI.Chat.Completions.ChatCompletionMessageParam;
@@ -15,7 +17,7 @@ interface UseAIChatOptions {
 }
 
 export function useAIChat({
-  projectId: _projectId,
+  projectId,
   projectName,
   tools = {},
   customTools = {},
@@ -24,12 +26,54 @@ export function useAIChat({
 }: UseAIChatOptions) {
   const [messages, setMessages] = useState<AIMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [sessionName, setSessionName] = useState<string>('');
   const abortControllerRef = useRef<AbortController | null>(null);
   const { settings, isConfigured } = useAISettings();
+  const { fs } = useFS();
+
+  // Save message to history
+  const saveMessageToHistory = useCallback(async (message: AIMessage) => {
+    if (!sessionName) return;
+
+    try {
+      const dotAI = new DotAI(fs, `/projects/${projectId}`);
+      await dotAI.addToHistory(sessionName, message);
+    } catch (error) {
+      console.warn('Failed to save message to history:', error);
+    }
+  }, [fs, projectId, sessionName]);
 
   const addMessage = useCallback((message: AIMessage) => {
     setMessages(prev => [...prev, message]);
-  }, []);
+    // Save to history asynchronously
+    saveMessageToHistory(message);
+  }, [saveMessageToHistory]);
+
+  // Load message history when component mounts or projectId changes
+  useEffect(() => {
+    const loadMessageHistory = async () => {
+      try {
+        const dotAI = new DotAI(fs, `/projects/${projectId}`);
+        const lastSession = await dotAI.readLastSessionHistory();
+
+        if (lastSession) {
+          setMessages(lastSession.messages);
+          setSessionName(lastSession.sessionName);
+        } else {
+          // No history to load, start fresh
+          setMessages([]);
+          setSessionName(DotAI.generateSessionName());
+        }
+      } catch (error) {
+        console.warn('Failed to load message history:', error);
+        // Start fresh on any error
+        setMessages([]);
+        setSessionName(DotAI.generateSessionName());
+      }
+    };
+
+    loadMessageHistory();
+  }, [projectId, fs]);
 
   const sendMessage = useCallback(async (content: string) => {
     if (!isConfigured || isLoading) return;
@@ -193,6 +237,13 @@ export function useAIChat({
 
   const clearMessages = useCallback(() => {
     setMessages([]);
+    // Start a new session when clearing messages
+    setSessionName(DotAI.generateSessionName());
+  }, []);
+
+  const startNewSession = useCallback(() => {
+    setMessages([]);
+    setSessionName(DotAI.generateSessionName());
   }, []);
 
   return {
@@ -201,6 +252,7 @@ export function useAIChat({
     sendMessage,
     stopGeneration,
     clearMessages,
+    startNewSession,
     addMessage,
     isConfigured
   };

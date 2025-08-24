@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Send, Settings, Play, CloudUpload, Loader2 } from 'lucide-react';
+import { Send, Settings, Play, CloudUpload, Loader2, MessageSquarePlus } from 'lucide-react';
 import { useAISettings } from '@/hooks/useAISettings';
 import { useFS } from '@/hooks/useFS';
 import { useJSRuntime } from '@/hooks/useJSRuntime';
@@ -89,6 +89,7 @@ When creating new components or pages, follow the existing patterns in the codeb
     isLoading,
     sendMessage,
     stopGeneration,
+    startNewSession,
   } = useAIChat({
     projectId,
     projectName,
@@ -300,6 +301,17 @@ BASE_DOMAIN=nostrdeploy.com`);
           <p className="text-sm text-muted-foreground hidden sm:block">Chat to build your project</p>
         </div>
         <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1 sm:gap-2 hover:bg-secondary/10 hover:border-secondary/20"
+            onClick={startNewSession}
+            disabled={isLoading}
+            title="Start a new chat session"
+          >
+            <MessageSquarePlus className="h-4 w-4" />
+            <span className="hidden sm:inline">New Chat</span>
+          </Button>
           <GitHistoryDialog projectId={projectId} />
           <Button
             variant="outline"

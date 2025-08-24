@@ -81,10 +81,10 @@ export class DotAI {
     }
   }
 
-  /** Save a message to the history file */
-  async addToHistory(
+  /** Save the full message history to the history file */
+  async setHistory(
     sessionName: string,
-    message: OpenAI.Chat.Completions.ChatCompletionMessageParam,
+    messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[],
   ): Promise<void> {
     // Only save if history should be enabled based on the new criteria
     if (!(await this.isEnabled())) {
@@ -96,21 +96,18 @@ export class DotAI {
       await this.setupAiHistoryDir();
     }
 
-    const jsonLine = JSON.stringify(message) + "\n";
     const sessionFile = join(this.historyDir, sessionName + ".jsonl");
 
     try {
-      // JSRuntimeFS doesn't have appendFile, so we read, append, and write
-      let existingContent = "";
-      try {
-        existingContent = await this.fs.readFile(sessionFile, "utf8");
-      } catch {
-        // File doesn't exist yet, that's fine
-      }
-      await this.fs.writeFile(sessionFile, existingContent + jsonLine);
+      // Convert messages to JSONL format
+      const jsonlContent = messages.map(message => JSON.stringify(message)).join('\n');
+      const finalContent = jsonlContent + (messages.length > 0 ? '\n' : '');
+
+      // Write the entire file
+      await this.fs.writeFile(sessionFile, finalContent);
     } catch (error) {
       // Log error but don't fail the main operation
-      console.warn(`Failed to save message to AI history: ${error}`);
+      console.warn(`Failed to save messages to AI history: ${error}`);
     }
   }
 

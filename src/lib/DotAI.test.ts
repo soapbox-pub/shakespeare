@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { DotAI } from './DotAI';
 import type { JSRuntimeFS } from './JSRuntime';
+import type OpenAI from 'openai';
 
 // Mock filesystem
 const createMockFS = (): JSRuntimeFS => ({
@@ -102,6 +103,90 @@ invalid json line
       expect(result?.messages).toHaveLength(2); // Should skip the malformed line
       expect(result?.messages[0]).toEqual({ role: 'user', content: 'Hello' });
       expect(result?.messages[1]).toEqual({ role: 'assistant', content: 'Hi there!' });
+    });
+  });
+
+  describe('setHistory', () => {
+    it('should not save when AI is not enabled', async () => {
+      // Mock isEnabled to return false
+      vi.spyOn(dotAI, 'isEnabled').mockResolvedValue(false);
+
+      const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+        { role: 'user', content: 'Hello' },
+        { role: 'assistant', content: 'Hi there!' }
+      ];
+
+      await dotAI.setHistory('test-session', messages);
+
+      // Verify writeFile was not called
+      expect(mockFS.writeFile).not.toHaveBeenCalled();
+    });
+
+    it('should create history directory if it does not exist', async () => {
+      // Mock isEnabled to return true
+      vi.spyOn(dotAI, 'isEnabled').mockResolvedValue(true);
+      // Mock historyDirExists to return false initially
+      vi.spyOn(dotAI, 'historyDirExists').mockResolvedValue(false);
+      // Mock setupAiHistoryDir
+      vi.spyOn(dotAI, 'setupAiHistoryDir').mockResolvedValue();
+
+      const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+        { role: 'user', content: 'Hello' }
+      ];
+
+      await dotAI.setHistory('test-session', messages);
+
+      // Verify setupAiHistoryDir was called
+      expect(dotAI.setupAiHistoryDir).toHaveBeenCalled();
+    });
+
+    it('should write messages as JSONL format', async () => {
+      // Mock isEnabled to return true
+      vi.spyOn(dotAI, 'isEnabled').mockResolvedValue(true);
+      // Mock historyDirExists to return true
+      vi.spyOn(dotAI, 'historyDirExists').mockResolvedValue(true);
+
+      const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+        { role: 'user', content: 'Hello' },
+        { role: 'assistant', content: 'Hi there!' }
+      ];
+
+      await dotAI.setHistory('test-session', messages);
+
+      // Verify writeFile was called with correct content
+      expect(mockFS.writeFile).toHaveBeenCalledWith(
+        '/test-project/.ai/history/test-session.jsonl',
+        '{"role":"user","content":"Hello"}\n{"role":"assistant","content":"Hi there!"}\n'
+      );
+    });
+
+    it('should handle empty messages array', async () => {
+      // Mock isEnabled to return true
+      vi.spyOn(dotAI, 'isEnabled').mockResolvedValue(true);
+      // Mock historyDirExists to return true
+      vi.spyOn(dotAI, 'historyDirExists').mockResolvedValue(true);
+
+      await dotAI.setHistory('test-session', []);
+
+      // Verify writeFile was called with empty content
+      expect(mockFS.writeFile).toHaveBeenCalledWith(
+        '/test-project/.ai/history/test-session.jsonl',
+        ''
+      );
+    });
+
+    it('should handle write errors gracefully', async () => {
+      // Mock isEnabled to return true
+      vi.spyOn(dotAI, 'isEnabled').mockResolvedValue(true);
+      // Mock historyDirExists to return true
+      vi.spyOn(dotAI, 'historyDirExists').mockResolvedValue(true);
+      // Mock writeFile to throw an error
+      vi.mocked(mockFS.writeFile).mockRejectedValue(new Error('Write failed'));
+
+      const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [{ role: 'user', content: 'Hello' }];
+
+      // Should not throw
+      await expect(dotAI.setHistory('test-session', messages)).resolves.toBeUndefined();
     });
   });
 

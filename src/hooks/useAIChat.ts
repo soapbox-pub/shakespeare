@@ -31,23 +31,26 @@ export function useAIChat({
   const { settings, isConfigured } = useAISettings();
   const { fs } = useFS();
 
-  // Save message to history
-  const saveMessageToHistory = useCallback(async (message: AIMessage) => {
+  // Save all messages to history
+  const saveMessagesToHistory = useCallback(async (allMessages: AIMessage[]) => {
     if (!sessionName) return;
 
     try {
       const dotAI = new DotAI(fs, `/projects/${projectId}`);
-      await dotAI.addToHistory(sessionName, message);
+      await dotAI.setHistory(sessionName, allMessages);
     } catch (error) {
-      console.warn('Failed to save message to history:', error);
+      console.warn('Failed to save messages to history:', error);
     }
   }, [fs, projectId, sessionName]);
 
   const addMessage = useCallback((message: AIMessage) => {
-    setMessages(prev => [...prev, message]);
-    // Save to history asynchronously
-    saveMessageToHistory(message);
-  }, [saveMessageToHistory]);
+    setMessages(prev => {
+      const newMessages = [...prev, message];
+      // Save to history asynchronously with all messages
+      saveMessagesToHistory(newMessages);
+      return newMessages;
+    });
+  }, [saveMessagesToHistory]);
 
   // Load message history when component mounts or projectId changes
   useEffect(() => {

@@ -233,6 +233,70 @@ export class DotAI {
   }
 
   /**
+   * Read the most recent session history
+   * @returns Object containing messages array and session name, or null if no history found
+   */
+  async readLastSessionHistory(): Promise<{
+    messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[];
+    sessionName: string;
+  } | null> {
+    try {
+      // Check if AI history is enabled for this project
+      if (!(await this.isEnabled()) || !(await this.historyDirExists())) {
+        return null;
+      }
+
+      // Find the most recent session file
+      try {
+        const files = await this.fs.readdir(this.historyDir);
+        const sessionFiles = files
+          .filter(file => file.endsWith('.jsonl'))
+          .sort()
+          .reverse(); // Most recent first
+
+        if (sessionFiles.length === 0) {
+          return null;
+        }
+
+        const latestSessionFile = sessionFiles[0];
+        const sessionPath = join(this.historyDir, latestSessionFile);
+
+        try {
+          const content = await this.fs.readFile(sessionPath, 'utf8');
+          const lines = content.trim().split('\n').filter(line => line.trim());
+          const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [];
+
+          for (const line of lines) {
+            try {
+              const message = JSON.parse(line) as OpenAI.Chat.Completions.ChatCompletionMessageParam;
+              messages.push(message);
+            } catch (parseError) {
+              console.warn('Failed to parse message from history:', parseError);
+            }
+          }
+
+          // Return session name without .jsonl extension
+          const sessionName = latestSessionFile.replace('.jsonl', '');
+
+          return {
+            messages,
+            sessionName
+          };
+        } catch (readError) {
+          console.warn('Failed to read session file:', readError);
+          return null;
+        }
+      } catch (readdirError) {
+        console.warn('Failed to read history directory:', readdirError);
+        return null;
+      }
+    } catch (error) {
+      console.warn('Failed to read last session history:', error);
+      return null;
+    }
+  }
+
+  /**
    * Ensures that .ai/ is gitignored at the project root level.
    * Creates a .gitignore file if it doesn't exist, or adds the line if not already present.
    */

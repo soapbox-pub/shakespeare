@@ -38,6 +38,13 @@ export class ProjectsManager {
 
   async createProject(name: string): Promise<Project> {
     const project = await this.cloneProject(name, GIT_TEMPLATE_URL);
+
+    try {
+      await this.fs.mkdir(this.dir + `/${name}/.ai/history`, { recursive: true });
+    } catch {
+      // Directory might already exist
+    }
+
     return project;
   }
 

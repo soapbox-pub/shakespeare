@@ -7,6 +7,12 @@ import { DotAI } from '@/lib/DotAI';
 // Use OpenAI's native message type
 export type AIMessage = OpenAI.Chat.Completions.ChatCompletionMessageParam;
 
+export interface StreamingMessage {
+  role: 'assistant';
+  content: string;
+  tool_calls?: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[];
+}
+
 interface UseAIChatOptions {
   projectId: string;
   projectName: string;
@@ -27,6 +33,7 @@ export function useAIChat({
   maxSteps = 50
 }: UseAIChatOptions) {
   const [messages, setMessages] = useState<AIMessage[]>([]);
+  const [streamingMessage, setStreamingMessage] = useState<StreamingMessage | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(false);
   const [sessionName, setSessionName] = useState<string>('');
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -131,61 +138,130 @@ export function useAIChat({
         stepCount++;
         console.log(`AI Chat Step ${stepCount}/${maxSteps}`);
 
+        // Initialize streaming message
+        setStreamingMessage({
+          role: 'assistant',
+          content: '',
+          tool_calls: undefined
+        });
+
         // Prepare chat completion options
         const completionOptions: OpenAI.Chat.Completions.ChatCompletionCreateParams = {
           model: settings.model,
           messages: currentMessages,
-          tools: tools ? Object.values(tools) : undefined,
-          tool_choice: tools && Object.keys(tools).length > 0 ? 'auto' : undefined
+          tools: tools && Object.keys(tools).length > 0 ? Object.values(tools) : undefined,
+          tool_choice: tools && Object.keys(tools).length > 0 ? 'auto' : undefined,
+          stream: true
         };
 
-        // Generate response
-        const completion = await openai.chat.completions.create(completionOptions, {
+        // Generate streaming response
+        const stream = await openai.chat.completions.create(completionOptions, {
           signal: abortControllerRef.current.signal
         });
 
-        const response = completion.choices[0];
-        if (!response) {
-          throw new Error('No response from AI');
+        let accumulatedContent = '';
+        const accumulatedToolCalls: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[] = [];
+        let finishReason: string | null = null;
+
+        // Process the stream
+        for await (const chunk of stream) {
+          const delta = chunk.choices[0]?.delta;
+
+          if (delta?.content) {
+            accumulatedContent += delta.content;
+            setStreamingMessage(prev => prev ? {
+              ...prev,
+              content: prev.content + delta.content
+            } : {
+              role: 'assistant',
+              content: delta.content,
+              tool_calls: undefined
+            });
+          }
+
+          if (delta?.tool_calls) {
+            for (const toolCallDelta of delta.tool_calls) {
+              const index = toolCallDelta.index;
+              if (index !== undefined) {
+                // Initialize tool call if it doesn't exist
+                if (!accumulatedToolCalls[index]) {
+                  accumulatedToolCalls[index] = {
+                    id: toolCallDelta.id || '',
+                    type: 'function',
+                    function: {
+                      name: '',
+                      arguments: ''
+                    }
+                  } as OpenAI.Chat.Completions.ChatCompletionMessageFunctionToolCall;
+                }
+
+                // Update tool call properties
+                if (toolCallDelta.id) {
+                  accumulatedToolCalls[index].id = toolCallDelta.id;
+                }
+                if (toolCallDelta.function?.name && accumulatedToolCalls[index].type === 'function') {
+                  (accumulatedToolCalls[index] as OpenAI.Chat.Completions.ChatCompletionMessageFunctionToolCall).function.name = toolCallDelta.function.name;
+                }
+                if (toolCallDelta.function?.arguments && accumulatedToolCalls[index].type === 'function') {
+                  (accumulatedToolCalls[index] as OpenAI.Chat.Completions.ChatCompletionMessageFunctionToolCall).function.arguments += toolCallDelta.function.arguments;
+                }
+              }
+            }
+
+            // Update streaming message with current tool calls
+            setStreamingMessage(prev => prev ? {
+              ...prev,
+              tool_calls: accumulatedToolCalls.length > 0 ? accumulatedToolCalls : undefined
+            } : {
+              role: 'assistant',
+              content: accumulatedContent,
+              tool_calls: accumulatedToolCalls.length > 0 ? accumulatedToolCalls : undefined
+            });
+          }
+
+          if (chunk.choices[0]?.finish_reason) {
+            finishReason = chunk.choices[0].finish_reason;
+          }
         }
 
-        const responseMessage = response.message;
-
-        // Add assistant message
+        // Create final assistant message
         const assistantMessage: AIMessage = {
           role: 'assistant',
-          content: responseMessage.content || '',
-          ...(responseMessage.tool_calls && { tool_calls: responseMessage.tool_calls })
+          content: accumulatedContent,
+          ...(accumulatedToolCalls.length > 0 && { tool_calls: accumulatedToolCalls })
         };
 
+        // Clear streaming message and add final message
+        setStreamingMessage(undefined);
         addMessage(assistantMessage);
         currentMessages.push(assistantMessage);
 
         // Check if we should stop (no tool calls or finish reason is "stop")
-        if (response.finish_reason === 'stop' || !responseMessage.tool_calls || responseMessage.tool_calls.length === 0) {
-          console.log(`AI Chat completed after ${stepCount} steps. Finish reason: ${response.finish_reason}`);
+        if (finishReason === 'stop' || !accumulatedToolCalls || accumulatedToolCalls.length === 0) {
+          console.log(`AI Chat completed after ${stepCount} steps. Finish reason: ${finishReason}`);
           break;
         }
 
         // Handle tool calls if present
-        if (responseMessage.tool_calls && responseMessage.tool_calls.length > 0) {
-          console.log(`Processing ${responseMessage.tool_calls.length} tool calls in step ${stepCount}`);
+        if (accumulatedToolCalls && accumulatedToolCalls.length > 0) {
+          console.log(`Processing ${accumulatedToolCalls.length} tool calls in step ${stepCount}`);
 
-          for (const toolCall of responseMessage.tool_calls) {
+          for (const toolCall of accumulatedToolCalls) {
             if (toolCall.type !== 'function') continue;
 
-            const toolName = toolCall.function.name;
+            const functionToolCall = toolCall as OpenAI.Chat.Completions.ChatCompletionMessageFunctionToolCall;
+            const toolName = functionToolCall.function.name;
             let toolArgs;
 
             try {
-              toolArgs = JSON.parse(toolCall.function.arguments);
+              toolArgs = JSON.parse(functionToolCall.function.arguments);
             } catch (parseError) {
               console.error(`Failed to parse tool arguments for ${toolName}:`, parseError);
 
               const toolErrorMessage: AIMessage = {
                 role: 'tool',
                 content: `Error parsing arguments for tool ${toolName}: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`,
-                tool_call_id: toolCall.id
+                tool_call_id: functionToolCall.id
               };
 
               addMessage(toolErrorMessage);
@@ -209,7 +285,7 @@ export function useAIChat({
                 const toolResultMessage: AIMessage = {
                   role: 'tool',
                   content: resultString,
-                  tool_call_id: toolCall.id
+                  tool_call_id: functionToolCall.id
                 };
 
                 addMessage(toolResultMessage);
@@ -220,7 +296,7 @@ export function useAIChat({
                 const toolErrorMessage: AIMessage = {
                   role: 'tool',
                   content: `Error executing tool ${toolName}: ${toolError instanceof Error ? toolError.message : 'Unknown error'}`,
-                  tool_call_id: toolCall.id
+                  tool_call_id: functionToolCall.id
                 };
 
                 addMessage(toolErrorMessage);
@@ -231,7 +307,7 @@ export function useAIChat({
               const toolNotFoundMessage: AIMessage = {
                 role: 'tool',
                 content: `Tool ${toolName} not found`,
-                tool_call_id: toolCall.id
+                tool_call_id: functionToolCall.id
               };
 
               addMessage(toolNotFoundMessage);
@@ -248,6 +324,9 @@ export function useAIChat({
 
     } catch (error) {
       console.error('AI chat error:', error);
+
+      // Clear any streaming message on error
+      setStreamingMessage(undefined);
 
       // Add error message
       const errorMessage: AIMessage = {
@@ -266,21 +345,25 @@ export function useAIChat({
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
+    setStreamingMessage(undefined);
   }, []);
 
   const clearMessages = useCallback(() => {
     setMessages([]);
+    setStreamingMessage(undefined);
     // Start a new session when clearing messages
     setSessionName(DotAI.generateSessionName());
   }, []);
 
   const startNewSession = useCallback(() => {
     setMessages([]);
+    setStreamingMessage(undefined);
     setSessionName(DotAI.generateSessionName());
   }, []);
 
   return {
     messages,
+    streamingMessage,
     isLoading,
     sendMessage,
     stopGeneration,

@@ -7,6 +7,7 @@ interface AISettingsProviderProps {
 
 const DEFAULT_SETTINGS: AISettings = {
   providers: {},
+  recentlyUsedModels: [],
 };
 
 const STORAGE_KEY = 'ai-settings';
@@ -22,11 +23,16 @@ function migrateOldSettings(stored: unknown): AISettings {
           apiKey: oldSettings.apiKey || '',
         },
       },
+      recentlyUsedModels: [],
     };
   }
   // If it's already the new format or invalid, return as AISettings or default
   if (stored && typeof stored === 'object' && 'providers' in stored) {
-    return stored as AISettings;
+    const settings = stored as Partial<AISettings>;
+    return {
+      providers: settings.providers || {},
+      recentlyUsedModels: settings.recentlyUsedModels || [],
+    };
   }
   return DEFAULT_SETTINGS;
 }
@@ -87,6 +93,30 @@ export function AISettingsProvider({ children }: AISettingsProviderProps) {
     }));
   };
 
+  const addRecentlyUsedModel = (modelId: string) => {
+    setSettings(prev => {
+      const existingIndex = prev.recentlyUsedModels.indexOf(modelId);
+      if (existingIndex === 0) {
+        return prev;
+      } else if (existingIndex === -1) {
+        // Add new model to front, keep only last 10
+        return {
+          ...prev,
+          recentlyUsedModels: [modelId, ...prev.recentlyUsedModels].slice(0, 10),
+        }
+      } else {
+        // Move existing model to front
+        return {
+          ...prev,
+          recentlyUsedModels: [
+            modelId,
+            ...prev.recentlyUsedModels.filter((_, index) => index !== existingIndex)
+          ]
+        }
+      }
+    });
+  };
+
   const isConfigured = Object.entries(settings.providers).length > 0;
 
   const contextValue: AISettingsContextType = {
@@ -95,6 +125,7 @@ export function AISettingsProvider({ children }: AISettingsProviderProps) {
     addProvider,
     removeProvider,
     updateProvider,
+    addRecentlyUsedModel,
     isConfigured,
   };
 

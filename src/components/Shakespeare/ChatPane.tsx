@@ -19,6 +19,7 @@ import { TextEditorStrReplaceTool } from '@/lib/tools/TextEditorStrReplaceTool';
 import { NpmAddPackageTool } from '@/lib/tools/NpmAddPackageTool';
 import { NpmRemovePackageTool } from '@/lib/tools/NpmRemovePackageTool';
 import { GitCommitTool } from '@/lib/tools/GitCommitTool';
+import { BuildProjectTool } from '@/lib/tools/BuildProjectTool';
 import { toolToOpenAI } from '@/lib/tools/openai-adapter';
 import { Tool } from '@/lib/tools/Tool';
 import OpenAI from 'openai';
@@ -47,6 +48,7 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
     text_editor_str_replace: new TextEditorStrReplaceTool(browserFS, cwd),
     npm_add_package: new NpmAddPackageTool(browserFS, cwd),
     npm_remove_package: new NpmRemovePackageTool(browserFS, cwd),
+    build_project: new BuildProjectTool(browserFS, cwd),
   };
 
   // Convert tools to OpenAI format
@@ -61,7 +63,7 @@ Key capabilities:
 - Read and write files in the project
 - List directory contents
 - Check if files exist
-- Build the project using Vite
+- Build the project using esbuild (use the build_project tool)
 - Get project structure overview
 - Search through files
 - Add and remove npm packages
@@ -78,7 +80,7 @@ Guidelines:
 
 The project uses:
 - React 18 with TypeScript
-- Vite for building
+- esbuild for building
 - TailwindCSS for styling
 - Nostrify for Nostr integration
 - shadcn/ui components

@@ -1,9 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
+import { useAIProjectId } from '@/hooks/useAIProjectId';
+import { useFS } from '@/hooks/useFS';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { AppLayout } from '@/components/AppLayout';
+import { DotAI } from '@/lib/DotAI';
+import type { AIMessage } from '@/hooks/useAIChat';
 
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -16,7 +20,9 @@ export default function Index() {
   const [storedPrompt, setStoredPrompt] = useLocalStorage('shakespeare-draft-prompt', '');
   const navigate = useNavigate();
   const projectsManager = useProjectsManager();
+  const { fs } = useFS();
   const { user: _user } = useCurrentUser();
+  const { generateProjectId, isLoading: isGeneratingId, isConfigured: isAIConfigured } = useAIProjectId();
 
   useSeoMeta({
     title: 'Shakespeare - AI-Powered Nostr Development',
@@ -45,8 +51,40 @@ export default function Index() {
 
     setIsCreating(true);
     try {
-      const project = await projectsManager.createProject(prompt.trim());
-      navigate(`/project/${project.id}`);
+      let projectId: string;
+
+      if (isAIConfigured) {
+        // Use AI to generate project ID
+        try {
+          projectId = await generateProjectId(prompt.trim());
+        } catch (error) {
+          console.error('Failed to generate AI project ID:', error);
+          // Fallback to manual project creation if AI fails
+          const project = await projectsManager.createProject(prompt.trim());
+          navigate(`/project/${project.id}`);
+          return;
+        }
+      } else {
+        // Fallback to manual project creation if AI not configured
+        const project = await projectsManager.createProject(prompt.trim());
+        navigate(`/project/${project.id}`);
+        return;
+      }
+
+      // Create project with AI-generated ID
+      const project = await projectsManager.createProject(prompt.trim(), projectId);
+
+      // Store the initial message in chat history using DotAI
+      const dotAI = new DotAI(fs, `/projects/${project.id}`);
+      const sessionName = DotAI.generateSessionName();
+      const initialMessage: AIMessage = {
+        role: 'user',
+        content: prompt.trim()
+      };
+      await dotAI.setHistory(sessionName, [initialMessage]);
+
+      // Navigate to the project with autostart parameter
+      navigate(`/project/${project.id}?autostart=true`);
     } catch (error) {
       console.error('Failed to create project:', error);
     } finally {
@@ -78,7 +116,7 @@ export default function Index() {
                 value={prompt}
                 onChange={handlePromptChange}
                 className="min-h-[120px] max-h-64 resize-none border-0 bg-transparent px-4 py-3 pb-16 text-sm focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground"
-                disabled={isCreating}
+                disabled={isCreating || isGeneratingId}
                 rows={4}
                 style={{
                   height: 'auto',
@@ -95,14 +133,14 @@ export default function Index() {
               <div className="absolute bottom-3 right-3">
                 <Button
                   onClick={handleCreateProject}
-                  disabled={!prompt.trim() || isCreating}
+                  disabled={!prompt.trim() || isCreating || isGeneratingId}
                   size="sm"
                   className="h-8 rounded-lg"
                 >
-                  {isCreating ? (
+                  {isCreating || isGeneratingId ? (
                     <>
                       <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
-                      Creating...
+                      {isGeneratingId ? 'Generating...' : 'Creating...'}
                     </>
                   ) : (
                     <>

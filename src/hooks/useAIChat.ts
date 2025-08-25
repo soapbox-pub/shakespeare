@@ -62,53 +62,21 @@ export function useAIChat({
     });
   }, [saveMessagesToHistory]);
 
-  // Load message history when component mounts or projectId changes
-  useEffect(() => {
-    const loadMessageHistory = async () => {
-      try {
-        const dotAI = new DotAI(fs, `/projects/${projectId}`);
-        const lastSession = await dotAI.readLastSessionHistory();
+  const startGeneration = useCallback(async (providerModel?: string) => {
+    if (!isConfigured || isLoading || messages.length === 0) return;
 
-        if (lastSession) {
-          setMessages(lastSession.messages);
-          setSessionName(lastSession.sessionName);
-        } else {
-          // No history to load, start fresh
-          setMessages([]);
-          setSessionName(DotAI.generateSessionName());
-        }
-      } catch (error) {
-        console.warn('Failed to load message history:', error);
-        // Start fresh on any error
-        setMessages([]);
-        setSessionName(DotAI.generateSessionName());
-      }
-    };
+    // Get the last message - it should be a user message
+    const lastMessage = messages[messages.length - 1];
+    if (lastMessage.role !== 'user') return;
 
-    loadMessageHistory();
-  }, [projectId, fs]);
-
-  const sendMessage = useCallback(async (content: string, providerModel?: string) => {
-    if (!isConfigured || isLoading) return;
-
-    // Add user message
-    const userMessage: AIMessage = {
-      role: 'user',
-      content
-    };
-
-    addMessage(userMessage);
     setIsLoading(true);
 
     try {
       // Create abort controller for this request
       abortControllerRef.current = new AbortController();
 
-      // Get all messages including the new user message
-      const allMessages = [...messages, userMessage];
-
-      // Use messages directly as they're already in OpenAI format
-      const modelMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = allMessages;
+      // Use all existing messages
+      const modelMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [...messages];
 
       // Add system message if provided
       if (systemPrompt) {
@@ -375,6 +343,49 @@ export function useAIChat({
     }
   }, [isConfigured, isLoading, addMessage, messages, settings.providers, tools, customTools, systemPrompt, onUpdateMetadata, projectName, maxSteps]);
 
+  // Load message history when component mounts or projectId changes
+  useEffect(() => {
+    const loadMessageHistory = async () => {
+      try {
+        const dotAI = new DotAI(fs, `/projects/${projectId}`);
+        const lastSession = await dotAI.readLastSessionHistory();
+
+        if (lastSession) {
+          setMessages(lastSession.messages);
+          setSessionName(lastSession.sessionName);
+        } else {
+          // No history to load, start fresh
+          setMessages([]);
+          setSessionName(DotAI.generateSessionName());
+        }
+      } catch (error) {
+        console.warn('Failed to load message history:', error);
+        // Start fresh on any error
+        setMessages([]);
+        setSessionName(DotAI.generateSessionName());
+      }
+    };
+
+    loadMessageHistory();
+  }, [projectId, fs]);
+
+  const sendMessage = useCallback(async (content: string, providerModel?: string) => {
+    if (!isConfigured || isLoading) return;
+
+    // Add user message
+    const userMessage: AIMessage = {
+      role: 'user',
+      content
+    };
+
+    addMessage(userMessage);
+
+    // Use setTimeout to ensure the message is added before starting generation
+    setTimeout(() => {
+      startGeneration(providerModel);
+    }, 0);
+  }, [isConfigured, isLoading, addMessage, startGeneration]);
+
   const stopGeneration = useCallback(() => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -400,6 +411,7 @@ export function useAIChat({
     streamingMessage,
     isLoading,
     sendMessage,
+    startGeneration,
     stopGeneration,
     clearMessages,
     startNewSession,

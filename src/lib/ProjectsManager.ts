@@ -36,11 +36,11 @@ export class ProjectsManager {
     }
   }
 
-  async createProject(name: string): Promise<Project> {
-    const project = await this.cloneProject(name, GIT_TEMPLATE_URL);
+  async createProject(name: string, customId?: string): Promise<Project> {
+    const project = await this.cloneProject(name, GIT_TEMPLATE_URL, customId);
 
     try {
-      await this.fs.mkdir(this.dir + `/${name}/.ai/history`, { recursive: true });
+      await this.fs.mkdir(this.dir + `/${project.id}/.ai/history`, { recursive: true });
     } catch {
       // Directory might already exist
     }
@@ -48,9 +48,15 @@ export class ProjectsManager {
     return project;
   }
 
-  async cloneProject(name: string, repoUrl: string): Promise<Project> {
+  async cloneProject(name: string, repoUrl: string, customId?: string): Promise<Project> {
     const url = new URL(repoUrl);
-    const id = await this.generateUniqueProjectId(name);
+    const id = customId || await this.generateUniqueProjectId(name);
+
+    // Check if project with this ID already exists when using custom ID
+    if (customId && await this.projectExists(id)) {
+      throw new Error(`Project with ID "${id}" already exists`);
+    }
+
     const projectPath = `${this.dir}/${id}`;
 
     await this.fs.mkdir(projectPath);

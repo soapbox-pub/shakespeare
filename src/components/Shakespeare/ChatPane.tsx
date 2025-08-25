@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -40,6 +41,7 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
   const { isConfigured } = useAISettings();
   const { fs: browserFS } = useFS();
   const { runtime } = useJSRuntime();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   // Initialize AI chat with tools
   const cwd = `/projects/${projectId}`;
@@ -94,6 +96,7 @@ When creating new components or pages, follow the existing patterns in the codeb
     streamingMessage,
     isLoading,
     sendMessage,
+    startGeneration,
     stopGeneration,
     startNewSession,
   } = useAIChat({
@@ -106,6 +109,26 @@ When creating new components or pages, follow the existing patterns in the codeb
       updateMetadata(title, description);
     }
   });
+
+  // Check for autostart parameter and trigger AI generation
+  useEffect(() => {
+    const autostart = searchParams.get('autostart');
+
+    if (autostart === 'true' && isConfigured && messages.length > 0 && !isLoading) {
+      const lastMessage = messages[messages.length - 1];
+
+      // If the last message is from the user, auto-start the AI
+      if (lastMessage.role === 'user') {
+        // Clear the autostart parameter so it doesn't trigger again
+        const newSearchParams = new URLSearchParams(searchParams);
+        newSearchParams.delete('autostart');
+        setSearchParams(newSearchParams, { replace: true });
+
+        // Start AI generation
+        startGeneration(providerModel.trim() || undefined);
+      }
+    }
+  }, [searchParams, setSearchParams, isConfigured, messages, isLoading, startGeneration, providerModel]);
 
   // Keep-alive functionality to prevent tab throttling during AI processing
   const { updateMetadata } = useKeepAlive({

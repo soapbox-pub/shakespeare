@@ -154,14 +154,9 @@ export const AIMessageItem = memo(({
     // User messages: right-aligned bubble without avatar/name
     return (
       <div className="flex justify-end py-6">
-        <div className="max-w-[80%] bg-primary text-primary-foreground rounded-2xl rounded-br-md px-4 py-3">
+        <div className="max-w-[80%] bg-secondary rounded-2xl rounded-br-md px-4 py-3">
           <div className="text-sm whitespace-pre-wrap break-words">
-            <Streamdown
-              className='size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0'
-              parseIncompleteMarkdown={isCurrentlyLoading}
-            >
-              {getContent()}
-            </Streamdown>
+            {getContent()}
           </div>
         </div>
       </div>

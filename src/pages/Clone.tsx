@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { GitBranch, Loader2, AlertCircle } from 'lucide-react';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { useToast } from '@/hooks/useToast';
+import { NIP05 } from '@nostrify/nostrify';
 import { useNostr } from '@nostrify/react';
 import { nip19 } from 'nostr-tools';
 import type { Project } from '@/lib/ProjectsManager';
@@ -54,7 +55,7 @@ export default function Clone() {
     }
   };
 
-  const parseNostrCloneUri = (uri: string): NostrCloneUri | null => {
+  const parseNostrCloneUri = async (uri: string): Promise<NostrCloneUri | null> => {
     try {
       if (!uri.startsWith('nostr://')) {
         return null;
@@ -67,21 +68,24 @@ export default function Clone() {
         return null;
       }
 
-      const npubOrPubkey = parts[0];
+      const identifier = parts[0];
       let pubkey: string;
 
       // Try to decode as npub first, otherwise assume it's already a hex pubkey
       try {
-        const decoded = nip19.decode(npubOrPubkey);
+        const decoded = nip19.decode(identifier);
         if (decoded.type === 'npub') {
           pubkey = decoded.data;
         } else {
           return null;
         }
       } catch {
-        // If decoding fails, check if it's a valid hex pubkey
-        if (/^[a-f0-9]{64}$/i.test(npubOrPubkey)) {
-          pubkey = npubOrPubkey;
+        // If decoding fails, check if it's a NIP-05 identifier
+        if (identifier.split('@').length === 2) {
+          const pointer = await NIP05.lookup(identifier, {
+            signal: AbortSignal.timeout(3000),
+          });
+          pubkey = pointer.pubkey;
         } else {
           return null;
         }
@@ -143,7 +147,7 @@ export default function Clone() {
     // Use a specific relay if provided
     const client = nostrUri.relay
       ? nostr.relay(nostrUri.relay)
-      : nostr;
+      : nostr.group(['wss://relay.ngit.dev/', 'wss://gitnostr.com/']);
 
     // Query for the repository announcement event
     const events = await client.query([filter], { signal });
@@ -214,7 +218,7 @@ export default function Clone() {
       await projectsManager.init();
 
       // Check if it's a Nostr clone URI
-      const nostrUri = parseNostrCloneUri(repoUrl.trim());
+      const nostrUri = await parseNostrCloneUri(repoUrl.trim());
 
       if (nostrUri) {
         // Handle Nostr clone URI

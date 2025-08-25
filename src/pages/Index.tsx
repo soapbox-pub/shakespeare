@@ -7,7 +7,6 @@ import { AppLayout } from '@/components/AppLayout';
 
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Plus } from 'lucide-react';
 import { useSeoMeta } from '@unhead/react';
 
@@ -64,61 +63,56 @@ export default function Index() {
           <div className="text-center mb-8 md:mb-12">
             <div className="text-4xl md:text-6xl mb-4 md:mb-6">🎭</div>
             <h1 className="text-3xl md:text-4xl font-bold mb-3 md:mb-4 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              Shakespeare
+              Build Nostr apps with AI
             </h1>
-            <p className="text-lg md:text-xl text-muted-foreground mb-2">
-              Build custom Nostr websites with AI assistance
-            </p>
-            <p className="text-sm text-muted-foreground">
-              <a href="https://soapbox.pub/mkstack" className="hover:underline focus-ring text-primary">
-                Vibed with MKStack
-              </a>
+            <p className="text-lg md:text-xl text-muted-foreground">
+              What would you like to build?
             </p>
           </div>
 
           <div className="mb-8 md:mb-12">
-            <Card className="bg-gradient-to-br from-card to-card/50 border-primary/20 shadow-lg">
-              <CardHeader>
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="p-2 bg-primary/10 rounded-lg">
-                    <Plus className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-xl">Create a New Project</CardTitle>
-                    <CardDescription className="text-base">
-                      Describe what kind of Nostr website you want to build
-                    </CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <Textarea
-                  placeholder="e.g., Create a farming equipment marketplace for local farmers to buy and sell tractors, tools, and supplies..."
-                  value={prompt}
-                  onChange={handlePromptChange}
-                  className="min-h-[120px] touch-action-manipulation overscroll-contain text-base leading-relaxed"
-                  disabled={isCreating}
-                />
+            {/* Chat Input Container - matching the ChatPane style */}
+            <div className="relative rounded-2xl border border-input bg-background shadow-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 transition-all">
+              <Textarea
+                placeholder="e.g., Create a farming equipment marketplace for local farmers to buy and sell tractors, tools, and supplies..."
+                value={prompt}
+                onChange={handlePromptChange}
+                className="min-h-[120px] max-h-64 resize-none border-0 bg-transparent px-4 py-3 pb-16 text-sm focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground"
+                disabled={isCreating}
+                rows={4}
+                style={{
+                  height: 'auto',
+                  minHeight: '120px'
+                }}
+                onInput={(e) => {
+                  const target = e.target as HTMLTextAreaElement;
+                  target.style.height = 'auto';
+                  target.style.height = Math.min(target.scrollHeight, 256) + 'px';
+                }}
+              />
+
+              {/* Bottom Controls Row */}
+              <div className="absolute bottom-3 right-3">
                 <Button
                   onClick={handleCreateProject}
                   disabled={!prompt.trim() || isCreating}
-                  className="w-full focus-ring bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80 shadow-lg"
-                  size="lg"
+                  size="sm"
+                  className="h-8 rounded-lg"
                 >
                   {isCreating ? (
                     <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Creating Project...
+                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
+                      Creating...
                     </>
                   ) : (
                     <>
-                      <Plus className="mr-2 h-4 w-4" />
+                      <Plus className="mr-2 h-3 w-3" />
                       Create Project
                     </>
                   )}
                 </Button>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </div>
         </div>
       </AppLayout>

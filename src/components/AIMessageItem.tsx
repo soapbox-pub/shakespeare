@@ -1,7 +1,6 @@
 import { memo, useState } from 'react';
 import { Streamdown } from 'streamdown';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Bot, User, Square, Wrench, Eye, FileText, Edit, Package, PackageMinus, GitCommit } from 'lucide-react';
+import { Square, Wrench, Eye, FileText, Edit, Package, PackageMinus, GitCommit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AIMessage } from '@/hooks/useAIChat';
 import { cn } from '@/lib/utils';
@@ -9,8 +8,6 @@ import OpenAI from 'openai';
 
 interface AIMessageItemProps {
   message: AIMessage;
-  userDisplayName?: string;
-  userProfileImage?: string;
   isCurrentlyLoading?: boolean;
   onStopGeneration?: () => void;
   toolCall?: OpenAI.Chat.Completions.ChatCompletionMessageToolCall | undefined; // Tool call data passed from the assistant message
@@ -18,45 +15,11 @@ interface AIMessageItemProps {
 
 export const AIMessageItem = memo(({
   message,
-  userDisplayName = 'You',
-  userProfileImage,
   isCurrentlyLoading = false,
   onStopGeneration,
   toolCall
 }: AIMessageItemProps) => {
   const [isToolExpanded, setIsToolExpanded] = useState(false);
-
-  // Get display name based on role
-  const getDisplayName = () => {
-    switch (message.role) {
-      case 'user':
-        return userDisplayName;
-      case 'assistant':
-        return 'Assistant';
-      case 'system':
-        return 'System';
-      case 'tool':
-        return 'Tool';
-      default:
-        return 'Unknown';
-    }
-  };
-
-  // Get role label for display
-  const getRoleLabel = () => {
-    switch (message.role) {
-      case 'user':
-        return 'User';
-      case 'assistant':
-        return 'AI';
-      case 'system':
-        return 'System';
-      case 'tool':
-        return 'Tool';
-      default:
-        return message.role;
-    }
-  };
 
   // Get content to display
   const getContent = () => {
@@ -161,7 +124,7 @@ export const AIMessageItem = memo(({
     const IconComponent = toolInfo.icon;
 
     return (
-      <div className="ml-11 -mt-2"> {/* ml-11 to align with assistant message content, -mt-2 to make it snug */}
+      <div className="-mt-2"> {/* -mt-2 to make it snug with the previous assistant message */}
         <button
           onClick={() => setIsToolExpanded(!isToolExpanded)}
           className={cn(
@@ -187,44 +150,41 @@ export const AIMessageItem = memo(({
   }
 
   // Regular rendering for non-tool messages
+  if (message.role === 'user') {
+    // User messages: right-aligned bubble without avatar/name
+    return (
+      <div className="flex justify-end">
+        <div className="max-w-[80%] bg-primary text-primary-foreground rounded-2xl rounded-br-md px-4 py-3">
+          <div className="text-sm whitespace-pre-wrap break-words">
+            <Streamdown
+              className='size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0'
+              parseIncompleteMarkdown={isCurrentlyLoading}
+            >
+              {getContent()}
+            </Streamdown>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Assistant messages: left-aligned without avatar/name
   return (
-    <div className="flex gap-3">
-      <Avatar className="h-8 w-8 flex-shrink-0">
-        {message.role === 'user' ? (
-          <>
-            <AvatarImage src={userProfileImage} alt={userDisplayName} />
-            <AvatarFallback>
-              <User className="h-4 w-4" />
-            </AvatarFallback>
-          </>
-        ) : (
-          <>
-            <AvatarFallback>
-              <Bot className="h-4 w-4" />
-            </AvatarFallback>
-          </>
-        )}
-      </Avatar>
+    <div className="flex">
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-1">
-          <span className="font-medium text-sm">
-            {getDisplayName()}
-          </span>
-          <span className="text-xs text-muted-foreground">
-            {getRoleLabel()}
-          </span>
-          {isCurrentlyLoading && onStopGeneration && (
+        {isCurrentlyLoading && onStopGeneration && (
+          <div className="flex justify-end mb-2">
             <Button
               variant="outline"
               size="sm"
               onClick={onStopGeneration}
-              className="ml-auto gap-1 h-6 px-2 text-xs"
+              className="gap-1 h-6 px-2 text-xs"
             >
               <Square className="h-3 w-3" />
               Stop
             </Button>
-          )}
-        </div>
+          </div>
+        )}
         <div className="text-sm">
           <div className="whitespace-pre-wrap break-words">
             <Streamdown

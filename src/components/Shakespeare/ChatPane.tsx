@@ -377,7 +377,6 @@ BASE_DOMAIN=nostrdeploy.com`);
               <AIMessageItem
                 key={`${index}-${message.role}-${typeof message.content === 'string' ? message.content.slice(0, 50) : 'content'}`}
                 message={message}
-                userDisplayName="You"
                 onStopGeneration={stopGeneration}
                 toolCall={toolCall}
               />
@@ -388,26 +387,18 @@ BASE_DOMAIN=nostrdeploy.com`);
               <AIMessageItem
                 key="streaming-message"
                 message={streamingMessage}
-                userDisplayName="You"
                 isCurrentlyLoading
                 onStopGeneration={stopGeneration}
               />
             ) : (
-              <div key="streaming-loading" className="flex gap-3">
-                <div className="h-8 w-8 flex-shrink-0 flex items-center justify-center">
-                  <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  </div>
-                </div>
+              <div key="streaming-loading" className="flex">
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-medium text-sm">Assistant</span>
-                    <span className="text-xs text-muted-foreground">AI</span>
+                  <div className="flex justify-end mb-2">
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={stopGeneration}
-                      className="ml-auto gap-1 h-6 px-2 text-xs"
+                      className="gap-1 h-6 px-2 text-xs"
                     >
                       <Loader2 className="h-3 w-3 animate-spin" />
                       Stop

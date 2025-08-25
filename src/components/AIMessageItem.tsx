@@ -1,4 +1,5 @@
 import { memo } from 'react';
+import { Streamdown } from 'streamdown';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Bot, User, Square, Wrench } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -67,7 +68,7 @@ export const AIMessageItem = memo(({
         })
         .join('\n');
     }
-    return message.content || '';
+    return '';
   };
 
   return (
@@ -116,7 +117,12 @@ export const AIMessageItem = memo(({
         </div>
         <div className="text-sm">
           <div className="whitespace-pre-wrap break-words">
-            {getContent()}
+            <Streamdown
+              className='size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0'
+              parseIncompleteMarkdown={isCurrentlyLoading}
+            >
+              {getContent()}
+            </Streamdown>
           </div>
 
           {/* Display tool calls if present */}

@@ -10,7 +10,7 @@ vi.mock('*.sass', () => ({}));
 vi.mock('katex/dist/katex.min.css', () => ({}));
 
 // Mock Streamdown component that might be importing KaTeX
-vi.mock('@soapbox.pub/streamdown', () => ({
+vi.mock('streamdown', () => ({
   Streamdown: ({ children }: { children: React.ReactNode }) => children
 }));
 

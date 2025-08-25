@@ -153,7 +153,7 @@ export const AIMessageItem = memo(({
   if (message.role === 'user') {
     // User messages: right-aligned bubble without avatar/name
     return (
-      <div className="flex justify-end">
+      <div className="flex justify-end py-6">
         <div className="max-w-[80%] bg-primary text-primary-foreground rounded-2xl rounded-br-md px-4 py-3">
           <div className="text-sm whitespace-pre-wrap break-words">
             <Streamdown
@@ -171,20 +171,7 @@ export const AIMessageItem = memo(({
   // Assistant messages: left-aligned without avatar/name
   return (
     <div className="flex">
-      <div className="flex-1 min-w-0">
-        {isCurrentlyLoading && onStopGeneration && (
-          <div className="flex justify-end mb-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onStopGeneration}
-              className="gap-1 h-6 px-2 text-xs"
-            >
-              <Square className="h-3 w-3" />
-              Stop
-            </Button>
-          </div>
-        )}
+      <div className="flex-1 min-w-0 relative">
         <div className="text-sm">
           <div className="whitespace-pre-wrap break-words">
             <Streamdown
@@ -197,6 +184,21 @@ export const AIMessageItem = memo(({
 
           {/* Tool calls are now hidden from assistant messages */}
         </div>
+
+        {/* Stop button positioned absolutely to avoid affecting text layout */}
+        {isCurrentlyLoading && onStopGeneration && (
+          <div className="absolute -top-8 right-0">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onStopGeneration}
+              className="gap-1 h-6 px-2 text-xs"
+            >
+              <Square className="h-3 w-3" />
+              Stop
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );

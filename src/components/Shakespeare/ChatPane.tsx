@@ -392,8 +392,14 @@ BASE_DOMAIN=nostrdeploy.com`);
               />
             ) : (
               <div key="streaming-loading" className="flex">
-                <div className="flex-1 min-w-0">
-                  <div className="flex justify-end mb-2">
+                <div className="flex-1 min-w-0 relative">
+                  <div className="text-sm space-y-2">
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-3/4" />
+                  </div>
+
+                  {/* Stop button positioned absolutely to match AIMessageItem */}
+                  <div className="absolute -top-8 right-0">
                     <Button
                       variant="outline"
                       size="sm"
@@ -403,10 +409,6 @@ BASE_DOMAIN=nostrdeploy.com`);
                       <Loader2 className="h-3 w-3 animate-spin" />
                       Stop
                     </Button>
-                  </div>
-                  <div className="text-sm space-y-2">
-                    <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-4 w-3/4" />
                   </div>
                 </div>
               </div>

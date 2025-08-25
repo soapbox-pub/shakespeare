@@ -1,7 +1,6 @@
 import { memo, useState } from 'react';
 import { Streamdown } from 'streamdown';
-import { Square, Wrench, Eye, FileText, Edit, Package, PackageMinus, GitCommit } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Wrench, Eye, FileText, Edit, Package, PackageMinus, GitCommit } from 'lucide-react';
 import { AIMessage } from '@/hooks/useAIChat';
 import { cn } from '@/lib/utils';
 import OpenAI from 'openai';
@@ -9,14 +8,12 @@ import OpenAI from 'openai';
 interface AIMessageItemProps {
   message: AIMessage;
   isCurrentlyLoading?: boolean;
-  onStopGeneration?: () => void;
   toolCall?: OpenAI.Chat.Completions.ChatCompletionMessageToolCall | undefined; // Tool call data passed from the assistant message
 }
 
 export const AIMessageItem = memo(({
   message,
   isCurrentlyLoading = false,
-  onStopGeneration,
   toolCall
 }: AIMessageItemProps) => {
   const [isToolExpanded, setIsToolExpanded] = useState(false);
@@ -166,7 +163,7 @@ export const AIMessageItem = memo(({
   // Assistant messages: left-aligned without avatar/name
   return (
     <div className="flex">
-      <div className="flex-1 min-w-0 relative">
+      <div className="flex-1 min-w-0">
         <div className="text-sm">
           <div className="whitespace-pre-wrap break-words">
             <Streamdown
@@ -179,21 +176,6 @@ export const AIMessageItem = memo(({
 
           {/* Tool calls are now hidden from assistant messages */}
         </div>
-
-        {/* Stop button positioned absolutely to avoid affecting text layout */}
-        {isCurrentlyLoading && onStopGeneration && (
-          <div className="absolute -top-8 right-0">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onStopGeneration}
-              className="gap-1 h-6 px-2 text-xs"
-            >
-              <Square className="h-3 w-3" />
-              Stop
-            </Button>
-          </div>
-        )}
       </div>
     </div>
   );

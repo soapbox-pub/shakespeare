@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Send, Settings, Play, CloudUpload, Loader2, MessageSquarePlus } from 'lucide-react';
+import { Send, Settings, Play, CloudUpload, Loader2, MessageSquarePlus, Square } from 'lucide-react';
 import { useAISettings } from '@/hooks/useAISettings';
 import { useFS } from '@/hooks/useFS';
 import { useJSRuntime } from '@/hooks/useJSRuntime';
@@ -381,7 +381,6 @@ BASE_DOMAIN=nostrdeploy.com`);
               <AIMessageItem
                 key={`${index}-${message.role}-${typeof message.content === 'string' ? message.content.slice(0, 50) : 'content'}`}
                 message={message}
-                onStopGeneration={stopGeneration}
                 toolCall={toolCall}
               />
             );
@@ -392,27 +391,13 @@ BASE_DOMAIN=nostrdeploy.com`);
                 key="streaming-message"
                 message={streamingMessage}
                 isCurrentlyLoading
-                onStopGeneration={stopGeneration}
               />
             ) : (
               <div key="streaming-loading" className="flex">
-                <div className="flex-1 min-w-0 relative">
+                <div className="flex-1 min-w-0">
                   <div className="text-sm space-y-2">
                     <Skeleton className="h-4 w-full" />
                     <Skeleton className="h-4 w-3/4" />
-                  </div>
-
-                  {/* Stop button positioned absolutely to match AIMessageItem */}
-                  <div className="absolute -top-8 right-0">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={stopGeneration}
-                      className="gap-1 h-6 px-2 text-xs"
-                    >
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                      Stop
-                    </Button>
                   </div>
                 </div>
               </div>
@@ -431,35 +416,66 @@ BASE_DOMAIN=nostrdeploy.com`);
         </div>
       </div>
 
-      <div className="border-t p-4 space-y-3">
-        <div className="flex gap-2">
-          <div className="flex-1 space-y-2">
-            <Input
-              value={providerModel}
-              onChange={(e) => setProviderModel(e.target.value)}
-              placeholder="provider/model (e.g., openrouter/anthropic/claude-sonnet-4)"
-              className="text-sm font-mono"
-              disabled={isLoading}
-            />
-            <Textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              onFocus={handleFirstInteraction}
-              placeholder="Ask me to add features, edit files, or build your project..."
-              className="min-h-[60px] resize-none"
-              disabled={isLoading}
-            />
+      <div className="border-t p-4">
+        {/* Chat Input Container */}
+        <div className="relative rounded-2xl border border-input bg-background shadow-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 transition-all">
+          <Textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            onFocus={handleFirstInteraction}
+            placeholder="Ask me to add features, edit files, or build your project..."
+            className="min-h-[52px] max-h-32 resize-none border-0 bg-transparent px-4 py-3 pb-12 text-sm focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground"
+            disabled={isLoading}
+            rows={1}
+            style={{
+              height: 'auto',
+              minHeight: '52px'
+            }}
+            onInput={(e) => {
+              const target = e.target as HTMLTextAreaElement;
+              target.style.height = 'auto';
+              target.style.height = Math.min(target.scrollHeight, 128) + 'px';
+            }}
+          />
+
+          {/* Bottom Controls Row */}
+          <div className="absolute bottom-2 left-2 right-2 flex items-center gap-2">
+            {/* Model Input */}
+            <div className="flex-1 max-w-72 ml-auto">
+              <Input
+                value={providerModel}
+                onChange={(e) => setProviderModel(e.target.value)}
+                placeholder="provider/model (e.g., openrouter/anthropic/claude-sonnet-4)"
+                className="h-8 text-xs border-0 bg-transparent hover:bg-muted/50 focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground"
+                disabled={isLoading}
+              />
+            </div>
+
+            {/* Send/Stop Button */}
+            <div>
+              {isLoading ? (
+                <Button
+                  onClick={stopGeneration}
+                  size="sm"
+                  variant="ghost"
+                  className="h-8 w-8 rounded-lg p-0 hover:bg-muted"
+                >
+                  <Square className="h-4 w-4" />
+                </Button>
+              ) : (
+                <Button
+                  onClick={handleSend}
+                  onMouseDown={handleFirstInteraction}
+                  disabled={!input.trim()}
+                  size="sm"
+                  className="h-8 w-8 rounded-lg p-0"
+                >
+                  <Send className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
           </div>
-          <Button
-            onClick={handleSend}
-            onMouseDown={handleFirstInteraction}
-            disabled={!input.trim() || isLoading}
-            className="self-end"
-            size="icon"
-          >
-            <Send className="h-4 w-4" />
-          </Button>
         </div>
       </div>
     </div>

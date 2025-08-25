@@ -7,6 +7,7 @@ export interface AIConnection {
 
 export interface AISettings {
   providers: Record<string, AIConnection>;
+  recentlyUsedModels: string[];
 }
 
 export interface AISettingsContextType {
@@ -15,6 +16,7 @@ export interface AISettingsContextType {
   addProvider: (name: string, connection: AIConnection) => void;
   removeProvider: (name: string) => void;
   updateProvider: (name: string, connection: Partial<AIConnection>) => void;
+  addRecentlyUsedModel: (modelId: string) => void;
   isConfigured: boolean;
 }
 

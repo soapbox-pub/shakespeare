@@ -38,7 +38,7 @@ export function useAIChat({
   const [isLoading, setIsLoading] = useState(false);
   const [sessionName, setSessionName] = useState<string>('');
   const abortControllerRef = useRef<AbortController | null>(null);
-  const { settings, isConfigured } = useAISettings();
+  const { settings, isConfigured, addRecentlyUsedModel } = useAISettings();
   const { fs } = useFS();
 
   // Save all messages to history
@@ -164,10 +164,17 @@ export function useAIChat({
         let accumulatedContent = '';
         const accumulatedToolCalls: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[] = [];
         let finishReason: string | null = null;
+        let hasRecordedModel = false;
 
         // Process the stream
         for await (const chunk of stream) {
           const delta = chunk.choices[0]?.delta;
+
+          // Track recently used model on first chunk
+          if (!hasRecordedModel && providerModel) {
+            addRecentlyUsedModel(providerModel);
+            hasRecordedModel = true;
+          }
 
           if (delta?.content) {
             accumulatedContent += delta.content;
@@ -341,7 +348,7 @@ export function useAIChat({
       setIsLoading(false);
       abortControllerRef.current = null;
     }
-  }, [isConfigured, isLoading, addMessage, messages, settings.providers, tools, customTools, systemPrompt, onUpdateMetadata, projectName, maxSteps]);
+  }, [isConfigured, isLoading, addMessage, messages, settings.providers, tools, customTools, systemPrompt, onUpdateMetadata, projectName, maxSteps, addRecentlyUsedModel]);
 
   // Load message history when component mounts or projectId changes
   useEffect(() => {

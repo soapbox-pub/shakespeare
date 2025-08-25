@@ -18,12 +18,13 @@ describe('useAIProjectId', () => {
 
   it('should return not configured when AI settings are not configured', () => {
     mockUseAISettings.mockReturnValue({
-      settings: { providers: {} },
+      settings: { providers: {}, recentlyUsedModels: [] },
       isConfigured: false,
       updateSettings: vi.fn(),
       addProvider: vi.fn(),
       removeProvider: vi.fn(),
       updateProvider: vi.fn(),
+      addRecentlyUsedModel: vi.fn(),
     });
 
     const { result } = renderHook(() => useAIProjectId());
@@ -34,12 +35,13 @@ describe('useAIProjectId', () => {
 
   it('should throw error when trying to generate ID without configuration', async () => {
     mockUseAISettings.mockReturnValue({
-      settings: { providers: {} },
+      settings: { providers: {}, recentlyUsedModels: [] },
       isConfigured: false,
       updateSettings: vi.fn(),
       addProvider: vi.fn(),
       removeProvider: vi.fn(),
       updateProvider: vi.fn(),
+      addRecentlyUsedModel: vi.fn(),
     });
 
     const { result } = renderHook(() => useAIProjectId());
@@ -54,13 +56,15 @@ describe('useAIProjectId', () => {
       settings: {
         providers: {
           openai: { apiKey: 'test-key', baseURL: 'https://api.openai.com/v1' }
-        }
+        },
+        recentlyUsedModels: []
       },
       isConfigured: true,
       updateSettings: vi.fn(),
       addProvider: vi.fn(),
       removeProvider: vi.fn(),
       updateProvider: vi.fn(),
+      addRecentlyUsedModel: vi.fn(),
     });
 
     const { result } = renderHook(() => useAIProjectId());
@@ -75,13 +79,15 @@ describe('useAIProjectId', () => {
       settings: {
         providers: {
           openai: { apiKey: 'test-key', baseURL: 'https://api.openai.com/v1' }
-        }
+        },
+        recentlyUsedModels: []
       },
       isConfigured: true,
       updateSettings: vi.fn(),
       addProvider: vi.fn(),
       removeProvider: vi.fn(),
       updateProvider: vi.fn(),
+      addRecentlyUsedModel: vi.fn(),
     });
 
     const { result } = renderHook(() => useAIProjectId());

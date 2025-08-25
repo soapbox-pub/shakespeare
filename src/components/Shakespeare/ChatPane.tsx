@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Send, Settings, Play, CloudUpload, Loader2, MessageSquarePlus, Square } from 'lucide-react';
@@ -10,6 +9,7 @@ import { useFS } from '@/hooks/useFS';
 import { useJSRuntime } from '@/hooks/useJSRuntime';
 import { useKeepAlive } from '@/hooks/useKeepAlive';
 import { useAIChat } from '@/hooks/useAIChat';
+import { ModelSelector } from '@/components/ModelSelector';
 import { copyDirectory } from '@/lib/copyFiles';
 import { generateSecretKey, getPublicKey, nip19 } from 'nostr-tools';
 import { bytesToHex } from 'nostr-tools/utils';
@@ -34,11 +34,14 @@ interface ChatPaneProps {
 
 export function ChatPane({ projectId, projectName }: ChatPaneProps) {
   const [input, setInput] = useState('');
-  const [providerModel, setProviderModel] = useState('openrouter/anthropic/claude-sonnet-4');
   const [isBuildLoading, setIsBuildLoading] = useState(false);
   const [isDeployLoading, setIsDeployLoading] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const { isConfigured } = useAISettings();
+  const { isConfigured, settings, addRecentlyUsedModel } = useAISettings();
+  const [providerModel, setProviderModel] = useState(() => {
+    // Default to first recently used model or fallback
+    return settings.recentlyUsedModels?.[0] || 'openrouter/anthropic/claude-sonnet-4';
+  });
   const { fs: browserFS } = useFS();
   const { runtime } = useJSRuntime();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -125,10 +128,14 @@ When creating new components or pages, follow the existing patterns in the codeb
         setSearchParams(newSearchParams, { replace: true });
 
         // Start AI generation
-        startGeneration(providerModel.trim() || undefined);
+        const modelToUse = providerModel.trim() || undefined;
+        if (modelToUse) {
+          addRecentlyUsedModel(modelToUse);
+        }
+        startGeneration(modelToUse);
       }
     }
-  }, [searchParams, setSearchParams, isConfigured, messages, isLoading, startGeneration, providerModel]);
+  }, [searchParams, setSearchParams, isConfigured, messages, isLoading, startGeneration, providerModel, addRecentlyUsedModel]);
 
   // Keep-alive functionality to prevent tab throttling during AI processing
   const { updateMetadata } = useKeepAlive({
@@ -247,10 +254,16 @@ BASE_DOMAIN=nostrdeploy.com`);
     if (!input.trim() || isLoading) return;
 
     const messageContent = input;
+    const modelToUse = providerModel.trim() || undefined;
     setInput('');
 
+    // Add model to recently used when sending a message
+    if (modelToUse) {
+      addRecentlyUsedModel(modelToUse);
+    }
+
     try {
-      await sendMessage(messageContent, providerModel.trim() || undefined);
+      await sendMessage(messageContent, modelToUse);
     } catch (error) {
       console.error('AI chat error:', error);
       // Error handling is done in the useAIChat hook
@@ -464,14 +477,14 @@ BASE_DOMAIN=nostrdeploy.com`);
 
           {/* Bottom Controls Row */}
           <div className="absolute bottom-2 left-2 right-2 flex items-center gap-2">
-            {/* Model Input */}
+            {/* Model Selector */}
             <div className="flex-1 max-w-72 ml-auto">
-              <Input
+              <ModelSelector
                 value={providerModel}
-                onChange={(e) => setProviderModel(e.target.value)}
-                placeholder="provider/model (e.g., openrouter/anthropic/claude-sonnet-4)"
-                className="h-8 text-xs border-0 bg-transparent hover:bg-muted/50 focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground"
+                onChange={setProviderModel}
+                className="w-full"
                 disabled={isLoading}
+                placeholder="provider/model (e.g., openrouter/anthropic/claude-sonnet-4)"
               />
             </div>
 

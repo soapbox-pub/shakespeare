@@ -353,14 +353,30 @@ BASE_DOMAIN=nostrdeploy.com`);
 
       <div className="flex-1 overflow-y-scroll overflow-x-hidden" ref={scrollAreaRef}>
         <div className="p-4 space-y-4">
-          {messages.map((message, index) => (
-            <AIMessageItem
-              key={`${index}-${message.role}-${typeof message.content === 'string' ? message.content.slice(0, 50) : 'content'}`}
-              message={message}
-              userDisplayName="You"
-              onStopGeneration={stopGeneration}
-            />
-          ))}
+          {messages.map((message, index) => {
+            // Find the corresponding tool call for tool messages
+            let toolCall: OpenAI.Chat.Completions.ChatCompletionMessageToolCall | undefined = undefined;
+            if (message.role === 'tool' && 'tool_call_id' in message) {
+              // Look backwards to find the assistant message with matching tool call
+              for (let i = index - 1; i >= 0; i--) {
+                const prevMessage = messages[i];
+                if (prevMessage.role === 'assistant' && 'tool_calls' in prevMessage && prevMessage.tool_calls) {
+                  toolCall = prevMessage.tool_calls.find(tc => tc.id === message.tool_call_id);
+                  if (toolCall) break;
+                }
+              }
+            }
+
+            return (
+              <AIMessageItem
+                key={`${index}-${message.role}-${typeof message.content === 'string' ? message.content.slice(0, 50) : 'content'}`}
+                message={message}
+                userDisplayName="You"
+                onStopGeneration={stopGeneration}
+                toolCall={toolCall}
+              />
+            );
+          })}
           {streamingMessage && (
             <AIMessageItem
               key="streaming-message"

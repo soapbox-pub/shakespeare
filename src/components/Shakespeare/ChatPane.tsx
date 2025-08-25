@@ -414,6 +414,16 @@ BASE_DOMAIN=nostrdeploy.com`);
               </div>
             )
           )}
+          {streamingMessage?.tool_calls?.[0]?.type === 'function' && (
+            <div key="tool-calls-loading" className="-mt-2">
+              <div className="flex items-center gap-2 px-2 py-1 text-xs text-muted-foreground">
+                <Loader2 className="h-3 w-3 animate-spin flex-shrink-0" />
+                <span className="font-medium">
+                  Running {streamingMessage.tool_calls[0].function.name}...
+                </span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

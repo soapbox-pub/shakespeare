@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Send, Settings, Play, CloudUpload, Loader2, MessageSquarePlus } from 'lucide-react';
@@ -32,6 +33,7 @@ interface ChatPaneProps {
 
 export function ChatPane({ projectId, projectName }: ChatPaneProps) {
   const [input, setInput] = useState('');
+  const [providerModel, setProviderModel] = useState('openrouter/anthropic/claude-sonnet-4');
   const [isBuildLoading, setIsBuildLoading] = useState(false);
   const [isDeployLoading, setIsDeployLoading] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -225,7 +227,7 @@ BASE_DOMAIN=nostrdeploy.com`);
     setInput('');
 
     try {
-      await sendMessage(messageContent);
+      await sendMessage(messageContent, providerModel.trim() || undefined);
     } catch (error) {
       console.error('AI chat error:', error);
       // Error handling is done in the useAIChat hook
@@ -429,17 +431,26 @@ BASE_DOMAIN=nostrdeploy.com`);
         </div>
       </div>
 
-      <div className="border-t p-4">
+      <div className="border-t p-4 space-y-3">
         <div className="flex gap-2">
-          <Textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            onFocus={handleFirstInteraction}
-            placeholder="Ask me to add features, edit files, or build your project..."
-            className="min-h-[60px] resize-none"
-            disabled={isLoading}
-          />
+          <div className="flex-1 space-y-2">
+            <Input
+              value={providerModel}
+              onChange={(e) => setProviderModel(e.target.value)}
+              placeholder="provider/model (e.g., openrouter/anthropic/claude-sonnet-4)"
+              className="text-sm font-mono"
+              disabled={isLoading}
+            />
+            <Textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              onFocus={handleFirstInteraction}
+              placeholder="Ask me to add features, edit files, or build your project..."
+              className="min-h-[60px] resize-none"
+              disabled={isLoading}
+            />
+          </div>
           <Button
             onClick={handleSend}
             onMouseDown={handleFirstInteraction}

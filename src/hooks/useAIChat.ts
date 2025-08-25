@@ -3,6 +3,7 @@ import OpenAI from 'openai';
 import { useAISettings } from '@/hooks/useAISettings';
 import { useFS } from '@/hooks/useFS';
 import { DotAI } from '@/lib/DotAI';
+import { parseProviderModel } from '@/lib/parseProviderModel';
 
 // Use OpenAI's native message type
 export type AIMessage = OpenAI.Chat.Completions.ChatCompletionMessageParam;
@@ -87,7 +88,7 @@ export function useAIChat({
     loadMessageHistory();
   }, [projectId, fs]);
 
-  const sendMessage = useCallback(async (content: string) => {
+  const sendMessage = useCallback(async (content: string, providerModel?: string) => {
     if (!isConfigured || isLoading) return;
 
     // Add user message
@@ -117,10 +118,43 @@ export function useAIChat({
         });
       }
 
-      // Initialize OpenAI client
+      // Parse provider and model if specified
+      let connectionConfig;
+      let modelName;
+
+      if (providerModel) {
+        try {
+          const parsed = parseProviderModel(providerModel, settings.providers);
+          connectionConfig = parsed.connection;
+          modelName = parsed.model;
+        } catch (error) {
+          // Add error message to chat
+          const errorMessage: AIMessage = {
+            role: 'assistant',
+            content: `Error: ${error instanceof Error ? error.message : 'Failed to parse provider/model format'}`
+          };
+          addMessage(errorMessage);
+          return;
+        }
+      } else {
+        // Use first available provider as fallback
+        const firstProvider = Object.keys(settings.providers)[0];
+        if (!firstProvider || !settings.providers[firstProvider]?.apiKey) {
+          const errorMessage: AIMessage = {
+            role: 'assistant',
+            content: 'Error: No provider/model specified and no configured providers available. Please specify a provider/model (e.g., "openrouter/anthropic/claude-sonnet-4") or configure a provider in settings.'
+          };
+          addMessage(errorMessage);
+          return;
+        }
+        connectionConfig = settings.providers[firstProvider];
+        modelName = 'gpt-3.5-turbo'; // Default fallback model
+      }
+
+      // Initialize OpenAI client with parsed connection
       const openai = new OpenAI({
-        baseURL: settings.baseUrl,
-        apiKey: settings.apiKey,
+        baseURL: connectionConfig.baseURL,
+        apiKey: connectionConfig.apiKey,
         dangerouslyAllowBrowser: true
       });
 
@@ -147,7 +181,7 @@ export function useAIChat({
 
         // Prepare chat completion options
         const completionOptions: OpenAI.Chat.Completions.ChatCompletionCreateParams = {
-          model: settings.model,
+          model: modelName,
           messages: currentMessages,
           tools: tools && Object.keys(tools).length > 0 ? Object.values(tools) : undefined,
           tool_choice: tools && Object.keys(tools).length > 0 ? 'auto' : undefined,
@@ -339,7 +373,7 @@ export function useAIChat({
       setIsLoading(false);
       abortControllerRef.current = null;
     }
-  }, [isConfigured, isLoading, addMessage, messages, settings.baseUrl, settings.apiKey, settings.model, tools, customTools, systemPrompt, onUpdateMetadata, projectName, maxSteps]);
+  }, [isConfigured, isLoading, addMessage, messages, settings.providers, tools, customTools, systemPrompt, onUpdateMetadata, projectName, maxSteps]);
 
   const stopGeneration = useCallback(() => {
     if (abortControllerRef.current) {

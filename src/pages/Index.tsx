@@ -5,6 +5,7 @@ import { useAIProjectId } from '@/hooks/useAIProjectId';
 import { useFS } from '@/hooks/useFS';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useIsMobile } from '@/hooks/useIsMobile';
 import { AppLayout } from '@/components/AppLayout';
 import { DotAI } from '@/lib/DotAI';
 import type { AIMessage } from '@/hooks/useAIChat';
@@ -23,6 +24,7 @@ export default function Index() {
   const { fs } = useFS();
   const { user: _user } = useCurrentUser();
   const { generateProjectId, isLoading: isGeneratingId, isConfigured: isAIConfigured } = useAIProjectId();
+  const isMobile = useIsMobile();
 
   useSeoMeta({
     title: 'Shakespeare - AI-Powered Nostr Development',
@@ -41,6 +43,29 @@ export default function Index() {
     const newPrompt = e.target.value;
     setPrompt(newPrompt);
     setStoredPrompt(newPrompt);
+  };
+
+  // Handle keyboard shortcuts (physical keyboards only)
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter') {
+      // On mobile devices, always allow Enter to create new lines
+      // since there's no Shift key available for multi-line input
+      if (isMobile) {
+        return;
+      }
+
+      if (e.shiftKey) {
+        // Shift+Enter on desktop: Allow new line (default behavior)
+        return;
+      }
+
+      // Enter without Shift on desktop: Submit only if no newlines exist in prompt
+      if (!prompt.includes('\n')) {
+        e.preventDefault();
+        handleCreateProject();
+      }
+      // If prompt contains newlines, allow Enter to create new line (default behavior)
+    }
   };
 
   const handleCreateProject = async () => {
@@ -115,6 +140,7 @@ export default function Index() {
                 placeholder="e.g., Create a farming equipment marketplace for local farmers to buy and sell tractors, tools, and supplies..."
                 value={prompt}
                 onChange={handlePromptChange}
+                onKeyDown={handleKeyDown}
                 className="min-h-[120px] max-h-64 resize-none border-0 bg-transparent px-4 py-3 pb-16 text-sm focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground"
                 disabled={isCreating || isGeneratingId}
                 rows={4}

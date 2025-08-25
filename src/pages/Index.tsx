@@ -1,16 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
-import { useOnboarding } from '@/hooks/useOnboarding';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { AppLayout } from '@/components/AppLayout';
-import { OnboardingDialog } from '@/components/onboarding';
 
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, Sparkles } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { useSeoMeta } from '@unhead/react';
 
 export default function Index() {
@@ -20,15 +18,6 @@ export default function Index() {
   const navigate = useNavigate();
   const projectsManager = useProjectsManager();
   const { user: _user } = useCurrentUser();
-  const {
-    hasCompletedOnboarding,
-    currentStep,
-    isOnboardingOpen,
-    setIsOnboardingOpen,
-    handleNextStep,
-    handlePreviousStep,
-    handleCompleteOnboarding,
-  } = useOnboarding();
 
   useSeoMeta({
     title: 'Shakespeare - AI-Powered Nostr Development',
@@ -66,21 +55,7 @@ export default function Index() {
     }
   };
 
-  const headerContent = (
-    <>
-      {hasCompletedOnboarding && (
-        <Button
-          onClick={() => setIsOnboardingOpen(true)}
-          variant="ghost"
-          size="sm"
-          className="gap-2"
-        >
-          <Sparkles className="h-4 w-4" />
-          Restart Onboarding
-        </Button>
-      )}
-    </>
-  );
+  const headerContent = null;
 
   return (
     <>
@@ -99,17 +74,6 @@ export default function Index() {
                 Vibed with MKStack
               </a>
             </p>
-            {hasCompletedOnboarding && (
-              <Button
-                onClick={() => setIsOnboardingOpen(true)}
-                variant="ghost"
-                size="sm"
-                className="mt-4 gap-2"
-              >
-                <Sparkles className="h-4 w-4" />
-                Restart Onboarding
-              </Button>
-            )}
           </div>
 
           <div className="mb-8 md:mb-12">
@@ -158,20 +122,6 @@ export default function Index() {
           </div>
         </div>
       </AppLayout>
-
-      <OnboardingDialog
-        open={isOnboardingOpen}
-        onOpenChange={setIsOnboardingOpen}
-        currentStep={currentStep}
-        onNextStep={handleNextStep}
-        onPreviousStep={handlePreviousStep}
-        onComplete={handleCompleteOnboarding}
-        initialPrompt={storedPrompt}
-        onProjectCreated={(projectId) => {
-          console.log('Project created during onboarding:', projectId);
-          setStoredPrompt('');
-        }}
-      />
     </>
   );
 }

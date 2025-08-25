@@ -358,7 +358,6 @@ BASE_DOMAIN=nostrdeploy.com`);
               key={`${index}-${message.role}-${typeof message.content === 'string' ? message.content.slice(0, 50) : 'content'}`}
               message={message}
               userDisplayName="You"
-              isCurrentlyLoading={false}
               onStopGeneration={stopGeneration}
             />
           ))}
@@ -367,7 +366,7 @@ BASE_DOMAIN=nostrdeploy.com`);
               key="streaming-message"
               message={streamingMessage}
               userDisplayName="You"
-              isCurrentlyLoading={true}
+              isCurrentlyLoading
               onStopGeneration={stopGeneration}
             />
           )}

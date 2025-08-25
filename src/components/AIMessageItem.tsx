@@ -1,7 +1,7 @@
 import { memo, useState } from 'react';
 import { Streamdown } from 'streamdown';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Bot, User, Square, Wrench, ChevronDown, ChevronRight } from 'lucide-react';
+import { Bot, User, Square, Wrench, Eye, FileText, Edit, Package, PackageMinus, GitCommit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AIMessage } from '@/hooks/useAIChat';
 import { cn } from '@/lib/utils';
@@ -77,7 +77,7 @@ export const AIMessageItem = memo(({
     return '';
   };
 
-  // Get tool name and description from tool call data
+  // Get tool info including icon and title
   const getToolInfo = () => {
     if (message.role === 'tool' && toolCall) {
       if (toolCall.type === 'function') {
@@ -90,44 +90,46 @@ export const AIMessageItem = memo(({
           args = {};
         }
 
-        // Generate nice titles based on tool name and arguments
+        // Generate icons and titles based on tool name and arguments
         switch (toolName) {
-          case 'text_editor_view':
-            return {
-              title: args.path ? `View ${args.path}` : 'View File',
-              subtitle: args.start_line || args.end_line ?
-                `Lines ${args.start_line || 1}-${args.end_line || 'end'}` :
-                'Full file'
-            };
+          case 'text_editor_view': {
+            const title = args.path
+              ? (args.start_line || args.end_line
+                  ? `Viewed ${args.path} (lines ${args.start_line || 1}-${args.end_line || 'end'})`
+                  : `Viewed ${args.path}`)
+              : 'Viewed File';
+            return { icon: Eye, title };
+          }
           case 'text_editor_write':
             return {
-              title: args.path ? `Write ${args.path}` : 'Write File',
-              subtitle: 'Create or overwrite file'
+              icon: FileText,
+              title: args.path ? `Wrote ${args.path}` : 'Wrote File'
             };
           case 'text_editor_str_replace':
             return {
-              title: args.path ? `Edit ${args.path}` : 'Edit File',
-              subtitle: 'Replace text'
+              icon: Edit,
+              title: args.path ? `Edited ${args.path}` : 'Edited File'
             };
-          case 'npm_add_package':
-            return {
-              title: args.name ? `Install ${args.name}` : 'Install Package',
-              subtitle: args.dev ? 'Dev dependency' : 'Dependency'
-            };
+          case 'npm_add_package': {
+            const installTitle = args.name
+              ? (args.dev ? `Installed ${args.name} (dev)` : `Installed ${args.name}`)
+              : 'Installed Package';
+            return { icon: Package, title: installTitle };
+          }
           case 'npm_remove_package':
             return {
-              title: args.name ? `Remove ${args.name}` : 'Remove Package',
-              subtitle: 'Uninstall package'
+              icon: PackageMinus,
+              title: args.name ? `Removed ${args.name}` : 'Removed Package'
             };
           case 'git_commit':
             return {
-              title: 'Git Commit',
-              subtitle: args.message || 'Commit changes'
+              icon: GitCommit,
+              title: args.message ? `Committed: ${args.message}` : 'Committed Changes'
             };
           default:
             return {
-              title: toolName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-              subtitle: 'Tool execution'
+              icon: Wrench,
+              title: toolName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
             };
         }
       }
@@ -141,54 +143,36 @@ export const AIMessageItem = memo(({
 
       if (firstLine && firstLine.length < 100) {
         return {
-          title: firstLine.replace(/^(Error |Tool |Executing |Result: )/i, '').trim(),
-          subtitle: 'Tool result'
+          icon: Wrench,
+          title: firstLine.replace(/^(Error |Tool |Executing |Result: )/i, '').trim()
         };
       }
 
-      return {
-        title: 'Tool Result',
-        subtitle: 'Execution result'
-      };
+      return { icon: Wrench, title: 'Tool Result' };
     }
 
-    return {
-      title: 'Tool',
-      subtitle: ''
-    };
+    return { icon: Wrench, title: 'Tool' };
   };
 
   // Special rendering for tool messages
   if (message.role === 'tool') {
     const content = getContent();
     const toolInfo = getToolInfo();
+    const IconComponent = toolInfo.icon;
 
     return (
       <div className="ml-11 -mt-2"> {/* ml-11 to align with assistant message content, -mt-2 to make it snug */}
         <button
           onClick={() => setIsToolExpanded(!isToolExpanded)}
           className={cn(
-            "w-full flex items-center gap-2 px-3 py-1.5 text-xs",
-            "bg-muted/50 hover:bg-muted/70 rounded border",
-            "transition-colors duration-200"
+            "w-full flex items-center gap-2 px-2 py-1 text-xs",
+            "hover:bg-muted/30 rounded transition-colors duration-200"
           )}
         >
-          {isToolExpanded ? (
-            <ChevronDown className="h-3 w-3 text-muted-foreground" />
-          ) : (
-            <ChevronRight className="h-3 w-3 text-muted-foreground" />
-          )}
-          <Wrench className="h-3 w-3 text-muted-foreground" />
-          <div className="flex flex-col items-start min-w-0 flex-1">
-            <span className="text-muted-foreground font-medium truncate">
-              {toolInfo.title}
-            </span>
-            {toolInfo.subtitle && (
-              <span className="text-muted-foreground/70 text-xs truncate">
-                {toolInfo.subtitle}
-              </span>
-            )}
-          </div>
+          <IconComponent className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+          <span className="text-muted-foreground font-medium truncate flex-1 text-left">
+            {toolInfo.title}
+          </span>
         </button>
 
         {isToolExpanded && (

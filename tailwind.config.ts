@@ -9,6 +9,7 @@ export default {
 		"./components/**/*.{ts,tsx}",
 		"./app/**/*.{ts,tsx}",
 		"./src/**/*.{ts,tsx}",
+		"./node_modules/streamdown/dist/index.js",
 	],
 	prefix: "",
 	theme: {

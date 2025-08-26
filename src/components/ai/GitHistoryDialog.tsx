@@ -28,13 +28,19 @@ interface GitCommit {
 
 interface GitHistoryDialogProps {
   projectId: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function GitHistoryDialog({ projectId }: GitHistoryDialogProps) {
+export function GitHistoryDialog({ projectId, open: controlledOpen, onOpenChange }: GitHistoryDialogProps) {
   const [commits, setCommits] = useState<GitCommit[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isOpen, setIsOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+
+  // Use controlled or internal state
+  const isOpen = controlledOpen !== undefined ? controlledOpen : internalOpen;
+  const setIsOpen = onOpenChange || setInternalOpen;
   const [isRollingBack, setIsRollingBack] = useState<string | null>(null);
   const [expandedCommits, setExpandedCommits] = useState<Set<string>>(new Set());
   const { fs } = useFS();
@@ -280,16 +286,19 @@ ${commitsToRevert.map(c => {
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        <Button
-          variant="outline"
-          size="sm"
-          className="gap-1 sm:gap-2 hover:bg-secondary/10 hover:border-secondary/20"
-        >
-          <History className="h-4 w-4" />
-          <span className="hidden sm:inline">History</span>
-        </Button>
-      </DialogTrigger>
+      {/* Only show trigger if not controlled externally */}
+      {controlledOpen === undefined && (
+        <DialogTrigger asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1 sm:gap-2 hover:bg-secondary/10 hover:border-secondary/20"
+          >
+            <History className="h-4 w-4" />
+            <span className="hidden sm:inline">History</span>
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="max-w-4xl max-h-[80vh]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">

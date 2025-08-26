@@ -39,8 +39,8 @@ export function ChatPane({ projectId, projectName }: ChatPaneProps) {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const { isConfigured, settings, addRecentlyUsedModel } = useAISettings();
   const [providerModel, setProviderModel] = useState(() => {
-    // Default to first recently used model or fallback
-    return settings.recentlyUsedModels?.[0] || 'openrouter/anthropic/claude-sonnet-4';
+    // Initialize with first recently used model if available, otherwise empty
+    return settings.recentlyUsedModels?.[0] || '';
   });
   const { fs: browserFS } = useFS();
   const { runtime } = useJSRuntime();
@@ -117,7 +117,7 @@ When creating new components or pages, follow the existing patterns in the codeb
   useEffect(() => {
     const autostart = searchParams.get('autostart');
 
-    if (autostart === 'true' && isConfigured && messages.length > 0 && !isLoading) {
+    if (autostart === 'true' && isConfigured && messages.length > 0 && !isLoading && providerModel.trim()) {
       const lastMessage = messages[messages.length - 1];
 
       // If the last message is from the user, auto-start the AI
@@ -128,10 +128,8 @@ When creating new components or pages, follow the existing patterns in the codeb
         setSearchParams(newSearchParams, { replace: true });
 
         // Start AI generation
-        const modelToUse = providerModel.trim() || undefined;
-        if (modelToUse) {
-          addRecentlyUsedModel(modelToUse);
-        }
+        const modelToUse = providerModel.trim();
+        addRecentlyUsedModel(modelToUse);
         startGeneration(modelToUse);
       }
     }
@@ -251,16 +249,14 @@ BASE_DOMAIN=nostrdeploy.com`);
   }, [messages, streamingMessage, isLoading]);
 
   const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+    if (!input.trim() || isLoading || !providerModel.trim()) return;
 
     const messageContent = input;
-    const modelToUse = providerModel.trim() || undefined;
+    const modelToUse = providerModel.trim();
     setInput('');
 
     // Add model to recently used when sending a message
-    if (modelToUse) {
-      addRecentlyUsedModel(modelToUse);
-    }
+    addRecentlyUsedModel(modelToUse);
 
     try {
       await sendMessage(messageContent, modelToUse);
@@ -460,9 +456,9 @@ BASE_DOMAIN=nostrdeploy.com`);
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             onFocus={handleFirstInteraction}
-            placeholder="Ask me to add features, edit files, or build your project..."
+            placeholder={providerModel.trim() ? "Ask me to add features, edit files, or build your project..." : "Please select a model to start chatting..."}
             className="min-h-[52px] max-h-32 resize-none border-0 bg-transparent px-4 py-3 pb-12 text-sm focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground"
-            disabled={isLoading}
+            disabled={isLoading || !providerModel.trim()}
             rows={1}
             style={{
               height: 'auto',
@@ -484,7 +480,7 @@ BASE_DOMAIN=nostrdeploy.com`);
                 onChange={setProviderModel}
                 className="w-full"
                 disabled={isLoading}
-                placeholder="provider/model (e.g., openrouter/anthropic/claude-sonnet-4)"
+                placeholder="Choose a model..."
               />
             </div>
 
@@ -503,7 +499,7 @@ BASE_DOMAIN=nostrdeploy.com`);
                 <Button
                   onClick={handleSend}
                   onMouseDown={handleFirstInteraction}
-                  disabled={!input.trim()}
+                  disabled={!input.trim() || !providerModel.trim()}
                   size="sm"
                   className="h-8 w-8 rounded-lg p-0"
                 >

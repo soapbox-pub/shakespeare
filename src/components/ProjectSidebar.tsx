@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { Plus, Loader2, Info, MoreVertical, Trash2, Eye, Star, Bug, Folder, Download, GitBranch } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Label } from '@/components/ui/label';
 
 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -284,61 +283,52 @@ export function ProjectSidebar({
     <div className={cn("flex flex-col h-full bg-gradient-to-b from-sidebar to-sidebar/95", className)}>
       {/* Header with Logo */}
       <div className="p-4 border-b border-sidebar-border bg-gradient-to-r from-primary/10 via-accent/5 to-primary/10">
-        <button
-          onClick={() => navigate('/')}
-          className="flex items-center gap-3 hover:opacity-80 transition-opacity w-full text-left"
-        >
-          <span className="text-2xl">🎭</span>
-          <h1 className="text-xl font-semibold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-            Shakespeare
-          </h1>
-        </button>
-      </div>
-
-      {/* Info Section */}
-      <div className="p-4 border-b border-sidebar-border bg-gradient-to-r from-primary/5 to-accent/5">
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <Label className="text-xs font-medium text-primary/80 uppercase tracking-wide">
-              Projects
-            </Label>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-4 w-4 p-0 hover:bg-primary/10">
-                  <MoreVertical className="h-3 w-3 text-primary/60 hover:text-primary" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem
-                  onClick={() => navigate('/clone')}
-                  className="flex items-center gap-2 w-full"
-                >
-                  <GitBranch className="h-4 w-4" />
-                  Import Repository
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={handleExportFiles}
-                  disabled={isExporting}
-                  className="flex items-center gap-2 w-full"
-                >
-                  <Download className="h-4 w-4" />
-                  {isExporting ? 'Exporting...' : 'Export Files'}
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <a href="https://soapbox.pub/mkstack" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 w-full">
-                    <Info className="h-4 w-4" />
-                    About MKStack
-                  </a>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <a href="https://github.com/soapbox-pub/mkstack/issues" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 w-full">
-                    <Bug className="h-4 w-4" />
-                    Report an Issue
-                  </a>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => navigate('/')}
+            className="flex items-center gap-3 hover:opacity-80 transition-opacity text-left"
+          >
+            <span className="text-2xl">🎭</span>
+            <h1 className="text-xl font-semibold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+              Shakespeare
+            </h1>
+          </button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-primary/10">
+                <MoreVertical className="h-4 w-4 text-primary/60 hover:text-primary" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem
+                onClick={() => navigate('/clone')}
+                className="flex items-center gap-2 w-full"
+              >
+                <GitBranch className="h-4 w-4" />
+                Import Repository
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={handleExportFiles}
+                disabled={isExporting}
+                className="flex items-center gap-2 w-full"
+              >
+                <Download className="h-4 w-4" />
+                {isExporting ? 'Exporting...' : 'Export Files'}
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <a href="https://soapbox.pub/mkstack" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 w-full">
+                  <Info className="h-4 w-4" />
+                  About MKStack
+                </a>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <a href="https://github.com/soapbox-pub/mkstack/issues" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 w-full">
+                  <Bug className="h-4 w-4" />
+                  Report an Issue
+                </a>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 

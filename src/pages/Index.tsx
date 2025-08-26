@@ -152,7 +152,7 @@ export default function Index() {
             <div className="relative rounded-2xl border border-input bg-background shadow-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 transition-all">
               <Textarea
                 placeholder={
-                  isAIConfigured && !providerModel.trim()
+                  !providerModel.trim()
                     ? "Please select a model below, then describe what you'd like to build..."
                     : "e.g., Create a farming equipment marketplace for local farmers to buy and sell tractors, tools, and supplies..."
                 }
@@ -175,18 +175,16 @@ export default function Index() {
 
               {/* Bottom Controls Row */}
               <div className="absolute bottom-3 left-3 right-3 flex items-center justify-end gap-2">
-                {/* Model Selector - only show if AI is configured */}
-                {isAIConfigured && (
-                  <div className="w-64">
-                    <ModelSelector
-                      value={providerModel}
-                      onChange={setProviderModel}
-                      className="w-full"
-                      disabled={isCreating || isGeneratingId}
-                      placeholder="Choose a model..."
-                    />
-                  </div>
-                )}
+                {/* Model Selector - always show to allow configuration */}
+                <div className="w-64">
+                  <ModelSelector
+                    value={providerModel}
+                    onChange={setProviderModel}
+                    className="w-full"
+                    disabled={isCreating || isGeneratingId}
+                    placeholder="Choose a model..."
+                  />
+                </div>
 
                 {/* Create Project Button */}
                 <Button

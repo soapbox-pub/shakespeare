@@ -129,8 +129,27 @@ export function ModelSelector({
       <PopoverContent className="w-80 p-0" align="end">
         <Command>
           <CommandInput placeholder="Search models..." className="h-9" />
-          <CommandList>
-            <CommandEmpty>No models found.</CommandEmpty>
+          <CommandList className="max-h-[300px]">
+            {/* Custom model option - always visible at the top */}
+            <CommandGroup>
+              <CommandItem
+                value="__custom_model_option__"
+                onSelect={() => handleSelect('__custom__')}
+                className="cursor-pointer"
+              >
+                <Edit3 className="mr-2 h-4 w-4" />
+                Enter custom model...
+              </CommandItem>
+            </CommandGroup>
+
+            <CommandSeparator />
+
+            <CommandEmpty>
+              <div className="py-6 text-center text-sm text-muted-foreground">
+                <p>No models found.</p>
+                <p className="mt-2 text-xs">Try using a custom model instead.</p>
+              </div>
+            </CommandEmpty>
 
             {recentlyUsedModels.length > 0 && (
               <CommandGroup heading="Recently Used">
@@ -215,19 +234,6 @@ export function ModelSelector({
                 </CommandGroup>
               </div>
             ))}
-
-            {!isLoading && <CommandSeparator />}
-
-            <CommandGroup>
-              <CommandItem
-                value="__custom__"
-                onSelect={() => handleSelect('__custom__')}
-                className="cursor-pointer"
-              >
-                <Edit3 className="mr-2 h-4 w-4" />
-                Enter custom model...
-              </CommandItem>
-            </CommandGroup>
           </CommandList>
         </Command>
       </PopoverContent>

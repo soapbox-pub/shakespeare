@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Check, ChevronDown, Edit3, RefreshCw, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -44,12 +44,8 @@ export function ModelSelector({
     return groups;
   }, [models]);
 
-  // Initialize with first recently used model if value is empty
-  useEffect(() => {
-    if (!value && recentlyUsedModels.length > 0) {
-      onChange(recentlyUsedModels[0]);
-    }
-  }, [value, recentlyUsedModels, onChange]);
+  // Don't auto-initialize with recently used models
+  // Let the parent component handle initialization
 
   const handleSelect = (selectedValue: string) => {
     if (selectedValue === '__custom__') {

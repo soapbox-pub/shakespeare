@@ -9,8 +9,15 @@ import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/componen
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, MessageSquare, Eye, Code, Menu, Columns2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { AISettingsDialog } from '@/components/ai/AISettingsDialog';
+import { ActionsMenu } from '@/components/ActionsMenu';
 import { useIsMobile } from '@/hooks/useIsMobile';
+import { useFS } from '@/hooks/useFS';
+import { useJSRuntime } from '@/hooks/useJSRuntime';
+import { useKeepAlive } from '@/hooks/useKeepAlive';
+import { generateSecretKey, getPublicKey, nip19 } from 'nostr-tools';
+import { bytesToHex } from 'nostr-tools/utils';
+import { buildProject } from "@/lib/build";
+import { copyDirectory } from '@/lib/copyFiles';
 
 export function ProjectView() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -18,15 +25,34 @@ export function ProjectView() {
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'preview' | 'code'>('preview');
   const [mobileView, setMobileView] = useState<'chat' | 'preview' | 'code'>('chat');
+  const [isBuildLoading, setIsBuildLoading] = useState(false);
+  const [isDeployLoading, setIsDeployLoading] = useState(false);
+  const [isAILoading, setIsAILoading] = useState(false);
   const projectsManager = useProjectsManager();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { fs: browserFS } = useFS();
+  const { runtime } = useJSRuntime();
   const [isSidebarVisible, setIsSidebarVisible] = useState(() => {
     // Check if we're on mobile immediately to set correct initial state
     if (typeof window !== 'undefined') {
       return window.innerWidth >= 768; // Desktop starts open, mobile starts closed
     }
     return false; // Default to closed for SSR
+  });
+
+  // Keep-alive functionality to prevent tab throttling during AI processing
+  const { updateMetadata } = useKeepAlive({
+    enabled: isAILoading || isBuildLoading || isDeployLoading,
+    title: 'Shakespeare',
+    artist: project ? `Working on ${project.name}...` : 'Working...',
+    artwork: [
+      {
+        src: '/favicon.png',
+        sizes: '512x512',
+        type: 'image/png'
+      }
+    ]
   });
 
   const loadProject = useCallback(async () => {
@@ -45,6 +71,111 @@ export function ProjectView() {
   useEffect(() => {
     loadProject();
   }, [loadProject]);
+
+  const runBuild = async () => {
+    if (isBuildLoading || !project || !browserFS) return;
+
+    setIsBuildLoading(true);
+    updateMetadata('Shakespeare', `Building ${project.name}...`);
+
+    try {
+      const dist = await buildProject({
+        fs: browserFS,
+        projectPath: `/projects/${project.id}`,
+        domParser: new DOMParser(),
+        target: "esnext",
+      });
+
+      console.log(dist);
+
+      // Delete all existing files in "dist" directory
+      try {
+        for (const file of await browserFS.readdir(`/projects/${project.id}/dist`)) {
+          await browserFS.unlink(`/projects/${project.id}/dist/${file}`);
+        }
+      } catch {
+        // Ignore errors (e.g., directory doesn't exist)
+      }
+
+      await browserFS.mkdir(`/projects/${project.id}/dist`, { recursive: true });
+
+      for (const [path, contents] of Object.entries(dist)) {
+        await browserFS.writeFile(`/projects/${project.id}/dist/${path}`, contents);
+      }
+    } catch (error) {
+      console.error('Build failed:', error);
+    } finally {
+      setIsBuildLoading(false);
+    }
+  };
+
+  const runDeploy = async () => {
+    if (isDeployLoading || !project || !browserFS || !runtime) return;
+
+    setIsDeployLoading(true);
+    updateMetadata('Shakespeare', `Deploying ${project.name}...`);
+
+    try {
+      const runtimeFS = await runtime.fs();
+
+      const sk = generateSecretKey();
+      const pubkey = getPublicKey(sk);
+      const npub = nip19.npubEncode(pubkey);
+
+      const projectUrl = `https://${npub}.nostrdeploy.com`;
+      console.log('Running deploy for project:', project.id, 'at', projectUrl);
+
+      await runtimeFS.mkdir('dist', { recursive: true });
+
+      await runtimeFS.writeFile('.env.nostr-deploy.local', `# Nostr Deploy CLI Configuration
+# This file contains sensitive information - do not commit to version control
+
+# Nostr Authentication
+NOSTR_PRIVATE_KEY=${bytesToHex(sk)}
+NOSTR_PUBLIC_KEY=${pubkey}
+NOSTR_RELAYS=wss://relay.nostr.band,wss://nostrue.com,wss://purplerelay.com,wss://relay.primal.net,wss://ditto.pub/relay
+
+# Blossom File Storage
+BLOSSOM_SERVERS=https://cdn.hzrd149.com,https://blossom.primal.net,https://blossom.band,https://blossom.f7z.io
+
+# Deployment Settings
+BASE_DOMAIN=nostrdeploy.com`);
+
+      // Copy "dist" files to runtime filesystem
+      const distPath = `/projects/${project.id}/dist`;
+      try {
+        await copyDirectory(browserFS, runtimeFS, distPath, 'dist');
+        console.log('Successfully copied dist to runtime');
+      } catch (error) {
+        console.error('Failed to copy dist to runtime:', error);
+        return;
+      }
+
+      const proc = await runtime.spawn('npx', ["-y", "nostr-deploy-cli", "deploy"]);
+      await proc.exit;
+
+      console.log('Project deployed:', projectUrl);
+    } catch (error) {
+      console.error('Deploy failed:', error);
+    } finally {
+      setIsDeployLoading(false);
+    }
+  };
+
+  const handleNewChat = () => {
+    // This will be handled by the ChatPane's internal logic
+    console.log('New chat requested');
+  };
+
+  const handleAILoadingChange = (loading: boolean) => {
+    setIsAILoading(loading);
+  };
+
+  // Handle first user interaction to enable audio context
+  const handleFirstInteraction = () => {
+    // This will be handled automatically by the useKeepAlive hook
+    // when isAILoading becomes true after user interaction
+  };
 
   if (isLoading) {
     return (
@@ -85,7 +216,16 @@ export function ProjectView() {
             </div>
           </div>
 
-          <AISettingsDialog />
+          <ActionsMenu
+            projectId={project.id}
+            onNewChat={handleNewChat}
+            onBuild={runBuild}
+            onDeploy={runDeploy}
+            isLoading={isAILoading}
+            isBuildLoading={isBuildLoading}
+            isDeployLoading={isDeployLoading}
+            onFirstInteraction={handleFirstInteraction}
+          />
         </header>
 
         {/* Mobile Sidebar Overlay */}
@@ -117,7 +257,18 @@ export function ProjectView() {
 
         <div className="flex-1 overflow-hidden">
           {mobileView === 'chat' && (
-            <ChatPane projectId={project.id} projectName={project.name} />
+            <ChatPane
+              projectId={project.id}
+              projectName={project.name}
+              onNewChat={handleNewChat}
+              onBuild={runBuild}
+              onDeploy={runDeploy}
+              onFirstInteraction={handleFirstInteraction}
+              onLoadingChange={handleAILoadingChange}
+              isLoading={isAILoading}
+              isBuildLoading={isBuildLoading}
+              isDeployLoading={isDeployLoading}
+            />
           )}
           {(mobileView === 'preview' || mobileView === 'code') && (
             <PreviewPane
@@ -212,16 +363,36 @@ export function ProjectView() {
                       </div>
                     </div>
 
-                    {/* Right side - AI Settings */}
+                    {/* Right side - Actions Menu */}
                     <div className="flex items-center gap-2">
-                      <AISettingsDialog />
+                      <ActionsMenu
+                        projectId={project.id}
+                        onNewChat={handleNewChat}
+                        onBuild={runBuild}
+                        onDeploy={runDeploy}
+                        isLoading={isAILoading}
+                        isBuildLoading={isBuildLoading}
+                        isDeployLoading={isDeployLoading}
+                        onFirstInteraction={handleFirstInteraction}
+                      />
                     </div>
                   </div>
                 </div>
 
                 {/* Chat Content */}
                 <div className="flex-1 overflow-hidden">
-                  <ChatPane projectId={project.id} projectName={project.name} />
+                  <ChatPane
+                    projectId={project.id}
+                    projectName={project.name}
+                    onNewChat={handleNewChat}
+                    onBuild={runBuild}
+                    onDeploy={runDeploy}
+                    onFirstInteraction={handleFirstInteraction}
+                    onLoadingChange={handleAILoadingChange}
+                    isLoading={isAILoading}
+                    isBuildLoading={isBuildLoading}
+                    isDeployLoading={isDeployLoading}
+                  />
                 </div>
               </div>
             </ResizablePanel>

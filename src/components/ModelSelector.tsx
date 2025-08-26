@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Check, ChevronDown, Edit3, RefreshCw, AlertCircle } from 'lucide-react';
+import { Check, ChevronDown, Edit3, RefreshCw, AlertCircle, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -8,6 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useAISettings } from '@/hooks/useAISettings';
 import { useProviderModels } from '@/hooks/useProviderModels';
 import { cn } from '@/lib/utils';
+import { AISettingsDialog } from '@/components/ai/AISettingsDialog';
 
 interface ModelSelectorProps {
   value: string;
@@ -27,6 +28,7 @@ export function ModelSelector({
   const [open, setOpen] = useState(false);
   const [isCustomInput, setIsCustomInput] = useState(false);
   const [customValue, setCustomValue] = useState('');
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const { settings, addRecentlyUsedModel } = useAISettings();
   const { models, isLoading, error, refetch } = useProviderModels();
 
@@ -51,6 +53,12 @@ export function ModelSelector({
     if (selectedValue === '__custom__') {
       setIsCustomInput(true);
       setCustomValue(value);
+      setOpen(false);
+      return;
+    }
+
+    if (selectedValue === '__manage_providers__') {
+      setSettingsOpen(true);
       setOpen(false);
       return;
     }
@@ -104,29 +112,34 @@ export function ModelSelector({
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="ghost"
-          role="combobox"
-          aria-expanded={open}
-          className={cn(
-            "h-8 justify-between text-xs border-0 bg-transparent hover:bg-transparent hover:text-foreground focus-visible:ring-0 focus-visible:ring-offset-0 text-muted-foreground text-right",
-            className
-          )}
-          disabled={disabled}
-        >
-          <span className="w-full truncate">
-            {value || placeholder}
-          </span>
-          <ChevronDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
-        </Button>
-      </PopoverTrigger>
+    <>
+      <AISettingsDialog
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+      />
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="ghost"
+            role="combobox"
+            aria-expanded={open}
+            className={cn(
+              "h-8 justify-between text-xs border-0 bg-transparent hover:bg-transparent hover:text-foreground focus-visible:ring-0 focus-visible:ring-offset-0 text-muted-foreground text-right",
+              className
+            )}
+            disabled={disabled}
+          >
+            <span className="w-full truncate">
+              {value || placeholder}
+            </span>
+            <ChevronDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
+          </Button>
+        </PopoverTrigger>
       <PopoverContent className="w-80 p-0" align="end">
         <Command>
           <CommandInput placeholder="Search models..." className="h-9" />
           <CommandList className="max-h-[300px]">
-            {/* Custom model option - always visible at the top */}
+            {/* Custom model option and manage providers - always visible at the top */}
             <CommandGroup>
               <CommandItem
                 value="__custom_model_option__"
@@ -135,6 +148,14 @@ export function ModelSelector({
               >
                 <Edit3 className="mr-2 h-4 w-4" />
                 Enter custom model...
+              </CommandItem>
+              <CommandItem
+                value="__manage_providers_option__"
+                onSelect={() => handleSelect('__manage_providers__')}
+                className="cursor-pointer"
+              >
+                <Settings className="mr-2 h-4 w-4" />
+                Manage providers...
               </CommandItem>
             </CommandGroup>
 
@@ -234,5 +255,6 @@ export function ModelSelector({
         </Command>
       </PopoverContent>
     </Popover>
+    </>
   );
 }

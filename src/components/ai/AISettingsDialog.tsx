@@ -57,9 +57,18 @@ const PRESET_PROVIDERS: PresetProvider[] = [
   }
 ];
 
-export function AISettingsDialog() {
+interface AISettingsDialogProps {
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}
+
+export function AISettingsDialog({ open: controlledOpen, onOpenChange }: AISettingsDialogProps = {}) {
   const { settings, updateSettings, isConfigured } = useAISettings();
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+
+  // Use controlled or internal state
+  const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
+  const setOpen = onOpenChange || setInternalOpen;
   const [localProviders, setLocalProviders] = useState(settings.providers);
   const [customProviderName, setCustomProviderName] = useState('');
   const [customBaseURL, setCustomBaseURL] = useState('');
@@ -126,15 +135,18 @@ export function AISettingsDialog() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="ghost" size="sm" className="gap-2">
-          <Settings className="h-4 w-4" />
-          AI Settings
-          {!isConfigured && (
-            <span className="ml-1 h-2 w-2 rounded-full bg-red-500" />
-          )}
-        </Button>
-      </DialogTrigger>
+      {/* Only show trigger if not controlled externally */}
+      {controlledOpen === undefined && (
+        <DialogTrigger asChild>
+          <Button variant="ghost" size="sm" className="gap-2">
+            <Settings className="h-4 w-4" />
+            AI Settings
+            {!isConfigured && (
+              <span className="ml-1 h-2 w-2 rounded-full bg-red-500" />
+            )}
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>AI Settings</DialogTitle>

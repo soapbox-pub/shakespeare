@@ -165,7 +165,6 @@ export function AISettingsDialog({ open: controlledOpen, onOpenChange }: AISetti
                   const preset = PRESET_PROVIDERS.find(p => p.id === providerId);
                   const provider = localProviders[providerId];
                   const isCustom = !preset;
-                  const hasApiKey = provider?.apiKey && provider.apiKey.length > 0;
 
                   return (
                     <AccordionItem key={providerId} value={providerId} className="border rounded-lg">
@@ -176,11 +175,6 @@ export function AISettingsDialog({ open: controlledOpen, onOpenChange }: AISetti
                               {preset?.name || providerId}
                             </span>
                             {isCustom && <Badge variant="outline">Custom</Badge>}
-                            {hasApiKey && (
-                              <Badge variant="secondary" className="text-xs">
-                                Configured
-                              </Badge>
-                            )}
                           </div>
                           <Button
                             variant="ghost"

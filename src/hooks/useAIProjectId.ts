@@ -25,7 +25,7 @@ export function useAIProjectId({ onError }: UseAIProjectIdOptions = {}) {
       // Use first available provider as fallback
       const providers = settings.providers || {};
       const firstProvider = Object.keys(providers)[0];
-      if (!firstProvider || !providers[firstProvider]?.apiKey) {
+      if (!firstProvider) {
         throw new Error('No configured AI providers available');
       }
 

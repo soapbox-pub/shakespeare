@@ -6,12 +6,14 @@ import { useFS } from '@/hooks/useFS';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useIsMobile } from '@/hooks/useIsMobile';
+import { useAISettings } from '@/hooks/useAISettings';
 import { AppLayout } from '@/components/AppLayout';
 import { DotAI } from '@/lib/DotAI';
 import type { AIMessage } from '@/hooks/useAIChat';
 
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { ModelSelector } from '@/components/ModelSelector';
 import { Plus } from 'lucide-react';
 import { useSeoMeta } from '@unhead/react';
 
@@ -24,6 +26,11 @@ export default function Index() {
   const { fs } = useFS();
   const { user: _user } = useCurrentUser();
   const { generateProjectId, isLoading: isGeneratingId, isConfigured: isAIConfigured } = useAIProjectId();
+  const { settings, addRecentlyUsedModel } = useAISettings();
+  const [providerModel, setProviderModel] = useState(() => {
+    // Initialize with first recently used model if available, otherwise empty
+    return settings.recentlyUsedModels?.[0] || '';
+  });
   const isMobile = useIsMobile();
 
   useSeoMeta({
@@ -78,7 +85,10 @@ export default function Index() {
     try {
       let projectId: string;
 
-      if (isAIConfigured) {
+      if (isAIConfigured && providerModel.trim()) {
+        // Add model to recently used when creating project with AI
+        addRecentlyUsedModel(providerModel.trim());
+
         // Use AI to generate project ID
         try {
           projectId = await generateProjectId(prompt.trim());
@@ -90,7 +100,7 @@ export default function Index() {
           return;
         }
       } else {
-        // Fallback to manual project creation if AI not configured
+        // Fallback to manual project creation if AI not configured or no model selected
         const project = await projectsManager.createProject(prompt.trim());
         navigate(`/project/${project.id}`);
         return;
@@ -108,8 +118,12 @@ export default function Index() {
       };
       await dotAI.setHistory(sessionName, [initialMessage]);
 
-      // Navigate to the project with autostart parameter
-      navigate(`/project/${project.id}?autostart=true`);
+      // Navigate to the project with autostart parameter and model
+      const searchParams = new URLSearchParams({
+        autostart: 'true',
+        ...(providerModel.trim() && { model: providerModel.trim() })
+      });
+      navigate(`/project/${project.id}?${searchParams.toString()}`);
     } catch (error) {
       console.error('Failed to create project:', error);
     } finally {
@@ -137,7 +151,11 @@ export default function Index() {
             {/* Chat Input Container - matching the ChatPane style */}
             <div className="relative rounded-2xl border border-input bg-background shadow-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 transition-all">
               <Textarea
-                placeholder="e.g., Create a farming equipment marketplace for local farmers to buy and sell tractors, tools, and supplies..."
+                placeholder={
+                  isAIConfigured && !providerModel.trim()
+                    ? "Please select a model below, then describe what you'd like to build..."
+                    : "e.g., Create a farming equipment marketplace for local farmers to buy and sell tractors, tools, and supplies..."
+                }
                 value={prompt}
                 onChange={handlePromptChange}
                 onKeyDown={handleKeyDown}
@@ -156,10 +174,29 @@ export default function Index() {
               />
 
               {/* Bottom Controls Row */}
-              <div className="absolute bottom-3 right-3">
+              <div className="absolute bottom-3 left-3 right-3 flex items-center justify-end gap-2">
+                {/* Model Selector - only show if AI is configured */}
+                {isAIConfigured && (
+                  <div className="w-64">
+                    <ModelSelector
+                      value={providerModel}
+                      onChange={setProviderModel}
+                      className="w-full"
+                      disabled={isCreating || isGeneratingId}
+                      placeholder="Choose a model..."
+                    />
+                  </div>
+                )}
+
+                {/* Create Project Button */}
                 <Button
                   onClick={handleCreateProject}
-                  disabled={!prompt.trim() || isCreating || isGeneratingId}
+                  disabled={
+                    !prompt.trim() ||
+                    isCreating ||
+                    isGeneratingId ||
+                    (isAIConfigured && !providerModel.trim())
+                  }
                   size="sm"
                   className="h-8 rounded-lg"
                 >

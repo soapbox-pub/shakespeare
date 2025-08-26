@@ -115,12 +115,12 @@ export function ModelSelector({
           role="combobox"
           aria-expanded={open}
           className={cn(
-            "h-8 justify-between text-xs border-0 bg-transparent hover:bg-muted/50 hover:text-foreground focus-visible:ring-0 focus-visible:ring-offset-0 text-muted-foreground",
+            "h-8 justify-between text-xs border-0 bg-transparent hover:bg-transparent hover:text-foreground focus-visible:ring-0 focus-visible:ring-offset-0 text-muted-foreground text-right",
             className
           )}
           disabled={disabled}
         >
-          <span className="truncate">
+          <span className="w-full truncate">
             {value || placeholder}
           </span>
           <ChevronDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
@@ -228,7 +228,7 @@ export function ModelSelector({
                           value === model.fullId ? "opacity-100" : "opacity-0"
                         )}
                       />
-                      <span className="truncate">{model.name}</span>
+                      <span className="truncate">{model.fullId}</span>
                     </CommandItem>
                   ))}
                 </CommandGroup>

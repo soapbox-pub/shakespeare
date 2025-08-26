@@ -1,10 +1,12 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Check, ChevronDown, Edit3 } from 'lucide-react';
+import { Check, ChevronDown, Edit3, RefreshCw, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from '@/components/ui/command';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useAISettings } from '@/hooks/useAISettings';
+import { useProviderModels } from '@/hooks/useProviderModels';
 import { cn } from '@/lib/utils';
 
 interface ModelSelectorProps {
@@ -26,8 +28,21 @@ export function ModelSelector({
   const [isCustomInput, setIsCustomInput] = useState(false);
   const [customValue, setCustomValue] = useState('');
   const { settings, addRecentlyUsedModel } = useAISettings();
+  const { models, isLoading, error, refetch } = useProviderModels();
 
   const recentlyUsedModels = useMemo(() => settings.recentlyUsedModels || [], [settings.recentlyUsedModels]);
+
+  // Group models by provider
+  const modelsByProvider = useMemo(() => {
+    const groups: Record<string, typeof models> = {};
+    for (const model of models) {
+      if (!groups[model.provider]) {
+        groups[model.provider] = [];
+      }
+      groups[model.provider].push(model);
+    }
+    return groups;
+  }, [models]);
 
   // Initialize with first recently used model if value is empty
   useEffect(() => {
@@ -139,6 +154,69 @@ export function ModelSelector({
             )}
 
             {recentlyUsedModels.length > 0 && <CommandSeparator />}
+
+            {/* Loading state */}
+            {isLoading && (
+              <CommandGroup heading="Loading Models...">
+                <div className="px-2 py-1.5">
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-4 w-1/2" />
+                  </div>
+                </div>
+              </CommandGroup>
+            )}
+
+            {/* Error state */}
+            {error && !isLoading && (
+              <CommandGroup heading="Error Loading Models">
+                <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="h-4 w-4 text-destructive flex-shrink-0 mt-0.5" />
+                    <div className="space-y-2">
+                      <p className="text-destructive">{error}</p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={refetch}
+                        className="h-7 text-xs"
+                      >
+                        <RefreshCw className="h-3 w-3 mr-1" />
+                        Retry
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </CommandGroup>
+            )}
+
+            {/* Provider models */}
+            {!isLoading && Object.entries(modelsByProvider).map(([provider, providerModels]) => (
+              <div key={provider}>
+                <CommandSeparator />
+                <CommandGroup heading={provider.charAt(0).toUpperCase() + provider.slice(1)}>
+                  {providerModels.map((model) => (
+                    <CommandItem
+                      key={model.fullId}
+                      value={model.fullId}
+                      onSelect={() => handleSelect(model.fullId)}
+                      className="cursor-pointer"
+                    >
+                      <Check
+                        className={cn(
+                          "mr-2 h-4 w-4",
+                          value === model.fullId ? "opacity-100" : "opacity-0"
+                        )}
+                      />
+                      <span className="truncate">{model.name}</span>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </div>
+            ))}
+
+            {!isLoading && <CommandSeparator />}
 
             <CommandGroup>
               <CommandItem

@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { type Project } from '@/lib/ProjectsManager';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
-import { ChatPane } from '@/components/Shakespeare/ChatPane';
+import { ChatPane, type ChatPaneRef } from '@/components/Shakespeare/ChatPane';
 import { PreviewPane } from '@/components/Shakespeare/PreviewPane';
 import { ProjectSidebar } from '@/components/ProjectSidebar';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
@@ -29,6 +29,7 @@ export function ProjectView() {
   const [isDeployLoading, setIsDeployLoading] = useState(false);
   const [isAILoading, setIsAILoading] = useState(false);
   const projectsManager = useProjectsManager();
+  const chatPaneRef = useRef<ChatPaneRef>(null);
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { fs: browserFS } = useFS();
@@ -61,8 +62,8 @@ export function ProjectView() {
     try {
       const projectData = await projectsManager.getProject(projectId);
       setProject(projectData);
-    } catch (_error) {
-      console.error('Failed to load project:', _error);
+    } catch (error) {
+      console.error('Failed to load project:', error);
     } finally {
       setIsLoading(false);
     }
@@ -163,8 +164,14 @@ BASE_DOMAIN=nostrdeploy.com`);
   };
 
   const handleNewChat = () => {
-    // This will be handled by the ChatPane's internal logic
-    console.log('New chat requested');
+    // Reset to chat view on mobile when starting new chat
+    if (isMobile) {
+      setMobileView('chat');
+    }
+    // Call the ChatPane's startNewSession function
+    if (chatPaneRef.current) {
+      chatPaneRef.current.startNewSession();
+    }
   };
 
   const handleAILoadingChange = (loading: boolean) => {
@@ -258,6 +265,7 @@ BASE_DOMAIN=nostrdeploy.com`);
         <div className="flex-1 overflow-hidden">
           {mobileView === 'chat' && (
             <ChatPane
+              ref={chatPaneRef}
               projectId={project.id}
               projectName={project.name}
               onNewChat={handleNewChat}
@@ -382,6 +390,7 @@ BASE_DOMAIN=nostrdeploy.com`);
                 {/* Chat Content */}
                 <div className="flex-1 overflow-hidden">
                   <ChatPane
+                    ref={chatPaneRef}
                     projectId={project.id}
                     projectName={project.name}
                     onNewChat={handleNewChat}

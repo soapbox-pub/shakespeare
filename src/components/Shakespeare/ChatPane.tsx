@@ -116,24 +116,35 @@ When creating new components or pages, follow the existing patterns in the codeb
   // Check for autostart parameter and trigger AI generation
   useEffect(() => {
     const autostart = searchParams.get('autostart');
+    const urlModel = searchParams.get('model');
 
-    if (autostart === 'true' && isConfigured && messages.length > 0 && !isLoading && providerModel.trim()) {
+    if (autostart === 'true' && isConfigured && messages.length > 0 && !isLoading) {
       const lastMessage = messages[messages.length - 1];
 
       // If the last message is from the user, auto-start the AI
       if (lastMessage.role === 'user') {
-        // Clear the autostart parameter so it doesn't trigger again
-        const newSearchParams = new URLSearchParams(searchParams);
-        newSearchParams.delete('autostart');
-        setSearchParams(newSearchParams, { replace: true });
+        // Use model from URL if available, otherwise use current selection
+        const modelToUse = urlModel?.trim() || providerModel.trim();
 
-        // Start AI generation
-        const modelToUse = providerModel.trim();
-        addRecentlyUsedModel(modelToUse);
-        startGeneration(modelToUse);
+        if (modelToUse) {
+          // Update provider model if it came from URL
+          if (urlModel?.trim() && urlModel.trim() !== providerModel) {
+            setProviderModel(urlModel.trim());
+          }
+
+          // Clear the autostart and model parameters so they don't trigger again
+          const newSearchParams = new URLSearchParams(searchParams);
+          newSearchParams.delete('autostart');
+          newSearchParams.delete('model');
+          setSearchParams(newSearchParams, { replace: true });
+
+          // Start AI generation
+          addRecentlyUsedModel(modelToUse);
+          startGeneration(modelToUse);
+        }
       }
     }
-  }, [searchParams, setSearchParams, isConfigured, messages, isLoading, startGeneration, providerModel, addRecentlyUsedModel]);
+  }, [searchParams, setSearchParams, isConfigured, messages, isLoading, startGeneration, providerModel, setProviderModel, addRecentlyUsedModel]);
 
   // Keep-alive functionality to prevent tab throttling during AI processing
   const { updateMetadata } = useKeepAlive({

@@ -33,10 +33,6 @@ export function useProviderModels(): ModelFetchResult {
 
       // Fetch models from each configured provider
       for (const [providerKey, connection] of Object.entries(settings.providers)) {
-        if (!connection.apiKey) {
-          continue; // Skip providers without API keys
-        }
-
         try {
           const openai = new OpenAI({
             baseURL: connection.baseURL,

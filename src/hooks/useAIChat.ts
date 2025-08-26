@@ -62,7 +62,7 @@ export function useAIChat({
     });
   }, [saveMessagesToHistory]);
 
-  const startGeneration = useCallback(async (providerModel?: string) => {
+  const startGeneration = useCallback(async (providerModel: string) => {
     if (!isConfigured || isLoading || messages.length === 0) return;
 
     // Get the last message - it should be a user message
@@ -86,38 +86,10 @@ export function useAIChat({
         });
       }
 
-      // Parse provider and model if specified
-      let connectionConfig;
-      let modelName;
-
-      if (providerModel) {
-        try {
-          const parsed = parseProviderModel(providerModel, settings.providers);
-          connectionConfig = parsed.connection;
-          modelName = parsed.model;
-        } catch (error) {
-          // Add error message to chat
-          const errorMessage: AIMessage = {
-            role: 'assistant',
-            content: `Error: ${error instanceof Error ? error.message : 'Failed to parse provider/model format'}`
-          };
-          addMessage(errorMessage);
-          return;
-        }
-      } else {
-        // Use first available provider as fallback
-        const firstProvider = Object.keys(settings.providers)[0];
-        if (!firstProvider || !settings.providers[firstProvider]?.apiKey) {
-          const errorMessage: AIMessage = {
-            role: 'assistant',
-            content: 'Error: No provider/model specified and no configured providers available. Please specify a provider/model (e.g., "openrouter/anthropic/claude-sonnet-4") or configure a provider in settings.'
-          };
-          addMessage(errorMessage);
-          return;
-        }
-        connectionConfig = settings.providers[firstProvider];
-        modelName = 'gpt-3.5-turbo'; // Default fallback model
-      }
+      // Parse provider and model
+      const parsed = parseProviderModel(providerModel, settings.providers);
+      const connectionConfig = parsed.connection;
+      const modelName = parsed.model;
 
       // Initialize OpenAI client with parsed connection
       const openai = new OpenAI({
@@ -376,7 +348,7 @@ export function useAIChat({
     loadMessageHistory();
   }, [projectId, fs]);
 
-  const sendMessage = useCallback(async (content: string, providerModel?: string) => {
+  const sendMessage = useCallback(async (content: string, providerModel: string) => {
     if (!isConfigured || isLoading) return;
 
     // Add user message

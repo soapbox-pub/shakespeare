@@ -214,7 +214,7 @@ export function ModelSelector({
             {!isLoading && Object.entries(modelsByProvider).map(([provider, providerModels]) => (
               <div key={provider}>
                 <CommandSeparator />
-                <CommandGroup heading={provider.charAt(0).toUpperCase() + provider.slice(1)}>
+                <CommandGroup heading={provider}>
                   {providerModels.map((model) => (
                     <CommandItem
                       key={model.fullId}

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -39,10 +39,14 @@ interface ChatPaneProps {
   isDeployLoading?: boolean;
 }
 
-export function ChatPane({
+export interface ChatPaneRef {
+  startNewSession: () => void;
+}
+
+export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   projectId,
   projectName,
-  onNewChat,
+  onNewChat: _onNewChat,
   onBuild: _onBuild,
   onDeploy: _onDeploy,
   onFirstInteraction,
@@ -50,7 +54,7 @@ export function ChatPane({
   isLoading: externalIsLoading,
   isBuildLoading: externalIsBuildLoading,
   isDeployLoading: externalIsDeployLoading
-}: ChatPaneProps) {
+}, ref) => {
   const [input, setInput] = useState('');
 
 
@@ -243,13 +247,12 @@ When creating new components or pages, follow the existing patterns in the codeb
     }
   };
 
-  const _startNewSession = () => {
-    if (onNewChat) {
-      onNewChat();
-    } else {
+  // Expose startNewSession function via ref
+  useImperativeHandle(ref, () => ({
+    startNewSession: () => {
       internalStartNewSession();
     }
-  };
+  }), [internalStartNewSession]);
 
   if (!isConfigured) {
     return (
@@ -401,4 +404,4 @@ When creating new components or pages, follow the existing patterns in the codeb
       </div>
     </div>
   );
-}
+});

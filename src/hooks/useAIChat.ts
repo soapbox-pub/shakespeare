@@ -62,11 +62,13 @@ export function useAIChat({
     });
   }, [saveMessagesToHistory]);
 
-  const startGeneration = useCallback(async (providerModel: string) => {
-    if (!isConfigured || isLoading || messages.length === 0) return;
+  const startGeneration = useCallback(async (providerModel: string, messagesToUse?: AIMessage[]) => {
+    const currentMessages = messagesToUse || messages;
+
+    if (!isConfigured || isLoading || currentMessages.length === 0) return;
 
     // Get the last message - it should be a user message
-    const lastMessage = messages[messages.length - 1];
+    const lastMessage = currentMessages[currentMessages.length - 1];
     if (lastMessage.role !== 'user') return;
 
     setIsLoading(true);
@@ -76,7 +78,7 @@ export function useAIChat({
       abortControllerRef.current = new AbortController();
 
       // Use all existing messages
-      const modelMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [...messages];
+      const modelMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [...currentMessages];
 
       // Add system message if provided
       if (systemPrompt) {
@@ -104,7 +106,7 @@ export function useAIChat({
       }
 
       // Keep track of current messages for this conversation
-      const currentMessages = [...modelMessages];
+      const conversationMessages = [...modelMessages];
       let stepCount = 0;
 
       // Main loop for handling multiple steps with tool calls
@@ -122,7 +124,7 @@ export function useAIChat({
         // Prepare chat completion options
         const completionOptions: OpenAI.Chat.Completions.ChatCompletionCreateParams = {
           model: modelName,
-          messages: currentMessages,
+          messages: conversationMessages,
           tools: tools && Object.keys(tools).length > 0 ? Object.values(tools) : undefined,
           tool_choice: tools && Object.keys(tools).length > 0 ? 'auto' : undefined,
           stream: true
@@ -215,7 +217,7 @@ export function useAIChat({
         // Clear streaming message and add final message
         setStreamingMessage(undefined);
         addMessage(assistantMessage);
-        currentMessages.push(assistantMessage);
+        conversationMessages.push(assistantMessage);
 
         // Check if we should stop (no tool calls or finish reason is "stop")
         if (finishReason === 'stop' || !accumulatedToolCalls || accumulatedToolCalls.length === 0) {
@@ -246,7 +248,7 @@ export function useAIChat({
               };
 
               addMessage(toolErrorMessage);
-              currentMessages.push(toolErrorMessage);
+              conversationMessages.push(toolErrorMessage);
               continue;
             }
 
@@ -270,7 +272,7 @@ export function useAIChat({
                 };
 
                 addMessage(toolResultMessage);
-                currentMessages.push(toolResultMessage);
+                conversationMessages.push(toolResultMessage);
               } catch (toolError) {
                 console.error(`Tool execution error for ${toolName}:`, toolError);
 
@@ -281,7 +283,7 @@ export function useAIChat({
                 };
 
                 addMessage(toolErrorMessage);
-                currentMessages.push(toolErrorMessage);
+                conversationMessages.push(toolErrorMessage);
               }
             } else {
               // Tool not found
@@ -292,7 +294,7 @@ export function useAIChat({
               };
 
               addMessage(toolNotFoundMessage);
-              currentMessages.push(toolNotFoundMessage);
+              conversationMessages.push(toolNotFoundMessage);
             }
           }
         }
@@ -357,13 +359,15 @@ export function useAIChat({
       content
     };
 
+    // Calculate the new messages array that will exist after the state update
+    const newMessages = [...messages, userMessage];
+
+    // Add the message to state
     addMessage(userMessage);
 
-    // Use setTimeout to ensure the message is added before starting generation
-    setTimeout(() => {
-      startGeneration(providerModel);
-    }, 0);
-  }, [isConfigured, isLoading, addMessage, startGeneration]);
+    // Start generation with the new messages array directly
+    startGeneration(providerModel, newMessages);
+  }, [isConfigured, isLoading, messages, addMessage, startGeneration]);
 
   const stopGeneration = useCallback(() => {
     if (abortControllerRef.current) {

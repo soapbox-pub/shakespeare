@@ -15,46 +15,46 @@ interface PresetProvider {
   id: string;
   name: string;
   baseURL: string;
-  description: string;
+  apiKeysURL: string;
 }
 
 const PRESET_PROVIDERS: PresetProvider[] = [
   {
-    id: 'openai',
-    name: 'OpenAI',
-    baseURL: 'https://api.openai.com/v1',
-    description: 'GPT-4, GPT-3.5 Turbo, and other OpenAI models'
+    id: "openrouter",
+    name: "OpenRouter",
+    baseURL: "https://openrouter.ai/api/v1",
+    apiKeysURL: "https://openrouter.ai/settings/keys",
   },
   {
-    id: 'anthropic',
-    name: 'Anthropic',
-    baseURL: 'https://api.anthropic.com/v1',
-    description: 'Claude 3.5 Sonnet, Claude 3 Opus, and other Claude models'
+    id: "ppq",
+    name: "PayPerQ",
+    baseURL: "https://api.ppq.ai",
+    apiKeysURL: "https://ppq.ai/api-docs",
   },
   {
-    id: 'openrouter',
-    name: 'OpenRouter',
-    baseURL: 'https://openrouter.ai/api/v1',
-    description: 'Access to hundreds of models from various providers'
+    id: "zai",
+    name: "Z.ai",
+    baseURL: "https://api.z.ai/api/paas/v4",
+    apiKeysURL: "https://z.ai/manage-apikey/apikey-list",
   },
   {
-    id: 'together',
-    name: 'Together AI',
-    baseURL: 'https://api.together.xyz/v1',
-    description: 'Open-source models like Llama, Mistral, and more'
+    id: "moonshot",
+    name: "Moonshot",
+    baseURL: "https://api.moonshot.ai/v1",
+    apiKeysURL: "https://platform.moonshot.ai/console/api-keys",
   },
   {
-    id: 'groq',
-    name: 'Groq',
-    baseURL: 'https://api.groq.com/openai/v1',
-    description: 'Ultra-fast inference for Llama, Mixtral, and Gemma models'
+    id: "openai",
+    name: "OpenAI",
+    baseURL: "https://api.openai.com/v1",
+    apiKeysURL: "https://platform.openai.com/api-keys",
   },
   {
-    id: 'deepseek',
-    name: 'DeepSeek',
-    baseURL: 'https://api.deepseek.com/v1',
-    description: 'DeepSeek-V2.5 and other high-performance models'
-  }
+    id: "anthropic",
+    name: "Anthropic",
+    baseURL: "https://api.anthropic.com/v1",
+    apiKeysURL: "https://console.anthropic.com/settings/keys",
+  },
 ];
 
 interface AISettingsDialogProps {
@@ -72,6 +72,8 @@ export function AISettingsDialog({ open: controlledOpen, onOpenChange }: AISetti
   const [localProviders, setLocalProviders] = useState(settings.providers);
   const [customProviderName, setCustomProviderName] = useState('');
   const [customBaseURL, setCustomBaseURL] = useState('');
+  const [customApiKey, setCustomApiKey] = useState('');
+  const [presetApiKeys, setPresetApiKeys] = useState<Record<string, string>>({});
 
   const handleSave = () => {
     updateSettings({ providers: localProviders });
@@ -82,18 +84,29 @@ export function AISettingsDialog({ open: controlledOpen, onOpenChange }: AISetti
     setLocalProviders(settings.providers);
     setCustomProviderName('');
     setCustomBaseURL('');
+    setCustomApiKey('');
+    setPresetApiKeys({});
     setOpen(false);
   };
 
   const handleAddPresetProvider = (preset: PresetProvider) => {
+    const apiKey = presetApiKeys[preset.id] || '';
+    if (!apiKey.trim()) return;
+
     const newProvider: AIConnection = {
       baseURL: preset.baseURL,
-      apiKey: '',
+      apiKey: apiKey.trim(),
     };
 
     setLocalProviders(prev => ({
       ...prev,
       [preset.id]: newProvider,
+    }));
+
+    // Clear the API key input for this preset
+    setPresetApiKeys(prev => ({
+      ...prev,
+      [preset.id]: '',
     }));
   };
 
@@ -102,7 +115,7 @@ export function AISettingsDialog({ open: controlledOpen, onOpenChange }: AISetti
 
     const newProvider: AIConnection = {
       baseURL: customBaseURL.trim(),
-      apiKey: '',
+      apiKey: customApiKey.trim(),
     };
 
     setLocalProviders(prev => ({
@@ -111,6 +124,7 @@ export function AISettingsDialog({ open: controlledOpen, onOpenChange }: AISetti
     }));
     setCustomProviderName('');
     setCustomBaseURL('');
+    setCustomApiKey('');
   };
 
   const handleRemoveProvider = (name: string) => {
@@ -191,9 +205,15 @@ export function AISettingsDialog({ open: controlledOpen, onOpenChange }: AISetti
                       </AccordionTrigger>
                       <AccordionContent className="px-4 pb-4">
                         <div className="space-y-3">
-                          {preset && (
-                            <p className="text-sm text-muted-foreground">{preset.description}</p>
-                          )}
+                          <div className="grid gap-2">
+                            <Label htmlFor={`${providerId}-baseURL`}>Base URL</Label>
+                            <Input
+                              id={`${providerId}-baseURL`}
+                              placeholder="https://api.example.com/v1"
+                              value={provider?.baseURL || ''}
+                              onChange={(e) => handleUpdateProvider(providerId, { baseURL: e.target.value })}
+                            />
+                          </div>
                           <div className="grid gap-2">
                             <Label htmlFor={`${providerId}-apiKey`}>API Key</Label>
                             <Input
@@ -203,20 +223,6 @@ export function AISettingsDialog({ open: controlledOpen, onOpenChange }: AISetti
                               value={provider?.apiKey || ''}
                               onChange={(e) => handleUpdateProvider(providerId, { apiKey: e.target.value })}
                             />
-                          </div>
-                          <div className="grid gap-2">
-                            <Label htmlFor={`${providerId}-baseURL`}>Base URL</Label>
-                            <Input
-                              id={`${providerId}-baseURL`}
-                              placeholder="https://api.example.com/v1"
-                              value={provider?.baseURL || ''}
-                              onChange={(e) => handleUpdateProvider(providerId, { baseURL: e.target.value })}
-                            />
-                            {preset && (
-                              <p className="text-xs text-muted-foreground">
-                                Default: {preset.baseURL}
-                              </p>
-                            )}
                           </div>
                         </div>
                       </AccordionContent>
@@ -233,25 +239,41 @@ export function AISettingsDialog({ open: controlledOpen, onOpenChange }: AISetti
           {availablePresets.length > 0 && (
             <div className="space-y-3">
               <h4 className="text-sm font-medium">Add Provider</h4>
-              <div className="grid gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {availablePresets.map((preset) => (
-                  <Card key={preset.id} className="cursor-pointer hover:bg-muted/50 transition-colors">
-                    <CardContent className="p-4">
+                  <Card key={preset.id}>
+                    <CardContent className="p-4 space-y-3">
                       <div className="flex items-center justify-between">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <h5 className="font-medium">{preset.name}</h5>
-                            <Badge variant="secondary" className="text-xs">Preset</Badge>
-                          </div>
-                          <p className="text-sm text-muted-foreground">{preset.description}</p>
-                          <p className="text-xs text-muted-foreground font-mono">{preset.baseURL}</p>
-                        </div>
+                        <h5 className="font-medium">{preset.name}</h5>
+                        <button
+                          type="button"
+                          className="text-xs text-muted-foreground underline hover:text-foreground"
+                          onClick={() => window.open(preset.apiKeysURL, '_blank')}
+                        >
+                          Get API key
+                        </button>
+                      </div>
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="Enter your API key"
+                          type="password"
+                          className="flex-1"
+                          value={presetApiKeys[preset.id] || ''}
+                          onChange={(e) => setPresetApiKeys(prev => ({
+                            ...prev,
+                            [preset.id]: e.target.value,
+                          }))}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && presetApiKeys[preset.id]?.trim()) {
+                              handleAddPresetProvider(preset);
+                            }
+                          }}
+                        />
                         <Button
                           onClick={() => handleAddPresetProvider(preset)}
+                          disabled={!presetApiKeys[preset.id]?.trim()}
                           size="sm"
-                          className="gap-2"
                         >
-                          <Check className="h-4 w-4" />
                           Add
                         </Button>
                       </div>
@@ -287,6 +309,16 @@ export function AISettingsDialog({ open: controlledOpen, onOpenChange }: AISetti
                     onChange={(e) => setCustomBaseURL(e.target.value)}
                   />
                 </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="custom-apikey">API Key</Label>
+                  <Input
+                    id="custom-apikey"
+                    type="password"
+                    placeholder="Enter your API key (optional)"
+                    value={customApiKey}
+                    onChange={(e) => setCustomApiKey(e.target.value)}
+                  />
+                </div>
                 <Button
                   onClick={handleAddCustomProvider}
                   disabled={
@@ -307,23 +339,6 @@ export function AISettingsDialog({ open: controlledOpen, onOpenChange }: AISetti
                 )}
               </CardContent>
             </Card>
-          </div>
-
-          {/* Usage Instructions */}
-          <div className="bg-muted/50 rounded-lg p-4 space-y-2">
-            <h4 className="text-sm font-medium">Usage</h4>
-            <p className="text-sm text-muted-foreground">
-              In the chat, use the format <code className="bg-background px-1 rounded">provider/model</code> to specify which provider and model to use.
-            </p>
-            <div className="text-sm text-muted-foreground space-y-1">
-              <p><strong>Examples:</strong></p>
-              <ul className="list-disc list-inside ml-2 space-y-0.5">
-                <li><code className="bg-background px-1 rounded">openrouter/anthropic/claude-3.5-sonnet</code></li>
-                <li><code className="bg-background px-1 rounded">openai/gpt-4o</code></li>
-                <li><code className="bg-background px-1 rounded">anthropic/claude-3-5-sonnet-20241022</code></li>
-                <li><code className="bg-background px-1 rounded">groq/llama-3.1-70b-versatile</code></li>
-              </ul>
-            </div>
           </div>
         </div>
 

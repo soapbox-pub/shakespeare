@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
+import { useState, useRef, useEffect, forwardRef, useImperativeHandle, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -24,6 +24,7 @@ import { BuildProjectTool } from '@/lib/tools/BuildProjectTool';
 import { toolToOpenAI } from '@/lib/tools/openai-adapter';
 import { Tool } from '@/lib/tools/Tool';
 import OpenAI from 'openai';
+import { makeSystemPrompt } from '@/lib/system';
 
 
 interface ChatPaneProps {
@@ -56,7 +57,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   isDeployLoading: externalIsDeployLoading
 }, ref) => {
   const [input, setInput] = useState('');
-
+  const [systemPrompt, setSystemPrompt] = useState('');
 
   // Use external state if provided, otherwise default to false
   const isBuildLoading = externalIsBuildLoading || false;
@@ -73,7 +74,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
 
   // Initialize AI chat with tools
   const cwd = `/projects/${projectId}`;
-  const customTools = {
+  const customTools = useMemo(() => ({
     git_commit: new GitCommitTool(browserFS, cwd),
     text_editor_view: new TextEditorViewTool(browserFS, cwd),
     text_editor_write: new TextEditorWriteTool(browserFS, cwd),
@@ -81,45 +82,27 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     npm_add_package: new NpmAddPackageTool(browserFS, cwd),
     npm_remove_package: new NpmRemovePackageTool(browserFS, cwd),
     build_project: new BuildProjectTool(browserFS, cwd),
-  };
+  }), [browserFS, cwd]);
 
   // Convert tools to OpenAI format
-  const tools: Record<string, OpenAI.Chat.Completions.ChatCompletionTool> = {};
-  for (const [name, tool] of Object.entries(customTools)) {
-    tools[name] = toolToOpenAI(name, tool as Tool<unknown>);
-  }
+  const tools = useMemo(() => {
+    const result: Record<string, OpenAI.Chat.Completions.ChatCompletionTool> = {};
+    for (const [name, tool] of Object.entries(customTools)) {
+      result[name] = toolToOpenAI(name, tool as Tool<unknown>);
+    }
+    return result;
+  }, [customTools]);
 
-  const systemPrompt = `You are an AI assistant helping users build custom Nostr websites. You have access to tools that allow you to read, write, and manage files in the project, as well as build the project and manage npm packages.
-
-Key capabilities:
-- Read and write files in the project
-- List directory contents
-- Check if files exist
-- Build the project using esbuild (use the build_project tool)
-- Get project structure overview
-- Search through files
-- Add and remove npm packages
-- Install dependencies and dev dependencies
-- Commit changes to git with automatic staging
-
-Guidelines:
-- Always check if files exist before writing to avoid overwriting
-- Provide helpful explanations of what you're doing
-- Suggest improvements and best practices
-- Use modern React patterns and TypeScript
-- Follow Nostr protocol standards when relevant
-- Ensure the project builds successfully
-
-The project uses:
-- React 18 with TypeScript
-- esbuild for building
-- TailwindCSS for styling
-- Nostrify for Nostr integration
-- shadcn/ui components
-
-When creating new components or pages, follow the existing patterns in the codebase.`;
-
-
+  useEffect(() => {
+    makeSystemPrompt({
+      cwd,
+      fs: browserFS,
+      mode: "agent",
+      name: "Shakespeare",
+      profession: "software extraordinaire",
+      tools: Object.values(tools),
+    }).then(setSystemPrompt)
+  }, [browserFS, cwd, tools]);
 
   const {
     messages,

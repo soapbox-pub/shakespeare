@@ -310,19 +310,13 @@ export default function Clone() {
         </div>
 
         <Card className="bg-gradient-to-br from-card to-card/50 border-primary/20 shadow-lg">
-          <CardHeader>
-            <CardTitle className="text-xl">Repository URL</CardTitle>
-            <CardDescription className="text-base">
-              Enter a Git repository URL or Nostr clone URI to import
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 p-6">
             <div className="space-y-2">
               <Label htmlFor="repo-url">Repository URL</Label>
               <Input
                 id="repo-url"
                 type="text"
-                placeholder="https://github.com/username/repository.git or nostr://npub.../repo-name"
+                placeholder="https://github.com/username/repository.git"
                 value={repoUrl}
                 onChange={(e) => {
                   setRepoUrl(e.target.value);
@@ -332,9 +326,6 @@ export default function Clone() {
                 disabled={isCloning}
                 className="text-base"
               />
-              <p className="text-sm text-muted-foreground">
-                Supports Git URLs and Nostr clone URIs (nostr://npub.../repo-name)
-              </p>
             </div>
 
             {error && (
@@ -362,28 +353,6 @@ export default function Clone() {
                 </>
               )}
             </Button>
-
-            <div className="mt-6 p-4 bg-muted/50 rounded-lg">
-              <h3 className="font-medium mb-2">Supported Repository Types</h3>
-              <ul className="text-sm text-muted-foreground space-y-1">
-                <li>• Public GitHub repositories</li>
-                <li>• Public GitLab repositories</li>
-                <li>• Any public Git repository accessible via HTTPS</li>
-                <li>• Nostr repositories via NIP-34 clone URIs</li>
-              </ul>
-              <div className="mt-3 space-y-2">
-                <p className="text-xs text-muted-foreground font-medium">
-                  Nostr Clone URI Examples:
-                </p>
-                <ul className="text-xs text-muted-foreground space-y-1 ml-2">
-                  <li>• <code>nostr://npub1.../repo-name</code></li>
-                  <li>• <code>nostr://npub1.../relay.example.com/repo-name</code></li>
-                </ul>
-              </div>
-              <p className="text-xs text-muted-foreground mt-2">
-                Note: Private repositories requiring authentication are not currently supported.
-              </p>
-            </div>
           </CardContent>
         </Card>
       </div>

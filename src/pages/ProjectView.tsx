@@ -344,7 +344,7 @@ BASE_DOMAIN=nostrdeploy.com`);
         <div className="flex-1 overflow-hidden">
           <ResizablePanelGroup direction="horizontal" className="h-full">
             {/* Chat Panel */}
-            <ResizablePanel defaultSize={50} minSize={30}>
+            <ResizablePanel defaultSize={40} minSize={25}>
               <div className="h-full flex flex-col">
                 {/* Chat Header */}
                 <div className="px-4 border-b flex-shrink-0">
@@ -410,7 +410,7 @@ BASE_DOMAIN=nostrdeploy.com`);
             <ResizableHandle withHandle />
 
             {/* Preview/Code Panel */}
-            <ResizablePanel defaultSize={50} minSize={30}>
+            <ResizablePanel defaultSize={60} minSize={30}>
               <div className="h-full flex flex-col">
                 {/* Preview Header */}
                 <div className="px-4 border-b flex-shrink-0">

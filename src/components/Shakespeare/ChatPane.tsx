@@ -21,6 +21,13 @@ import { NpmAddPackageTool } from '@/lib/tools/NpmAddPackageTool';
 import { NpmRemovePackageTool } from '@/lib/tools/NpmRemovePackageTool';
 import { GitCommitTool } from '@/lib/tools/GitCommitTool';
 import { BuildProjectTool } from '@/lib/tools/BuildProjectTool';
+import { NostrReadNipTool } from '@/lib/tools/NostrReadNipTool';
+import { NostrFetchEventTool } from '@/lib/tools/NostrFetchEventTool';
+import { NostrReadKindTool } from '@/lib/tools/NostrReadKindTool';
+import { NostrReadTagTool } from '@/lib/tools/NostrReadTagTool';
+import { NostrReadProtocolTool } from '@/lib/tools/NostrReadProtocolTool';
+import { NostrReadNipsIndexTool } from '@/lib/tools/NostrReadNipsIndexTool';
+import { NostrGenerateKindTool } from '@/lib/tools/NostrGenerateKindTool';
 import { toolToOpenAI } from '@/lib/tools/openai-adapter';
 import { Tool } from '@/lib/tools/Tool';
 import OpenAI from 'openai';
@@ -82,6 +89,13 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     npm_add_package: new NpmAddPackageTool(browserFS, cwd),
     npm_remove_package: new NpmRemovePackageTool(browserFS, cwd),
     build_project: new BuildProjectTool(browserFS, cwd),
+    nostr_read_nip: new NostrReadNipTool(),
+    nostr_fetch_event: new NostrFetchEventTool(),
+    nostr_read_kind: new NostrReadKindTool(),
+    nostr_read_tag: new NostrReadTagTool(),
+    nostr_read_protocol: new NostrReadProtocolTool(),
+    nostr_read_nips_index: new NostrReadNipsIndexTool(),
+    nostr_generate_kind: new NostrGenerateKindTool(),
   }), [browserFS, cwd]);
 
   // Convert tools to OpenAI format

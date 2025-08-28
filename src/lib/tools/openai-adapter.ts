@@ -97,26 +97,3 @@ function convertZodField(field: unknown): Record<string, unknown> {
       };
   }
 }
-
-/**
- * Execute a tool with the given arguments
- */
-export async function executeTool<TParams>(
-  tool: Tool<TParams>,
-  args: unknown
-): Promise<string> {
-  try {
-    // Parse and validate arguments using the tool's schema
-    const validatedArgs = tool.inputSchema.parse(args);
-    const result = await tool.execute(validatedArgs);
-
-    // Convert result to string for the AI
-    if (typeof result === 'string') {
-      return result;
-    }
-
-    return JSON.stringify(result, null, 2);
-  } catch (error) {
-    throw new Error(`Tool execution failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-  }
-}

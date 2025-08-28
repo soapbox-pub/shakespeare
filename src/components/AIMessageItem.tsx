@@ -1,6 +1,6 @@
 import { memo, useState } from 'react';
 import { Streamdown } from 'streamdown';
-import { Wrench, Eye, FileText, Edit, Package, PackageMinus, GitCommit } from 'lucide-react';
+import { Wrench, Eye, FileText, Edit, Package, PackageMinus, GitCommit, BookOpen, Download, Hash, Tag, Network, List, Plus } from 'lucide-react';
 import { AIMessage } from '@/hooks/useAIChat';
 import { cn } from '@/lib/utils';
 import OpenAI from 'openai';
@@ -85,6 +85,46 @@ export const AIMessageItem = memo(({
             return {
               icon: GitCommit,
               title: args.message ? `Committed: ${args.message}` : 'Committed Changes'
+            };
+          case 'build_project':
+            return {
+              icon: Package,
+              title: 'Built Project'
+            };
+          case 'nostr_read_nip':
+            return {
+              icon: BookOpen,
+              title: args.nip ? `Read NIP-${args.nip}` : 'Read NIP'
+            };
+          case 'nostr_fetch_event':
+            return {
+              icon: Download,
+              title: args.identifier ? `Fetched ${args.identifier.slice(0, 16)}...` : 'Fetched Event'
+            };
+          case 'nostr_read_kind':
+            return {
+              icon: Hash,
+              title: args.kind !== undefined ? `Read Kind ${args.kind}` : 'Read Kind'
+            };
+          case 'nostr_read_tag':
+            return {
+              icon: Tag,
+              title: args.tag ? `Read Tag "${args.tag}"` : 'Read Tag'
+            };
+          case 'nostr_read_protocol':
+            return {
+              icon: Network,
+              title: args.doc ? `Read Protocol: ${args.doc}` : 'Read Protocol'
+            };
+          case 'nostr_read_nips_index':
+            return {
+              icon: List,
+              title: 'Read NIPs Index'
+            };
+          case 'nostr_generate_kind':
+            return {
+              icon: Plus,
+              title: args.range ? `Generated ${args.range} kind` : 'Generated Kind'
             };
           default:
             return {

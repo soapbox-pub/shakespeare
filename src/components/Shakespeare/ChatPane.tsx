@@ -32,7 +32,7 @@ import { toolToOpenAI } from '@/lib/tools/openai-adapter';
 import { Tool } from '@/lib/tools/Tool';
 import OpenAI from 'openai';
 import { makeSystemPrompt } from '@/lib/system';
-
+import { assistantContentEmpty } from '@/lib/ai-messages';
 
 interface ChatPaneProps {
   projectId: string;
@@ -281,13 +281,13 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
         <div className="p-4 space-y-4">
           {messages.map((message, index) => {
             // Skip assistant messages with no content
-            if (message.role === 'assistant' && !message.content) {
+            if (message.role === 'assistant' && assistantContentEmpty(message.content)) {
               return null;
             }
 
             // Find the corresponding tool call for tool messages
             let toolCall: OpenAI.Chat.Completions.ChatCompletionMessageToolCall | undefined = undefined;
-            if (message.role === 'tool' && 'tool_call_id' in message) {
+            if (message.role === 'tool') {
               // Look backwards to find the assistant message with matching tool call
               for (let i = index - 1; i >= 0; i--) {
                 const prevMessage = messages[i];

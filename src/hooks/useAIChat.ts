@@ -4,6 +4,7 @@ import { useAISettings } from '@/hooks/useAISettings';
 import { useFS } from '@/hooks/useFS';
 import { DotAI } from '@/lib/DotAI';
 import { parseProviderModel } from '@/lib/parseProviderModel';
+import { Tool } from '@/lib/tools/Tool';
 
 // Use OpenAI's native message type
 export type AIMessage = OpenAI.Chat.Completions.ChatCompletionMessageParam;
@@ -18,7 +19,7 @@ interface UseAIChatOptions {
   projectId: string;
   projectName: string;
   tools?: Record<string, OpenAI.Chat.Completions.ChatCompletionTool>;
-  customTools?: Record<string, { execute: (args: unknown) => Promise<unknown> }>;
+  customTools?: Record<string, Tool<unknown>>;
   systemPrompt?: string;
   onUpdateMetadata?: (title: string, description: string) => void;
   maxSteps?: number;
@@ -234,10 +235,25 @@ export function useAIChat({
 
             const functionToolCall = toolCall as OpenAI.Chat.Completions.ChatCompletionMessageFunctionToolCall;
             const toolName = functionToolCall.function.name;
-            let toolArgs;
+            const tool = customTools[toolName];
+            
+            if (!tool) {
+              // Tool not found
+              const toolNotFoundMessage: AIMessage = {
+                role: 'tool',
+                content: `Tool ${toolName} not found`,
+                tool_call_id: functionToolCall.id
+              };
 
+              addMessage(toolNotFoundMessage);
+              conversationMessages.push(toolNotFoundMessage);
+              continue;
+            }
+            
+            let toolArgs: unknown;
             try {
-              toolArgs = JSON.parse(functionToolCall.function.arguments);
+              const json = JSON.parse(functionToolCall.function.arguments);
+              toolArgs = tool.inputSchema.parse(json);
             } catch (parseError) {
               console.error(`Failed to parse tool arguments for ${toolName}:`, parseError);
 
@@ -252,49 +268,32 @@ export function useAIChat({
               continue;
             }
 
-            // Execute tool if it exists in customTools
-            if (customTools && customTools[toolName]) {
-              try {
-                console.log(`Executing tool: ${toolName}`, toolArgs);
+            try {
+              console.log(`Executing tool: ${toolName}`, toolArgs);
 
-                // Execute the custom tool
-                const tool = customTools[toolName];
-                const result = await tool.execute(toolArgs);
+              // Execute the custom tool
+              const content = await tool.execute(toolArgs);
 
-                // Convert result to string
-                const resultString = typeof result === 'string' ? result : JSON.stringify(result, null, 2);
-
-                // Add tool result message
-                const toolResultMessage: AIMessage = {
-                  role: 'tool',
-                  content: resultString,
-                  tool_call_id: functionToolCall.id
-                };
-
-                addMessage(toolResultMessage);
-                conversationMessages.push(toolResultMessage);
-              } catch (toolError) {
-                console.error(`Tool execution error for ${toolName}:`, toolError);
-
-                const toolErrorMessage: AIMessage = {
-                  role: 'tool',
-                  content: `Error executing tool ${toolName}: ${toolError instanceof Error ? toolError.message : 'Unknown error'}`,
-                  tool_call_id: functionToolCall.id
-                };
-
-                addMessage(toolErrorMessage);
-                conversationMessages.push(toolErrorMessage);
-              }
-            } else {
-              // Tool not found
-              const toolNotFoundMessage: AIMessage = {
+              // Add tool result message
+              const toolResultMessage: AIMessage = {
                 role: 'tool',
-                content: `Tool ${toolName} not found`,
+                content,
                 tool_call_id: functionToolCall.id
               };
 
-              addMessage(toolNotFoundMessage);
-              conversationMessages.push(toolNotFoundMessage);
+              addMessage(toolResultMessage);
+              conversationMessages.push(toolResultMessage);
+            } catch (toolError) {
+              console.error(`Tool execution error for ${toolName}:`, toolError);
+
+              const toolErrorMessage: AIMessage = {
+                role: 'tool',
+                content: `Error executing tool ${toolName}: ${toolError instanceof Error ? toolError.message : 'Unknown error'}`,
+                tool_call_id: functionToolCall.id
+              };
+
+              addMessage(toolErrorMessage);
+              conversationMessages.push(toolErrorMessage);
             }
           }
         }

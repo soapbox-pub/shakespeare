@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, MessageSquare, Eye, Code, Menu, Columns2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { ActionsMenu } from '@/components/ActionsMenu';
+import { GitStatusIndicator } from '@/components/GitStatusIndicator';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { useFS } from '@/hooks/useFS';
 import { useJSRuntime } from '@/hooks/useJSRuntime';
@@ -219,7 +220,10 @@ BASE_DOMAIN=nostrdeploy.com`);
               <Menu className="h-4 w-4" />
             </Button>
             <div className="min-w-0 flex-1">
-              <h1 className="text-sm font-semibold truncate">{project.name}</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-sm font-semibold truncate">{project.name}</h1>
+                <GitStatusIndicator projectId={project.id} />
+              </div>
             </div>
           </div>
 
@@ -368,6 +372,9 @@ BASE_DOMAIN=nostrdeploy.com`);
                         <h2 className="font-semibold text-lg truncate">
                           {project.name}
                         </h2>
+                        <div className="ml-auto">
+                          <GitStatusIndicator projectId={project.id} />
+                        </div>
                       </div>
                     </div>
 

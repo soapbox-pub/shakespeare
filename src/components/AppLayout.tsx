@@ -6,7 +6,6 @@ import { ProjectSidebar } from '@/components/ProjectSidebar';
 import { Button } from '@/components/ui/button';
 import { Menu, Columns2 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/useIsMobile';
-import { cn } from '@/lib/utils';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -16,35 +15,53 @@ interface AppLayoutProps {
   headerContent?: React.ReactNode;
 }
 
-export function AppLayout({ 
-  children, 
-  selectedProject = null, 
+export function AppLayout({
+  children,
+  selectedProject = null,
   title = "Shakespeare",
   showSidebar = true,
-  headerContent 
+  headerContent
 }: AppLayoutProps) {
-  const [projects, setProjects] = useState<Project[]>([]);
+  const [_projects, setProjects] = useState<Project[]>([]);
   const projectsManager = useProjectsManager();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  
+
   const [isSidebarVisible, setIsSidebarVisible] = useState(() => {
-    // Check if we're on mobile immediately to set correct initial state
-    if (typeof window !== 'undefined') {
-      return window.innerWidth >= 768; // Desktop starts open, mobile starts closed
+    // On mobile, always start hidden
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      return false;
     }
-    return false; // Default to closed for SSR
+    // On desktop, we'll set the initial state after projects load
+    return false; // Default to closed initially
   });
+
+  // Track if we've set the initial state based on projects
+  const [hasSetInitialState, setHasSetInitialState] = useState(false);
 
   const loadProjects = useCallback(async () => {
     try {
       await projectsManager.init();
       const projectList = await projectsManager.getProjects();
       setProjects(projectList);
+
+      // Set initial sidebar state based on projects and device type
+      if (!hasSetInitialState && !isMobile) {
+        // On desktop, show sidebar if there are projects
+        setIsSidebarVisible(projectList.length > 0);
+        setHasSetInitialState(true);
+      } else if (!hasSetInitialState && isMobile) {
+        // On mobile, always start hidden
+        setIsSidebarVisible(false);
+        setHasSetInitialState(true);
+      }
     } catch (error) {
       console.error('Failed to load projects:', error);
+      if (!hasSetInitialState) {
+        setHasSetInitialState(true);
+      }
     }
-  }, [projectsManager]);
+  }, [projectsManager, hasSetInitialState, isMobile]);
 
   useEffect(() => {
     loadProjects();
@@ -65,11 +82,12 @@ export function AppLayout({
         {/* Mobile Header */}
         <header className="border-b bg-gradient-to-r from-primary/10 via-accent/5 to-primary/10 backdrop-blur px-4 py-3 flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            {showSidebar && projects.length > 0 && (
+            {showSidebar && (
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setIsSidebarVisible(!isSidebarVisible)}
+                aria-label="Toggle sidebar"
               >
                 <Menu className="h-4 w-4" />
               </Button>
@@ -81,8 +99,8 @@ export function AppLayout({
           {headerContent}
         </header>
 
-        {/* Mobile Sidebar Overlay - only show if user has local projects and showSidebar is true */}
-        {showSidebar && projects.length > 0 && isSidebarVisible && (
+        {/* Mobile Sidebar Overlay - show if showSidebar is true and sidebar is visible */}
+        {showSidebar && isSidebarVisible && (
           <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm">
             {/* Backdrop - only covers the area not occupied by the sidebar */}
             <div
@@ -111,9 +129,9 @@ export function AppLayout({
 
   return (
     <div className="min-h-screen flex bg-background">
-      {/* Fixed Sidebar - only show if user has created local projects and showSidebar is true */}
-      {showSidebar && projects.length > 0 && (
-        <div className={cn("w-80 border-r bg-sidebar transition-all duration-300", isSidebarVisible ? "block" : "hidden")}>
+      {/* Fixed Sidebar - show if showSidebar is true and sidebar is visible */}
+      {showSidebar && isSidebarVisible && (
+        <div className="w-80 border-r bg-sidebar transition-all duration-300">
           <ProjectSidebar
             selectedProject={selectedProject}
             onSelectProject={handleProjectSelect}
@@ -124,26 +142,18 @@ export function AppLayout({
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col bg-background">
-        <div className="min-h-screen bg-gradient-to-br from-primary/5 to-accent/5">
-          {/* Header - only show toggle button if user has local projects and showSidebar is true */}
-          {!isSidebarVisible && showSidebar && projects.length > 0 && (
-            <header className="border-b bg-gradient-to-r from-primary/10 via-accent/5 to-primary/10 backdrop-blur px-4 py-3 flex items-center">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsSidebarVisible(true)}
-                className="h-8 w-8 p-0"
-                aria-label="Toggle sidebar"
-              >
-                <Columns2 className="h-4 w-4" />
-              </Button>
-              <h1 className="text-lg font-semibold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent ml-4">
-                {title}
-              </h1>
-              <div className="ml-auto">
-                {headerContent}
-              </div>
-            </header>
+        <div className="min-h-screen bg-gradient-to-br from-primary/5 to-accent/5 relative">
+          {/* Toggle Button - positioned absolutely in top-left corner */}
+          {showSidebar && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsSidebarVisible(!isSidebarVisible)}
+              className="absolute top-4 left-4 h-8 w-8 p-0 z-10 bg-transparent backdrop-blur-sm hover:bg-transparent text-foreground/70 hover:text-foreground"
+              aria-label="Toggle sidebar"
+            >
+              {isSidebarVisible ? <Columns2 className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+            </Button>
           )}
 
           <div className="container mx-auto px-4 py-6 md:py-8">

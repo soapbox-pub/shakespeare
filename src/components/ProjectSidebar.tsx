@@ -32,6 +32,7 @@ export function ProjectSidebar({
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [deletingProjectId, setDeletingProjectId] = useState<string | null>(null);
   const [favorites, setFavorites] = useLocalStorage<string[]>('project-favorites', []);
   const projectsManager = useProjectsManager();
   const navigate = useNavigate();
@@ -62,16 +63,22 @@ export function ProjectSidebar({
 
   const handleDeleteProject = async (project: Project) => {
     setIsDeleting(true);
+    setDeletingProjectId(project.id);
     try {
+      console.log('Deleting project:', project.id, 'Current selected project:', selectedProject?.id);
+
       await projectsManager.deleteProject(project.id);
 
       // Remove from local state
       setProjects(prev => prev.filter(p => p.id !== project.id));
 
-      // If the deleted project was selected, deselect it
+      // If the deleted project was selected, deselect it and navigate to home
       if (selectedProject?.id === project.id) {
+        console.log('Deleted project was selected, navigating to home');
         onSelectProject(null);
         navigate('/');
+      } else {
+        console.log('Deleted project was not selected, staying on current page');
       }
 
       toast({
@@ -79,6 +86,7 @@ export function ProjectSidebar({
         description: `"${project.name}" has been permanently deleted.`,
       });
     } catch (error) {
+      console.error('Delete project error:', error);
       toast({
         title: "Failed to delete project",
         description: error instanceof Error ? error.message : "An unexpected error occurred",
@@ -86,6 +94,8 @@ export function ProjectSidebar({
       });
     } finally {
       setIsDeleting(false);
+      // Clear the deleting project ID after a short delay to prevent any race conditions
+      setTimeout(() => setDeletingProjectId(null), 100);
     }
   };
 
@@ -374,6 +384,12 @@ export function ProjectSidebar({
                   >
                     <button
                       onClick={() => {
+                        // Prevent navigation if this project is currently being deleted
+                        if (deletingProjectId === project.id) {
+                          console.log('Preventing navigation to project being deleted:', project.id);
+                          return;
+                        }
+
                         onSelectProject(project);
                         navigate(`/project/${project.id}`);
                       }}
@@ -410,7 +426,11 @@ export function ProjectSidebar({
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end" className="w-48">
                                 <DropdownMenuItem
-                                  onClick={() => handleToggleFavorite(project)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleToggleFavorite(project);
+                                  }}
+                                  onSelect={(e) => e.preventDefault()}
                                 >
                                   <Star className={cn(
                                     "h-4 w-4 mr-2",
@@ -419,13 +439,21 @@ export function ProjectSidebar({
                                   {isFavorite(project.id) ? "Unfavorite" : "Favorite"}
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
-                                  onClick={() => navigate(`/project/${project.id}`)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate(`/project/${project.id}`);
+                                  }}
+                                  onSelect={(e) => e.preventDefault()}
                                 >
                                   <Eye className="h-4 w-4 mr-2" />
                                   Open Project
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
-                                  onClick={() => handleExportProject(project)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleExportProject(project);
+                                  }}
+                                  onSelect={(e) => e.preventDefault()}
                                   disabled={isExporting}
                                 >
                                   <Download className="h-4 w-4 mr-2" />
@@ -436,12 +464,13 @@ export function ProjectSidebar({
                                     <DropdownMenuItem
                                       className="text-destructive focus:text-destructive cursor-pointer"
                                       onSelect={(e) => e.preventDefault()}
+                                      onClick={(e) => e.stopPropagation()}
                                     >
                                       <Trash2 className="h-4 w-4 mr-2" />
                                       Delete Project
                                     </DropdownMenuItem>
                                   </AlertDialogTrigger>
-                                  <AlertDialogContent>
+                                  <AlertDialogContent onClick={(e) => e.stopPropagation()}>
                                     <AlertDialogHeader>
                                       <AlertDialogTitle>Delete Project</AlertDialogTitle>
                                       <AlertDialogDescription>
@@ -449,9 +478,12 @@ export function ProjectSidebar({
                                       </AlertDialogDescription>
                                     </AlertDialogHeader>
                                     <AlertDialogFooter>
-                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                      <AlertDialogCancel onClick={(e) => e.stopPropagation()}>Cancel</AlertDialogCancel>
                                       <AlertDialogAction
-                                        onClick={() => handleDeleteProject(project)}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleDeleteProject(project);
+                                        }}
                                         disabled={isDeleting}
                                         className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                                       >

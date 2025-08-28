@@ -29,7 +29,7 @@ export function ModelSelector({
   const [isCustomInput, setIsCustomInput] = useState(false);
   const [customValue, setCustomValue] = useState('');
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const { settings, addRecentlyUsedModel } = useAISettings();
+  const { settings, addRecentlyUsedModel, isConfigured } = useAISettings();
   const { models, isLoading, error, refetch } = useProviderModels();
 
   const recentlyUsedModels = useMemo(() => settings.recentlyUsedModels || [], [settings.recentlyUsedModels]);
@@ -137,18 +137,20 @@ export function ModelSelector({
         </PopoverTrigger>
       <PopoverContent className="w-80 p-0" align="end">
         <Command>
-          <CommandInput placeholder="Search models..." className="h-9" />
+          {isConfigured && <CommandInput placeholder="Search models..." className="h-9" />}
           <CommandList className="max-h-[300px]">
-            {/* Custom model option and manage providers - always visible at the top */}
+            {/* Custom model option and manage providers */}
             <CommandGroup>
-              <CommandItem
-                value="__custom_model_option__"
-                onSelect={() => handleSelect('__custom__')}
-                className="cursor-pointer"
-              >
-                <Edit3 className="mr-2 h-4 w-4" />
-                Enter custom model...
-              </CommandItem>
+              {isConfigured && (
+                <CommandItem
+                  value="__custom_model_option__"
+                  onSelect={() => handleSelect('__custom__')}
+                  className="cursor-pointer"
+                >
+                  <Edit3 className="mr-2 h-4 w-4" />
+                  Enter custom model...
+                </CommandItem>
+              )}
               <CommandItem
                 value="__manage_providers_option__"
                 onSelect={() => handleSelect('__manage_providers__')}

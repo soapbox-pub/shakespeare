@@ -372,13 +372,14 @@ export function ProjectSidebar({
                       selectedProject?.id === project.id && "bg-gradient-to-r from-primary/15 to-accent/15 shadow-sm"
                     )}
                   >
-                    <button
-                      onClick={() => {
-                        onSelectProject(project);
-                        navigate(`/project/${project.id}`);
-                      }}
-                      className="w-full p-3 text-left text-sidebar-foreground"
-                    >
+                    <div className="w-full p-3 text-left text-sidebar-foreground">
+                      <button
+                        onClick={() => {
+                          onSelectProject(project);
+                          navigate(`/project/${project.id}`);
+                        }}
+                        className="absolute inset-0"
+                      />
                       <div className="flex items-center gap-3">
                         <Folder className="h-4 w-4 text-primary flex-shrink-0" />
                         <div className="flex items-start justify-between gap-2 flex-1 min-w-0">
@@ -396,7 +397,7 @@ export function ProjectSidebar({
                           </div>
 
                           {/* Dropdown Menu */}
-                          <div className="flex-shrink-0 -mt-1 -mr-1">
+                          <div className="flex-shrink-0 -mt-1 -mr-1 relative">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <Button
@@ -472,7 +473,7 @@ export function ProjectSidebar({
                           </div>
                         </div>
                       </div>
-                    </button>
+                    </div>
                   </div>
                 ))}
             </div>

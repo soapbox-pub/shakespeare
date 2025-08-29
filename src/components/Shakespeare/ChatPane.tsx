@@ -351,7 +351,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
             rows={1}
             style={{
               height: 'auto',
-              minHeight: '52px'
+              minHeight: '96px'
             }}
             onInput={(e) => {
               const target = e.target as HTMLTextAreaElement;
@@ -363,7 +363,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
           {/* Bottom Controls Row */}
           <div className="absolute bottom-2 left-2 right-2 flex items-center gap-2">
             {/* Model Selector */}
-            <div className="flex-1 max-w-72 ml-auto">
+            <div className="flex-1 max-w-72 ml-auto overflow-hidden">
               <ModelSelector
                 value={providerModel}
                 onChange={setProviderModel}

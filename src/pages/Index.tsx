@@ -174,9 +174,9 @@ export default function Index() {
               />
 
               {/* Bottom Controls Row */}
-              <div className="absolute bottom-3 left-3 right-3 flex items-center justify-end gap-2">
+              <div className="absolute bottom-3 left-3 right-3 flex items-center justify-end gap-2 overflow-hidden">
                 {/* Model Selector - always show to allow configuration */}
-                <div className="w-64">
+                <div className="overflow-hidden">
                   <ModelSelector
                     value={providerModel}
                     onChange={setProviderModel}

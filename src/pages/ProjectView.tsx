@@ -5,6 +5,7 @@ import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { ChatPane, type ChatPaneRef } from '@/components/Shakespeare/ChatPane';
 import { PreviewPane } from '@/components/Shakespeare/PreviewPane';
 import { ProjectSidebar } from '@/components/ProjectSidebar';
+import { ProjectInfoDialog } from '@/components/ProjectInfoDialog';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, MessageSquare, Eye, Code, Menu, Columns2 } from 'lucide-react';
@@ -29,6 +30,7 @@ export function ProjectView() {
   const [isBuildLoading, setIsBuildLoading] = useState(false);
   const [isDeployLoading, setIsDeployLoading] = useState(false);
   const [isAILoading, setIsAILoading] = useState(false);
+  const [isProjectInfoOpen, setIsProjectInfoOpen] = useState(false);
   const projectsManager = useProjectsManager();
   const chatPaneRef = useRef<ChatPaneRef>(null);
   const navigate = useNavigate();
@@ -221,7 +223,13 @@ BASE_DOMAIN=nostrdeploy.com`);
             </Button>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <h1 className="text-sm font-semibold truncate">{project.name}</h1>
+                <Button
+                  variant="ghost"
+                  className="p-0 h-auto text-sm font-semibold truncate hover:bg-transparent hover:text-primary"
+                  onClick={() => setIsProjectInfoOpen(true)}
+                >
+                  {project.name}
+                </Button>
                 <GitStatusIndicator projectId={project.id} />
               </div>
             </div>
@@ -321,6 +329,13 @@ BASE_DOMAIN=nostrdeploy.com`);
             </Button>
           </div>
         </div>
+
+        {/* Project Info Dialog */}
+        <ProjectInfoDialog
+          project={project}
+          open={isProjectInfoOpen}
+          onOpenChange={setIsProjectInfoOpen}
+        />
       </div>
     );
   }
@@ -369,9 +384,13 @@ BASE_DOMAIN=nostrdeploy.com`);
                     {/* Center - Project title */}
                     <div className="flex-1 min-w-0 ml-2 px-4">
                       <div className="flex items-center justify-center md:justify-start gap-2">
-                        <h2 className="font-semibold text-lg truncate">
+                        <Button
+                          variant="ghost"
+                          className="p-0 h-auto font-semibold text-lg truncate hover:bg-transparent hover:text-primary"
+                          onClick={() => setIsProjectInfoOpen(true)}
+                        >
                           {project.name}
-                        </h2>
+                        </Button>
                         <div className="ml-auto">
                           <GitStatusIndicator projectId={project.id} />
                         </div>
@@ -453,6 +472,13 @@ BASE_DOMAIN=nostrdeploy.com`);
           </ResizablePanelGroup>
         </div>
       </div>
+
+      {/* Project Info Dialog */}
+      <ProjectInfoDialog
+        project={project}
+        open={isProjectInfoOpen}
+        onOpenChange={setIsProjectInfoOpen}
+      />
     </div>
   );
 }

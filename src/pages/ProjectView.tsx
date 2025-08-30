@@ -324,7 +324,9 @@ BASE_DOMAIN=nostrdeploy.com`);
             >
               <Code className="h-4 w-4 mr-1" />
               Code
-              <GitStatusIndicator projectId={project.id} className="ml-1" />
+              {mobileView !== 'code' && (
+                <GitStatusIndicator projectId={project.id} className="ml-1" />
+              )}
             </Button>
           </div>
         </div>
@@ -452,7 +454,9 @@ BASE_DOMAIN=nostrdeploy.com`);
                         className="gap-2"
                       >
                         Code
-                        <GitStatusIndicator projectId={project.id} />
+                        {activeTab !== 'code' && (
+                          <GitStatusIndicator projectId={project.id} />
+                        )}
                       </Button>
                     </div>
                   </div>

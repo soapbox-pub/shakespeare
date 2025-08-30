@@ -17,6 +17,7 @@ import { useFS } from '@/hooks/useFS';
 import { useJSRuntime } from '@/hooks/useJSRuntime';
 import { useKeepAlive } from '@/hooks/useKeepAlive';
 import { GitStatusIndicator } from '@/components/GitStatusIndicator';
+import { StarButton } from '@/components/StarButton';
 import { generateSecretKey, getPublicKey, nip19 } from 'nostr-tools';
 import { bytesToHex } from 'nostr-tools/utils';
 import { buildProject } from "@/lib/build";
@@ -188,6 +189,11 @@ BASE_DOMAIN=nostrdeploy.com`);
     // when isAILoading becomes true after user interaction
   };
 
+  const handleProjectDeleted = () => {
+    setProject(null);
+    navigate('/');
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -233,16 +239,25 @@ BASE_DOMAIN=nostrdeploy.com`);
             </div>
           </div>
 
-          <ActionsMenu
-            projectId={project.id}
-            onNewChat={handleNewChat}
-            onBuild={runBuild}
-            onDeploy={runDeploy}
-            isLoading={isAILoading}
-            isBuildLoading={isBuildLoading}
-            isDeployLoading={isDeployLoading}
-            onFirstInteraction={handleFirstInteraction}
-          />
+          <div className="flex items-center gap-2">
+            <StarButton
+              projectId={project.id}
+              projectName={project.name}
+              className="h-8 w-8"
+            />
+            <ActionsMenu
+              projectId={project.id}
+              projectName={project.name}
+              onNewChat={handleNewChat}
+              onBuild={runBuild}
+              onDeploy={runDeploy}
+              isLoading={isAILoading}
+              isBuildLoading={isBuildLoading}
+              isDeployLoading={isDeployLoading}
+              onFirstInteraction={handleFirstInteraction}
+              onProjectDeleted={handleProjectDeleted}
+            />
+          </div>
         </header>
 
         {/* Mobile Sidebar Overlay */}
@@ -395,10 +410,16 @@ BASE_DOMAIN=nostrdeploy.com`);
                       </div>
                     </div>
 
-                    {/* Right side - Actions Menu */}
+                    {/* Right side - Star and Actions Menu */}
                     <div className="flex items-center gap-2">
+                      <StarButton
+                        projectId={project.id}
+                        projectName={project.name}
+                        className="h-8 w-8"
+                      />
                       <ActionsMenu
                         projectId={project.id}
+                        projectName={project.name}
                         onNewChat={handleNewChat}
                         onBuild={runBuild}
                         onDeploy={runDeploy}
@@ -406,6 +427,7 @@ BASE_DOMAIN=nostrdeploy.com`);
                         isBuildLoading={isBuildLoading}
                         isDeployLoading={isDeployLoading}
                         onFirstInteraction={handleFirstInteraction}
+                        onProjectDeleted={handleProjectDeleted}
                       />
                     </div>
                   </div>

@@ -4,18 +4,21 @@ import { Textarea } from '@/components/ui/textarea';
 import { CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Save, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useGitStatus } from '@/hooks/useGitStatus';
 
 interface FileEditorProps {
   filePath: string;
   content: string;
   onSave: (content: string) => void;
   isLoading: boolean;
+  projectId?: string;
 }
 
-export function FileEditor({ filePath, content, onSave, isLoading }: FileEditorProps) {
+export function FileEditor({ filePath, content, onSave, isLoading, projectId }: FileEditorProps) {
   const [editedContent, setEditedContent] = useState(content);
   const [isSaving, setIsSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+  const { data: gitStatus } = useGitStatus(projectId || null);
 
   useEffect(() => {
     setEditedContent(content);
@@ -64,11 +67,36 @@ export function FileEditor({ filePath, content, onSave, isLoading }: FileEditorP
     return 'font-mono text-sm';
   };
 
+  // Helper function to get git status for the current file
+  const getFileGitStatus = (filePath: string) => {
+    if (!gitStatus?.changedFiles) return null;
+    const fileChange = gitStatus.changedFiles.find(change => change.filepath === filePath);
+    return fileChange?.status || null;
+  };
+
+  // Helper function to get styling classes based on git status
+  const getGitStatusClasses = (status: string | null) => {
+    switch (status) {
+      case 'added':
+      case 'untracked':
+        return 'text-green-600 dark:text-green-400';
+      case 'modified':
+      case 'staged':
+        return 'text-yellow-600 dark:text-yellow-400';
+      default:
+        return '';
+    }
+  };
+
+  // Get git status for the current file
+  const currentFileGitStatus = getFileGitStatus(filePath);
+  const gitStatusClasses = getGitStatusClasses(currentFileGitStatus);
+
   return (
     <div className="h-full flex flex-col">
       <CardHeader className="border-b py-2 sm:py-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-sm sm:text-base truncate flex-1 mr-2">{filePath}</CardTitle>
+          <CardTitle className={cn("text-sm sm:text-base truncate flex-1 mr-2", gitStatusClasses)}>{filePath}</CardTitle>
           <div className="flex items-center space-x-1 sm:space-x-2">
             {hasChanges && (
               <span className="text-xs sm:text-sm text-muted-foreground hidden sm:inline">Unsaved changes</span>

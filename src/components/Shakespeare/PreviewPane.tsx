@@ -385,6 +385,7 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
                         content={fileContent}
                         onSave={handleFileSave}
                         isLoading={isLoading}
+                        projectId={projectId}
                       />
                     ) : (
                       <div className="h-full flex items-center justify-center">
@@ -430,6 +431,7 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
                     content={fileContent}
                     onSave={handleFileSave}
                     isLoading={isLoading}
+                    projectId={projectId}
                   />
                 ) : (
                   <div className="h-full flex items-center justify-center">

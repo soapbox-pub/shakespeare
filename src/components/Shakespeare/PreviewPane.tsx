@@ -6,6 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, FolderOpen, ArrowLeft } from 'lucide-react';
 import { useIsMobile } from '@/hooks/useIsMobile';
+import { GitStatusIndicator } from '@/components/GitStatusIndicator';
 
 import { FileTree } from './FileTree';
 import { FileEditor } from './FileEditor';
@@ -353,7 +354,10 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
               {mobileCodeView === 'explorer' ? (
                 <>
                   <div className="p-3 border-b bg-gradient-to-r from-primary/5 to-accent/5">
-                    <h3 className="font-semibold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">File Explorer</h3>
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-semibold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">File Explorer</h3>
+                      <GitStatusIndicator projectId={projectId} />
+                    </div>
                   </div>
                   <ScrollArea className="flex-1">
                     <FileTree
@@ -377,6 +381,7 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
                     <h3 className="font-semibold flex-1 truncate bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
                       {selectedFile ? selectedFile.split('/').pop() : 'File Editor'}
                     </h3>
+                    <GitStatusIndicator projectId={projectId} />
                   </div>
                   <div className="flex-1">
                     {selectedFile ? (
@@ -413,7 +418,10 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
             <div className="h-full flex">
               <div className="w-1/3 border-r">
                 <div className="p-4 border-b bg-gradient-to-r from-primary/5 to-accent/5">
-                  <h3 className="font-semibold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">File Explorer</h3>
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-semibold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">File Explorer</h3>
+                    <GitStatusIndicator projectId={projectId} />
+                  </div>
                 </div>
                 <ScrollArea className="h-[calc(100%-60px)]">
                   <FileTree

@@ -80,7 +80,7 @@ export function AppLayout({
     return (
       <div className="min-h-dvh bg-gradient-to-br from-primary/5 to-accent/5">
         {/* Mobile Header */}
-        <header className="border-b bg-gradient-to-r from-primary/10 via-accent/5 to-primary/10 backdrop-blur px-4 py-3 flex items-center justify-between">
+        <header className="h-12 border-b bg-gradient-to-r from-primary/10 via-accent/5 to-primary/10 backdrop-blur px-4 py-3 flex items-center justify-between">
           <div className="flex items-center space-x-2">
             {showSidebar && (
               <Button
@@ -149,7 +149,7 @@ export function AppLayout({
               variant="ghost"
               size="sm"
               onClick={() => setIsSidebarVisible(!isSidebarVisible)}
-              className="absolute top-4 left-4 h-8 w-8 p-0 z-10 bg-transparent backdrop-blur-sm hover:bg-transparent text-foreground/70 hover:text-foreground"
+              className="absolute top-2 left-4 h-8 w-8 p-0 z-10 bg-transparent backdrop-blur-sm hover:bg-transparent text-foreground/70 hover:text-foreground"
               aria-label="Toggle sidebar"
             >
               {isSidebarVisible ? <Columns2 className="h-4 w-4" /> : <Menu className="h-4 w-4" />}

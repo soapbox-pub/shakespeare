@@ -282,8 +282,8 @@ export function ProjectSidebar({
   return (
     <div className={cn("flex flex-col h-full bg-gradient-to-b from-sidebar to-sidebar/95", className)}>
       {/* Header with Logo */}
-      <div className="p-4 border-b border-sidebar-border bg-gradient-to-r from-primary/10 via-accent/5 to-primary/10">
-        <div className="flex items-center justify-between">
+      <div className="flex px-4 h-12 border-b border-sidebar-border bg-gradient-to-r from-primary/10 via-accent/5 to-primary/10">
+        <div className="flex items-center justify-between w-full">
           <button
             onClick={() => navigate('/')}
             className="flex items-center gap-3 hover:opacity-80 transition-opacity text-left"

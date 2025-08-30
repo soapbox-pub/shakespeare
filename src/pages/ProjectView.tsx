@@ -11,11 +11,12 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, MessageSquare, Eye, Code, Menu, Columns2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { ActionsMenu } from '@/components/ActionsMenu';
-import { GitStatusIndicator } from '@/components/GitStatusIndicator';
+
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { useFS } from '@/hooks/useFS';
 import { useJSRuntime } from '@/hooks/useJSRuntime';
 import { useKeepAlive } from '@/hooks/useKeepAlive';
+import { GitStatusIndicator } from '@/components/GitStatusIndicator';
 import { generateSecretKey, getPublicKey, nip19 } from 'nostr-tools';
 import { bytesToHex } from 'nostr-tools/utils';
 import { buildProject } from "@/lib/build";
@@ -222,16 +223,13 @@ BASE_DOMAIN=nostrdeploy.com`);
               <Menu className="h-4 w-4" />
             </Button>
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  className="p-0 h-auto text-sm font-semibold truncate hover:bg-transparent hover:text-primary"
-                  onClick={() => setIsProjectInfoOpen(true)}
-                >
-                  {project.name}
-                </Button>
-                <GitStatusIndicator projectId={project.id} />
-              </div>
+              <Button
+                variant="ghost"
+                className="p-0 h-auto text-sm font-semibold truncate hover:bg-transparent hover:text-primary"
+                onClick={() => setIsProjectInfoOpen(true)}
+              >
+                {project.name}
+              </Button>
             </div>
           </div>
 
@@ -326,6 +324,7 @@ BASE_DOMAIN=nostrdeploy.com`);
             >
               <Code className="h-4 w-4 mr-1" />
               Code
+              <GitStatusIndicator projectId={project.id} className="ml-1" />
             </Button>
           </div>
         </div>
@@ -383,7 +382,7 @@ BASE_DOMAIN=nostrdeploy.com`);
 
                     {/* Center - Project title */}
                     <div className="flex-1 min-w-0 ml-2 px-4">
-                      <div className="flex items-center justify-center md:justify-start gap-2">
+                      <div className="flex items-center justify-center md:justify-start">
                         <Button
                           variant="ghost"
                           className="p-0 h-auto font-semibold text-lg truncate hover:bg-transparent hover:text-primary"
@@ -391,9 +390,6 @@ BASE_DOMAIN=nostrdeploy.com`);
                         >
                           {project.name}
                         </Button>
-                        <div className="ml-auto">
-                          <GitStatusIndicator projectId={project.id} />
-                        </div>
                       </div>
                     </div>
 
@@ -453,8 +449,10 @@ BASE_DOMAIN=nostrdeploy.com`);
                         variant={activeTab === 'code' ? 'default' : 'ghost'}
                         size="sm"
                         onClick={() => setActiveTab('code')}
+                        className="gap-2"
                       >
                         Code
+                        <GitStatusIndicator projectId={project.id} />
                       </Button>
                     </div>
                   </div>

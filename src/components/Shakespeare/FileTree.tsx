@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { useFS } from '@/hooks/useFS';
+import { useGitStatus } from '@/hooks/useGitStatus';
 import { ChevronRight, ChevronDown, File, Folder } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -23,6 +24,53 @@ export function FileTree({ projectId, onFileSelect, selectedFile }: FileTreeProp
   const [isLoading, setIsLoading] = useState(true);
   const { fs } = useFS();
   const projectsManager = useProjectsManager();
+  const { data: gitStatus } = useGitStatus(projectId);
+
+  // Helper function to get git status for a file
+  const getFileGitStatus = (filePath: string) => {
+    if (!gitStatus?.changedFiles) return null;
+    const fileChange = gitStatus.changedFiles.find(change => change.filepath === filePath);
+    return fileChange?.status || null;
+  };
+
+  // Helper function to get git status for a directory
+  const getDirectoryGitStatus = (dirPath: string, _children: FileNode[]): 'modified' | 'added' | null => {
+    if (!gitStatus?.changedFiles) return null;
+
+    // Check if any files in this directory or subdirectories have changes
+    const hasChanges = gitStatus.changedFiles.some(change =>
+      change.filepath.startsWith(dirPath + '/') ||
+      (dirPath === '' && !change.filepath.includes('/'))
+    );
+
+    if (!hasChanges) return null;
+
+    // Check if all changes are new files (added/untracked)
+    const relevantChanges = gitStatus.changedFiles.filter(change =>
+      change.filepath.startsWith(dirPath + '/') ||
+      (dirPath === '' && !change.filepath.includes('/'))
+    );
+
+    const allAdded = relevantChanges.every(change =>
+      change.status === 'added' || change.status === 'untracked'
+    );
+
+    return allAdded ? 'added' : 'modified';
+  };
+
+  // Helper function to get styling classes based on git status
+  const getGitStatusClasses = (status: string | null) => {
+    switch (status) {
+      case 'added':
+      case 'untracked':
+        return 'text-green-600 dark:text-green-400';
+      case 'modified':
+      case 'staged':
+        return 'text-yellow-600 dark:text-yellow-400';
+      default:
+        return '';
+    }
+  };
 
   const buildFileTree = useCallback(async (projectId: string, dirPath: string): Promise<FileNode[]> => {
     const items = await projectsManager.listFiles(projectId, dirPath);
@@ -107,6 +155,14 @@ export function FileTree({ projectId, onFileSelect, selectedFile }: FileTreeProp
   const renderNode = (node: FileNode, depth: number = 0) => {
     const isSelected = selectedFile === node.path;
 
+    // Get git status for this node
+    const gitFileStatus = node.type === 'file' ? getFileGitStatus(node.path) : null;
+    const gitDirStatus = node.type === 'directory' ? getDirectoryGitStatus(node.path, node.children || []) : null;
+    const gitStatus = gitFileStatus || gitDirStatus;
+
+    // Get styling classes for git status
+    const gitStatusClasses = getGitStatusClasses(gitStatus);
+
     return (
       <div key={node.path}>
         <div
@@ -133,7 +189,7 @@ export function FileTree({ projectId, onFileSelect, selectedFile }: FileTreeProp
               <File className="h-4 w-4 text-gray-500 flex-shrink-0" />
             </>
           )}
-          <span className="text-sm truncate">{node.name}</span>
+          <span className={cn("text-sm truncate", gitStatusClasses)}>{node.name}</span>
         </div>
 
         {node.type === 'directory' && node.isOpen && node.children && (

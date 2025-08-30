@@ -1,13 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Loader2, Info, MoreVertical, Trash2, Eye, Star, Bug, Folder, Download, GitBranch } from 'lucide-react';
+import { Plus, Folder, Download, GitBranch, MoreVertical, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-
-
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { LoginArea } from '@/components/auth/LoginArea';
+import { StarButton } from '@/components/StarButton';
+import { AISettingsDialog } from '@/components/ai/AISettingsDialog';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useToast } from '@/hooks/useToast';
@@ -15,7 +14,6 @@ import { useFS } from '@/hooks/useFS';
 import type { Project } from '@/lib/ProjectsManager';
 import { cn } from '@/lib/utils';
 import JSZip from 'jszip';
-import git from 'isomorphic-git';
 
 interface ProjectSidebarProps {
   selectedProject: Project | null;
@@ -30,9 +28,9 @@ export function ProjectSidebar({
 }: ProjectSidebarProps) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
-  const [favorites, setFavorites] = useLocalStorage<string[]>('project-favorites', []);
+  const [aiSettingsOpen, setAISettingsOpen] = useState(false);
+  const [favorites] = useLocalStorage<string[]>('project-favorites', []);
   const projectsManager = useProjectsManager();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -58,49 +56,6 @@ export function ProjectSidebar({
   const handleNewProject = () => {
     onSelectProject(null);
     navigate('/');
-  };
-
-  const handleDeleteProject = async (project: Project) => {
-    setIsDeleting(true);
-    try {
-      await projectsManager.deleteProject(project.id);
-
-      // Remove from local state
-      setProjects(prev => prev.filter(p => p.id !== project.id));
-
-      // If the deleted project was selected, deselect it
-      if (selectedProject?.id === project.id) {
-        onSelectProject(null);
-        navigate('/');
-      }
-
-      toast({
-        title: "Project deleted",
-        description: `"${project.name}" has been permanently deleted.`,
-      });
-    } catch (error) {
-      toast({
-        title: "Failed to delete project",
-        description: error instanceof Error ? error.message : "An unexpected error occurred",
-        variant: "destructive",
-      });
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
-  const handleToggleFavorite = (project: Project) => {
-    const wasFavorite = favorites.includes(project.id);
-    const newFavorites = wasFavorite
-      ? favorites.filter(id => id !== project.id)
-      : [...favorites, project.id];
-
-    setFavorites(newFavorites);
-
-    toast({
-      title: wasFavorite ? "Project Unfavorited" : "Project Favorited",
-      description: `"${project.name}" has been ${wasFavorite ? 'removed from' : 'added to'} your favorites.`,
-    });
   };
 
   const isFavorite = (projectId: string) => favorites.includes(projectId);
@@ -181,93 +136,6 @@ export function ProjectSidebar({
     }
   };
 
-  const handleExportProject = async (project: Project) => {
-    setIsExporting(true);
-    try {
-      const zip = new JSZip();
-      const projectPath = `/projects/${project.id}`;
-
-      // Recursive function to add files and directories to zip from a specific project
-      const addProjectToZip = async (dirPath: string, zipFolder: JSZip) => {
-        try {
-          const entries = await fs.readdir(dirPath, { withFileTypes: true });
-
-          for (const entry of entries) {
-            const fullPath = `${dirPath}/${entry.name}`;
-
-            if (entry.isDirectory()) {
-              // Create folder in zip and recursively add its contents
-              const folder = zipFolder.folder(entry.name);
-              if (folder) {
-                await addProjectToZip(fullPath, folder);
-              }
-            } else if (entry.isFile()) {
-              // Add file to zip
-              try {
-                const fileContent = await fs.readFile(fullPath);
-                zipFolder.file(entry.name, fileContent);
-              } catch (error) {
-                console.warn(`Failed to read file ${fullPath}:`, error);
-              }
-            }
-          }
-        } catch (error) {
-          console.warn(`Failed to read directory ${dirPath}:`, error);
-        }
-      };
-
-      // Start from the project directory
-      await addProjectToZip(projectPath, zip);
-
-      // Generate zip file
-      const content = await zip.generateAsync({ type: 'blob' });
-
-      // Create download link
-      const url = URL.createObjectURL(content);
-      const link = document.createElement('a');
-      link.href = url;
-
-      // Generate filename with commit hash
-      let filename = `${project.name}.zip`;
-      try {
-        // Get the current commit hash
-        const commits = await git.log({
-          fs,
-          dir: projectPath,
-          depth: 1,
-        });
-
-        if (commits.length > 0) {
-          const commitHash = commits[0].oid.substring(0, 7); // Truncate to 7 characters
-          filename = `${project.name}-${commitHash}.zip`;
-        }
-      } catch (error) {
-        console.warn('Failed to get commit hash, using project name only:', error);
-      }
-
-      link.download = filename;
-
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-
-      toast({
-        title: "Project exported successfully",
-        description: `"${project.name}" has been downloaded as a zip file.`,
-      });
-    } catch (error) {
-      console.error('Failed to export project:', error);
-      toast({
-        title: "Failed to export project",
-        description: error instanceof Error ? error.message : "An unexpected error occurred",
-        variant: "destructive",
-      });
-    } finally {
-      setIsExporting(false);
-    }
-  };
-
   // Sort projects: favorites first, then by lastModified (newest first)
   const sortedProjects = projects.sort((a, b) => {
     const aIsFavorite = isFavorite(a.id);
@@ -315,17 +183,13 @@ export function ProjectSidebar({
                 <Download className="h-4 w-4" />
                 {isExporting ? 'Exporting...' : 'Export Files'}
               </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <a href="https://soapbox.pub/mkstack" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 w-full">
-                  <Info className="h-4 w-4" />
-                  About MKStack
-                </a>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <a href="https://github.com/soapbox-pub/mkstack/issues" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 w-full">
-                  <Bug className="h-4 w-4" />
-                  Report an Issue
-                </a>
+
+              <DropdownMenuItem
+                onClick={() => setAISettingsOpen(true)}
+                className="flex items-center gap-2 w-full"
+              >
+                <Settings className="h-4 w-4" />
+                AI Settings
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -388,88 +252,17 @@ export function ProjectSidebar({
                               <h3 className="font-medium text-sm truncate">
                                 {project.name}
                               </h3>
-                              <div className="flex items-center gap-1 ml-auto">
-                                {isFavorite(project.id) && (
-                                  <Star className="h-3 w-3 text-yellow-500 fill-current" />
-                                )}
-                              </div>
                             </div>
                           </div>
 
-                          {/* Dropdown Menu */}
+                          {/* Star Button */}
                           <div className="flex-shrink-0 -mt-1 -mr-1 relative">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-6 w-6 p-0 hover:bg-primary/20"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <MoreVertical className="h-3 w-3" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-48">
-                                <DropdownMenuItem
-                                  onClick={() => handleToggleFavorite(project)}
-                                >
-                                  <Star className={cn(
-                                    "h-4 w-4 mr-2",
-                                    isFavorite(project.id) ? "text-yellow-500 fill-current" : "text-muted-foreground"
-                                  )} />
-                                  {isFavorite(project.id) ? "Unfavorite" : "Favorite"}
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => navigate(`/project/${project.id}`)}
-                                >
-                                  <Eye className="h-4 w-4 mr-2" />
-                                  Open Project
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => handleExportProject(project)}
-                                  disabled={isExporting}
-                                >
-                                  <Download className="h-4 w-4 mr-2" />
-                                  {isExporting ? 'Exporting...' : 'Export Project'}
-                                </DropdownMenuItem>
-                                <AlertDialog>
-                                  <AlertDialogTrigger asChild>
-                                    <DropdownMenuItem
-                                      className="text-destructive focus:text-destructive cursor-pointer"
-                                      onSelect={(e) => e.preventDefault()}
-                                    >
-                                      <Trash2 className="h-4 w-4 mr-2" />
-                                      Delete Project
-                                    </DropdownMenuItem>
-                                  </AlertDialogTrigger>
-                                  <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                      <AlertDialogTitle>Delete Project</AlertDialogTitle>
-                                      <AlertDialogDescription>
-                                        Are you sure you want to delete "{project.name}"? This action cannot be undone and will permanently delete all project data including files.
-                                      </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                      <AlertDialogAction
-                                        onClick={() => handleDeleteProject(project)}
-                                        disabled={isDeleting}
-                                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                      >
-                                        {isDeleting ? (
-                                          <>
-                                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                            Deleting...
-                                          </>
-                                        ) : (
-                                          'Delete Project'
-                                        )}
-                                      </AlertDialogAction>
-                                    </AlertDialogFooter>
-                                  </AlertDialogContent>
-                                </AlertDialog>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
+                            <StarButton
+                              projectId={project.id}
+                              projectName={project.name}
+                              showToast={false}
+                              className="h-6 w-6 hover:bg-primary/20"
+                            />
                           </div>
                         </div>
                       </div>
@@ -485,6 +278,12 @@ export function ProjectSidebar({
       <div className="p-4 border-t border-sidebar-border bg-gradient-to-r from-primary/5 to-accent/5 mt-auto">
         <LoginArea className="w-full" />
       </div>
+
+      {/* AI Settings Dialog */}
+      <AISettingsDialog
+        open={aiSettingsOpen}
+        onOpenChange={setAISettingsOpen}
+      />
     </div>
   );
 }

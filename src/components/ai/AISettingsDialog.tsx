@@ -55,6 +55,12 @@ const PRESET_PROVIDERS: PresetProvider[] = [
     baseURL: "https://api.anthropic.com/v1",
     apiKeysURL: "https://console.anthropic.com/settings/keys",
   },
+  {
+    id: "xai",
+    name: "xAI",
+    baseURL: "https://api.x.ai/v1",
+    apiKeysURL: "https://console.x.ai",
+  },
 ];
 
 interface AISettingsDialogProps {

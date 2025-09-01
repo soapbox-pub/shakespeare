@@ -57,22 +57,23 @@ export async function makeSystemPrompt(opts: MakeSystemPromptOpts): Promise<stri
     // README.md not found, continue
   }
 
-  // Add context from CONTEXT.md if it exists
+  // Add context from AGENTS.md if it exists
   try {
-    const { text } = await getContext(fs, cwd);
+    const { text } = await getAgentContext(fs, cwd);
     system += "\n\n" + text;
   } catch {
-    // CONTEXT.md not found, continue
+    // AGENTS.md not found, continue
   }
 
   return system;
 }
 
-async function getContext(
+async function getAgentContext(
   fs: JSRuntimeFS,
   cwd: string,
 ): Promise<{ filename: string; text: string }> {
   const contextFiles = [
+    "AGENTS.md",
     "CONTEXT.md",
     "CLAUDE.md",
     "codex.md",

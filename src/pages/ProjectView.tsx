@@ -18,6 +18,8 @@ import { useJSRuntime } from '@/hooks/useJSRuntime';
 import { useKeepAlive } from '@/hooks/useKeepAlive';
 import { GitStatusIndicator } from '@/components/GitStatusIndicator';
 import { StarButton } from '@/components/StarButton';
+
+import { useProjectSessionCleanup } from '@/hooks/useProjectSessionCleanup';
 import { generateSecretKey, getPublicKey, nip19 } from 'nostr-tools';
 import { bytesToHex } from 'nostr-tools/utils';
 import { buildProject } from "@/lib/build";
@@ -60,6 +62,8 @@ export function ProjectView() {
       }
     ]
   });
+
+  const { cleanupProjectSessions } = useProjectSessionCleanup(project?.id || '');
 
   const loadProject = useCallback(async () => {
     if (!projectId) return;
@@ -190,6 +194,9 @@ BASE_DOMAIN=nostrdeploy.com`);
   };
 
   const handleProjectDeleted = () => {
+    if (project) {
+      cleanupProjectSessions();
+    }
     setProject(null);
     navigate('/');
   };

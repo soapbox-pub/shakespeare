@@ -14,6 +14,7 @@ import { NostrLoginProvider } from '@nostrify/react/login';
 import { AppProvider } from '@/components/AppProvider';
 import { AppConfig } from '@/contexts/AppContext';
 import { AISettingsProvider } from '@/components/AISettingsProvider';
+import { SessionManagerProvider } from '@/components/SessionManagerProvider';
 import { FSProvider } from '@/components/FSProvider';
 import { JSRuntimeProvider } from '@/components/JSRuntimeProvider';
 import { LightningFSAdapter } from '@/lib/LightningFSAdapter';
@@ -65,13 +66,15 @@ export function App() {
               <NostrLoginProvider storageKey='nostr:login'>
                 <NostrProvider>
                   <AISettingsProvider>
-                    <TooltipProvider>
-                      <Toaster />
-                      <Sonner />
-                      <Suspense>
-                        <AppRouter />
-                      </Suspense>
-                    </TooltipProvider>
+                    <SessionManagerProvider>
+                      <TooltipProvider>
+                        <Toaster />
+                        <Sonner />
+                        <Suspense>
+                          <AppRouter />
+                        </Suspense>
+                      </TooltipProvider>
+                    </SessionManagerProvider>
                   </AISettingsProvider>
                 </NostrProvider>
               </NostrLoginProvider>

@@ -8,7 +8,7 @@ import { useAISettings } from '@/hooks/useAISettings';
 import { useFS } from '@/hooks/useFS';
 
 import { useKeepAlive } from '@/hooks/useKeepAlive';
-import { useAIChat } from '@/hooks/useAIChat';
+import { useAIChatSession } from '@/hooks/useAIChatSession';
 import { ModelSelector } from '@/components/ModelSelector';
 
 
@@ -126,7 +126,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     startGeneration,
     stopGeneration,
     startNewSession: internalStartNewSession,
-  } = useAIChat({
+  } = useAIChatSession({
     projectId,
     projectName,
     tools,
@@ -310,7 +310,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
             streamingMessage.content ? (
               <AIMessageItem
                 key="streaming-message"
-                message={streamingMessage}
+                message={streamingMessage as OpenAI.Chat.Completions.ChatCompletionMessageParam}
                 isCurrentlyLoading
               />
             ) : (
@@ -329,7 +329,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
               <div className="flex items-center gap-2 px-2 py-1 text-xs text-muted-foreground">
                 <Loader2 className="h-3 w-3 animate-spin flex-shrink-0" />
                 <span className="font-medium">
-                  Running {streamingMessage.tool_calls[0].function.name}...
+                  Running {(streamingMessage.tool_calls[0] as OpenAI.Chat.Completions.ChatCompletionMessageFunctionToolCall).function.name}...
                 </span>
               </div>
             </div>

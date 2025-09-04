@@ -7,6 +7,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { LoginArea } from '@/components/auth/LoginArea';
 import { StarButton } from '@/components/StarButton';
 import { AISettingsDialog } from '@/components/ai/AISettingsDialog';
+import { SessionStatusIndicator } from '@/components/SessionStatusIndicator';
+import { ProjectSessionIndicator } from '@/components/ProjectSessionIndicator';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useToast } from '@/hooks/useToast';
@@ -161,7 +163,9 @@ export function ProjectSidebar({
               Shakespeare
             </h1>
           </button>
-          <DropdownMenu>
+          <div className="flex items-center gap-1">
+            <SessionStatusIndicator currentProjectId={selectedProject?.id} />
+            <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-primary/10">
                 <MoreVertical className="h-4 w-4 text-primary/60 hover:text-primary" />
@@ -192,7 +196,8 @@ export function ProjectSidebar({
                 AI Settings
               </DropdownMenuItem>
             </DropdownMenuContent>
-          </DropdownMenu>
+            </DropdownMenu>
+          </div>
         </div>
       </div>
 
@@ -252,6 +257,7 @@ export function ProjectSidebar({
                               <h3 className="font-medium text-sm truncate">
                                 {project.name}
                               </h3>
+                              <ProjectSessionIndicator projectId={project.id} />
                             </div>
                           </div>
 

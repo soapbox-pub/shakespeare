@@ -7,7 +7,6 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { LoginArea } from '@/components/auth/LoginArea';
 import { StarButton } from '@/components/StarButton';
 import { AISettingsDialog } from '@/components/ai/AISettingsDialog';
-import { SessionStatusIndicator } from '@/components/SessionStatusIndicator';
 import { ProjectSessionIndicator } from '@/components/ProjectSessionIndicator';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
@@ -164,7 +163,6 @@ export function ProjectSidebar({
             </h1>
           </button>
           <div className="flex items-center gap-1">
-            <SessionStatusIndicator currentProjectId={selectedProject?.id} />
             <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-primary/10">
@@ -250,15 +248,15 @@ export function ProjectSidebar({
                         className="absolute inset-0"
                       />
                       <div className="flex items-center gap-3">
-                        <Folder className="h-4 w-4 text-primary flex-shrink-0" />
+                        <div className="relative flex-shrink-0">
+                          <Folder className="h-4 w-4 text-primary" />
+                          <ProjectSessionIndicator projectId={project.id} />
+                        </div>
                         <div className="flex items-start justify-between gap-2 flex-1 min-w-0">
                           <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <h3 className="font-medium text-sm truncate">
-                                {project.name}
-                              </h3>
-                              <ProjectSessionIndicator projectId={project.id} />
-                            </div>
+                            <h3 className="font-medium text-sm truncate mb-1">
+                              {project.name}
+                            </h3>
                           </div>
 
                           {/* Star Button */}

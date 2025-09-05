@@ -8,7 +8,7 @@ import { useAISettings } from '@/hooks/useAISettings';
 import { useFS } from '@/hooks/useFS';
 
 import { useKeepAlive } from '@/hooks/useKeepAlive';
-import { useAIChatSession } from '@/hooks/useAIChatSession';
+import { useAIChat } from '@/hooks/useAIChat';
 import type { AIMessage } from '@/lib/SessionManager';
 import { ModelSelector } from '@/components/ModelSelector';
 
@@ -127,7 +127,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     startGeneration,
     stopGeneration,
     startNewSession: internalStartNewSession,
-  } = useAIChatSession({
+  } = useAIChat({
     projectId,
     projectName,
     tools,

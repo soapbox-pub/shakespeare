@@ -9,6 +9,7 @@ interface ProjectSessionIndicatorProps {
 
 /**
  * Small indicator that shows if a project has active AI sessions
+ * Positioned as a status badge on the folder icon
  */
 export function ProjectSessionIndicator({ projectId, className }: ProjectSessionIndicatorProps) {
   const { hasActiveSessions, hasRunningSessions } = useProjectSessionStatus(projectId);
@@ -18,11 +19,15 @@ export function ProjectSessionIndicator({ projectId, className }: ProjectSession
   }
 
   return (
-    <div className={cn("flex items-center", className)}>
+    <div className={cn(
+      "absolute -bottom-0.5 -right-0.5 flex items-center justify-center",
+      "bg-background border border-border rounded-full shadow-sm",
+      className
+    )}>
       {hasRunningSessions ? (
-        <Loader2 className="h-3 w-3 animate-spin text-blue-600 dark:text-blue-400" />
+        <Loader2 className="h-2.5 w-2.5 animate-spin text-blue-600 dark:text-blue-400" />
       ) : (
-        <div className="h-2 w-2 rounded-full bg-green-500" title="AI session active" />
+        <div className="h-1.5 w-1.5 rounded-full bg-green-500" title="AI session active" />
       )}
     </div>
   );

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSessionManager } from '@/hooks/useSessionManager';
+import { useSessionSubscription } from '@/hooks/useSessionSubscription';
 import { useAISettings } from '@/hooks/useAISettings';
 import type { SessionState, SessionConfig, AIMessage } from '@/lib/SessionManager';
 import type OpenAI from 'openai';
@@ -89,92 +90,53 @@ export function useAIChatSession({
     initSession();
   }, [sessionManager, projectId, projectName, tools, customTools, systemPrompt, maxSteps, generatedSessionId]);
 
-  // Subscribe to session updates
-  useEffect(() => {
-    if (!sessionId) return;
+  // Update session state efficiently
+  const updateSessionState = useCallback((state: SessionState) => {
+    setSessionState({
+      ...state,
+      // Only create new arrays/objects when they actually change
+      messages: state.messages.slice(),
+      streamingMessage: state.streamingMessage ? { ...state.streamingMessage } : undefined
+    });
+  }, []);
 
-    const handleSessionUpdate = (updatedSessionId: string, state: SessionState) => {
-      if (updatedSessionId === sessionId) {
-        // Create a deep copy to ensure React detects the change
-        const newState = {
-          ...state,
-          messages: [...state.messages],
-          streamingMessage: state.streamingMessage ? { ...state.streamingMessage } : undefined,
-          abortController: state.abortController
-        };
-        setSessionState(newState);
+  // Subscribe to session events using shared hook
+  useSessionSubscription('sessionUpdated', (updatedSessionId: string, state: SessionState) => {
+    if (updatedSessionId === sessionId) {
+      updateSessionState(state);
+    }
+  }, [sessionId, updateSessionState]);
+
+  useSessionSubscription('messageAdded', (updatedSessionId: string, _message: AIMessage) => {
+    if (updatedSessionId === sessionId) {
+      const session = sessionManager.getSession(sessionId);
+      if (session) {
+        updateSessionState(session);
       }
-    };
+    }
+  }, [sessionId, updateSessionState]);
 
-    const handleMessageAdded = (updatedSessionId: string, _message: AIMessage) => {
-      if (updatedSessionId === sessionId) {
-        // Get fresh session state and force update by creating new object
-        const session = sessionManager.getSession(sessionId);
-        if (session) {
-          // Create a deep copy to ensure React detects the change
-          const newState = {
-            ...session,
-            messages: [...session.messages],
-            streamingMessage: session.streamingMessage ? { ...session.streamingMessage } : undefined,
-            abortController: session.abortController
-          };
-          setSessionState(newState);
-        }
+  useSessionSubscription('streamingUpdate', (updatedSessionId: string, _content: string, _toolCalls?: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[]) => {
+    if (updatedSessionId === sessionId) {
+      const session = sessionManager.getSession(sessionId);
+      if (session) {
+        updateSessionState(session);
       }
-    };
+    }
+  }, [sessionId, updateSessionState]);
 
-    const handleStreamingUpdate = (updatedSessionId: string, _content: string, _toolCalls?: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[]) => {
-      if (updatedSessionId === sessionId) {
-        // Get fresh session state and force update by creating new object
-        const session = sessionManager.getSession(sessionId);
-        if (session) {
-          // Create a deep copy to ensure React detects the change
-          const newState = {
-            ...session,
-            messages: [...session.messages],
-            streamingMessage: session.streamingMessage ? { ...session.streamingMessage } : undefined,
-            abortController: session.abortController
-          };
-          setSessionState(newState);
-        }
+  useSessionSubscription('loadingChanged', (updatedSessionId: string, isLoading: boolean) => {
+    if (updatedSessionId === sessionId) {
+      const session = sessionManager.getSession(sessionId);
+      if (session) {
+        updateSessionState(session);
       }
-    };
 
-    const handleLoadingChanged = (updatedSessionId: string, isLoading: boolean) => {
-      if (updatedSessionId === sessionId) {
-        // Update session state immediately and force update by creating new object
-        const session = sessionManager.getSession(sessionId);
-        if (session) {
-          // Create a deep copy to ensure React detects the change
-          const newState = {
-            ...session,
-            messages: [...session.messages],
-            streamingMessage: session.streamingMessage ? { ...session.streamingMessage } : undefined,
-            abortController: session.abortController
-          };
-          setSessionState(newState);
-        }
-
-        if (onUpdateMetadata) {
-          if (isLoading) {
-            onUpdateMetadata('Shakespeare', `Working on ${projectName}...`);
-          }
-        }
+      if (onUpdateMetadata && isLoading) {
+        onUpdateMetadata('Shakespeare', `Working on ${projectName}...`);
       }
-    };
-
-    sessionManager.on('sessionUpdated', handleSessionUpdate);
-    sessionManager.on('messageAdded', handleMessageAdded);
-    sessionManager.on('streamingUpdate', handleStreamingUpdate);
-    sessionManager.on('loadingChanged', handleLoadingChanged);
-
-    return () => {
-      sessionManager.off('sessionUpdated', handleSessionUpdate);
-      sessionManager.off('messageAdded', handleMessageAdded);
-      sessionManager.off('streamingUpdate', handleStreamingUpdate);
-      sessionManager.off('loadingChanged', handleLoadingChanged);
-    };
-  }, [sessionId, sessionManager, onUpdateMetadata, projectName]);
+    }
+  }, [sessionId, updateSessionState, onUpdateMetadata, projectName]);
 
 
 

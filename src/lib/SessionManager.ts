@@ -4,6 +4,15 @@ import { DotAI } from './DotAI';
 import { parseProviderModel } from './parseProviderModel';
 import type { Tool } from './tools/Tool';
 
+// Simple debounce utility
+function debounce<T extends (...args: unknown[]) => void>(func: T, wait: number): T {
+  let timeout: NodeJS.Timeout;
+  return ((...args: Parameters<T>) => {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func(...args), wait);
+  }) as T;
+}
+
 export type AIMessage = OpenAI.Chat.Completions.ChatCompletionMessageParam;
 
 export interface SessionConfig {
@@ -55,6 +64,11 @@ export class SessionManager {
   private aiSettings: {
     providers: Record<string, { baseURL: string; apiKey?: string }>;
   };
+
+  // Performance and memory management
+  private readonly MAX_SESSIONS = 50;
+  private readonly MAX_SESSION_AGE = 7 * 24 * 60 * 60 * 1000; // 7 days
+  private debouncedPersist = debounce(this.persistSessions.bind(this), 1000);
 
   constructor(fs: JSRuntimeFS, aiSettings: { providers: Record<string, { baseURL: string; apiKey?: string }> }) {
     this.fs = fs;
@@ -165,10 +179,14 @@ export class SessionManager {
     // Save to history
     await this.saveSessionHistory(sessionId);
 
-    this.persistSessions();
+    // Use debounced persistence for performance
+    this.debouncedPersist();
 
     this.emit('messageAdded', sessionId, message);
     this.emit('sessionUpdated', sessionId, session);
+
+    // Clean up old sessions periodically
+    this.cleanupOldSessions();
   }
 
   /**
@@ -410,13 +428,32 @@ export class SessionManager {
     } catch (error) {
       console.error('AI generation error:', error);
 
-      // Add error message
-      const errorMessage: AIMessage = {
+      // Handle different types of errors appropriately
+      let errorMessage: string;
+      if (error && typeof error === 'object' && 'name' in error) {
+        if (error.name === 'AbortError') {
+          // User cancelled the request - don't add error message
+          return;
+        } else if (error.name === 'TypeError' && error.message.includes('fetch')) {
+          errorMessage = 'Network error: Unable to connect to AI service. Please check your internet connection and AI settings.';
+        } else if (error.message?.includes('API key')) {
+          errorMessage = 'Authentication error: Please check your API key in AI settings.';
+        } else if (error.message?.includes('rate limit')) {
+          errorMessage = 'Rate limit exceeded. Please wait a moment before trying again.';
+        } else {
+          errorMessage = `AI service error: ${error.message || 'Unknown error occurred'}`;
+        }
+      } else {
+        errorMessage = 'Sorry, I encountered an unexpected error. Please try again.';
+      }
+
+      // Add user-friendly error message
+      const errorAIMessage: AIMessage = {
         role: 'assistant',
-        content: error instanceof Error ? error.message : 'Sorry, I encountered an error. Please try again.'
+        content: errorMessage
       };
 
-      await this.addMessage(sessionId, errorMessage);
+      await this.addMessage(sessionId, errorAIMessage);
     } finally {
       session.isLoading = false;
       session.streamingMessage = undefined;
@@ -447,6 +484,35 @@ export class SessionManager {
   }
 
   /**
+   * Clean up old sessions to prevent memory bloat
+   */
+  private cleanupOldSessions(): void {
+    const now = Date.now();
+    const sessionIdsToDelete: string[] = [];
+
+    for (const [id, session] of this.sessions) {
+      if (now - session.lastActivity.getTime() > this.MAX_SESSION_AGE) {
+        sessionIdsToDelete.push(id);
+      }
+    }
+
+    // Delete old sessions
+    sessionIdsToDelete.forEach(id => this.deleteSession(id));
+
+    // If we still have too many sessions, delete the oldest ones
+    if (this.sessions.size > this.MAX_SESSIONS) {
+      const sortedSessions = Array.from(this.sessions.entries())
+        .sort(([, a], [, b]) => a.lastActivity.getTime() - b.lastActivity.getTime());
+
+      const sessionsToDelete = sortedSessions
+        .slice(0, this.sessions.size - this.MAX_SESSIONS)
+        .map(([id]) => id);
+
+      sessionsToDelete.forEach(id => this.deleteSession(id));
+    }
+  }
+
+  /**
    * Start a new session (clear messages but keep configuration)
    */
   async startNewSession(sessionId: string): Promise<void> {
@@ -462,7 +528,7 @@ export class SessionManager {
     session.sessionName = DotAI.generateSessionName();
     session.lastActivity = new Date();
 
-    this.persistSessions();
+    this.debouncedPersist();
 
     this.emit('sessionUpdated', sessionId, session);
   }

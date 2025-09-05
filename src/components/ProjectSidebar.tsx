@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Folder, Download, GitBranch, MoreVertical, Settings, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -22,7 +22,7 @@ interface ProjectItemProps {
   onSelect: (project: Project) => void;
 }
 
-function ProjectItem({ project, isSelected, onSelect }: ProjectItemProps) {
+const ProjectItem = memo(({ project, isSelected, onSelect }: ProjectItemProps) => {
   const navigate = useNavigate();
   const { hasRunningSessions } = useProjectSessionStatus(project.id);
 
@@ -72,7 +72,9 @@ function ProjectItem({ project, isSelected, onSelect }: ProjectItemProps) {
       </div>
     </div>
   );
-}
+});
+
+ProjectItem.displayName = 'ProjectItem';
 
 interface ProjectSidebarProps {
   selectedProject: Project | null;

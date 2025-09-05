@@ -26,7 +26,7 @@ interface StreamingMessage {
  * Hook that provides AI chat functionality using the global session manager.
  * Sessions persist and can run in the background when switching between projects.
  */
-export function useAIChatSession({
+export function useAIChat({
   projectId,
   projectName,
   tools = {},

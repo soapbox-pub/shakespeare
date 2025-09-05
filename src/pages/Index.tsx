@@ -9,7 +9,7 @@ import { useIsMobile } from '@/hooks/useIsMobile';
 import { useAISettings } from '@/hooks/useAISettings';
 import { AppLayout } from '@/components/AppLayout';
 import { DotAI } from '@/lib/DotAI';
-import type { AIMessage } from '@/hooks/useAIChat';
+import type { AIMessage } from '@/lib/SessionManager';
 
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';

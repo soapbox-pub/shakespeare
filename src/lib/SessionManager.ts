@@ -5,14 +5,17 @@ import { parseProviderModel } from './parseProviderModel';
 import type { Tool } from './tools/Tool';
 import { join } from '@std/path';
 
-// Simple debounce utility for async functions
-function debounce<T extends (...args: unknown[]) => Promise<void>>(func: T, wait: number): T {
+// Simple debounce utility
+const debounce = <T extends (...args: unknown[]) => void>(
+  func: T,
+  wait: number
+): ((...args: Parameters<T>) => void) => {
   let timeout: NodeJS.Timeout;
-  return ((...args: Parameters<T>) => {
+  return (...args: Parameters<T>) => {
     clearTimeout(timeout);
     timeout = setTimeout(() => func(...args), wait);
-  }) as T;
-}
+  };
+};
 
 export type AIMessage = OpenAI.Chat.Completions.ChatCompletionMessageParam;
 
@@ -51,7 +54,7 @@ export interface SessionManagerEvents {
   loadingChanged: (sessionId: string, isLoading: boolean) => void;
 }
 
-type EventListener<T extends unknown[]> = (...args: T) => void;
+
 
 /**
  * Global session manager that handles multiple AI chat sessions running concurrently.
@@ -60,16 +63,14 @@ type EventListener<T extends unknown[]> = (...args: T) => void;
 export class SessionManager {
   private sessions = new Map<string, SessionState>();
   private sessionConfigs = new Map<string, SessionConfig>();
-  private listeners = new Map<keyof SessionManagerEvents, Set<EventListener<unknown[]>>>();
+  private listeners: Partial<Record<keyof SessionManagerEvents, Set<(...args: unknown[]) => void>>> = {};
   private fs: JSRuntimeFS;
-  private aiSettings: {
-    providers: Record<string, { baseURL: string; apiKey?: string }>;
-  };
+  private aiSettings: { providers: Record<string, { baseURL: string; apiKey?: string }> };
 
-  // Performance and memory management
+  // Performance constants
   private readonly MAX_SESSIONS = 50;
   private readonly MAX_SESSION_AGE = 7 * 24 * 60 * 60 * 1000; // 7 days
-  private debouncedPersist = debounce(this.persistSessions.bind(this), 1000);
+  private debouncedPersist = debounce(() => this.persistSessions(), 1000);
   private dotAI: DotAI;
 
   constructor(fs: JSRuntimeFS, aiSettings: { providers: Record<string, { baseURL: string; apiKey?: string }> }) {
@@ -97,11 +98,10 @@ export class SessionManager {
       lastActivity: new Date(),
     };
 
-    // Try to load existing history for this project
+    // Try to load existing history
     try {
       const dotAI = new DotAI(this.fs, `/projects/${config.projectId}`);
       const lastSession = await dotAI.readLastSessionHistory();
-
       if (lastSession) {
         sessionState.messages = lastSession.messages;
         sessionState.sessionName = lastSession.sessionName;
@@ -114,7 +114,6 @@ export class SessionManager {
     this.sessionConfigs.set(config.id, config);
 
     this.persistSessions();
-
     this.emit('sessionCreated', config.id);
     this.emit('sessionUpdated', config.id, sessionState);
 
@@ -149,15 +148,12 @@ export class SessionManager {
    */
   async deleteSession(sessionId: string): Promise<void> {
     const session = this.sessions.get(sessionId);
-    if (session?.abortController) {
-      session.abortController.abort();
-    }
+    session?.abortController?.abort();
 
     this.sessions.delete(sessionId);
     this.sessionConfigs.delete(sessionId);
 
     await this.persistSessions();
-
     this.emit('sessionDeleted', sessionId);
   }
 
@@ -165,8 +161,9 @@ export class SessionManager {
    * Delete all sessions for a project
    */
   async deleteProjectSessions(projectId: string): Promise<void> {
-    const projectSessions = this.getProjectSessions(projectId);
-    await Promise.all(projectSessions.map(session => this.deleteSession(session.id)));
+    await Promise.all(
+      this.getProjectSessions(projectId).map(session => this.deleteSession(session.id))
+    );
   }
 
   /**
@@ -179,17 +176,12 @@ export class SessionManager {
     session.messages.push(message);
     session.lastActivity = new Date();
 
-    // Save to history
     await this.saveSessionHistory(sessionId);
-
-    // Use debounced persistence for performance
     this.debouncedPersist();
+    this.cleanupOldSessions();
 
     this.emit('messageAdded', sessionId, message);
     this.emit('sessionUpdated', sessionId, session);
-
-    // Clean up old sessions periodically
-    this.cleanupOldSessions();
   }
 
   /**
@@ -201,15 +193,7 @@ export class SessionManager {
 
     if (!session || !config || session.isLoading) return;
 
-    // Add user message
-    const userMessage: AIMessage = {
-      role: 'user',
-      content
-    };
-
-    await this.addMessage(sessionId, userMessage);
-
-    // Start AI generation
+    await this.addMessage(sessionId, { role: 'user', content });
     await this.startGeneration(sessionId, providerModel);
   }
 
@@ -309,33 +293,20 @@ export class SessionManager {
           if (delta?.tool_calls) {
             for (const toolCallDelta of delta.tool_calls) {
               const index = toolCallDelta.index;
-              if (index !== undefined) {
-                // Initialize tool call if it doesn't exist
-                if (!accumulatedToolCalls[index]) {
-                  accumulatedToolCalls[index] = {
-                    id: toolCallDelta.id || '',
-                    type: 'function',
-                    function: {
-                      name: '',
-                      arguments: ''
-                    }
-                  } as OpenAI.Chat.Completions.ChatCompletionMessageFunctionToolCall;
-                }
+              if (index === undefined) continue;
 
-                // Update tool call properties
-                if (toolCallDelta.id) {
-                  accumulatedToolCalls[index].id = toolCallDelta.id;
-                }
-                if (toolCallDelta.function?.name && accumulatedToolCalls[index].type === 'function') {
-                  (accumulatedToolCalls[index] as OpenAI.Chat.Completions.ChatCompletionMessageFunctionToolCall).function.name = toolCallDelta.function.name;
-                }
-                if (toolCallDelta.function?.arguments && accumulatedToolCalls[index].type === 'function') {
-                  (accumulatedToolCalls[index] as OpenAI.Chat.Completions.ChatCompletionMessageFunctionToolCall).function.arguments += toolCallDelta.function.arguments;
-                }
-              }
+              accumulatedToolCalls[index] ??= {
+                id: '',
+                type: 'function',
+                function: { name: '', arguments: '' }
+              };
+
+              const toolCall = accumulatedToolCalls[index] as OpenAI.Chat.Completions.ChatCompletionMessageFunctionToolCall;
+              if (toolCallDelta.id) toolCall.id = toolCallDelta.id;
+              if (toolCallDelta.function?.name) toolCall.function.name = toolCallDelta.function.name;
+              if (toolCallDelta.function?.arguments) toolCall.function.arguments += toolCallDelta.function.arguments;
             }
 
-            // Update streaming message with tool calls
             if (session.streamingMessage) {
               session.streamingMessage.tool_calls = accumulatedToolCalls.length > 0 ? accumulatedToolCalls : undefined;
               this.emit('streamingUpdate', sessionId, session.streamingMessage.content, session.streamingMessage.tool_calls);
@@ -366,7 +337,7 @@ export class SessionManager {
         }
 
         // Handle tool calls
-        if (accumulatedToolCalls && accumulatedToolCalls.length > 0) {
+        if (accumulatedToolCalls?.length) {
           for (const toolCall of accumulatedToolCalls) {
             if (toolCall.type !== 'function') continue;
 
@@ -375,54 +346,17 @@ export class SessionManager {
             const tool = config.customTools[toolName];
 
             if (!tool) {
-              const toolNotFoundMessage: AIMessage = {
-                role: 'tool',
-                content: `Tool ${toolName} not found`,
-                tool_call_id: functionToolCall.id
-              };
-
-              await this.addMessage(sessionId, toolNotFoundMessage);
-              conversationMessages.push(toolNotFoundMessage);
-              continue;
-            }
-
-            let toolArgs: unknown;
-            try {
-              const json = JSON.parse(functionToolCall.function.arguments);
-              toolArgs = tool.inputSchema.parse(json);
-            } catch (parseError) {
-              const toolErrorMessage: AIMessage = {
-                role: 'tool',
-                content: `Error parsing arguments for tool ${toolName}: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`,
-                tool_call_id: functionToolCall.id
-              };
-
-              await this.addMessage(sessionId, toolErrorMessage);
-              conversationMessages.push(toolErrorMessage);
+              await this.addToolMessage(sessionId, conversationMessages, functionToolCall.id, `Tool ${toolName} not found`);
               continue;
             }
 
             try {
-              // Execute the tool
+              const toolArgs = tool.inputSchema.parse(JSON.parse(functionToolCall.function.arguments));
               const content = await tool.execute(toolArgs);
-
-              const toolResultMessage: AIMessage = {
-                role: 'tool',
-                content,
-                tool_call_id: functionToolCall.id
-              };
-
-              await this.addMessage(sessionId, toolResultMessage);
-              conversationMessages.push(toolResultMessage);
-            } catch (toolError) {
-              const toolErrorMessage: AIMessage = {
-                role: 'tool',
-                content: `Error executing tool ${toolName}: ${toolError instanceof Error ? toolError.message : 'Unknown error'}`,
-                tool_call_id: functionToolCall.id
-              };
-
-              await this.addMessage(sessionId, toolErrorMessage);
-              conversationMessages.push(toolErrorMessage);
+              await this.addToolMessage(sessionId, conversationMessages, functionToolCall.id, content);
+            } catch (error) {
+              const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+              await this.addToolMessage(sessionId, conversationMessages, functionToolCall.id, `Error with tool ${toolName}: ${errorMsg}`);
             }
           }
         }
@@ -431,32 +365,23 @@ export class SessionManager {
     } catch (error) {
       console.error('AI generation error:', error);
 
-      // Handle different types of errors appropriately
-      let errorMessage: string;
-      if (error && typeof error === 'object' && 'name' in error) {
-        if (error.name === 'AbortError') {
-          // User cancelled the request - don't add error message
-          return;
-        } else if (error.name === 'TypeError' && error.message.includes('fetch')) {
-          errorMessage = 'Network error: Unable to connect to AI service. Please check your internet connection and AI settings.';
-        } else if (error.message?.includes('API key')) {
-          errorMessage = 'Authentication error: Please check your API key in AI settings.';
-        } else if (error.message?.includes('rate limit')) {
-          errorMessage = 'Rate limit exceeded. Please wait a moment before trying again.';
-        } else {
-          errorMessage = `AI service error: ${error.message || 'Unknown error occurred'}`;
-        }
-      } else {
-        errorMessage = 'Sorry, I encountered an unexpected error. Please try again.';
+      // Handle different error types
+      if (error?.name === 'AbortError') return; // User cancelled
+
+      let errorMessage = 'Sorry, I encountered an unexpected error. Please try again.';
+      const errorMsg = error?.message || '';
+
+      if (error?.name === 'TypeError' && errorMsg.includes('fetch')) {
+        errorMessage = 'Network error: Unable to connect to AI service. Please check your internet connection and AI settings.';
+      } else if (errorMsg.includes('API key')) {
+        errorMessage = 'Authentication error: Please check your API key in AI settings.';
+      } else if (errorMsg.includes('rate limit')) {
+        errorMessage = 'Rate limit exceeded. Please wait a moment before trying again.';
+      } else if (errorMsg) {
+        errorMessage = `AI service error: ${errorMsg}`;
       }
 
-      // Add user-friendly error message
-      const errorAIMessage: AIMessage = {
-        role: 'assistant',
-        content: errorMessage
-      };
-
-      await this.addMessage(sessionId, errorAIMessage);
+      await this.addMessage(sessionId, { role: 'assistant', content: errorMessage });
     } finally {
       session.isLoading = false;
       session.streamingMessage = undefined;
@@ -474,10 +399,7 @@ export class SessionManager {
     const session = this.sessions.get(sessionId);
     if (!session) return;
 
-    if (session.abortController) {
-      session.abortController.abort();
-    }
-
+    session.abortController?.abort();
     session.isLoading = false;
     session.streamingMessage = undefined;
     session.abortController = undefined;
@@ -491,27 +413,20 @@ export class SessionManager {
    */
   private cleanupOldSessions(): void {
     const now = Date.now();
-    const sessionIdsToDelete: string[] = [];
 
+    // Delete old sessions
     for (const [id, session] of this.sessions) {
       if (now - session.lastActivity.getTime() > this.MAX_SESSION_AGE) {
-        sessionIdsToDelete.push(id);
+        this.deleteSession(id);
       }
     }
 
-    // Delete old sessions
-    sessionIdsToDelete.forEach(id => this.deleteSession(id));
-
-    // If we still have too many sessions, delete the oldest ones
+    // Delete oldest sessions if we have too many
     if (this.sessions.size > this.MAX_SESSIONS) {
-      const sortedSessions = Array.from(this.sessions.entries())
-        .sort(([, a], [, b]) => a.lastActivity.getTime() - b.lastActivity.getTime());
-
-      const sessionsToDelete = sortedSessions
+      Array.from(this.sessions.entries())
+        .sort(([, a], [, b]) => a.lastActivity.getTime() - b.lastActivity.getTime())
         .slice(0, this.sessions.size - this.MAX_SESSIONS)
-        .map(([id]) => id);
-
-      sessionsToDelete.forEach(id => this.deleteSession(id));
+        .forEach(([id]) => this.deleteSession(id));
     }
   }
 
@@ -522,18 +437,29 @@ export class SessionManager {
     const session = this.sessions.get(sessionId);
     if (!session) return;
 
-    // Stop any ongoing generation
     this.stopGeneration(sessionId);
 
-    // Clear messages and start fresh
     session.messages = [];
     session.streamingMessage = undefined;
     session.sessionName = DotAI.generateSessionName();
     session.lastActivity = new Date();
 
     this.debouncedPersist();
-
     this.emit('sessionUpdated', sessionId, session);
+  }
+
+  /**
+   * Helper to add tool messages and update conversation
+   */
+  private async addToolMessage(sessionId: string, conversationMessages: AIMessage[], toolCallId: string, content: string): Promise<void> {
+    const toolMessage: AIMessage = {
+      role: 'tool',
+      content,
+      tool_call_id: toolCallId
+    };
+
+    await this.addMessage(sessionId, toolMessage);
+    conversationMessages.push(toolMessage);
   }
 
   /**
@@ -552,33 +478,25 @@ export class SessionManager {
   }
 
   /**
-   * Event listener management
+   * Simplified event system
    */
   on<K extends keyof SessionManagerEvents>(event: K, listener: SessionManagerEvents[K]): void {
-    if (!this.listeners.has(event)) {
-      this.listeners.set(event, new Set());
-    }
-    this.listeners.get(event)!.add(listener as EventListener<unknown[]>);
+    if (!this.listeners[event]) this.listeners[event] = new Set();
+    this.listeners[event]!.add(listener as (...args: unknown[]) => void);
   }
 
   off<K extends keyof SessionManagerEvents>(event: K, listener: SessionManagerEvents[K]): void {
-    const eventListeners = this.listeners.get(event);
-    if (eventListeners) {
-      eventListeners.delete(listener as EventListener<unknown[]>);
-    }
+    this.listeners[event]?.delete(listener as (...args: unknown[]) => void);
   }
 
   emit<K extends keyof SessionManagerEvents>(event: K, ...args: Parameters<SessionManagerEvents[K]>): void {
-    const eventListeners = this.listeners.get(event);
-    if (eventListeners) {
-      eventListeners.forEach(listener => {
-        try {
-          (listener as (...args: Parameters<SessionManagerEvents[K]>) => void)(...args);
-        } catch (error) {
-          console.error('Error in session manager event listener:', error);
-        }
-      });
-    }
+    this.listeners[event]?.forEach(listener => {
+      try {
+        listener(...args);
+      } catch (error) {
+        console.error('Event listener error:', error);
+      }
+    });
   }
 
   /**
@@ -586,19 +504,13 @@ export class SessionManager {
    */
   private async persistSessions(): Promise<void> {
     try {
-      // Check if fs has required methods
-      if (!this.dotAI.fs || typeof this.dotAI.fs.writeFile !== 'function') {
-        console.warn('Filesystem does not support writeFile, skipping session persistence');
-        return;
-      }
+      if (!this.dotAI.fs?.writeFile) return;
 
-      // Create session data structure
       const sessionData = {
         sessions: Array.from(this.sessions.entries()).map(([id, session]) => ({
           id,
           session: {
             ...session,
-            // Don't persist runtime state
             isLoading: false,
             streamingMessage: undefined,
             abortController: undefined
@@ -608,14 +520,20 @@ export class SessionManager {
         timestamp: new Date().toISOString()
       };
 
-      // Save session data to DotAI
-      const sessionsJson = JSON.stringify(sessionData, null, 2);
+      // Ensure .ai directory exists before writing
+      const aiDir = join(this.dotAI.workingDir, '.ai');
+      try {
+        await this.dotAI.fs.mkdir(aiDir, { recursive: true });
+      } catch {
+        // Directory might already exist, continue
+      }
+
       await this.dotAI.fs.writeFile(
-        join(this.dotAI.workingDir, '.ai', 'sessions.json'),
-        sessionsJson
+        join(aiDir, 'sessions.json'),
+        JSON.stringify(sessionData)
       );
     } catch (error) {
-      console.warn('Failed to persist sessions to DotAI:', error);
+      console.warn('Failed to persist sessions:', error);
     }
   }
 
@@ -624,11 +542,7 @@ export class SessionManager {
    */
   private async loadPersistedSessions(): Promise<void> {
     try {
-      // Check if fs has the required methods
-      if (!this.dotAI.fs || typeof this.dotAI.fs.readFile !== 'function') {
-        console.warn('Filesystem does not support readFile, skipping session persistence');
-        return;
-      }
+      if (!this.dotAI.fs?.readFile) return;
 
       const sessionsPath = join(this.dotAI.workingDir, '.ai', 'sessions.json');
 
@@ -637,29 +551,22 @@ export class SessionManager {
         const sessionData = JSON.parse(sessionsJson);
 
         // Restore sessions
-        if (sessionData.sessions) {
-          sessionData.sessions.forEach(({ id, session }: { id: string; session: Omit<SessionState, 'lastActivity'> & { lastActivity: string } }) => {
-            // Convert lastActivity back to Date object
-            const restoredSession: SessionState = {
-              ...session,
-              lastActivity: new Date(session.lastActivity)
-            };
-            this.sessions.set(id, restoredSession);
+        sessionData.sessions?.forEach(({ id, session }: { id: string; session: Omit<SessionState, 'lastActivity'> & { lastActivity: string } }) => {
+          this.sessions.set(id, {
+            ...session,
+            lastActivity: new Date(session.lastActivity)
           });
-        }
+        });
 
         // Restore configs
-        if (sessionData.configs) {
-          sessionData.configs.forEach(([id, config]: [string, SessionConfig]) => {
-            this.sessionConfigs.set(id, config);
-          });
-        }
-      } catch (error) {
-        // File doesn't exist or is invalid - that's okay, we start fresh
-        console.warn('No existing sessions found or invalid session data:', error);
+        sessionData.configs?.forEach(([id, config]: [string, SessionConfig]) => {
+          this.sessionConfigs.set(id, config);
+        });
+      } catch {
+        // File doesn't exist or is invalid - start fresh
       }
     } catch (error) {
-      console.warn('Failed to load persisted sessions from DotAI:', error);
+      console.warn('Failed to load sessions:', error);
     }
   }
 
@@ -667,17 +574,12 @@ export class SessionManager {
    * Cleanup - stop all sessions and clear data
    */
   async cleanup(): Promise<void> {
-    // Save sessions before cleanup
     await this.persistSessions();
 
-    // Stop all active sessions
-    this.sessions.forEach((session, sessionId) => {
-      this.stopGeneration(sessionId);
-    });
+    this.sessions.forEach((_, sessionId) => this.stopGeneration(sessionId));
 
-    // Clear all data
     this.sessions.clear();
     this.sessionConfigs.clear();
-    this.listeners.clear();
+    this.listeners = {};
   }
 }

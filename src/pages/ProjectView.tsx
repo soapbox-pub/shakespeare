@@ -18,6 +18,7 @@ import { useJSRuntime } from '@/hooks/useJSRuntime';
 import { useKeepAlive } from '@/hooks/useKeepAlive';
 import { GitStatusIndicator } from '@/components/GitStatusIndicator';
 import { StarButton } from '@/components/StarButton';
+
 import { generateSecretKey, getPublicKey, nip19 } from 'nostr-tools';
 import { bytesToHex } from 'nostr-tools/utils';
 import { buildProject } from "@/lib/build";
@@ -189,7 +190,7 @@ BASE_DOMAIN=nostrdeploy.com`);
     // when isAILoading becomes true after user interaction
   };
 
-  const handleProjectDeleted = () => {
+  const handleProjectDeleted = async () => {
     setProject(null);
     navigate('/');
   };

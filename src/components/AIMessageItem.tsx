@@ -1,7 +1,7 @@
 import { memo, useState } from 'react';
 import { Streamdown } from 'streamdown';
 import { Wrench, Eye, FileText, Edit, Package, PackageMinus, GitCommit, BookOpen, Download, Hash, Tag, Network, List, Plus } from 'lucide-react';
-import { AIMessage } from '@/hooks/useAIChat';
+import type { AIMessage } from '@/lib/SessionManager';
 import { cn } from '@/lib/utils';
 import OpenAI from 'openai';
 

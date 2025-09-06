@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Folder, Download, GitBranch, MoreVertical, Settings } from 'lucide-react';
+import { Plus, Folder, Download, GitBranch, MoreVertical, Settings, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -8,12 +8,73 @@ import { LoginArea } from '@/components/auth/LoginArea';
 import { StarButton } from '@/components/StarButton';
 import { AISettingsDialog } from '@/components/ai/AISettingsDialog';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
+import { useProjectSessionStatus } from '@/hooks/useProjectSessionStatus';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useToast } from '@/hooks/useToast';
 import { useFS } from '@/hooks/useFS';
 import type { Project } from '@/lib/ProjectsManager';
 import { cn } from '@/lib/utils';
 import JSZip from 'jszip';
+
+interface ProjectItemProps {
+  project: Project;
+  isSelected: boolean;
+  onSelect: (project: Project) => void;
+}
+
+const ProjectItem = memo(({ project, isSelected, onSelect }: ProjectItemProps) => {
+  const navigate = useNavigate();
+  const { hasRunningSessions } = useProjectSessionStatus(project.id);
+
+  const handleClick = () => {
+    onSelect(project);
+    navigate(`/project/${project.id}`);
+  };
+
+  return (
+    <div
+      className={cn(
+        "group relative rounded-lg transition-all duration-200 hover:bg-gradient-to-r hover:from-primary/10 hover:to-accent/10",
+        isSelected && "bg-gradient-to-r from-primary/15 to-accent/15 shadow-sm"
+      )}
+    >
+      <div className="w-full p-3 text-left text-sidebar-foreground">
+        <button
+          onClick={handleClick}
+          className="absolute inset-0"
+        />
+        <div className="flex items-center gap-3">
+          <div className="flex-shrink-0">
+            {hasRunningSessions ? (
+              <Loader2 className="h-4 w-4 animate-spin text-blue-600 dark:text-blue-400" />
+            ) : (
+              <Folder className="h-4 w-4 text-primary" />
+            )}
+          </div>
+          <div className="flex items-start justify-between gap-2 flex-1 min-w-0">
+            <div className="min-w-0 flex-1">
+              <h3 className="font-medium text-sm truncate mb-1">
+                {project.name}
+              </h3>
+            </div>
+
+            {/* Star Button */}
+            <div className="flex-shrink-0 -mt-1 -mr-1 relative">
+              <StarButton
+                projectId={project.id}
+                projectName={project.name}
+                showToast={false}
+                className="h-6 w-6 hover:bg-primary/20"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+ProjectItem.displayName = 'ProjectItem';
 
 interface ProjectSidebarProps {
   selectedProject: Project | null;
@@ -161,7 +222,8 @@ export function ProjectSidebar({
               Shakespeare
             </h1>
           </button>
-          <DropdownMenu>
+          <div className="flex items-center gap-1">
+            <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-primary/10">
                 <MoreVertical className="h-4 w-4 text-primary/60 hover:text-primary" />
@@ -192,7 +254,8 @@ export function ProjectSidebar({
                 AI Settings
               </DropdownMenuItem>
             </DropdownMenuContent>
-          </DropdownMenu>
+            </DropdownMenu>
+          </div>
         </div>
       </div>
 
@@ -229,45 +292,12 @@ export function ProjectSidebar({
           ) : (
             <div className="space-y-1">
               {sortedProjects.map((project) => (
-                  <div
+                  <ProjectItem
                     key={project.id}
-                    className={cn(
-                      "group relative rounded-lg transition-all duration-200 hover:bg-gradient-to-r hover:from-primary/10 hover:to-accent/10",
-                      selectedProject?.id === project.id && "bg-gradient-to-r from-primary/15 to-accent/15 shadow-sm"
-                    )}
-                  >
-                    <div className="w-full p-3 text-left text-sidebar-foreground">
-                      <button
-                        onClick={() => {
-                          onSelectProject(project);
-                          navigate(`/project/${project.id}`);
-                        }}
-                        className="absolute inset-0"
-                      />
-                      <div className="flex items-center gap-3">
-                        <Folder className="h-4 w-4 text-primary flex-shrink-0" />
-                        <div className="flex items-start justify-between gap-2 flex-1 min-w-0">
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <h3 className="font-medium text-sm truncate">
-                                {project.name}
-                              </h3>
-                            </div>
-                          </div>
-
-                          {/* Star Button */}
-                          <div className="flex-shrink-0 -mt-1 -mr-1 relative">
-                            <StarButton
-                              projectId={project.id}
-                              projectName={project.name}
-                              showToast={false}
-                              className="h-6 w-6 hover:bg-primary/20"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                    project={project}
+                    isSelected={selectedProject?.id === project.id}
+                    onSelect={onSelectProject}
+                  />
                 ))}
             </div>
           )}

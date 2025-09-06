@@ -9,6 +9,7 @@ import { useFS } from '@/hooks/useFS';
 
 import { useKeepAlive } from '@/hooks/useKeepAlive';
 import { useAIChat } from '@/hooks/useAIChat';
+import type { AIMessage } from '@/lib/SessionManager';
 import { ModelSelector } from '@/components/ModelSelector';
 
 
@@ -310,7 +311,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
             streamingMessage.content ? (
               <AIMessageItem
                 key="streaming-message"
-                message={streamingMessage}
+                message={streamingMessage as AIMessage}
                 isCurrentlyLoading
               />
             ) : (
@@ -329,7 +330,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
               <div className="flex items-center gap-2 px-2 py-1 text-xs text-muted-foreground">
                 <Loader2 className="h-3 w-3 animate-spin flex-shrink-0" />
                 <span className="font-medium">
-                  Running {streamingMessage.tool_calls[0].function.name}...
+                  Running {streamingMessage.tool_calls?.[0]?.function?.name || 'tool'}...
                 </span>
               </div>
             </div>

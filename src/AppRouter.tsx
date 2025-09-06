@@ -1,5 +1,6 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { ScrollToTop } from "./components/ScrollToTop";
+import { SessionMonitor } from "./components/SessionMonitor";
 
 import Index from "./pages/Index";
 import Clone from "./pages/Clone";
@@ -11,6 +12,7 @@ export function AppRouter() {
   return (
     <BrowserRouter>
       <ScrollToTop />
+      <SessionMonitor />
       <Routes>
         <Route path="/" element={<Index />} />
         <Route path="/clone" element={<Clone />} />

@@ -19,7 +19,6 @@ import { useKeepAlive } from '@/hooks/useKeepAlive';
 import { GitStatusIndicator } from '@/components/GitStatusIndicator';
 import { StarButton } from '@/components/StarButton';
 
-
 import { generateSecretKey, getPublicKey, nip19 } from 'nostr-tools';
 import { bytesToHex } from 'nostr-tools/utils';
 import { buildProject } from "@/lib/build";
@@ -62,8 +61,6 @@ export function ProjectView() {
       }
     ]
   });
-
-
 
   const loadProject = useCallback(async () => {
     if (!projectId) return;

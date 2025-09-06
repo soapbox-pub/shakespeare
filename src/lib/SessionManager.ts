@@ -54,8 +54,6 @@ export interface SessionManagerEvents {
   loadingChanged: (sessionId: string, isLoading: boolean) => void;
 }
 
-
-
 /**
  * Global session manager that handles multiple AI chat sessions running concurrently.
  * Sessions can run in the background without interruption when switching between projects.

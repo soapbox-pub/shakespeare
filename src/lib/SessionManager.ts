@@ -3,9 +3,10 @@ import type { JSRuntimeFS } from './JSRuntime';
 import { DotAI } from './DotAI';
 import { parseProviderModel } from './parseProviderModel';
 import type { Tool } from './tools/Tool';
+import { join } from '@std/path';
 
-// Simple debounce utility
-function debounce<T extends (...args: unknown[]) => void>(func: T, wait: number): T {
+// Simple debounce utility for async functions
+function debounce<T extends (...args: unknown[]) => Promise<void>>(func: T, wait: number): T {
   let timeout: NodeJS.Timeout;
   return ((...args: Parameters<T>) => {
     clearTimeout(timeout);
@@ -69,13 +70,17 @@ export class SessionManager {
   private readonly MAX_SESSIONS = 50;
   private readonly MAX_SESSION_AGE = 7 * 24 * 60 * 60 * 1000; // 7 days
   private debouncedPersist = debounce(this.persistSessions.bind(this), 1000);
+  private dotAI: DotAI;
 
   constructor(fs: JSRuntimeFS, aiSettings: { providers: Record<string, { baseURL: string; apiKey?: string }> }) {
     this.fs = fs;
     this.aiSettings = aiSettings;
+    this.dotAI = new DotAI(fs, '/');
 
     // Load persisted sessions on initialization
-    this.loadPersistedSessions();
+    this.loadPersistedSessions().catch(error => {
+      console.warn('Failed to load sessions during initialization:', error);
+    });
   }
 
   /**
@@ -142,7 +147,7 @@ export class SessionManager {
   /**
    * Delete a session
    */
-  deleteSession(sessionId: string): void {
+  async deleteSession(sessionId: string): Promise<void> {
     const session = this.sessions.get(sessionId);
     if (session?.abortController) {
       session.abortController.abort();
@@ -151,7 +156,7 @@ export class SessionManager {
     this.sessions.delete(sessionId);
     this.sessionConfigs.delete(sessionId);
 
-    this.persistSessions();
+    await this.persistSessions();
 
     this.emit('sessionDeleted', sessionId);
   }
@@ -159,11 +164,9 @@ export class SessionManager {
   /**
    * Delete all sessions for a project
    */
-  deleteProjectSessions(projectId: string): void {
+  async deleteProjectSessions(projectId: string): Promise<void> {
     const projectSessions = this.getProjectSessions(projectId);
-    projectSessions.forEach(session => {
-      this.deleteSession(session.id);
-    });
+    await Promise.all(projectSessions.map(session => this.deleteSession(session.id)));
   }
 
   /**
@@ -579,10 +582,17 @@ export class SessionManager {
   }
 
   /**
-   * Save session states to localStorage for persistence
+   * Save session states using DotAI for persistence
    */
-  private persistSessions(): void {
+  private async persistSessions(): Promise<void> {
     try {
+      // Check if fs has required methods
+      if (!this.dotAI.fs || typeof this.dotAI.fs.writeFile !== 'function') {
+        console.warn('Filesystem does not support writeFile, skipping session persistence');
+        return;
+      }
+
+      // Create session data structure
       const sessionData = {
         sessions: Array.from(this.sessions.entries()).map(([id, session]) => ({
           id,
@@ -594,54 +604,71 @@ export class SessionManager {
             abortController: undefined
           }
         })),
-        configs: Array.from(this.sessionConfigs.entries())
+        configs: Array.from(this.sessionConfigs.entries()),
+        timestamp: new Date().toISOString()
       };
 
-      localStorage.setItem('shakespeare:sessions', JSON.stringify(sessionData));
+      // Save session data to DotAI
+      const sessionsJson = JSON.stringify(sessionData, null, 2);
+      await this.dotAI.fs.writeFile(
+        join(this.dotAI.workingDir, '.ai', 'sessions.json'),
+        sessionsJson
+      );
     } catch (error) {
-      console.warn('Failed to persist sessions:', error);
+      console.warn('Failed to persist sessions to DotAI:', error);
     }
   }
 
   /**
-   * Load persisted sessions from localStorage
+   * Load persisted sessions using DotAI
    */
-  private loadPersistedSessions(): void {
+  private async loadPersistedSessions(): Promise<void> {
     try {
-      const data = localStorage.getItem('shakespeare:sessions');
-      if (!data) return;
-
-      const sessionData = JSON.parse(data);
-
-      // Restore sessions
-      if (sessionData.sessions) {
-        sessionData.sessions.forEach(({ id, session }: { id: string; session: Omit<SessionState, 'lastActivity'> & { lastActivity: string } }) => {
-          // Convert lastActivity back to Date object
-          const restoredSession: SessionState = {
-            ...session,
-            lastActivity: new Date(session.lastActivity)
-          };
-          this.sessions.set(id, restoredSession);
-        });
+      // Check if fs has the required methods
+      if (!this.dotAI.fs || typeof this.dotAI.fs.readFile !== 'function') {
+        console.warn('Filesystem does not support readFile, skipping session persistence');
+        return;
       }
 
-      // Restore configs
-      if (sessionData.configs) {
-        sessionData.configs.forEach(([id, config]: [string, SessionConfig]) => {
-          this.sessionConfigs.set(id, config);
-        });
+      const sessionsPath = join(this.dotAI.workingDir, '.ai', 'sessions.json');
+
+      try {
+        const sessionsJson = await this.dotAI.fs.readFile(sessionsPath, 'utf8');
+        const sessionData = JSON.parse(sessionsJson);
+
+        // Restore sessions
+        if (sessionData.sessions) {
+          sessionData.sessions.forEach(({ id, session }: { id: string; session: Omit<SessionState, 'lastActivity'> & { lastActivity: string } }) => {
+            // Convert lastActivity back to Date object
+            const restoredSession: SessionState = {
+              ...session,
+              lastActivity: new Date(session.lastActivity)
+            };
+            this.sessions.set(id, restoredSession);
+          });
+        }
+
+        // Restore configs
+        if (sessionData.configs) {
+          sessionData.configs.forEach(([id, config]: [string, SessionConfig]) => {
+            this.sessionConfigs.set(id, config);
+          });
+        }
+      } catch (error) {
+        // File doesn't exist or is invalid - that's okay, we start fresh
+        console.warn('No existing sessions found or invalid session data:', error);
       }
     } catch (error) {
-      console.warn('Failed to load persisted sessions:', error);
+      console.warn('Failed to load persisted sessions from DotAI:', error);
     }
   }
 
   /**
    * Cleanup - stop all sessions and clear data
    */
-  cleanup(): void {
+  async cleanup(): Promise<void> {
     // Save sessions before cleanup
-    this.persistSessions();
+    await this.persistSessions();
 
     // Stop all active sessions
     this.sessions.forEach((session, sessionId) => {

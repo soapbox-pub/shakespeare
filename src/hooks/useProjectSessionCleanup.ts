@@ -18,8 +18,8 @@ export function useProjectSessionCleanup(projectId: string) {
   }, [projectId, sessionManager]);
 
   // Return a cleanup function that can be called when a project is deleted
-  const cleanupProjectSessions = () => {
-    sessionManager.deleteProjectSessions(projectId);
+  const cleanupProjectSessions = async () => {
+    await sessionManager.deleteProjectSessions(projectId);
   };
 
   return { cleanupProjectSessions };

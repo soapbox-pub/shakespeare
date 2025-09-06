@@ -193,9 +193,9 @@ BASE_DOMAIN=nostrdeploy.com`);
     // when isAILoading becomes true after user interaction
   };
 
-  const handleProjectDeleted = () => {
+  const handleProjectDeleted = async () => {
     if (project) {
-      cleanupProjectSessions();
+      await cleanupProjectSessions();
     }
     setProject(null);
     navigate('/');

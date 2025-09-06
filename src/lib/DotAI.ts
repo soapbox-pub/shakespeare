@@ -4,9 +4,9 @@ import type { JSRuntimeFS } from "./JSRuntime";
 
 /** AI message history manager and .ai directory utilities */
 export class DotAI {
-  private readonly fs: JSRuntimeFS;
-  private readonly historyDir: string;
-  private readonly workingDir: string;
+  readonly fs: JSRuntimeFS;
+  readonly historyDir: string;
+  readonly workingDir: string;
 
   constructor(fs: JSRuntimeFS, workingDir: string = "/") {
     this.fs = fs;

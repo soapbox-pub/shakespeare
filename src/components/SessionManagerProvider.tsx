@@ -22,7 +22,10 @@ export function SessionManagerProvider({ children }: SessionManagerProviderProps
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      sessionManager.cleanup();
+      // Fire and forget cleanup - we don't need to await in useEffect cleanup
+      sessionManager.cleanup().catch(error => {
+        console.warn('Failed to cleanup session manager:', error);
+      });
     };
   }, [sessionManager]);
 

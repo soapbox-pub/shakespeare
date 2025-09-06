@@ -90,53 +90,62 @@ export function useAIChat({
     initSession();
   }, [sessionManager, projectId, projectName, tools, customTools, systemPrompt, maxSteps, generatedSessionId]);
 
-  // Update session state efficiently
-  const updateSessionState = useCallback((state: SessionState) => {
-    setSessionState({
-      ...state,
-      // Only create new arrays/objects when they actually change
-      messages: state.messages.slice(),
-      streamingMessage: state.streamingMessage ? { ...state.streamingMessage } : undefined
-    });
-  }, []);
+  
 
   // Subscribe to session events using shared hook
   useSessionSubscription('sessionUpdated', (updatedSessionId: string, state: SessionState) => {
     if (updatedSessionId === sessionId) {
-      updateSessionState(state);
+      // Directly update state with the provided state object
+      setSessionState({
+        ...state,
+        messages: [...state.messages],
+        streamingMessage: state.streamingMessage ? { ...state.streamingMessage } : undefined
+      });
     }
-  }, [sessionId, updateSessionState]);
+  }, [sessionId]);
 
   useSessionSubscription('messageAdded', (updatedSessionId: string, _message: AIMessage) => {
     if (updatedSessionId === sessionId) {
       const session = sessionManager.getSession(sessionId);
       if (session) {
-        updateSessionState(session);
+        setSessionState({
+          ...session,
+          messages: [...session.messages],
+          streamingMessage: session.streamingMessage ? { ...session.streamingMessage } : undefined
+        });
       }
     }
-  }, [sessionId, updateSessionState]);
+  }, [sessionId, sessionManager]);
 
   useSessionSubscription('streamingUpdate', (updatedSessionId: string, _content: string, _toolCalls?: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[]) => {
     if (updatedSessionId === sessionId) {
       const session = sessionManager.getSession(sessionId);
       if (session) {
-        updateSessionState(session);
+        setSessionState({
+          ...session,
+          messages: [...session.messages],
+          streamingMessage: session.streamingMessage ? { ...session.streamingMessage } : undefined
+        });
       }
     }
-  }, [sessionId, updateSessionState]);
+  }, [sessionId, sessionManager]);
 
   useSessionSubscription('loadingChanged', (updatedSessionId: string, isLoading: boolean) => {
     if (updatedSessionId === sessionId) {
       const session = sessionManager.getSession(sessionId);
       if (session) {
-        updateSessionState(session);
+        setSessionState({
+          ...session,
+          messages: [...session.messages],
+          streamingMessage: session.streamingMessage ? { ...session.streamingMessage } : undefined
+        });
       }
 
       if (onUpdateMetadata && isLoading) {
         onUpdateMetadata('Shakespeare', `Working on ${projectName}...`);
       }
     }
-  }, [sessionId, updateSessionState, onUpdateMetadata, projectName]);
+  }, [sessionId, sessionManager, onUpdateMetadata, projectName]);
 
 
 

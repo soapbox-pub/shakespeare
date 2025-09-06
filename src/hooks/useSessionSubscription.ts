@@ -29,5 +29,5 @@ export function useSessionSubscription<K extends keyof SessionManagerEvents>(
     return () => {
       sessionManager.off(event, currentHandler);
     };
-  }, [sessionManager, event]);
+  }, [sessionManager, event, deps]);
 }

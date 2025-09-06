@@ -9,6 +9,7 @@ import { AppConfig } from '@/contexts/AppContext';
 import { FSProvider } from '@/components/FSProvider';
 import { LightningFSAdapter } from '@/lib/LightningFSAdapter';
 import { AISettingsProvider } from '@/components/AISettingsProvider';
+import { SessionManagerProvider } from '@/components/SessionManagerProvider';
 
 interface TestAppProps {
   children: React.ReactNode;
@@ -41,9 +42,11 @@ export function TestApp({ children }: TestAppProps) {
             <QueryClientProvider client={queryClient}>
               <NostrLoginProvider storageKey='test-login'>
                 <NostrProvider>
-                  <BrowserRouter>
-                    {children}
-                  </BrowserRouter>
+                  <SessionManagerProvider>
+                    <BrowserRouter>
+                      {children}
+                    </BrowserRouter>
+                  </SessionManagerProvider>
                 </NostrProvider>
               </NostrLoginProvider>
             </QueryClientProvider>

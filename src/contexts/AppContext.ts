@@ -7,6 +7,8 @@ export interface AppConfig {
   theme: Theme;
   /** Selected relay URL */
   relayUrl: string;
+  /** Deploy server domain (e.g., "shakespeare.wtf") */
+  deployServer: string;
 }
 
 export interface AppContextType {

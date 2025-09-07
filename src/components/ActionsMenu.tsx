@@ -27,8 +27,10 @@ import {
   GitBranch,
   Download,
   Trash2,
+  Settings,
 } from 'lucide-react';
 import { GitHistoryDialog } from '@/components/ai/GitHistoryDialog';
+import { AppSettingsDialog } from '@/components/AppSettingsDialog';
 import { useNavigate } from 'react-router-dom';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { useToast } from '@/hooks/useToast';
@@ -219,6 +221,17 @@ export function ActionsMenu({
             <GitBranch className="h-4 w-4" />
             Git History
           </DropdownMenuItem>
+
+          <AppSettingsDialog>
+            <DropdownMenuItem
+              disabled={isAnyLoading}
+              className="gap-2"
+              onSelect={(e) => e.preventDefault()}
+            >
+              <Settings className="h-4 w-4" />
+              Settings
+            </DropdownMenuItem>
+          </AppSettingsDialog>
 
           <DropdownMenuItem
             onClick={handleExportProject}

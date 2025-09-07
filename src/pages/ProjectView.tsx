@@ -19,10 +19,11 @@ import { useKeepAlive } from '@/hooks/useKeepAlive';
 import { GitStatusIndicator } from '@/components/GitStatusIndicator';
 import { StarButton } from '@/components/StarButton';
 
-import { generateSecretKey, getPublicKey, nip19 } from 'nostr-tools';
-import { bytesToHex } from 'nostr-tools/utils';
 import { buildProject } from "@/lib/build";
-import { copyDirectory } from '@/lib/copyFiles';
+import { deployProject } from "@/lib/deploy";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { useAppContext } from "@/hooks/useAppContext";
+import { useToast } from "@/hooks/useToast";
 
 export function ProjectView() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -39,7 +40,10 @@ export function ProjectView() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { fs: browserFS } = useFS();
-  const { runtime } = useJSRuntime();
+  const { runtime: _runtime } = useJSRuntime();
+  const { user } = useCurrentUser();
+  const { config } = useAppContext();
+  const { toast } = useToast();
   const [isSidebarVisible, setIsSidebarVisible] = useState(() => {
     // Check if we're on mobile immediately to set correct initial state
     if (typeof window !== 'undefined') {
@@ -117,53 +121,47 @@ export function ProjectView() {
   };
 
   const runDeploy = async () => {
-    if (isDeployLoading || !project || !browserFS || !runtime) return;
+    if (isDeployLoading || !project || !browserFS) return;
+
+    // Check if user is logged in
+    if (!user || !user.signer) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to deploy your project.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     setIsDeployLoading(true);
     updateMetadata('Shakespeare', `Deploying ${project.name}...`);
 
     try {
-      const runtimeFS = await runtime.fs();
+      const result = await deployProject({
+        projectId: project.id,
+        deployServer: config.deployServer,
+        fs: browserFS,
+        projectPath: `/projects/${project.id}`,
+        signer: user.signer,
+      });
 
-      const sk = generateSecretKey();
-      const pubkey = getPublicKey(sk);
-      const npub = nip19.npubEncode(pubkey);
+      console.log('Project deployed:', result.url);
 
-      const projectUrl = `https://${npub}.nostrdeploy.com`;
-      console.log('Running deploy for project:', project.id, 'at', projectUrl);
+      toast({
+        title: "Deployment successful!",
+        description: `Your project is now live at ${result.hostname}`,
+      });
 
-      await runtimeFS.mkdir('dist', { recursive: true });
-
-      await runtimeFS.writeFile('.env.nostr-deploy.local', `# Nostr Deploy CLI Configuration
-# This file contains sensitive information - do not commit to version control
-
-# Nostr Authentication
-NOSTR_PRIVATE_KEY=${bytesToHex(sk)}
-NOSTR_PUBLIC_KEY=${pubkey}
-NOSTR_RELAYS=wss://relay.nostr.band,wss://nostrue.com,wss://purplerelay.com,wss://relay.primal.net,wss://ditto.pub/relay
-
-# Blossom File Storage
-BLOSSOM_SERVERS=https://cdn.hzrd149.com,https://blossom.primal.net,https://blossom.band,https://blossom.f7z.io
-
-# Deployment Settings
-BASE_DOMAIN=nostrdeploy.com`);
-
-      // Copy "dist" files to runtime filesystem
-      const distPath = `/projects/${project.id}/dist`;
-      try {
-        await copyDirectory(browserFS, runtimeFS, distPath, 'dist');
-        console.log('Successfully copied dist to runtime');
-      } catch (error) {
-        console.error('Failed to copy dist to runtime:', error);
-        return;
-      }
-
-      const proc = await runtime.spawn('npx', ["-y", "nostr-deploy-cli", "deploy"]);
-      await proc.exit;
-
-      console.log('Project deployed:', projectUrl);
+      // Open the deployed site in a new tab
+      window.open(result.url, '_blank');
     } catch (error) {
       console.error('Deploy failed:', error);
+
+      toast({
+        title: "Deployment failed",
+        description: error instanceof Error ? error.message : "An unexpected error occurred",
+        variant: "destructive",
+      });
     } finally {
       setIsDeployLoading(false);
     }

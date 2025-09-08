@@ -1,25 +1,6 @@
 /**
- * JavaScript runtime interface for executing code and managing files
- */
-export interface JSRuntime {
-  /**
-   * Filesystem access
-   */
-  fs(): Promise<JSRuntimeFS>;
-
-  /**
-   * Spawn a process in the runtime environment
-   * @param command Command to execute
-   * @param args Command arguments
-   * @param options Spawn options
-   * @returns Process handle
-   */
-  spawn(command: string, args?: string[], options?: SpawnOptions): Promise<JSRuntimeChildProcess>;
-}
-
-/**
- * Filesystem interface compatible with both WebContainer and LightningFS
- * This interface unifies the APIs of both filesystem implementations
+ * Filesystem interface for LightningFS
+ * This interface provides a unified API for filesystem operations
  */
 export interface JSRuntimeFS {
   // Core file operations with proper overloads for type safety
@@ -64,41 +45,4 @@ export interface DirectoryEntry {
   name: string;
   isDirectory(): boolean;
   isFile(): boolean;
-}
-
-/**
- * Unified child process interface
- */
-export interface JSRuntimeChildProcess {
-  /**
-   * A promise for the exit code of the process.
-   */
-  exit: Promise<number>;
-  /**
-   * An input stream for the attached pseudoterminal device.
-   */
-  input: WritableStream<string>;
-  /**
-   * A stream that receives all terminal output, including the stdout and stderr emitted by the spawned process
-   * _and_ its descendants.
-   */
-  output: ReadableStream<string>;
-  /**
-   * Kills the process.
-   */
-  kill(): void;
-}
-
-/**
- * Options that control process spawning.
- */
-export interface SpawnOptions {
-  /**
-   * Current working directory for the process, relative to the workdir of this instance.
-   */
-  cwd?: string;
-  /**
-   * Environment variables to set for the process.
-   */
-  env?: Record<string, string | number | boolean>;
 }

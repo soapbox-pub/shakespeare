@@ -14,7 +14,6 @@ import { ActionsMenu } from '@/components/ActionsMenu';
 
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { useFS } from '@/hooks/useFS';
-import { useJSRuntime } from '@/hooks/useJSRuntime';
 import { useKeepAlive } from '@/hooks/useKeepAlive';
 import { GitStatusIndicator } from '@/components/GitStatusIndicator';
 import { StarButton } from '@/components/StarButton';
@@ -40,7 +39,6 @@ export function ProjectView() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { fs: browserFS } = useFS();
-  const { runtime: _runtime } = useJSRuntime();
   const { user } = useCurrentUser();
   const { config } = useAppContext();
   const { toast } = useToast();

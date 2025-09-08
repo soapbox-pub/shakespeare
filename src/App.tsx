@@ -16,9 +16,8 @@ import { AppConfig } from '@/contexts/AppContext';
 import { AISettingsProvider } from '@/components/AISettingsProvider';
 import { SessionManagerProvider } from '@/components/SessionManagerProvider';
 import { FSProvider } from '@/components/FSProvider';
-import { JSRuntimeProvider } from '@/components/JSRuntimeProvider';
 import { LightningFSAdapter } from '@/lib/LightningFSAdapter';
-import { WebContainerAdapter } from '@/lib/WebContainerAdapter';
+
 import AppRouter from './AppRouter';
 
 const head = createHead({
@@ -54,16 +53,12 @@ const presetRelays = [
 const lightningFS = new LightningFS('shakespeare-fs');
 const fs = new LightningFSAdapter(lightningFS.promises);
 
-// Initialize JSRuntime with WebContainer adapter
-const jsRuntime = new WebContainerAdapter();
-
 export function App() {
   return (
     <UnheadProvider head={head}>
       <AppProvider storageKey="nostr:app-config" defaultConfig={defaultConfig} presetRelays={presetRelays}>
         <FSProvider fs={fs}>
-          <JSRuntimeProvider runtime={jsRuntime}>
-            <QueryClientProvider client={queryClient}>
+          <QueryClientProvider client={queryClient}>
               <NostrLoginProvider storageKey='nostr:login'>
                 <NostrProvider>
                   <AISettingsProvider>
@@ -80,7 +75,6 @@ export function App() {
                 </NostrProvider>
               </NostrLoginProvider>
             </QueryClientProvider>
-          </JSRuntimeProvider>
         </FSProvider>
       </AppProvider>
     </UnheadProvider>

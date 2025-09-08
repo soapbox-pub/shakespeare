@@ -18,6 +18,7 @@ This project is a Nostr client application built with React 18.x, TailwindCSS 3.
 - `/src/components/`: UI components including NostrProvider for Nostr integration
   - `/src/components/ui/`: shadcn/ui components (48+ components available)
   - `/src/components/auth/`: Authentication-related components (LoginArea, LoginDialog, etc.)
+  - Zap components: `ZapButton`, `ZapDialog`, `WalletModal` for Lightning payments
 - `/src/hooks/`: Custom hooks including:
   - `useNostr`: Core Nostr protocol integration
   - `useAuthor`: Fetch user profile data by pubkey
@@ -31,9 +32,13 @@ This project is a Nostr client application built with React 18.x, TailwindCSS 3.
   - `useLoggedInAccounts`: Manage multiple accounts
   - `useLoginActions`: Authentication actions
   - `useIsMobile`: Responsive design helper
+  - `useZaps`: Lightning zap functionality with payment processing
+  - `useWallet`: Unified wallet detection (WebLN + NWC)
+  - `useNWC`: Nostr Wallet Connect connection management
+  - `useNWCContext`: Access NWC context provider
 - `/src/pages/`: Page components used by React Router (Index, NotFound)
 - `/src/lib/`: Utility functions and shared logic
-- `/src/contexts/`: React context providers (AppContext)
+- `/src/contexts/`: React context providers (AppContext, NWCContext)
 - `/src/test/`: Testing utilities including TestApp component
 - `/public/`: Static assets
 - `App.tsx`: Main app component with provider setup
@@ -81,7 +86,6 @@ The project uses shadcn/ui components located in `@/components/ui`. These are un
 - **Sidebar**: Navigation sidebar component
 - **Skeleton**: Loading placeholder
 - **Slider**: Input for selecting a value from a range
-- **Sonner**: Toast notification manager
 - **Switch**: Toggle switch control
 - **Table**: Data table with headers and rows
 - **Tabs**: Tabbed interface component
@@ -95,9 +99,9 @@ These components follow a consistent pattern using React's `forwardRef` and use 
 
 ## System Prompt Management
 
-The AI assistant's behavior and knowledge is defined by the CONTEXT.md file, which serves as the system prompt. To modify the assistant's instructions or add new project-specific guidelines:
+The AI assistant's behavior and knowledge is defined by the AGENTS.md file, which serves as the system prompt. To modify the assistant's instructions or add new project-specific guidelines:
 
-1. Edit CONTEXT.md directly
+1. Edit AGENTS.md directly
 2. The changes take effect in the next session
 
 ## "Vibed with MKStack"
@@ -110,9 +114,9 @@ This project comes with custom hooks for querying and publishing events on the N
 
 ### Nostr Implementation Guidelines
 
-- Always use the `nostr__read_nips_index` tool before implementing any Nostr features to see what kinds are currently in use across all NIPs.
-- If any existing kind or NIP might offer the required functionality, use the `nostr__read_nip` tool to investigate thoroughly. Several NIPs may need to be read before making a decision.
-- Only generate new kind numbers with the `nostr__generate_kind` tool if no existing suitable kinds are found after comprehensive research.
+- Always check the full list of existing NIPs before implementing any Nostr features to see what kinds are currently in use across all NIPs.
+- If any existing kind or NIP might offer the required functionality, read the relevant NIPs to investigate thoroughly. Several NIPs may need to be read before making a decision.
+- Only generate new kind numbers if no existing suitable kinds are found after comprehensive research.
 
 Knowing when to create a new kind versus reusing an existing kind requires careful judgement. Introducing new kinds means the project won't be interoperable with existing clients. But deviating too far from the schema of a particular kind can cause different interoperability issues.
 
@@ -120,7 +124,7 @@ Knowing when to create a new kind versus reusing an existing kind requires caref
 
 When implementing features that could use existing NIPs, follow this decision framework:
 
-1. **Thorough NIP Review**: Before considering a new kind, always perform a comprehensive review of existing NIPs and their associated kinds. Use the `nostr__read_nips_index` tool to get an overview, and then `nostr__read_nip` and `nostr__read_kind` to investigate any potentially relevant NIPs or kinds in detail. The goal is to find the closest existing solution.
+1. **Thorough NIP Review**: Before considering a new kind, always perform a comprehensive review of existing NIPs and their associated kinds. Get an overview of all NIPs, and then read specific NIPs and kind documentation to investigate any potentially relevant NIPs or kinds in detail. The goal is to find the closest existing solution.
 
 2. **Prioritize Existing NIPs**: Always prefer extending or using existing NIPs over creating custom kinds, even if they require minor compromises in functionality.
 
@@ -138,7 +142,7 @@ When implementing features that could use existing NIPs, follow this decision fr
    - The data structure is fundamentally different from existing patterns
    - The use case requires different storage characteristics (regular vs replaceable vs addressable)
 
-6. **Custom Kind Publishing**: When publishing events with custom kinds generated by `nostr__generate_kind`, always include a NIP-31 "alt" tag with a human-readable description of the event's purpose.
+6. **Custom Kind Publishing**: When publishing events with custom generated kinds, always include a NIP-31 "alt" tag with a human-readable description of the event's purpose.
 
 **Example Decision Process**:
 ```
@@ -296,6 +300,70 @@ function usePosts() {
       return events; // these events could be transformed into another format
     },
   });
+}
+```
+
+### Infinite Scroll for Feeds
+
+For feed-like interfaces, implement infinite scroll using TanStack Query's `useInfiniteQuery` with Nostr's timestamp-based pagination:
+
+```typescript
+import { useNostr } from '@nostrify/react';
+import { useInfiniteQuery } from '@tanstack/react-query';
+
+export function useGlobalFeed() {
+  const { nostr } = useNostr();
+
+  return useInfiniteQuery({
+    queryKey: ['global-feed'],
+    queryFn: async ({ pageParam, signal }) => {
+      const filter = { kinds: [1], limit: 20 };
+      if (pageParam) filter.until = pageParam;
+
+      const events = await nostr.query([filter], {
+        signal: AbortSignal.any([signal, AbortSignal.timeout(1500)])
+      });
+
+      return events;
+    },
+    getNextPageParam: (lastPage) => {
+      if (lastPage.length === 0) return undefined;
+      return lastPage[lastPage.length - 1].created_at - 1; // Subtract 1 since 'until' is inclusive
+    },
+    initialPageParam: undefined,
+  });
+}
+```
+
+Example usage with intersection observer for automatic loading:
+
+```tsx
+import { useInView } from 'react-intersection-observer';
+
+function GlobalFeed() {
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage } = useGlobalFeed();
+  const { ref, inView } = useInView();
+
+  useEffect(() => {
+    if (inView && hasNextPage) {
+      fetchNextPage();
+    }
+  }, [inView, hasNextPage, fetchNextPage]);
+
+  const posts = data?.pages.flat() || [];
+
+  return (
+    <div className="space-y-4">
+      {posts.map((post) => (
+        <PostCard key={post.id} post={post} />
+      ))}
+      {hasNextPage && (
+        <div ref={ref} className="py-4">
+          {isFetchingNextPage && <Skeleton className="h-20 w-full" />}
+        </div>
+      )}
+    </div>
+  );
 }
 ```
 
@@ -494,12 +562,14 @@ The `LoginArea` component handles all the login-related UI and interactions, inc
 
 `LoginArea` displays both "Log in" and "Sign Up" buttons when the user is logged out, and changes to an account switcher once the user is logged in. It is an inline-flex element by default. To make it expand to the width of its container, you can pass a className like `flex` (to make it a block element) or `w-full`. If it is left as inline-flex, it's recommended to set a max width.
 
+**Important**: Social applications should include a profile menu button in the main interface (typically in headers/navigation) to provide access to account settings, profile editing, and logout functionality. Don't only show `LoginArea` in logged-out states.
+
 ### `npub`, `naddr`, and other Nostr addresses
 
 Nostr defines a set of bech32-encoded identifiers in NIP-19. Their prefixes and purposes:
 
 - `npub1`: **public keys** - Just the 32-byte public key, no additional metadata
-- `nsec1`: **private keys** - Secret keys (should never be displayed publicly)  
+- `nsec1`: **private keys** - Secret keys (should never be displayed publicly)
 - `note1`: **event IDs** - Just the 32-byte event ID (hex), no additional metadata
 - `nevent1`: **event pointers** - Event ID plus optional relay hints and author pubkey
 - `nprofile1`: **profile pointers** - Public key plus optional relay hints and petname
@@ -553,7 +623,7 @@ This project includes a boilerplate `NIP19Page` component that provides the foun
 
 **Error handling:**
 - Invalid NIP-19 format → 404 NotFound
-- Unsupported identifier types (like `nsec1`) → 404 NotFound  
+- Unsupported identifier types (like `nsec1`) → 404 NotFound
 - Empty or missing identifiers → 404 NotFound
 
 To implement NIP-19 routing in your Nostr application:
@@ -868,14 +938,14 @@ import { Card, CardContent } from '@/components/ui/card';
 
 To add custom fonts, follow these steps:
 
-1. **Install a font package** using the `js-dev__npm_add_package` tool:
+1. **Install a font package** using npm:
 
    **Any Google Font can be installed** using the @fontsource packages. Examples:
-   - For Inter Variable: `js-dev__npm_add_package({ name: "@fontsource-variable/inter" })`
-   - For Roboto: `js-dev__npm_add_package({ name: "@fontsource/roboto" })`
-   - For Outfit Variable: `js-dev__npm_add_package({ name: "@fontsource-variable/outfit" })`
-   - For Poppins: `js-dev__npm_add_package({ name: "@fontsource/poppins" })`
-   - For Open Sans: `js-dev__npm_add_package({ name: "@fontsource/open-sans" })`
+   - For Inter Variable: `@fontsource-variable/inter`
+   - For Roboto: `@fontsource/roboto`
+   - For Outfit Variable: `@fontsource-variable/outfit`
+   - For Poppins: `@fontsource/poppins`
+   - For Open Sans: `@fontsource/open-sans`
 
    **Format**: `@fontsource/[font-name]` or `@fontsource-variable/[font-name]` (for variable fonts)
 
@@ -928,8 +998,11 @@ When users specify color schemes:
 - Implement responsive design with Tailwind breakpoints
 - Add hover and focus states for interactive elements
 
-## Writing Tests
+## Writing Tests vs Running Tests
 
+There is an important distinction between **writing new tests** and **running existing tests**:
+
+### Writing Tests (Creating New Test Files)
 **Do not write tests** unless the user explicitly requests them in plain language. Writing unnecessary tests wastes significant time and money. Only create tests when:
 
 1. **The user explicitly asks for tests** to be written in their message
@@ -941,6 +1014,14 @@ When users specify color schemes:
 - You think tests would be helpful
 - New features or components are created
 - Existing functionality needs verification
+
+### Running Tests (Executing the Test Suite)
+**ALWAYS run the test script** after making any code changes. This is mandatory regardless of whether you wrote new tests or not.
+
+- **You must run the test script** to validate your changes
+- **Your task is not complete** until the test script passes without errors
+- **This applies to all changes** - bug fixes, new features, refactoring, or any code modifications
+- **The test script includes** TypeScript compilation, ESLint checks, and existing test validation
 
 ### Test Setup
 
@@ -971,8 +1052,24 @@ describe('MyComponent', () => {
 });
 ```
 
-## Testing Your Changes
+## Validating Your Changes
 
-Whenever you are finished modifying code, you must run the **test** script using the **js-dev__run_script** tool.
+**CRITICAL**: After making any code changes, you must validate your work by running available validation tools.
 
-**Your task is not considered finished until this test passes without errors.**
+**Your task is not considered finished until the code successfully type-checks and builds without errors.**
+
+### Validation Priority Order
+
+Run available tools in this priority order:
+
+1. **Type Checking** (Required): Ensure TypeScript compilation succeeds
+2. **Building/Compilation** (Required): Verify the project builds successfully
+3. **Linting** (Recommended): Check code style and catch potential issues
+4. **Tests** (If Available): Run existing test suite
+
+**Minimum Requirements:**
+- Code must type-check without errors
+- Code must build/compile successfully
+- Fix any critical linting errors that would break functionality
+
+The validation ensures code quality and catches errors before deployment, regardless of the development environment.

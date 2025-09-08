@@ -8,7 +8,6 @@ import { Suspense } from 'react';
 import LightningFS from '@isomorphic-git/lightning-fs';
 import NostrProvider from '@/components/NostrProvider';
 import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { NostrLoginProvider } from '@nostrify/react/login';
 import { AppProvider } from '@/components/AppProvider';
@@ -65,7 +64,6 @@ export function App() {
                     <SessionManagerProvider>
                       <TooltipProvider>
                         <Toaster />
-                        <Sonner />
                         <Suspense>
                           <AppRouter />
                         </Suspense>

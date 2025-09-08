@@ -5,7 +5,7 @@ Shakespeare is an AI chat application that allows users to build custom Nostr we
 ## Features
 
 - **AI-Powered Development**: Chat with an AI assistant to build your Nostr website
-- **Project Management**: Create and manage multiple projects in a Google Drive-like interface
+- **Project Management**: Create and manage multiple projects with sidebar navigation
 - **Real-time Editing**: Edit files directly in the browser with syntax highlighting
 - **File Explorer**: Browse and manage your project files
 - **Project Preview**: Preview your website as you build it
@@ -41,7 +41,7 @@ The AI assistant can:
 
 ## Usage
 
-1. **Homepage**: Create new projects and view existing ones
+1. **Homepage**: Enter a project description in the textarea to create new projects, with existing projects listed in the sidebar
 2. **Project View**: Split-pane interface with AI chat on the left and preview/code on the right
 3. **File Explorer**: Navigate your project files in the code view
 4. **File Editor**: Edit files with syntax highlighting and save changes

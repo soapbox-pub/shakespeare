@@ -45,6 +45,51 @@ export class ProjectsManager {
       // Directory might already exist
     }
 
+    // Delete README.md if it exists
+    try {
+      await this.fs.unlink(`${project.path}/README.md`);
+    } catch {
+      // README.md might not exist, ignore error
+    }
+
+    // Delete .git directory and reinitialize
+    try {
+      await this.deleteDirectory(`${project.path}/.git`);
+    } catch {
+      // .git directory might not exist, ignore error
+    }
+
+    // Initialize new git repository
+    await git.init({
+      fs: this.fs,
+      dir: project.path,
+      defaultBranch: 'main',
+    });
+
+    // Add all files to git
+    const files = await this.getAllFiles(project.path);
+    for (const file of files) {
+      // Skip .git directory and other hidden files we don't want to track
+      if (!file.startsWith('.git/') && !file.startsWith('.ai/')) {
+        await git.add({
+          fs: this.fs,
+          dir: project.path,
+          filepath: file,
+        });
+      }
+    }
+
+    // Make initial commit
+    await git.commit({
+      fs: this.fs,
+      dir: project.path,
+      message: 'New project created with Shakespeare',
+      author: {
+        name: 'shakespeare.diy',
+        email: 'assistant@shakespeare.diy',
+      },
+    });
+
     return project;
   }
 
@@ -275,5 +320,31 @@ export class ProjectsManager {
   private formatProjectName(dirName: string): string {
     // Return the original directory name without formatting
     return dirName;
+  }
+
+  private async getAllFiles(dirPath: string, relativePath: string = ''): Promise<string[]> {
+    const files: string[] = [];
+    const entries = await this.fs.readdir(dirPath);
+
+    for (const entry of entries) {
+      const fullPath = `${dirPath}/${entry}`;
+      const relativeFilePath = relativePath ? `${relativePath}/${entry}` : entry;
+
+      try {
+        const stat = await this.fs.lstat(fullPath);
+
+        if (stat.isDirectory()) {
+          // Recursively get files from subdirectories
+          const subFiles = await this.getAllFiles(fullPath, relativeFilePath);
+          files.push(...subFiles);
+        } else if (stat.isFile()) {
+          files.push(relativeFilePath);
+        }
+      } catch {
+        // Skip files we can't stat
+      }
+    }
+
+    return files;
   }
 }

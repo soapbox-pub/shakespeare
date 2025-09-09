@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Send, Square, Loader2 } from 'lucide-react';
+import { Send, Square, Loader2, ChevronDown } from 'lucide-react';
 import { useAISettings } from '@/hooks/useAISettings';
 import { useFS } from '@/hooks/useFS';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
@@ -68,6 +68,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
 }, ref) => {
   const [input, setInput] = useState('');
   const [systemPrompt, setSystemPrompt] = useState('');
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
 
   // Use external state if provided, otherwise default to false
   const isBuildLoading = externalIsBuildLoading || false;
@@ -210,7 +211,38 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     ]
   });
 
+  // Function to check if user is at the bottom of the scroll area
+  const checkScrollPosition = () => {
+    if (!scrollAreaRef.current) return;
 
+    const container = scrollAreaRef.current;
+    const threshold = 100; // 100px threshold
+    const isNearBottom = container.scrollTop + container.clientHeight >= container.scrollHeight - threshold;
+
+    setShowScrollToBottom(!isNearBottom && container.scrollHeight > container.clientHeight);
+  };
+
+  // Function to scroll to bottom
+  const scrollToBottom = () => {
+    if (scrollAreaRef.current) {
+      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+    }
+  };
+
+  // Add scroll event listener
+  useEffect(() => {
+    const container = scrollAreaRef.current;
+    if (!container) return;
+
+    container.addEventListener('scroll', checkScrollPosition);
+
+    // Check initial position
+    checkScrollPosition();
+
+    return () => {
+      container.removeEventListener('scroll', checkScrollPosition);
+    };
+  }, []);
 
   useEffect(() => {
     if (scrollAreaRef.current && (messages || streamingMessage)) {
@@ -223,6 +255,9 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
       if (isNearBottom) {
         container.scrollTop = container.scrollHeight;
       }
+
+      // Update scroll button visibility
+      checkScrollPosition();
     }
   }, [messages, streamingMessage, isLoading]);
 
@@ -291,7 +326,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
 
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col relative">
 
       <div className="flex-1 overflow-y-scroll overflow-x-hidden" ref={scrollAreaRef}>
         <div className="p-4 space-y-4">
@@ -352,6 +387,20 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
           )}
         </div>
       </div>
+
+      {/* Scroll to bottom button */}
+      {showScrollToBottom && (
+        <div className="absolute bottom-36 left-1/2 -translate-x-1/2 z-10">
+          <Button
+            onClick={scrollToBottom}
+            size="sm"
+            variant="secondary"
+            className="h-10 w-10 rounded-full shadow-lg border bg-background/80 backdrop-blur-sm hover:bg-background/90 transition-all duration-200"
+          >
+            <ChevronDown className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
 
       <div className="border-t p-4">
         {/* Chat Input Container */}

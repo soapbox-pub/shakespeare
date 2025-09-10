@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Send, Square, Loader2, ChevronDown } from 'lucide-react';
 import { useAISettings } from '@/hooks/useAISettings';
 import { useFS } from '@/hooks/useFS';
@@ -137,6 +138,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     messages,
     streamingMessage,
     isLoading: internalIsLoading,
+    totalCost,
     sendMessage,
     startGeneration,
     stopGeneration,
@@ -425,6 +427,22 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
 
           {/* Bottom Controls Row */}
           <div className="absolute bottom-2 left-2 right-2 flex items-center gap-2">
+            {/* Cost Display */}
+            {totalCost > 0 && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="text-xs text-muted-foreground px-2 py-1 bg-muted/50 rounded-md whitespace-nowrap cursor-help">
+                      ${totalCost < 0.01 ? totalCost.toFixed(6) : totalCost.toFixed(4)}
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Total cost for this chat session</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+
             {/* Model Selector */}
             <div className="flex-1 max-w-72 ml-auto overflow-hidden">
               <ModelSelector

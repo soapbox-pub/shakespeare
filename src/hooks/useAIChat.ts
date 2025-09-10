@@ -90,7 +90,7 @@ export function useAIChat({
     initSession();
   }, [sessionManager, projectId, projectName, tools, customTools, systemPrompt, maxSteps, generatedSessionId]);
 
-  
+
 
   // Subscribe to session events using shared hook
   useSessionSubscription('sessionUpdated', (updatedSessionId: string, state: SessionState) => {
@@ -147,12 +147,26 @@ export function useAIChat({
     }
   }, [sessionId, sessionManager, onUpdateMetadata, projectName]);
 
+  useSessionSubscription('costUpdated', (updatedSessionId: string, _totalCost: number) => {
+    if (updatedSessionId === sessionId) {
+      const session = sessionManager.getSession(sessionId);
+      if (session) {
+        setSessionState({
+          ...session,
+          messages: [...session.messages],
+          streamingMessage: session.streamingMessage ? { ...session.streamingMessage } : undefined
+        });
+      }
+    }
+  }, [sessionId, sessionManager]);
+
 
 
   // Derived state
   const messages = sessionState?.messages || [];
   const streamingMessage: StreamingMessage | undefined = sessionState?.streamingMessage;
   const isLoading = sessionState?.isLoading || false;
+  const totalCost = sessionState?.totalCost || 0;
 
   // Actions
   const sendMessage = useCallback(async (content: string, providerModel: string) => {
@@ -202,6 +216,7 @@ export function useAIChat({
     messages,
     streamingMessage,
     isLoading,
+    totalCost,
     sendMessage,
     startGeneration,
     stopGeneration,

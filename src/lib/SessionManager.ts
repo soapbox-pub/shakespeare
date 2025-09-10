@@ -43,6 +43,7 @@ export interface SessionState {
   sessionName: string;
   lastActivity: Date;
   abortController?: AbortController;
+  totalCost?: number; // Total cost in USD for this session
 }
 
 export interface SessionManagerEvents {
@@ -52,6 +53,7 @@ export interface SessionManagerEvents {
   messageAdded: (sessionId: string, message: AIMessage) => void;
   streamingUpdate: (sessionId: string, content: string, toolCalls?: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[]) => void;
   loadingChanged: (sessionId: string, isLoading: boolean) => void;
+  costUpdated: (sessionId: string, totalCost: number) => void;
 }
 
 /**
@@ -64,6 +66,7 @@ export class SessionManager {
   private listeners: Partial<Record<keyof SessionManagerEvents, Set<(...args: unknown[]) => void>>> = {};
   private fs: JSRuntimeFS;
   private aiSettings: { providers: Record<string, { baseURL: string; apiKey?: string }> };
+  private getProviderModels?: () => Array<{ id: string; provider: string; pricing?: { prompt: import('decimal.js').Decimal; completion: import('decimal.js').Decimal } }>;
 
   // Performance constants
   private readonly MAX_SESSIONS = 50;
@@ -71,9 +74,14 @@ export class SessionManager {
   private debouncedPersist = debounce(() => this.persistSessions(), 1000);
   private dotAI: DotAI;
 
-  constructor(fs: JSRuntimeFS, aiSettings: { providers: Record<string, { baseURL: string; apiKey?: string }> }) {
+  constructor(
+    fs: JSRuntimeFS,
+    aiSettings: { providers: Record<string, { baseURL: string; apiKey?: string }> },
+    getProviderModels?: () => Array<{ id: string; provider: string; pricing?: { prompt: import('decimal.js').Decimal; completion: import('decimal.js').Decimal } }>
+  ) {
     this.fs = fs;
     this.aiSettings = aiSettings;
+    this.getProviderModels = getProviderModels;
     this.dotAI = new DotAI(fs, '/');
 
     // Load persisted sessions on initialization
@@ -94,6 +102,7 @@ export class SessionManager {
       isLoading: false,
       sessionName: DotAI.generateSessionName(),
       lastActivity: new Date(),
+      totalCost: 0,
     };
 
     // Try to load existing history
@@ -273,6 +282,7 @@ export class SessionManager {
         let finishReason: string | null = null;
 
         // Process the stream
+        let usage: { prompt_tokens: number; completion_tokens: number } | undefined;
         for await (const chunk of stream) {
           // Check if session was cancelled
           if (!session.isLoading) break;
@@ -315,6 +325,14 @@ export class SessionManager {
           if (chunk.choices[0]?.finish_reason) {
             finishReason = chunk.choices[0].finish_reason;
           }
+
+          // Capture usage data if available (some providers include it in the final chunk)
+          if (chunk.usage) {
+            usage = {
+              prompt_tokens: chunk.usage.prompt_tokens || 0,
+              completion_tokens: chunk.usage.completion_tokens || 0
+            };
+          }
         }
 
         // Create final assistant message
@@ -328,6 +346,11 @@ export class SessionManager {
         session.streamingMessage = undefined;
         await this.addMessage(sessionId, assistantMessage);
         conversationMessages.push(assistantMessage);
+
+        // Update cost if usage data is available
+        if (usage) {
+          this.updateSessionCost(sessionId, usage, providerModel);
+        }
 
         // Check if we should stop
         if (finishReason === 'stop' || !accumulatedToolCalls || accumulatedToolCalls.length === 0) {
@@ -441,8 +464,10 @@ export class SessionManager {
     session.streamingMessage = undefined;
     session.sessionName = DotAI.generateSessionName();
     session.lastActivity = new Date();
+    session.totalCost = 0;
 
     this.debouncedPersist();
+    this.emit('costUpdated', sessionId, 0);
     this.emit('sessionUpdated', sessionId, session);
   }
 
@@ -458,6 +483,41 @@ export class SessionManager {
 
     await this.addMessage(sessionId, toolMessage);
     conversationMessages.push(toolMessage);
+  }
+
+  /**
+   * Update session cost based on usage data
+   */
+  private updateSessionCost(sessionId: string, usage: { prompt_tokens: number; completion_tokens: number }, providerModel: string): void {
+    if (!this.getProviderModels) return;
+
+    const session = this.sessions.get(sessionId);
+    if (!session) return;
+
+    try {
+      const parsed = parseProviderModel(providerModel, this.aiSettings.providers);
+      const modelName = parsed.model;
+      const providerName = parsed.provider;
+
+      // Find the model in provider models to get pricing
+      const models = this.getProviderModels();
+      const model = models.find(m => m.id === modelName && m.provider === providerName);
+
+      if (!model?.pricing) return;
+
+      // Calculate cost for this request
+      const promptCost = model.pricing.prompt.mul(usage.prompt_tokens).div(1000); // pricing is per 1k tokens
+      const completionCost = model.pricing.completion.mul(usage.completion_tokens).div(1000);
+      const requestCost = promptCost.add(completionCost).toNumber();
+
+      // Update session total cost
+      session.totalCost = (session.totalCost || 0) + requestCost;
+
+      this.emit('costUpdated', sessionId, session.totalCost);
+      this.emit('sessionUpdated', sessionId, session);
+    } catch (error) {
+      console.warn('Failed to calculate session cost:', error);
+    }
   }
 
   /**
@@ -552,7 +612,8 @@ export class SessionManager {
         sessionData.sessions?.forEach(({ id, session }: { id: string; session: Omit<SessionState, 'lastActivity'> & { lastActivity: string } }) => {
           this.sessions.set(id, {
             ...session,
-            lastActivity: new Date(session.lastActivity)
+            lastActivity: new Date(session.lastActivity),
+            totalCost: session.totalCost || 0 // Ensure totalCost is set for older sessions
           });
         });
 

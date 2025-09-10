@@ -135,7 +135,7 @@ export function ModelSelector({
             <ChevronDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
-      <PopoverContent className="w-80 p-0" align="end">
+      <PopoverContent className="w-96 p-0" align="end">
         <Command>
           {isConfigured && <CommandInput placeholder="Search models..." className="h-9" />}
           <CommandList className="max-h-[300px]">

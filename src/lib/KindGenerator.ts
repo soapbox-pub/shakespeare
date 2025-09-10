@@ -84,37 +84,44 @@ export class KindGenerator {
   ): number {
     const rangeInfo = this.getKindRangeInfo(range);
 
-    // Create a set of all numbers to avoid (used kinds + buffer)
-    const kindsToAvoid = new Set<number>();
-    
-    // Add used kinds and their buffer zones
+    // Filter used kinds to only those relevant to our range (including buffer zone)
+    const relevantUsedKinds = new Set<number>();
     for (const usedKind of usedKinds) {
-      kindsToAvoid.add(usedKind);
-      // Add buffer of 2 kinds on each side
-      kindsToAvoid.add(usedKind - 2);
-      kindsToAvoid.add(usedKind - 1);
-      kindsToAvoid.add(usedKind + 1);
-      kindsToAvoid.add(usedKind + 2);
+      // Include used kinds that are in our range or close enough to affect our buffer
+      if (usedKind >= rangeInfo.min - 2 && usedKind <= rangeInfo.max + 2) {
+        relevantUsedKinds.add(usedKind);
+      }
     }
+
+    // Helper function to check if a number conflicts with buffer constraints
+    const hasBufferConflict = (num: number): boolean => {
+      for (const usedKind of relevantUsedKinds) {
+        const distance = Math.abs(num - usedKind);
+        if (distance <= 2) {
+          return true;
+        }
+      }
+      return false;
+    };
 
     // Collect all available numbers in the range
     const availableKinds: number[] = [];
     for (let i = rangeInfo.min; i <= rangeInfo.max; i++) {
-      // Skip if in range to avoid
-      if (kindsToAvoid.has(i)) {
-        continue;
-      }
-      
       // Skip even numbers
       if (i % 2 === 0) {
         continue;
       }
-      
+
       // Skip multiples of 5
       if (i % 5 === 0) {
         continue;
       }
-      
+
+      // Skip if used or has buffer conflict
+      if (usedKinds.has(i) || hasBufferConflict(i)) {
+        continue;
+      }
+
       availableKinds.push(i);
     }
 

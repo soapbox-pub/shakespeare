@@ -9,8 +9,8 @@ if (typeof window !== 'undefined') {
   (window as { Buffer?: typeof Buffer }).Buffer = Buffer;
 }
 
-const GIT_TEMPLATE_URL = 'https://relay.ngit.dev/npub1q3sle0kvfsehgsuexttt3ugjd8xdklxfwwkh559wxckmzddywnws6cd26p/mkstack.git';
-// const GIT_TEMPLATE_URL = 'https://relay.ngit.dev/npub1q3sle0kvfsehgsuexttt3ugjd8xdklxfwwkh559wxckmzddywnws6cd26p/lovable-blank.git';
+// const GIT_TEMPLATE_URL = 'https://relay.ngit.dev/npub1q3sle0kvfsehgsuexttt3ugjd8xdklxfwwkh559wxckmzddywnws6cd26p/mkstack.git';
+const GIT_TEMPLATE_URL = 'https://gitlab.com/soapbox-pub/mkstack.git';
 
 export interface Project {
   id: string;

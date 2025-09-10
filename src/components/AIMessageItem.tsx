@@ -1,6 +1,6 @@
 import { memo, useState } from 'react';
 import { Streamdown } from 'streamdown';
-import { Wrench, Eye, FileText, Edit, Package, PackageMinus, GitCommit, BookOpen, Download, Hash, Tag, Network, List, Plus } from 'lucide-react';
+import { Wrench, Eye, FileText, Edit, Package, PackageMinus, GitCommit, BookOpen, Download, Hash, Tag, Network, List, Plus, Terminal } from 'lucide-react';
 import type { AIMessage } from '@/lib/SessionManager';
 import { cn } from '@/lib/utils';
 import OpenAI from 'openai';
@@ -52,6 +52,11 @@ export const AIMessageItem = memo(({
 
         // Generate icons and titles based on tool name and arguments
         switch (toolName) {
+          case 'shell':
+            return {
+              icon: Terminal,
+              title: args.command ? args.command : 'Shell Command'
+            };
           case 'text_editor_view': {
             const title = args.path
               ? (args.start_line || args.end_line

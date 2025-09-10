@@ -1,3 +1,4 @@
+import { Decimal } from 'decimal.js';
 import { useState, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import OpenAI from 'openai';
@@ -8,6 +9,15 @@ interface ProviderModel {
   name: string;
   provider: string;
   fullId: string; // provider/model format
+  /** Maximum size of context window, if available */
+  context_length?: number;
+  /** Pricing information, if available */
+  pricing?: {
+    /** Input/prompt pricing per token */
+    prompt: Decimal;
+    /** Output/completion pricing per token */
+    completion: Decimal;
+  }
 }
 
 interface ModelFetchResult {
@@ -46,13 +56,37 @@ export function useProviderModels(): ModelFetchResult {
               signal: AbortSignal.timeout(10_000),
             });
 
+            console.log(response);
+
             // Transform models to our format
-            const providerModels = response.data.map((model) => ({
-              id: model.id,
-              name: model.id,
-              provider: providerKey,
-              fullId: `${providerKey}/${model.id}`,
-            }));
+            const providerModels = response.data.map((model) => {
+              const providerModel: ProviderModel = {
+                id: model.id,
+                name: model.id,
+                provider: providerKey,
+                fullId: `${providerKey}/${model.id}`,
+              };
+
+              if ('context_length' in model && typeof model.context_length === 'number') {
+                providerModel.context_length = model.context_length;
+              }
+
+              if (
+                "pricing" in model && model.pricing && typeof model.pricing === "object" &&
+                "prompt" in model.pricing && "completion" in model.pricing &&
+                typeof model.pricing.prompt === "string" &&
+                typeof model.pricing.completion === "string" &&
+                !isNaN(Number(model.pricing.prompt)) &&
+                !isNaN(Number(model.pricing.completion))
+              ) {
+                providerModel.pricing = {
+                  prompt: new Decimal(model.pricing.prompt),
+                  completion: new Decimal(model.pricing.completion),
+                };
+              }
+
+              return providerModel;
+            });
 
             allModels.push(...providerModels);
           } catch (fetchError) {

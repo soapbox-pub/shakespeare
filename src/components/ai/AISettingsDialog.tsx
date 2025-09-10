@@ -69,25 +69,18 @@ interface AISettingsDialogProps {
 }
 
 export function AISettingsDialog({ open: controlledOpen, onOpenChange }: AISettingsDialogProps = {}) {
-  const { settings, updateSettings, isConfigured } = useAISettings();
+  const { settings, addProvider, removeProvider, updateProvider, isConfigured } = useAISettings();
   const [internalOpen, setInternalOpen] = useState(false);
 
   // Use controlled or internal state
   const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
   const setOpen = onOpenChange || setInternalOpen;
-  const [localProviders, setLocalProviders] = useState(settings.providers);
   const [customProviderName, setCustomProviderName] = useState('');
   const [customBaseURL, setCustomBaseURL] = useState('');
   const [customApiKey, setCustomApiKey] = useState('');
   const [presetApiKeys, setPresetApiKeys] = useState<Record<string, string>>({});
 
-  const handleSave = () => {
-    updateSettings({ providers: localProviders });
-    setOpen(false);
-  };
-
   const handleCancel = () => {
-    setLocalProviders(settings.providers);
     setCustomProviderName('');
     setCustomBaseURL('');
     setCustomApiKey('');
@@ -104,10 +97,8 @@ export function AISettingsDialog({ open: controlledOpen, onOpenChange }: AISetti
       apiKey: apiKey.trim(),
     };
 
-    setLocalProviders(prev => ({
-      ...prev,
-      [preset.id]: newProvider,
-    }));
+    // Auto-save: Add provider immediately to persistent storage
+    addProvider(preset.id, newProvider);
 
     // Clear the API key input for this preset
     setPresetApiKeys(prev => ({
@@ -124,33 +115,25 @@ export function AISettingsDialog({ open: controlledOpen, onOpenChange }: AISetti
       apiKey: customApiKey.trim(),
     };
 
-    setLocalProviders(prev => ({
-      ...prev,
-      [customProviderName.trim()]: newProvider,
-    }));
+    // Auto-save: Add provider immediately to persistent storage
+    addProvider(customProviderName.trim(), newProvider);
+
     setCustomProviderName('');
     setCustomBaseURL('');
     setCustomApiKey('');
   };
 
   const handleRemoveProvider = (name: string) => {
-    setLocalProviders(prev => {
-      const { [name]: removed, ...rest } = prev;
-      return rest;
-    });
+    // Auto-save: Remove provider immediately from persistent storage
+    removeProvider(name);
   };
 
   const handleUpdateProvider = (name: string, connection: Partial<AIConnection>) => {
-    setLocalProviders(prev => ({
-      ...prev,
-      [name]: {
-        ...prev[name],
-        ...connection,
-      },
-    }));
+    // Auto-save: Update provider immediately in persistent storage
+    updateProvider(name, connection);
   };
 
-  const configuredProviderIds = Object.keys(localProviders);
+  const configuredProviderIds = Object.keys(settings.providers);
   const availablePresets = PRESET_PROVIDERS.filter(preset => !configuredProviderIds.includes(preset.id));
 
   return (
@@ -171,7 +154,7 @@ export function AISettingsDialog({ open: controlledOpen, onOpenChange }: AISetti
         <DialogHeader>
           <DialogTitle>AI Settings</DialogTitle>
           <DialogDescription>
-            Configure AI providers by adding your API keys. Settings are stored locally in your browser.
+            Configure AI providers by adding your API keys. Settings are automatically saved and stored locally in your browser.
           </DialogDescription>
         </DialogHeader>
 
@@ -183,7 +166,7 @@ export function AISettingsDialog({ open: controlledOpen, onOpenChange }: AISetti
               <Accordion type="multiple" className="w-full space-y-2">
                 {configuredProviderIds.map((providerId) => {
                   const preset = PRESET_PROVIDERS.find(p => p.id === providerId);
-                  const provider = localProviders[providerId];
+                  const provider = settings.providers[providerId];
                   const isCustom = !preset;
 
                   return (
@@ -330,7 +313,7 @@ export function AISettingsDialog({ open: controlledOpen, onOpenChange }: AISetti
                   disabled={
                     !customProviderName.trim() ||
                     !customBaseURL.trim() ||
-                    customProviderName.trim() in localProviders
+                    customProviderName.trim() in settings.providers
                   }
                   size="sm"
                   className="gap-2"
@@ -338,7 +321,7 @@ export function AISettingsDialog({ open: controlledOpen, onOpenChange }: AISetti
                   <Check className="h-4 w-4" />
                   Add Custom Provider
                 </Button>
-                {customProviderName.trim() in localProviders && (
+                {customProviderName.trim() in settings.providers && (
                   <p className="text-sm text-destructive">
                     Provider with this name already exists
                   </p>
@@ -348,12 +331,9 @@ export function AISettingsDialog({ open: controlledOpen, onOpenChange }: AISetti
           </div>
         </div>
 
-        <div className="flex justify-end gap-2">
+        <div className="flex justify-end">
           <Button variant="outline" onClick={handleCancel}>
-            Cancel
-          </Button>
-          <Button onClick={handleSave}>
-            Save Settings
+            Close
           </Button>
         </div>
       </DialogContent>

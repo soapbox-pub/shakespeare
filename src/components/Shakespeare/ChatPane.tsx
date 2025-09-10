@@ -7,15 +7,11 @@ import { Send, Square, Loader2, ChevronDown } from 'lucide-react';
 import { useAISettings } from '@/hooks/useAISettings';
 import { useFS } from '@/hooks/useFS';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
-
 import { useKeepAlive } from '@/hooks/useKeepAlive';
 import { useAIChat } from '@/hooks/useAIChat';
 import type { AIMessage } from '@/lib/SessionManager';
 import { ModelSelector } from '@/components/ModelSelector';
-
-
 import { AIMessageItem } from '@/components/AIMessageItem';
-
 import { TextEditorViewTool } from '@/lib/tools/TextEditorViewTool';
 import { TextEditorWriteTool } from '@/lib/tools/TextEditorWriteTool';
 import { TextEditorStrReplaceTool } from '@/lib/tools/TextEditorStrReplaceTool';
@@ -31,6 +27,7 @@ import { NostrReadTagTool } from '@/lib/tools/NostrReadTagTool';
 import { NostrReadProtocolTool } from '@/lib/tools/NostrReadProtocolTool';
 import { NostrReadNipsIndexTool } from '@/lib/tools/NostrReadNipsIndexTool';
 import { NostrGenerateKindTool } from '@/lib/tools/NostrGenerateKindTool';
+import { ShellTool } from '@/lib/tools/ShellTool';
 import { toolToOpenAI } from '@/lib/tools/openai-adapter';
 import { Tool } from '@/lib/tools/Tool';
 import OpenAI from 'openai';
@@ -102,6 +99,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
       nostr_read_protocol: new NostrReadProtocolTool(),
       nostr_read_nips_index: new NostrReadNipsIndexTool(),
       nostr_generate_kind: new NostrGenerateKindTool(),
+      shell: new ShellTool(browserFS, cwd),
     };
 
     // Add deploy tool only if user is logged in

@@ -372,7 +372,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
               />
             );
           })}
-          {streamingMessage && (
+          {streamingMessage && isLoading && (
             streamingMessage.content ? (
               <AIMessageItem
                 key="streaming-message"

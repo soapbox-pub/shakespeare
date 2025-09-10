@@ -345,9 +345,18 @@ export class SessionManager {
           ...(accumulatedToolCalls.length > 0 && { tool_calls: accumulatedToolCalls })
         };
 
-        // Clear streaming message and add final message
+        // Add final message and clear streaming message atomically
+        session.messages.push(assistantMessage);
         session.streamingMessage = undefined;
-        await this.addMessage(sessionId, assistantMessage);
+        session.lastActivity = new Date();
+
+        // Save and emit all updates together
+        await this.saveSessionHistory(sessionId);
+        this.debouncedPersist();
+        this.cleanupOldSessions();
+
+        this.emit('messageAdded', sessionId, assistantMessage);
+        this.emit('sessionUpdated', sessionId, session);
         conversationMessages.push(assistantMessage);
 
         // Update cost if usage data is available

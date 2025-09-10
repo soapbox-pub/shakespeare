@@ -7,10 +7,17 @@ import {
   CdCommand,
   CpCommand,
   EchoCommand,
+  FindCommand,
+  GrepCommand,
+  HeadCommand,
   LsCommand,
+  MkdirCommand,
   MvCommand,
   PwdCommand,
-  RmCommand
+  RmCommand,
+  TailCommand,
+  TouchCommand,
+  WcCommand
 } from "../commands";
 
 interface ShellToolParams {
@@ -25,7 +32,7 @@ export class ShellTool implements Tool<ShellToolParams> {
   private cwd: string;
   private commands: Map<string, ShellCommand>;
 
-  readonly description = "Execute shell commands like cat, ls, cd, pwd, rm, cp, mv, echo";
+  readonly description = "Execute shell commands like cat, ls, cd, pwd, rm, cp, mv, echo, head, tail, grep, find, wc, touch, mkdir";
 
   readonly inputSchema = z.object({
     command: z.string().describe(
@@ -43,10 +50,17 @@ export class ShellTool implements Tool<ShellToolParams> {
     this.registerCommand(new CdCommand(fs));
     this.registerCommand(new CpCommand(fs));
     this.registerCommand(new EchoCommand());
+    this.registerCommand(new FindCommand(fs));
+    this.registerCommand(new GrepCommand(fs));
+    this.registerCommand(new HeadCommand(fs));
     this.registerCommand(new LsCommand(fs));
+    this.registerCommand(new MkdirCommand(fs));
     this.registerCommand(new MvCommand(fs));
     this.registerCommand(new PwdCommand());
     this.registerCommand(new RmCommand(fs));
+    this.registerCommand(new TailCommand(fs));
+    this.registerCommand(new TouchCommand(fs));
+    this.registerCommand(new WcCommand(fs));
   }
 
   /**

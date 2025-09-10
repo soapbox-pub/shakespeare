@@ -66,17 +66,17 @@ export default function Index() {
         return;
       }
 
-      // Enter without Shift on desktop: Submit only if no newlines exist in prompt
-      if (!prompt.includes('\n')) {
+      // Enter without Shift on desktop: Submit only if no newlines exist in prompt and model is selected
+      if (!prompt.includes('\n') && providerModel.trim()) {
         e.preventDefault();
         handleCreateProject();
       }
-      // If prompt contains newlines, allow Enter to create new line (default behavior)
+      // If prompt contains newlines or no model selected, allow Enter to create new line (default behavior)
     }
   };
 
   const handleCreateProject = async () => {
-    if (!prompt.trim()) return;
+    if (!prompt.trim() || !providerModel.trim()) return;
 
     // Clear stored prompt when creating project
     setStoredPrompt('');
@@ -160,7 +160,7 @@ export default function Index() {
                 onChange={handlePromptChange}
                 onKeyDown={handleKeyDown}
                 className="min-h-[120px] max-h-64 resize-none border-0 bg-transparent px-4 py-3 pb-16 text-sm focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground"
-                disabled={isCreating || isGeneratingId}
+                disabled={isCreating || isGeneratingId || !providerModel.trim()}
                 rows={4}
                 style={{
                   height: 'auto',

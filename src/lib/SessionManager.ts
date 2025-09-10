@@ -44,6 +44,7 @@ export interface SessionState {
   lastActivity: Date;
   abortController?: AbortController;
   totalCost?: number; // Total cost in USD for this session
+  lastInputTokens?: number; // Input tokens from the last AI request
 }
 
 export interface SessionManagerEvents {
@@ -54,6 +55,7 @@ export interface SessionManagerEvents {
   streamingUpdate: (sessionId: string, content: string, toolCalls?: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[]) => void;
   loadingChanged: (sessionId: string, isLoading: boolean) => void;
   costUpdated: (sessionId: string, totalCost: number) => void;
+  contextUsageUpdated: (sessionId: string, inputTokens: number) => void;
 }
 
 /**
@@ -66,7 +68,7 @@ export class SessionManager {
   private listeners: Partial<Record<keyof SessionManagerEvents, Set<(...args: unknown[]) => void>>> = {};
   private fs: JSRuntimeFS;
   private aiSettings: { providers: Record<string, { baseURL: string; apiKey?: string }> };
-  private getProviderModels?: () => Array<{ id: string; provider: string; pricing?: { prompt: import('decimal.js').Decimal; completion: import('decimal.js').Decimal } }>;
+  private getProviderModels?: () => Array<{ id: string; provider: string; contextLength?: number; pricing?: { prompt: import('decimal.js').Decimal; completion: import('decimal.js').Decimal } }>;
 
   // Performance constants
   private readonly MAX_SESSIONS = 50;
@@ -77,7 +79,7 @@ export class SessionManager {
   constructor(
     fs: JSRuntimeFS,
     aiSettings: { providers: Record<string, { baseURL: string; apiKey?: string }> },
-    getProviderModels?: () => Array<{ id: string; provider: string; pricing?: { prompt: import('decimal.js').Decimal; completion: import('decimal.js').Decimal } }>
+    getProviderModels?: () => Array<{ id: string; provider: string; contextLength?: number; pricing?: { prompt: import('decimal.js').Decimal; completion: import('decimal.js').Decimal } }>
   ) {
     this.fs = fs;
     this.aiSettings = aiSettings;
@@ -103,6 +105,7 @@ export class SessionManager {
       sessionName: DotAI.generateSessionName(),
       lastActivity: new Date(),
       totalCost: 0,
+      lastInputTokens: 0,
     };
 
     // Try to load existing history
@@ -465,9 +468,11 @@ export class SessionManager {
     session.sessionName = DotAI.generateSessionName();
     session.lastActivity = new Date();
     session.totalCost = 0;
+    session.lastInputTokens = 0;
 
     this.debouncedPersist();
     this.emit('costUpdated', sessionId, 0);
+    this.emit('contextUsageUpdated', sessionId, 0);
     this.emit('sessionUpdated', sessionId, session);
   }
 
@@ -486,7 +491,7 @@ export class SessionManager {
   }
 
   /**
-   * Update session cost based on usage data
+   * Update session cost and context usage based on usage data
    */
   private updateSessionCost(sessionId: string, usage: { prompt_tokens: number; completion_tokens: number }, providerModel: string): void {
     if (!this.getProviderModels) return;
@@ -499,11 +504,18 @@ export class SessionManager {
       const modelName = parsed.model;
       const providerName = parsed.provider;
 
-      // Find the model in provider models to get pricing
+      // Find the model in provider models to get pricing and context length
       const models = this.getProviderModels();
       const model = models.find(m => m.id === modelName && m.provider === providerName);
 
-      if (!model?.pricing) return;
+      // Update input tokens for context usage tracking
+      session.lastInputTokens = usage.prompt_tokens;
+      this.emit('contextUsageUpdated', sessionId, usage.prompt_tokens);
+
+      if (!model?.pricing) {
+        this.emit('sessionUpdated', sessionId, session);
+        return;
+      }
 
       // Calculate cost for this request
       const promptCost = model.pricing.prompt.mul(usage.prompt_tokens).div(1000); // pricing is per 1k tokens
@@ -613,7 +625,8 @@ export class SessionManager {
           this.sessions.set(id, {
             ...session,
             lastActivity: new Date(session.lastActivity),
-            totalCost: session.totalCost || 0 // Ensure totalCost is set for older sessions
+            totalCost: session.totalCost || 0, // Ensure totalCost is set for older sessions
+            lastInputTokens: session.lastInputTokens || 0 // Ensure lastInputTokens is set for older sessions
           });
         });
 

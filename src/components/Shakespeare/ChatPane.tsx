@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
+import { CircularProgress } from '@/components/ui/circular-progress';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Send, Square, Loader2, ChevronDown } from 'lucide-react';
 import { useAISettings } from '@/hooks/useAISettings';
@@ -10,6 +11,7 @@ import { useFS } from '@/hooks/useFS';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useKeepAlive } from '@/hooks/useKeepAlive';
 import { useAIChat } from '@/hooks/useAIChat';
+import { useProviderModels } from '@/hooks/useProviderModels';
 import type { AIMessage } from '@/lib/SessionManager';
 import { ModelSelector } from '@/components/ModelSelector';
 import { AIMessageItem } from '@/components/AIMessageItem';
@@ -81,6 +83,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   const [searchParams, setSearchParams] = useSearchParams();
   const { fs: browserFS } = useFS();
   const { user } = useCurrentUser();
+  const { models } = useProviderModels();
 
   // Initialize AI chat with tools
   const cwd = `/projects/${projectId}`;
@@ -139,6 +142,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     streamingMessage,
     isLoading: internalIsLoading,
     totalCost,
+    lastInputTokens,
     sendMessage,
     startGeneration,
     stopGeneration,
@@ -156,6 +160,17 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
 
   // Use external loading state if provided, otherwise use internal state
   const isLoading = externalIsLoading !== undefined ? externalIsLoading : internalIsLoading;
+
+  // Calculate context usage percentage
+  const currentModel = useMemo(() => {
+    if (!providerModel.trim()) return null;
+    return models.find(model => model.fullId === providerModel.trim());
+  }, [models, providerModel]);
+
+  const contextUsagePercentage = useMemo(() => {
+    if (!currentModel?.contextLength || !lastInputTokens) return 0;
+    return Math.min((lastInputTokens / currentModel.contextLength) * 100, 100);
+  }, [currentModel, lastInputTokens]);
 
   // Notify parent of loading state changes
   useEffect(() => {
@@ -427,6 +442,26 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
 
           {/* Bottom Controls Row */}
           <div className="absolute bottom-2 left-2 right-2 flex items-center gap-2">
+            {/* Context Usage Wheel */}
+            {currentModel?.contextLength && lastInputTokens > 0 && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="cursor-help">
+                      <CircularProgress
+                        value={contextUsagePercentage}
+                        size={20}
+                        strokeWidth={2}
+                      />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Context usage: {lastInputTokens.toLocaleString()} / {currentModel.contextLength.toLocaleString()} tokens ({contextUsagePercentage.toFixed(1)}%)</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+
             {/* Cost Display */}
             {totalCost > 0 && (
               <TooltipProvider>

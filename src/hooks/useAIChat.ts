@@ -160,6 +160,19 @@ export function useAIChat({
     }
   }, [sessionId, sessionManager]);
 
+  useSessionSubscription('contextUsageUpdated', (updatedSessionId: string, _inputTokens: number) => {
+    if (updatedSessionId === sessionId) {
+      const session = sessionManager.getSession(sessionId);
+      if (session) {
+        setSessionState({
+          ...session,
+          messages: [...session.messages],
+          streamingMessage: session.streamingMessage ? { ...session.streamingMessage } : undefined
+        });
+      }
+    }
+  }, [sessionId, sessionManager]);
+
 
 
   // Derived state
@@ -167,6 +180,7 @@ export function useAIChat({
   const streamingMessage: StreamingMessage | undefined = sessionState?.streamingMessage;
   const isLoading = sessionState?.isLoading || false;
   const totalCost = sessionState?.totalCost || 0;
+  const lastInputTokens = sessionState?.lastInputTokens || 0;
 
   // Actions
   const sendMessage = useCallback(async (content: string, providerModel: string) => {
@@ -217,6 +231,7 @@ export function useAIChat({
     streamingMessage,
     isLoading,
     totalCost,
+    lastInputTokens,
     sendMessage,
     startGeneration,
     stopGeneration,

@@ -2,7 +2,16 @@ import { z } from "zod";
 import type { Tool } from "./Tool";
 import type { JSRuntimeFS } from "../JSRuntime";
 import type { ShellCommand } from "../commands/ShellCommand";
-import { CatCommand } from "../commands/cat";
+import {
+  CatCommand,
+  CdCommand,
+  CpCommand,
+  EchoCommand,
+  LsCommand,
+  MvCommand,
+  PwdCommand,
+  RmCommand
+} from "../commands";
 
 interface ShellToolParams {
   command: string;
@@ -16,7 +25,7 @@ export class ShellTool implements Tool<ShellToolParams> {
   private cwd: string;
   private commands: Map<string, ShellCommand>;
 
-  readonly description = "Execute shell commands like cat, ls, cd, pwd, rm, cp, mv";
+  readonly description = "Execute shell commands like cat, ls, cd, pwd, rm, cp, mv, echo";
 
   readonly inputSchema = z.object({
     command: z.string().describe(
@@ -28,9 +37,16 @@ export class ShellTool implements Tool<ShellToolParams> {
     this.fs = fs;
     this.cwd = cwd;
     this.commands = new Map();
-    
+
     // Register available commands
     this.registerCommand(new CatCommand(fs));
+    this.registerCommand(new CdCommand(fs));
+    this.registerCommand(new CpCommand(fs));
+    this.registerCommand(new EchoCommand());
+    this.registerCommand(new LsCommand(fs));
+    this.registerCommand(new MvCommand(fs));
+    this.registerCommand(new PwdCommand());
+    this.registerCommand(new RmCommand(fs));
   }
 
   /**
@@ -52,7 +68,7 @@ export class ShellTool implements Tool<ShellToolParams> {
 
     for (let i = 0; i < commandStr.length; i++) {
       const char = commandStr[i];
-      
+
       if (!inQuotes && (char === '"' || char === "'")) {
         inQuotes = true;
         quoteChar = char;
@@ -108,11 +124,11 @@ export class ShellTool implements Tool<ShellToolParams> {
 
       // Format output
       let output = '';
-      
+
       if (result.stdout) {
         output += result.stdout;
       }
-      
+
       if (result.stderr) {
         if (output) output += '\n';
         output += result.stderr;

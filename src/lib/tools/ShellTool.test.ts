@@ -28,7 +28,7 @@ describe('ShellTool', () => {
   });
 
   it('should have correct tool properties', () => {
-    expect(shellTool.description).toBe('Execute shell commands like cat, ls, cd, pwd, rm, cp, mv');
+    expect(shellTool.description).toBe('Execute shell commands like cat, ls, cd, pwd, rm, cp, mv, echo');
     expect(shellTool.inputSchema).toBeDefined();
   });
 
@@ -45,7 +45,8 @@ describe('ShellTool', () => {
   it('should return error for unknown command', async () => {
     const result = await shellTool.execute({ command: 'unknowncommand' });
     expect(result).toContain("Command 'unknowncommand' not found");
-    expect(result).toContain('Available commands: cat');
+    expect(result).toContain('Available commands:');
+    expect(result).toContain('cat');
   });
 
   it('should execute cat command successfully', async () => {
@@ -99,12 +100,25 @@ describe('ShellTool', () => {
 
   it('should return available commands', () => {
     const commands = shellTool.getAvailableCommands();
-    expect(commands).toHaveLength(1);
-    expect(commands[0]).toEqual({
+    expect(commands.length).toBeGreaterThan(1);
+
+    // Check that cat command is included
+    const catCommand = commands.find(cmd => cmd.name === 'cat');
+    expect(catCommand).toEqual({
       name: 'cat',
       description: 'Concatenate and display file contents',
       usage: 'cat [file...]',
     });
+
+    // Check that other commands are included
+    const commandNames = commands.map(cmd => cmd.name);
+    expect(commandNames).toContain('ls');
+    expect(commandNames).toContain('cd');
+    expect(commandNames).toContain('pwd');
+    expect(commandNames).toContain('echo');
+    expect(commandNames).toContain('rm');
+    expect(commandNames).toContain('cp');
+    expect(commandNames).toContain('mv');
   });
 
   it('should handle command errors gracefully', async () => {
@@ -121,5 +135,29 @@ describe('ShellTool', () => {
 
     expect(result).toContain('missing file operand');
     expect(result).toContain('Exit code: 1');
+  });
+
+  it('should execute echo command', async () => {
+    const result = await shellTool.execute({ command: 'echo hello world' });
+
+    expect(result).toBe('hello world\n');
+  });
+
+  it('should execute pwd command', async () => {
+    const result = await shellTool.execute({ command: 'pwd' });
+
+    expect(result).toBe(testCwd);
+  });
+
+  it('should handle cd command and update working directory', async () => {
+    vi.mocked(mockFS.stat).mockResolvedValue({
+      isDirectory: () => true,
+      isFile: () => false,
+    });
+
+    const result = await shellTool.execute({ command: 'cd subdir' });
+
+    expect(result).toBe('(no output)');
+    expect(shellTool.getCurrentWorkingDirectory()).toBe('/test/dir/subdir');
   });
 });

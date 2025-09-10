@@ -1,6 +1,6 @@
 /**
  * Example usage of the ShellTool
- * 
+ *
  * This file demonstrates how to use the ShellTool to execute shell commands
  * in your application. The ShellTool provides a safe, sandboxed environment
  * for running basic file operations.
@@ -19,36 +19,48 @@ export async function exampleShellUsage(fs: JSRuntimeFS, projectRoot: string) {
   console.log('Available commands:', shell.getAvailableCommands());
   console.log('Current directory:', shell.getCurrentWorkingDirectory());
 
-  // Example 1: Display a file
-  console.log('\n--- Example 1: Display package.json ---');
+  // Example 1: Display current directory
+  console.log('\n--- Example 1: Show current directory ---');
+  const pwdResult = await shell.execute({ command: 'pwd' });
+  console.log(pwdResult);
+
+  // Example 2: List directory contents
+  console.log('\n--- Example 2: List files ---');
+  const lsResult = await shell.execute({ command: 'ls' });
+  console.log(lsResult);
+
+  // Example 3: List with long format
+  console.log('\n--- Example 3: List with details ---');
+  const lsLongResult = await shell.execute({ command: 'ls -l' });
+  console.log(lsLongResult);
+
+  // Example 4: Display a file
+  console.log('\n--- Example 4: Display package.json ---');
   const catResult = await shell.execute({ command: 'cat package.json' });
   console.log(catResult);
 
-  // Example 2: Try to display multiple files
-  console.log('\n--- Example 2: Display multiple files ---');
-  const multiFileResult = await shell.execute({ 
-    command: 'cat package.json README.md' 
-  });
-  console.log(multiFileResult);
+  // Example 5: Echo text
+  console.log('\n--- Example 5: Echo message ---');
+  const echoResult = await shell.execute({ command: 'echo Hello, World!' });
+  console.log(echoResult);
 
-  // Example 3: Handle errors gracefully
-  console.log('\n--- Example 3: Handle non-existent file ---');
-  const errorResult = await shell.execute({ 
-    command: 'cat nonexistent-file.txt' 
+  // Example 6: Change directory
+  console.log('\n--- Example 6: Change directory ---');
+  const cdResult = await shell.execute({ command: 'cd src' });
+  console.log(cdResult);
+  console.log('New directory:', shell.getCurrentWorkingDirectory());
+
+  // Example 7: Handle errors gracefully
+  console.log('\n--- Example 7: Handle non-existent file ---');
+  const errorResult = await shell.execute({
+    command: 'cat nonexistent-file.txt'
   });
   console.log(errorResult);
 
-  // Example 4: Handle quoted filenames with spaces
-  console.log('\n--- Example 4: Quoted filename ---');
-  const quotedResult = await shell.execute({ 
-    command: 'cat "file with spaces.txt"' 
-  });
-  console.log(quotedResult);
-
-  // Example 5: Try unknown command
-  console.log('\n--- Example 5: Unknown command ---');
-  const unknownResult = await shell.execute({ 
-    command: 'unknown-command arg1 arg2' 
+  // Example 8: Try unknown command
+  console.log('\n--- Example 8: Unknown command ---');
+  const unknownResult = await shell.execute({
+    command: 'unknown-command arg1 arg2'
   });
   console.log(unknownResult);
 }
@@ -128,7 +140,7 @@ export class SimpleCLI {
 
   async executeCommand(command: string): Promise<string> {
     this.history.push(command);
-    
+
     // Handle built-in commands
     if (command.trim() === 'help') {
       const commands = this.shell.getAvailableCommands();

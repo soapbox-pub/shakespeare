@@ -372,12 +372,12 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
               />
             );
           })}
-          {streamingMessage && isLoading && (
+          {streamingMessage && (
             streamingMessage.content ? (
               <AIMessageItem
                 key="streaming-message"
                 message={streamingMessage as AIMessage}
-                isCurrentlyLoading
+                isCurrentlyLoading={isLoading}
               />
             ) : (
               <div key="streaming-loading" className="flex">

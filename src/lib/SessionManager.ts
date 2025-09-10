@@ -345,9 +345,8 @@ export class SessionManager {
           ...(accumulatedToolCalls.length > 0 && { tool_calls: accumulatedToolCalls })
         };
 
-        // Add final message and clear streaming message atomically
+        // Add final message but keep streaming message until finally block
         session.messages.push(assistantMessage);
-        session.streamingMessage = undefined;
         session.lastActivity = new Date();
 
         // Save and emit all updates together

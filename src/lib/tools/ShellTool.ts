@@ -5,8 +5,13 @@ import type { ShellCommand } from "../commands/ShellCommand";
 import {
   CatCommand,
   CdCommand,
+  ClearCommand,
   CpCommand,
+  CutCommand,
+  DateCommand,
+  DiffCommand,
   EchoCommand,
+  EnvCommand,
   FindCommand,
   GrepCommand,
   HeadCommand,
@@ -15,9 +20,14 @@ import {
   MvCommand,
   PwdCommand,
   RmCommand,
+  SortCommand,
   TailCommand,
   TouchCommand,
-  WcCommand
+  TrCommand,
+  UniqCommand,
+  WcCommand,
+  WhoamiCommand,
+  WhichCommand
 } from "../commands";
 
 interface ShellToolParams {
@@ -32,11 +42,11 @@ export class ShellTool implements Tool<ShellToolParams> {
   private cwd: string;
   private commands: Map<string, ShellCommand>;
 
-  readonly description = "Execute shell commands like cat, ls, cd, pwd, rm, cp, mv, echo, head, tail, grep, find, wc, touch, mkdir";
+  readonly description = "Execute shell commands like cat, ls, cd, pwd, rm, cp, mv, echo, head, tail, grep, find, wc, touch, mkdir, sort, uniq, cut, tr, diff, which, whoami, date, env, clear";
 
   readonly inputSchema = z.object({
     command: z.string().describe(
-      'Shell command to execute, e.g. "cat file.txt", "ls -la", "cd src", "pwd"'
+      'Shell command to execute, e.g. "cat file.txt", "ls -la", "cd src", "pwd", "sort file.txt", "diff file1 file2"'
     ),
   });
 
@@ -48,8 +58,13 @@ export class ShellTool implements Tool<ShellToolParams> {
     // Register available commands
     this.registerCommand(new CatCommand(fs));
     this.registerCommand(new CdCommand(fs));
+    this.registerCommand(new ClearCommand());
     this.registerCommand(new CpCommand(fs));
+    this.registerCommand(new CutCommand(fs));
+    this.registerCommand(new DateCommand());
+    this.registerCommand(new DiffCommand(fs));
     this.registerCommand(new EchoCommand());
+    this.registerCommand(new EnvCommand());
     this.registerCommand(new FindCommand(fs));
     this.registerCommand(new GrepCommand(fs));
     this.registerCommand(new HeadCommand(fs));
@@ -58,9 +73,16 @@ export class ShellTool implements Tool<ShellToolParams> {
     this.registerCommand(new MvCommand(fs));
     this.registerCommand(new PwdCommand());
     this.registerCommand(new RmCommand(fs));
+    this.registerCommand(new SortCommand(fs));
     this.registerCommand(new TailCommand(fs));
     this.registerCommand(new TouchCommand(fs));
+    this.registerCommand(new TrCommand(fs));
+    this.registerCommand(new UniqCommand(fs));
     this.registerCommand(new WcCommand(fs));
+    this.registerCommand(new WhoamiCommand());
+
+    // Register which command last so it has access to all other commands
+    this.registerCommand(new WhichCommand(this.commands));
   }
 
   /**

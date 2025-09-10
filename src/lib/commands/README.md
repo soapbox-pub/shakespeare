@@ -24,7 +24,7 @@ Commands return a `ShellCommandResult` object containing:
 
 ## Available Commands
 
-The shell supports 15 essential commands for file and directory operations, text processing, and content analysis.
+The shell supports 25 essential commands for file and directory operations, text processing, content analysis, and system utilities.
 
 ### cat
 
@@ -360,6 +360,240 @@ mv file1.txt file2.txt dest/    # Move multiple files to directory
 - Creates target directories as needed
 - Handles multiple source files
 - Prevents overwriting existing files
+
+### sort
+
+**Usage:** `sort [-r] [-n] [-u] [file...]`
+
+Sort lines of text files.
+
+**Options:**
+- `-r`: Sort in reverse order
+- `-n`: Sort numerically instead of alphabetically
+- `-u`: Remove duplicate lines (unique)
+
+**Examples:**
+```bash
+sort file.txt                  # Sort lines alphabetically
+sort -r file.txt               # Sort in reverse order
+sort -n numbers.txt            # Sort numerically
+sort -u file.txt               # Sort and remove duplicates
+sort -rnu data.txt             # Combine options: reverse, numeric, unique
+```
+
+**Features:**
+- Alphabetical and numerical sorting
+- Reverse order sorting
+- Duplicate removal
+- Multiple file support
+- Configurable sort behavior
+
+### uniq
+
+**Usage:** `uniq [-c] [-d] [-u] [file]`
+
+Report or omit repeated consecutive lines.
+
+**Options:**
+- `-c`: Show count of each line
+- `-d`: Show only duplicate lines
+- `-u`: Show only unique lines (not repeated)
+
+**Examples:**
+```bash
+uniq file.txt                  # Remove consecutive duplicates
+uniq -c file.txt               # Show count of each line
+uniq -d file.txt               # Show only duplicated lines
+uniq -u file.txt               # Show only unique lines
+```
+
+**Features:**
+- Removes consecutive duplicate lines
+- Line counting with `-c` option
+- Filter duplicates or unique lines
+- Formatted output with proper spacing
+- Note: Only removes consecutive duplicates (use with `sort` for all duplicates)
+
+### cut
+
+**Usage:** `cut -c LIST | -f LIST [-d DELIM] [file...]`
+
+Extract sections from lines of files.
+
+**Options:**
+- `-c LIST`: Extract characters at specified positions
+- `-f LIST`: Extract fields using delimiter
+- `-d DELIM`: Use DELIM as field delimiter (default: tab)
+
+**LIST format:**
+- `1,3,5`: Specific positions
+- `1-5`: Range of positions
+- `1,3-5,7`: Combination of positions and ranges
+
+**Examples:**
+```bash
+cut -c 1,3,5 file.txt          # Extract characters 1, 3, and 5
+cut -c 1-10 file.txt           # Extract characters 1 through 10
+cut -f 1,3 data.csv            # Extract fields 1 and 3 (tab-delimited)
+cut -f 2-4 -d ',' data.csv     # Extract fields 2-4 using comma delimiter
+```
+
+**Features:**
+- Character-based extraction
+- Field-based extraction with custom delimiters
+- Range and list specifications
+- Multiple file support
+
+### tr
+
+**Usage:** `tr [-d] SET1 [SET2] [file...]`
+
+Translate or delete characters.
+
+**Options:**
+- `-d`: Delete characters in SET1
+
+**SET format:**
+- `abc`: Literal characters
+- `a-z`: Character ranges
+- `0-9`: Numeric ranges
+
+**Examples:**
+```bash
+tr 'a-z' 'A-Z' file.txt        # Convert lowercase to uppercase
+tr -d 'aeiou' file.txt         # Delete all vowels
+tr '0-9' 'X' file.txt          # Replace all digits with 'X'
+tr 'abc' '123' file.txt        # Replace a→1, b→2, c→3
+```
+
+**Features:**
+- Character translation with ranges
+- Character deletion
+- Multiple file support
+- Range expansion (a-z, 0-9, etc.)
+
+### diff
+
+**Usage:** `diff [-u] file1 file2`
+
+Compare files line by line.
+
+**Options:**
+- `-u`: Use unified diff format
+
+**Examples:**
+```bash
+diff file1.txt file2.txt       # Compare files in normal format
+diff -u file1.txt file2.txt    # Compare files in unified format
+```
+
+**Features:**
+- Line-by-line file comparison
+- Normal and unified diff formats
+- Shows additions, deletions, and changes
+- Exit code 0 for identical files, 1 for differences
+
+### which
+
+**Usage:** `which command...`
+
+Locate commands and show their paths.
+
+**Examples:**
+```bash
+which ls                       # Show path to ls command
+which cat grep find            # Show paths to multiple commands
+```
+
+**Features:**
+- Locates available shell commands
+- Shows simulated paths (/usr/bin/command)
+- Multiple command support
+- Exit code 1 if any command not found
+
+### whoami
+
+**Usage:** `whoami`
+
+Display current username.
+
+**Examples:**
+```bash
+whoami                         # Display current user
+```
+
+**Features:**
+- Simple username display
+- No arguments accepted
+- Always returns "user" in this implementation
+
+### date
+
+**Usage:** `date [+FORMAT]`
+
+Display current date and time.
+
+**Format specifiers:**
+- `%Y`: 4-digit year
+- `%y`: 2-digit year
+- `%m`: Month (01-12)
+- `%d`: Day of month (01-31)
+- `%H`: Hour (00-23)
+- `%M`: Minute (00-59)
+- `%S`: Second (00-59)
+- `%A`: Full weekday name
+- `%a`: Abbreviated weekday name
+- `%B`: Full month name
+- `%b`: Abbreviated month name
+- `%s`: Unix timestamp
+- `%%`: Literal %
+
+**Examples:**
+```bash
+date                           # Default format
+date '+%Y-%m-%d'              # ISO date format
+date '+%H:%M:%S'              # Time only
+date '+%A, %B %d, %Y'         # Full date
+date '+%s'                    # Unix timestamp
+```
+
+**Features:**
+- Default and custom date formatting
+- Standard format specifiers
+- Unix timestamp support
+- Weekday and month name formatting
+
+### env
+
+**Usage:** `env`
+
+Display environment variables.
+
+**Examples:**
+```bash
+env                            # Show all environment variables
+```
+
+**Features:**
+- Displays simulated environment variables
+- Shows common variables (HOME, PATH, USER, PWD, etc.)
+- PWD reflects current working directory
+
+### clear
+
+**Usage:** `clear`
+
+Clear terminal screen.
+
+**Examples:**
+```bash
+clear                          # Clear screen
+```
+
+**Features:**
+- Sends ANSI escape sequence to clear screen
+- Moves cursor to top-left position
+- No arguments accepted
 
 ## Usage with ShellTool
 

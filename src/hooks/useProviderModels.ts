@@ -56,8 +56,6 @@ export function useProviderModels(): ModelFetchResult {
               signal: AbortSignal.timeout(10_000),
             });
 
-            console.log(response);
-
             // Transform models to our format
             const providerModels = response.data.map((model) => {
               const providerModel: ProviderModel = {

@@ -518,8 +518,8 @@ export class SessionManager {
       }
 
       // Calculate cost for this request
-      const promptCost = model.pricing.prompt.mul(usage.prompt_tokens).div(1000); // pricing is per 1k tokens
-      const completionCost = model.pricing.completion.mul(usage.completion_tokens).div(1000);
+      const promptCost = model.pricing.prompt.times(usage.prompt_tokens);
+      const completionCost = model.pricing.completion.times(usage.completion_tokens);
       const requestCost = promptCost.add(completionCost).toNumber();
 
       // Update session total cost

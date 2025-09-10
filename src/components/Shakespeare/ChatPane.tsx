@@ -443,7 +443,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
           {/* Bottom Controls Row */}
           <div className="absolute bottom-2 left-2 right-2 flex items-center gap-2">
             {/* Context Usage Wheel */}
-            {currentModel?.contextLength && lastInputTokens > 0 && (
+            {contextUsagePercentage >= 10 && currentModel?.contextLength && lastInputTokens > 0 && (
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -463,12 +463,12 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
             )}
 
             {/* Cost Display */}
-            {totalCost > 0 && (
+            {totalCost >= 0.01 && (
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <div className="text-xs text-muted-foreground px-2 py-1 bg-muted/50 rounded-md whitespace-nowrap cursor-help">
-                      ${totalCost < 0.01 ? totalCost.toFixed(6) : totalCost.toFixed(4)}
+                      ${totalCost.toFixed(2)}
                     </div>
                   </TooltipTrigger>
                   <TooltipContent>

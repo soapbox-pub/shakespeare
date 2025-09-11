@@ -51,7 +51,7 @@ const ProjectItem = memo(({ project, isSelected, onSelect }: ProjectItemProps) =
               <Folder className="h-4 w-4 text-primary" />
             )}
           </div>
-          <div className="flex items-start justify-between gap-2 flex-1 min-w-0">
+          <div className="flex justify-between gap-2 flex-1 min-w-0">
             <div className="min-w-0 flex-1">
               <h3 className="font-medium text-sm truncate mb-1">
                 {project.name}
@@ -59,7 +59,7 @@ const ProjectItem = memo(({ project, isSelected, onSelect }: ProjectItemProps) =
             </div>
 
             {/* Star Button */}
-            <div className="flex-shrink-0 -mt-1 -mr-1 relative">
+            <div className="flex-shrink-0 relative">
               <StarButton
                 projectId={project.id}
                 projectName={project.name}

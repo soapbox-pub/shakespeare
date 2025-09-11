@@ -16,10 +16,17 @@ interface PresetProvider {
   id: string;
   name: string;
   baseURL: string;
-  apiKeysURL: string;
+  apiKeysURL?: string;
+  nostr?: boolean;
 }
 
 const PRESET_PROVIDERS: PresetProvider[] = [
+  {
+    id: "lemon",
+    name: "Lemon",
+    baseURL: "https://internal-lucienne-nublar-6932a6f0.koyeb.app/v1",
+    nostr: true,
+  },
   {
     id: "openrouter",
     name: "OpenRouter",
@@ -92,13 +99,18 @@ export function AISettingsDialog({ open: controlledOpen, onOpenChange }: AISetti
   };
 
   const handleAddPresetProvider = (preset: PresetProvider) => {
-    const apiKey = presetApiKeys[preset.id] || '';
-    if (!apiKey.trim()) return;
+    const apiKey = presetApiKeys[preset.id] as string | undefined;
 
     const newProvider: AIConnection = {
       baseURL: preset.baseURL,
-      apiKey: apiKey.trim(),
     };
+
+    if (typeof apiKey === 'string') {
+      newProvider.apiKey = apiKey.trim();
+    }
+    if (typeof preset.nostr === 'boolean') {
+      newProvider.nostr = preset.nostr;
+    }
 
     // Auto-save: Add provider immediately to persistent storage
     addProvider(preset.id, newProvider);
@@ -259,33 +271,37 @@ export function AISettingsDialog({ open: controlledOpen, onOpenChange }: AISetti
                     <CardContent className="p-4 space-y-3">
                       <div className="flex items-center justify-between">
                         <h5 className="font-medium">{preset.name}</h5>
-                        <button
-                          type="button"
-                          className="text-xs text-muted-foreground underline hover:text-foreground"
-                          onClick={() => window.open(preset.apiKeysURL, '_blank')}
-                        >
-                          Get API key
-                        </button>
+                        {preset.apiKeysURL && (
+                          <button
+                            type="button"
+                            className="text-xs text-muted-foreground underline hover:text-foreground"
+                            onClick={() => window.open(preset.apiKeysURL, '_blank')}
+                          >
+                            Get API key
+                          </button>
+                        )}
                       </div>
                       <div className="flex gap-2">
-                        <Input
-                          placeholder="Enter your API key"
-                          type="password"
-                          className="flex-1"
-                          value={presetApiKeys[preset.id] || ''}
-                          onChange={(e) => setPresetApiKeys(prev => ({
-                            ...prev,
-                            [preset.id]: e.target.value,
-                          }))}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' && presetApiKeys[preset.id]?.trim()) {
-                              handleAddPresetProvider(preset);
-                            }
-                          }}
-                        />
+                        {!preset.nostr && (
+                          <Input
+                            placeholder="Enter your API key"
+                            type="password"
+                            className="flex-1"
+                            value={presetApiKeys[preset.id] || ''}
+                            onChange={(e) => setPresetApiKeys(prev => ({
+                              ...prev,
+                              [preset.id]: e.target.value,
+                            }))}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && presetApiKeys[preset.id]?.trim()) {
+                                handleAddPresetProvider(preset);
+                              }
+                            }}
+                          />
+                        )}
                         <Button
                           onClick={() => handleAddPresetProvider(preset)}
-                          disabled={!presetApiKeys[preset.id]?.trim()}
+                          disabled={!!preset.apiKeysURL && !presetApiKeys[preset.id]?.trim()}
                           size="sm"
                         >
                           Add

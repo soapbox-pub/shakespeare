@@ -47,7 +47,7 @@ export function useAIChat({
   useEffect(() => {
     const initSession = async () => {
       // Check if there's already an active session for this project
-      const existingSession = sessionManager.getProjectSession(projectId);
+      const existingSession = sessionManager.getSession(projectId);
 
       if (existingSession) {
         // Initialize individual state variables from existing session

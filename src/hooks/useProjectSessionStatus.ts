@@ -11,7 +11,7 @@ export function useProjectSessionStatus(projectId: string) {
 
   useEffect(() => {
     const updateStatus = () => {
-      const projectSession = sessionManager.getProjectSession(projectId);
+      const projectSession = sessionManager.getSession(projectId);
 
       setHasActiveSessions(!!projectSession);
       setHasRunningSessions(!!projectSession?.isLoading);

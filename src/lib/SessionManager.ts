@@ -47,10 +47,6 @@ export class SessionManager {
   private aiSettings: { providers: Record<string, { baseURL: string; apiKey?: string }> };
   private getProviderModels?: () => Array<{ id: string; provider: string; contextLength?: number; pricing?: { prompt: import('decimal.js').Decimal; completion: import('decimal.js').Decimal } }>;
 
-  // Performance constants
-  private readonly MAX_SESSIONS = 50;
-  private readonly MAX_SESSION_AGE = 7 * 24 * 60 * 60 * 1000; // 7 days
-
   constructor(
     fs: JSRuntimeFS,
     aiSettings: { providers: Record<string, { baseURL: string; apiKey?: string }> },
@@ -119,13 +115,6 @@ export class SessionManager {
   }
 
   /**
-   * Get session for a specific project
-   */
-  getProjectSession(projectId: string): SessionState | undefined {
-    return this.sessions.get(projectId);
-  }
-
-  /**
    * Delete a session
    */
   async deleteSession(projectId: string): Promise<void> {
@@ -135,13 +124,6 @@ export class SessionManager {
     this.sessions.delete(projectId);
 
     this.emit('sessionDeleted', projectId);
-  }
-
-  /**
-   * Delete session for a project
-   */
-  async deleteProjectSession(projectId: string): Promise<void> {
-    await this.deleteSession(projectId);
   }
 
   /**
@@ -155,8 +137,6 @@ export class SessionManager {
     session.lastActivity = new Date();
 
     await this.saveSessionHistory(projectId);
-    this.cleanupOldSessions();
-
     this.emit('messageAdded', projectId, message);
   }
 
@@ -310,7 +290,6 @@ export class SessionManager {
 
         // Save and emit all updates together
         await this.saveSessionHistory(projectId);
-        this.cleanupOldSessions();
 
         this.emit('messageAdded', projectId, assistantMessage);
         conversationMessages.push(assistantMessage);
@@ -393,28 +372,6 @@ export class SessionManager {
     session.abortController = undefined;
 
     this.emit('loadingChanged', projectId, false);
-  }
-
-  /**
-   * Clean up old sessions to prevent memory bloat
-   */
-  private cleanupOldSessions(): void {
-    const now = Date.now();
-
-    // Delete old sessions
-    for (const [projectId, session] of this.sessions) {
-      if (now - session.lastActivity.getTime() > this.MAX_SESSION_AGE) {
-        this.deleteSession(projectId);
-      }
-    }
-
-    // Delete oldest sessions if we have too many
-    if (this.sessions.size > this.MAX_SESSIONS) {
-      Array.from(this.sessions.entries())
-        .sort(([, a], [, b]) => a.lastActivity.getTime() - b.lastActivity.getTime())
-        .slice(0, this.sessions.size - this.MAX_SESSIONS)
-        .forEach(([projectId]) => this.deleteSession(projectId));
-    }
   }
 
   /**

@@ -13,7 +13,7 @@ export function useProjectSessionStatus(projectId: string) {
     const updateStatus = () => {
       const projectSessions = sessionManager.getProjectSessions(projectId);
       const runningSessions = projectSessions.filter(session => session.isLoading);
-      
+
       setHasActiveSessions(projectSessions.length > 0);
       setHasRunningSessions(runningSessions.length > 0);
     };
@@ -23,13 +23,11 @@ export function useProjectSessionStatus(projectId: string) {
 
     // Subscribe to session changes
     sessionManager.on('sessionCreated', updateStatus);
-    sessionManager.on('sessionUpdated', updateStatus);
     sessionManager.on('sessionDeleted', updateStatus);
     sessionManager.on('loadingChanged', updateStatus);
 
     return () => {
       sessionManager.off('sessionCreated', updateStatus);
-      sessionManager.off('sessionUpdated', updateStatus);
       sessionManager.off('sessionDeleted', updateStatus);
       sessionManager.off('loadingChanged', updateStatus);
     };

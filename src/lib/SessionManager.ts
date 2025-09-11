@@ -3,19 +3,6 @@ import type { JSRuntimeFS } from './JSRuntime';
 import { DotAI } from './DotAI';
 import { parseProviderModel } from './parseProviderModel';
 import type { Tool } from './tools/Tool';
-import { join } from '@std/path';
-
-// Simple debounce utility
-const debounce = <T extends (...args: unknown[]) => void>(
-  func: T,
-  wait: number
-): ((...args: Parameters<T>) => void) => {
-  let timeout: NodeJS.Timeout;
-  return (...args: Parameters<T>) => {
-    clearTimeout(timeout);
-    timeout = setTimeout(() => func(...args), wait);
-  };
-};
 
 export type AIMessage = OpenAI.Chat.Completions.ChatCompletionMessageParam;
 
@@ -49,7 +36,6 @@ export interface SessionState {
 
 export interface SessionManagerEvents {
   sessionCreated: (sessionId: string) => void;
-  sessionUpdated: (sessionId: string, state: SessionState) => void;
   sessionDeleted: (sessionId: string) => void;
   messageAdded: (sessionId: string, message: AIMessage) => void;
   streamingUpdate: (sessionId: string, content: string, toolCalls?: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[]) => void;
@@ -73,8 +59,6 @@ export class SessionManager {
   // Performance constants
   private readonly MAX_SESSIONS = 50;
   private readonly MAX_SESSION_AGE = 7 * 24 * 60 * 60 * 1000; // 7 days
-  private debouncedPersist = debounce(() => this.persistSessions(), 1000);
-  private dotAI: DotAI;
 
   constructor(
     fs: JSRuntimeFS,
@@ -84,12 +68,6 @@ export class SessionManager {
     this.fs = fs;
     this.aiSettings = aiSettings;
     this.getProviderModels = getProviderModels;
-    this.dotAI = new DotAI(fs, '/');
-
-    // Load persisted sessions on initialization
-    this.loadPersistedSessions().catch(error => {
-      console.warn('Failed to load sessions during initialization:', error);
-    });
   }
 
   /**
@@ -123,9 +101,7 @@ export class SessionManager {
     this.sessions.set(config.id, sessionState);
     this.sessionConfigs.set(config.id, config);
 
-    this.persistSessions();
     this.emit('sessionCreated', config.id);
-    this.emit('sessionUpdated', config.id, sessionState);
 
     return config.id;
   }
@@ -163,7 +139,6 @@ export class SessionManager {
     this.sessions.delete(sessionId);
     this.sessionConfigs.delete(sessionId);
 
-    await this.persistSessions();
     this.emit('sessionDeleted', sessionId);
   }
 
@@ -187,11 +162,9 @@ export class SessionManager {
     session.lastActivity = new Date();
 
     await this.saveSessionHistory(sessionId);
-    this.debouncedPersist();
     this.cleanupOldSessions();
 
     this.emit('messageAdded', sessionId, message);
-    this.emit('sessionUpdated', sessionId, session);
   }
 
   /**
@@ -225,7 +198,6 @@ export class SessionManager {
     session.lastActivity = new Date();
 
     this.emit('loadingChanged', sessionId, true);
-    this.emit('sessionUpdated', sessionId, session);
 
     try {
       // Parse provider and model
@@ -264,8 +236,6 @@ export class SessionManager {
           tool_calls: undefined
         };
 
-        this.emit('sessionUpdated', sessionId, session);
-
         // Prepare completion options
         const completionOptions: OpenAI.Chat.Completions.ChatCompletionCreateParams = {
           model: modelName,
@@ -297,7 +267,6 @@ export class SessionManager {
             if (session.streamingMessage) {
               session.streamingMessage.content += delta.content;
               this.emit('streamingUpdate', sessionId, session.streamingMessage.content, session.streamingMessage.tool_calls);
-              this.emit('sessionUpdated', sessionId, session);
             }
           }
 
@@ -321,7 +290,6 @@ export class SessionManager {
             if (session.streamingMessage) {
               session.streamingMessage.tool_calls = accumulatedToolCalls.length > 0 ? accumulatedToolCalls : undefined;
               this.emit('streamingUpdate', sessionId, session.streamingMessage.content, session.streamingMessage.tool_calls);
-              this.emit('sessionUpdated', sessionId, session);
             }
           }
 
@@ -351,11 +319,9 @@ export class SessionManager {
 
         // Save and emit all updates together
         await this.saveSessionHistory(sessionId);
-        this.debouncedPersist();
         this.cleanupOldSessions();
 
         this.emit('messageAdded', sessionId, assistantMessage);
-        this.emit('sessionUpdated', sessionId, session);
         conversationMessages.push(assistantMessage);
 
         // Update cost if usage data is available
@@ -420,7 +386,6 @@ export class SessionManager {
       session.abortController = undefined;
 
       this.emit('loadingChanged', sessionId, false);
-      this.emit('sessionUpdated', sessionId, session);
     }
   }
 
@@ -437,7 +402,6 @@ export class SessionManager {
     session.abortController = undefined;
 
     this.emit('loadingChanged', sessionId, false);
-    this.emit('sessionUpdated', sessionId, session);
   }
 
   /**
@@ -478,10 +442,8 @@ export class SessionManager {
     session.totalCost = 0;
     session.lastInputTokens = 0;
 
-    this.debouncedPersist();
     this.emit('costUpdated', sessionId, 0);
     this.emit('contextUsageUpdated', sessionId, 0);
-    this.emit('sessionUpdated', sessionId, session);
   }
 
   /**
@@ -521,7 +483,6 @@ export class SessionManager {
       this.emit('contextUsageUpdated', sessionId, usage.prompt_tokens);
 
       if (!model?.pricing) {
-        this.emit('sessionUpdated', sessionId, session);
         return;
       }
 
@@ -534,7 +495,6 @@ export class SessionManager {
       session.totalCost = (session.totalCost || 0) + requestCost;
 
       this.emit('costUpdated', sessionId, session.totalCost);
-      this.emit('sessionUpdated', sessionId, session);
     } catch (error) {
       console.warn('Failed to calculate session cost:', error);
     }
@@ -578,84 +538,9 @@ export class SessionManager {
   }
 
   /**
-   * Save session states using DotAI for persistence
-   */
-  private async persistSessions(): Promise<void> {
-    try {
-      if (!this.dotAI.fs?.writeFile) return;
-
-      const sessionData = {
-        sessions: Array.from(this.sessions.entries()).map(([id, session]) => ({
-          id,
-          session: {
-            ...session,
-            isLoading: false,
-            streamingMessage: undefined,
-            abortController: undefined
-          }
-        })),
-        configs: Array.from(this.sessionConfigs.entries()),
-        timestamp: new Date().toISOString()
-      };
-
-      // Ensure .ai directory exists before writing
-      const aiDir = join(this.dotAI.workingDir, '.ai');
-      try {
-        await this.dotAI.fs.mkdir(aiDir, { recursive: true });
-      } catch {
-        // Directory might already exist, continue
-      }
-
-      await this.dotAI.fs.writeFile(
-        join(aiDir, 'sessions.json'),
-        JSON.stringify(sessionData)
-      );
-    } catch (error) {
-      console.warn('Failed to persist sessions:', error);
-    }
-  }
-
-  /**
-   * Load persisted sessions using DotAI
-   */
-  private async loadPersistedSessions(): Promise<void> {
-    try {
-      if (!this.dotAI.fs?.readFile) return;
-
-      const sessionsPath = join(this.dotAI.workingDir, '.ai', 'sessions.json');
-
-      try {
-        const sessionsJson = await this.dotAI.fs.readFile(sessionsPath, 'utf8');
-        const sessionData = JSON.parse(sessionsJson);
-
-        // Restore sessions
-        sessionData.sessions?.forEach(({ id, session }: { id: string; session: Omit<SessionState, 'lastActivity'> & { lastActivity: string } }) => {
-          this.sessions.set(id, {
-            ...session,
-            lastActivity: new Date(session.lastActivity),
-            totalCost: session.totalCost || 0, // Ensure totalCost is set for older sessions
-            lastInputTokens: session.lastInputTokens || 0 // Ensure lastInputTokens is set for older sessions
-          });
-        });
-
-        // Restore configs
-        sessionData.configs?.forEach(([id, config]: [string, SessionConfig]) => {
-          this.sessionConfigs.set(id, config);
-        });
-      } catch {
-        // File doesn't exist or is invalid - start fresh
-      }
-    } catch (error) {
-      console.warn('Failed to load sessions:', error);
-    }
-  }
-
-  /**
    * Cleanup - stop all sessions and clear data
    */
   async cleanup(): Promise<void> {
-    await this.persistSessions();
-
     this.sessions.forEach((_, sessionId) => this.stopGeneration(sessionId));
 
     this.sessions.clear();

@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { useAISettings } from '@/hooks/useAISettings';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { createAIClient } from '@/lib/ai-client';
+import { parseProviderModel } from '@/lib/parseProviderModel';
 
 interface UseAIProjectIdOptions {
   onError?: (error: string) => void;
@@ -12,7 +13,7 @@ export function useAIProjectId({ onError }: UseAIProjectIdOptions = {}) {
   const { settings, isConfigured } = useAISettings();
   const { user } = useCurrentUser();
 
-  const generateProjectId = useCallback(async (prompt: string): Promise<string> => {
+  const generateProjectId = useCallback(async (providerModel: string, prompt: string): Promise<string> => {
     if (!isConfigured) {
       throw new Error('AI settings not configured');
     }
@@ -24,48 +25,36 @@ export function useAIProjectId({ onError }: UseAIProjectIdOptions = {}) {
     setIsLoading(true);
 
     try {
-      // Use first available provider as fallback
-      const providers = settings.providers || {};
-      const firstProvider = Object.keys(providers)[0];
-      if (!firstProvider) {
-        throw new Error('No configured AI providers available');
-      }
-
-      const connectionConfig = providers[firstProvider];
-      const modelName = 'gpt-3.5-turbo'; // Use a fast, cheap model for ID generation
-
       // Initialize OpenAI client
-      const openai = createAIClient(connectionConfig, user);
+      const { model, connection } = parseProviderModel(providerModel, settings.providers);
+      const openai = createAIClient(connection, user);
 
-      const systemPrompt = `You are a project ID generator. Given a user's description of what they want to build, generate a short, descriptive, kebab-case project ID that captures the essence of their project.
-
-Rules:
-- Use only lowercase letters, numbers, and hyphens
-- Keep it between 2-4 words
-- Make it descriptive but concise
-- No spaces, underscores, or special characters except hyphens
-- Examples:
-  - "farming equipment marketplace" → "farming-marketplace"
-  - "social media for artists" → "artist-social-app"
-  - "crypto trading dashboard" → "crypto-dashboard"
-  - "recipe sharing platform" → "recipe-platform"
-
-Respond with ONLY the project ID, no explanation or additional text.`;
+      const systemPrompt = `You are a product expert. Given the user's project description, come up with a short, unique, and memorable name for their product or brand. Generate only the name without any additional text or punctuation. The name should be lowercase, use hyphens instead of spaces, and contain only alphanumeric characters and hyphens. Avoid using special characters or underscores.`;
 
       const completion = await openai.chat.completions.create({
-        model: modelName,
+        model,
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: prompt }
         ],
-        max_tokens: 20,
-        temperature: 0.3,
+        temperature: 1,
       });
 
-      const projectId = completion.choices[0]?.message?.content?.trim();
+      const projectName = completion.choices[0]?.message?.content?.trim();
+      if (!projectName) {
+        throw new Error('Failed to generate project name');
+      }
+
+      // Convert the name into kebab-case
+      const projectId = projectName
+        .toLowerCase()
+        .replace(/\s+/g, '-') // Replace spaces with hyphens
+        .replace(/[^a-z0-9-]/g, '') // Remove invalid characters
+        .replace(/-+/g, '-') // Replace multiple hyphens with a single hyphen
+        .replace(/^-+|-+$/g, ''); // Trim hyphens from start and end
 
       if (!projectId) {
-        throw new Error('Failed to generate project ID');
+        throw new Error('Generated project ID is empty after formatting');
       }
 
       // Validate the generated ID

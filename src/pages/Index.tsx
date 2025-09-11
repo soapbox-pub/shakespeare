@@ -91,7 +91,7 @@ export default function Index() {
 
         // Use AI to generate project ID
         try {
-          projectId = await generateProjectId(prompt.trim());
+          projectId = await generateProjectId(providerModel, prompt.trim());
         } catch (error) {
           console.error('Failed to generate AI project ID:', error);
           // Fallback to manual project creation if AI fails

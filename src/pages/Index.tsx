@@ -4,7 +4,6 @@ import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { useAIProjectId } from '@/hooks/useAIProjectId';
 import { useFS } from '@/hooks/useFS';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
-import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { useAISettings } from '@/hooks/useAISettings';
 import { AppLayout } from '@/components/AppLayout';
@@ -24,7 +23,6 @@ export default function Index() {
   const navigate = useNavigate();
   const projectsManager = useProjectsManager();
   const { fs } = useFS();
-  const { user: _user } = useCurrentUser();
   const { generateProjectId, isLoading: isGeneratingId, isConfigured: isAIConfigured } = useAIProjectId();
   const { settings, addRecentlyUsedModel } = useAISettings();
   const [providerModel, setProviderModel] = useState(() => {
@@ -83,28 +81,11 @@ export default function Index() {
 
     setIsCreating(true);
     try {
-      let projectId: string;
+      // Use AI to generate project ID
+      const projectId = await generateProjectId(providerModel, prompt.trim());
 
-      if (isAIConfigured && providerModel.trim()) {
-        // Add model to recently used when creating project with AI
-        addRecentlyUsedModel(providerModel.trim());
-
-        // Use AI to generate project ID
-        try {
-          projectId = await generateProjectId(providerModel, prompt.trim());
-        } catch (error) {
-          console.error('Failed to generate AI project ID:', error);
-          // Fallback to manual project creation if AI fails
-          const project = await projectsManager.createProject(prompt.trim());
-          navigate(`/project/${project.id}`);
-          return;
-        }
-      } else {
-        // Fallback to manual project creation if AI not configured or no model selected
-        const project = await projectsManager.createProject(prompt.trim());
-        navigate(`/project/${project.id}`);
-        return;
-      }
+      // Add model to recently used when creating project with AI
+      addRecentlyUsedModel(providerModel.trim());
 
       // Create project with AI-generated ID
       const project = await projectsManager.createProject(prompt.trim(), projectId);

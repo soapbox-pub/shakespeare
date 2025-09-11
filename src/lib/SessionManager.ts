@@ -156,7 +156,7 @@ export class SessionManager {
    * Start AI generation for a session
    */
   async startGeneration(projectId: string, providerModel: string): Promise<void> {
-    const session = this.sessions.get(projectId);
+    let session = this.sessions.get(projectId);
 
     if (!session || session.isLoading || session.messages.length === 0) return;
 
@@ -183,21 +183,16 @@ export class SessionManager {
         dangerouslyAllowBrowser: true
       });
 
-      // Prepare messages for AI
-      const modelMessages: AIMessage[] = [...session.messages];
-      if (session.systemPrompt) {
-        modelMessages.unshift({
-          role: 'system',
-          content: session.systemPrompt
-        });
-      }
-
-      const conversationMessages = [...modelMessages];
       let stepCount = 0;
       const maxSteps = session.maxSteps || 50;
 
       // Main AI generation loop
       while (stepCount < maxSteps && session.isLoading) {
+        session = this.sessions.get(projectId);
+        if (!session) {
+          throw new Error('Session not found');
+        }
+
         stepCount++;
 
         // Initialize streaming message
@@ -207,10 +202,15 @@ export class SessionManager {
           tool_calls: undefined
         };
 
+        // Prepare messages for AI
+        const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = session.systemPrompt
+          ? [{ role: 'system', content: session.systemPrompt }, ...session.messages]
+          : session.messages;
+
         // Prepare completion options
         const completionOptions: OpenAI.Chat.Completions.ChatCompletionCreateParams = {
           model: modelName,
-          messages: conversationMessages,
+          messages,
           tools: session.tools && Object.keys(session.tools).length > 0 ? Object.values(session.tools) : undefined,
           tool_choice: session.tools && Object.keys(session.tools).length > 0 ? 'auto' : undefined,
           stream: true
@@ -285,23 +285,11 @@ export class SessionManager {
         };
 
         // Add final message but keep streaming message until finally block
-        session.messages.push(assistantMessage);
-        session.lastActivity = new Date();
-
-        // Save and emit all updates together
-        await this.saveSessionHistory(projectId);
-
-        this.emit('messageAdded', projectId, assistantMessage);
-        conversationMessages.push(assistantMessage);
+        await this.addMessage(projectId, assistantMessage);
 
         // Update cost if usage data is available
         if (usage) {
           this.updateSessionCost(projectId, usage, providerModel);
-        }
-
-        // Check if we should stop
-        if (finishReason === 'stop' || !accumulatedToolCalls || accumulatedToolCalls.length === 0) {
-          break;
         }
 
         // Handle tool calls
@@ -314,22 +302,26 @@ export class SessionManager {
             const tool = session.customTools[toolName];
 
             if (!tool) {
-              await this.addToolMessage(projectId, conversationMessages, functionToolCall.id, `Tool ${toolName} not found`);
+              await this.addToolMessage(projectId, functionToolCall.id, `Tool ${toolName} not found`);
               continue;
             }
 
             try {
               const toolArgs = tool.inputSchema.parse(JSON.parse(functionToolCall.function.arguments));
               const content = await tool.execute(toolArgs);
-              await this.addToolMessage(projectId, conversationMessages, functionToolCall.id, content);
+              await this.addToolMessage(projectId, functionToolCall.id, content);
             } catch (error) {
               const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-              await this.addToolMessage(projectId, conversationMessages, functionToolCall.id, `Error with tool ${toolName}: ${errorMsg}`);
+              await this.addToolMessage(projectId, functionToolCall.id, `Error with tool ${toolName}: ${errorMsg}`);
             }
           }
         }
-      }
 
+        // Check if we should stop
+        if (finishReason === 'stop') {
+          break;
+        }
+      }
     } catch (error) {
       console.error('AI generation error:', error);
 
@@ -351,9 +343,11 @@ export class SessionManager {
 
       await this.addMessage(projectId, { role: 'assistant', content: errorMessage });
     } finally {
-      session.isLoading = false;
-      session.streamingMessage = undefined;
-      session.abortController = undefined;
+      if (session) {
+        session.isLoading = false;
+        session.streamingMessage = undefined;
+        session.abortController = undefined;
+      }
 
       this.emit('loadingChanged', projectId, false);
     }
@@ -397,7 +391,7 @@ export class SessionManager {
   /**
    * Helper to add tool messages and update conversation
    */
-  private async addToolMessage(projectId: string, conversationMessages: AIMessage[], toolCallId: string, content: string): Promise<void> {
+  private async addToolMessage(projectId: string, toolCallId: string, content: string): Promise<void> {
     const toolMessage: AIMessage = {
       role: 'tool',
       content,
@@ -405,7 +399,6 @@ export class SessionManager {
     };
 
     await this.addMessage(projectId, toolMessage);
-    conversationMessages.push(toolMessage);
   }
 
   /**

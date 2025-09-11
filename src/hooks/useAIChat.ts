@@ -73,12 +73,16 @@ export function useAIChat({
     };
 
     initSession();
-  }, [sessionManager, projectId, tools, customTools, systemPrompt, maxSteps]);
+  }, [sessionManager, projectId, tools, customTools, maxSteps, systemPrompt]);
 
   // Subscribe to atomic session events for efficient updates
   useSessionSubscription('messageAdded', (updatedProjectId: string, message: AIMessage) => {
     if (updatedProjectId === projectId) {
       setMessages(prev => [...prev, message]);
+      // Whenever an assistant message is added, it means streaming is done (until we get another streamingUpdate)
+      if (message.role === 'assistant') {
+        setStreamingMessage(undefined);
+      }
     }
   }, [projectId]);
 
@@ -118,8 +122,6 @@ export function useAIChat({
       setLastInputTokens(inputTokens);
     }
   }, [projectId]);
-
-
 
   // Actions
   const sendMessage = useCallback(async (content: string, providerModel: string) => {

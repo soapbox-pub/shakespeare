@@ -27,20 +27,14 @@ describe('BuildProjectTool', () => {
     tool = new BuildProjectTool(mockFS, '/test/project');
   });
 
-  it('should have correct description and schema', () => {
+  it('should have correct description', () => {
     expect(tool.description).toBe('Build the project using esbuild. Creates optimized production files in the dist directory.');
-    expect(tool.inputSchema).toBeDefined();
-  });
-
-  it('should validate input schema correctly', () => {
-    // Valid inputs (empty object only)
-    expect(() => tool.inputSchema.parse({})).not.toThrow();
   });
 
   it('should fail if package.json does not exist', async () => {
     vi.mocked(mockFS.readFile).mockRejectedValue(new Error('File not found'));
 
-    await expect(tool.execute({})).rejects.toThrow(
+    await expect(tool.execute()).rejects.toThrow(
       '❌ Could not find package.json at /test/project. Make sure you\'re in a valid project directory.'
     );
   });
@@ -50,7 +44,7 @@ describe('BuildProjectTool', () => {
       .mockResolvedValueOnce('{"name": "test"}') // package.json exists
       .mockRejectedValueOnce(new Error('File not found')); // index.html doesn't exist
 
-    await expect(tool.execute({})).rejects.toThrow(
+    await expect(tool.execute()).rejects.toThrow(
       '❌ Could not find index.html at /test/project. This is required for building the project.'
     );
   });
@@ -69,7 +63,7 @@ describe('BuildProjectTool', () => {
     vi.mocked(mockFS.readdir).mockRejectedValue(new Error('Directory not found'));
     vi.mocked(buildProject).mockResolvedValue(mockDist);
 
-    const result = await tool.execute({});
+    const result = await tool.execute();
 
     expect(buildProject).toHaveBeenCalledWith({
       fs: mockFS,
@@ -104,7 +98,7 @@ describe('BuildProjectTool', () => {
     vi.mocked(mockFS.readdir).mockResolvedValue(['old-file.js', 'old-style.css']);
     vi.mocked(buildProject).mockResolvedValue(mockDist);
 
-    await tool.execute({});
+    await tool.execute();
 
     expect(mockFS.readdir).toHaveBeenCalledWith('/test/project/dist');
     expect(mockFS.unlink).toHaveBeenCalledWith('/test/project/dist/old-file.js');
@@ -118,7 +112,7 @@ describe('BuildProjectTool', () => {
 
     vi.mocked(buildProject).mockRejectedValue(new Error('Build compilation failed'));
 
-    await expect(tool.execute({})).rejects.toThrow(
+    await expect(tool.execute()).rejects.toThrow(
       '❌ Build failed: Error: Build compilation failed'
     );
   });

@@ -16,20 +16,14 @@ describe('TypecheckTool', () => {
     tool = new TypecheckTool(mockFS, '/test/project');
   });
 
-  it('should have correct description and schema', () => {
+  it('should have correct description', () => {
     expect(tool.description).toBe('Run TypeScript type checking on the project to verify there are no type errors.');
-    expect(tool.inputSchema).toBeDefined();
-  });
-
-  it('should validate input schema correctly', () => {
-    // Valid inputs (empty object only)
-    expect(() => tool.inputSchema.parse({})).not.toThrow();
   });
 
   it('should fail if tsconfig.json does not exist', async () => {
     vi.mocked(mockFS.readFile).mockRejectedValue(new Error('File not found'));
 
-    await expect(tool.execute({})).rejects.toThrow(
+    await expect(tool.execute()).rejects.toThrow(
       '❌ Could not find tsconfig.json at /test/project. Make sure you\'re in a valid TypeScript project.'
     );
   });
@@ -37,7 +31,7 @@ describe('TypecheckTool', () => {
   it('should successfully return no type errors (stub implementation)', async () => {
     vi.mocked(mockFS.readFile).mockResolvedValue('{"compilerOptions": {}}'); // tsconfig.json exists
 
-    const result = await tool.execute({});
+    const result = await tool.execute();
 
     expect(result).toContain('✅ No type errors found.');
     expect(result).toContain('🔍 TypeScript compilation completed successfully.');
@@ -47,7 +41,7 @@ describe('TypecheckTool', () => {
   it('should handle file system errors gracefully', async () => {
     vi.mocked(mockFS.readFile).mockRejectedValue(new Error('Permission denied'));
 
-    await expect(tool.execute({})).rejects.toThrow(
+    await expect(tool.execute()).rejects.toThrow(
       '❌ Could not find tsconfig.json at /test/project. Make sure you\'re in a valid TypeScript project.'
     );
   });

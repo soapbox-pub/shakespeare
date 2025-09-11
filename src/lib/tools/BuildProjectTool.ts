@@ -1,25 +1,19 @@
-import { z } from "zod";
-
 import type { Tool } from "./Tool";
 import type { JSRuntimeFS } from "../JSRuntime";
 import { buildProject } from "../build";
 
-type BuildProjectParams = Record<string, never>;
-
-export class BuildProjectTool implements Tool<BuildProjectParams> {
+export class BuildProjectTool implements Tool<void> {
   private fs: JSRuntimeFS;
   private cwd: string;
 
   readonly description = "Build the project using esbuild. Creates optimized production files in the dist directory.";
-
-  readonly inputSchema = z.object({});
 
   constructor(fs: JSRuntimeFS, cwd: string) {
     this.fs = fs;
     this.cwd = cwd;
   }
 
-  async execute(_args: BuildProjectParams): Promise<string> {
+  async execute(): Promise<string> {
     try {
       // Check if we're in a valid project directory
       try {

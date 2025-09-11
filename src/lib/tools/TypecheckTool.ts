@@ -1,28 +1,22 @@
-import { z } from "zod";
-
 import type { Tool } from "./Tool";
 import type { JSRuntimeFS } from "../JSRuntime";
 
-type TypecheckParams = Record<string, never>;
-
-export class TypecheckTool implements Tool<TypecheckParams> {
+export class TypecheckTool implements Tool<void> {
   private fs: JSRuntimeFS;
   private cwd: string;
 
   readonly description = "Run TypeScript type checking on the project to verify there are no type errors.";
-
-  readonly inputSchema = z.object({});
 
   constructor(fs: JSRuntimeFS, cwd: string) {
     this.fs = fs;
     this.cwd = cwd;
   }
 
-  async execute(_args: TypecheckParams): Promise<string> {
+  async execute(): Promise<string> {
     // TODO: Add actual typechecking functionality
     // This should run TypeScript compiler in --noEmit mode to check for type errors
     // Similar to how the test script runs: tsc --noEmit
-    
+
     try {
       // Check if we're in a valid TypeScript project
       try {

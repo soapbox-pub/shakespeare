@@ -210,7 +210,7 @@ export const AIMessageItem = memo(({
     <div className="flex">
       <div className="flex-1 min-w-0">
         <div className="text-sm">
-          <div className="whitespace-pre-wrap break-words">
+          <div className="break-words">
             <Streamdown
               className='size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0'
               parseIncompleteMarkdown={isCurrentlyLoading}

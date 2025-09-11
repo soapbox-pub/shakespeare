@@ -86,6 +86,9 @@ export class DotAI {
     sessionName: string,
     messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[],
   ): Promise<void> {
+    // Validate messages before saving
+    this.validateMessages(messages);
+
     // Only save if history should be enabled based on the new criteria
     if (!(await this.isEnabled())) {
       return;
@@ -108,6 +111,55 @@ export class DotAI {
     } catch (error) {
       // Log error but don't fail the main operation
       console.warn(`Failed to save messages to AI history: ${error}`);
+    }
+  }
+
+  /** Validate that tool messages are properly preceded by assistant messages with matching tool calls */
+  private validateMessages(messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[]): void {
+    for (let i = 0; i < messages.length; i++) {
+      const message = messages[i];
+
+      // Check if this is a tool message
+      if (message.role === 'tool') {
+        // Tool messages must have tool_call_id
+        if (!('tool_call_id' in message) || !message.tool_call_id) {
+          throw new Error(`Tool message at index ${i} is missing tool_call_id`);
+        }
+
+        // Find the preceding assistant message with tool calls
+        let foundMatchingToolCall = false;
+
+        // Look backwards from the current position to find the assistant message with matching tool call
+        for (let j = i - 1; j >= 0; j--) {
+          const prevMessage = messages[j];
+
+          if (prevMessage.role === 'assistant') {
+            // Check if this assistant message has tool_calls
+            if ('tool_calls' in prevMessage && prevMessage.tool_calls) {
+              // Check if any tool call ID matches
+              const hasMatchingId = prevMessage.tool_calls.some(
+                toolCall => toolCall.id === message.tool_call_id
+              );
+
+              if (hasMatchingId) {
+                foundMatchingToolCall = true;
+                break;
+              }
+            }
+
+            // If we found an assistant message without the matching tool call, stop looking
+            // (tool messages should be paired with the most recent assistant message with tool calls)
+            break;
+          }
+        }
+
+        if (!foundMatchingToolCall) {
+          throw new Error(
+            `Tool message at index ${i} with tool_call_id "${message.tool_call_id}" ` +
+            `must be preceded by an assistant message with a matching tool_call id`
+          );
+        }
+      }
     }
   }
 

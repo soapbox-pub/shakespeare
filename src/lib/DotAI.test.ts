@@ -188,6 +188,112 @@ invalid json line
       // Should not throw
       await expect(dotAI.setHistory('test-session', messages)).resolves.toBeUndefined();
     });
+
+    it('should validate tool messages have matching tool_call_id', async () => {
+      // Mock isEnabled to return true
+      vi.spyOn(dotAI, 'isEnabled').mockResolvedValue(true);
+
+      const validMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+        { role: 'user', content: 'Hello' },
+        {
+          role: 'assistant',
+          content: 'I need to use a tool',
+          tool_calls: [{ id: 'call_123', type: 'function', function: { name: 'test_tool', arguments: '{}' } }]
+        },
+        { role: 'tool', content: 'Tool result', tool_call_id: 'call_123' }
+      ];
+
+      // Should not throw for valid messages
+      await expect(dotAI.setHistory('test-session', validMessages)).resolves.toBeUndefined();
+    });
+
+    it('should throw error for tool message without preceding assistant message with tool_calls', async () => {
+      const invalidMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+        { role: 'user', content: 'Hello' },
+        { role: 'assistant', content: 'Response without tool calls' },
+        { role: 'tool', content: 'Tool result', tool_call_id: 'call_123' }
+      ];
+
+      await expect(dotAI.setHistory('test-session', invalidMessages))
+        .rejects.toThrow('Tool message at index 2 with tool_call_id "call_123" must be preceded by an assistant message with a matching tool_call id');
+    });
+
+    it('should throw error for tool message with non-matching tool_call_id', async () => {
+      const invalidMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+        { role: 'user', content: 'Hello' },
+        {
+          role: 'assistant',
+          content: 'I need to use a tool',
+          tool_calls: [{ id: 'call_456', type: 'function', function: { name: 'test_tool', arguments: '{}' } }]
+        },
+        { role: 'tool', content: 'Tool result', tool_call_id: 'call_123' }
+      ];
+
+      await expect(dotAI.setHistory('test-session', invalidMessages))
+        .rejects.toThrow('Tool message at index 2 with tool_call_id "call_123" must be preceded by an assistant message with a matching tool_call id');
+    });
+
+    it('should throw error for tool message without tool_call_id', async () => {
+      const invalidMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+        { role: 'user', content: 'Hello' },
+        {
+          role: 'assistant',
+          content: 'I need to use a tool',
+          tool_calls: [{ id: 'call_123', type: 'function', function: { name: 'test_tool', arguments: '{}' } }]
+        },
+        { role: 'tool', content: 'Tool result' } as OpenAI.Chat.Completions.ChatCompletionMessageParam
+      ];
+
+      await expect(dotAI.setHistory('test-session', invalidMessages))
+        .rejects.toThrow('Tool message at index 2 is missing tool_call_id');
+    });
+
+    it('should validate multiple tool messages correctly', async () => {
+      // Mock isEnabled to return true
+      vi.spyOn(dotAI, 'isEnabled').mockResolvedValue(true);
+
+      const validMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+        { role: 'user', content: 'Hello' },
+        {
+          role: 'assistant',
+          content: 'I need to use tools',
+          tool_calls: [
+            { id: 'call_123', type: 'function', function: { name: 'tool1', arguments: '{}' } },
+            { id: 'call_456', type: 'function', function: { name: 'tool2', arguments: '{}' } }
+          ]
+        },
+        { role: 'tool', content: 'Tool 1 result', tool_call_id: 'call_123' },
+        { role: 'tool', content: 'Tool 2 result', tool_call_id: 'call_456' }
+      ];
+
+      // Should not throw for valid messages
+      await expect(dotAI.setHistory('test-session', validMessages)).resolves.toBeUndefined();
+    });
+
+    it('should allow tool messages to reference tool calls from the most recent assistant message', async () => {
+      // Mock isEnabled to return true
+      vi.spyOn(dotAI, 'isEnabled').mockResolvedValue(true);
+
+      const validMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+        { role: 'user', content: 'First request' },
+        {
+          role: 'assistant',
+          content: 'First response',
+          tool_calls: [{ id: 'call_old', type: 'function', function: { name: 'old_tool', arguments: '{}' } }]
+        },
+        { role: 'tool', content: 'Old tool result', tool_call_id: 'call_old' },
+        { role: 'user', content: 'Second request' },
+        {
+          role: 'assistant',
+          content: 'Second response',
+          tool_calls: [{ id: 'call_new', type: 'function', function: { name: 'new_tool', arguments: '{}' } }]
+        },
+        { role: 'tool', content: 'New tool result', tool_call_id: 'call_new' }
+      ];
+
+      // Should not throw for valid messages
+      await expect(dotAI.setHistory('test-session', validMessages)).resolves.toBeUndefined();
+    });
   });
 
   describe('generateSessionName', () => {

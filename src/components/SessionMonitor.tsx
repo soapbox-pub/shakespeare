@@ -32,7 +32,7 @@ export function SessionMonitor() {
         if (!isCurrentProject) {
           toast({
             title: "AI Session Complete",
-            description: `Finished working on ${session.projectName}`,
+            description: `Finished working on ${session.projectId}`,
             action: (
               <button
                 onClick={() => navigate(`/project/${session.projectId}`)}

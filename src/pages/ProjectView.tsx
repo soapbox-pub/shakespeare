@@ -289,7 +289,6 @@ export function ProjectView() {
             <ChatPane
               ref={chatPaneRef}
               projectId={project.id}
-              projectName={project.name}
               onNewChat={handleNewChat}
               onBuild={runBuild}
               onDeploy={runDeploy}
@@ -435,7 +434,6 @@ export function ProjectView() {
                   <ChatPane
                     ref={chatPaneRef}
                     projectId={project.id}
-                    projectName={project.name}
                     onNewChat={handleNewChat}
                     onBuild={runBuild}
                     onDeploy={runDeploy}

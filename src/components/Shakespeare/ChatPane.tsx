@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, forwardRef, useImperativeHandle, useMemo } from 'react';
+import { useState, useRef, useEffect, forwardRef, useImperativeHandle, useMemo, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -40,7 +40,6 @@ import { assistantContentEmpty } from '@/lib/ai-messages';
 
 interface ChatPaneProps {
   projectId: string;
-  projectName: string;
   onNewChat?: () => void;
   onBuild?: () => void;
   onDeploy?: () => void;
@@ -57,7 +56,6 @@ export interface ChatPaneRef {
 
 export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   projectId,
-  projectName,
   onNewChat: _onNewChat,
   onBuild: _onBuild,
   onDeploy: _onDeploy,
@@ -128,6 +126,25 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     return result;
   }, [customTools]);
 
+  // Keep-alive functionality to prevent tab throttling during AI processing
+  const { updateMetadata } = useKeepAlive({
+    enabled: externalIsLoading || isBuildLoading || isDeployLoading,
+    title: 'Shakespeare',
+    artist: `Working on ${projectId}...`,
+    artwork: [
+      {
+        src: '/favicon.png',
+        sizes: '512x512',
+        type: 'image/png'
+      }
+    ]
+  });
+
+  // Memoize the metadata update callback to avoid unnecessary re-renders
+  const onUpdateMetadata = useCallback((title: string, description: string) => {
+    updateMetadata(title, description);
+  }, [updateMetadata]);
+
   useEffect(() => {
     makeSystemPrompt({
       cwd,
@@ -151,13 +168,10 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     startNewSession: internalStartNewSession,
   } = useAIChat({
     projectId,
-    projectName,
     tools,
     customTools,
     systemPrompt,
-    onUpdateMetadata: (title, description) => {
-      updateMetadata(title, description);
-    }
+    onUpdateMetadata,
   });
 
   // Use external loading state if provided, otherwise use internal state
@@ -213,20 +227,6 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
       }
     }
   }, [searchParams, setSearchParams, isConfigured, messages, isLoading, startGeneration, providerModel, setProviderModel, addRecentlyUsedModel]);
-
-  // Keep-alive functionality to prevent tab throttling during AI processing
-  const { updateMetadata } = useKeepAlive({
-    enabled: isLoading || isBuildLoading || isDeployLoading,
-    title: 'Shakespeare',
-    artist: `Working on ${projectName}...`,
-    artwork: [
-      {
-        src: '/favicon.png',
-        sizes: '512x512',
-        type: 'image/png'
-      }
-    ]
-  });
 
   // Function to check if user is at the bottom of the scroll area
   const checkScrollPosition = () => {

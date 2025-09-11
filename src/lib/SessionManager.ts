@@ -9,7 +9,6 @@ export type AIMessage = OpenAI.Chat.Completions.ChatCompletionMessageParam;
 export interface SessionConfig {
   id: string;
   projectId: string;
-  projectName: string;
   tools: Record<string, OpenAI.Chat.Completions.ChatCompletionTool>;
   customTools: Record<string, Tool<unknown>>;
   systemPrompt?: string;
@@ -19,7 +18,6 @@ export interface SessionConfig {
 export interface SessionState {
   id: string;
   projectId: string;
-  projectName: string;
   messages: AIMessage[];
   streamingMessage?: {
     role: 'assistant';
@@ -77,7 +75,6 @@ export class SessionManager {
     const sessionState: SessionState = {
       id: config.id,
       projectId: config.projectId,
-      projectName: config.projectName,
       messages: [],
       isLoading: false,
       sessionName: DotAI.generateSessionName(),

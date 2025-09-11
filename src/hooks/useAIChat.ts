@@ -8,7 +8,6 @@ import type { Tool } from '@/lib/tools/Tool';
 
 interface UseAIChatSessionOptions {
   projectId: string;
-  projectName: string;
   tools?: Record<string, OpenAI.Chat.Completions.ChatCompletionTool>;
   customTools?: Record<string, Tool<unknown>>;
   systemPrompt?: string;
@@ -28,7 +27,6 @@ interface StreamingMessage {
  */
 export function useAIChat({
   projectId,
-  projectName,
   tools = {},
   customTools = {},
   systemPrompt,
@@ -75,7 +73,6 @@ export function useAIChat({
         const config: SessionConfig = {
           id: generatedSessionId,
           projectId,
-          projectName,
           tools,
           customTools,
           systemPrompt,
@@ -98,7 +95,7 @@ export function useAIChat({
     };
 
     initSession();
-  }, [sessionManager, projectId, projectName, tools, customTools, systemPrompt, maxSteps, generatedSessionId]);
+  }, [sessionManager, projectId, tools, customTools, systemPrompt, maxSteps, generatedSessionId]);
 
   // Subscribe to atomic session events for efficient updates
   useSessionSubscription('messageAdded', (updatedSessionId: string, message: AIMessage) => {
@@ -127,10 +124,10 @@ export function useAIChat({
       }
 
       if (onUpdateMetadata && loading) {
-        onUpdateMetadata('Shakespeare', `Working on ${projectName}...`);
+        onUpdateMetadata('Shakespeare', `Working on ${projectId}...`);
       }
     }
-  }, [sessionId, onUpdateMetadata, projectName]);
+  }, [sessionId, onUpdateMetadata, projectId]);
 
   useSessionSubscription('costUpdated', (updatedSessionId: string, cost: number) => {
     if (updatedSessionId === sessionId) {

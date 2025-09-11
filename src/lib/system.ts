@@ -27,12 +27,13 @@ export async function makeSystemPrompt(opts: MakeSystemPromptOpts): Promise<stri
     day: "numeric",
   });
 
-  system += `\n\nThe current date is ${currentDate}.`;
-
   // Add Your Environment section
   system += `\n\n# Your Environment
 
 You are operating within **Shakespeare**, an AI-powered Nostr website builder that allows users to create custom Nostr applications through natural language conversation.
+
+- **Current Date**: ${currentDate}
+- **Current Working Directory**: ${cwd}
 
 ## What Shakespeare Is
 

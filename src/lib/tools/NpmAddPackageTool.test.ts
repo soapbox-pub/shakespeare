@@ -45,10 +45,20 @@ describe('NpmAddPackageTool', () => {
       dependencies: {}
     };
 
-    vi.mocked(mockFS.readFile).mockResolvedValue(JSON.stringify(packageJson, null, 2));
+    vi.mocked(mockFS.readFile)
+      .mockResolvedValueOnce(JSON.stringify(packageJson, null, 2)) // package.json
+      .mockRejectedValueOnce(new Error('File not found')); // package-lock.json doesn't exist
+
     mockFetch.mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ version: '4.17.21' })
+      json: () => Promise.resolve({
+        version: '4.17.21',
+        dist: {
+          tarball: 'https://registry.npmjs.org/lodash/-/lodash-4.17.21.tgz',
+          integrity: 'sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg=='
+        },
+        license: 'MIT'
+      })
     });
 
     const result = await tool.execute({ name: 'lodash' });
@@ -61,6 +71,7 @@ describe('NpmAddPackageTool', () => {
       'utf8'
     );
     expect(result).toContain('✅ Successfully added lodash@4.17.21');
+    expect(result).toContain('Updated: package.json');
   });
 
   it('should add package with specific version', async () => {
@@ -70,11 +81,25 @@ describe('NpmAddPackageTool', () => {
       dependencies: {}
     };
 
-    vi.mocked(mockFS.readFile).mockResolvedValue(JSON.stringify(packageJson, null, 2));
+    vi.mocked(mockFS.readFile)
+      .mockResolvedValueOnce(JSON.stringify(packageJson, null, 2)) // package.json
+      .mockRejectedValueOnce(new Error('File not found')); // package-lock.json doesn't exist
+
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        version: '4.17.20',
+        dist: {
+          tarball: 'https://registry.npmjs.org/lodash/-/lodash-4.17.20.tgz',
+          integrity: 'sha512-PlhdFcillOINfeV7Ni6oF1TAEayyZBoZ8bcshTHqOYJYlrqzRK5hagpagky5o4HfCzzd1TRkXPMFq6cKk9rGmA=='
+        },
+        license: 'MIT'
+      })
+    });
 
     const result = await tool.execute({ name: 'lodash', version: '4.17.20' });
 
-    expect(mockFetch).not.toHaveBeenCalled(); // Should not fetch when version is specified
+    expect(mockFetch).toHaveBeenCalledWith('https://registry.npmjs.org/lodash/4.17.20'); // Should fetch metadata for specified version
     expect(mockFS.writeFile).toHaveBeenCalledWith(
       '/test/project/package.json',
       expect.stringContaining('"lodash": "^4.17.20"'),
@@ -91,10 +116,20 @@ describe('NpmAddPackageTool', () => {
       devDependencies: {}
     };
 
-    vi.mocked(mockFS.readFile).mockResolvedValue(JSON.stringify(packageJson, null, 2));
+    vi.mocked(mockFS.readFile)
+      .mockResolvedValueOnce(JSON.stringify(packageJson, null, 2)) // package.json
+      .mockRejectedValueOnce(new Error('File not found')); // package-lock.json doesn't exist
+
     mockFetch.mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ version: '5.0.0' })
+      json: () => Promise.resolve({
+        version: '5.0.0',
+        dist: {
+          tarball: 'https://registry.npmjs.org/typescript/-/typescript-5.0.0.tgz',
+          integrity: 'sha512-w90NqzHl3S+GGUNGjREnnLAW6zIsfRIKwG5IwxJmtfAb6dPwx9Pq6Q3aRpIyq4Y7Udq9Y8SdJGrZBj8JKl6qCg=='
+        },
+        license: 'Apache-2.0'
+      })
     });
 
     const result = await tool.execute({ name: 'typescript', dev: true });
@@ -124,10 +159,20 @@ describe('NpmAddPackageTool', () => {
       devDependencies: {}
     };
 
-    vi.mocked(mockFS.readFile).mockResolvedValue(JSON.stringify(packageJson, null, 2));
+    vi.mocked(mockFS.readFile)
+      .mockResolvedValueOnce(JSON.stringify(packageJson, null, 2)) // package.json
+      .mockRejectedValueOnce(new Error('File not found')); // package-lock.json doesn't exist
+
     mockFetch.mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ version: '5.0.0' })
+      json: () => Promise.resolve({
+        version: '5.0.0',
+        dist: {
+          tarball: 'https://registry.npmjs.org/typescript/-/typescript-5.0.0.tgz',
+          integrity: 'sha512-w90NqzHl3S+GGUNGjREnnLAW6zIsfRIKwG5IwxJmtfAb6dPwx9Pq6Q3aRpIyq4Y7Udq9Y8SdJGrZBj8JKl6qCg=='
+        },
+        license: 'Apache-2.0'
+      })
     });
 
     const result = await tool.execute({ name: 'typescript', dev: true });
@@ -153,7 +198,14 @@ describe('NpmAddPackageTool', () => {
     vi.mocked(mockFS.readFile).mockResolvedValue(JSON.stringify(packageJson, null, 2));
     mockFetch.mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ version: '4.17.21' })
+      json: () => Promise.resolve({
+        version: '4.17.21',
+        dist: {
+          tarball: 'https://registry.npmjs.org/lodash/-/lodash-4.17.21.tgz',
+          integrity: 'sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg=='
+        },
+        license: 'MIT'
+      })
     });
 
     const result = await tool.execute({ name: 'lodash' });
@@ -201,10 +253,20 @@ describe('NpmAddPackageTool', () => {
       }
     };
 
-    vi.mocked(mockFS.readFile).mockResolvedValue(JSON.stringify(packageJson, null, 2));
+    vi.mocked(mockFS.readFile)
+      .mockResolvedValueOnce(JSON.stringify(packageJson, null, 2)) // package.json
+      .mockRejectedValueOnce(new Error('File not found')); // package-lock.json doesn't exist
+
     mockFetch.mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ version: '4.17.21' })
+      json: () => Promise.resolve({
+        version: '4.17.21',
+        dist: {
+          tarball: 'https://registry.npmjs.org/lodash/-/lodash-4.17.21.tgz',
+          integrity: 'sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg=='
+        },
+        license: 'MIT'
+      })
     });
 
     const result = await tool.execute({ name: 'lodash' });
@@ -215,5 +277,228 @@ describe('NpmAddPackageTool', () => {
 
     expect(dependencyKeys).toEqual(['axios', 'lodash', 'zlib']);
     expect(result).toContain('✅ Successfully added');
+  });
+
+  it('should update package-lock.json when it exists', async () => {
+    const packageJson = {
+      name: 'test-project',
+      version: '1.0.0',
+      dependencies: {}
+    };
+
+    const packageLock = {
+      name: 'test-project',
+      version: '1.0.0',
+      lockfileVersion: 3,
+      requires: true,
+      packages: {
+        '': {
+          name: 'test-project',
+          version: '1.0.0',
+          dependencies: {}
+        }
+      }
+    };
+
+    vi.mocked(mockFS.readFile)
+      .mockResolvedValueOnce(JSON.stringify(packageJson, null, 2)) // package.json
+      .mockResolvedValueOnce(JSON.stringify(packageLock, null, 2)); // package-lock.json
+
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        version: '4.17.21',
+        dist: {
+          tarball: 'https://registry.npmjs.org/lodash/-/lodash-4.17.21.tgz',
+          integrity: 'sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg=='
+        },
+        license: 'MIT'
+      })
+    });
+
+    const result = await tool.execute({ name: 'lodash' });
+
+    expect(mockFS.writeFile).toHaveBeenCalledTimes(2); // package.json and package-lock.json
+
+    // Check package-lock.json was updated
+    const lockWriteCall = vi.mocked(mockFS.writeFile).mock.calls.find(call =>
+      call[0] === '/test/project/package-lock.json'
+    );
+    expect(lockWriteCall).toBeDefined();
+
+    const updatedLock = JSON.parse(lockWriteCall![1] as string);
+    expect(updatedLock.packages[''].dependencies.lodash).toBe('^4.17.21');
+    expect(updatedLock.packages['node_modules/lodash']).toEqual({
+      version: '4.17.21',
+      resolved: 'https://registry.npmjs.org/lodash/-/lodash-4.17.21.tgz',
+      integrity: 'sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg==',
+      license: 'MIT'
+    });
+
+    expect(result).toContain('Updated: package.json, package-lock.json');
+  });
+
+  it('should update package-lock.json for dev dependencies', async () => {
+    const packageJson = {
+      name: 'test-project',
+      version: '1.0.0',
+      devDependencies: {}
+    };
+
+    const packageLock = {
+      name: 'test-project',
+      version: '1.0.0',
+      lockfileVersion: 3,
+      requires: true,
+      packages: {
+        '': {
+          name: 'test-project',
+          version: '1.0.0',
+          devDependencies: {}
+        }
+      }
+    };
+
+    vi.mocked(mockFS.readFile)
+      .mockResolvedValueOnce(JSON.stringify(packageJson, null, 2)) // package.json
+      .mockResolvedValueOnce(JSON.stringify(packageLock, null, 2)); // package-lock.json
+
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        version: '5.0.0',
+        dist: {
+          tarball: 'https://registry.npmjs.org/typescript/-/typescript-5.0.0.tgz',
+          integrity: 'sha512-w90NqzHl3S+GGUNGjREnnLAW6zIsfRIKwG5IwxJmtfAb6dPwx9Pq6Q3aRpIyq4Y7Udq9Y8SdJGrZBj8JKl6qCg=='
+        },
+        license: 'Apache-2.0',
+        engines: { node: '>=14.17' }
+      })
+    });
+
+    const result = await tool.execute({ name: 'typescript', dev: true });
+
+    const lockWriteCall = vi.mocked(mockFS.writeFile).mock.calls.find(call =>
+      call[0] === '/test/project/package-lock.json'
+    );
+    expect(lockWriteCall).toBeDefined();
+
+    const updatedLock = JSON.parse(lockWriteCall![1] as string);
+    expect(updatedLock.packages[''].devDependencies.typescript).toBe('^5.0.0');
+    expect(updatedLock.packages['node_modules/typescript']).toEqual({
+      version: '5.0.0',
+      resolved: 'https://registry.npmjs.org/typescript/-/typescript-5.0.0.tgz',
+      integrity: 'sha512-w90NqzHl3S+GGUNGjREnnLAW6zIsfRIKwG5IwxJmtfAb6dPwx9Pq6Q3aRpIyq4Y7Udq9Y8SdJGrZBj8JKl6qCg==',
+      license: 'Apache-2.0',
+      dev: true,
+      engines: { node: '>=14.17' }
+    });
+
+    expect(result).toContain('Updated: package.json, package-lock.json');
+  });
+
+  it('should move package between dependency types in package-lock.json', async () => {
+    const packageJson = {
+      name: 'test-project',
+      version: '1.0.0',
+      dependencies: {
+        'typescript': '^4.0.0'
+      },
+      devDependencies: {}
+    };
+
+    const packageLock = {
+      name: 'test-project',
+      version: '1.0.0',
+      lockfileVersion: 3,
+      requires: true,
+      packages: {
+        '': {
+          name: 'test-project',
+          version: '1.0.0',
+          dependencies: {
+            'typescript': '^4.0.0'
+          },
+          devDependencies: {}
+        },
+        'node_modules/typescript': {
+          version: '4.0.0',
+          resolved: 'https://registry.npmjs.org/typescript/-/typescript-4.0.0.tgz',
+          integrity: 'sha512-old-integrity',
+          license: 'Apache-2.0'
+        }
+      }
+    };
+
+    vi.mocked(mockFS.readFile)
+      .mockResolvedValueOnce(JSON.stringify(packageJson, null, 2)) // package.json
+      .mockResolvedValueOnce(JSON.stringify(packageLock, null, 2)); // package-lock.json
+
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        version: '5.0.0',
+        dist: {
+          tarball: 'https://registry.npmjs.org/typescript/-/typescript-5.0.0.tgz',
+          integrity: 'sha512-w90NqzHl3S+GGUNGjREnnLAW6zIsfRIKwG5IwxJmtfAb6dPwx9Pq6Q3aRpIyq4Y7Udq9Y8SdJGrZBj8JKl6qCg=='
+        },
+        license: 'Apache-2.0'
+      })
+    });
+
+    const result = await tool.execute({ name: 'typescript', dev: true });
+
+    const lockWriteCall = vi.mocked(mockFS.writeFile).mock.calls.find(call =>
+      call[0] === '/test/project/package-lock.json'
+    );
+    expect(lockWriteCall).toBeDefined();
+
+    const updatedLock = JSON.parse(lockWriteCall![1] as string);
+
+    // Should be moved to devDependencies
+    expect(updatedLock.packages[''].devDependencies.typescript).toBe('^5.0.0');
+    expect(updatedLock.packages[''].dependencies?.typescript).toBeUndefined();
+
+    // Node modules entry should be updated with new version and dev flag
+    expect(updatedLock.packages['node_modules/typescript']).toEqual({
+      version: '5.0.0',
+      resolved: 'https://registry.npmjs.org/typescript/-/typescript-5.0.0.tgz',
+      integrity: 'sha512-w90NqzHl3S+GGUNGjREnnLAW6zIsfRIKwG5IwxJmtfAb6dPwx9Pq6Q3aRpIyq4Y7Udq9Y8SdJGrZBj8JKl6qCg==',
+      license: 'Apache-2.0',
+      dev: true
+    });
+
+    expect(result).toContain('✅ Successfully added');
+  });
+
+  it('should handle corrupted package-lock.json gracefully', async () => {
+    const packageJson = {
+      name: 'test-project',
+      version: '1.0.0',
+      dependencies: {}
+    };
+
+    vi.mocked(mockFS.readFile)
+      .mockResolvedValueOnce(JSON.stringify(packageJson, null, 2)) // package.json
+      .mockResolvedValueOnce('invalid json'); // corrupted package-lock.json
+
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        version: '4.17.21',
+        dist: {
+          tarball: 'https://registry.npmjs.org/lodash/-/lodash-4.17.21.tgz',
+          integrity: 'sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg=='
+        },
+        license: 'MIT'
+      })
+    });
+
+    // Should not throw error, just log warning and continue
+    const result = await tool.execute({ name: 'lodash' });
+
+    expect(result).toContain('✅ Successfully added lodash@4.17.21');
+    expect(result).toContain('Updated: package.json'); // Should not mention package-lock.json
+    expect(mockFS.writeFile).toHaveBeenCalledTimes(1); // Only package.json should be written
   });
 });

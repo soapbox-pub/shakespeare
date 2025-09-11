@@ -15,6 +15,40 @@ interface PackageJson {
   [key: string]: unknown;
 }
 
+interface PackageLockJson {
+  name: string;
+  version: string;
+  lockfileVersion: number;
+  requires: boolean;
+  packages: Record<string, PackageLockEntry>;
+  [key: string]: unknown;
+}
+
+interface PackageLockEntry {
+  version?: string;
+  resolved?: string;
+  integrity?: string;
+  license?: string;
+  dependencies?: Record<string, string>;
+  devDependencies?: Record<string, string>;
+  dev?: boolean;
+  engines?: Record<string, string>;
+  funding?: unknown;
+  [key: string]: unknown;
+}
+
+interface NpmRegistryResponse {
+  version: string;
+  dist: {
+    tarball: string;
+    integrity: string;
+  };
+  license?: string;
+  engines?: Record<string, string>;
+  funding?: unknown;
+  [key: string]: unknown;
+}
+
 export class NpmAddPackageTool implements Tool<NpmAddPackageParams> {
   private fs: JSRuntimeFS;
   private cwd: string;
@@ -54,13 +88,22 @@ export class NpmAddPackageTool implements Tool<NpmAddPackageParams> {
         throw new Error(`❌ Invalid package.json format. Could not parse JSON.`);
       }
 
-      // Determine version to use
+      // Determine version to use and fetch package metadata
       let targetVersion = version;
+      let packageMetadata: NpmRegistryResponse;
+
       if (!targetVersion) {
         try {
-          targetVersion = await this.fetchLatestVersion(name);
+          packageMetadata = await this.fetchPackageMetadata(name);
+          targetVersion = packageMetadata.version;
         } catch (error) {
           throw new Error(`❌ Could not fetch latest version for ${name}. Package may not exist or npm registry is unavailable.\n\nError: ${String(error)}`);
+        }
+      } else {
+        try {
+          packageMetadata = await this.fetchPackageMetadata(name, targetVersion);
+        } catch (error) {
+          throw new Error(`❌ Could not fetch metadata for ${name}@${targetVersion}. Version may not exist or npm registry is unavailable.\n\nError: ${String(error)}`);
         }
       }
 
@@ -111,14 +154,21 @@ export class NpmAddPackageTool implements Tool<NpmAddPackageParams> {
       const updatedContent = JSON.stringify(packageJson, null, 2) + '\n';
       await this.fs.writeFile(packageJsonPath, updatedContent, "utf8");
 
-      return `✅ Successfully added ${name}@${targetVersion} to ${dependencyKey} in package.json\n\n📦 Package: ${name}\n🏷️ Version: ^${targetVersion}\n📁 Type: ${dev ? 'Development dependency' : 'Production dependency'}`;
+      // Update package-lock.json if it exists
+      await this.updatePackageLock(name, targetVersion, packageMetadata, dev);
+
+      return `✅ Successfully added ${name}@${targetVersion} to ${dependencyKey}\n\n📦 Package: ${name}\n🏷️ Version: ^${targetVersion}\n📁 Type: ${dev ? 'Development dependency' : 'Production dependency'}\n📄 Updated: package.json${await this.packageLockExists() ? ', package-lock.json' : ''}`;
     } catch (error) {
       throw new Error(`❌ Error adding package ${name}: ${String(error)}`);
     }
   }
 
-  private async fetchLatestVersion(packageName: string): Promise<string> {
-    const response = await fetch(`https://registry.npmjs.org/${packageName}/latest`);
+  private async fetchPackageMetadata(packageName: string, version?: string): Promise<NpmRegistryResponse> {
+    const url = version
+      ? `https://registry.npmjs.org/${packageName}/${version}`
+      : `https://registry.npmjs.org/${packageName}/latest`;
+
+    const response = await fetch(url);
 
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -130,6 +180,135 @@ export class NpmAddPackageTool implements Tool<NpmAddPackageParams> {
       throw new Error('No version found in npm registry response');
     }
 
-    return data.version;
+    if (!data.dist || !data.dist.tarball || !data.dist.integrity) {
+      throw new Error('Missing distribution metadata in npm registry response');
+    }
+
+    return data;
+  }
+
+  private async packageLockExists(): Promise<boolean> {
+    try {
+      await this.fs.readFile(`${this.cwd}/package-lock.json`, "utf8");
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  private async updatePackageLock(
+    packageName: string,
+    version: string,
+    metadata: NpmRegistryResponse,
+    isDev: boolean
+  ): Promise<void> {
+    const packageLockPath = `${this.cwd}/package-lock.json`;
+
+    try {
+      const packageLockContent = await this.fs.readFile(packageLockPath, "utf8");
+      const packageLock: PackageLockJson = JSON.parse(packageLockContent);
+
+      // Update root package dependencies
+      const rootPackage = packageLock.packages[""];
+      if (rootPackage) {
+        if (isDev) {
+          if (!rootPackage.devDependencies) {
+            rootPackage.devDependencies = {};
+          }
+          rootPackage.devDependencies[packageName] = `^${version}`;
+
+          // Remove from dependencies if it exists there
+          if (rootPackage.dependencies?.[packageName]) {
+            delete rootPackage.dependencies[packageName];
+            if (Object.keys(rootPackage.dependencies).length === 0) {
+              delete rootPackage.dependencies;
+            }
+          }
+        } else {
+          if (!rootPackage.dependencies) {
+            rootPackage.dependencies = {};
+          }
+          rootPackage.dependencies[packageName] = `^${version}`;
+
+          // Remove from devDependencies if it exists there
+          if (rootPackage.devDependencies?.[packageName]) {
+            delete rootPackage.devDependencies[packageName];
+            if (Object.keys(rootPackage.devDependencies).length === 0) {
+              delete rootPackage.devDependencies;
+            }
+          }
+        }
+
+        // Sort dependencies alphabetically
+        if (rootPackage.dependencies) {
+          const sorted = Object.keys(rootPackage.dependencies).sort().reduce((acc, key) => {
+            acc[key] = rootPackage.dependencies![key];
+            return acc;
+          }, {} as Record<string, string>);
+          rootPackage.dependencies = sorted;
+        }
+
+        if (rootPackage.devDependencies) {
+          const sorted = Object.keys(rootPackage.devDependencies).sort().reduce((acc, key) => {
+            acc[key] = rootPackage.devDependencies![key];
+            return acc;
+          }, {} as Record<string, string>);
+          rootPackage.devDependencies = sorted;
+        }
+      }
+
+      // Add/update node_modules entry
+      const nodeModulesKey = `node_modules/${packageName}`;
+      const nodeModulesEntry: PackageLockEntry = {
+        version: version,
+        resolved: metadata.dist.tarball,
+        integrity: metadata.dist.integrity
+      };
+
+      if (metadata.license) {
+        nodeModulesEntry.license = metadata.license;
+      }
+
+      if (isDev) {
+        nodeModulesEntry.dev = true;
+      }
+
+      if (metadata.engines) {
+        nodeModulesEntry.engines = metadata.engines;
+      }
+
+      if (metadata.funding) {
+        nodeModulesEntry.funding = metadata.funding;
+      }
+
+      packageLock.packages[nodeModulesKey] = nodeModulesEntry;
+
+      // Sort packages by key (node_modules entries should come after root)
+      const sortedPackages: Record<string, PackageLockEntry> = {};
+
+      // Add root package first
+      if (packageLock.packages[""]) {
+        sortedPackages[""] = packageLock.packages[""];
+      }
+
+      // Add sorted node_modules entries
+      const nodeModulesKeys = Object.keys(packageLock.packages)
+        .filter(key => key.startsWith("node_modules/"))
+        .sort();
+
+      for (const key of nodeModulesKeys) {
+        sortedPackages[key] = packageLock.packages[key];
+      }
+
+      packageLock.packages = sortedPackages;
+
+      // Write updated package-lock.json
+      const updatedLockContent = JSON.stringify(packageLock, null, 2) + '\n';
+      await this.fs.writeFile(packageLockPath, updatedLockContent, "utf8");
+    } catch (error) {
+      // If package-lock.json doesn't exist or is invalid, we don't fail the operation
+      // This is consistent with npm behavior where package-lock.json is optional
+      console.warn(`Could not update package-lock.json: ${String(error)}`);
+    }
   }
 }

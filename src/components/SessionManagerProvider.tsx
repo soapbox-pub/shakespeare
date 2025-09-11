@@ -4,6 +4,7 @@ import { SessionManager } from '@/lib/SessionManager';
 import { useFS } from '@/hooks/useFS';
 import { useAISettings } from '@/hooks/useAISettings';
 import { useProviderModels } from '@/hooks/useProviderModels';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 interface SessionManagerProviderProps {
   children: ReactNode;
@@ -16,11 +17,13 @@ export function SessionManagerProvider({ children }: SessionManagerProviderProps
   const { fs } = useFS();
   const { settings } = useAISettings();
   const { models } = useProviderModels();
+  const { user } = useCurrentUser();
 
   const sessionManager = useMemo(() => {
     const getProviderModels = () => models;
-    return new SessionManager(fs, settings, getProviderModels);
-  }, [fs, settings, models]);
+    const getCurrentUser = () => user;
+    return new SessionManager(fs, settings, getProviderModels, getCurrentUser);
+  }, [fs, settings, models, user]);
 
   // Cleanup on unmount
   useEffect(() => {

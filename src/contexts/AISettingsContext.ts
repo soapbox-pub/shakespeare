@@ -3,6 +3,7 @@ import { createContext } from 'react';
 export interface AIConnection {
   baseURL: string;
   apiKey?: string;
+  nostr?: boolean;
 }
 
 export interface AISettings {

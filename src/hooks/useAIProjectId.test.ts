@@ -2,18 +2,27 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import { useAIProjectId } from './useAIProjectId';
 import { useAISettings } from './useAISettings';
+import { useCurrentUser } from './useCurrentUser';
 
-// Mock the useAISettings hook
+// Mock the hooks
 vi.mock('./useAISettings');
+vi.mock('./useCurrentUser');
 
 describe('useAIProjectId', () => {
   const mockUseAISettings = vi.mocked(useAISettings);
+  const mockUseCurrentUser = vi.mocked(useCurrentUser);
 
   beforeEach(() => {
     vi.clearAllMocks();
 
     // Mock fetch globally
     global.fetch = vi.fn();
+
+    // Mock useCurrentUser to return undefined user by default
+    mockUseCurrentUser.mockReturnValue({
+      user: undefined,
+      users: [],
+    });
   });
 
   it('should return not configured when AI settings are not configured', () => {

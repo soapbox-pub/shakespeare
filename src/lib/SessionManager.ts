@@ -2,7 +2,9 @@ import OpenAI from 'openai';
 import type { JSRuntimeFS } from './JSRuntime';
 import { DotAI } from './DotAI';
 import { parseProviderModel } from './parseProviderModel';
+import { createAIClient } from './ai-client';
 import type { Tool } from './tools/Tool';
+import type { NUser } from '@nostrify/react/login';
 
 export type AIMessage = OpenAI.Chat.Completions.ChatCompletionMessageParam;
 
@@ -44,17 +46,20 @@ export class SessionManager {
   private sessions = new Map<string, SessionState>();
   private listeners: Partial<Record<keyof SessionManagerEvents, Set<(...args: unknown[]) => void>>> = {};
   private fs: JSRuntimeFS;
-  private aiSettings: { providers: Record<string, { baseURL: string; apiKey?: string }> };
+  private aiSettings: { providers: Record<string, { baseURL: string; apiKey?: string; nostr?: boolean }> };
   private getProviderModels?: () => Array<{ id: string; provider: string; contextLength?: number; pricing?: { prompt: import('decimal.js').Decimal; completion: import('decimal.js').Decimal } }>;
+  private getCurrentUser?: () => NUser | undefined;
 
   constructor(
     fs: JSRuntimeFS,
-    aiSettings: { providers: Record<string, { baseURL: string; apiKey?: string }> },
-    getProviderModels?: () => Array<{ id: string; provider: string; contextLength?: number; pricing?: { prompt: import('decimal.js').Decimal; completion: import('decimal.js').Decimal } }>
+    aiSettings: { providers: Record<string, { baseURL: string; apiKey?: string; nostr?: boolean }> },
+    getProviderModels?: () => Array<{ id: string; provider: string; contextLength?: number; pricing?: { prompt: import('decimal.js').Decimal; completion: import('decimal.js').Decimal } }>,
+    getCurrentUser?: () => NUser | undefined
   ) {
     this.fs = fs;
     this.aiSettings = aiSettings;
     this.getProviderModels = getProviderModels;
+    this.getCurrentUser = getCurrentUser;
   }
 
   /**
@@ -195,11 +200,8 @@ export class SessionManager {
       const modelName = parsed.model;
 
       // Initialize OpenAI client
-      const openai = new OpenAI({
-        baseURL: connectionConfig.baseURL,
-        apiKey: connectionConfig.apiKey,
-        dangerouslyAllowBrowser: true
-      });
+      const currentUser = this.getCurrentUser?.();
+      const openai = createAIClient(connectionConfig, currentUser);
 
       let stepCount = 0;
       const maxSteps = session.maxSteps || 50;

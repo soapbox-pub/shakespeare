@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { AISettingsProvider } from './AISettingsProvider';
 import { useAISettings } from '@/hooks/useAISettings';
 import { TestApp } from '@/test/TestApp';
 
@@ -24,11 +23,7 @@ describe('AISettingsProvider', () => {
 
   it('should initialize with empty recentlyUsedModels array', () => {
     const { result } = renderHook(() => useAISettings(), {
-      wrapper: ({ children }) => (
-        <TestApp>
-          <AISettingsProvider>{children}</AISettingsProvider>
-        </TestApp>
-      ),
+      wrapper: ({ children }) => <TestApp>{children}</TestApp>,
     });
 
     expect(result.current.settings.recentlyUsedModels).toEqual([]);
@@ -36,11 +31,7 @@ describe('AISettingsProvider', () => {
 
   it('should add recently used models correctly', () => {
     const { result } = renderHook(() => useAISettings(), {
-      wrapper: ({ children }) => (
-        <TestApp>
-          <AISettingsProvider>{children}</AISettingsProvider>
-        </TestApp>
-      ),
+      wrapper: ({ children }) => <TestApp>{children}</TestApp>,
     });
 
     act(() => {
@@ -54,11 +45,7 @@ describe('AISettingsProvider', () => {
 
   it('should move existing model to front when used again', () => {
     const { result } = renderHook(() => useAISettings(), {
-      wrapper: ({ children }) => (
-        <TestApp>
-          <AISettingsProvider>{children}</AISettingsProvider>
-        </TestApp>
-      ),
+      wrapper: ({ children }) => <TestApp>{children}</TestApp>,
     });
 
     // Add multiple models
@@ -88,11 +75,7 @@ describe('AISettingsProvider', () => {
 
   it('should limit recently used models to 10 items', () => {
     const { result } = renderHook(() => useAISettings(), {
-      wrapper: ({ children }) => (
-        <TestApp>
-          <AISettingsProvider>{children}</AISettingsProvider>
-        </TestApp>
-      ),
+      wrapper: ({ children }) => <TestApp>{children}</TestApp>,
     });
 
     // Add 12 models
@@ -121,11 +104,7 @@ describe('AISettingsProvider', () => {
     localStorageMock.getItem.mockReturnValue(JSON.stringify(oldSettings));
 
     const { result } = renderHook(() => useAISettings(), {
-      wrapper: ({ children }) => (
-        <TestApp>
-          <AISettingsProvider>{children}</AISettingsProvider>
-        </TestApp>
-      ),
+      wrapper: ({ children }) => <TestApp>{children}</TestApp>,
     });
 
     expect(result.current.settings.recentlyUsedModels).toEqual([]);

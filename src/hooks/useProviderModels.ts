@@ -1,8 +1,9 @@
 import { Decimal } from 'decimal.js';
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import OpenAI from 'openai';
 import { useAISettings } from '@/hooks/useAISettings';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { createAIClient } from '@/lib/ai-client';
 
 interface ProviderModel {
   id: string;
@@ -29,12 +30,13 @@ interface ModelFetchResult {
 
 export function useProviderModels(): ModelFetchResult {
   const { settings } = useAISettings();
+  const { user } = useCurrentUser();
   const [error, setError] = useState<string | null>(null);
 
   const {
     data: models = [],
     isLoading,
-    refetch: queryRefetch,
+    refetch,
   } = useQuery({
     queryKey: ['provider-models', settings.providers],
     queryFn: async () => {
@@ -44,11 +46,7 @@ export function useProviderModels(): ModelFetchResult {
       // Fetch models from each configured provider
       for (const [providerKey, connection] of Object.entries(settings.providers)) {
         try {
-          const openai = new OpenAI({
-            baseURL: connection.baseURL,
-            apiKey: connection.apiKey,
-            dangerouslyAllowBrowser: true,
-          });
+          const openai = createAIClient(connection, user);
 
           // Fetch models with timeout
           try {
@@ -125,11 +123,6 @@ export function useProviderModels(): ModelFetchResult {
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
     retry: false, // Don't retry on failure
   });
-
-  const refetch = useCallback(() => {
-    setError(null);
-    queryRefetch();
-  }, [queryRefetch]);
 
   return {
     models,

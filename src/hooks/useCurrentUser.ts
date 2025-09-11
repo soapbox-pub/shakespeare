@@ -25,6 +25,11 @@ export function useCurrentUser() {
   const users = useMemo(() => {
     const users: NUser[] = [];
 
+    // Safeguard against undefined or null logins
+    if (!logins || !Array.isArray(logins)) {
+      return users;
+    }
+
     for (const login of logins) {
       try {
         const user = loginToUser(login);

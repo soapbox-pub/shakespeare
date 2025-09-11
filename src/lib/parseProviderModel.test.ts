@@ -24,7 +24,7 @@ describe('parseProviderModel', () => {
 
   it('should parse simple provider/model format', () => {
     const result = parseProviderModel('openai/gpt-4o', mockProviders);
-    
+
     expect(result.provider).toBe('openai');
     expect(result.model).toBe('gpt-4o');
     expect(result.connection).toEqual(mockProviders.openai);
@@ -32,7 +32,7 @@ describe('parseProviderModel', () => {
 
   it('should parse complex model names with slashes', () => {
     const result = parseProviderModel('openrouter/anthropic/claude-sonnet-4', mockProviders);
-    
+
     expect(result.provider).toBe('openrouter');
     expect(result.model).toBe('anthropic/claude-sonnet-4');
     expect(result.connection).toEqual(mockProviders.openrouter);
@@ -40,7 +40,7 @@ describe('parseProviderModel', () => {
 
   it('should handle model names with multiple slashes', () => {
     const result = parseProviderModel('openrouter/meta/llama-3.1-405b-instruct', mockProviders);
-    
+
     expect(result.provider).toBe('openrouter');
     expect(result.model).toBe('meta/llama-3.1-405b-instruct');
     expect(result.connection).toEqual(mockProviders.openrouter);
@@ -70,9 +70,5 @@ describe('parseProviderModel', () => {
     }).toThrow('Provider "unknown" not found. Available providers: openai, openrouter, anthropic, unconfigured');
   });
 
-  it('should throw error for provider without API key', () => {
-    expect(() => {
-      parseProviderModel('unconfigured/some-model', mockProviders);
-    }).toThrow('Provider "unconfigured" is not configured with an API key');
-  });
+
 });

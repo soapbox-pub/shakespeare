@@ -12,39 +12,19 @@ const DEFAULT_SETTINGS: AISettings = {
 
 const STORAGE_KEY = 'ai-settings';
 
-function migrateOldSettings(stored: unknown): AISettings {
-  // Handle migration from old single-provider format
-  if (stored && typeof stored === 'object' && 'apiKey' in stored && 'baseUrl' in stored) {
-    const oldSettings = stored as { apiKey?: string; baseUrl?: string };
-    return {
-      providers: {
-        openrouter: {
-          baseURL: oldSettings.baseUrl || 'https://openrouter.ai/api/v1',
-          apiKey: oldSettings.apiKey || '',
-        },
-      },
-      recentlyUsedModels: [],
-    };
-  }
-  // If it's already the new format or invalid, return as AISettings or default
-  if (stored && typeof stored === 'object' && 'providers' in stored) {
-    const settings = stored as Partial<AISettings>;
-    return {
-      providers: settings.providers || {},
-      recentlyUsedModels: settings.recentlyUsedModels || [],
-    };
-  }
-  return DEFAULT_SETTINGS;
-}
-
 export function AISettingsProvider({ children }: AISettingsProviderProps) {
   const [settings, setSettings] = useState<AISettings>(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
-        const migrated = migrateOldSettings(parsed);
-        return { ...DEFAULT_SETTINGS, ...migrated };
+        if (parsed && typeof parsed === 'object' && 'providers' in parsed) {
+          const settings = parsed as Partial<AISettings>;
+          return {
+            providers: settings.providers || {},
+            recentlyUsedModels: settings.recentlyUsedModels || [],
+          };
+        }
       } catch {
         return DEFAULT_SETTINGS;
       }

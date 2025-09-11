@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
-import OpenAI from 'openai';
 import { useAISettings } from '@/hooks/useAISettings';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { createAIClient } from '@/lib/ai-client';
 
 interface UseAIProjectIdOptions {
   onError?: (error: string) => void;
@@ -9,6 +10,7 @@ interface UseAIProjectIdOptions {
 export function useAIProjectId({ onError }: UseAIProjectIdOptions = {}) {
   const [isLoading, setIsLoading] = useState(false);
   const { settings, isConfigured } = useAISettings();
+  const { user } = useCurrentUser();
 
   const generateProjectId = useCallback(async (prompt: string): Promise<string> => {
     if (!isConfigured) {
@@ -33,11 +35,7 @@ export function useAIProjectId({ onError }: UseAIProjectIdOptions = {}) {
       const modelName = 'gpt-3.5-turbo'; // Use a fast, cheap model for ID generation
 
       // Initialize OpenAI client
-      const openai = new OpenAI({
-        baseURL: connectionConfig.baseURL,
-        apiKey: connectionConfig.apiKey,
-        dangerouslyAllowBrowser: true
-      });
+      const openai = createAIClient(connectionConfig, user);
 
       const systemPrompt = `You are a project ID generator. Given a user's description of what they want to build, generate a short, descriptive, kebab-case project ID that captures the essence of their project.
 
@@ -84,7 +82,7 @@ Respond with ONLY the project ID, no explanation or additional text.`;
     } finally {
       setIsLoading(false);
     }
-  }, [isConfigured, settings, onError]);
+  }, [isConfigured, settings, onError, user]);
 
   return {
     generateProjectId,

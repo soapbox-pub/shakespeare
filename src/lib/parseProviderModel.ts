@@ -33,10 +33,6 @@ export function parseProviderModel(
     throw new Error(`Provider "${provider}" not found. Available providers: ${Object.keys(providers).join(', ')}`);
   }
   
-  if (!connection.apiKey) {
-    throw new Error(`Provider "${provider}" is not configured with an API key`);
-  }
-  
   return {
     provider,
     model,

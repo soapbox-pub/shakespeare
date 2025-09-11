@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAISettings } from '@/hooks/useAISettings';
 import type { AIConnection } from '@/contexts/AISettingsContext';
 
@@ -78,12 +79,14 @@ export function AISettingsDialog({ open: controlledOpen, onOpenChange }: AISetti
   const [customProviderName, setCustomProviderName] = useState('');
   const [customBaseURL, setCustomBaseURL] = useState('');
   const [customApiKey, setCustomApiKey] = useState('');
+  const [customAuthMethod, setCustomAuthMethod] = useState<'api-key' | 'nostr'>('api-key');
   const [presetApiKeys, setPresetApiKeys] = useState<Record<string, string>>({});
 
   const handleCancel = () => {
     setCustomProviderName('');
     setCustomBaseURL('');
     setCustomApiKey('');
+    setCustomAuthMethod('api-key');
     setPresetApiKeys({});
     setOpen(false);
   };
@@ -112,7 +115,8 @@ export function AISettingsDialog({ open: controlledOpen, onOpenChange }: AISetti
 
     const newProvider: AIConnection = {
       baseURL: customBaseURL.trim(),
-      apiKey: customApiKey.trim(),
+      apiKey: customAuthMethod === 'nostr' ? undefined : customApiKey.trim(),
+      nostr: customAuthMethod === 'nostr' || undefined,
     };
 
     // Auto-save: Add provider immediately to persistent storage
@@ -121,6 +125,7 @@ export function AISettingsDialog({ open: controlledOpen, onOpenChange }: AISetti
     setCustomProviderName('');
     setCustomBaseURL('');
     setCustomApiKey('');
+    setCustomAuthMethod('api-key');
   };
 
   const handleRemoveProvider = (name: string) => {
@@ -204,15 +209,35 @@ export function AISettingsDialog({ open: controlledOpen, onOpenChange }: AISetti
                             />
                           </div>
                           <div className="grid gap-2">
-                            <Label htmlFor={`${providerId}-apiKey`}>API Key</Label>
-                            <Input
-                              id={`${providerId}-apiKey`}
-                              type="password"
-                              placeholder="Enter your API key"
-                              value={provider?.apiKey || ''}
-                              onChange={(e) => handleUpdateProvider(providerId, { apiKey: e.target.value })}
-                            />
+                            <Label htmlFor={`${providerId}-auth`}>Authentication</Label>
+                            <Select
+                              value={provider?.nostr ? 'nostr' : 'api-key'}
+                              onValueChange={(value: 'api-key' | 'nostr') => handleUpdateProvider(providerId, {
+                                nostr: value === 'nostr' || undefined,
+                                apiKey: value === 'nostr' ? undefined : provider?.apiKey
+                              })}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="api-key">API Key</SelectItem>
+                                <SelectItem value="nostr">Nostr</SelectItem>
+                              </SelectContent>
+                            </Select>
                           </div>
+                          {!provider?.nostr && (
+                            <div className="grid gap-2">
+                              <Label htmlFor={`${providerId}-apiKey`}>API Key</Label>
+                              <Input
+                                id={`${providerId}-apiKey`}
+                                type="password"
+                                placeholder="Enter your API key"
+                                value={provider?.apiKey || ''}
+                                onChange={(e) => handleUpdateProvider(providerId, { apiKey: e.target.value })}
+                              />
+                            </div>
+                          )}
                         </div>
                       </AccordionContent>
                     </AccordionItem>
@@ -299,15 +324,37 @@ export function AISettingsDialog({ open: controlledOpen, onOpenChange }: AISetti
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="custom-apikey">API Key</Label>
-                  <Input
-                    id="custom-apikey"
-                    type="password"
-                    placeholder="Enter your API key (optional)"
-                    value={customApiKey}
-                    onChange={(e) => setCustomApiKey(e.target.value)}
-                  />
+                  <Label htmlFor="custom-auth">Authentication</Label>
+                  <Select
+                    value={customAuthMethod}
+                    onValueChange={(value: 'api-key' | 'nostr') => {
+                      setCustomAuthMethod(value);
+                      if (value === 'nostr') {
+                        setCustomApiKey(''); // Clear API key when switching to Nostr auth
+                      }
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="api-key">API Key</SelectItem>
+                      <SelectItem value="nostr">Nostr</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
+                {customAuthMethod === 'api-key' && (
+                  <div className="grid gap-2">
+                    <Label htmlFor="custom-apikey">API Key</Label>
+                    <Input
+                      id="custom-apikey"
+                      type="password"
+                      placeholder="Enter your API key (optional)"
+                      value={customApiKey}
+                      onChange={(e) => setCustomApiKey(e.target.value)}
+                    />
+                  </div>
+                )}
                 <Button
                   onClick={handleAddCustomProvider}
                   disabled={

@@ -12,7 +12,6 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useKeepAlive } from '@/hooks/useKeepAlive';
 import { useAIChat } from '@/hooks/useAIChat';
 import { useProviderModels } from '@/hooks/useProviderModels';
-import type { AIMessage } from '@/lib/SessionManager';
 import { ModelSelector } from '@/components/ModelSelector';
 import { AIMessageItem } from '@/components/AIMessageItem';
 import { TextEditorViewTool } from '@/lib/tools/TextEditorViewTool';
@@ -200,33 +199,28 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     const autostart = searchParams.get('autostart');
     const urlModel = searchParams.get('model');
 
-    if (autostart === 'true' && isConfigured && messages.length > 0 && !isLoading) {
-      const lastMessage = messages[messages.length - 1];
+    if (autostart === 'true' && isConfigured && !isLoading) {
+      // Use model from URL if available, otherwise use current selection
+      const modelToUse = urlModel?.trim() || providerModel.trim();
 
-      // If the last message is from the user, auto-start the AI
-      if (lastMessage.role === 'user') {
-        // Use model from URL if available, otherwise use current selection
-        const modelToUse = urlModel?.trim() || providerModel.trim();
-
-        if (modelToUse) {
-          // Update provider model if it came from URL
-          if (urlModel?.trim() && urlModel.trim() !== providerModel) {
-            setProviderModel(urlModel.trim());
-          }
-
-          // Clear the autostart and model parameters so they don't trigger again
-          const newSearchParams = new URLSearchParams(searchParams);
-          newSearchParams.delete('autostart');
-          newSearchParams.delete('model');
-          setSearchParams(newSearchParams, { replace: true });
-
-          // Start AI generation
-          addRecentlyUsedModel(modelToUse);
-          startGeneration(modelToUse);
+      if (modelToUse) {
+        // Update provider model if it came from URL
+        if (urlModel?.trim() && urlModel.trim() !== providerModel) {
+          setProviderModel(urlModel.trim());
         }
+
+        // Clear the autostart and model parameters so they don't trigger again
+        const newSearchParams = new URLSearchParams(searchParams);
+        newSearchParams.delete('autostart');
+        newSearchParams.delete('model');
+        setSearchParams(newSearchParams, { replace: true });
+
+        // Start AI generation
+        addRecentlyUsedModel(modelToUse);
+        startGeneration(modelToUse);
       }
     }
-  }, [searchParams, setSearchParams, isConfigured, messages, isLoading, startGeneration, providerModel, setProviderModel, addRecentlyUsedModel]);
+  }, [addRecentlyUsedModel, isConfigured, isLoading, providerModel, searchParams, setSearchParams, startGeneration]);
 
   // Function to check if user is at the bottom of the scroll area
   const checkScrollPosition = () => {
@@ -378,7 +372,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
             streamingMessage.content ? (
               <AIMessageItem
                 key="streaming-message"
-                message={streamingMessage as AIMessage}
+                message={streamingMessage}
                 isCurrentlyLoading={isLoading}
               />
             ) : (

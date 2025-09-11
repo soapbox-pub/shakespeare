@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useSessionManager } from '@/hooks/useSessionManager';
 import { useSessionSubscription } from '@/hooks/useSessionSubscription';
 import { useAISettings } from '@/hooks/useAISettings';
-import type { SessionConfig, AIMessage } from '@/lib/SessionManager';
+import type { AIMessage } from '@/lib/SessionManager';
 import type OpenAI from 'openai';
 import type { Tool } from '@/lib/tools/Tool';
 
@@ -58,15 +58,7 @@ export function useAIChat({
         setLastInputTokens(existingSession.lastInputTokens || 0);
       } else {
         // Create new session
-        const config: SessionConfig = {
-          projectId,
-          tools,
-          customTools,
-          systemPrompt,
-          maxSteps
-        };
-
-        await sessionManager.createSession(config);
+        await sessionManager.createSession(projectId, tools, customTools, systemPrompt, maxSteps);
 
         const newSession = sessionManager.getSession(projectId);
         if (newSession) {

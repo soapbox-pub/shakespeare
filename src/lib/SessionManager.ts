@@ -6,16 +6,12 @@ import type { Tool } from './tools/Tool';
 
 export type AIMessage = OpenAI.Chat.Completions.ChatCompletionMessageParam;
 
-export interface SessionConfig {
+export interface SessionState {
   projectId: string;
   tools: Record<string, OpenAI.Chat.Completions.ChatCompletionTool>;
   customTools: Record<string, Tool<unknown>>;
   systemPrompt?: string;
   maxSteps?: number;
-}
-
-export interface SessionState {
-  projectId: string;
   messages: AIMessage[];
   streamingMessage?: {
     role: 'assistant';
@@ -46,7 +42,6 @@ export interface SessionManagerEvents {
  */
 export class SessionManager {
   private sessions = new Map<string, SessionState>();
-  private sessionConfigs = new Map<string, SessionConfig>();
   private listeners: Partial<Record<keyof SessionManagerEvents, Set<(...args: unknown[]) => void>>> = {};
   private fs: JSRuntimeFS;
   private aiSettings: { providers: Record<string, { baseURL: string; apiKey?: string }> };
@@ -69,9 +64,19 @@ export class SessionManager {
   /**
    * Create a new session for a project
    */
-  async createSession(config: SessionConfig): Promise<string> {
+  async createSession(
+    projectId: string,
+    tools: Record<string, OpenAI.Chat.Completions.ChatCompletionTool>,
+    customTools: Record<string, Tool<unknown>>,
+    systemPrompt?: string,
+    maxSteps?: number
+  ): Promise<string> {
     const sessionState: SessionState = {
-      projectId: config.projectId,
+      projectId,
+      tools,
+      customTools,
+      systemPrompt,
+      maxSteps,
       messages: [],
       isLoading: false,
       sessionName: DotAI.generateSessionName(),
@@ -82,7 +87,7 @@ export class SessionManager {
 
     // Try to load existing history
     try {
-      const dotAI = new DotAI(this.fs, `/projects/${config.projectId}`);
+      const dotAI = new DotAI(this.fs, `/projects/${projectId}`);
       const lastSession = await dotAI.readLastSessionHistory();
       if (lastSession) {
         sessionState.messages = lastSession.messages;
@@ -92,12 +97,11 @@ export class SessionManager {
       console.warn('Failed to load session history:', error);
     }
 
-    this.sessions.set(config.projectId, sessionState);
-    this.sessionConfigs.set(config.projectId, config);
+    this.sessions.set(projectId, sessionState);
 
-    this.emit('sessionCreated', config.projectId);
+    this.emit('sessionCreated', projectId);
 
-    return config.projectId;
+    return projectId;
   }
 
   /**
@@ -129,7 +133,6 @@ export class SessionManager {
     session?.abortController?.abort();
 
     this.sessions.delete(projectId);
-    this.sessionConfigs.delete(projectId);
 
     this.emit('sessionDeleted', projectId);
   }
@@ -162,9 +165,8 @@ export class SessionManager {
    */
   async sendMessage(projectId: string, content: string, providerModel: string): Promise<void> {
     const session = this.sessions.get(projectId);
-    const config = this.sessionConfigs.get(projectId);
 
-    if (!session || !config || session.isLoading) return;
+    if (!session || session.isLoading) return;
 
     await this.addMessage(projectId, { role: 'user', content });
     await this.startGeneration(projectId, providerModel);
@@ -175,9 +177,8 @@ export class SessionManager {
    */
   async startGeneration(projectId: string, providerModel: string): Promise<void> {
     const session = this.sessions.get(projectId);
-    const config = this.sessionConfigs.get(projectId);
 
-    if (!session || !config || session.isLoading || session.messages.length === 0) return;
+    if (!session || session.isLoading || session.messages.length === 0) return;
 
     // Check if last message is from user
     const lastMessage = session.messages[session.messages.length - 1];
@@ -204,16 +205,16 @@ export class SessionManager {
 
       // Prepare messages for AI
       const modelMessages: AIMessage[] = [...session.messages];
-      if (config.systemPrompt) {
+      if (session.systemPrompt) {
         modelMessages.unshift({
           role: 'system',
-          content: config.systemPrompt
+          content: session.systemPrompt
         });
       }
 
       const conversationMessages = [...modelMessages];
       let stepCount = 0;
-      const maxSteps = config.maxSteps || 50;
+      const maxSteps = session.maxSteps || 50;
 
       // Main AI generation loop
       while (stepCount < maxSteps && session.isLoading) {
@@ -230,8 +231,8 @@ export class SessionManager {
         const completionOptions: OpenAI.Chat.Completions.ChatCompletionCreateParams = {
           model: modelName,
           messages: conversationMessages,
-          tools: config.tools && Object.keys(config.tools).length > 0 ? Object.values(config.tools) : undefined,
-          tool_choice: config.tools && Object.keys(config.tools).length > 0 ? 'auto' : undefined,
+          tools: session.tools && Object.keys(session.tools).length > 0 ? Object.values(session.tools) : undefined,
+          tool_choice: session.tools && Object.keys(session.tools).length > 0 ? 'auto' : undefined,
           stream: true
         };
 
@@ -331,7 +332,7 @@ export class SessionManager {
 
             const functionToolCall = toolCall as OpenAI.Chat.Completions.ChatCompletionMessageFunctionToolCall;
             const toolName = functionToolCall.function.name;
-            const tool = config.customTools[toolName];
+            const tool = session.customTools[toolName];
 
             if (!tool) {
               await this.addToolMessage(projectId, conversationMessages, functionToolCall.id, `Tool ${toolName} not found`);
@@ -534,7 +535,6 @@ export class SessionManager {
     this.sessions.forEach((_, projectId) => this.stopGeneration(projectId));
 
     this.sessions.clear();
-    this.sessionConfigs.clear();
     this.listeners = {};
   }
 }

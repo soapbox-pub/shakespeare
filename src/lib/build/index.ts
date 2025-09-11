@@ -17,7 +17,7 @@ export async function buildProject(
 ): Promise<Record<string, Uint8Array>> {
   const esbuild = await getEsbuild();
 
-  const { fs, projectPath, domParser, target } = options;
+  const { fs, projectPath, domParser, target = "esnext" } = options;
 
   const indexHtmlText = await fs.readFile(
     `${projectPath}/index.html`,
@@ -43,7 +43,7 @@ export async function buildProject(
     bundle: true,
     write: false,
     format: "esm",
-    target: target ?? "esnext",
+    target,
     outdir: "/",
     jsx: "automatic",
     plugins: [

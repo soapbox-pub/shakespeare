@@ -92,7 +92,6 @@ export function ProjectView() {
         fs: browserFS,
         projectPath: `/projects/${project.id}`,
         domParser: new DOMParser(),
-        target: "esnext",
       });
 
       console.log(dist);

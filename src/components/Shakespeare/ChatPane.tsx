@@ -199,7 +199,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     const autostart = searchParams.get('autostart');
     const urlModel = searchParams.get('model');
 
-    if (autostart === 'true' && isConfigured && !isLoading) {
+    if (autostart === 'true' && isConfigured) {
       // Use model from URL if available, otherwise use current selection
       const modelToUse = urlModel?.trim() || providerModel.trim();
 
@@ -220,7 +220,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
         startGeneration(modelToUse);
       }
     }
-  }, [addRecentlyUsedModel, isConfigured, isLoading, providerModel, searchParams, setSearchParams, startGeneration]);
+  }, [addRecentlyUsedModel, isConfigured, providerModel, searchParams, setSearchParams, startGeneration]);
 
   // Function to check if user is at the bottom of the scroll area
   const checkScrollPosition = () => {
@@ -376,14 +376,16 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
                 isCurrentlyLoading={isLoading}
               />
             ) : (
-              <div key="streaming-loading" className="flex">
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm space-y-2">
-                    <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-4 w-3/4" />
+              !(streamingMessage?.tool_calls?.[0]?.type === 'function') && (
+                <div key="streaming-loading" className="flex">
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm space-y-2">
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-3/4" />
+                    </div>
                   </div>
                 </div>
-              </div>
+              )
             )
           )}
           {streamingMessage?.tool_calls?.[0]?.type === 'function' && (

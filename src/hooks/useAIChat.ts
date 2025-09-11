@@ -43,37 +43,21 @@ export function useAIChat({
   const [totalCost, setTotalCost] = useState<number>(0);
   const [lastInputTokens, setLastInputTokens] = useState<number>(0);
 
+  const initSession = useCallback(async () => {
+    // Load or update session
+    const session = await sessionManager.loadSession(projectId, tools, customTools, systemPrompt, maxSteps);
+    // Initialize individual state variables from existing session
+    setMessages([...session.messages]);
+    setStreamingMessage(session.streamingMessage ? { ...session.streamingMessage } : undefined);
+    setIsLoading(session.isLoading);
+    setTotalCost(session.totalCost || 0);
+    setLastInputTokens(session.lastInputTokens || 0);
+  }, [sessionManager, projectId, tools, customTools, systemPrompt, maxSteps]);
+
   // Initialize session
   useEffect(() => {
-    const initSession = async () => {
-      // Check if there's already an active session for this project
-      const existingSession = sessionManager.getSession(projectId);
-
-      if (existingSession) {
-        // Initialize individual state variables from existing session
-        setMessages([...existingSession.messages]);
-        setStreamingMessage(existingSession.streamingMessage ? { ...existingSession.streamingMessage } : undefined);
-        setIsLoading(existingSession.isLoading);
-        setTotalCost(existingSession.totalCost || 0);
-        setLastInputTokens(existingSession.lastInputTokens || 0);
-      } else {
-        // Create new session
-        await sessionManager.createSession(projectId, tools, customTools, systemPrompt, maxSteps);
-
-        const newSession = sessionManager.getSession(projectId);
-        if (newSession) {
-          // Initialize individual state variables from new session
-          setMessages([...newSession.messages]);
-          setStreamingMessage(newSession.streamingMessage ? { ...newSession.streamingMessage } : undefined);
-          setIsLoading(newSession.isLoading);
-          setTotalCost(newSession.totalCost || 0);
-          setLastInputTokens(newSession.lastInputTokens || 0);
-        }
-      }
-    };
-
     initSession();
-  }, [sessionManager, projectId, tools, customTools, maxSteps, systemPrompt]);
+  }, [initSession]);
 
   // Subscribe to atomic session events for efficient updates
   useSessionSubscription('messageAdded', (updatedProjectId: string, message: AIMessage) => {
@@ -81,7 +65,10 @@ export function useAIChat({
       setMessages(prev => [...prev, message]);
       // Whenever an assistant message is added, it means streaming is done (until we get another streamingUpdate)
       if (message.role === 'assistant') {
-        setStreamingMessage(undefined);
+        setStreamingMessage({
+          role: 'assistant',
+          content: '',
+        });
       }
     }
   }, [projectId]);
@@ -125,24 +112,14 @@ export function useAIChat({
 
   // Actions
   const sendMessage = useCallback(async (content: string, providerModel: string) => {
+    await initSession();
     await sessionManager.sendMessage(projectId, content, providerModel);
-  }, [projectId, sessionManager]);
+  }, [projectId, sessionManager, initSession]);
 
-  const startGeneration = useCallback(async (providerModel: string, messagesToUse?: AIMessage[]) => {
-    // If specific messages are provided, we need to update the session first
-    if (messagesToUse) {
-      const session = sessionManager.getSession(projectId);
-      if (session) {
-        // Replace session messages with provided messages
-        session.messages = [...messagesToUse];
-
-        // Update local state to match
-        setMessages([...messagesToUse]);
-      }
-    }
-
+  const startGeneration = useCallback(async (providerModel: string) => {
+    await initSession();
     await sessionManager.startGeneration(projectId, providerModel);
-  }, [projectId, sessionManager]);
+  }, [projectId, sessionManager, initSession]);
 
   const stopGeneration = useCallback(() => {
     sessionManager.stopGeneration(projectId);

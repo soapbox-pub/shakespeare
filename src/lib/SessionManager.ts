@@ -60,44 +60,56 @@ export class SessionManager {
   /**
    * Create a new session for a project
    */
-  async createSession(
+  async loadSession(
     projectId: string,
     tools: Record<string, OpenAI.Chat.Completions.ChatCompletionTool>,
     customTools: Record<string, Tool<unknown>>,
     systemPrompt?: string,
     maxSteps?: number
-  ): Promise<string> {
-    const sessionState: SessionState = {
-      projectId,
-      tools,
-      customTools,
-      systemPrompt,
-      maxSteps,
-      messages: [],
-      isLoading: false,
-      sessionName: DotAI.generateSessionName(),
-      lastActivity: new Date(),
-      totalCost: 0,
-      lastInputTokens: 0,
-    };
+  ): Promise<SessionState> {
+    let messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [];
+    let sessionName = DotAI.generateSessionName();
 
     // Try to load existing history
     try {
       const dotAI = new DotAI(this.fs, `/projects/${projectId}`);
       const lastSession = await dotAI.readLastSessionHistory();
       if (lastSession) {
-        sessionState.messages = lastSession.messages;
-        sessionState.sessionName = lastSession.sessionName;
+        messages = lastSession.messages;
+        sessionName = lastSession.sessionName;
       }
     } catch (error) {
       console.warn('Failed to load session history:', error);
     }
 
-    this.sessions.set(projectId, sessionState);
+    const session = this.sessions.get(projectId) ?? {
+      projectId,
+      tools,
+      customTools,
+      systemPrompt,
+      maxSteps,
+      isLoading: false,
+      lastActivity: new Date(),
+      totalCost: 0,
+      lastInputTokens: 0,
+      ...this.sessions.get(projectId),
+      messages,
+      sessionName,
+    };
+
+    // Update session configuration
+    session.projectId = projectId;
+    session.tools = tools;
+
+    session.customTools = customTools;
+    session.systemPrompt = systemPrompt;
+    session.maxSteps = maxSteps;
+
+    this.sessions.set(projectId, session);
 
     this.emit('sessionCreated', projectId);
 
-    return projectId;
+    return session;
   }
 
   /**
@@ -158,7 +170,12 @@ export class SessionManager {
   async startGeneration(projectId: string, providerModel: string): Promise<void> {
     let session = this.sessions.get(projectId);
 
-    if (!session || session.isLoading || session.messages.length === 0) return;
+    if (!session) {
+      throw new Error('Session not found');
+    }
+    if (session.messages.length === 0) {
+      throw new Error('No messages in session');
+    }
 
     // Check if last message is from user
     const lastMessage = session.messages[session.messages.length - 1];
@@ -167,6 +184,7 @@ export class SessionManager {
     session.isLoading = true;
     session.abortController = new AbortController();
     session.lastActivity = new Date();
+    this.sessions.set(projectId, session);
 
     this.emit('loadingChanged', projectId, true);
 

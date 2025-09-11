@@ -31,6 +31,7 @@ import { NostrReadProtocolTool } from '@/lib/tools/NostrReadProtocolTool';
 import { NostrReadNipsIndexTool } from '@/lib/tools/NostrReadNipsIndexTool';
 import { NostrGenerateKindTool } from '@/lib/tools/NostrGenerateKindTool';
 import { ShellTool } from '@/lib/tools/ShellTool';
+import { TypecheckTool } from '@/lib/tools/TypecheckTool';
 import { toolToOpenAI } from '@/lib/tools/openai-adapter';
 import { Tool } from '@/lib/tools/Tool';
 import OpenAI from 'openai';
@@ -96,6 +97,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
       npm_add_package: new NpmAddPackageTool(browserFS, cwd),
       npm_remove_package: new NpmRemovePackageTool(browserFS, cwd),
       build_project: new BuildProjectTool(browserFS, cwd),
+      typecheck: new TypecheckTool(browserFS, cwd),
       nostr_read_nip: new NostrReadNipTool(),
       nostr_fetch_event: new NostrFetchEventTool(),
       nostr_read_kind: new NostrReadKindTool(),

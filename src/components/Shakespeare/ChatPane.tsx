@@ -380,7 +380,6 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
                 <div key="streaming-loading" className="flex">
                   <div className="flex-1 min-w-0">
                     <div className="text-sm space-y-2">
-                      <Skeleton className="h-4 w-full" />
                       <Skeleton className="h-4 w-3/4" />
                     </div>
                   </div>

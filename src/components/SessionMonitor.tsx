@@ -15,13 +15,13 @@ export function SessionMonitor() {
   const previousLoadingStates = useRef<Map<string, boolean>>(new Map());
 
   useEffect(() => {
-    const handleLoadingChanged = (sessionId: string, isLoading: boolean) => {
-      const wasLoading = previousLoadingStates.current.get(sessionId);
-      previousLoadingStates.current.set(sessionId, isLoading);
+    const handleLoadingChanged = (projectId: string, isLoading: boolean) => {
+      const wasLoading = previousLoadingStates.current.get(projectId);
+      previousLoadingStates.current.set(projectId, isLoading);
 
       // If session just finished loading (was loading, now not loading)
       if (wasLoading && !isLoading) {
-        const session = sessionManager.getSession(sessionId);
+        const session = sessionManager.getSession(projectId);
         if (!session) return;
 
         // Check if user is currently viewing this project
@@ -46,20 +46,20 @@ export function SessionMonitor() {
       }
     };
 
-    const handleSessionCreated = (sessionId: string) => {
-      const session = sessionManager.getSession(sessionId);
+    const handleSessionCreated = (projectId: string) => {
+      const session = sessionManager.getSession(projectId);
       if (session) {
-        previousLoadingStates.current.set(sessionId, session.isLoading);
+        previousLoadingStates.current.set(projectId, session.isLoading);
       }
     };
 
-    const handleSessionDeleted = (sessionId: string) => {
-      previousLoadingStates.current.delete(sessionId);
+    const handleSessionDeleted = (projectId: string) => {
+      previousLoadingStates.current.delete(projectId);
     };
 
     // Initialize with current sessions
     sessionManager.getAllSessions().forEach(session => {
-      previousLoadingStates.current.set(session.id, session.isLoading);
+      previousLoadingStates.current.set(session.projectId, session.isLoading);
     });
 
     // Subscribe to events

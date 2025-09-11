@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSessionManager } from '@/hooks/useSessionManager';
 import { useSessionSubscription } from '@/hooks/useSessionSubscription';
 import { useAISettings } from '@/hooks/useAISettings';
@@ -35,7 +35,6 @@ export function useAIChat({
 }: UseAIChatSessionOptions) {
   const sessionManager = useSessionManager();
   const { isConfigured } = useAISettings();
-  const [sessionId, setSessionId] = useState<string>('');
 
   // Split session state into individual variables for efficient updates
   const [messages, setMessages] = useState<AIMessage[]>([]);
@@ -44,34 +43,22 @@ export function useAIChat({
   const [totalCost, setTotalCost] = useState<number>(0);
   const [lastInputTokens, setLastInputTokens] = useState<number>(0);
 
-  // Generate consistent session ID for this project
-  const generatedSessionId = useMemo(() => {
-    return `session-${projectId}`;
-  }, [projectId]);
-
   // Initialize session
   useEffect(() => {
     const initSession = async () => {
       // Check if there's already an active session for this project
-      const existingSessions = sessionManager.getProjectSessions(projectId);
+      const existingSession = sessionManager.getProjectSession(projectId);
 
-      if (existingSessions.length > 0) {
-        // Use the most recent session for this project
-        const mostRecent = existingSessions
-          .sort((a, b) => b.lastActivity.getTime() - a.lastActivity.getTime())[0];
-
-        setSessionId(mostRecent.id);
-
+      if (existingSession) {
         // Initialize individual state variables from existing session
-        setMessages([...mostRecent.messages]);
-        setStreamingMessage(mostRecent.streamingMessage ? { ...mostRecent.streamingMessage } : undefined);
-        setIsLoading(mostRecent.isLoading);
-        setTotalCost(mostRecent.totalCost || 0);
-        setLastInputTokens(mostRecent.lastInputTokens || 0);
+        setMessages([...existingSession.messages]);
+        setStreamingMessage(existingSession.streamingMessage ? { ...existingSession.streamingMessage } : undefined);
+        setIsLoading(existingSession.isLoading);
+        setTotalCost(existingSession.totalCost || 0);
+        setLastInputTokens(existingSession.lastInputTokens || 0);
       } else {
         // Create new session
         const config: SessionConfig = {
-          id: generatedSessionId,
           projectId,
           tools,
           customTools,
@@ -79,10 +66,9 @@ export function useAIChat({
           maxSteps
         };
 
-        const newSessionId = await sessionManager.createSession(config);
-        setSessionId(newSessionId);
+        await sessionManager.createSession(config);
 
-        const newSession = sessionManager.getSession(newSessionId);
+        const newSession = sessionManager.getSession(projectId);
         if (newSession) {
           // Initialize individual state variables from new session
           setMessages([...newSession.messages]);
@@ -95,27 +81,27 @@ export function useAIChat({
     };
 
     initSession();
-  }, [sessionManager, projectId, tools, customTools, systemPrompt, maxSteps, generatedSessionId]);
+  }, [sessionManager, projectId, tools, customTools, systemPrompt, maxSteps]);
 
   // Subscribe to atomic session events for efficient updates
-  useSessionSubscription('messageAdded', (updatedSessionId: string, message: AIMessage) => {
-    if (updatedSessionId === sessionId) {
+  useSessionSubscription('messageAdded', (updatedProjectId: string, message: AIMessage) => {
+    if (updatedProjectId === projectId) {
       setMessages(prev => [...prev, message]);
     }
-  }, [sessionId]);
+  }, [projectId]);
 
-  useSessionSubscription('streamingUpdate', (updatedSessionId: string, content: string, toolCalls?: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[]) => {
-    if (updatedSessionId === sessionId) {
+  useSessionSubscription('streamingUpdate', (updatedProjectId: string, content: string, toolCalls?: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[]) => {
+    if (updatedProjectId === projectId) {
       setStreamingMessage({
         role: 'assistant',
         content,
         tool_calls: toolCalls
       });
     }
-  }, [sessionId]);
+  }, [projectId]);
 
-  useSessionSubscription('loadingChanged', (updatedSessionId: string, loading: boolean) => {
-    if (updatedSessionId === sessionId) {
+  useSessionSubscription('loadingChanged', (updatedProjectId: string, loading: boolean) => {
+    if (updatedProjectId === projectId) {
       setIsLoading(loading);
 
       // Clear streaming message when loading stops
@@ -127,34 +113,31 @@ export function useAIChat({
         onUpdateMetadata('Shakespeare', `Working on ${projectId}...`);
       }
     }
-  }, [sessionId, onUpdateMetadata, projectId]);
+  }, [projectId, onUpdateMetadata]);
 
-  useSessionSubscription('costUpdated', (updatedSessionId: string, cost: number) => {
-    if (updatedSessionId === sessionId) {
+  useSessionSubscription('costUpdated', (updatedProjectId: string, cost: number) => {
+    if (updatedProjectId === projectId) {
       setTotalCost(cost);
     }
-  }, [sessionId]);
+  }, [projectId]);
 
-  useSessionSubscription('contextUsageUpdated', (updatedSessionId: string, inputTokens: number) => {
-    if (updatedSessionId === sessionId) {
+  useSessionSubscription('contextUsageUpdated', (updatedProjectId: string, inputTokens: number) => {
+    if (updatedProjectId === projectId) {
       setLastInputTokens(inputTokens);
     }
-  }, [sessionId]);
+  }, [projectId]);
 
 
 
   // Actions
   const sendMessage = useCallback(async (content: string, providerModel: string) => {
-    if (!sessionId) return;
-    await sessionManager.sendMessage(sessionId, content, providerModel);
-  }, [sessionId, sessionManager]);
+    await sessionManager.sendMessage(projectId, content, providerModel);
+  }, [projectId, sessionManager]);
 
   const startGeneration = useCallback(async (providerModel: string, messagesToUse?: AIMessage[]) => {
-    if (!sessionId) return;
-
     // If specific messages are provided, we need to update the session first
     if (messagesToUse) {
-      const session = sessionManager.getSession(sessionId);
+      const session = sessionManager.getSession(projectId);
       if (session) {
         // Replace session messages with provided messages
         session.messages = [...messagesToUse];
@@ -164,29 +147,26 @@ export function useAIChat({
       }
     }
 
-    await sessionManager.startGeneration(sessionId, providerModel);
-  }, [sessionId, sessionManager]);
+    await sessionManager.startGeneration(projectId, providerModel);
+  }, [projectId, sessionManager]);
 
   const stopGeneration = useCallback(() => {
-    if (!sessionId) return;
-    sessionManager.stopGeneration(sessionId);
-  }, [sessionId, sessionManager]);
+    sessionManager.stopGeneration(projectId);
+  }, [projectId, sessionManager]);
 
   const addMessage = useCallback(async (message: AIMessage) => {
-    if (!sessionId) return;
-    await sessionManager.addMessage(sessionId, message);
-  }, [sessionId, sessionManager]);
+    await sessionManager.addMessage(projectId, message);
+  }, [projectId, sessionManager]);
 
   const startNewSession = useCallback(async () => {
-    if (!sessionId) return;
-    await sessionManager.startNewSession(sessionId);
+    await sessionManager.startNewSession(projectId);
 
     // Reset individual state variables
     setMessages([]);
     setStreamingMessage(undefined);
     setTotalCost(0);
     setLastInputTokens(0);
-  }, [sessionId, sessionManager]);
+  }, [projectId, sessionManager]);
 
   const clearMessages = useCallback(async () => {
     // Alias for startNewSession for backward compatibility
@@ -206,6 +186,6 @@ export function useAIChat({
     startNewSession,
     addMessage,
     isConfigured,
-    sessionId
+    projectId
   };
 }

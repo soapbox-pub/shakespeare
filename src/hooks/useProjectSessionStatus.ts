@@ -11,11 +11,10 @@ export function useProjectSessionStatus(projectId: string) {
 
   useEffect(() => {
     const updateStatus = () => {
-      const projectSessions = sessionManager.getProjectSessions(projectId);
-      const runningSessions = projectSessions.filter(session => session.isLoading);
+      const projectSession = sessionManager.getProjectSession(projectId);
 
-      setHasActiveSessions(projectSessions.length > 0);
-      setHasRunningSessions(runningSessions.length > 0);
+      setHasActiveSessions(!!projectSession);
+      setHasRunningSessions(!!projectSession?.isLoading);
     };
 
     // Initial update

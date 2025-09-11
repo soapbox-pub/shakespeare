@@ -7,7 +7,6 @@ import type { Tool } from './tools/Tool';
 export type AIMessage = OpenAI.Chat.Completions.ChatCompletionMessageParam;
 
 export interface SessionConfig {
-  id: string;
   projectId: string;
   tools: Record<string, OpenAI.Chat.Completions.ChatCompletionTool>;
   customTools: Record<string, Tool<unknown>>;
@@ -16,7 +15,6 @@ export interface SessionConfig {
 }
 
 export interface SessionState {
-  id: string;
   projectId: string;
   messages: AIMessage[];
   streamingMessage?: {
@@ -33,18 +31,18 @@ export interface SessionState {
 }
 
 export interface SessionManagerEvents {
-  sessionCreated: (sessionId: string) => void;
-  sessionDeleted: (sessionId: string) => void;
-  messageAdded: (sessionId: string, message: AIMessage) => void;
-  streamingUpdate: (sessionId: string, content: string, toolCalls?: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[]) => void;
-  loadingChanged: (sessionId: string, isLoading: boolean) => void;
-  costUpdated: (sessionId: string, totalCost: number) => void;
-  contextUsageUpdated: (sessionId: string, inputTokens: number) => void;
+  sessionCreated: (projectId: string) => void;
+  sessionDeleted: (projectId: string) => void;
+  messageAdded: (projectId: string, message: AIMessage) => void;
+  streamingUpdate: (projectId: string, content: string, toolCalls?: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[]) => void;
+  loadingChanged: (projectId: string, isLoading: boolean) => void;
+  costUpdated: (projectId: string, totalCost: number) => void;
+  contextUsageUpdated: (projectId: string, inputTokens: number) => void;
 }
 
 /**
- * Global session manager that handles multiple AI chat sessions running concurrently.
- * Sessions can run in the background without interruption when switching between projects.
+ * Global session manager that handles AI chat sessions keyed by project ID.
+ * Only one session can be active per project at once.
  */
 export class SessionManager {
   private sessions = new Map<string, SessionState>();
@@ -73,7 +71,6 @@ export class SessionManager {
    */
   async createSession(config: SessionConfig): Promise<string> {
     const sessionState: SessionState = {
-      id: config.id,
       projectId: config.projectId,
       messages: [],
       isLoading: false,
@@ -95,19 +92,19 @@ export class SessionManager {
       console.warn('Failed to load session history:', error);
     }
 
-    this.sessions.set(config.id, sessionState);
-    this.sessionConfigs.set(config.id, config);
+    this.sessions.set(config.projectId, sessionState);
+    this.sessionConfigs.set(config.projectId, config);
 
-    this.emit('sessionCreated', config.id);
+    this.emit('sessionCreated', config.projectId);
 
-    return config.id;
+    return config.projectId;
   }
 
   /**
-   * Get a session by ID
+   * Get a session by project ID
    */
-  getSession(sessionId: string): SessionState | undefined {
-    return this.sessions.get(sessionId);
+  getSession(projectId: string): SessionState | undefined {
+    return this.sessions.get(projectId);
   }
 
   /**
@@ -118,71 +115,67 @@ export class SessionManager {
   }
 
   /**
-   * Get sessions for a specific project
+   * Get session for a specific project
    */
-  getProjectSessions(projectId: string): SessionState[] {
-    return Array.from(this.sessions.values()).filter(
-      session => session.projectId === projectId
-    );
+  getProjectSession(projectId: string): SessionState | undefined {
+    return this.sessions.get(projectId);
   }
 
   /**
    * Delete a session
    */
-  async deleteSession(sessionId: string): Promise<void> {
-    const session = this.sessions.get(sessionId);
+  async deleteSession(projectId: string): Promise<void> {
+    const session = this.sessions.get(projectId);
     session?.abortController?.abort();
 
-    this.sessions.delete(sessionId);
-    this.sessionConfigs.delete(sessionId);
+    this.sessions.delete(projectId);
+    this.sessionConfigs.delete(projectId);
 
-    this.emit('sessionDeleted', sessionId);
+    this.emit('sessionDeleted', projectId);
   }
 
   /**
-   * Delete all sessions for a project
+   * Delete session for a project
    */
-  async deleteProjectSessions(projectId: string): Promise<void> {
-    await Promise.all(
-      this.getProjectSessions(projectId).map(session => this.deleteSession(session.id))
-    );
+  async deleteProjectSession(projectId: string): Promise<void> {
+    await this.deleteSession(projectId);
   }
 
   /**
    * Add a message to a session
    */
-  async addMessage(sessionId: string, message: AIMessage): Promise<void> {
-    const session = this.sessions.get(sessionId);
+  async addMessage(projectId: string, message: AIMessage): Promise<void> {
+    const session = this.sessions.get(projectId);
     if (!session) return;
 
     session.messages.push(message);
     session.lastActivity = new Date();
 
-    await this.saveSessionHistory(sessionId);
+    await this.saveSessionHistory(projectId);
     this.cleanupOldSessions();
 
-    this.emit('messageAdded', sessionId, message);
+    this.emit('messageAdded', projectId, message);
   }
 
   /**
    * Send a message and start AI generation
    */
-  async sendMessage(sessionId: string, content: string, providerModel: string): Promise<void> {
-    const session = this.sessions.get(sessionId);
-    const config = this.sessionConfigs.get(sessionId);
+  async sendMessage(projectId: string, content: string, providerModel: string): Promise<void> {
+    const session = this.sessions.get(projectId);
+    const config = this.sessionConfigs.get(projectId);
 
     if (!session || !config || session.isLoading) return;
 
-    await this.addMessage(sessionId, { role: 'user', content });
-    await this.startGeneration(sessionId, providerModel);
+    await this.addMessage(projectId, { role: 'user', content });
+    await this.startGeneration(projectId, providerModel);
   }
 
   /**
    * Start AI generation for a session
    */
-  async startGeneration(sessionId: string, providerModel: string): Promise<void> {
-    const session = this.sessions.get(sessionId);
-    const config = this.sessionConfigs.get(sessionId);
+  async startGeneration(projectId: string, providerModel: string): Promise<void> {
+    const session = this.sessions.get(projectId);
+    const config = this.sessionConfigs.get(projectId);
 
     if (!session || !config || session.isLoading || session.messages.length === 0) return;
 
@@ -194,7 +187,7 @@ export class SessionManager {
     session.abortController = new AbortController();
     session.lastActivity = new Date();
 
-    this.emit('loadingChanged', sessionId, true);
+    this.emit('loadingChanged', projectId, true);
 
     try {
       // Parse provider and model
@@ -263,7 +256,7 @@ export class SessionManager {
             accumulatedContent += delta.content;
             if (session.streamingMessage) {
               session.streamingMessage.content += delta.content;
-              this.emit('streamingUpdate', sessionId, session.streamingMessage.content, session.streamingMessage.tool_calls);
+              this.emit('streamingUpdate', projectId, session.streamingMessage.content, session.streamingMessage.tool_calls);
             }
           }
 
@@ -286,7 +279,7 @@ export class SessionManager {
 
             if (session.streamingMessage) {
               session.streamingMessage.tool_calls = accumulatedToolCalls.length > 0 ? accumulatedToolCalls : undefined;
-              this.emit('streamingUpdate', sessionId, session.streamingMessage.content, session.streamingMessage.tool_calls);
+              this.emit('streamingUpdate', projectId, session.streamingMessage.content, session.streamingMessage.tool_calls);
             }
           }
 
@@ -315,15 +308,15 @@ export class SessionManager {
         session.lastActivity = new Date();
 
         // Save and emit all updates together
-        await this.saveSessionHistory(sessionId);
+        await this.saveSessionHistory(projectId);
         this.cleanupOldSessions();
 
-        this.emit('messageAdded', sessionId, assistantMessage);
+        this.emit('messageAdded', projectId, assistantMessage);
         conversationMessages.push(assistantMessage);
 
         // Update cost if usage data is available
         if (usage) {
-          this.updateSessionCost(sessionId, usage, providerModel);
+          this.updateSessionCost(projectId, usage, providerModel);
         }
 
         // Check if we should stop
@@ -341,17 +334,17 @@ export class SessionManager {
             const tool = config.customTools[toolName];
 
             if (!tool) {
-              await this.addToolMessage(sessionId, conversationMessages, functionToolCall.id, `Tool ${toolName} not found`);
+              await this.addToolMessage(projectId, conversationMessages, functionToolCall.id, `Tool ${toolName} not found`);
               continue;
             }
 
             try {
               const toolArgs = tool.inputSchema.parse(JSON.parse(functionToolCall.function.arguments));
               const content = await tool.execute(toolArgs);
-              await this.addToolMessage(sessionId, conversationMessages, functionToolCall.id, content);
+              await this.addToolMessage(projectId, conversationMessages, functionToolCall.id, content);
             } catch (error) {
               const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-              await this.addToolMessage(sessionId, conversationMessages, functionToolCall.id, `Error with tool ${toolName}: ${errorMsg}`);
+              await this.addToolMessage(projectId, conversationMessages, functionToolCall.id, `Error with tool ${toolName}: ${errorMsg}`);
             }
           }
         }
@@ -376,21 +369,21 @@ export class SessionManager {
         errorMessage = `AI service error: ${errorMsg}`;
       }
 
-      await this.addMessage(sessionId, { role: 'assistant', content: errorMessage });
+      await this.addMessage(projectId, { role: 'assistant', content: errorMessage });
     } finally {
       session.isLoading = false;
       session.streamingMessage = undefined;
       session.abortController = undefined;
 
-      this.emit('loadingChanged', sessionId, false);
+      this.emit('loadingChanged', projectId, false);
     }
   }
 
   /**
    * Stop AI generation for a session
    */
-  stopGeneration(sessionId: string): void {
-    const session = this.sessions.get(sessionId);
+  stopGeneration(projectId: string): void {
+    const session = this.sessions.get(projectId);
     if (!session) return;
 
     session.abortController?.abort();
@@ -398,7 +391,7 @@ export class SessionManager {
     session.streamingMessage = undefined;
     session.abortController = undefined;
 
-    this.emit('loadingChanged', sessionId, false);
+    this.emit('loadingChanged', projectId, false);
   }
 
   /**
@@ -408,9 +401,9 @@ export class SessionManager {
     const now = Date.now();
 
     // Delete old sessions
-    for (const [id, session] of this.sessions) {
+    for (const [projectId, session] of this.sessions) {
       if (now - session.lastActivity.getTime() > this.MAX_SESSION_AGE) {
-        this.deleteSession(id);
+        this.deleteSession(projectId);
       }
     }
 
@@ -419,18 +412,18 @@ export class SessionManager {
       Array.from(this.sessions.entries())
         .sort(([, a], [, b]) => a.lastActivity.getTime() - b.lastActivity.getTime())
         .slice(0, this.sessions.size - this.MAX_SESSIONS)
-        .forEach(([id]) => this.deleteSession(id));
+        .forEach(([projectId]) => this.deleteSession(projectId));
     }
   }
 
   /**
    * Start a new session (clear messages but keep configuration)
    */
-  async startNewSession(sessionId: string): Promise<void> {
-    const session = this.sessions.get(sessionId);
+  async startNewSession(projectId: string): Promise<void> {
+    const session = this.sessions.get(projectId);
     if (!session) return;
 
-    this.stopGeneration(sessionId);
+    this.stopGeneration(projectId);
 
     session.messages = [];
     session.streamingMessage = undefined;
@@ -439,31 +432,31 @@ export class SessionManager {
     session.totalCost = 0;
     session.lastInputTokens = 0;
 
-    this.emit('costUpdated', sessionId, 0);
-    this.emit('contextUsageUpdated', sessionId, 0);
+    this.emit('costUpdated', projectId, 0);
+    this.emit('contextUsageUpdated', projectId, 0);
   }
 
   /**
    * Helper to add tool messages and update conversation
    */
-  private async addToolMessage(sessionId: string, conversationMessages: AIMessage[], toolCallId: string, content: string): Promise<void> {
+  private async addToolMessage(projectId: string, conversationMessages: AIMessage[], toolCallId: string, content: string): Promise<void> {
     const toolMessage: AIMessage = {
       role: 'tool',
       content,
       tool_call_id: toolCallId
     };
 
-    await this.addMessage(sessionId, toolMessage);
+    await this.addMessage(projectId, toolMessage);
     conversationMessages.push(toolMessage);
   }
 
   /**
    * Update session cost and context usage based on usage data
    */
-  private updateSessionCost(sessionId: string, usage: { prompt_tokens: number; completion_tokens: number }, providerModel: string): void {
+  private updateSessionCost(projectId: string, usage: { prompt_tokens: number; completion_tokens: number }, providerModel: string): void {
     if (!this.getProviderModels) return;
 
-    const session = this.sessions.get(sessionId);
+    const session = this.sessions.get(projectId);
     if (!session) return;
 
     try {
@@ -477,7 +470,7 @@ export class SessionManager {
 
       // Update input tokens for context usage tracking
       session.lastInputTokens = usage.prompt_tokens;
-      this.emit('contextUsageUpdated', sessionId, usage.prompt_tokens);
+      this.emit('contextUsageUpdated', projectId, usage.prompt_tokens);
 
       if (!model?.pricing) {
         return;
@@ -491,7 +484,7 @@ export class SessionManager {
       // Update session total cost
       session.totalCost = (session.totalCost || 0) + requestCost;
 
-      this.emit('costUpdated', sessionId, session.totalCost);
+      this.emit('costUpdated', projectId, session.totalCost);
     } catch (error) {
       console.warn('Failed to calculate session cost:', error);
     }
@@ -500,8 +493,8 @@ export class SessionManager {
   /**
    * Save session history to file
    */
-  private async saveSessionHistory(sessionId: string): Promise<void> {
-    const session = this.sessions.get(sessionId);
+  private async saveSessionHistory(projectId: string): Promise<void> {
+    const session = this.sessions.get(projectId);
     if (!session) return;
 
     try {
@@ -538,7 +531,7 @@ export class SessionManager {
    * Cleanup - stop all sessions and clear data
    */
   async cleanup(): Promise<void> {
-    this.sessions.forEach((_, sessionId) => this.stopGeneration(sessionId));
+    this.sessions.forEach((_, projectId) => this.stopGeneration(projectId));
 
     this.sessions.clear();
     this.sessionConfigs.clear();

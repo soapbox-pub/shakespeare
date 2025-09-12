@@ -329,7 +329,7 @@ export class SessionManager {
             try {
               let toolArgs: unknown;
               if (tool.inputSchema) {
-                toolArgs = tool.inputSchema.parse(JSON.parse(functionToolCall.function.arguments));
+                toolArgs = tool.inputSchema.parse(JSON.parse(functionToolCall.function.arguments || '{}'));
               } else {
                 // For tools without inputSchema, use empty object or parsed arguments as-is
                 const rawArgs = functionToolCall.function.arguments;

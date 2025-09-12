@@ -54,6 +54,5 @@ Built with:
 - Vite
 - TailwindCSS
 - shadcn/ui
-- Vercel AI SDK
 - LightningFS for filesystem
 - isomorphic-git for template cloning

@@ -1,3 +1,34 @@
+# Shakespeare - AI-Powered Nostr Website Builder
+
+Shakespeare is an AI chat application that allows users to build custom Nostr websites through natural language conversation. Simply describe what you want to build, and AI will help you create it.
+
+### Virtual Filesystem Layout
+
+Shakespeare uses LightningFS to provide a browser-based filesystem that persists project files in IndexedDB. Each project is stored in its own isolated directory structure within the virtual filesystem.
+
+#### Filesystem Architecture
+
+```
+/projects/
+├── {projectId}/                    # Individual project directory
+│   ├── package.json               # Project configuration
+│   ├── src/                       # Source code
+│   ├── public/                    # Static assets
+│   ├── dist/                      # Build output (generated)
+│   ├── node_modules/              # Dependencies (generated)
+│   ├── NIP.md                     # Custom Nostr protocol documentation (optional)
+│   └── AGENTS.md                  # AI assistant system prompt
+```
+
+#### Key Features
+
+- **IndexedDB Backend**: All project files are stored in the browser's IndexedDB for persistence across sessions
+- **Project Isolation**: Each project has its own directory namespace to prevent conflicts
+- **File Operations**: Full POSIX-like filesystem operations (read, write, mkdir, rm, etc.)
+- **Git Integration**: Projects can be initialized as Git repositories for template cloning
+
+This architecture allows Shakespeare to provide a full development environment entirely within the browser, with no server-side storage requirements.
+
 # Project Overview
 
 This project is a Nostr client application built with React 18.x, TailwindCSS 3.x, Vite, shadcn/ui, and Nostrify.

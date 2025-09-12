@@ -1,6 +1,6 @@
 import { memo, useState } from 'react';
 import { Streamdown } from 'streamdown';
-import { Wrench, Eye, FileText, Edit, Package, PackageMinus, GitCommit, BookOpen, Download, Hash, Tag, Network, List, Plus, Terminal, Globe } from 'lucide-react';
+import { Wrench, Eye, FileText, Edit, Package, PackageMinus, GitCommit, BookOpen, Download, Hash, Tag, Network, List, Plus, Terminal, Globe, CheckCircle } from 'lucide-react';
 import type { AIMessage } from '@/lib/SessionManager';
 import { cn } from '@/lib/utils';
 import OpenAI from 'openai';
@@ -135,6 +135,11 @@ export const AIMessageItem = memo(({
             return {
               icon: Globe,
               title: args.deployServer ? `Deployed to ${args.deployServer}` : 'Deployed Project'
+            };
+          case 'typecheck':
+            return {
+              icon: CheckCircle,
+              title: 'TypeScript'
             };
           default:
             return {

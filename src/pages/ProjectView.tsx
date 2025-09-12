@@ -88,28 +88,13 @@ export function ProjectView() {
     updateMetadata('Shakespeare', `Building ${project.name}...`);
 
     try {
-      const dist = await buildProject({
+      const result = await buildProject({
         fs: browserFS,
         projectPath: `/projects/${project.id}`,
         domParser: new DOMParser(),
       });
 
-      console.log(dist);
-
-      // Delete all existing files in "dist" directory
-      try {
-        for (const file of await browserFS.readdir(`/projects/${project.id}/dist`)) {
-          await browserFS.unlink(`/projects/${project.id}/dist/${file}`);
-        }
-      } catch {
-        // Ignore errors (e.g., directory doesn't exist)
-      }
-
-      await browserFS.mkdir(`/projects/${project.id}/dist`, { recursive: true });
-
-      for (const [path, contents] of Object.entries(dist)) {
-        await browserFS.writeFile(`/projects/${project.id}/dist/${path}`, contents);
-      }
+      console.log('Build completed:', result);
     } catch (error) {
       console.error('Build failed:', error);
     } finally {

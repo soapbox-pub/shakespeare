@@ -80,7 +80,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
 
   const [searchParams, setSearchParams] = useSearchParams();
   const { fs: browserFS } = useFS();
-  const { user } = useCurrentUser();
+  const { user, metadata } = useCurrentUser();
   const { models } = useProviderModels();
 
   // Initialize AI chat with tools
@@ -152,8 +152,10 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
       name: "Shakespeare",
       profession: "software extraordinaire",
       tools: Object.values(tools),
+      user,
+      metadata,
     }).then(setSystemPrompt)
-  }, [browserFS, cwd, tools]);
+  }, [browserFS, cwd, tools, user, metadata]);
 
   const {
     messages,

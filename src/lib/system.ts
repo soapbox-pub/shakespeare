@@ -1,6 +1,8 @@
+import { NUser } from "@nostrify/react/login";
+import { NostrMetadata } from "@nostrify/nostrify";
 import { join } from "@std/path";
-
 import OpenAI from "openai";
+import { nip19 } from "nostr-tools";
 import { JSRuntimeFS } from "./JSRuntime";
 
 export interface MakeSystemPromptOpts {
@@ -10,10 +12,12 @@ export interface MakeSystemPromptOpts {
   mode: "init" | "agent";
   fs: JSRuntimeFS;
   cwd: string;
+  user?: NUser;
+  metadata?: NostrMetadata;
 }
 
 export async function makeSystemPrompt(opts: MakeSystemPromptOpts): Promise<string> {
-  const { name, profession, tools, mode, fs, cwd } = opts;
+  const { name, profession, tools, mode, fs, cwd, user, metadata } = opts;
 
   let system = mode === "init"
     ? `You are ${name}, an expert ${profession}. The files in the current directory are a template. Your goal is to transform this template into a working project according to the user's request.`
@@ -27,6 +31,26 @@ export async function makeSystemPrompt(opts: MakeSystemPromptOpts): Promise<stri
     day: "numeric",
   });
 
+  let userText: string;
+  if (user) {
+    userText = `The user is logged into Nostr with the following profile:
+
+- **Nostr pubkey (hex)**: ${user.pubkey}
+- **Nostr npub**: ${nip19.npubEncode(user.pubkey)}`;
+
+    if (metadata?.name) userText += `\n- **Name**: ${metadata.name}`;
+    if (metadata?.about) userText += `\n- **About**: ${metadata.about.replace(/[\r\n]+/g, ' ')}`;
+    if (metadata?.website) userText += `\n- **Website**: ${metadata.website}`;
+    if (metadata?.picture) userText += `\n- **Avatar**: ${metadata.picture}`;
+    if (metadata?.banner) userText += `\n- **Banner**: ${metadata.banner}`;
+    if (metadata?.nip05) userText += `\n- **NIP-05**: ${metadata.nip05}`;
+    if (metadata?.lud16) userText += `\n- **Lightning Address**: ${metadata.lud16}`;
+
+    userText += `Since the user is logged in, they can deploy their creations to public URLs and use Nostr-enabled AI providers.`;
+  } else {
+    userText = `The user is not logged in. The user can log into Nostr by clicking the "Login" button in the sidebar menu. Logging in will allow the user to deploy their creations to public URLs and use Nostr-enabled AI providers.`;
+  }
+
   // Add Your Environment section
   system += `\n\n# Your Environment
 
@@ -38,6 +62,10 @@ You are operating within **Shakespeare**, an AI-powered Nostr website builder th
 ## What Shakespeare Is
 
 Shakespeare is a web-based development environment where users can build Nostr websites and applications by chatting with an AI assistant (you). The platform combines the power of AI-driven development with a user-friendly interface that requires no coding knowledge from the user.
+
+## The User
+
+${userText}
 
 ## User Interface
 
@@ -69,6 +97,7 @@ Users interact with Shakespeare by:
 3. **Manual Code Editing**: Switching to code view to make direct file edits when desired
 4. **Previewing Changes**: Viewing their website in real-time as it's being built
 5. **Project Management**: Organizing and accessing multiple projects from the homepage
+6. **Deploying Projects**: Publishing their creations to public URLs (requires Nostr login)
 
 ## Your Role
 

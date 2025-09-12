@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { useFS } from '@/hooks/useFS';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, FolderOpen, ArrowLeft } from 'lucide-react';
 import { useIsMobile } from '@/hooks/useIsMobile';
@@ -360,11 +360,14 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
                     </div>
                   </div>
                   <ScrollArea className="flex-1">
-                    <FileTree
-                      projectId={projectId}
-                      onFileSelect={handleFileSelect}
-                      selectedFile={selectedFile}
-                    />
+                    <ScrollBar orientation="horizontal" />
+                    <div className="min-w-max">
+                      <FileTree
+                        projectId={projectId}
+                        onFileSelect={handleFileSelect}
+                        selectedFile={selectedFile}
+                      />
+                    </div>
                   </ScrollArea>
                 </>
               ) : (
@@ -424,11 +427,14 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
                   </div>
                 </div>
                 <ScrollArea className="h-[calc(100%-60px)]">
-                  <FileTree
-                    projectId={projectId}
-                    onFileSelect={handleFileSelect}
-                    selectedFile={selectedFile}
-                  />
+                  <ScrollBar orientation="horizontal" />
+                  <div className="min-w-max">
+                    <FileTree
+                      projectId={projectId}
+                      onFileSelect={handleFileSelect}
+                      selectedFile={selectedFile}
+                    />
+                  </div>
                 </ScrollArea>
               </div>
 

@@ -206,7 +206,7 @@ export function FileTree({ projectId, onFileSelect, selectedFile }: FileTreeProp
               <File className={cn("h-4 w-4 text-gray-500 flex-shrink-0", gitignoreClasses)} />
             </>
           )}
-          <span className={cn("text-sm truncate", gitStatusClasses, gitignoreClasses)}>{node.name}</span>
+          <span className={cn("text-sm whitespace-nowrap", gitStatusClasses, gitignoreClasses)}>{node.name}</span>
         </div>
 
         {node.type === 'directory' && node.isOpen && node.children && (

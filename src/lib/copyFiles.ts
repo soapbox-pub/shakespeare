@@ -27,30 +27,32 @@ export async function copyFiles(
       // Directory might already exist, that's fine
     }
 
-    // Copy each item
-    for (const item of items) {
-      const sourceItemPath = `${sourcePath}/${item.name}`;
-      const targetItemPath = `${targetPath}/${item.name}`;
+    // Copy each item in parallel
+    await Promise.all(
+      items.map(async (item) => {
+        const sourceItemPath = `${sourcePath}/${item.name}`;
+        const targetItemPath = `${targetPath}/${item.name}`;
 
-      try {
-        if (item.isDirectory()) {
-          console.log(`Creating directory: ${targetItemPath}`);
-          try {
-            await targetFS.mkdir(targetItemPath, { recursive: true });
-          } catch {
-            // Directory might already exist
+        try {
+          if (item.isDirectory()) {
+            console.log(`Creating directory: ${targetItemPath}`);
+            try {
+              await targetFS.mkdir(targetItemPath, { recursive: true });
+            } catch {
+              // Directory might already exist
+            }
+            // Recursively copy directory contents
+            await copyFiles(sourceFS, targetFS, sourceItemPath, targetItemPath);
+          } else {
+            console.log(`Copying file: ${sourceItemPath} -> ${targetItemPath}`);
+            const content = await sourceFS.readFile(sourceItemPath);
+            await targetFS.writeFile(targetItemPath, content);
           }
-          // Recursively copy directory contents
-          await copyFiles(sourceFS, targetFS, sourceItemPath, targetItemPath);
-        } else {
-          console.log(`Copying file: ${sourceItemPath} -> ${targetItemPath}`);
-          const content = await sourceFS.readFile(sourceItemPath);
-          await targetFS.writeFile(targetItemPath, content);
+        } catch (itemError) {
+          console.warn(`Failed to copy item ${item.name}:`, itemError);
         }
-      } catch (itemError) {
-        console.warn(`Failed to copy item ${item.name}:`, itemError);
-      }
-    }
+      })
+    );
 
     console.log(`Successfully copied ${sourcePath} to ${targetPath}`);
   } catch (error) {

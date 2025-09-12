@@ -57,6 +57,18 @@ export class BuildProjectTool implements Tool<void> {
       const fileCount = Object.keys(dist).length;
       const fileList = Object.keys(dist).map(file => `  📄 ${file}`).join('\n');
 
+      // Extract project ID from the current working directory path
+      // Expected format: /projects/{projectId}
+      const projectId = this.cwd.split('/').pop();
+
+      // Emit build completion event for PreviewPane to listen to
+      if (projectId && typeof window !== 'undefined') {
+        const buildCompleteEvent = new CustomEvent('buildComplete', {
+          detail: { projectId }
+        });
+        window.dispatchEvent(buildCompleteEvent);
+      }
+
       return `✅ Successfully built project!\n\n📁 Output: ${this.cwd}/dist\n📦 Files generated: ${fileCount}\n\n${fileList}\n\n🚀 Your project is ready for deployment!`;
     } catch (error) {
       throw new Error(`❌ Build failed: ${String(error)}`);

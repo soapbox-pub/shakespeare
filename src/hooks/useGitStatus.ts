@@ -196,18 +196,62 @@ export function useGitStatus(projectId: string | null) {
           });
         }
 
-        // Calculate ahead/behind (simplified - would need remote tracking branch info)
-        const ahead = 0;
-        const behind = 0;
+        // Calculate ahead/behind
+        let ahead = 0;
+        let behind = 0;
         try {
-          // This is a simplified calculation - in a real implementation,
-          // you'd compare with the remote tracking branch
           if (currentBranch && remotes.length > 0) {
-            // For now, we'll leave these as 0 since calculating ahead/behind
-            // requires more complex remote branch comparison
+            const remote = remotes[0]; // Use first remote (usually 'origin')
+            const remoteBranchName = `${remote.name}/${currentBranch}`;
+
+            try {
+              // Try to get the remote branch reference
+              const remoteRef = await git.resolveRef({
+                fs,
+                dir: cwd,
+                ref: remoteBranchName,
+              });
+
+              const localRef = await git.resolveRef({
+                fs,
+                dir: cwd,
+                ref: currentBranch,
+              });
+
+              if (remoteRef && localRef && remoteRef !== localRef) {
+                // Get commits between local and remote
+                const localCommits = await git.log({
+                  fs,
+                  dir: cwd,
+                  ref: currentBranch,
+                });
+
+                const remoteCommits = await git.log({
+                  fs,
+                  dir: cwd,
+                  ref: remoteBranchName,
+                });
+
+                // Find commits that are in local but not in remote (ahead)
+                const remoteCommitOids = new Set(remoteCommits.map(c => c.oid));
+                const localOnlyCommits = localCommits.filter(c => !remoteCommitOids.has(c.oid));
+                ahead = localOnlyCommits.length;
+
+                // Find commits that are in remote but not in local (behind)
+                const localCommitOids = new Set(localCommits.map(c => c.oid));
+                const remoteOnlyCommits = remoteCommits.filter(c => !localCommitOids.has(c.oid));
+                behind = remoteOnlyCommits.length;
+              }
+            } catch {
+              // Remote branch might not exist or other issues
+              // If we can't find remote branch, assume we're ahead if we have commits
+              if (totalCommits > 0) {
+                ahead = totalCommits;
+              }
+            }
           }
-        } catch (error) {
-          console.warn('Could not calculate ahead/behind:', error);
+        } catch (err) {
+          console.warn('Could not calculate ahead/behind:', err);
         }
 
         return {

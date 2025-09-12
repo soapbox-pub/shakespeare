@@ -28,8 +28,10 @@ import {
   Download,
   Trash2,
   Settings,
+  GitMerge,
 } from 'lucide-react';
 import { GitHistoryDialog } from '@/components/ai/GitHistoryDialog';
+import { GitDialog } from '@/components/GitDialog';
 import { AppSettingsDialog } from '@/components/AppSettingsDialog';
 import { useNavigate } from 'react-router-dom';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
@@ -66,6 +68,7 @@ export function ActionsMenu({
   onProjectDeleted
 }: ActionsMenuProps) {
   const [gitHistoryOpen, setGitHistoryOpen] = useState(false);
+  const [gitDialogOpen, setGitDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
 
@@ -214,6 +217,15 @@ export function ActionsMenu({
           </DropdownMenuItem>
 
           <DropdownMenuItem
+            onClick={() => setGitDialogOpen(true)}
+            disabled={isAnyLoading}
+            className="gap-2"
+          >
+            <GitMerge className="h-4 w-4" />
+            Git Status
+          </DropdownMenuItem>
+
+          <DropdownMenuItem
             onClick={() => setGitHistoryOpen(true)}
             disabled={isAnyLoading}
             className="gap-2"
@@ -320,6 +332,12 @@ export function ActionsMenu({
       </DropdownMenu>
 
       {/* Dialogs */}
+      <GitDialog
+        projectId={projectId}
+        open={gitDialogOpen}
+        onOpenChange={setGitDialogOpen}
+      />
+
       <GitHistoryDialog
         projectId={projectId}
         open={gitHistoryOpen}

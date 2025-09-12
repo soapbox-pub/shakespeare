@@ -18,9 +18,8 @@ export class WcCommand implements ShellCommand {
     this.fs = fs;
   }
 
-  async execute(args: string[], cwd: string): Promise<ShellCommandResult> {
+  async execute(args: string[], cwd: string, input?: string): Promise<ShellCommandResult> {
     const { options, files } = this.parseArgs(args);
-    const targetFiles = files.length > 0 ? files : ['-']; // stdin if no files
 
     // If no specific options, show all counts
     if (!options.lines && !options.words && !options.chars) {
@@ -28,6 +27,20 @@ export class WcCommand implements ShellCommand {
       options.words = true;
       options.chars = true;
     }
+
+    // If input is provided (from pipe), count that input
+    if (input !== undefined) {
+      const counts = this.countContent(input);
+      const output: string[] = [];
+
+      if (options.lines) output.push(counts.lines.toString());
+      if (options.words) output.push(counts.words.toString());
+      if (options.chars) output.push(counts.chars.toString());
+
+      return createSuccessResult(output.join(' ') + '\n');
+    }
+
+    const targetFiles = files.length > 0 ? files : ['-']; // stdin if no files
 
     try {
       const results: Array<{ lines: number; words: number; chars: number; name: string }> = [];
@@ -161,5 +174,13 @@ export class WcCommand implements ShellCommand {
     }
 
     return { options, files };
+  }
+
+  private countContent(content: string): { lines: number; words: number; chars: number } {
+    const lines = content.split('\n').length - (content.endsWith('\n') ? 1 : 0);
+    const words = content.trim() ? content.trim().split(/\s+/).length : 0;
+    const chars = content.length;
+
+    return { lines, words, chars };
   }
 }

@@ -18,8 +18,17 @@ export class HeadCommand implements ShellCommand {
     this.fs = fs;
   }
 
-  async execute(args: string[], cwd: string): Promise<ShellCommandResult> {
+  async execute(args: string[], cwd: string, input?: string): Promise<ShellCommandResult> {
     const { options, files } = this.parseArgs(args);
+
+    // If input is provided (from pipe), process that input
+    if (input !== undefined) {
+      const lines = input.split('\n');
+      const selectedLines = lines.slice(0, options.lines);
+      const result = selectedLines.join('\n');
+      return createSuccessResult(result + (result && !result.endsWith('\n') ? '\n' : ''));
+    }
+
     const targetFiles = files.length > 0 ? files : ['-']; // stdin if no files
 
     try {
@@ -37,10 +46,10 @@ export class HeadCommand implements ShellCommand {
           }
 
           const absolutePath = join(cwd, filePath);
-          
+
           // Check if path exists and is a file
           const stats = await this.fs.stat(absolutePath);
-          
+
           if (stats.isDirectory()) {
             return createErrorResult(`${this.name}: ${filePath}: Is a directory`);
           }
@@ -48,15 +57,15 @@ export class HeadCommand implements ShellCommand {
           // Read file content
           const content = await this.fs.readFile(absolutePath, 'utf8');
           const lines = content.split('\n');
-          
+
           // Take first n lines (but don't add extra newline if file doesn't end with one)
           const selectedLines = lines.slice(0, options.lines);
-          
+
           // If we're showing multiple files, add a header
           if (targetFiles.length > 1) {
             outputs.push(`==> ${filePath} <==`);
           }
-          
+
           // Join lines and preserve original line endings
           const result = selectedLines.join('\n');
           outputs.push(result);
@@ -95,7 +104,7 @@ export class HeadCommand implements ShellCommand {
 
     while (i < args.length) {
       const arg = args[i];
-      
+
       if (arg === '-n') {
         // Next argument should be the number of lines
         i++;
@@ -116,7 +125,7 @@ export class HeadCommand implements ShellCommand {
       } else {
         files.push(arg);
       }
-      
+
       i++;
     }
 

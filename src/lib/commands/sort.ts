@@ -18,18 +18,20 @@ export class SortCommand implements ShellCommand {
     this.fs = fs;
   }
 
-  async execute(args: string[], cwd: string): Promise<ShellCommandResult> {
+  async execute(args: string[], cwd: string, input?: string): Promise<ShellCommandResult> {
     try {
       const { options, files } = this.parseArgs(args);
       let lines: string[] = [];
 
-      if (files.length === 0) {
+      // If input is provided (from pipe), sort that input
+      if (input !== undefined) {
+        lines = input.split('\n');
+      } else if (files.length === 0) {
         // Read from stdin (not implemented in this context, return empty)
         return createSuccessResult('');
-      }
-
-      // Read all files
-      for (const file of files) {
+      } else {
+        // Read all files
+        for (const file of files) {
         try {
           // Handle absolute paths
           if (file.startsWith('/') || file.startsWith('\\') || /^[A-Za-z]:[\\/]/.test(file)) {
@@ -64,6 +66,7 @@ export class SortCommand implements ShellCommand {
           } else {
             return createErrorResult(`${this.name}: open failed: ${file}: Unknown error`);
           }
+        }
         }
       }
 

@@ -10,7 +10,7 @@ export class ClearCommand implements ShellCommand {
   description = 'Clear terminal screen';
   usage = 'clear';
 
-  async execute(args: string[], _cwd: string): Promise<ShellCommandResult> {
+  async execute(args: string[], _cwd: string, _input?: string): Promise<ShellCommandResult> {
     // clear doesn't accept any arguments
     if (args.length > 0) {
       return createErrorResult(`${this.name}: arguments not supported`);

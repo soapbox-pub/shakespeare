@@ -18,17 +18,19 @@ export class UniqCommand implements ShellCommand {
     this.fs = fs;
   }
 
-  async execute(args: string[], cwd: string): Promise<ShellCommandResult> {
+  async execute(args: string[], cwd: string, input?: string): Promise<ShellCommandResult> {
     try {
       const { options, file } = this.parseArgs(args);
       let lines: string[] = [];
 
-      if (!file) {
+      // If input is provided (from pipe), process that input
+      if (input !== undefined) {
+        lines = input.split('\n');
+      } else if (!file) {
         // Read from stdin (not implemented in this context, return empty)
         return createSuccessResult('');
-      }
-
-      try {
+      } else {
+        try {
         // Handle absolute paths
         if (file.startsWith('/') || file.startsWith('\\') || /^[A-Za-z]:[\\/]/.test(file)) {
           return createErrorResult(`${this.name}: absolute paths are not supported: ${file}`);
@@ -59,6 +61,7 @@ export class UniqCommand implements ShellCommand {
           }
         } else {
           return createErrorResult(`${this.name}: ${file}: Unknown error`);
+        }
         }
       }
 

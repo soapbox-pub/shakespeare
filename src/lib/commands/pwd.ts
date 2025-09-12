@@ -10,7 +10,7 @@ export class PwdCommand implements ShellCommand {
   description = 'Print working directory';
   usage = 'pwd';
 
-  async execute(args: string[], cwd: string): Promise<ShellCommandResult> {
+  async execute(args: string[], cwd: string, _input?: string): Promise<ShellCommandResult> {
     // pwd doesn't accept any arguments in standard Linux
     if (args.length > 0) {
       return createErrorResult(`${this.name}: too many arguments`);

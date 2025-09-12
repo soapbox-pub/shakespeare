@@ -18,7 +18,7 @@ export class LsCommand implements ShellCommand {
     this.fs = fs;
   }
 
-  async execute(args: string[], cwd: string): Promise<ShellCommandResult> {
+  async execute(args: string[], cwd: string, _input?: string): Promise<ShellCommandResult> {
     try {
       // Parse options and paths
       const { options, paths } = this.parseArgs(args);
@@ -48,10 +48,10 @@ export class LsCommand implements ShellCommand {
           } else if (stats.isDirectory()) {
             // List directory contents
             const entries = await this.fs.readdir(absolutePath, { withFileTypes: true });
-            
+
             // Filter hidden files unless -a flag is used
             const filteredEntries = options.all ? entries : entries.filter(entry => !entry.name.startsWith('.'));
-            
+
             // Sort entries: directories first (if not -l), then alphabetically
             filteredEntries.sort((a, b) => {
               if (!options.long) {
@@ -68,19 +68,19 @@ export class LsCommand implements ShellCommand {
             if (options.long) {
               // Long format listing
               const longEntries: string[] = [];
-              
+
               for (const entry of filteredEntries) {
                 try {
                   const entryPath = join(absolutePath, entry.name);
                   const entryStats = await this.fs.stat(entryPath);
                   const size = entryStats.size || 0;
-                  const mtime = entryStats.mtimeMs ? 
-                    new Date(entryStats.mtimeMs).toISOString().slice(0, 16).replace('T', ' ') : 
+                  const mtime = entryStats.mtimeMs ?
+                    new Date(entryStats.mtimeMs).toISOString().slice(0, 16).replace('T', ' ') :
                     'unknown      ';
-                  
+
                   const permissions = entry.isDirectory() ? 'drwxr-xr-x' : '-rw-r--r--';
                   const name = entry.isDirectory() ? entry.name + '/' : entry.name;
-                  
+
                   longEntries.push(`${permissions} 1 user user ${size.toString().padStart(8)} ${mtime} ${name}`);
                 } catch {
                   // If we can't stat the entry, show basic info
@@ -89,11 +89,11 @@ export class LsCommand implements ShellCommand {
                   longEntries.push(`${permissions} 1 user user        0 unknown       ${name}`);
                 }
               }
-              
+
               outputs.push(longEntries.join('\n'));
             } else {
               // Simple format
-              const names = filteredEntries.map(entry => 
+              const names = filteredEntries.map(entry =>
                 entry.isDirectory() ? entry.name + '/' : entry.name
               );
               outputs.push(names.join('  '));

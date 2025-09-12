@@ -18,7 +18,7 @@ export class CdCommand implements ShellCommand {
     this.fs = fs;
   }
 
-  async execute(args: string[], cwd: string): Promise<ShellCommandResult> {
+  async execute(args: string[], cwd: string, _input?: string): Promise<ShellCommandResult> {
     try {
       let targetPath: string;
 

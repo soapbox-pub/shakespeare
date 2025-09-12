@@ -18,7 +18,7 @@ export class CpCommand implements ShellCommand {
     this.fs = fs;
   }
 
-  async execute(args: string[], cwd: string): Promise<ShellCommandResult> {
+  async execute(args: string[], cwd: string, _input?: string): Promise<ShellCommandResult> {
     if (args.length < 2) {
       return createErrorResult(`${this.name}: missing file operand\nUsage: ${this.usage}`);
     }
@@ -74,7 +74,7 @@ export class CpCommand implements ShellCommand {
             if (!options.recursive) {
               return createErrorResult(`${this.name}: -r not specified; omitting directory '${source}'`);
             }
-            
+
             // Recursive directory copy
             await this.copyDirectoryRecursive(sourceAbsolutePath, targetPath);
           } else {

@@ -10,7 +10,7 @@ export class EnvCommand implements ShellCommand {
   description = 'Display environment variables';
   usage = 'env';
 
-  async execute(args: string[], cwd: string): Promise<ShellCommandResult> {
+  async execute(args: string[], cwd: string, _input?: string): Promise<ShellCommandResult> {
     // env doesn't accept arguments in this simple implementation
     if (args.length > 0) {
       return createErrorResult(`${this.name}: arguments not supported in this implementation`);

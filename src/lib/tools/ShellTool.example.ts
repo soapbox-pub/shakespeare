@@ -63,6 +63,48 @@ export async function exampleShellUsage(fs: JSRuntimeFS, projectRoot: string) {
     command: 'unknown-command arg1 arg2'
   });
   console.log(unknownResult);
+
+  // Example 9: Compound commands with &&
+  console.log('\n--- Example 9: Compound commands with && ---');
+  const andResult = await shell.execute({
+    command: 'pwd && echo "Current directory listed above"'
+  });
+  console.log(andResult);
+
+  // Example 10: Compound commands with ||
+  console.log('\n--- Example 10: Compound commands with || ---');
+  const orResult = await shell.execute({
+    command: 'cat nonexistent.txt || echo "File not found, showing fallback message"'
+  });
+  console.log(orResult);
+
+  // Example 11: Sequential commands with ;
+  console.log('\n--- Example 11: Sequential commands with ; ---');
+  const sequentialResult = await shell.execute({
+    command: 'echo "First command"; echo "Second command"; pwd'
+  });
+  console.log(sequentialResult);
+
+  // Example 12: Pipe commands
+  console.log('\n--- Example 12: Pipe commands ---');
+  const pipeResult = await shell.execute({
+    command: 'echo "line1\nline2\nline3\nline4\nline5" | head -n 3'
+  });
+  console.log(pipeResult);
+
+  // Example 13: Complex pipe chain
+  console.log('\n--- Example 13: Complex pipe chain ---');
+  const complexPipeResult = await shell.execute({
+    command: 'echo "apple\nbanana\napple\ncherry\nbanana\napple" | sort | uniq'
+  });
+  console.log(complexPipeResult);
+
+  // Example 14: Mixed compound operators
+  console.log('\n--- Example 14: Mixed compound operators ---');
+  const mixedResult = await shell.execute({
+    command: 'echo "Processing..." && echo "data1\ndata2\ndata3" | wc -l && echo "Done!"'
+  });
+  console.log(mixedResult);
 }
 
 /**

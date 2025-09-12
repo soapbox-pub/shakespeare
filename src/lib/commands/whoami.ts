@@ -10,7 +10,7 @@ export class WhoamiCommand implements ShellCommand {
   description = 'Display current username';
   usage = 'whoami';
 
-  async execute(args: string[], _cwd: string): Promise<ShellCommandResult> {
+  async execute(args: string[], _cwd: string, _input?: string): Promise<ShellCommandResult> {
     // whoami doesn't accept any arguments
     if (args.length > 0) {
       return createErrorResult(`${this.name}: extra operand '${args[0]}'`);

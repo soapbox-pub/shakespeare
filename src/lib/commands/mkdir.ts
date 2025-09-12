@@ -18,7 +18,7 @@ export class MkdirCommand implements ShellCommand {
     this.fs = fs;
   }
 
-  async execute(args: string[], cwd: string): Promise<ShellCommandResult> {
+  async execute(args: string[], cwd: string, _input?: string): Promise<ShellCommandResult> {
     if (args.length === 0) {
       return createErrorResult(`${this.name}: missing operand\nUsage: ${this.usage}`);
     }
@@ -38,7 +38,7 @@ export class MkdirCommand implements ShellCommand {
           }
 
           const absolutePath = join(cwd, dirPath);
-          
+
           if (options.parents) {
             // Create parent directories as needed (-p option)
             await this.createDirectoryRecursive(absolutePath, dirPath);
@@ -54,9 +54,9 @@ export class MkdirCommand implements ShellCommand {
               }
             } catch (error) {
               // Directory doesn't exist, try to create it
-              if (error instanceof Error && 
+              if (error instanceof Error &&
                   (error.message.includes('ENOENT') || error.message.includes('not found'))) {
-                
+
                 // Check if parent directory exists
                 const parentDir = dirname(absolutePath);
                 try {
@@ -67,7 +67,7 @@ export class MkdirCommand implements ShellCommand {
                 } catch {
                   return createErrorResult(`${this.name}: cannot create directory '${dirPath}': No such file or directory`);
                 }
-                
+
                 // Create the directory
                 await this.fs.mkdir(absolutePath);
               } else {
@@ -112,15 +112,15 @@ export class MkdirCommand implements ShellCommand {
       }
     } catch (error) {
       // Directory doesn't exist, try to create it
-      if (error instanceof Error && 
+      if (error instanceof Error &&
           (error.message.includes('ENOENT') || error.message.includes('not found'))) {
-        
+
         // Try to create parent directory first
         const parentDir = dirname(absolutePath);
         if (parentDir !== absolutePath) { // Avoid infinite recursion
           await this.createDirectoryRecursive(parentDir, dirname(originalPath));
         }
-        
+
         // Now create this directory
         await this.fs.mkdir(absolutePath);
       } else {

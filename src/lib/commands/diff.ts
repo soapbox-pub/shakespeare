@@ -18,7 +18,7 @@ export class DiffCommand implements ShellCommand {
     this.fs = fs;
   }
 
-  async execute(args: string[], cwd: string): Promise<ShellCommandResult> {
+  async execute(args: string[], cwd: string, _input?: string): Promise<ShellCommandResult> {
     try {
       const { options, files } = this.parseArgs(args);
 

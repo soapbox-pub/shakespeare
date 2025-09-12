@@ -18,23 +18,55 @@ export class GrepCommand implements ShellCommand {
     this.fs = fs;
   }
 
-  async execute(args: string[], cwd: string): Promise<ShellCommandResult> {
+  async execute(args: string[], cwd: string, input?: string): Promise<ShellCommandResult> {
     if (args.length === 0) {
       return createErrorResult(`${this.name}: missing pattern\nUsage: ${this.usage}`);
     }
 
     const { options, pattern, files } = this.parseArgs(args);
-    
+
     if (!pattern) {
       return createErrorResult(`${this.name}: missing pattern\nUsage: ${this.usage}`);
     }
-
-    const targetFiles = files.length > 0 ? files : ['-']; // stdin if no files
 
     try {
       const regex = new RegExp(pattern, options.ignoreCase ? 'gi' : 'g');
       const outputs: string[] = [];
       let foundMatches = false;
+
+      // If input is provided (from pipe), search in that input
+      if (input !== undefined) {
+        const lines = input.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i];
+          if (regex.test(line)) {
+            let output = '';
+
+            if (options.showLineNumbers) {
+              output += `${i + 1}:`;
+            }
+
+            output += line;
+            outputs.push(output);
+            foundMatches = true;
+          }
+
+          // Reset regex lastIndex for global regex
+          regex.lastIndex = 0;
+        }
+
+        if (!foundMatches) {
+          return {
+            exitCode: 1,
+            stdout: '',
+            stderr: '',
+          };
+        }
+
+        return createSuccessResult(outputs.join('\n') + (outputs.length > 0 ? '\n' : ''));
+      }
+
+      const targetFiles = files.length > 0 ? files : ['-']; // stdin if no files
 
       for (const filePath of targetFiles) {
         try {
@@ -48,10 +80,10 @@ export class GrepCommand implements ShellCommand {
           }
 
           const absolutePath = join(cwd, filePath);
-          
+
           // Check if path exists
           const stats = await this.fs.stat(absolutePath);
-          
+
           if (stats.isDirectory()) {
             if (options.recursive) {
               // Recursively search directory
@@ -104,8 +136,8 @@ export class GrepCommand implements ShellCommand {
   }
 
   private async searchFile(
-    filePath: string, 
-    regex: RegExp, 
+    filePath: string,
+    regex: RegExp,
     options: { ignoreCase: boolean; showLineNumbers: boolean; recursive: boolean },
     displayName: string | null
   ): Promise<string[]> {
@@ -118,19 +150,19 @@ export class GrepCommand implements ShellCommand {
         const line = lines[i];
         if (regex.test(line)) {
           let output = '';
-          
+
           if (displayName) {
             output += `${displayName}:`;
           }
-          
+
           if (options.showLineNumbers) {
             output += `${i + 1}:`;
           }
-          
+
           output += line;
           matches.push(output);
         }
-        
+
         // Reset regex lastIndex for global regex
         regex.lastIndex = 0;
       }
@@ -153,13 +185,13 @@ export class GrepCommand implements ShellCommand {
 
       for (const entry of entries) {
         const entryPath = join(dirPath, entry.name);
-        
+
         if (entry.isFile()) {
           // Get relative path from base cwd for display
-          const relativePath = entryPath.startsWith(baseCwd) 
+          const relativePath = entryPath.startsWith(baseCwd)
             ? entryPath.slice(baseCwd.length + 1)
             : entryPath;
-          
+
           const fileMatches = await this.searchFile(entryPath, regex, options, relativePath);
           matches.push(...fileMatches);
         } else if (entry.isDirectory() && options.recursive) {
@@ -174,10 +206,10 @@ export class GrepCommand implements ShellCommand {
     }
   }
 
-  private parseArgs(args: string[]): { 
-    options: { ignoreCase: boolean; showLineNumbers: boolean; recursive: boolean }; 
-    pattern: string | null; 
-    files: string[] 
+  private parseArgs(args: string[]): {
+    options: { ignoreCase: boolean; showLineNumbers: boolean; recursive: boolean };
+    pattern: string | null;
+    files: string[]
   } {
     const options = { ignoreCase: false, showLineNumbers: false, recursive: false };
     const files: string[] = [];
@@ -186,7 +218,7 @@ export class GrepCommand implements ShellCommand {
 
     while (i < args.length) {
       const arg = args[i];
-      
+
       if (arg.startsWith('-') && arg !== '-') {
         // Parse options
         for (let j = 1; j < arg.length; j++) {
@@ -215,7 +247,7 @@ export class GrepCommand implements ShellCommand {
           files.push(arg);
         }
       }
-      
+
       i++;
     }
 

@@ -18,7 +18,7 @@ export class RmCommand implements ShellCommand {
     this.fs = fs;
   }
 
-  async execute(args: string[], cwd: string): Promise<ShellCommandResult> {
+  async execute(args: string[], cwd: string, _input?: string): Promise<ShellCommandResult> {
     if (args.length === 0) {
       return createErrorResult(`${this.name}: missing operand\nUsage: ${this.usage}`);
     }
@@ -43,7 +43,7 @@ export class RmCommand implements ShellCommand {
           }
 
           const absolutePath = join(cwd, path);
-          
+
           try {
             const stats = await this.fs.stat(absolutePath);
 
@@ -51,7 +51,7 @@ export class RmCommand implements ShellCommand {
               if (!options.recursive) {
                 return createErrorResult(`${this.name}: cannot remove '${path}': Is a directory`);
               }
-              
+
               // Recursive directory removal
               await this.removeDirectoryRecursive(absolutePath);
             } else {
@@ -96,7 +96,7 @@ export class RmCommand implements ShellCommand {
       // Remove all contents first
       for (const entry of entries) {
         const entryPath = join(dirPath, entry.name);
-        
+
         if (entry.isDirectory()) {
           await this.removeDirectoryRecursive(entryPath);
         } else {

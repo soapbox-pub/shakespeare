@@ -18,8 +18,17 @@ export class TailCommand implements ShellCommand {
     this.fs = fs;
   }
 
-  async execute(args: string[], cwd: string): Promise<ShellCommandResult> {
+  async execute(args: string[], cwd: string, input?: string): Promise<ShellCommandResult> {
     const { options, files } = this.parseArgs(args);
+
+    // If input is provided (from pipe), process that input
+    if (input !== undefined) {
+      const lines = input.split('\n');
+      const selectedLines = lines.slice(-options.lines);
+      const result = selectedLines.join('\n');
+      return createSuccessResult(result + (result && !result.endsWith('\n') ? '\n' : ''));
+    }
+
     const targetFiles = files.length > 0 ? files : ['-']; // stdin if no files
 
     try {
@@ -37,10 +46,10 @@ export class TailCommand implements ShellCommand {
           }
 
           const absolutePath = join(cwd, filePath);
-          
+
           // Check if path exists and is a file
           const stats = await this.fs.stat(absolutePath);
-          
+
           if (stats.isDirectory()) {
             return createErrorResult(`${this.name}: ${filePath}: Is a directory`);
           }
@@ -48,20 +57,20 @@ export class TailCommand implements ShellCommand {
           // Read file content
           const content = await this.fs.readFile(absolutePath, 'utf8');
           const lines = content.split('\n');
-          
+
           // Remove the last empty line if the file ends with a newline
           if (lines.length > 0 && lines[lines.length - 1] === '') {
             lines.pop();
           }
-          
+
           // Take last n lines
           const selectedLines = lines.slice(-options.lines);
-          
+
           // If we're showing multiple files, add a header
           if (targetFiles.length > 1) {
             outputs.push(`==> ${filePath} <==`);
           }
-          
+
           // Join lines and add final newline
           const result = selectedLines.join('\n');
           outputs.push(result);
@@ -100,7 +109,7 @@ export class TailCommand implements ShellCommand {
 
     while (i < args.length) {
       const arg = args[i];
-      
+
       if (arg === '-n') {
         // Next argument should be the number of lines
         i++;
@@ -121,7 +130,7 @@ export class TailCommand implements ShellCommand {
       } else {
         files.push(arg);
       }
-      
+
       i++;
     }
 

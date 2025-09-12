@@ -18,7 +18,7 @@ export class MvCommand implements ShellCommand {
     this.fs = fs;
   }
 
-  async execute(args: string[], cwd: string): Promise<ShellCommandResult> {
+  async execute(args: string[], cwd: string, _input?: string): Promise<ShellCommandResult> {
     if (args.length < 2) {
       return createErrorResult(`${this.name}: missing file operand\nUsage: ${this.usage}`);
     }

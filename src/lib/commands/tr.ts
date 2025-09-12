@@ -18,7 +18,7 @@ export class TrCommand implements ShellCommand {
     this.fs = fs;
   }
 
-  async execute(args: string[], cwd: string): Promise<ShellCommandResult> {
+  async execute(args: string[], cwd: string, input?: string): Promise<ShellCommandResult> {
     try {
       const { options, sets, files } = this.parseArgs(args);
 
@@ -32,13 +32,15 @@ export class TrCommand implements ShellCommand {
 
       let content = '';
 
-      if (files.length === 0) {
+      // If input is provided (from pipe), use that input
+      if (input !== undefined) {
+        content = input;
+      } else if (files.length === 0) {
         // Read from stdin (not implemented in this context, return empty)
         return createSuccessResult('');
-      }
-
-      // Read all files
-      for (const file of files) {
+      } else {
+        // Read all files
+        for (const file of files) {
         try {
           // Handle absolute paths
           if (file.startsWith('/') || file.startsWith('\\') || /^[A-Za-z]:[\\/]/.test(file)) {
@@ -66,6 +68,7 @@ export class TrCommand implements ShellCommand {
           } else {
             return createErrorResult(`${this.name}: ${file}: Unknown error`);
           }
+        }
         }
       }
 

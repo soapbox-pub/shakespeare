@@ -28,7 +28,7 @@ describe('ShellTool', () => {
   });
 
   it('should have correct tool properties', () => {
-    expect(shellTool.description).toBe('Execute shell commands like cat, ls, cd, pwd, rm, cp, mv, echo, head, tail, grep, find, wc, touch, mkdir, sort, uniq, cut, tr, diff, which, whoami, date, env, clear');
+    expect(shellTool.description).toBe('Execute shell commands like cat, ls, cd, pwd, rm, cp, mv, echo, head, tail, grep, find, wc, touch, mkdir, sort, uniq, cut, tr, diff, which, whoami, date, env, clear. Supports compound commands with &&, ||, ;, and | operators');
     expect(shellTool.inputSchema).toBeDefined();
   });
 
@@ -159,5 +159,67 @@ describe('ShellTool', () => {
 
     expect(result).toBe('(no output)');
     expect(shellTool.getCurrentWorkingDirectory()).toBe('/test/dir/subdir');
+  });
+
+  describe('compound commands', () => {
+    it('should execute commands with && operator (success case)', async () => {
+      const result = await shellTool.execute({ command: 'pwd && echo hello' });
+
+      expect(result).toContain(testCwd);
+      expect(result).toContain('hello');
+    });
+
+    it('should execute commands with && operator (failure case)', async () => {
+      vi.mocked(mockFS.stat).mockRejectedValue(new Error('ENOENT: no such file or directory'));
+
+      const result = await shellTool.execute({ command: 'cat nonexistent.txt && echo should not run' });
+
+      expect(result).toContain('No such file or directory');
+      expect(result).not.toContain('should not run');
+    });
+
+    it('should execute commands with || operator (success case)', async () => {
+      const result = await shellTool.execute({ command: 'pwd || echo fallback' });
+
+      expect(result).toContain(testCwd);
+      expect(result).not.toContain('fallback');
+    });
+
+    it('should execute commands with || operator (failure case)', async () => {
+      vi.mocked(mockFS.stat).mockRejectedValue(new Error('ENOENT: no such file or directory'));
+
+      const result = await shellTool.execute({ command: 'cat nonexistent.txt || echo fallback' });
+
+      expect(result).toContain('No such file or directory');
+      expect(result).toContain('fallback');
+    });
+
+    it('should execute commands with ; operator', async () => {
+      const result = await shellTool.execute({ command: 'echo first; echo second' });
+
+      expect(result).toContain('first');
+      expect(result).toContain('second');
+    });
+
+    it('should execute commands with pipe operator', async () => {
+      const result = await shellTool.execute({ command: 'echo "hello world" | cat' });
+
+      expect(result).toContain('hello world');
+    });
+
+    it('should handle complex compound commands', async () => {
+      const result = await shellTool.execute({ command: 'echo "line1\nline2\nline3" | head -n 2' });
+
+      expect(result).toContain('line1');
+      expect(result).toContain('line2');
+      expect(result).not.toContain('line3');
+    });
+
+    it('should parse quoted strings in compound commands', async () => {
+      const result = await shellTool.execute({ command: 'echo "hello && world" && echo success' });
+
+      expect(result).toContain('hello && world');
+      expect(result).toContain('success');
+    });
   });
 });

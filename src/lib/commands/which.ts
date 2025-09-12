@@ -16,7 +16,7 @@ export class WhichCommand implements ShellCommand {
     this.commands = commands;
   }
 
-  async execute(args: string[], _cwd: string): Promise<ShellCommandResult> {
+  async execute(args: string[], _cwd: string, _input?: string): Promise<ShellCommandResult> {
     if (args.length === 0) {
       return createErrorResult(`${this.name}: missing operand`);
     }

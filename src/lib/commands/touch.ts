@@ -18,7 +18,7 @@ export class TouchCommand implements ShellCommand {
     this.fs = fs;
   }
 
-  async execute(args: string[], cwd: string): Promise<ShellCommandResult> {
+  async execute(args: string[], cwd: string, _input?: string): Promise<ShellCommandResult> {
     if (args.length === 0) {
       return createErrorResult(`${this.name}: missing file operand\nUsage: ${this.usage}`);
     }
@@ -32,25 +32,25 @@ export class TouchCommand implements ShellCommand {
           }
 
           const absolutePath = join(cwd, filePath);
-          
+
           try {
             // Check if file exists
             const stats = await this.fs.stat(absolutePath);
-            
+
             if (stats.isDirectory()) {
               return createErrorResult(`${this.name}: ${filePath}: Is a directory`);
             }
-            
+
             // File exists, update timestamp (in real systems)
             // For this implementation, we'll just leave it as is since
             // LightningFS doesn't have a direct way to update timestamps
             // without modifying the file content
-            
+
           } catch (error) {
             // File doesn't exist, create it
-            if (error instanceof Error && 
+            if (error instanceof Error &&
                 (error.message.includes('ENOENT') || error.message.includes('not found'))) {
-              
+
               // Ensure parent directory exists
               const parentDir = dirname(absolutePath);
               try {
@@ -59,7 +59,7 @@ export class TouchCommand implements ShellCommand {
                 // Parent directory doesn't exist
                 return createErrorResult(`${this.name}: cannot touch '${filePath}': No such file or directory`);
               }
-              
+
               // Create empty file
               await this.fs.writeFile(absolutePath, '', 'utf8');
             } else {

@@ -18,7 +18,7 @@ export class FindCommand implements ShellCommand {
     this.fs = fs;
   }
 
-  async execute(args: string[], cwd: string): Promise<ShellCommandResult> {
+  async execute(args: string[], cwd: string, _input?: string): Promise<ShellCommandResult> {
     const { paths, options } = this.parseArgs(args);
     const searchPaths = paths.length > 0 ? paths : ['.']; // Default to current directory
 

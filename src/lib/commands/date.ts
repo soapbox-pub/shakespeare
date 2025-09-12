@@ -10,7 +10,7 @@ export class DateCommand implements ShellCommand {
   description = 'Display current date and time';
   usage = 'date [+FORMAT]';
 
-  async execute(args: string[], _cwd: string): Promise<ShellCommandResult> {
+  async execute(args: string[], _cwd: string, _input?: string): Promise<ShellCommandResult> {
     try {
       const now = new Date();
 

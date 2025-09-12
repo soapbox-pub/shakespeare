@@ -10,7 +10,7 @@ export class EchoCommand implements ShellCommand {
   description = 'Display text';
   usage = 'echo [text...]';
 
-  async execute(args: string[], _cwd: string): Promise<ShellCommandResult> {
+  async execute(args: string[], _cwd: string, _input?: string): Promise<ShellCommandResult> {
     // Join all arguments with spaces, like real echo
     const output = args.join(' ');
 

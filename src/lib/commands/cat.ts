@@ -18,7 +18,12 @@ export class CatCommand implements ShellCommand {
     this.fs = fs;
   }
 
-  async execute(args: string[], cwd: string): Promise<ShellCommandResult> {
+  async execute(args: string[], cwd: string, input?: string): Promise<ShellCommandResult> {
+    // If input is provided (from pipe), return it
+    if (input !== undefined) {
+      return createSuccessResult(input);
+    }
+
     // If no arguments provided, show usage
     if (args.length === 0) {
       return createErrorResult(`${this.name}: missing file operand\nUsage: ${this.usage}`);
@@ -35,10 +40,10 @@ export class CatCommand implements ShellCommand {
           }
 
           const absolutePath = join(cwd, filePath);
-          
+
           // Check if path exists and is a file
           const stats = await this.fs.stat(absolutePath);
-          
+
           if (stats.isDirectory()) {
             return createErrorResult(`${this.name}: ${filePath}: Is a directory`);
           }

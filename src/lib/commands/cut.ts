@@ -18,7 +18,7 @@ export class CutCommand implements ShellCommand {
     this.fs = fs;
   }
 
-  async execute(args: string[], cwd: string): Promise<ShellCommandResult> {
+  async execute(args: string[], cwd: string, input?: string): Promise<ShellCommandResult> {
     try {
       const { options, files } = this.parseArgs(args);
 
@@ -26,15 +26,21 @@ export class CutCommand implements ShellCommand {
         return createErrorResult(`${this.name}: you must specify a list of bytes, characters, or fields`);
       }
 
-      const lines: string[] = [];
+      let lines: string[] = [];
 
-      if (files.length === 0) {
+      // If input is provided (from pipe), process that input
+      if (input !== undefined) {
+        lines = input.split('\n');
+        // Remove the last empty line if the input ends with a newline
+        if (lines.length > 0 && lines[lines.length - 1] === '') {
+          lines.pop();
+        }
+      } else if (files.length === 0) {
         // Read from stdin (not implemented in this context, return empty)
         return createSuccessResult('');
-      }
-
-      // Read all files
-      for (const file of files) {
+      } else {
+        // Read all files
+        for (const file of files) {
         try {
           // Handle absolute paths
           if (file.startsWith('/') || file.startsWith('\\') || /^[A-Za-z]:[\\/]/.test(file)) {
@@ -69,6 +75,7 @@ export class CutCommand implements ShellCommand {
           } else {
             return createErrorResult(`${this.name}: ${file}: Unknown error`);
           }
+        }
         }
       }
 

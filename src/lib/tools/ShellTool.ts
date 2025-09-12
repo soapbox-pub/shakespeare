@@ -42,11 +42,11 @@ export class ShellTool implements Tool<ShellToolParams> {
   private cwd: string;
   private commands: Map<string, ShellCommand>;
 
-  readonly description = "Execute shell commands like cat, ls, cd, pwd, rm, cp, mv, echo, head, tail, grep, find, wc, touch, mkdir, sort, uniq, cut, tr, diff, which, whoami, date, env, clear";
+  readonly description = "Execute shell commands like cat, ls, cd, pwd, rm, cp, mv, echo, head, tail, grep, find, wc, touch, mkdir, sort, uniq, cut, tr, diff, which, whoami, date, env, clear. Supports compound commands with &&, ||, ;, and | operators";
 
   readonly inputSchema = z.object({
     command: z.string().describe(
-      'Shell command to execute, e.g. "cat file.txt", "ls -la", "cd src", "pwd", "sort file.txt", "diff file1 file2"'
+      'Shell command to execute, e.g. "cat file.txt", "ls -la", "cd src", "pwd", "sort file.txt", "diff file1 file2". Supports compound commands with &&, ||, ;, and | operators, e.g. "pwd && ls -la", "cat file.txt | grep pattern", "echo hello; echo world"'
     ),
   });
 
@@ -129,6 +129,114 @@ export class ShellTool implements Tool<ShellToolParams> {
     return { name, args };
   }
 
+  /**
+   * Parse compound commands separated by &&, ||, ;, or |
+   */
+  private parseCompoundCommand(commandStr: string): Array<{ command: string; operator?: string }> {
+    const commands: Array<{ command: string; operator?: string }> = [];
+    let current = '';
+    let inQuotes = false;
+    let quoteChar = '';
+    let i = 0;
+
+    while (i < commandStr.length) {
+      const char = commandStr[i];
+      const nextChar = commandStr[i + 1];
+
+      if (!inQuotes && (char === '"' || char === "'")) {
+        inQuotes = true;
+        quoteChar = char;
+        current += char;
+      } else if (inQuotes && char === quoteChar) {
+        inQuotes = false;
+        quoteChar = '';
+        current += char;
+      } else if (!inQuotes) {
+        // Check for compound operators
+        if (char === '&' && nextChar === '&') {
+          // && operator
+          if (current.trim()) {
+            commands.push({ command: current.trim(), operator: '&&' });
+            current = '';
+          }
+          i++; // Skip next character
+        } else if (char === '|' && nextChar === '|') {
+          // || operator
+          if (current.trim()) {
+            commands.push({ command: current.trim(), operator: '||' });
+            current = '';
+          }
+          i++; // Skip next character
+        } else if (char === '|' && nextChar !== '|') {
+          // | operator (pipe)
+          if (current.trim()) {
+            commands.push({ command: current.trim(), operator: '|' });
+            current = '';
+          }
+        } else if (char === ';') {
+          // ; operator
+          if (current.trim()) {
+            commands.push({ command: current.trim(), operator: ';' });
+            current = '';
+          }
+        } else {
+          current += char;
+        }
+      } else {
+        current += char;
+      }
+
+      i++;
+    }
+
+    // Add the last command
+    if (current.trim()) {
+      commands.push({ command: current.trim() });
+    }
+
+    return commands;
+  }
+
+  /**
+   * Execute a single command and return the result
+   */
+  private async executeSingleCommand(commandStr: string, input?: string): Promise<{ stdout: string; stderr: string; exitCode: number; newCwd?: string }> {
+    const { name, args: cmdArgs } = this.parseCommand(commandStr);
+
+    if (!name) {
+      return { stdout: '', stderr: 'Error: No command specified', exitCode: 1 };
+    }
+
+    // Check if command exists
+    const command = this.commands.get(name);
+    if (!command) {
+      const availableCommands = Array.from(this.commands.keys()).join(', ');
+      return {
+        stdout: '',
+        stderr: `Error: Command '${name}' not found\nAvailable commands: ${availableCommands}`,
+        exitCode: 127
+      };
+    }
+
+    try {
+      // Execute the command
+      const result = await command.execute(cmdArgs, this.cwd, input);
+
+      return {
+        stdout: result.stdout || '',
+        stderr: result.stderr || '',
+        exitCode: result.exitCode,
+        newCwd: result.newCwd,
+      };
+    } catch (error) {
+      return {
+        stdout: '',
+        stderr: `Error executing command '${name}': ${error instanceof Error ? error.message : 'Unknown error'}`,
+        exitCode: 1,
+      };
+    }
+  }
+
   async execute(args: ShellToolParams): Promise<string> {
     const { command: commandStr } = args;
 
@@ -136,52 +244,135 @@ export class ShellTool implements Tool<ShellToolParams> {
       return "Error: Empty command";
     }
 
-    const { name, args: cmdArgs } = this.parseCommand(commandStr);
+    // Parse compound commands
+    const commands = this.parseCompoundCommand(commandStr);
 
-    if (!name) {
+    if (commands.length === 0) {
       return "Error: No command specified";
     }
 
-    // Check if command exists
-    const command = this.commands.get(name);
-    if (!command) {
-      const availableCommands = Array.from(this.commands.keys()).join(', ');
-      return `Error: Command '${name}' not found\nAvailable commands: ${availableCommands}`;
+    // If it's a simple command (no operators), use the optimized single command execution
+    if (commands.length === 1) {
+      return this.executeSimpleCommand(commands[0].command);
     }
 
-    try {
-      // Execute the command
-      const result = await command.execute(cmdArgs, this.cwd);
+    // Execute compound commands
+    return this.executeCompoundCommands(commands);
+  }
 
-      // Update working directory if command changed it (e.g., cd)
+  /**
+   * Execute a simple command (no compound operators)
+   */
+  private async executeSimpleCommand(commandStr: string): Promise<string> {
+    const result = await this.executeSingleCommand(commandStr);
+
+    // Update working directory if command changed it (e.g., cd)
+    if (result.newCwd) {
+      this.cwd = result.newCwd;
+    }
+
+    // Format output
+    let output = '';
+
+    if (result.stdout) {
+      output += result.stdout;
+    }
+
+    if (result.stderr) {
+      if (output) output += '\n';
+      output += result.stderr;
+    }
+
+    // Add exit code info for non-zero exits
+    if (result.exitCode !== 0) {
+      if (output) output += '\n';
+      output += `Exit code: ${result.exitCode}`;
+    }
+
+    return output || '(no output)';
+  }
+
+  /**
+   * Execute compound commands with operators (&&, ||, ;, |)
+   */
+  private async executeCompoundCommands(commands: Array<{ command: string; operator?: string }>): Promise<string> {
+    const outputs: string[] = [];
+    let lastExitCode = 0;
+    let pipeInput = '';
+
+    for (let i = 0; i < commands.length; i++) {
+      const { command: commandStr, operator } = commands[i];
+      const prevOperator = i > 0 ? commands[i - 1].operator : undefined;
+
+      // Handle conditional execution based on previous operator
+      if (prevOperator === '&&' && lastExitCode !== 0) {
+        // Previous command failed and we have &&, skip this command
+        continue;
+      }
+
+      if (prevOperator === '||' && lastExitCode === 0) {
+        // Previous command succeeded and we have ||, skip this command
+        continue;
+      }
+
+      // Execute the command
+      let result: { stdout: string; stderr: string; exitCode: number; newCwd?: string };
+
+      if (prevOperator === '|') {
+        // Handle pipe: pass previous output as input to current command
+        result = await this.executeSingleCommand(commandStr, pipeInput);
+      } else {
+        result = await this.executeSingleCommand(commandStr);
+      }
+
+      // Update working directory if command changed it
       if (result.newCwd) {
         this.cwd = result.newCwd;
       }
 
-      // Format output
-      let output = '';
+      lastExitCode = result.exitCode;
 
-      if (result.stdout) {
-        output += result.stdout;
+      // Handle output based on current operator
+      if (operator === '|') {
+        // For pipe, store output for next command
+        pipeInput = result.stdout;
+      } else {
+        // For other operators, add to outputs
+        let output = '';
+
+        if (result.stdout) {
+          output += result.stdout;
+        }
+
+        if (result.stderr) {
+          if (output) output += '\n';
+          output += result.stderr;
+        }
+
+        // Add exit code info for non-zero exits (except for pipes)
+        if (result.exitCode !== 0) {
+          if (output) output += '\n';
+          output += `Exit code: ${result.exitCode}`;
+        }
+
+        if (output) {
+          outputs.push(output);
+        }
+
+        // Reset pipe input for non-pipe commands
+        pipeInput = '';
       }
-
-      if (result.stderr) {
-        if (output) output += '\n';
-        output += result.stderr;
-      }
-
-      // Add exit code info for non-zero exits
-      if (result.exitCode !== 0) {
-        if (output) output += '\n';
-        output += `Exit code: ${result.exitCode}`;
-      }
-
-      return output || '(no output)';
-
-    } catch (error) {
-      return `Error executing command '${name}': ${error instanceof Error ? error.message : 'Unknown error'}`;
     }
+
+    // Handle final pipe output
+    if (pipeInput) {
+      outputs.push(pipeInput);
+    }
+
+    return outputs.length > 0 ? outputs.join('\n') : '(no output)';
   }
+
+
 
   /**
    * Get the current working directory

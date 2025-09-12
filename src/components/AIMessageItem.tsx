@@ -1,6 +1,6 @@
 import { memo, useState } from 'react';
 import { Streamdown } from 'streamdown';
-import { Wrench, Eye, FileText, Edit, Package, PackageMinus, GitCommit, BookOpen, Download, Hash, Tag, Network, List, Plus, Terminal } from 'lucide-react';
+import { Wrench, Eye, FileText, Edit, Package, PackageMinus, GitCommit, BookOpen, Download, Hash, Tag, Network, List, Plus, Terminal, Globe } from 'lucide-react';
 import type { AIMessage } from '@/lib/SessionManager';
 import { cn } from '@/lib/utils';
 import OpenAI from 'openai';
@@ -131,6 +131,11 @@ export const AIMessageItem = memo(({
               icon: Plus,
               title: args.range ? `Generated ${args.range} kind` : 'Generated Kind'
             };
+          case 'deploy_project':
+            return {
+              icon: Globe,
+              title: args.deployServer ? `Deployed to ${args.deployServer}` : 'Deployed Project'
+            };
           default:
             return {
               icon: Wrench,
@@ -165,6 +170,7 @@ export const AIMessageItem = memo(({
     const toolInfo = getToolInfo();
     const IconComponent = toolInfo.icon;
 
+    // Regular tool message rendering
     return (
       <div className="-mt-2"> {/* -mt-2 to make it snug with the previous assistant message */}
         <button

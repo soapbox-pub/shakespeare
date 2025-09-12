@@ -38,13 +38,12 @@ export function useProviderModels(): ModelFetchResult {
     isLoading,
     refetch,
   } = useQuery({
-    queryKey: ['provider-models', settings.providers],
+    queryKey: ['provider-models'],
     queryFn: async () => {
-      const allModels: ProviderModel[] = [];
       const errors: string[] = [];
 
-      // Fetch models from each configured provider
-      for (const [providerKey, connection] of Object.entries(settings.providers)) {
+      // Fetch models from each configured provider in parallel
+      const providerPromises = Object.entries(settings.providers).map(async ([providerKey, connection]) => {
         try {
           const openai = createAIClient(connection, user);
 
@@ -84,13 +83,14 @@ export function useProviderModels(): ModelFetchResult {
               return providerModel;
             });
 
-            allModels.push(...providerModels);
+            return providerModels;
           } catch (fetchError) {
             if (fetchError instanceof Error && fetchError.name === 'AbortError') {
               errors.push(`${providerKey}: Request timeout`);
             } else {
               throw fetchError;
             }
+            return [];
           }
         } catch (providerError) {
           console.warn(`Failed to fetch models from ${providerKey}:`, providerError);
@@ -99,8 +99,15 @@ export function useProviderModels(): ModelFetchResult {
               providerError instanceof Error ? providerError.message : 'Unknown error'
             }`
           );
+          return [];
         }
-      }
+      });
+
+      // Wait for all provider requests to complete
+      const providerResults = await Promise.all(providerPromises);
+
+      // Flatten all models into a single array
+      const allModels = providerResults.flat();
 
       // Set error state if there were any errors
       if (errors.length > 0) {
@@ -108,14 +115,6 @@ export function useProviderModels(): ModelFetchResult {
       } else {
         setError(null);
       }
-
-      // Sort models by provider, then by name
-      allModels.sort((a, b) => {
-        if (a.provider !== b.provider) {
-          return a.provider.localeCompare(b.provider);
-        }
-        return a.name.localeCompare(b.name);
-      });
 
       return allModels;
     },

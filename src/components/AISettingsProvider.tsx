@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { ReactNode, useState, useEffect } from 'react';
 import { AISettingsContext, type AISettings, type AIConnection, type AISettingsContextType } from '@/contexts/AISettingsContext';
 
@@ -13,6 +14,8 @@ const DEFAULT_SETTINGS: AISettings = {
 const STORAGE_KEY = 'ai-settings';
 
 export function AISettingsProvider({ children }: AISettingsProviderProps) {
+  const queryClient = useQueryClient();
+
   const [settings, setSettings] = useState<AISettings>(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
@@ -48,6 +51,7 @@ export function AISettingsProvider({ children }: AISettingsProviderProps) {
         [name]: connection,
       },
     }));
+    queryClient.invalidateQueries({ queryKey: ['provider-models'] });
   };
 
   const removeProvider = (name: string) => {
@@ -58,6 +62,7 @@ export function AISettingsProvider({ children }: AISettingsProviderProps) {
         providers: rest,
       };
     });
+    queryClient.invalidateQueries({ queryKey: ['provider-models'] });
   };
 
   const updateProvider = (name: string, connection: Partial<AIConnection>) => {
@@ -71,6 +76,7 @@ export function AISettingsProvider({ children }: AISettingsProviderProps) {
         },
       },
     }));
+    queryClient.invalidateQueries({ queryKey: ['provider-models'] });
   };
 
   const addRecentlyUsedModel = (modelId: string) => {

@@ -29,6 +29,43 @@ Shakespeare uses LightningFS to provide a browser-based filesystem that persists
 
 This architecture allows Shakespeare to provide a full development environment entirely within the browser, with no server-side storage requirements.
 
+### Git Integration with isomorphic-git
+
+Shakespeare provides full Git functionality in the browser using `isomorphic-git` and `@isomorphic-git/lightning-fs`, with all data persisted in IndexedDB.
+
+#### Key Components
+
+- **LightningFSAdapter**: Adapts LightningFS to the unified JSRuntimeFS interface
+- **GitCommitTool**: AI tool for automated commits with staging and validation
+- **useGitStatus Hook**: Real-time Git status monitoring (updates every 5 seconds)
+- **ProjectsManager**: Handles project creation, Git initialization, and template cloning
+
+#### Core Features
+
+**Project Creation:**
+1. Clone template from GitLab repository (shallow clone, depth: 1)
+2. Remove original Git history
+3. Initialize fresh repository with `main` branch
+4. Stage all files and create initial commit
+
+**Version Control:**
+- Automatic staging of all changed files before commits
+- Real-time status tracking (modified, added, deleted, untracked, staged files)
+- Full commit history with author info and SHA hashes
+- Branch management and remote repository support
+
+**AI Integration:**
+- GitCommitTool allows AI assistants to commit changes automatically
+- Validates repository status and handles edge cases
+- Generates descriptive commit messages with file change statistics
+
+**Browser Compatibility:**
+- CORS proxy for GitHub/GitLab repositories (`https://cors.isomorphic-git.org`)
+- IndexedDB persistence across browser sessions
+- Gitignore support using the `ignore` library
+
+Git operations happen transparently in the background, providing professional version control without requiring Git knowledge from users.
+
 # Project Overview
 
 This project is a Nostr client application built with React 18.x, TailwindCSS 3.x, Vite, shadcn/ui, and Nostrify.

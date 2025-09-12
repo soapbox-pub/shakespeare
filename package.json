@@ -56,6 +56,7 @@
     "decimal.js": "^10.6.0",
     "embla-carousel-react": "^8.3.0",
     "esbuild-wasm": "^0.25.8",
+    "ignore": "^7.0.5",
     "input-otp": "^1.2.4",
     "isomorphic-git": "^1.32.1",
     "jszip": "^3.10.1",

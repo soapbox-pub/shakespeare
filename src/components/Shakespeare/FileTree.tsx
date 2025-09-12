@@ -4,6 +4,7 @@ import { useFS } from '@/hooks/useFS';
 import { useGitStatus } from '@/hooks/useGitStatus';
 import { ChevronRight, ChevronDown, File, Folder } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { createGitignoreFilter, normalizePathForGitignore } from '@/lib/gitignore';
 
 interface FileTreeProps {
   projectId: string;
@@ -22,6 +23,10 @@ interface FileNode {
 export function FileTree({ projectId, onFileSelect, selectedFile }: FileTreeProps) {
   const [tree, setTree] = useState<FileNode[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [gitignoreFilter, setGitignoreFilter] = useState<{
+    isIgnored: (path: string) => boolean;
+    shouldShow: (path: string) => boolean;
+  } | null>(null);
   const { fs } = useFS();
   const projectsManager = useProjectsManager();
   const { data: gitStatus } = useGitStatus(projectId);
@@ -115,6 +120,11 @@ export function FileTree({ projectId, onFileSelect, selectedFile }: FileTreeProp
   const loadFileTree = useCallback(async () => {
     setIsLoading(true);
     try {
+      // Load gitignore filter
+      const projectPath = `${projectsManager['dir']}/${projectId}`;
+      const filter = await createGitignoreFilter(fs, projectPath);
+      setGitignoreFilter(filter);
+
       const structure = await buildFileTree(projectId, '');
       setTree(structure);
     } catch (_error) {
@@ -122,7 +132,7 @@ export function FileTree({ projectId, onFileSelect, selectedFile }: FileTreeProp
     } finally {
       setIsLoading(false);
     }
-  }, [projectId, buildFileTree]);
+  }, [projectId, buildFileTree, fs, projectsManager]);
 
   useEffect(() => {
     loadFileTree();
@@ -160,8 +170,15 @@ export function FileTree({ projectId, onFileSelect, selectedFile }: FileTreeProp
     const gitDirStatus = node.type === 'directory' ? getDirectoryGitStatus(node.path, node.children || []) : null;
     const gitStatus = gitFileStatus || gitDirStatus;
 
+    // Check if this file/directory is gitignored
+    const normalizedPath = normalizePathForGitignore(node.path);
+    const isGitignored = gitignoreFilter?.isIgnored(normalizedPath) ?? false;
+
     // Get styling classes for git status
     const gitStatusClasses = getGitStatusClasses(gitStatus);
+
+    // Apply muted styling for gitignored files
+    const gitignoreClasses = isGitignored ? 'text-muted-foreground' : '';
 
     return (
       <div key={node.path}>
@@ -177,19 +194,19 @@ export function FileTree({ projectId, onFileSelect, selectedFile }: FileTreeProp
           {node.type === 'directory' ? (
             <>
               {node.isOpen ? (
-                <ChevronDown className="h-4 w-4 flex-shrink-0" />
+                <ChevronDown className={cn("h-4 w-4 flex-shrink-0", gitignoreClasses)} />
               ) : (
-                <ChevronRight className="h-4 w-4 flex-shrink-0" />
+                <ChevronRight className={cn("h-4 w-4 flex-shrink-0", gitignoreClasses)} />
               )}
-              <Folder className="h-4 w-4 text-blue-500 flex-shrink-0" />
+              <Folder className={cn("h-4 w-4 text-blue-500 flex-shrink-0", gitignoreClasses)} />
             </>
           ) : (
             <>
               <div className="w-4" /> {/* Spacer for alignment */}
-              <File className="h-4 w-4 text-gray-500 flex-shrink-0" />
+              <File className={cn("h-4 w-4 text-gray-500 flex-shrink-0", gitignoreClasses)} />
             </>
           )}
-          <span className={cn("text-sm truncate", gitStatusClasses)}>{node.name}</span>
+          <span className={cn("text-sm truncate", gitStatusClasses, gitignoreClasses)}>{node.name}</span>
         </div>
 
         {node.type === 'directory' && node.isOpen && node.children && (

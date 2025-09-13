@@ -39,17 +39,11 @@ export function ProjectView() {
   const chatPaneRef = useRef<ChatPaneRef>(null);
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const { fs: browserFS } = useFS();
+  const { fs } = useFS();
   const { user } = useCurrentUser();
   const { config } = useAppContext();
   const { toast } = useToast();
-  const [isSidebarVisible, setIsSidebarVisible] = useState(() => {
-    // Check if we're on mobile immediately to set correct initial state
-    if (typeof window !== 'undefined') {
-      return window.innerWidth >= 768; // Desktop starts open, mobile starts closed
-    }
-    return false; // Default to closed for SSR
-  });
+  const [isSidebarVisible, setIsSidebarVisible] = useState(!isMobile);
 
   // Keep-alive functionality to prevent tab throttling during AI processing
   const { updateMetadata } = useKeepAlive({
@@ -83,14 +77,14 @@ export function ProjectView() {
   }, [loadProject]);
 
   const runBuild = async () => {
-    if (isBuildLoading || !project || !browserFS) return;
+    if (isBuildLoading || !project) return;
 
     setIsBuildLoading(true);
     updateMetadata('Shakespeare', `Building ${project.name}...`);
 
     try {
       const result = await buildProject({
-        fs: browserFS,
+        fs,
         projectPath: `/projects/${project.id}`,
         domParser: new DOMParser(),
       });
@@ -104,7 +98,7 @@ export function ProjectView() {
   };
 
   const runDeploy = async () => {
-    if (isDeployLoading || !project || !browserFS) return;
+    if (isDeployLoading || !project) return;
 
     // Check if user is logged in
     if (!user || !user.signer) {
@@ -123,7 +117,7 @@ export function ProjectView() {
       const result = await deployProject({
         projectId: project.id,
         deployServer: config.deployServer,
-        fs: browserFS,
+        fs,
         projectPath: `/projects/${project.id}`,
         signer: user.signer,
       });

@@ -48,13 +48,7 @@ export function SettingsLayout() {
   const projectsManager = useProjectsManager();
 
   const [_projects, setProjects] = useState<Project[]>([]);
-  const [isSidebarVisible, setIsSidebarVisible] = useState(() => {
-    // On mobile, always start hidden
-    if (typeof window !== 'undefined' && window.innerWidth < 768) {
-      return false;
-    }
-    return false; // Default to closed initially
-  });
+  const [isSidebarVisible, setIsSidebarVisible] = useState(!isMobile);
   const [hasSetInitialState, setHasSetInitialState] = useState(false);
 
   const loadProjects = useCallback(async () => {

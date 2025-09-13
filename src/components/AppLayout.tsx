@@ -27,14 +27,7 @@ export function AppLayout({
   const navigate = useNavigate();
   const isMobile = useIsMobile();
 
-  const [isSidebarVisible, setIsSidebarVisible] = useState(() => {
-    // On mobile, always start hidden
-    if (typeof window !== 'undefined' && window.innerWidth < 768) {
-      return false;
-    }
-    // On desktop, we'll set the initial state after projects load
-    return false; // Default to closed initially
-  });
+  const [isSidebarVisible, setIsSidebarVisible] = useState(!isMobile);
 
   // Track if we've set the initial state based on projects
   const [hasSetInitialState, setHasSetInitialState] = useState(false);

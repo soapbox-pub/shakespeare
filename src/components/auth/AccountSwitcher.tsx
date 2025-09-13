@@ -35,7 +35,7 @@ export function AccountSwitcher({ onAddAccountClick }: AccountSwitcherProps) {
             <AvatarImage src={currentUser.metadata.picture} alt={getDisplayName(currentUser)} />
             <AvatarFallback>{getDisplayName(currentUser).charAt(0)}</AvatarFallback>
           </Avatar>
-          <div className='flex-1 text-left hidden md:block truncate'>
+          <div className='flex-1 text-left truncate'>
             <p className='font-medium text-sm truncate'>{getDisplayName(currentUser)}</p>
           </div>
           <ChevronDown className='w-4 h-4 text-muted-foreground' />

@@ -10,6 +10,7 @@ import GitSettings from "./pages/GitSettings";
 import { NIP19Page } from "./pages/NIP19Page";
 import NotFound from "./pages/NotFound";
 import { ProjectView } from "./pages/ProjectView";
+import { SettingsLayout } from "./components/SettingsLayout";
 
 export function AppRouter() {
   return (
@@ -19,9 +20,11 @@ export function AppRouter() {
       <Routes>
         <Route path="/" element={<Index />} />
         <Route path="/clone" element={<Clone />} />
-        <Route path="/settings" element={<Settings />} />
-        <Route path="/settings/ai" element={<AISettings />} />
-        <Route path="/settings/git" element={<GitSettings />} />
+        <Route path="/settings" element={<SettingsLayout />}>
+          <Route index element={<Settings />} />
+          <Route path="ai" element={<AISettings />} />
+          <Route path="git" element={<GitSettings />} />
+        </Route>
         <Route path="/project/:projectId" element={<ProjectView />} />
         {/* NIP-19 route for npub1, note1, naddr1, nevent1, nprofile1 */}
         <Route path="/:nip19" element={<NIP19Page />} />

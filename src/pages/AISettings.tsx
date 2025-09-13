@@ -3,13 +3,12 @@ import { Check, Bot, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAISettings } from '@/hooks/useAISettings';
-import { AppLayout } from '@/components/AppLayout';
+import { useIsMobile } from '@/hooks/useIsMobile';
 import { useNavigate } from 'react-router-dom';
 import type { AIConnection } from '@/contexts/AISettingsContext';
 
@@ -74,6 +73,7 @@ const PRESET_PROVIDERS: PresetProvider[] = [
 
 export function AISettings() {
   const { settings, addProvider, removeProvider, updateProvider } = useAISettings();
+  const isMobile = useIsMobile();
   const navigate = useNavigate();
   const [customProviderName, setCustomProviderName] = useState('');
   const [customBaseURL, setCustomBaseURL] = useState('');
@@ -137,254 +137,259 @@ export function AISettings() {
   const availablePresets = PRESET_PROVIDERS.filter(preset => !configuredProviderIds.includes(preset.id));
 
   return (
-    <AppLayout title="AI Settings" showSidebar={true}>
-      <div className="max-w-4xl mx-auto">
-        <Card className="bg-white">
-          <CardContent className="p-6 space-y-6">
-            <div className="space-y-2">
-              <div className="flex items-center gap-3">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => navigate('/settings')}
-                  className="h-8 w-8 p-0"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                </Button>
-                <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-                  <Bot className="h-8 w-8 text-primary" />
-                  AI Settings
-                </h1>
-              </div>
-              <p className="text-muted-foreground ml-11">
-                Configure AI providers by adding your API keys. Settings are automatically saved and stored locally in your browser.
-              </p>
-            </div>
+    <div className="p-6 space-y-6">
+      {isMobile && (
+        <div className="space-y-3">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate('/settings')}
+            className="h-8 w-auto px-2 -ml-2"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Settings
+          </Button>
+          <div className="space-y-2">
+            <h1 className="text-2xl font-bold flex items-center gap-3">
+              <Bot className="h-6 w-6 text-primary" />
+              AI Settings
+            </h1>
+            <p className="text-muted-foreground">
+              Configure AI providers by adding your API keys. Settings are automatically saved and stored locally in your browser.
+            </p>
+          </div>
+        </div>
+      )}
 
-            <div className="space-y-6">
-          {/* Configured Providers */}
-          {configuredProviderIds.length > 0 && (
-            <div className="space-y-3">
-              <h4 className="text-sm font-medium">Configured Providers</h4>
-              <Accordion type="multiple" className="w-full space-y-2">
-                {configuredProviderIds.map((providerId) => {
-                  const preset = PRESET_PROVIDERS.find(p => p.id === providerId);
-                  const provider = settings.providers[providerId];
-                  const isCustom = !preset;
+      {!isMobile && (
+        <div className="space-y-2">
+          <h1 className="text-2xl font-bold flex items-center gap-3">
+            <Bot className="h-6 w-6 text-primary" />
+            AI Settings
+          </h1>
+          <p className="text-muted-foreground">
+            Configure AI providers by adding your API keys. Settings are automatically saved and stored locally in your browser.
+          </p>
+        </div>
+      )}
 
-                  return (
-                    <AccordionItem key={providerId} value={providerId} className="border rounded-lg">
-                      <AccordionTrigger className="px-4 py-3 hover:no-underline">
-                        <div className="flex items-center justify-between w-full mr-3">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium">
-                              {preset?.name || providerId}
-                            </span>
-                            {isCustom && <Badge variant="outline">Custom</Badge>}
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleRemoveProvider(providerId);
-                            }}
-                            className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
-                          >
-                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                          </Button>
+      <div className="space-y-6">
+        {/* Configured Providers */}
+        {configuredProviderIds.length > 0 && (
+          <div className="space-y-3">
+            <h4 className="text-sm font-medium">Configured Providers</h4>
+            <Accordion type="multiple" className="w-full space-y-2">
+              {configuredProviderIds.map((providerId) => {
+                const preset = PRESET_PROVIDERS.find(p => p.id === providerId);
+                const provider = settings.providers[providerId];
+                const isCustom = !preset;
+
+                return (
+                  <AccordionItem key={providerId} value={providerId} className="border rounded-lg">
+                    <AccordionTrigger className="px-4 py-3 hover:no-underline">
+                      <div className="flex items-center justify-between w-full mr-3">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">
+                            {preset?.name || providerId}
+                          </span>
+                          {isCustom && <Badge variant="outline">Custom</Badge>}
                         </div>
-                      </AccordionTrigger>
-                      <AccordionContent className="px-4 pb-4">
-                        <div className="space-y-3">
-                          <div className="grid gap-2">
-                            <Label htmlFor={`${providerId}-baseURL`}>Base URL</Label>
-                            <Input
-                              id={`${providerId}-baseURL`}
-                              placeholder="https://api.example.com/v1"
-                              value={provider?.baseURL || ''}
-                              onChange={(e) => handleUpdateProvider(providerId, { baseURL: e.target.value })}
-                            />
-                          </div>
-                          <div className="grid gap-2">
-                            <Label htmlFor={`${providerId}-auth`}>Authentication</Label>
-                            <Select
-                              value={provider?.nostr ? 'nostr' : 'api-key'}
-                              onValueChange={(value: 'api-key' | 'nostr') => handleUpdateProvider(providerId, {
-                                nostr: value === 'nostr' || undefined,
-                                apiKey: value === 'nostr' ? undefined : provider?.apiKey
-                              })}
-                            >
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="api-key">API Key</SelectItem>
-                                <SelectItem value="nostr">Nostr</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          {!provider?.nostr && (
-                            <div className="grid gap-2">
-                              <Label htmlFor={`${providerId}-apiKey`}>API Key</Label>
-                              <Input
-                                id={`${providerId}-apiKey`}
-                                type="password"
-                                placeholder="Enter your API key"
-                                value={provider?.apiKey || ''}
-                                onChange={(e) => handleUpdateProvider(providerId, { apiKey: e.target.value })}
-                              />
-                            </div>
-                          )}
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  );
-                })}
-              </Accordion>
-            </div>
-          )}
-
-          {configuredProviderIds.length > 0 && availablePresets.length > 0 && <Separator />}
-
-          {/* Available Preset Providers */}
-          {availablePresets.length > 0 && (
-            <div className="space-y-3">
-              <h4 className="text-sm font-medium">Add Provider</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {availablePresets.map((preset) => (
-                  <Card key={preset.id}>
-                    <CardContent className="p-4 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <h5 className="font-medium">{preset.name}</h5>
-                        {preset.apiKeysURL && (
-                          <button
-                            type="button"
-                            className="text-xs text-muted-foreground underline hover:text-foreground"
-                            onClick={() => window.open(preset.apiKeysURL, '_blank')}
-                          >
-                            Get API key
-                          </button>
-                        )}
-                      </div>
-                      <div className="flex gap-2">
-                        {!preset.nostr && (
-                          <Input
-                            placeholder="Enter your API key"
-                            type="password"
-                            className="flex-1"
-                            value={presetApiKeys[preset.id] || ''}
-                            onChange={(e) => setPresetApiKeys(prev => ({
-                              ...prev,
-                              [preset.id]: e.target.value,
-                            }))}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter' && presetApiKeys[preset.id]?.trim()) {
-                                handleAddPresetProvider(preset);
-                              }
-                            }}
-                          />
-                        )}
                         <Button
-                          onClick={() => handleAddPresetProvider(preset)}
-                          disabled={!!preset.apiKeysURL && !presetApiKeys[preset.id]?.trim()}
+                          variant="ghost"
                           size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemoveProvider(providerId);
+                          }}
+                          className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
                         >
-                          Add
+                          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
                         </Button>
                       </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {availablePresets.length > 0 && <Separator />}
-
-          {/* Custom Provider */}
-          <div className="space-y-3">
-            <h4 className="text-sm font-medium">Add Custom Provider</h4>
-            <Card>
-              <CardContent className="p-4 space-y-3">
-                <div className="grid gap-2">
-                  <Label htmlFor="custom-name">Provider Name</Label>
-                  <Input
-                    id="custom-name"
-                    placeholder="e.g., my-custom-api"
-                    value={customProviderName}
-                    onChange={(e) => setCustomProviderName(e.target.value)}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="custom-baseurl">Base URL</Label>
-                  <Input
-                    id="custom-baseurl"
-                    placeholder="https://api.example.com/v1"
-                    value={customBaseURL}
-                    onChange={(e) => setCustomBaseURL(e.target.value)}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="custom-auth">Authentication</Label>
-                  <Select
-                    value={customAuthMethod}
-                    onValueChange={(value: 'api-key' | 'nostr') => {
-                      setCustomAuthMethod(value);
-                      if (value === 'nostr') {
-                        setCustomApiKey(''); // Clear API key when switching to Nostr auth
-                      }
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="api-key">API Key</SelectItem>
-                      <SelectItem value="nostr">Nostr</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                {customAuthMethod === 'api-key' && (
-                  <div className="grid gap-2">
-                    <Label htmlFor="custom-apikey">API Key</Label>
-                    <Input
-                      id="custom-apikey"
-                      type="password"
-                      placeholder="Enter your API key (optional)"
-                      value={customApiKey}
-                      onChange={(e) => setCustomApiKey(e.target.value)}
-                    />
-                  </div>
-                )}
-                <Button
-                  onClick={handleAddCustomProvider}
-                  disabled={
-                    !customProviderName.trim() ||
-                    !customBaseURL.trim() ||
-                    customProviderName.trim() in settings.providers
-                  }
-                  size="sm"
-                  className="gap-2"
-                >
-                  <Check className="h-4 w-4" />
-                  Add Custom Provider
-                </Button>
-                {customProviderName.trim() in settings.providers && (
-                  <p className="text-sm text-destructive">
-                    Provider with this name already exists
-                  </p>
-                )}
-              </CardContent>
-            </Card>
+                    </AccordionTrigger>
+                    <AccordionContent className="px-4 pb-4">
+                      <div className="space-y-3">
+                        <div className="grid gap-2">
+                          <Label htmlFor={`${providerId}-baseURL`}>Base URL</Label>
+                          <Input
+                            id={`${providerId}-baseURL`}
+                            placeholder="https://api.example.com/v1"
+                            value={provider?.baseURL || ''}
+                            onChange={(e) => handleUpdateProvider(providerId, { baseURL: e.target.value })}
+                          />
+                        </div>
+                        <div className="grid gap-2">
+                          <Label htmlFor={`${providerId}-auth`}>Authentication</Label>
+                          <Select
+                            value={provider?.nostr ? 'nostr' : 'api-key'}
+                            onValueChange={(value: 'api-key' | 'nostr') => handleUpdateProvider(providerId, {
+                              nostr: value === 'nostr' || undefined,
+                              apiKey: value === 'nostr' ? undefined : provider?.apiKey
+                            })}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="api-key">API Key</SelectItem>
+                              <SelectItem value="nostr">Nostr</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        {!provider?.nostr && (
+                          <div className="grid gap-2">
+                            <Label htmlFor={`${providerId}-apiKey`}>API Key</Label>
+                            <Input
+                              id={`${providerId}-apiKey`}
+                              type="password"
+                              placeholder="Enter your API key"
+                              value={provider?.apiKey || ''}
+                              onChange={(e) => handleUpdateProvider(providerId, { apiKey: e.target.value })}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                );
+              })}
+            </Accordion>
           </div>
+        )}
+
+        {configuredProviderIds.length > 0 && availablePresets.length > 0 && <Separator />}
+
+        {/* Available Preset Providers */}
+        {availablePresets.length > 0 && (
+          <div className="space-y-3">
+            <h4 className="text-sm font-medium">Add Provider</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {availablePresets.map((preset) => (
+                <div key={preset.id} className="border rounded-lg p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h5 className="font-medium">{preset.name}</h5>
+                    {preset.apiKeysURL && (
+                      <button
+                        type="button"
+                        className="text-xs text-muted-foreground underline hover:text-foreground"
+                        onClick={() => window.open(preset.apiKeysURL, '_blank')}
+                      >
+                        Get API key
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    {!preset.nostr && (
+                      <Input
+                        placeholder="Enter your API key"
+                        type="password"
+                        className="flex-1"
+                        value={presetApiKeys[preset.id] || ''}
+                        onChange={(e) => setPresetApiKeys(prev => ({
+                          ...prev,
+                          [preset.id]: e.target.value,
+                        }))}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && presetApiKeys[preset.id]?.trim()) {
+                            handleAddPresetProvider(preset);
+                          }
+                        }}
+                      />
+                    )}
+                    <Button
+                      onClick={() => handleAddPresetProvider(preset)}
+                      disabled={!!preset.apiKeysURL && !presetApiKeys[preset.id]?.trim()}
+                      size="sm"
+                    >
+                      Add
+                    </Button>
+                  </div>
+                </div>
+              ))}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        )}
+
+        {availablePresets.length > 0 && <Separator />}
+
+        {/* Custom Provider */}
+        <div className="space-y-3">
+          <h4 className="text-sm font-medium">Add Custom Provider</h4>
+          <div className="border rounded-lg p-4 space-y-3">
+            <div className="grid gap-2">
+              <Label htmlFor="custom-name">Provider Name</Label>
+              <Input
+                id="custom-name"
+                placeholder="e.g., my-custom-api"
+                value={customProviderName}
+                onChange={(e) => setCustomProviderName(e.target.value)}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="custom-baseurl">Base URL</Label>
+              <Input
+                id="custom-baseurl"
+                placeholder="https://api.example.com/v1"
+                value={customBaseURL}
+                onChange={(e) => setCustomBaseURL(e.target.value)}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="custom-auth">Authentication</Label>
+              <Select
+                value={customAuthMethod}
+                onValueChange={(value: 'api-key' | 'nostr') => {
+                  setCustomAuthMethod(value);
+                  if (value === 'nostr') {
+                    setCustomApiKey(''); // Clear API key when switching to Nostr auth
+                  }
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="api-key">API Key</SelectItem>
+                  <SelectItem value="nostr">Nostr</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {customAuthMethod === 'api-key' && (
+              <div className="grid gap-2">
+                <Label htmlFor="custom-apikey">API Key</Label>
+                <Input
+                  id="custom-apikey"
+                  type="password"
+                  placeholder="Enter your API key (optional)"
+                  value={customApiKey}
+                  onChange={(e) => setCustomApiKey(e.target.value)}
+                />
+              </div>
+            )}
+            <Button
+              onClick={handleAddCustomProvider}
+              disabled={
+                !customProviderName.trim() ||
+                !customBaseURL.trim() ||
+                customProviderName.trim() in settings.providers
+              }
+              size="sm"
+              className="gap-2"
+            >
+              <Check className="h-4 w-4" />
+              Add Custom Provider
+            </Button>
+            {customProviderName.trim() in settings.providers && (
+              <p className="text-sm text-destructive">
+                Provider with this name already exists
+              </p>
+            )}
+          </div>
+        </div>
       </div>
-    </AppLayout>
+    </div>
   );
 }
 

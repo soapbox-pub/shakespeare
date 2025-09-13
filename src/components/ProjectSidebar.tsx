@@ -1,9 +1,9 @@
 import React, { useState, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Folder, GitBranch, MoreVertical, Settings, Loader2 } from 'lucide-react';
+import { Plus, Folder, GitBranch, MoreVertical, Settings, Loader2, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { LoginArea } from '@/components/auth/LoginArea';
 import { StarButton } from '@/components/StarButton';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
@@ -147,13 +147,6 @@ export function ProjectSidebar({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
               <DropdownMenuItem
-                onClick={() => navigate('/clone')}
-                className="flex items-center gap-2 w-full"
-              >
-                <GitBranch className="h-4 w-4" />
-                Import Repository
-              </DropdownMenuItem>
-              <DropdownMenuItem
                 onClick={() => navigate('/settings')}
                 className="flex items-center gap-2 w-full"
               >
@@ -169,14 +162,42 @@ export function ProjectSidebar({
       <div className="flex-1 overflow-y-auto">
         <div className="p-2">
           <div className="mb-2">
-            <Button
-              size="sm"
-              className="w-full bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90"
-              onClick={handleNewProject}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              New Project
-            </Button>
+            <div className="relative rounded-md bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 transition-all duration-200">
+              <div className="flex">
+                <button
+                  onClick={handleNewProject}
+                  className="flex-1 flex items-center justify-center px-3 py-2 text-sm font-medium text-primary-foreground rounded-l-md hover:bg-white/10 transition-colors"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  New Project
+                </button>
+                <div className="w-px bg-white/20" />
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="px-2 py-2 text-primary-foreground hover:bg-white/10 rounded-r-md transition-colors">
+                      <ChevronDown className="h-4 w-4" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48">
+                    <DropdownMenuItem
+                      onClick={handleNewProject}
+                      className="flex items-center gap-2 w-full"
+                    >
+                      <Plus className="h-4 w-4" />
+                      New Project
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={() => navigate('/clone')}
+                      className="flex items-center gap-2 w-full"
+                    >
+                      <GitBranch className="h-4 w-4" />
+                      Import Repository
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
           </div>
 
           {isLoading ? (

@@ -1,12 +1,11 @@
-import React, { useState, memo } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Folder, GitBranch, Settings, Loader2, ChevronDown } from 'lucide-react';
+import { Plus, Folder, GitBranch, Settings, Loader2, ChevronDown, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { LoginArea } from '@/components/auth/LoginArea';
-import { StarButton } from '@/components/StarButton';
-import { useProjectsManager } from '@/hooks/useProjectsManager';
+import { useProjects } from '@/hooks/useProjects';
 import { useProjectSessionStatus } from '@/hooks/useProjectSessionStatus';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import type { Project } from '@/lib/ProjectsManager';
@@ -16,9 +15,10 @@ interface ProjectItemProps {
   project: Project;
   isSelected: boolean;
   onSelect: (project: Project) => void;
+  isFavorite?: boolean;
 }
 
-const ProjectItem = memo(({ project, isSelected, onSelect }: ProjectItemProps) => {
+const ProjectItem: React.FC<ProjectItemProps> = ({ project, isSelected, onSelect, isFavorite }) => {
   const navigate = useNavigate();
   const { hasRunningSessions } = useProjectSessionStatus(project.id);
 
@@ -54,21 +54,20 @@ const ProjectItem = memo(({ project, isSelected, onSelect }: ProjectItemProps) =
               </h3>
             </div>
 
-            {/* Star Button */}
-            <div className="flex-shrink-0 relative -mr-2">
-              <StarButton
-                projectId={project.id}
-                projectName={project.name}
-                showToast={false}
-                className="h-6 w-6 hover:bg-primary/20"
-              />
-            </div>
+            {/* Star indicator - only shown when favorited */}
+            {isFavorite && (
+              <div className="flex-shrink-0 relative -mr-2">
+                <div className="h-6 w-6 flex items-center justify-center">
+                  <Star className="h-4 w-4 text-yellow-500 fill-current" />
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
     </div>
   );
-});
+};
 
 ProjectItem.displayName = 'ProjectItem';
 
@@ -83,46 +82,19 @@ export function ProjectSidebar({
   onSelectProject,
   className
 }: ProjectSidebarProps) {
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { data: projects = [], isLoading, error } = useProjects();
   const [favorites] = useLocalStorage<string[]>('project-favorites', []);
-  const projectsManager = useProjectsManager();
+
   const navigate = useNavigate();
-
-  // Load projects on mount
-  React.useEffect(() => {
-    const loadProjects = async () => {
-      try {
-        await projectsManager.init();
-        const projectList = await projectsManager.getProjects();
-        setProjects(projectList);
-      } catch (error) {
-        console.error('Failed to load projects:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadProjects();
-  }, [projectsManager]);
 
   const handleNewProject = () => {
     onSelectProject(null);
     navigate('/');
   };
 
-  const isFavorite = (projectId: string) => favorites.includes(projectId);
-
-  // Sort projects: favorites first, then by lastModified (newest first)
-  const sortedProjects = projects.sort((a, b) => {
-    const aIsFavorite = isFavorite(a.id);
-    const bIsFavorite = isFavorite(b.id);
-
-    if (aIsFavorite && !bIsFavorite) return -1;
-    if (!aIsFavorite && bIsFavorite) return 1;
-
-    return b.lastModified.getTime() - a.lastModified.getTime();
-  });
+  if (error) {
+    console.error('Failed to load projects:', error);
+  }
 
   return (
     <div className={cn("flex flex-col h-full bg-gradient-to-b from-sidebar to-sidebar/95", className)}>
@@ -203,14 +175,15 @@ export function ProjectSidebar({
             </div>
           ) : (
             <div className="space-y-1">
-              {sortedProjects.map((project) => (
-                  <ProjectItem
-                    key={project.id}
-                    project={project}
-                    isSelected={selectedProject?.id === project.id}
-                    onSelect={onSelectProject}
-                  />
-                ))}
+              {projects.map((project) => (
+                <ProjectItem
+                  key={project.id}
+                  project={project}
+                  isSelected={selectedProject?.id === project.id}
+                  onSelect={onSelectProject}
+                  isFavorite={favorites.includes(project.id)}
+                />
+              ))}
             </div>
           )}
         </div>

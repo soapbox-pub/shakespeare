@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/button';
 import { Star } from 'lucide-react';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useToast } from '@/hooks/useToast';
+import { useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 
 interface StarButtonProps {
@@ -23,17 +24,21 @@ export function StarButton({
 }: StarButtonProps) {
   const [favorites, setFavorites] = useLocalStorage<string[]>('project-favorites', []);
   const { toast } = useToast();
-  
+  const queryClient = useQueryClient();
+
   const isFavorite = favorites.includes(projectId);
 
   const handleToggleFavorite = (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent triggering parent click events
-    
+
     const newFavorites = isFavorite
       ? favorites.filter(id => id !== projectId)
       : [...favorites, projectId];
 
     setFavorites(newFavorites);
+
+    // Invalidate the projects query to trigger a refetch with new sorting
+    queryClient.invalidateQueries({ queryKey: ['projects'] });
 
     if (showToast) {
       toast({
@@ -54,11 +59,11 @@ export function StarButton({
       )}
       aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
     >
-      <Star 
+      <Star
         className={cn(
           "h-4 w-4",
           isFavorite ? "text-yellow-500 fill-current" : "text-muted-foreground hover:text-yellow-500"
-        )} 
+        )}
       />
     </Button>
   );

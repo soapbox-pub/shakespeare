@@ -56,9 +56,9 @@ const fs = new LightningFSAdapter(lightningFS.promises);
 export function App() {
   return (
     <UnheadProvider head={head}>
-      <AppProvider storageKey="nostr:app-config" defaultConfig={defaultConfig} presetRelays={presetRelays}>
-        <FSProvider fs={fs}>
-          <QueryClientProvider client={queryClient}>
+      <QueryClientProvider client={queryClient}>
+        <AppProvider storageKey="nostr:app-config" defaultConfig={defaultConfig} presetRelays={presetRelays}>
+          <FSProvider fs={fs}>
               <NostrLoginProvider storageKey='nostr:login'>
                 <NostrProvider>
                   <AISettingsProvider>
@@ -75,9 +75,9 @@ export function App() {
                   </AISettingsProvider>
                 </NostrProvider>
               </NostrLoginProvider>
-            </QueryClientProvider>
-        </FSProvider>
-      </AppProvider>
+          </FSProvider>
+        </AppProvider>
+      </QueryClientProvider>
     </UnheadProvider>
   );
 }

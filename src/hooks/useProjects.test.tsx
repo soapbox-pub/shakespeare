@@ -1,8 +1,25 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
-import { TestApp } from '@/test/TestApp';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import React, { type ReactNode } from 'react';
 import { useProjects } from './useProjects';
 import type { Project } from '@/lib/ProjectsManager';
+
+// Create a test wrapper that provides a fresh QueryClient for each test
+function createTestWrapper() {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false },
+    },
+  });
+
+  return ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={queryClient}>
+      {children}
+    </QueryClientProvider>
+  );
+}
 
 // Mock the useProjectsManager hook
 vi.mock('./useProjectsManager', () => ({
@@ -28,27 +45,26 @@ vi.mock('./useProjectsManager', () => ({
   }),
 }));
 
-// Mock localStorage for favorites
-const mockLocalStorage = {
-  getItem: vi.fn(),
-  setItem: vi.fn(),
-  removeItem: vi.fn(),
-  clear: vi.fn(),
-};
-
-Object.defineProperty(window, 'localStorage', {
-  value: mockLocalStorage,
-});
+// Mock the useLocalStorage hook
+let mockFavorites: string[] = [];
+vi.mock('./useLocalStorage', () => ({
+  useLocalStorage: vi.fn((key: string, defaultValue: unknown) => {
+    if (key === 'project-favorites') {
+      return [mockFavorites, vi.fn()];
+    }
+    return [defaultValue, vi.fn()];
+  }),
+}));
 
 describe('useProjects', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockLocalStorage.getItem.mockReturnValue('[]');
+    mockFavorites = [];
   });
 
   it('should load and return projects', async () => {
     const { result } = renderHook(() => useProjects(), {
-      wrapper: TestApp,
+      wrapper: createTestWrapper(),
     });
 
     await waitFor(() => {
@@ -60,11 +76,11 @@ describe('useProjects', () => {
   });
 
   it('should sort favorites first, then by lastModified', async () => {
-    // Mock favorites to include project-1
-    mockLocalStorage.getItem.mockReturnValue('["project-1"]');
+    // Set favorites to include project-1
+    mockFavorites = ['project-1'];
 
     const { result } = renderHook(() => useProjects(), {
-      wrapper: TestApp,
+      wrapper: createTestWrapper(),
     });
 
     await waitFor(() => {
@@ -78,11 +94,11 @@ describe('useProjects', () => {
   });
 
   it('should handle multiple favorites correctly', async () => {
-    // Mock favorites to include project-1 and project-2
-    mockLocalStorage.getItem.mockReturnValue('["project-1", "project-2"]');
+    // Set favorites to include project-1 and project-2
+    mockFavorites = ['project-1', 'project-2'];
 
     const { result } = renderHook(() => useProjects(), {
-      wrapper: TestApp,
+      wrapper: createTestWrapper(),
     });
 
     await waitFor(() => {

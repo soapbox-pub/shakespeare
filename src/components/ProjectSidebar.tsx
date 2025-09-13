@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Folder, GitBranch, Settings, Loader2, ChevronDown, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,7 @@ import { useProjectSessionStatus } from '@/hooks/useProjectSessionStatus';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import type { Project } from '@/lib/ProjectsManager';
 import { cn } from '@/lib/utils';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface ProjectItemProps {
   project: Project;
@@ -56,7 +57,7 @@ const ProjectItem: React.FC<ProjectItemProps> = ({ project, isSelected, onSelect
 
             {/* Star indicator - only shown when favorited */}
             {isFavorite && (
-              <div className="flex-shrink-0 relative -mr-2">
+              <div className="flex-shrink-0 relative -mr-2 pointer-events-none">
                 <div className="h-6 w-6 flex items-center justify-center">
                   <Star className="h-4 w-4 text-yellow-500 fill-current" />
                 </div>
@@ -82,6 +83,7 @@ export function ProjectSidebar({
   onSelectProject,
   className
 }: ProjectSidebarProps) {
+  const queryClient = useQueryClient();
   const { data: projects = [], isLoading, error } = useProjects();
   const [favorites] = useLocalStorage<string[]>('project-favorites', []);
 
@@ -91,6 +93,10 @@ export function ProjectSidebar({
     onSelectProject(null);
     navigate('/');
   };
+
+  useEffect(() => {
+    queryClient.invalidateQueries({ queryKey: ['projects'] });
+  }, [favorites, queryClient]);
 
   if (error) {
     console.error('Failed to load projects:', error);
@@ -114,7 +120,7 @@ export function ProjectSidebar({
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 w-8 p-0 hover:bg-primary/10"
+              className="h-8 w-8 p-0 hover:bg-primary/10 -mr-2"
               onClick={() => navigate('/settings')}
             >
               <Settings className="h-4 w-4 text-primary/60 hover:text-primary" />

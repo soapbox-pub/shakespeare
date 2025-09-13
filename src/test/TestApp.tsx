@@ -38,9 +38,9 @@ export function TestApp({ children }: TestAppProps) {
 
   return (
     <UnheadProvider head={head}>
-      <AppProvider storageKey='test-app-config' defaultConfig={defaultConfig}>
-        <FSProvider fs={fs}>
-          <QueryClientProvider client={queryClient}>
+      <QueryClientProvider client={queryClient}>
+        <AppProvider storageKey='test-app-config' defaultConfig={defaultConfig}>
+          <FSProvider fs={fs}>
             <AISettingsProvider>
               <GitSettingsProvider>
                 <NostrLoginProvider storageKey='test-login'>
@@ -54,9 +54,9 @@ export function TestApp({ children }: TestAppProps) {
                 </NostrLoginProvider>
               </GitSettingsProvider>
             </AISettingsProvider>
-          </QueryClientProvider>
-        </FSProvider>
-      </AppProvider>
+          </FSProvider>
+        </AppProvider>
+      </QueryClientProvider>
     </UnheadProvider>
   );
 }

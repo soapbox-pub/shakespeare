@@ -24,6 +24,5 @@ export function useProjects() {
         return b.lastModified.getTime() - a.lastModified.getTime();
       });
     },
-    staleTime: 1000 * 60 * 5, // 5 minutes
   });
 }

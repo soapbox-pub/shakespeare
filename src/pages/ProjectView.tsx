@@ -187,8 +187,8 @@ export function ProjectView() {
   if (isMobile) {
     return (
       <div className="h-dvh flex flex-col bg-background">
-        <header className="border-b bg-gradient-to-r from-primary/10 via-accent/5 to-primary/10 backdrop-blur supports-[backdrop-filter]:bg-gradient-to-r supports-[backdrop-filter]:from-primary/10 supports-[backdrop-filter]:via-accent/5 supports-[backdrop-filter]:to-primary/10 px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center space-x-2">
+        <header className="overflow-hidden border-b bg-gradient-to-r from-primary/10 via-accent/5 to-primary/10 backdrop-blur supports-[backdrop-filter]:bg-gradient-to-r supports-[backdrop-filter]:from-primary/10 supports-[backdrop-filter]:via-accent/5 supports-[backdrop-filter]:to-primary/10 px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center space-x-2 overflow-hidden">
             <Button
               variant="ghost"
               size="sm"
@@ -196,11 +196,11 @@ export function ProjectView() {
             >
               <Menu className="h-4 w-4" />
             </Button>
-            <div className="min-w-0 flex-1">
+            <div className="flex min-w-0 flex-1">
               {project ? (
                 <Button
                   variant="ghost"
-                  className="p-0 h-auto text-sm font-semibold truncate hover:bg-transparent hover:text-primary"
+                  className="block p-0 h-auto text-sm font-semibold truncate hover:bg-transparent hover:text-primary"
                   onClick={() => setIsProjectInfoOpen(true)}
                 >
                   {project.name}
@@ -399,20 +399,18 @@ export function ProjectView() {
                     </div>
 
                     {/* Center - Project title */}
-                    <div className="flex-1 min-w-0 ml-2 px-4">
-                      <div className="flex items-center justify-center md:justify-start">
-                        {project ? (
-                          <Button
-                            variant="ghost"
-                            className="p-0 h-auto font-semibold text-lg truncate hover:bg-transparent hover:text-primary"
-                            onClick={() => setIsProjectInfoOpen(true)}
-                          >
-                            {project.name}
-                          </Button>
-                        ) : (
-                          <Skeleton className="h-6 w-40" />
-                        )}
-                      </div>
+                    <div className="flex flex-1 min-w-0 px-4 truncate">
+                      {project ? (
+                        <Button
+                          variant="ghost"
+                          className="block p-0 h-auto font-semibold text-lg truncate hover:bg-transparent hover:text-primary"
+                          onClick={() => setIsProjectInfoOpen(true)}
+                        >
+                          {project.name}
+                        </Button>
+                      ) : (
+                        <Skeleton className="h-6 w-40" />
+                      )}
                     </div>
 
                     {/* Right side - Star and Actions Menu */}

@@ -79,7 +79,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   });
 
   const [searchParams, setSearchParams] = useSearchParams();
-  const { fs: browserFS } = useFS();
+  const { fs } = useFS();
   const { user, metadata } = useCurrentUser();
   const { models } = useProviderModels();
 
@@ -87,14 +87,14 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   const cwd = `/projects/${projectId}`;
   const customTools = useMemo(() => {
     const baseTools = {
-      git_commit: new GitCommitTool(browserFS, cwd),
-      text_editor_view: new TextEditorViewTool(browserFS, cwd),
-      text_editor_write: new TextEditorWriteTool(browserFS, cwd),
-      text_editor_str_replace: new TextEditorStrReplaceTool(browserFS, cwd),
-      npm_add_package: new NpmAddPackageTool(browserFS, cwd),
-      npm_remove_package: new NpmRemovePackageTool(browserFS, cwd),
-      build_project: new BuildProjectTool(browserFS, cwd),
-      typecheck: new TypecheckTool(browserFS, cwd),
+      git_commit: new GitCommitTool(fs, cwd),
+      text_editor_view: new TextEditorViewTool(fs, cwd),
+      text_editor_write: new TextEditorWriteTool(fs, cwd),
+      text_editor_str_replace: new TextEditorStrReplaceTool(fs, cwd),
+      npm_add_package: new NpmAddPackageTool(fs, cwd),
+      npm_remove_package: new NpmRemovePackageTool(fs, cwd),
+      build_project: new BuildProjectTool(fs, cwd),
+      typecheck: new TypecheckTool(fs, cwd),
       nostr_read_nip: new NostrReadNipTool(),
       nostr_fetch_event: new NostrFetchEventTool(),
       nostr_read_kind: new NostrReadKindTool(),
@@ -102,19 +102,19 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
       nostr_read_protocol: new NostrReadProtocolTool(),
       nostr_read_nips_index: new NostrReadNipsIndexTool(),
       nostr_generate_kind: new NostrGenerateKindTool(),
-      shell: new ShellTool(browserFS, cwd),
+      shell: new ShellTool(fs, cwd),
     };
 
     // Add deploy tool only if user is logged in
     if (user && user.signer) {
       return {
         ...baseTools,
-        deploy_project: new DeployProjectTool(browserFS, cwd, user.signer, projectId),
+        deploy_project: new DeployProjectTool(fs, cwd, user.signer, projectId),
       };
     }
 
     return baseTools;
-  }, [browserFS, cwd, user, projectId]);
+  }, [fs, cwd, user, projectId]);
 
   // Convert tools to OpenAI format
   const tools = useMemo(() => {
@@ -147,7 +147,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   useEffect(() => {
     makeSystemPrompt({
       cwd,
-      fs: browserFS,
+      fs,
       mode: "agent",
       name: "Shakespeare",
       profession: "software extraordinaire",
@@ -155,7 +155,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
       user,
       metadata,
     }).then(setSystemPrompt)
-  }, [browserFS, cwd, tools, user, metadata]);
+  }, [fs, cwd, tools, user, metadata]);
 
   const {
     messages,

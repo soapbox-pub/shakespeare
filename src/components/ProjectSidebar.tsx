@@ -58,7 +58,7 @@ const ProjectItem: React.FC<ProjectItemProps> = ({ project, isSelected, onSelect
             {/* Star indicator - only shown when favorited */}
             {isFavorite && (
               <div className="flex-shrink-0 relative -mr-2 pointer-events-none">
-                <div className="h-6 w-6 flex items-center justify-center">
+                <div className="flex items-center justify-center">
                   <Star className="h-4 w-4 text-yellow-500 fill-current" />
                 </div>
               </div>

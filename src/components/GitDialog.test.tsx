@@ -43,6 +43,19 @@ vi.mock('@/hooks/useToast', () => ({
   })),
 }));
 
+vi.mock('@/hooks/useGitSettings', () => ({
+  useGitSettings: vi.fn(() => ({
+    settings: {
+      credentials: {
+        'https://github.com': {
+          username: 'git',
+          password: 'github-token',
+        },
+      },
+    },
+  })),
+}));
+
 describe('GitDialog', () => {
   beforeEach(() => {
     mockUseGitStatus.mockReturnValue({
@@ -64,7 +77,7 @@ describe('GitDialog', () => {
     expect(screen.getByText('Repository Information')).toBeInTheDocument();
     expect(screen.getByText('main')).toBeInTheDocument();
     expect(screen.getByText('5')).toBeInTheDocument();
-    expect(screen.getByText('origin')).toBeInTheDocument();
+    expect(screen.getAllByText('origin')).toHaveLength(2); // Appears in remotes and credentials sections
   });
 
   it('shows sync status', () => {
@@ -130,5 +143,19 @@ describe('GitDialog', () => {
     const pushButton = screen.getByText('Push');
     expect(pushButton).toBeInTheDocument();
     expect(pushButton.closest('button')).toBeDisabled();
+  });
+
+  it('shows configured credentials status', () => {
+    render(
+      <TestApp>
+        <GitDialog projectId="test-project" open={true} onOpenChange={() => {}}>
+          <button>Open Git Dialog</button>
+        </GitDialog>
+      </TestApp>
+    );
+
+    expect(screen.getByText('Authentication')).toBeInTheDocument();
+    expect(screen.getByText('github.com')).toBeInTheDocument();
+    expect(screen.getByText('Configured')).toBeInTheDocument();
   });
 });

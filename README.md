@@ -46,6 +46,31 @@ The AI assistant can:
 3. **File Explorer**: Navigate your project files in the code view
 4. **File Editor**: Edit files with syntax highlighting and save changes
 
+## Git Integration
+
+Shakespeare includes full Git functionality with credential management:
+
+### Features
+- **Version Control**: Full Git repository support with commit history and branch management
+- **Global Credentials**: Configure Git credentials once and use them across all projects
+- **Automatic Matching**: Credentials are automatically matched to repository origins
+- **Popular Providers**: Built-in support for GitHub, GitLab, and custom Git providers
+- **Secure Storage**: Credentials are stored locally in your browser using IndexedDB
+
+### Setting Up Git Credentials
+
+1. **Access Git Settings**: Click the gear icon in any Git dialog or use the Git Settings option
+2. **Add Provider**: Choose from GitHub, GitLab, or add a custom Git provider
+3. **Enter Token**: Use your username and personal access token for authentication
+4. **Automatic Usage**: Credentials are automatically used for push/pull operations in matching repositories
+
+### Repository Operations
+
+- **Push/Pull**: Sync changes with remote repositories using configured credentials
+- **Status Monitoring**: Real-time Git status with file changes and sync information
+- **Commit History**: View commit history and repository information
+- **Branch Management**: Work with different branches and track remote changes
+
 ## Development
 
 Built with:

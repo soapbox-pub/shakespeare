@@ -17,8 +17,7 @@ import {
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   GitBranch,
   Upload,
@@ -32,13 +31,16 @@ import {
   Minus,
   Edit,
   RefreshCw,
-  Eye,
-  EyeOff,
+  Settings,
+  AlertTriangle,
 } from 'lucide-react';
 import { useGitStatus } from '@/hooks/useGitStatus';
+import { useGitSettings } from '@/hooks/useGitSettings';
 import { useFS } from '@/hooks/useFS';
 import { useToast } from '@/hooks/useToast';
 import { cn } from '@/lib/utils';
+import { findCredentialsForRepo, getOriginDisplayName } from '@/lib/gitCredentials';
+import { GitSettingsDialog } from './GitSettingsDialog';
 import git from 'isomorphic-git';
 import http from 'isomorphic-git/http/web';
 
@@ -54,15 +56,23 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
   const [isPulling, setIsPulling] = useState(false);
   const [pushResult, setPushResult] = useState<string | null>(null);
   const [pullResult, setPullResult] = useState<string | null>(null);
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  const [showGitSettings, setShowGitSettings] = useState(false);
 
   const { data: gitStatus, refetch: refetchGitStatus } = useGitStatus(projectId);
+  const { settings } = useGitSettings();
   const { fs } = useFS();
   const { toast } = useToast();
 
   const projectPath = `/projects/${projectId}`;
+
+  // Get credentials for the current repository
+  const getCredentialsForCurrentRepo = () => {
+    if (!gitStatus?.remotes.length) return null;
+    const remoteUrl = gitStatus.remotes[0].url; // Use first remote (usually 'origin')
+    return findCredentialsForRepo(remoteUrl, settings.credentials);
+  };
+
+  const currentCredentials = getCredentialsForCurrentRepo();
 
   const handlePush = async () => {
     if (!gitStatus?.isGitRepo || !gitStatus.currentBranch) {
@@ -98,9 +108,12 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
     try {
       const remote = gitStatus.remotes[0]; // Use first remote (usually 'origin')
 
-      // Prepare authentication if username and password are provided
-      const authOptions = username && password ? {
-        onAuth: () => ({ username, password }),
+      // Prepare authentication if credentials are available
+      const authOptions = currentCredentials ? {
+        onAuth: () => ({
+          username: currentCredentials.username,
+          password: currentCredentials.password
+        }),
       } : {};
 
       await git.push({
@@ -159,9 +172,12 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
     try {
       const remote = gitStatus.remotes[0]; // Use first remote (usually 'origin')
 
-      // Prepare authentication if username and password are provided
-      const authOptions = username && password ? {
-        onAuth: () => ({ username, password }),
+      // Prepare authentication if credentials are available
+      const authOptions = currentCredentials ? {
+        onAuth: () => ({
+          username: currentCredentials.username,
+          password: currentCredentials.password
+        }),
       } : {};
 
       await git.pull({
@@ -357,60 +373,71 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
               </CardContent>
             </Card>
 
-            {/* Authentication */}
+            {/* Credentials Status */}
             {gitStatus?.isGitRepo && gitStatus.remotes.length > 0 && (
               <Card>
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-sm">Authentication</CardTitle>
+                  <CardTitle className="text-sm flex items-center justify-between">
+                    Authentication
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowGitSettings(true)}
+                      className="h-7 gap-1 text-xs"
+                    >
+                      <Settings className="h-3 w-3" />
+                      Settings
+                    </Button>
+                  </CardTitle>
                   <CardDescription>
-                    Enter credentials for push/pull operations (optional)
+                    Credentials for push/pull operations
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="git-username">Username</Label>
-                      <Input
-                        id="git-username"
-                        type="text"
-                        placeholder="Git username"
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
-                        disabled={isPushing || isPulling}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="git-password">Password / Token</Label>
-                      <div className="relative">
-                        <Input
-                          id="git-password"
-                          type={showPassword ? "text" : "password"}
-                          placeholder="Git password or personal access token"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          disabled={isPushing || isPulling}
-                          className="pr-10"
-                        />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                          onClick={() => setShowPassword(!showPassword)}
-                          disabled={isPushing || isPulling}
-                        >
-                          {showPassword ? (
-                            <EyeOff className="h-4 w-4" />
+                <CardContent className="space-y-3">
+                  {gitStatus.remotes.map((remote) => {
+                    const credentials = findCredentialsForRepo(remote.url, settings.credentials);
+                    const originDisplayName = getOriginDisplayName(remote.url);
+
+                    return (
+                      <div key={remote.name} className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline">{remote.name}</Badge>
+                            <span className="text-sm text-muted-foreground">
+                              {originDisplayName}
+                            </span>
+                          </div>
+                          {credentials ? (
+                            <div className="flex items-center gap-1 text-green-600">
+                              <CheckCircle className="h-3 w-3" />
+                              <span className="text-xs">Configured</span>
+                            </div>
                           ) : (
-                            <Eye className="h-4 w-4" />
+                            <div className="flex items-center gap-1 text-amber-600">
+                              <AlertTriangle className="h-3 w-3" />
+                              <span className="text-xs">No credentials</span>
+                            </div>
                           )}
-                        </Button>
+                        </div>
+
+                        {!credentials && (
+                          <Alert className="border-amber-200 bg-amber-50">
+                            <AlertTriangle className="h-4 w-4" />
+                            <AlertDescription className="text-sm">
+                              No credentials configured for {originDisplayName}.
+                              Push/pull operations may fail for private repositories.{' '}
+                              <button
+                                onClick={() => setShowGitSettings(true)}
+                                className="underline hover:no-underline font-medium"
+                              >
+                                Configure credentials
+                              </button>
+                            </AlertDescription>
+                          </Alert>
+                        )}
                       </div>
-                    </div>
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    Leave empty for public repositories or if using SSH keys. For private repositories, use your username and personal access token.
-                  </div>
+                    );
+                  })}
                 </CardContent>
               </Card>
             )}
@@ -529,6 +556,12 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
             )}
           </div>
         </ScrollArea>
+
+        {/* Git Settings Dialog */}
+        <GitSettingsDialog
+          open={showGitSettings}
+          onOpenChange={setShowGitSettings}
+        />
       </DialogContent>
     </Dialog>
   );

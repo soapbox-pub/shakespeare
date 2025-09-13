@@ -8,6 +8,7 @@ import { ProjectSidebar } from '@/components/ProjectSidebar';
 import { ProjectInfoDialog } from '@/components/ProjectInfoDialog';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowLeft, MessageSquare, Eye, Code, Menu, Columns2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { ActionsMenu } from '@/components/ActionsMenu';
@@ -175,15 +176,7 @@ export function ProjectView() {
     navigate('/');
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-
-  if (!project) {
+  if (!project && !isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
@@ -210,34 +203,47 @@ export function ProjectView() {
               <Menu className="h-4 w-4" />
             </Button>
             <div className="min-w-0 flex-1">
-              <Button
-                variant="ghost"
-                className="p-0 h-auto text-sm font-semibold truncate hover:bg-transparent hover:text-primary"
-                onClick={() => setIsProjectInfoOpen(true)}
-              >
-                {project.name}
-              </Button>
+              {project ? (
+                <Button
+                  variant="ghost"
+                  className="p-0 h-auto text-sm font-semibold truncate hover:bg-transparent hover:text-primary"
+                  onClick={() => setIsProjectInfoOpen(true)}
+                >
+                  {project.name}
+                </Button>
+              ) : (
+                <Skeleton className="h-5 w-32" />
+              )}
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <StarButton
-              projectId={project.id}
-              projectName={project.name}
-              className="h-8 w-8"
-            />
-            <ActionsMenu
-              projectId={project.id}
-              projectName={project.name}
-              onNewChat={handleNewChat}
-              onBuild={runBuild}
-              onDeploy={runDeploy}
-              isLoading={isAILoading}
-              isBuildLoading={isBuildLoading}
-              isDeployLoading={isDeployLoading}
-              onFirstInteraction={handleFirstInteraction}
-              onProjectDeleted={handleProjectDeleted}
-            />
+            {project ? (
+              <>
+                <StarButton
+                  projectId={project.id}
+                  projectName={project.name}
+                  className="h-8 w-8"
+                />
+                <ActionsMenu
+                  projectId={project.id}
+                  projectName={project.name}
+                  onNewChat={handleNewChat}
+                  onBuild={runBuild}
+                  onDeploy={runDeploy}
+                  isLoading={isAILoading}
+                  isBuildLoading={isBuildLoading}
+                  isDeployLoading={isDeployLoading}
+                  onFirstInteraction={handleFirstInteraction}
+                  onProjectDeleted={handleProjectDeleted}
+                />
+              </>
+            ) : (
+              <>
+                <Skeleton className="h-8 w-8 rounded" />
+                <Skeleton className="h-8 w-8 rounded" />
+              </>
+            )}
           </div>
         </header>
 
@@ -270,24 +276,40 @@ export function ProjectView() {
 
         <div className="flex-1 overflow-hidden">
           {mobileView === 'chat' && (
-            <ChatPane
-              ref={chatPaneRef}
-              projectId={project.id}
-              onNewChat={handleNewChat}
-              onBuild={runBuild}
-              onDeploy={runDeploy}
-              onFirstInteraction={handleFirstInteraction}
-              onLoadingChange={handleAILoadingChange}
-              isLoading={isAILoading}
-              isBuildLoading={isBuildLoading}
-              isDeployLoading={isDeployLoading}
-            />
+            project ? (
+              <ChatPane
+                ref={chatPaneRef}
+                projectId={project.id}
+                onNewChat={handleNewChat}
+                onBuild={runBuild}
+                onDeploy={runDeploy}
+                onFirstInteraction={handleFirstInteraction}
+                onLoadingChange={handleAILoadingChange}
+                isLoading={isAILoading}
+                isBuildLoading={isBuildLoading}
+                isDeployLoading={isDeployLoading}
+              />
+            ) : (
+              <div className="h-full p-4 space-y-4">
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-8 w-3/4" />
+                <Skeleton className="h-8 w-1/2" />
+                <Skeleton className="h-32 w-full" />
+              </div>
+            )
           )}
           {(mobileView === 'preview' || mobileView === 'code') && (
-            <PreviewPane
-              projectId={project.id}
-              activeTab={mobileView}
-            />
+            project ? (
+              <PreviewPane
+                projectId={project.id}
+                activeTab={mobileView}
+              />
+            ) : (
+              <div className="h-full p-4 space-y-4">
+                <Skeleton className="h-8 w-32" />
+                <Skeleton className="h-full w-full" />
+              </div>
+            )
           )}
         </div>
 
@@ -298,6 +320,7 @@ export function ProjectView() {
               size="sm"
               onClick={() => setMobileView('chat')}
               className="flex-1 rounded-none"
+              disabled={!project}
             >
               <MessageSquare className="h-4 w-4 mr-1" />
               Chat
@@ -307,6 +330,7 @@ export function ProjectView() {
               size="sm"
               onClick={() => setMobileView('preview')}
               className="flex-1 rounded-none"
+              disabled={!project}
             >
               <Eye className="h-4 w-4 mr-1" />
               Preview
@@ -316,10 +340,11 @@ export function ProjectView() {
               size="sm"
               onClick={() => setMobileView('code')}
               className="flex-1 rounded-none"
+              disabled={!project}
             >
               <Code className="h-4 w-4 mr-1" />
               Code
-              {mobileView !== 'code' && (
+              {mobileView !== 'code' && project && (
                 <GitStatusIndicator projectId={project.id} className="ml-1" />
               )}
             </Button>
@@ -327,11 +352,13 @@ export function ProjectView() {
         </div>
 
         {/* Project Info Dialog */}
-        <ProjectInfoDialog
-          project={project}
-          open={isProjectInfoOpen}
-          onOpenChange={setIsProjectInfoOpen}
-        />
+        {project && (
+          <ProjectInfoDialog
+            project={project}
+            open={isProjectInfoOpen}
+            onOpenChange={setIsProjectInfoOpen}
+          />
+        )}
       </div>
     );
   }
@@ -339,7 +366,7 @@ export function ProjectView() {
   return (
     <div className="h-screen flex bg-background">
       {/* Fixed Sidebar */}
-      <div className={`w-80 border-r bg-sidebar transition-all duration-300 ${isSidebarVisible ? 'block' : 'hidden'}`}>
+      <div className={`w-80 border-r bg-sidebar duration-300 ${isSidebarVisible ? 'block' : 'hidden'}`}>
         <ProjectSidebar
           selectedProject={project}
           onSelectProject={(selectedProject) => {
@@ -380,53 +407,75 @@ export function ProjectView() {
                     {/* Center - Project title */}
                     <div className="flex-1 min-w-0 ml-2 px-4">
                       <div className="flex items-center justify-center md:justify-start">
-                        <Button
-                          variant="ghost"
-                          className="p-0 h-auto font-semibold text-lg truncate hover:bg-transparent hover:text-primary"
-                          onClick={() => setIsProjectInfoOpen(true)}
-                        >
-                          {project.name}
-                        </Button>
+                        {project ? (
+                          <Button
+                            variant="ghost"
+                            className="p-0 h-auto font-semibold text-lg truncate hover:bg-transparent hover:text-primary"
+                            onClick={() => setIsProjectInfoOpen(true)}
+                          >
+                            {project.name}
+                          </Button>
+                        ) : (
+                          <Skeleton className="h-6 w-40" />
+                        )}
                       </div>
                     </div>
 
                     {/* Right side - Star and Actions Menu */}
                     <div className="flex items-center gap-2">
-                      <StarButton
-                        projectId={project.id}
-                        projectName={project.name}
-                        className="h-8 w-8"
-                      />
-                      <ActionsMenu
-                        projectId={project.id}
-                        projectName={project.name}
-                        onNewChat={handleNewChat}
-                        onBuild={runBuild}
-                        onDeploy={runDeploy}
-                        isLoading={isAILoading}
-                        isBuildLoading={isBuildLoading}
-                        isDeployLoading={isDeployLoading}
-                        onFirstInteraction={handleFirstInteraction}
-                        onProjectDeleted={handleProjectDeleted}
-                      />
+                      {project ? (
+                        <>
+                          <StarButton
+                            projectId={project.id}
+                            projectName={project.name}
+                            className="h-8 w-8"
+                          />
+                          <ActionsMenu
+                            projectId={project.id}
+                            projectName={project.name}
+                            onNewChat={handleNewChat}
+                            onBuild={runBuild}
+                            onDeploy={runDeploy}
+                            isLoading={isAILoading}
+                            isBuildLoading={isBuildLoading}
+                            isDeployLoading={isDeployLoading}
+                            onFirstInteraction={handleFirstInteraction}
+                            onProjectDeleted={handleProjectDeleted}
+                          />
+                        </>
+                      ) : (
+                        <>
+                          <Skeleton className="h-8 w-8 rounded" />
+                          <Skeleton className="h-8 w-8 rounded" />
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
 
                 {/* Chat Content */}
                 <div className="flex-1 overflow-hidden">
-                  <ChatPane
-                    ref={chatPaneRef}
-                    projectId={project.id}
-                    onNewChat={handleNewChat}
-                    onBuild={runBuild}
-                    onDeploy={runDeploy}
-                    onFirstInteraction={handleFirstInteraction}
-                    onLoadingChange={handleAILoadingChange}
-                    isLoading={isAILoading}
-                    isBuildLoading={isBuildLoading}
-                    isDeployLoading={isDeployLoading}
-                  />
+                  {project ? (
+                    <ChatPane
+                      ref={chatPaneRef}
+                      projectId={project.id}
+                      onNewChat={handleNewChat}
+                      onBuild={runBuild}
+                      onDeploy={runDeploy}
+                      onFirstInteraction={handleFirstInteraction}
+                      onLoadingChange={handleAILoadingChange}
+                      isLoading={isAILoading}
+                      isBuildLoading={isBuildLoading}
+                      isDeployLoading={isDeployLoading}
+                    />
+                  ) : (
+                    <div className="h-full p-4 space-y-4">
+                      <Skeleton className="h-12 w-full" />
+                      <Skeleton className="h-8 w-3/4" />
+                      <Skeleton className="h-8 w-1/2" />
+                      <Skeleton className="h-32 w-full" />
+                    </div>
+                  )}
                 </div>
               </div>
             </ResizablePanel>
@@ -445,6 +494,7 @@ export function ProjectView() {
                         variant={activeTab === 'preview' ? 'default' : 'ghost'}
                         size="sm"
                         onClick={() => setActiveTab('preview')}
+                        disabled={!project}
                       >
                         Preview
                       </Button>
@@ -453,9 +503,10 @@ export function ProjectView() {
                         size="sm"
                         onClick={() => setActiveTab('code')}
                         className="gap-2"
+                        disabled={!project}
                       >
                         Code
-                        {activeTab !== 'code' && (
+                        {activeTab !== 'code' && project && (
                           <GitStatusIndicator projectId={project.id} />
                         )}
                       </Button>
@@ -465,10 +516,17 @@ export function ProjectView() {
 
                 {/* Preview Content */}
                 <div className="flex-1 overflow-hidden">
-                  <PreviewPane
-                    projectId={project.id}
-                    activeTab={activeTab}
-                  />
+                  {project ? (
+                    <PreviewPane
+                      projectId={project.id}
+                      activeTab={activeTab}
+                    />
+                  ) : (
+                    <div className="h-full p-4 space-y-4">
+                      <Skeleton className="h-8 w-32" />
+                      <Skeleton className="h-full w-full" />
+                    </div>
+                  )}
                 </div>
               </div>
             </ResizablePanel>
@@ -477,11 +535,13 @@ export function ProjectView() {
       </div>
 
       {/* Project Info Dialog */}
-      <ProjectInfoDialog
-        project={project}
-        open={isProjectInfoOpen}
-        onOpenChange={setIsProjectInfoOpen}
-      />
+      {project && (
+        <ProjectInfoDialog
+          project={project}
+          open={isProjectInfoOpen}
+          onOpenChange={setIsProjectInfoOpen}
+        />
+      )}
     </div>
   );
 }

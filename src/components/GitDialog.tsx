@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -40,7 +41,7 @@ import { useFS } from '@/hooks/useFS';
 import { useToast } from '@/hooks/useToast';
 import { cn } from '@/lib/utils';
 import { findCredentialsForRepo, getOriginDisplayName } from '@/lib/gitCredentials';
-import { GitSettingsDialog } from './GitSettingsDialog';
+
 import git from 'isomorphic-git';
 import http from 'isomorphic-git/http/web';
 
@@ -56,7 +57,7 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
   const [isPulling, setIsPulling] = useState(false);
   const [pushResult, setPushResult] = useState<string | null>(null);
   const [pullResult, setPullResult] = useState<string | null>(null);
-  const [showGitSettings, setShowGitSettings] = useState(false);
+  const navigate = useNavigate();
 
   const { data: gitStatus, refetch: refetchGitStatus } = useGitStatus(projectId);
   const { settings } = useGitSettings();
@@ -382,7 +383,7 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => setShowGitSettings(true)}
+                      onClick={() => navigate('/settings/git')}
                       className="h-7 gap-1 text-xs"
                     >
                       <Settings className="h-3 w-3" />
@@ -427,7 +428,7 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
                               No credentials configured for {originDisplayName}.
                               Push/pull operations may fail for private repositories.{' '}
                               <button
-                                onClick={() => setShowGitSettings(true)}
+                                onClick={() => navigate('/settings/git')}
                                 className="underline hover:no-underline font-medium"
                               >
                                 Configure credentials
@@ -556,12 +557,6 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
             )}
           </div>
         </ScrollArea>
-
-        {/* Git Settings Dialog */}
-        <GitSettingsDialog
-          open={showGitSettings}
-          onOpenChange={setShowGitSettings}
-        />
       </DialogContent>
     </Dialog>
   );

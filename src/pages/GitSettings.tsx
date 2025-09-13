@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { GitBranch, Trash2, Check } from 'lucide-react';
+import { Check, GitBranch, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
@@ -9,6 +8,8 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useGitSettings } from '@/hooks/useGitSettings';
+import { AppLayout } from '@/components/AppLayout';
+import { useNavigate } from 'react-router-dom';
 import type { GitCredential } from '@/contexts/GitSettingsContext';
 
 interface PresetProvider {
@@ -36,30 +37,13 @@ const PRESET_PROVIDERS: PresetProvider[] = [
   },
 ];
 
-interface GitSettingsDialogProps {
-  open?: boolean;
-  onOpenChange?: (open: boolean) => void;
-}
-
-export function GitSettingsDialog({ open: controlledOpen, onOpenChange }: GitSettingsDialogProps = {}) {
-  const { settings, addCredential, removeCredential, updateCredential, isConfigured } = useGitSettings();
-  const [internalOpen, setInternalOpen] = useState(false);
-
-  // Use controlled or internal state
-  const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
-  const setOpen = onOpenChange || setInternalOpen;
+export function GitSettings() {
+  const { settings, addCredential, removeCredential, updateCredential } = useGitSettings();
+  const navigate = useNavigate();
   const [customOrigin, setCustomOrigin] = useState('');
   const [customUsername, setCustomUsername] = useState('');
   const [customPassword, setCustomPassword] = useState('');
   const [presetTokens, setPresetTokens] = useState<Record<string, string>>({});
-
-  const handleCancel = () => {
-    setCustomOrigin('');
-    setCustomUsername('');
-    setCustomPassword('');
-    setPresetTokens({});
-    setOpen(false);
-  };
 
   const handleAddPresetProvider = (preset: PresetProvider) => {
     const token = presetTokens[preset.id] as string | undefined;
@@ -111,28 +95,31 @@ export function GitSettingsDialog({ open: controlledOpen, onOpenChange }: GitSet
   const availablePresets = PRESET_PROVIDERS.filter(preset => !configuredOrigins.includes(preset.origin));
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      {/* Only show trigger if not controlled externally */}
-      {controlledOpen === undefined && (
-        <DialogTrigger asChild>
-          <Button variant="ghost" size="sm" className="gap-2">
-            <GitBranch className="h-4 w-4" />
-            Git Settings
-            {!isConfigured && (
-              <span className="ml-1 h-2 w-2 rounded-full bg-red-500" />
-            )}
-          </Button>
-        </DialogTrigger>
-      )}
-      <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Git Settings</DialogTitle>
-          <DialogDescription>
-            Configure Git credentials for HTTP authentication. Settings are automatically saved and stored locally in your browser.
-          </DialogDescription>
-        </DialogHeader>
+    <AppLayout title="Git Settings" showSidebar={true}>
+      <div className="max-w-4xl mx-auto">
+        <Card className="bg-white">
+          <CardContent className="p-6 space-y-6">
+            <div className="space-y-2">
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate('/settings')}
+                  className="h-8 w-8 p-0"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+                <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
+                  <GitBranch className="h-8 w-8 text-primary" />
+                  Git Settings
+                </h1>
+              </div>
+              <p className="text-muted-foreground ml-11">
+                Configure Git credentials for HTTP authentication. Settings are automatically saved and stored locally in your browser.
+              </p>
+            </div>
 
-        <div className="space-y-6 py-4">
+            <div className="space-y-6">
           {/* Configured Credentials */}
           {configuredOrigins.length > 0 && (
             <div className="space-y-3">
@@ -161,7 +148,9 @@ export function GitSettingsDialog({ open: controlledOpen, onOpenChange }: GitSet
                             }}
                             className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive rounded-md hover:bg-accent"
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
                           </button>
                         </div>
                       </AccordionTrigger>
@@ -315,14 +304,12 @@ export function GitSettingsDialog({ open: controlledOpen, onOpenChange }: GitSet
               </CardContent>
             </Card>
           </div>
-        </div>
-
-        <div className="flex justify-end">
-          <Button variant="outline" onClick={handleCancel}>
-            Close
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </AppLayout>
   );
 }
+
+export default GitSettings;

@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Check, ChevronDown, Edit3, RefreshCw, AlertCircle, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,7 +9,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useAISettings } from '@/hooks/useAISettings';
 import { useProviderModels } from '@/hooks/useProviderModels';
 import { cn } from '@/lib/utils';
-import { AISettingsDialog } from '@/components/ai/AISettingsDialog';
 
 interface ModelSelectorProps {
   value: string;
@@ -28,9 +28,9 @@ export function ModelSelector({
   const [open, setOpen] = useState(false);
   const [isCustomInput, setIsCustomInput] = useState(false);
   const [customValue, setCustomValue] = useState('');
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const { settings, addRecentlyUsedModel, isConfigured } = useAISettings();
   const { models, isLoading, error, refetch } = useProviderModels();
+  const navigate = useNavigate();
 
   const recentlyUsedModels = useMemo(() => settings.recentlyUsedModels || [], [settings.recentlyUsedModels]);
 
@@ -58,7 +58,7 @@ export function ModelSelector({
     }
 
     if (selectedValue === '__manage_providers__') {
-      setSettingsOpen(true);
+      navigate('/settings/ai');
       setOpen(false);
       return;
     }
@@ -112,12 +112,7 @@ export function ModelSelector({
   }
 
   return (
-    <>
-      <AISettingsDialog
-        open={settingsOpen}
-        onOpenChange={setSettingsOpen}
-      />
-      <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
             variant="ghost"
@@ -257,6 +252,5 @@ export function ModelSelector({
         </Command>
       </PopoverContent>
     </Popover>
-    </>
   );
 }

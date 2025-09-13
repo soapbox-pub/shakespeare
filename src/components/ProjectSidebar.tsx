@@ -6,8 +6,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { LoginArea } from '@/components/auth/LoginArea';
 import { StarButton } from '@/components/StarButton';
-import { AISettingsDialog } from '@/components/ai/AISettingsDialog';
-import { GitSettingsDialog } from '@/components/GitSettingsDialog';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { useProjectSessionStatus } from '@/hooks/useProjectSessionStatus';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
@@ -91,8 +89,6 @@ export function ProjectSidebar({
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
-  const [aiSettingsOpen, setAISettingsOpen] = useState(false);
-  const [gitSettingsOpen, setGitSettingsOpen] = useState(false);
   const [favorites] = useLocalStorage<string[]>('project-favorites', []);
   const projectsManager = useProjectsManager();
   const navigate = useNavigate();
@@ -249,19 +245,11 @@ export function ProjectSidebar({
               </DropdownMenuItem>
 
               <DropdownMenuItem
-                onClick={() => setAISettingsOpen(true)}
+                onClick={() => navigate('/settings')}
                 className="flex items-center gap-2 w-full"
               >
                 <Settings className="h-4 w-4" />
-                AI Settings
-              </DropdownMenuItem>
-
-              <DropdownMenuItem
-                onClick={() => setGitSettingsOpen(true)}
-                className="flex items-center gap-2 w-full"
-              >
-                <GitBranch className="h-4 w-4" />
-                Git Settings
+                Settings
               </DropdownMenuItem>
             </DropdownMenuContent>
             </DropdownMenu>
@@ -318,18 +306,6 @@ export function ProjectSidebar({
       <div className="p-4 border-t border-sidebar-border bg-gradient-to-r from-primary/5 to-accent/5 mt-auto">
         <LoginArea className="w-full" />
       </div>
-
-      {/* AI Settings Dialog */}
-      <AISettingsDialog
-        open={aiSettingsOpen}
-        onOpenChange={setAISettingsOpen}
-      />
-
-      {/* Git Settings Dialog */}
-      <GitSettingsDialog
-        open={gitSettingsOpen}
-        onOpenChange={setGitSettingsOpen}
-      />
     </div>
   );
 }

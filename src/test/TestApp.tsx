@@ -9,6 +9,7 @@ import { AppConfig } from '@/contexts/AppContext';
 import { FSProvider } from '@/components/FSProvider';
 import { LightningFSAdapter } from '@/lib/LightningFSAdapter';
 import { AISettingsProvider } from '@/components/AISettingsProvider';
+import { GitSettingsProvider } from '@/components/GitSettingsProvider';
 import { SessionManagerProvider } from '@/components/SessionManagerProvider';
 
 interface TestAppProps {
@@ -41,7 +42,8 @@ export function TestApp({ children }: TestAppProps) {
         <FSProvider fs={fs}>
           <QueryClientProvider client={queryClient}>
             <AISettingsProvider>
-              <NostrLoginProvider storageKey='test-login'>
+              <GitSettingsProvider>
+                <NostrLoginProvider storageKey='test-login'>
                 <NostrProvider>
                   <SessionManagerProvider>
                     <BrowserRouter>
@@ -49,7 +51,8 @@ export function TestApp({ children }: TestAppProps) {
                     </BrowserRouter>
                   </SessionManagerProvider>
                 </NostrProvider>
-              </NostrLoginProvider>
+                </NostrLoginProvider>
+              </GitSettingsProvider>
             </AISettingsProvider>
           </QueryClientProvider>
         </FSProvider>

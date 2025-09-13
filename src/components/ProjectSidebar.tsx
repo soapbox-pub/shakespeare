@@ -7,6 +7,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { LoginArea } from '@/components/auth/LoginArea';
 import { StarButton } from '@/components/StarButton';
 import { AISettingsDialog } from '@/components/ai/AISettingsDialog';
+import { GitSettingsDialog } from '@/components/GitSettingsDialog';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { useProjectSessionStatus } from '@/hooks/useProjectSessionStatus';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
@@ -91,6 +92,7 @@ export function ProjectSidebar({
   const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
   const [aiSettingsOpen, setAISettingsOpen] = useState(false);
+  const [gitSettingsOpen, setGitSettingsOpen] = useState(false);
   const [favorites] = useLocalStorage<string[]>('project-favorites', []);
   const projectsManager = useProjectsManager();
   const navigate = useNavigate();
@@ -253,6 +255,14 @@ export function ProjectSidebar({
                 <Settings className="h-4 w-4" />
                 AI Settings
               </DropdownMenuItem>
+
+              <DropdownMenuItem
+                onClick={() => setGitSettingsOpen(true)}
+                className="flex items-center gap-2 w-full"
+              >
+                <GitBranch className="h-4 w-4" />
+                Git Settings
+              </DropdownMenuItem>
             </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -313,6 +323,12 @@ export function ProjectSidebar({
       <AISettingsDialog
         open={aiSettingsOpen}
         onOpenChange={setAISettingsOpen}
+      />
+
+      {/* Git Settings Dialog */}
+      <GitSettingsDialog
+        open={gitSettingsOpen}
+        onOpenChange={setGitSettingsOpen}
       />
     </div>
   );

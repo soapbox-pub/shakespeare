@@ -362,7 +362,7 @@ export function ProjectView() {
             <ResizablePanel defaultSize={40} minSize={25}>
               <div className="h-full flex flex-col">
                 {/* Chat Header */}
-                <div className="px-4 border-b flex-shrink-0">
+                <div className="h-12 px-4 border-b flex-shrink-0">
                   <div className="flex items-center justify-between h-12">
                     {/* Left side - Sidebar toggle */}
                     <div className="flex items-center gap-2">
@@ -438,7 +438,7 @@ export function ProjectView() {
             <ResizablePanel defaultSize={60} minSize={30}>
               <div className="h-full flex flex-col">
                 {/* Preview Header */}
-                <div className="px-4 border-b flex-shrink-0">
+                <div className="h-12 px-4 border-b flex-shrink-0">
                   <div className="flex items-center justify-between h-12">
                     <div className="flex space-x-2">
                       <Button

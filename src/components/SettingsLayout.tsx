@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Menu, Columns2, Settings as SettingsIcon, Bot, GitBranch, Database } from 'lucide-react';
+import { Menu, Columns2, Bot, GitBranch, Database } from 'lucide-react';
 import { ProjectSidebar } from '@/components/ProjectSidebar';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { type Project } from '@/lib/ProjectsManager';
 import { useCallback } from 'react';
+import { cn } from '@/lib/utils';
 
 interface SettingsItem {
   id: string;
@@ -156,7 +157,7 @@ export function SettingsLayout() {
       {/* Middle Column - Settings Navigation */}
       <div className="w-96 border-r bg-white flex flex-col">
         {/* Header with toggle button */}
-        <div className="p-4 border-b">
+        <div className="h-12 px-4 py-2 border-b">
           <div className="flex items-center gap-3">
             <Button
               variant="ghost"
@@ -168,13 +169,9 @@ export function SettingsLayout() {
               {isSidebarVisible ? <Columns2 className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
             </Button>
             <h1 className="text-xl font-bold flex items-center gap-2">
-              <SettingsIcon className="h-5 w-5 text-primary" />
               Settings
             </h1>
           </div>
-          <p className="text-sm text-muted-foreground mt-1">
-            Manage your application settings and preferences
-          </p>
         </div>
 
         {/* Settings Navigation */}
@@ -188,11 +185,10 @@ export function SettingsLayout() {
                 <button
                   key={item.id}
                   onClick={() => navigate(item.href)}
-                  className={`w-full text-left p-3 rounded-lg transition-colors ${
-                    isActive
-                      ? 'bg-primary/10 border border-primary/20'
-                      : 'hover:bg-muted/50'
-                  }`}
+                  className={cn('w-full text-left p-3 rounded-lg transition-colors border border-transparent', {
+                    'bg-primary/10 border border-primary/20': isActive,
+                    'hover:bg-muted/50': !isActive,
+                  })}
                 >
                   <div className="flex items-start gap-3">
                     <Icon className={`h-5 w-5 mt-0.5 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />

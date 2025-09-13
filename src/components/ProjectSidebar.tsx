@@ -1,9 +1,9 @@
 import React, { useState, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Folder, GitBranch, MoreVertical, Settings, Loader2, ChevronDown } from 'lucide-react';
+import { Plus, Folder, GitBranch, Settings, Loader2, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { LoginArea } from '@/components/auth/LoginArea';
 import { StarButton } from '@/components/StarButton';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
@@ -34,7 +34,7 @@ const ProjectItem = memo(({ project, isSelected, onSelect }: ProjectItemProps) =
         isSelected && "bg-gradient-to-r from-primary/15 to-accent/15 shadow-sm"
       )}
     >
-      <div className="w-full p-3 text-left text-sidebar-foreground">
+      <div className="w-full px-3 py-2 text-left text-sidebar-foreground">
         <button
           onClick={handleClick}
           className="absolute inset-0"
@@ -48,14 +48,14 @@ const ProjectItem = memo(({ project, isSelected, onSelect }: ProjectItemProps) =
             )}
           </div>
           <div className="flex justify-between gap-2 flex-1 min-w-0">
-            <div className="min-w-0 flex-1">
-              <h3 className="font-medium text-sm truncate mb-1">
+            <div className="min-w-0 flex-1 flex items-center">
+              <h3 className="font-medium text-sm truncate">
                 {project.name}
               </h3>
             </div>
 
             {/* Star Button */}
-            <div className="flex-shrink-0 relative">
+            <div className="flex-shrink-0 relative -mr-2">
               <StarButton
                 projectId={project.id}
                 projectName={project.name}
@@ -139,22 +139,14 @@ export function ProjectSidebar({
             </h1>
           </button>
           <div className="flex items-center gap-1">
-            <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-primary/10">
-                <MoreVertical className="h-4 w-4 text-primary/60 hover:text-primary" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuItem
-                onClick={() => navigate('/settings')}
-                className="flex items-center gap-2 w-full"
-              >
-                <Settings className="h-4 w-4" />
-                Settings
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-            </DropdownMenu>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0 hover:bg-primary/10"
+              onClick={() => navigate('/settings')}
+            >
+              <Settings className="h-4 w-4 text-primary/60 hover:text-primary" />
+            </Button>
           </div>
         </div>
       </div>
@@ -179,14 +171,6 @@ export function ProjectSidebar({
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-48">
-                    <DropdownMenuItem
-                      onClick={handleNewProject}
-                      className="flex items-center gap-2 w-full"
-                    >
-                      <Plus className="h-4 w-4" />
-                      New Project
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
                     <DropdownMenuItem
                       onClick={() => navigate('/clone')}
                       className="flex items-center gap-2 w-full"

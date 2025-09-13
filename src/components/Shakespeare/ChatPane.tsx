@@ -343,6 +343,29 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
 
       <div className="flex-1 overflow-y-scroll overflow-x-hidden" ref={scrollAreaRef}>
         <div className="p-4 space-y-4">
+          {/* Empty state when no messages and not loading */}
+          {messages.length === 0 && !streamingMessage && !isLoading && (
+            <div className="flex-1 flex items-center justify-center min-h-[400px]">
+              <div className="text-center space-y-4 max-w-md mx-auto">
+                <div className="text-6xl mb-6">🎭</div>
+                <div>
+                  <h3 className="text-xl font-semibold mb-2 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                    Welcome to Shakespeare
+                  </h3>
+                  <p className="text-muted-foreground mb-6 leading-relaxed">
+                    Your AI-powered development assistant is ready to help you build, edit, and enhance your project.
+                  </p>
+                  <div className="space-y-2 text-sm text-muted-foreground">
+                    <p>💡 Ask me to add new features</p>
+                    <p>📝 Request file edits and improvements</p>
+                    <p>🔧 Get help with debugging and optimization</p>
+                    <p>🚀 Build and deploy your project</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {messages.map((message, index) => {
             // Skip assistant messages with no content
             if (message.role === 'assistant' && assistantContentEmpty(message.content)) {

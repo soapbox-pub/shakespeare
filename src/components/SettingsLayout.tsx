@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Menu, Columns2, Settings as SettingsIcon, Bot, GitBranch } from 'lucide-react';
+import { Menu, Columns2, Settings as SettingsIcon, Bot, GitBranch, Database } from 'lucide-react';
 import { ProjectSidebar } from '@/components/ProjectSidebar';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { useIsMobile } from '@/hooks/useIsMobile';
@@ -30,6 +30,13 @@ const settingsItems: SettingsItem[] = [
     description: 'Configure Git credentials for HTTP authentication',
     icon: GitBranch,
     href: '/settings/git',
+  },
+  {
+    id: 'data',
+    title: 'Data',
+    description: 'Export files and manage local data',
+    icon: Database,
+    href: '/settings/data',
   },
 ];
 

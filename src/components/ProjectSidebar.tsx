@@ -1,6 +1,6 @@
 import React, { useState, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Folder, Download, GitBranch, MoreVertical, Settings, Loader2 } from 'lucide-react';
+import { Plus, Folder, GitBranch, MoreVertical, Settings, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -9,11 +9,8 @@ import { StarButton } from '@/components/StarButton';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { useProjectSessionStatus } from '@/hooks/useProjectSessionStatus';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
-import { useToast } from '@/hooks/useToast';
-import { useFS } from '@/hooks/useFS';
 import type { Project } from '@/lib/ProjectsManager';
 import { cn } from '@/lib/utils';
-import JSZip from 'jszip';
 
 interface ProjectItemProps {
   project: Project;
@@ -88,12 +85,9 @@ export function ProjectSidebar({
 }: ProjectSidebarProps) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isExporting, setIsExporting] = useState(false);
   const [favorites] = useLocalStorage<string[]>('project-favorites', []);
   const projectsManager = useProjectsManager();
   const navigate = useNavigate();
-  const { toast } = useToast();
-  const { fs } = useFS();
 
   // Load projects on mount
   React.useEffect(() => {
@@ -118,82 +112,6 @@ export function ProjectSidebar({
   };
 
   const isFavorite = (projectId: string) => favorites.includes(projectId);
-
-  const exportFilesAsZip = async (projectName: string) => {
-    const zip = new JSZip();
-
-    // Recursive function to add files and directories to zip
-    const addToZip = async (dirPath: string, zipFolder: JSZip) => {
-      try {
-        const entries = await fs.readdir(dirPath, { withFileTypes: true });
-
-        for (const entry of entries) {
-          const fullPath = dirPath === '/' ? `/${entry.name}` : `${dirPath}/${entry.name}`;
-
-          if (entry.isDirectory()) {
-            // Create folder in zip and recursively add its contents
-            const folder = zipFolder.folder(entry.name);
-            if (folder) {
-              await addToZip(fullPath, folder);
-            }
-          } else if (entry.isFile()) {
-            // Add file to zip
-            try {
-              const fileContent = await fs.readFile(fullPath);
-              zipFolder.file(entry.name, fileContent);
-            } catch (error) {
-              console.warn(`Failed to read file ${fullPath}:`, error);
-            }
-          }
-        }
-      } catch (error) {
-        console.warn(`Failed to read directory ${dirPath}:`, error);
-      }
-    };
-
-    // Start from root directory
-    await addToZip('/', zip);
-
-    // Generate zip file
-    const content = await zip.generateAsync({ type: 'blob' });
-
-    // Create download link
-    const url = URL.createObjectURL(content);
-    const link = document.createElement('a');
-    link.href = url;
-
-    // Generate filename with date
-    const now = new Date();
-    const dateStr = now.toISOString().split('T')[0]; // YYYY-MM-DD format
-    link.download = `${projectName}-${dateStr}.zip`;
-
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  };
-
-  const handleExportFiles = async () => {
-    setIsExporting(true);
-    try {
-      const projectName = selectedProject?.name || 'shakespeare';
-      await exportFilesAsZip(projectName);
-
-      toast({
-        title: "Files exported successfully",
-        description: "Your project files have been downloaded as a zip file.",
-      });
-    } catch (error) {
-      console.error('Failed to export files:', error);
-      toast({
-        title: "Failed to export files",
-        description: error instanceof Error ? error.message : "An unexpected error occurred",
-        variant: "destructive",
-      });
-    } finally {
-      setIsExporting(false);
-    }
-  };
 
   // Sort projects: favorites first, then by lastModified (newest first)
   const sortedProjects = projects.sort((a, b) => {
@@ -235,15 +153,6 @@ export function ProjectSidebar({
                 <GitBranch className="h-4 w-4" />
                 Import Repository
               </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={handleExportFiles}
-                disabled={isExporting}
-                className="flex items-center gap-2 w-full"
-              >
-                <Download className="h-4 w-4" />
-                {isExporting ? 'Exporting...' : 'Export Files'}
-              </DropdownMenuItem>
-
               <DropdownMenuItem
                 onClick={() => navigate('/settings')}
                 className="flex items-center gap-2 w-full"

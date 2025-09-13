@@ -13,6 +13,7 @@ import {
   EchoCommand,
   EnvCommand,
   FindCommand,
+  GitCommand,
   GrepCommand,
   HeadCommand,
   LsCommand,
@@ -42,11 +43,11 @@ export class ShellTool implements Tool<ShellToolParams> {
   private cwd: string;
   private commands: Map<string, ShellCommand>;
 
-  readonly description = "Execute shell commands like cat, ls, cd, pwd, rm, cp, mv, echo, head, tail, grep, find, wc, touch, mkdir, sort, uniq, cut, tr, diff, which, whoami, date, env, clear. Supports compound commands with &&, ||, ;, and | operators";
+  readonly description = "Execute shell commands like cat, ls, cd, pwd, rm, cp, mv, echo, head, tail, grep, find, wc, touch, mkdir, sort, uniq, cut, tr, diff, which, whoami, date, env, clear, git. Supports compound commands with &&, ||, ;, and | operators";
 
   readonly inputSchema = z.object({
     command: z.string().describe(
-      'Shell command to execute, e.g. "cat file.txt", "ls -la", "cd src", "pwd", "sort file.txt", "diff file1 file2". Supports compound commands with &&, ||, ;, and | operators, e.g. "pwd && ls -la", "cat file.txt | grep pattern", "echo hello; echo world"'
+      'Shell command to execute, e.g. "cat file.txt", "ls -la", "cd src", "pwd", "sort file.txt", "diff file1 file2", "git status", "git add .", "git commit -m \'message\'". Supports compound commands with &&, ||, ;, and | operators, e.g. "pwd && ls -la", "cat file.txt | grep pattern", "git add . && git commit -m \'update\'"'
     ),
   });
 
@@ -66,6 +67,7 @@ export class ShellTool implements Tool<ShellToolParams> {
     this.registerCommand(new EchoCommand());
     this.registerCommand(new EnvCommand());
     this.registerCommand(new FindCommand(fs));
+    this.registerCommand(new GitCommand(fs));
     this.registerCommand(new GrepCommand(fs));
     this.registerCommand(new HeadCommand(fs));
     this.registerCommand(new LsCommand(fs));

@@ -9,6 +9,7 @@ export { DiffCommand } from './diff';
 export { EchoCommand } from './echo';
 export { EnvCommand } from './env';
 export { FindCommand } from './find';
+export { GitCommand } from './git';
 export { GrepCommand } from './grep';
 export { HeadCommand } from './head';
 export { LsCommand } from './ls';

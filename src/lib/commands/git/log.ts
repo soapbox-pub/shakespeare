@@ -15,7 +15,7 @@ export class GitLogCommand implements GitSubcommand {
       try {
         await fs.stat(`${cwd}/.git`);
       } catch {
-        return createErrorError('fatal: not a git repository (or any of the parent directories): .git');
+        return createErrorResult('fatal: not a git repository (or any of the parent directories): .git');
       }
 
       const { options, limit } = this.parseArgs(args);
@@ -142,7 +142,3 @@ export class GitLogCommand implements GitSubcommand {
   }
 }
 
-// Fix the typo in the error function
-function createErrorError(message: string): ShellCommandResult {
-  return createErrorResult(message);
-}

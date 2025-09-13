@@ -37,7 +37,7 @@ export class ProjectsManager {
   }
 
   async createProject(name: string, customId?: string): Promise<Project> {
-    const project = await this.cloneProject(name, GIT_TEMPLATE_URL, customId);
+    const project = await this.cloneProject(name, GIT_TEMPLATE_URL, customId, { depth: 1 });
 
     try {
       await this.fs.mkdir(this.dir + `/${project.id}/.ai/history`, { recursive: true });
@@ -93,7 +93,7 @@ export class ProjectsManager {
     return project;
   }
 
-  async cloneProject(name: string, repoUrl: string, customId?: string): Promise<Project> {
+  async cloneProject(name: string, repoUrl: string, customId?: string, options?: { depth?: number }): Promise<Project> {
     const url = new URL(repoUrl);
     const id = customId || await this.generateUniqueProjectId(name);
 
@@ -113,7 +113,7 @@ export class ProjectsManager {
       dir: projectPath,
       url: repoUrl,
       singleBranch: true,
-      depth: 1,
+      depth: options?.depth, // Use depth if provided, otherwise clone full history
       // Use the CORS proxy only for GitHub and GitLab URLs
       // More info: https://github.com/isomorphic-git/isomorphic-git#cors-support
       corsProxy: url.hostname === 'github.com' || url.hostname === 'gitlab.com'

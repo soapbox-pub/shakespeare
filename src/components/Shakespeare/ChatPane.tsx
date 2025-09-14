@@ -32,6 +32,7 @@ import { NostrReadNipsIndexTool } from '@/lib/tools/NostrReadNipsIndexTool';
 import { NostrGenerateKindTool } from '@/lib/tools/NostrGenerateKindTool';
 import { ShellTool } from '@/lib/tools/ShellTool';
 import { TypecheckTool } from '@/lib/tools/TypecheckTool';
+import { Git } from '@/lib/git';
 import { toolToOpenAI } from '@/lib/tools/openai-adapter';
 import { Tool } from '@/lib/tools/Tool';
 import OpenAI from 'openai';
@@ -89,6 +90,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   // Initialize AI chat with tools
   const cwd = `/projects/${projectId}`;
   const customTools = useMemo(() => {
+    const git = new Git(fs);
     const baseTools = {
       git_commit: new GitCommitTool(fs, cwd),
       text_editor_view: new TextEditorViewTool(fs, cwd),
@@ -105,7 +107,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
       nostr_read_protocol: new NostrReadProtocolTool(),
       nostr_read_nips_index: new NostrReadNipsIndexTool(),
       nostr_generate_kind: new NostrGenerateKindTool(),
-      shell: new ShellTool(fs, cwd),
+      shell: new ShellTool(fs, cwd, git),
     };
 
     // Add deploy tool only if user is logged in

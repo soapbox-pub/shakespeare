@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { Tool } from "./Tool";
 import type { JSRuntimeFS } from "../JSRuntime";
 import type { ShellCommand } from "../commands/ShellCommand";
+import { Git } from "../git";
 import {
   CatCommand,
   CdCommand,
@@ -42,6 +43,7 @@ interface ShellToolParams {
 export class ShellTool implements Tool<ShellToolParams> {
   private fs: JSRuntimeFS;
   private cwd: string;
+  private git: Git;
   private commands: Map<string, ShellCommand>;
 
   readonly description = "Execute shell commands like cat, ls, cd, pwd, rm, cp, mv, echo, head, tail, grep, find, wc, touch, mkdir, sort, uniq, cut, tr, diff, which, whoami, date, env, clear, git, curl. Supports compound commands with &&, ||, ;, and | operators";
@@ -52,9 +54,10 @@ export class ShellTool implements Tool<ShellToolParams> {
     ),
   });
 
-  constructor(fs: JSRuntimeFS, cwd: string) {
+  constructor(fs: JSRuntimeFS, cwd: string, git: Git) {
     this.fs = fs;
     this.cwd = cwd;
+    this.git = git;
     this.commands = new Map();
 
     // Register available commands
@@ -69,7 +72,7 @@ export class ShellTool implements Tool<ShellToolParams> {
     this.registerCommand(new EchoCommand());
     this.registerCommand(new EnvCommand());
     this.registerCommand(new FindCommand(fs));
-    this.registerCommand(new GitCommand(fs));
+    this.registerCommand(new GitCommand({ git: this.git, fs, cwd: this.cwd }));
     this.registerCommand(new GrepCommand(fs));
     this.registerCommand(new HeadCommand(fs));
     this.registerCommand(new LsCommand(fs));

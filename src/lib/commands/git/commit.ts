@@ -1,19 +1,29 @@
-import git from 'isomorphic-git';
 import type { JSRuntimeFS } from "../../JSRuntime";
 import type { ShellCommandResult } from "../ShellCommand";
 import { createSuccessResult, createErrorResult } from "../ShellCommand";
-import type { GitSubcommand } from "../git";
+import type { GitSubcommand, GitSubcommandOptions } from "../git";
+import type { Git } from "../../git";
 
 export class GitCommitCommand implements GitSubcommand {
   name = 'commit';
   description = 'Record changes to the repository';
   usage = 'git commit [-m <msg>] [--amend] [--allow-empty]';
 
-  async execute(args: string[], cwd: string, fs: JSRuntimeFS): Promise<ShellCommandResult> {
+  private git: Git;
+  private fs: JSRuntimeFS;
+  private pwd: string;
+
+  constructor(options: GitSubcommandOptions) {
+    this.git = options.git;
+    this.fs = options.fs;
+    this.pwd = options.pwd;
+  }
+
+  async execute(args: string[]): Promise<ShellCommandResult> {
     try {
       // Check if we're in a git repository
       try {
-        await fs.stat(`${cwd}/.git`);
+        await this.fs.stat(`${this.pwd}/.git`);
       } catch {
         return createErrorResult('fatal: not a git repository (or any of the parent directories): .git');
       }
@@ -25,9 +35,8 @@ export class GitCommitCommand implements GitSubcommand {
       }
 
       // Get current status
-      const statusMatrix = await git.statusMatrix({
-        fs,
-        dir: cwd,
+      const statusMatrix = await this.git.statusMatrix({
+        dir: this.pwd,
       });
 
       // Check for staged changes
@@ -46,14 +55,14 @@ export class GitCommitCommand implements GitSubcommand {
       };
 
       try {
-        const configName = await git.getConfig({
-          fs,
-          dir: cwd,
+        const configName = await this.git.getConfig({
+          
+          dir: this.pwd,
           path: 'user.name',
         });
-        const configEmail = await git.getConfig({
-          fs,
-          dir: cwd,
+        const configEmail = await this.git.getConfig({
+          
+          dir: this.pwd,
           path: 'user.email',
         });
         if (configName) author.name = configName;
@@ -66,9 +75,9 @@ export class GitCommitCommand implements GitSubcommand {
       if (options.amend) {
         // Get the last commit message if amending
         try {
-          const commits = await git.log({
-            fs,
-            dir: cwd,
+          const commits = await this.git.log({
+            
+            dir: this.pwd,
             depth: 1,
           });
           if (commits.length > 0 && !message) {
@@ -85,9 +94,9 @@ export class GitCommitCommand implements GitSubcommand {
       // Get current branch
       let currentBranch = 'main';
       try {
-        currentBranch = await git.currentBranch({
-          fs,
-          dir: cwd,
+        currentBranch = await this.git.currentBranch({
+          
+          dir: this.pwd,
         }) || 'main';
       } catch {
         // Use default
@@ -102,8 +111,7 @@ export class GitCommitCommand implements GitSubcommand {
         committer: { name: string; email: string };
         parent?: string[];
       } = {
-        fs,
-        dir: cwd,
+        dir: this.pwd,
         message: commitMessage || 'Empty commit',
         author,
         committer: author,
@@ -112,9 +120,9 @@ export class GitCommitCommand implements GitSubcommand {
       if (options.amend) {
         // For amend, we need to reset to the parent of the current commit
         try {
-          const commits = await git.log({
-            fs,
-            dir: cwd,
+          const commits = await this.git.log({
+            
+            dir: this.pwd,
             depth: 2,
           });
           if (commits.length > 1) {
@@ -125,7 +133,7 @@ export class GitCommitCommand implements GitSubcommand {
         }
       }
 
-      const commitSha = await git.commit(commitOptions);
+      const commitSha = await this.git.commit(commitOptions);
 
       // Get short hash
       const shortHash = commitSha.substring(0, 7);

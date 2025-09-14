@@ -1,16 +1,26 @@
-import git from 'isomorphic-git';
 import http from 'isomorphic-git/http/web';
 import type { JSRuntimeFS } from "../../JSRuntime";
 import type { ShellCommandResult } from "../ShellCommand";
 import { createSuccessResult, createErrorResult } from "../ShellCommand";
-import type { GitSubcommand } from "../git";
+import type { GitSubcommand, GitSubcommandOptions } from "../git";
+import type { Git } from "../../git";
 
 export class GitCloneCommand implements GitSubcommand {
   name = 'clone';
   description = 'Clone a repository into a new directory';
   usage = 'git clone [--depth <depth>] [--single-branch] <repository> [<directory>]';
 
-  async execute(args: string[], cwd: string, fs: JSRuntimeFS): Promise<ShellCommandResult> {
+  private git: Git;
+  private fs: JSRuntimeFS;
+  private pwd: string;
+
+  constructor(options: GitSubcommandOptions) {
+    this.git = options.git;
+    this.fs = options.fs;
+    this.pwd = options.pwd;
+  }
+
+  async execute(args: string[]): Promise<ShellCommandResult> {
     try {
       const { options, repository, directory } = this.parseArgs(args);
 
@@ -27,11 +37,11 @@ export class GitCloneCommand implements GitSubcommand {
         targetDir = repoName.replace(/\.git$/, ''); // Remove .git suffix if present
       }
 
-      const targetPath = `${cwd}/${targetDir}`;
+      const targetPath = `${this.pwd}/${targetDir}`;
 
       // Check if target directory already exists
       try {
-        await fs.stat(targetPath);
+        await this.fs.stat(targetPath);
         return createErrorResult(`fatal: destination path '${targetDir}' already exists and is not an empty directory.`);
       } catch {
         // Directory doesn't exist, which is what we want
@@ -46,8 +56,8 @@ export class GitCloneCommand implements GitSubcommand {
       }
 
       // Clone the repository
-      await git.clone({
-        fs,
+      await this.git.clone({
+
         http,
         dir: targetPath,
         url: repository,

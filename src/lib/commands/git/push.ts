@@ -1,20 +1,29 @@
-import git from 'isomorphic-git';
-import http from 'isomorphic-git/http/web';
 import type { JSRuntimeFS } from "../../JSRuntime";
 import type { ShellCommandResult } from "../ShellCommand";
 import { createSuccessResult, createErrorResult } from "../ShellCommand";
-import type { GitSubcommand } from "../git";
+import type { GitSubcommand, GitSubcommandOptions } from "../git";
+import type { Git } from "../../git";
 
 export class GitPushCommand implements GitSubcommand {
   name = 'push';
   description = 'Update remote refs along with associated objects';
   usage = 'git push [<remote>] [<branch>]';
 
-  async execute(args: string[], cwd: string, fs: JSRuntimeFS): Promise<ShellCommandResult> {
+  private git: Git;
+  private fs: JSRuntimeFS;
+  private pwd: string;
+
+  constructor(options: GitSubcommandOptions) {
+    this.git = options.git;
+    this.fs = options.fs;
+    this.pwd = options.pwd;
+  }
+
+  async execute(args: string[]): Promise<ShellCommandResult> {
     try {
       // Check if we're in a git repository
       try {
-        await fs.stat(`${cwd}/.git`);
+        await this.fs.stat(`${this.pwd}/.git`);
       } catch {
         return createErrorResult('fatal: not a git repository (or any of the parent directories): .git');
       }
@@ -25,9 +34,9 @@ export class GitPushCommand implements GitSubcommand {
       let targetBranch = branch;
       if (!targetBranch) {
         try {
-          targetBranch = await git.currentBranch({
-            fs,
-            dir: cwd,
+          targetBranch = await this.git.currentBranch({
+            
+            dir: this.pwd,
           }) || undefined;
           if (!targetBranch) {
             return createErrorResult('fatal: You are not currently on a branch.');
@@ -40,9 +49,9 @@ export class GitPushCommand implements GitSubcommand {
       // Get remote URL
       let remoteUrl: string;
       try {
-        const remotes = await git.listRemotes({
-          fs,
-          dir: cwd,
+        const remotes = await this.git.listRemotes({
+          
+          dir: this.pwd,
         });
 
         const targetRemote = remotes.find(r => r.remote === remote);
@@ -55,14 +64,11 @@ export class GitPushCommand implements GitSubcommand {
       }
 
       try {
-        await git.push({
-          fs,
-          http,
-          dir: cwd,
+        await this.git.push({
+          dir: this.pwd,
           remote: remote,
           ref: targetBranch,
           remoteRef: targetBranch,
-          corsProxy: 'https://cors.isomorphic-git.org',
         });
 
         return createSuccessResult(`To ${remoteUrl}\n   ${targetBranch} -> ${targetBranch}\n`);

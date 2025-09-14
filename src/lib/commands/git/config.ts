@@ -1,22 +1,32 @@
-import git from 'isomorphic-git';
 import type { JSRuntimeFS } from "../../JSRuntime";
 import type { ShellCommandResult } from "../ShellCommand";
 import { createSuccessResult, createErrorResult } from "../ShellCommand";
-import type { GitSubcommand } from "../git";
+import type { GitSubcommand, GitSubcommandOptions } from "../git";
+import type { Git } from "../../git";
 
 export class GitConfigCommand implements GitSubcommand {
   name = 'config';
   description = 'Get and set repository or global options';
   usage = 'git config [--global] <name> [<value>] | git config [--global] --list';
 
-  async execute(args: string[], cwd: string, fs: JSRuntimeFS): Promise<ShellCommandResult> {
+  private git: Git;
+  private fs: JSRuntimeFS;
+  private pwd: string;
+
+  constructor(options: GitSubcommandOptions) {
+    this.git = options.git;
+    this.fs = options.fs;
+    this.pwd = options.pwd;
+  }
+
+  async execute(args: string[]): Promise<ShellCommandResult> {
     try {
       const { action, key, value, options } = this.parseArgs(args);
 
       // Check if we're in a git repository (unless --global is used)
       if (!options.global) {
         try {
-          await fs.stat(`${cwd}/.git`);
+          await this.fs.stat(`${this.pwd}/.git`);
         } catch {
           return createErrorResult('fatal: not a git repository (or any of the parent directories): .git');
         }
@@ -24,11 +34,11 @@ export class GitConfigCommand implements GitSubcommand {
 
       switch (action) {
         case 'list':
-          return await this.listConfig(fs, cwd, options.global);
+          return await this.listConfig(options.global);
         case 'get':
-          return await this.getConfig(fs, cwd, key!, options.global);
+          return await this.getConfig(key!, options.global);
         case 'set':
-          return await this.setConfig(fs, cwd, key!, value!, options.global);
+          return await this.setConfig(key!, value!, options.global);
         default:
           return createErrorResult('usage: git config [--global] <name> [<value>] | git config [--global] --list');
       }
@@ -38,11 +48,11 @@ export class GitConfigCommand implements GitSubcommand {
     }
   }
 
-  private parseArgs(args: string[]): { 
-    action: 'list' | 'get' | 'set'; 
-    key?: string; 
-    value?: string; 
-    options: { global: boolean } 
+  private parseArgs(args: string[]): {
+    action: 'list' | 'get' | 'set';
+    key?: string;
+    value?: string;
+    options: { global: boolean }
   } {
     const options = { global: false };
     let action: 'list' | 'get' | 'set' = 'get';
@@ -51,7 +61,7 @@ export class GitConfigCommand implements GitSubcommand {
 
     for (let i = 0; i < args.length; i++) {
       const arg = args[i];
-      
+
       if (arg === '--global') {
         options.global = true;
       } else if (arg === '--list' || arg === '-l') {
@@ -70,7 +80,7 @@ export class GitConfigCommand implements GitSubcommand {
     return { action, key, value, options };
   }
 
-  private async listConfig(fs: JSRuntimeFS, cwd: string, global: boolean): Promise<ShellCommandResult> {
+  private async listConfig(global: boolean): Promise<ShellCommandResult> {
     try {
       // For simplicity, we'll only show the most common config values
       // isomorphic-git doesn't have a direct way to list all config
@@ -86,9 +96,9 @@ export class GitConfigCommand implements GitSubcommand {
 
       for (const key of commonKeys) {
         try {
-          const value = await git.getConfig({
-            fs,
-            dir: global ? undefined : cwd,
+          const value = await this.git.getConfig({
+
+            dir: global ? undefined : this.pwd,
             path: key,
           });
           if (value !== undefined) {
@@ -106,11 +116,11 @@ export class GitConfigCommand implements GitSubcommand {
     }
   }
 
-  private async getConfig(fs: JSRuntimeFS, cwd: string, key: string, global: boolean): Promise<ShellCommandResult> {
+  private async getConfig(key: string, global: boolean): Promise<ShellCommandResult> {
     try {
-      const value = await git.getConfig({
-        fs,
-        dir: global ? undefined : cwd,
+      const value = await this.git.getConfig({
+
+        dir: global ? undefined : this.pwd,
         path: key,
       });
 
@@ -125,11 +135,11 @@ export class GitConfigCommand implements GitSubcommand {
     }
   }
 
-  private async setConfig(fs: JSRuntimeFS, cwd: string, key: string, value: string, global: boolean): Promise<ShellCommandResult> {
+  private async setConfig(key: string, value: string, global: boolean): Promise<ShellCommandResult> {
     try {
-      await git.setConfig({
-        fs,
-        dir: global ? undefined : cwd,
+      await this.git.setConfig({
+
+        dir: global ? undefined : this.pwd,
         path: key,
         value: value,
       });

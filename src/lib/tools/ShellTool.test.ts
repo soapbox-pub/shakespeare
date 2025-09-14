@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ShellTool } from './ShellTool';
+import { Git } from '../git';
 import type { JSRuntimeFS } from '../JSRuntime';
 
 // Mock filesystem
@@ -19,12 +20,14 @@ const createMockFS = (): JSRuntimeFS => ({
 
 describe('ShellTool', () => {
   let mockFS: JSRuntimeFS;
+  let mockGit: Git;
   let shellTool: ShellTool;
   const testCwd = '/test/dir';
 
   beforeEach(() => {
     mockFS = createMockFS();
-    shellTool = new ShellTool(mockFS, testCwd);
+    mockGit = new Git(mockFS);
+    shellTool = new ShellTool(mockFS, testCwd, mockGit);
   });
 
   it('should have correct tool properties', () => {

@@ -7,6 +7,7 @@
  */
 
 import { ShellTool } from './ShellTool';
+import { Git } from '../git';
 import type { JSRuntimeFS } from '../JSRuntime';
 
 /**
@@ -14,7 +15,7 @@ import type { JSRuntimeFS } from '../JSRuntime';
  */
 export async function exampleShellUsage(fs: JSRuntimeFS, projectRoot: string) {
   // Create a shell tool instance
-  const shell = new ShellTool(fs, projectRoot);
+  const shell = new ShellTool(fs, projectRoot, new Git(fs));
 
   console.log('Available commands:', shell.getAvailableCommands());
   console.log('Current directory:', shell.getCurrentWorkingDirectory());
@@ -111,7 +112,7 @@ export async function exampleShellUsage(fs: JSRuntimeFS, projectRoot: string) {
  * Example React hook for using ShellTool
  */
 export function useShell(fs: JSRuntimeFS, cwd: string) {
-  const shell = new ShellTool(fs, cwd);
+  const shell = new ShellTool(fs, cwd, new Git(fs));
 
   const executeCommand = async (command: string): Promise<string> => {
     try {
@@ -137,7 +138,7 @@ export class AIShellIntegration {
   private shell: ShellTool;
 
   constructor(fs: JSRuntimeFS, projectRoot: string) {
-    this.shell = new ShellTool(fs, projectRoot);
+    this.shell = new ShellTool(fs, projectRoot, new Git(fs));
   }
 
   /**
@@ -177,7 +178,7 @@ export class SimpleCLI {
   private history: string[] = [];
 
   constructor(fs: JSRuntimeFS, projectRoot: string) {
-    this.shell = new ShellTool(fs, projectRoot);
+    this.shell = new ShellTool(fs, projectRoot, new Git(fs));
   }
 
   async executeCommand(command: string): Promise<string> {

@@ -1,20 +1,29 @@
-import git from 'isomorphic-git';
-import http from 'isomorphic-git/http/web';
 import type { JSRuntimeFS } from "../../JSRuntime";
 import type { ShellCommandResult } from "../ShellCommand";
 import { createSuccessResult, createErrorResult } from "../ShellCommand";
-import type { GitSubcommand } from "../git";
+import type { GitSubcommand, GitSubcommandOptions } from "../git";
+import type { Git } from "../../git";
 
 export class GitPullCommand implements GitSubcommand {
   name = 'pull';
   description = 'Fetch from and integrate with another repository or a local branch';
   usage = 'git pull [<remote>] [<branch>]';
 
-  async execute(args: string[], cwd: string, fs: JSRuntimeFS): Promise<ShellCommandResult> {
+  private git: Git;
+  private fs: JSRuntimeFS;
+  private pwd: string;
+
+  constructor(options: GitSubcommandOptions) {
+    this.git = options.git;
+    this.fs = options.fs;
+    this.pwd = options.pwd;
+  }
+
+  async execute(args: string[]): Promise<ShellCommandResult> {
     try {
       // Check if we're in a git repository
       try {
-        await fs.stat(`${cwd}/.git`);
+        await this.fs.stat(`${this.pwd}/.git`);
       } catch {
         return createErrorResult('fatal: not a git repository (or any of the parent directories): .git');
       }
@@ -25,9 +34,9 @@ export class GitPullCommand implements GitSubcommand {
       let targetBranch = branch;
       let currentBranch: string | null = null;
       try {
-        currentBranch = await git.currentBranch({
-          fs,
-          dir: cwd,
+        currentBranch = await this.git.currentBranch({
+          
+          dir: this.pwd,
         }) || null;
         if (!targetBranch) {
           targetBranch = currentBranch || 'main';
@@ -41,9 +50,9 @@ export class GitPullCommand implements GitSubcommand {
       // Get remote URL
       let remoteUrl: string;
       try {
-        const remotes = await git.listRemotes({
-          fs,
-          dir: cwd,
+        const remotes = await this.git.listRemotes({
+          
+          dir: this.pwd,
         });
 
         const targetRemote = remotes.find(r => r.remote === remote);
@@ -56,9 +65,8 @@ export class GitPullCommand implements GitSubcommand {
       }
 
       // Check for uncommitted changes
-      const statusMatrix = await git.statusMatrix({
-        fs,
-        dir: cwd,
+      const statusMatrix = await this.git.statusMatrix({
+        dir: this.pwd,
       });
 
       const hasChanges = statusMatrix.some(([, headStatus, workdirStatus, stageStatus]) => {
@@ -71,22 +79,19 @@ export class GitPullCommand implements GitSubcommand {
 
       try {
         // Fetch from remote
-        await git.fetch({
-          fs,
-          http,
-          dir: cwd,
+        await this.git.fetch({
+          dir: this.pwd,
           remote: remote,
           ref: targetBranch,
-          corsProxy: 'https://cors.isomorphic-git.org',
         });
 
         // Get the remote ref
         const remoteRef = `refs/remotes/${remote}/${targetBranch}`;
         let remoteOid: string;
         try {
-          remoteOid = await git.resolveRef({
-            fs,
-            dir: cwd,
+          remoteOid = await this.git.resolveRef({
+            
+            dir: this.pwd,
             ref: remoteRef,
           });
         } catch {
@@ -96,16 +101,16 @@ export class GitPullCommand implements GitSubcommand {
         // Get current HEAD
         let currentOid: string;
         try {
-          currentOid = await git.resolveRef({
-            fs,
-            dir: cwd,
+          currentOid = await this.git.resolveRef({
+            
+            dir: this.pwd,
             ref: 'HEAD',
           });
         } catch {
           // Empty repository, just checkout the remote branch
-          await git.checkout({
-            fs,
-            dir: cwd,
+          await this.git.checkout({
+            
+            dir: this.pwd,
             ref: targetBranch,
           });
           return createSuccessResult(`From ${remoteUrl}\n * branch            ${targetBranch}     -> FETCH_HEAD\nUpdating empty repository\nFast-forward\n`);
@@ -117,9 +122,9 @@ export class GitPullCommand implements GitSubcommand {
         }
 
         // Perform fast-forward merge (simplified)
-        await git.merge({
-          fs,
-          dir: cwd,
+        await this.git.merge({
+          
+          dir: this.pwd,
           ours: currentBranch || 'HEAD',
           theirs: remoteRef,
           fastForwardOnly: true,

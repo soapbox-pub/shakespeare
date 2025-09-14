@@ -1,19 +1,30 @@
-import git from 'isomorphic-git';
+
 import type { JSRuntimeFS } from "../../JSRuntime";
 import type { ShellCommandResult } from "../ShellCommand";
 import { createSuccessResult, createErrorResult } from "../ShellCommand";
-import type { GitSubcommand } from "../git";
+import type { GitSubcommand, GitSubcommandOptions } from "../git";
+import type { Git } from "../../git";
 
 export class GitResetCommand implements GitSubcommand {
   name = 'reset';
   description = 'Reset current HEAD to the specified state';
   usage = 'git reset [--soft | --mixed | --hard] [<commit>] | git reset HEAD [<file>...]';
 
-  async execute(args: string[], cwd: string, fs: JSRuntimeFS): Promise<ShellCommandResult> {
+  private git: Git;
+  private fs: JSRuntimeFS;
+  private pwd: string;
+
+  constructor(options: GitSubcommandOptions) {
+    this.git = options.git;
+    this.fs = options.fs;
+    this.pwd = options.pwd;
+  }
+
+  async execute(args: string[]): Promise<ShellCommandResult> {
     try {
       // Check if we're in a git repository
       try {
-        await fs.stat(`${cwd}/.git`);
+        await this.fs.stat(`${this.pwd}/.git`);
       } catch {
         return createErrorResult('fatal: not a git repository (or any of the parent directories): .git');
       }
@@ -22,10 +33,10 @@ export class GitResetCommand implements GitSubcommand {
 
       if (files.length > 0) {
         // Reset specific files (unstage)
-        return await this.resetFiles(fs, cwd, files);
+        return await this.resetFiles(files);
       } else {
         // Reset to commit
-        return await this.resetToCommit(fs, cwd, target, mode);
+        return await this.resetToCommit(target, mode);
       }
 
     } catch (error) {
@@ -63,7 +74,7 @@ export class GitResetCommand implements GitSubcommand {
     return { mode, target, files };
   }
 
-  private async resetFiles(fs: JSRuntimeFS, cwd: string, files: string[]): Promise<ShellCommandResult> {
+  private async resetFiles(files: string[]): Promise<ShellCommandResult> {
     try {
       const resetFiles: string[] = [];
       const errors: string[] = [];
@@ -71,9 +82,9 @@ export class GitResetCommand implements GitSubcommand {
       for (const file of files) {
         try {
           // Remove from staging area (reset to HEAD)
-          await git.resetIndex({
-            fs,
-            dir: cwd,
+          await this.git.resetIndex({
+            
+            dir: this.pwd,
             filepath: file,
           });
           resetFiles.push(file);
@@ -97,14 +108,14 @@ export class GitResetCommand implements GitSubcommand {
     }
   }
 
-  private async resetToCommit(fs: JSRuntimeFS, cwd: string, target: string, mode: 'soft' | 'mixed' | 'hard'): Promise<ShellCommandResult> {
+  private async resetToCommit(target: string, mode: 'soft' | 'mixed' | 'hard'): Promise<ShellCommandResult> {
     try {
       // Resolve the target commit
       let targetOid: string;
       try {
-        targetOid = await git.resolveRef({
-          fs,
-          dir: cwd,
+        targetOid = await this.git.resolveRef({
+          
+          dir: this.pwd,
           ref: target,
         });
       } catch {
@@ -114,9 +125,9 @@ export class GitResetCommand implements GitSubcommand {
       // Get current HEAD for comparison
       let currentOid: string;
       try {
-        currentOid = await git.resolveRef({
-          fs,
-          dir: cwd,
+        currentOid = await this.git.resolveRef({
+          
+          dir: this.pwd,
           ref: 'HEAD',
         });
       } catch {
@@ -140,9 +151,9 @@ export class GitResetCommand implements GitSubcommand {
           // Move HEAD and reset staging area (default)
           // Reset the index to match the target commit
           try {
-            await git.checkout({
-              fs,
-              dir: cwd,
+            await this.git.checkout({
+              
+              dir: this.pwd,
               ref: target,
               noCheckout: true, // Only update the index, not the working directory
             });
@@ -160,25 +171,25 @@ export class GitResetCommand implements GitSubcommand {
             // 3. Reset the working directory to match the target
 
             // Get the commit object to ensure it exists
-            await git.readCommit({
-              fs,
-              dir: cwd,
+            await this.git.readCommit({
+              
+              dir: this.pwd,
               oid: targetOid,
             });
 
             // Update HEAD to point to the target commit
-            await git.writeRef({
-              fs,
-              dir: cwd,
+            await this.git.writeRef({
+              
+              dir: this.pwd,
               ref: 'HEAD',
               value: targetOid,
             });
 
             // Reset the working directory by checking out all files from the target commit
             // Use force to overwrite any local changes
-            await git.checkout({
-              fs,
-              dir: cwd,
+            await this.git.checkout({
+              
+              dir: this.pwd,
               ref: targetOid,
               force: true,
             });

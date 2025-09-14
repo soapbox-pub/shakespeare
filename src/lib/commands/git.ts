@@ -1,3 +1,4 @@
+import type { Git } from "../git";
 import type { JSRuntimeFS } from "../JSRuntime";
 import type { ShellCommand, ShellCommandResult } from "./ShellCommand";
 import { createSuccessResult, createErrorResult } from "./ShellCommand";
@@ -24,7 +25,19 @@ export interface GitSubcommand {
   name: string;
   description: string;
   usage: string;
-  execute(args: string[], cwd: string, fs: JSRuntimeFS): Promise<ShellCommandResult>;
+  execute(args: string[]): Promise<ShellCommandResult>;
+}
+
+export interface GitSubcommandOptions {
+  git: Git;
+  fs: JSRuntimeFS;
+  pwd: string;
+}
+
+export interface GitCommandOptions {
+  git: Git;
+  fs: JSRuntimeFS;
+  cwd: string;
 }
 
 /**
@@ -36,37 +49,47 @@ export class GitCommand implements ShellCommand {
   description = 'Git version control system';
   usage = 'git <command> [<args>]';
 
+  private git: Git;
   private fs: JSRuntimeFS;
+  private cwd: string;
   private subcommands: Map<string, GitSubcommand>;
 
-  constructor(fs: JSRuntimeFS) {
-    this.fs = fs;
+  constructor(options: GitCommandOptions) {
+    this.git = options.git;
+    this.fs = options.fs;
+    this.cwd = options.cwd;
     this.subcommands = new Map();
-    
+
     // Register all subcommands
-    this.registerSubcommand(new GitInitCommand());
-    this.registerSubcommand(new GitStatusCommand());
-    this.registerSubcommand(new GitAddCommand());
-    this.registerSubcommand(new GitCommitCommand());
-    this.registerSubcommand(new GitLogCommand());
-    this.registerSubcommand(new GitBranchCommand());
-    this.registerSubcommand(new GitCheckoutCommand());
-    this.registerSubcommand(new GitRemoteCommand());
-    this.registerSubcommand(new GitPushCommand());
-    this.registerSubcommand(new GitPullCommand());
-    this.registerSubcommand(new GitCloneCommand());
-    this.registerSubcommand(new GitConfigCommand());
-    this.registerSubcommand(new GitResetCommand());
-    this.registerSubcommand(new GitDiffCommand());
-    this.registerSubcommand(new GitTagCommand());
-    this.registerSubcommand(new GitShowCommand());
+    const subcommandOptions: GitSubcommandOptions = {
+      git: this.git,
+      fs: this.fs,
+      pwd: this.cwd,
+    };
+
+    this.registerSubcommand(new GitInitCommand(subcommandOptions));
+    this.registerSubcommand(new GitStatusCommand(subcommandOptions));
+    this.registerSubcommand(new GitAddCommand(subcommandOptions));
+    this.registerSubcommand(new GitCommitCommand(subcommandOptions));
+    this.registerSubcommand(new GitLogCommand(subcommandOptions));
+    this.registerSubcommand(new GitBranchCommand(subcommandOptions));
+    this.registerSubcommand(new GitCheckoutCommand(subcommandOptions));
+    this.registerSubcommand(new GitRemoteCommand(subcommandOptions));
+    this.registerSubcommand(new GitPushCommand(subcommandOptions));
+    this.registerSubcommand(new GitPullCommand(subcommandOptions));
+    this.registerSubcommand(new GitCloneCommand(subcommandOptions));
+    this.registerSubcommand(new GitConfigCommand(subcommandOptions));
+    this.registerSubcommand(new GitResetCommand(subcommandOptions));
+    this.registerSubcommand(new GitDiffCommand(subcommandOptions));
+    this.registerSubcommand(new GitTagCommand(subcommandOptions));
+    this.registerSubcommand(new GitShowCommand(subcommandOptions));
   }
 
   private registerSubcommand(subcommand: GitSubcommand): void {
     this.subcommands.set(subcommand.name, subcommand);
   }
 
-  async execute(args: string[], cwd: string, _input?: string): Promise<ShellCommandResult> {
+  async execute(args: string[], _cwd: string, _input?: string): Promise<ShellCommandResult> {
     try {
       // Handle no arguments or help
       if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
@@ -88,7 +111,7 @@ export class GitCommand implements ShellCommand {
       }
 
       // Execute the subcommand
-      return await subcommand.execute(subcommandArgs, cwd, this.fs);
+      return await subcommand.execute(subcommandArgs);
 
     } catch (error) {
       return createErrorResult(`git: ${error instanceof Error ? error.message : 'Unknown error'}`);

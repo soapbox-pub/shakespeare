@@ -1,26 +1,37 @@
-import git from 'isomorphic-git';
+
 import type { JSRuntimeFS } from "../../JSRuntime";
 import type { ShellCommandResult } from "../ShellCommand";
 import { createSuccessResult, createErrorResult } from "../ShellCommand";
-import type { GitSubcommand } from "../git";
+import type { GitSubcommand, GitSubcommandOptions } from "../git";
+import type { Git } from "../../git";
 
 export class GitShowCommand implements GitSubcommand {
   name = 'show';
   description = 'Show various types of objects';
   usage = 'git show [<commit>]';
 
-  async execute(args: string[], cwd: string, fs: JSRuntimeFS): Promise<ShellCommandResult> {
+  private git: Git;
+  private fs: JSRuntimeFS;
+  private pwd: string;
+
+  constructor(options: GitSubcommandOptions) {
+    this.git = options.git;
+    this.fs = options.fs;
+    this.pwd = options.pwd;
+  }
+
+  async execute(args: string[]): Promise<ShellCommandResult> {
     try {
       // Check if we're in a git repository
       try {
-        await fs.stat(`${cwd}/.git`);
+        await this.fs.stat(`${this.pwd}/.git`);
       } catch {
         return createErrorResult('fatal: not a git repository (or any of the parent directories): .git');
       }
 
       const { commit } = this.parseArgs(args);
 
-      return await this.showCommit(fs, cwd, commit);
+      return await this.showCommit(commit);
 
     } catch (error) {
       return createErrorResult(`git show: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -40,12 +51,11 @@ export class GitShowCommand implements GitSubcommand {
     return { commit };
   }
 
-  private async showCommit(fs: JSRuntimeFS, cwd: string, commitRef: string): Promise<ShellCommandResult> {
+  private async showCommit(commitRef: string): Promise<ShellCommandResult> {
     try {
       // Get the commit
-      const commits = await git.log({
-        fs,
-        dir: cwd,
+      const commits = await this.git.log({
+        dir: this.pwd,
         depth: 1,
         ref: commitRef,
       });
@@ -59,7 +69,7 @@ export class GitShowCommand implements GitSubcommand {
 
       // Show commit information
       lines.push(`commit ${commit.oid}`);
-      
+
       // Show parent commits if any
       if (commit.commit.parent && commit.commit.parent.length > 0) {
         for (const parent of commit.commit.parent) {
@@ -81,9 +91,9 @@ export class GitShowCommand implements GitSubcommand {
       // Try to show file changes (simplified)
       try {
         // Get the tree for this commit
-        const tree = await git.readTree({
-          fs,
-          dir: cwd,
+        const tree = await this.git.readTree({
+          
+          dir: this.pwd,
           oid: commit.oid,
         });
 

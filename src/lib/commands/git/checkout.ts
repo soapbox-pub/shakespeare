@@ -1,19 +1,29 @@
-import git from 'isomorphic-git';
 import type { JSRuntimeFS } from "../../JSRuntime";
 import type { ShellCommandResult } from "../ShellCommand";
 import { createSuccessResult, createErrorResult } from "../ShellCommand";
-import type { GitSubcommand } from "../git";
+import type { GitSubcommand, GitSubcommandOptions } from "../git";
+import type { Git } from "../../git";
 
 export class GitCheckoutCommand implements GitSubcommand {
   name = 'checkout';
   description = 'Switch branches or restore working tree files';
   usage = 'git checkout <branch> | git checkout -b <new-branch> | git checkout -- <file>';
 
-  async execute(args: string[], cwd: string, fs: JSRuntimeFS): Promise<ShellCommandResult> {
+  private git: Git;
+  private fs: JSRuntimeFS;
+  private pwd: string;
+
+  constructor(options: GitSubcommandOptions) {
+    this.git = options.git;
+    this.fs = options.fs;
+    this.pwd = options.pwd;
+  }
+
+  async execute(args: string[]): Promise<ShellCommandResult> {
     try {
       // Check if we're in a git repository
       try {
-        await fs.stat(`${cwd}/.git`);
+        await this.fs.stat(`${this.pwd}/.git`);
       } catch {
         return createErrorResult('fatal: not a git repository (or any of the parent directories): .git');
       }
@@ -22,11 +32,11 @@ export class GitCheckoutCommand implements GitSubcommand {
 
       switch (action) {
         case 'switch':
-          return await this.switchBranch(fs, cwd, target!);
+          return await this.switchBranch(target!);
         case 'create':
-          return await this.createAndSwitchBranch(fs, cwd, target!);
+          return await this.createAndSwitchBranch(target!);
         case 'restore':
-          return await this.restoreFiles(fs, cwd, target!);
+          return await this.restoreFiles(target!);
         default:
           return createErrorResult('error: pathspec did not match any file(s) known to git');
       }
@@ -72,12 +82,11 @@ export class GitCheckoutCommand implements GitSubcommand {
     return { action, target, options };
   }
 
-  private async switchBranch(fs: JSRuntimeFS, cwd: string, branchName: string): Promise<ShellCommandResult> {
+  private async switchBranch(branchName: string): Promise<ShellCommandResult> {
     try {
       // Check if branch exists
-      const branches = await git.listBranches({
-        fs,
-        dir: cwd,
+      const branches = await this.git.listBranches({
+        dir: this.pwd,
       });
 
       if (!branches.includes(branchName)) {
@@ -87,9 +96,9 @@ export class GitCheckoutCommand implements GitSubcommand {
       // Get current branch
       let currentBranch: string | null = null;
       try {
-        currentBranch = await git.currentBranch({
-          fs,
-          dir: cwd,
+        currentBranch = await this.git.currentBranch({
+          
+          dir: this.pwd,
         }) || null;
       } catch {
         // Continue
@@ -100,9 +109,8 @@ export class GitCheckoutCommand implements GitSubcommand {
       }
 
       // Check for uncommitted changes
-      const statusMatrix = await git.statusMatrix({
-        fs,
-        dir: cwd,
+      const statusMatrix = await this.git.statusMatrix({
+        dir: this.pwd,
       });
 
       const hasChanges = statusMatrix.some(([, headStatus, workdirStatus, stageStatus]) => {
@@ -114,9 +122,8 @@ export class GitCheckoutCommand implements GitSubcommand {
       }
 
       // Switch to the branch
-      await git.checkout({
-        fs,
-        dir: cwd,
+      await this.git.checkout({
+        dir: this.pwd,
         ref: branchName,
       });
 
@@ -127,12 +134,11 @@ export class GitCheckoutCommand implements GitSubcommand {
     }
   }
 
-  private async createAndSwitchBranch(fs: JSRuntimeFS, cwd: string, branchName: string): Promise<ShellCommandResult> {
+  private async createAndSwitchBranch(branchName: string): Promise<ShellCommandResult> {
     try {
       // Check if branch already exists
-      const branches = await git.listBranches({
-        fs,
-        dir: cwd,
+      const branches = await this.git.listBranches({
+        dir: this.pwd,
       });
 
       if (branches.includes(branchName)) {
@@ -142,9 +148,9 @@ export class GitCheckoutCommand implements GitSubcommand {
       // Get current HEAD
       let currentRef: string;
       try {
-        currentRef = await git.resolveRef({
-          fs,
-          dir: cwd,
+        currentRef = await this.git.resolveRef({
+          
+          dir: this.pwd,
           ref: 'HEAD',
         });
       } catch {
@@ -152,17 +158,15 @@ export class GitCheckoutCommand implements GitSubcommand {
       }
 
       // Create the branch
-      await git.branch({
-        fs,
-        dir: cwd,
+      await this.git.branch({
+        dir: this.pwd,
         ref: branchName,
         object: currentRef,
       });
 
       // Switch to the new branch
-      await git.checkout({
-        fs,
-        dir: cwd,
+      await this.git.checkout({
+        dir: this.pwd,
         ref: branchName,
       });
 
@@ -173,16 +177,16 @@ export class GitCheckoutCommand implements GitSubcommand {
     }
   }
 
-  private async restoreFiles(fs: JSRuntimeFS, cwd: string, filePath: string): Promise<ShellCommandResult> {
+  private async restoreFiles(filePath: string): Promise<ShellCommandResult> {
     try {
       // This is a simplified implementation
       // In a full git implementation, this would restore files from the index or HEAD
 
       // Get the file from HEAD
       try {
-        await git.checkout({
-          fs,
-          dir: cwd,
+        await this.git.checkout({
+          
+          dir: this.pwd,
           ref: 'HEAD',
           filepaths: [filePath],
         });

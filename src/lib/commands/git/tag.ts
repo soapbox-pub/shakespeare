@@ -1,19 +1,30 @@
-import git from 'isomorphic-git';
+
 import type { JSRuntimeFS } from "../../JSRuntime";
 import type { ShellCommandResult } from "../ShellCommand";
 import { createSuccessResult, createErrorResult } from "../ShellCommand";
-import type { GitSubcommand } from "../git";
+import type { GitSubcommand, GitSubcommandOptions } from "../git";
+import type { Git } from "../../git";
 
 export class GitTagCommand implements GitSubcommand {
   name = 'tag';
   description = 'Create, list, delete or verify a tag object';
   usage = 'git tag [-l] | git tag <tagname> [<commit>] | git tag -d <tagname>';
 
-  async execute(args: string[], cwd: string, fs: JSRuntimeFS): Promise<ShellCommandResult> {
+  private git: Git;
+  private fs: JSRuntimeFS;
+  private pwd: string;
+
+  constructor(options: GitSubcommandOptions) {
+    this.git = options.git;
+    this.fs = options.fs;
+    this.pwd = options.pwd;
+  }
+
+  async execute(args: string[]): Promise<ShellCommandResult> {
     try {
       // Check if we're in a git repository
       try {
-        await fs.stat(`${cwd}/.git`);
+        await this.fs.stat(`${this.pwd}/.git`);
       } catch {
         return createErrorResult('fatal: not a git repository (or any of the parent directories): .git');
       }
@@ -22,13 +33,13 @@ export class GitTagCommand implements GitSubcommand {
 
       switch (action) {
         case 'list':
-          return await this.listTags(fs, cwd);
+          return await this.listTags();
         case 'create':
-          return await this.createTag(fs, cwd, tagName!, commit);
+          return await this.createTag(tagName!, commit);
         case 'delete':
-          return await this.deleteTag(fs, cwd, tagName!);
+          return await this.deleteTag(tagName!);
         default:
-          return await this.listTags(fs, cwd);
+          return await this.listTags();
       }
 
     } catch (error) {
@@ -73,11 +84,10 @@ export class GitTagCommand implements GitSubcommand {
     return { action, tagName, commit, options };
   }
 
-  private async listTags(fs: JSRuntimeFS, cwd: string): Promise<ShellCommandResult> {
+  private async listTags(): Promise<ShellCommandResult> {
     try {
-      const tags = await git.listTags({
-        fs,
-        dir: cwd,
+      const tags = await this.git.listTags({
+        dir: this.pwd,
       });
 
       if (tags.length === 0) {
@@ -94,7 +104,7 @@ export class GitTagCommand implements GitSubcommand {
     }
   }
 
-  private async createTag(fs: JSRuntimeFS, cwd: string, tagName: string, commit?: string): Promise<ShellCommandResult> {
+  private async createTag(tagName: string, commit?: string): Promise<ShellCommandResult> {
     try {
       if (!tagName) {
         return createErrorResult('usage: git tag <tagname> [<commit>]');
@@ -102,9 +112,9 @@ export class GitTagCommand implements GitSubcommand {
 
       // Check if tag already exists
       try {
-        const tags = await git.listTags({
-          fs,
-          dir: cwd,
+        const tags = await this.git.listTags({
+          
+          dir: this.pwd,
         });
 
         if (tags.includes(tagName)) {
@@ -117,9 +127,9 @@ export class GitTagCommand implements GitSubcommand {
       // Resolve the target commit
       let targetOid: string;
       try {
-        targetOid = await git.resolveRef({
-          fs,
-          dir: cwd,
+        targetOid = await this.git.resolveRef({
+          
+          dir: this.pwd,
           ref: commit || 'HEAD',
         });
       } catch {
@@ -127,9 +137,8 @@ export class GitTagCommand implements GitSubcommand {
       }
 
       // Create the tag
-      await git.tag({
-        fs,
-        dir: cwd,
+      await this.git.tag({
+        dir: this.pwd,
         ref: tagName,
         object: targetOid,
       });
@@ -141,7 +150,7 @@ export class GitTagCommand implements GitSubcommand {
     }
   }
 
-  private async deleteTag(fs: JSRuntimeFS, cwd: string, tagName: string): Promise<ShellCommandResult> {
+  private async deleteTag(tagName: string): Promise<ShellCommandResult> {
     try {
       if (!tagName) {
         return createErrorResult('usage: git tag -d <tagname>');
@@ -149,9 +158,9 @@ export class GitTagCommand implements GitSubcommand {
 
       // Check if tag exists
       try {
-        const tags = await git.listTags({
-          fs,
-          dir: cwd,
+        const tags = await this.git.listTags({
+          
+          dir: this.pwd,
         });
 
         if (!tags.includes(tagName)) {
@@ -162,9 +171,8 @@ export class GitTagCommand implements GitSubcommand {
       }
 
       // Delete the tag
-      await git.deleteTag({
-        fs,
-        dir: cwd,
+      await this.git.deleteTag({
+        dir: this.pwd,
         ref: tagName,
       });
 

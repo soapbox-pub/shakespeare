@@ -1,19 +1,30 @@
-import git from 'isomorphic-git';
+
 import type { JSRuntimeFS } from "../../JSRuntime";
 import type { ShellCommandResult } from "../ShellCommand";
 import { createSuccessResult, createErrorResult } from "../ShellCommand";
-import type { GitSubcommand } from "../git";
+import type { GitSubcommand, GitSubcommandOptions } from "../git";
+import type { Git } from "../../git";
 
 export class GitRemoteCommand implements GitSubcommand {
   name = 'remote';
   description = 'Manage set of tracked repositories';
   usage = 'git remote [-v] | git remote add <name> <url> | git remote remove <name>';
 
-  async execute(args: string[], cwd: string, fs: JSRuntimeFS): Promise<ShellCommandResult> {
+  private git: Git;
+  private fs: JSRuntimeFS;
+  private pwd: string;
+
+  constructor(options: GitSubcommandOptions) {
+    this.git = options.git;
+    this.fs = options.fs;
+    this.pwd = options.pwd;
+  }
+
+  async execute(args: string[]): Promise<ShellCommandResult> {
     try {
       // Check if we're in a git repository
       try {
-        await fs.stat(`${cwd}/.git`);
+        await this.fs.stat(`${this.pwd}/.git`);
       } catch {
         return createErrorResult('fatal: not a git repository (or any of the parent directories): .git');
       }
@@ -22,13 +33,13 @@ export class GitRemoteCommand implements GitSubcommand {
 
       switch (action) {
         case 'list':
-          return await this.listRemotes(fs, cwd, options.verbose);
+          return await this.listRemotes(options.verbose);
         case 'add':
-          return await this.addRemote(fs, cwd, name!, url!);
+          return await this.addRemote(name!, url!);
         case 'remove':
-          return await this.removeRemote(fs, cwd, name!);
+          return await this.removeRemote(name!);
         default:
-          return await this.listRemotes(fs, cwd, options.verbose);
+          return await this.listRemotes(options.verbose);
       }
 
     } catch (error) {
@@ -36,11 +47,11 @@ export class GitRemoteCommand implements GitSubcommand {
     }
   }
 
-  private parseArgs(args: string[]): { 
-    action: 'list' | 'add' | 'remove'; 
-    name?: string; 
-    url?: string; 
-    options: { verbose: boolean } 
+  private parseArgs(args: string[]): {
+    action: 'list' | 'add' | 'remove';
+    name?: string;
+    url?: string;
+    options: { verbose: boolean }
   } {
     const options = { verbose: false };
     let action: 'list' | 'add' | 'remove' = 'list';
@@ -49,7 +60,7 @@ export class GitRemoteCommand implements GitSubcommand {
 
     for (let i = 0; i < args.length; i++) {
       const arg = args[i];
-      
+
       if (arg === '-v' || arg === '--verbose') {
         options.verbose = true;
       } else if (arg === 'add') {
@@ -74,11 +85,10 @@ export class GitRemoteCommand implements GitSubcommand {
     return { action, name, url, options };
   }
 
-  private async listRemotes(fs: JSRuntimeFS, cwd: string, verbose: boolean): Promise<ShellCommandResult> {
+  private async listRemotes(verbose: boolean): Promise<ShellCommandResult> {
     try {
-      const remotes = await git.listRemotes({
-        fs,
-        dir: cwd,
+      const remotes = await this.git.listRemotes({
+        dir: this.pwd,
       });
 
       if (remotes.length === 0) {
@@ -86,7 +96,7 @@ export class GitRemoteCommand implements GitSubcommand {
       }
 
       const lines: string[] = [];
-      
+
       if (verbose) {
         for (const remote of remotes) {
           lines.push(`${remote.remote}\t${remote.url} (fetch)`);
@@ -105,7 +115,7 @@ export class GitRemoteCommand implements GitSubcommand {
     }
   }
 
-  private async addRemote(fs: JSRuntimeFS, cwd: string, name: string, url: string): Promise<ShellCommandResult> {
+  private async addRemote(name: string, url: string): Promise<ShellCommandResult> {
     try {
       if (!name || !url) {
         return createErrorResult('usage: git remote add <name> <url>');
@@ -113,9 +123,9 @@ export class GitRemoteCommand implements GitSubcommand {
 
       // Check if remote already exists
       try {
-        const remotes = await git.listRemotes({
-          fs,
-          dir: cwd,
+        const remotes = await this.git.listRemotes({
+          
+          dir: this.pwd,
         });
 
         const existingRemote = remotes.find(r => r.remote === name);
@@ -127,9 +137,8 @@ export class GitRemoteCommand implements GitSubcommand {
       }
 
       // Add the remote
-      await git.addRemote({
-        fs,
-        dir: cwd,
+      await this.git.addRemote({
+        dir: this.pwd,
         remote: name,
         url: url,
       });
@@ -141,7 +150,7 @@ export class GitRemoteCommand implements GitSubcommand {
     }
   }
 
-  private async removeRemote(fs: JSRuntimeFS, cwd: string, name: string): Promise<ShellCommandResult> {
+  private async removeRemote(name: string): Promise<ShellCommandResult> {
     try {
       if (!name) {
         return createErrorResult('usage: git remote remove <name>');
@@ -149,9 +158,9 @@ export class GitRemoteCommand implements GitSubcommand {
 
       // Check if remote exists
       try {
-        const remotes = await git.listRemotes({
-          fs,
-          dir: cwd,
+        const remotes = await this.git.listRemotes({
+          
+          dir: this.pwd,
         });
 
         const existingRemote = remotes.find(r => r.remote === name);
@@ -163,9 +172,8 @@ export class GitRemoteCommand implements GitSubcommand {
       }
 
       // Remove the remote
-      await git.deleteRemote({
-        fs,
-        dir: cwd,
+      await this.git.deleteRemote({
+        dir: this.pwd,
         remote: name,
       });
 

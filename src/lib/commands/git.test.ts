@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { Git } from '../git';
 import { GitCommand } from './git';
 import type { JSRuntimeFS } from '../JSRuntime';
 
@@ -39,7 +40,8 @@ describe('GitCommand', () => {
 
   beforeEach(() => {
     mockFS = createMockFS();
-    gitCommand = new GitCommand(mockFS);
+    const git = new Git(mockFS);
+    gitCommand = new GitCommand({ git, fs: mockFS, cwd: testCwd });
   });
 
   it('should have correct command properties', () => {

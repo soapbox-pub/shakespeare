@@ -1,62 +1,69 @@
-import git from 'isomorphic-git';
 import type { JSRuntimeFS } from "../../JSRuntime";
 import type { ShellCommandResult } from "../ShellCommand";
 import { createSuccessResult, createErrorResult } from "../ShellCommand";
-import type { GitSubcommand } from "../git";
+import type { GitSubcommand, GitSubcommandOptions } from "../git";
+import type { Git } from "../../git";
 
 export class GitInitCommand implements GitSubcommand {
   name = 'init';
   description = 'Create an empty Git repository or reinitialize an existing one';
   usage = 'git init [--bare] [<directory>]';
 
-  async execute(args: string[], cwd: string, fs: JSRuntimeFS): Promise<ShellCommandResult> {
+  private git: Git;
+  private fs: JSRuntimeFS;
+  private pwd: string;
+
+  constructor(options: GitSubcommandOptions) {
+    this.git = options.git;
+    this.fs = options.fs;
+    this.pwd = options.pwd;
+  }
+
+  async execute(args: string[]): Promise<ShellCommandResult> {
     try {
       // Parse arguments
       const { options, directory } = this.parseArgs(args);
-      const targetDir = directory || cwd;
+      const targetDir = directory || this.pwd;
 
       // Check if directory exists, create if needed
       if (directory) {
         try {
-          await fs.stat(targetDir);
+          await this.fs.stat(targetDir);
         } catch {
           // Directory doesn't exist, create it
-          await fs.mkdir(targetDir, { recursive: true });
+          await this.fs.mkdir(targetDir, { recursive: true });
         }
       }
 
       // Check if already a git repository
       try {
-        await fs.stat(`${targetDir}/.git`);
+        await this.fs.stat(`${targetDir}/.git`);
         return createSuccessResult(`Reinitialized existing Git repository in ${targetDir}/.git/\n`);
       } catch {
         // Not a git repository, proceed with initialization
       }
 
       // Initialize the repository
-      await git.init({
-        fs,
+      await this.git.init({
         dir: targetDir,
         bare: options.bare,
         defaultBranch: 'main'
       });
 
       // Set up basic configuration
-      await git.setConfig({
-        fs,
+      await this.git.setConfig({
         dir: targetDir,
         path: 'user.name',
         value: 'shakespeare.diy'
       });
 
-      await git.setConfig({
-        fs,
+      await this.git.setConfig({
         dir: targetDir,
         path: 'user.email',
         value: 'assistant@shakespeare.diy'
       });
 
-      const message = options.bare 
+      const message = options.bare
         ? `Initialized empty Git repository in ${targetDir}/\n`
         : `Initialized empty Git repository in ${targetDir}/.git/\n`;
 

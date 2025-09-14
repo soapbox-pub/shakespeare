@@ -1,19 +1,29 @@
-import git from 'isomorphic-git';
 import type { JSRuntimeFS } from "../../JSRuntime";
 import type { ShellCommandResult } from "../ShellCommand";
 import { createSuccessResult, createErrorResult } from "../ShellCommand";
-import type { GitSubcommand } from "../git";
+import type { GitSubcommand, GitSubcommandOptions } from "../git";
+import type { Git } from "../../git";
 
 export class GitLogCommand implements GitSubcommand {
   name = 'log';
   description = 'Show commit logs';
   usage = 'git log [--oneline] [--graph] [-n <number>] [<since>..<until>]';
 
-  async execute(args: string[], cwd: string, fs: JSRuntimeFS): Promise<ShellCommandResult> {
+  private git: Git;
+  private fs: JSRuntimeFS;
+  private pwd: string;
+
+  constructor(options: GitSubcommandOptions) {
+    this.git = options.git;
+    this.fs = options.fs;
+    this.pwd = options.pwd;
+  }
+
+  async execute(args: string[]): Promise<ShellCommandResult> {
     try {
       // Check if we're in a git repository
       try {
-        await fs.stat(`${cwd}/.git`);
+        await this.fs.stat(`${this.pwd}/.git`);
       } catch {
         return createErrorResult('fatal: not a git repository (or any of the parent directories): .git');
       }
@@ -21,9 +31,9 @@ export class GitLogCommand implements GitSubcommand {
       const { options, limit } = this.parseArgs(args);
 
       try {
-        const commits = await git.log({
-          fs,
-          dir: cwd,
+        const commits = await this.git.log({
+          
+          dir: this.pwd,
           depth: limit,
         });
 

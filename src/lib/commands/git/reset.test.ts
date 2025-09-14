@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { GitResetCommand } from './reset';
+import type { Git } from '../../git';
 import type { JSRuntimeFS } from '../../JSRuntime';
 
 // Mock isomorphic-git
@@ -48,11 +49,13 @@ const createMockFS = (): JSRuntimeFS => ({
 describe('GitResetCommand', () => {
   let resetCommand: GitResetCommand;
   let mockFS: JSRuntimeFS;
+  let mockGit: Git;
   const testCwd = '/test';
 
   beforeEach(() => {
     mockFS = createMockFS();
-    resetCommand = new GitResetCommand();
+    mockGit = {} as Git; // Mock Git instance
+    resetCommand = new GitResetCommand({ git: mockGit, fs: mockFS, pwd: testCwd });
     vi.clearAllMocks();
     vi.resetAllMocks();
   });
@@ -67,7 +70,7 @@ describe('GitResetCommand', () => {
     // Mock stat to throw for .git directory
     mockFS.stat = vi.fn().mockRejectedValue(new Error('ENOENT'));
 
-    const result = await resetCommand.execute(['--hard', 'HEAD'], testCwd, mockFS);
+    const result = await resetCommand.execute([]);
 
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain('fatal: not a git repository');
@@ -95,7 +98,7 @@ describe('GitResetCommand', () => {
     vi.mocked(git.writeRef).mockResolvedValue(undefined);
     vi.mocked(git.checkout).mockResolvedValue(undefined);
 
-    const result = await resetCommand.execute(['--hard', 'HEAD'], testCwd, mockFS);
+    const result = await resetCommand.execute(['--hard', 'HEAD']);
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain('HEAD is now at');
@@ -128,7 +131,7 @@ describe('GitResetCommand', () => {
       .mockResolvedValueOnce(currentOid); // Second call for current HEAD
     vi.mocked(git.checkout).mockResolvedValue(undefined);
 
-    const result = await resetCommand.execute(['HEAD'], testCwd, mockFS);
+    const result = await resetCommand.execute(['HEAD']);
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain('HEAD is now at');
@@ -143,7 +146,7 @@ describe('GitResetCommand', () => {
   it('should handle file-specific reset', async () => {
     vi.mocked(git.resetIndex).mockResolvedValue(undefined);
 
-    const result = await resetCommand.execute(['HEAD', 'file.txt'], testCwd, mockFS);
+    const result = await resetCommand.execute(['HEAD', 'file.txt']);
 
     expect(result.exitCode).toBe(0);
     expect(git.resetIndex).toHaveBeenCalledWith({
@@ -158,7 +161,7 @@ describe('GitResetCommand', () => {
     vi.mocked(git.resolveRef).mockRejectedValue(new Error('Unknown ref'));
 
     // Use a commit hash that looks valid but doesn't exist
-    const result = await resetCommand.execute(['--hard', 'abc123def456'], testCwd, mockFS);
+    const result = await resetCommand.execute(['unknown-ref']);
 
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain('unknown revision or path not in the working tree');
@@ -173,7 +176,7 @@ describe('GitResetCommand', () => {
       .mockResolvedValueOnce(targetOid) // First call for target
       .mockResolvedValueOnce(currentOid); // Second call for current HEAD
 
-    const result = await resetCommand.execute(['--soft', 'HEAD'], testCwd, mockFS);
+    const result = await resetCommand.execute(['--soft', 'HEAD']);
 
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain('--soft reset is not implemented');
@@ -187,7 +190,7 @@ describe('GitResetCommand', () => {
       .mockResolvedValueOnce(mockOid) // First call for target
       .mockResolvedValueOnce(mockOid); // Second call for current HEAD
 
-    const result = await resetCommand.execute(['--hard', 'HEAD'], testCwd, mockFS);
+    const result = await resetCommand.execute(['HEAD']);
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toBe('');

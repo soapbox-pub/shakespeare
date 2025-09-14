@@ -9,7 +9,7 @@ interface UserMessageProps {
 /**
  * Component to render user messages nicely
  * Handles both string content and array content (text parts)
- * Detects "File added to /tmp/<filename>" patterns and renders them as badges
+ * Detects "Added file: /tmp/<filename>" patterns and renders them as badges
  */
 export function UserMessage({ content }: UserMessageProps) {
   // Convert content to array format for uniform processing
@@ -17,8 +17,8 @@ export function UserMessage({ content }: UserMessageProps) {
     ? [{ type: 'text' as const, text: content }]
     : content.filter(part => part.type === 'text') as Array<{ type: 'text'; text: string }>;
 
-  // Regular expression to match "File added to /tmp/<filename>" patterns
-  const filePattern = /^File added to (\/tmp\/[^\s\n]+)$/;
+  // Regular expression to match "Added file: /tmp/<filename>" patterns
+  const filePattern = /^Added file: (\/tmp\/[^\s\n]+)$/;
 
   // Process each content part and categorize as text or file
   const processedParts: Array<{ type: 'text' | 'file'; content: string; filepath?: string }> = [];
@@ -75,7 +75,7 @@ export function UserMessage({ content }: UserMessageProps) {
               <Badge variant="secondary" className="flex items-center gap-1.5 px-2 py-1">
                 {getFileIcon(filename)}
                 <span className="text-xs font-medium">{filename}</span>
-                <span className="text-xs text-muted-foreground">added to {part.filepath}</span>
+                <span className="text-xs text-muted-foreground">{part.filepath}</span>
               </Badge>
             </div>
           );

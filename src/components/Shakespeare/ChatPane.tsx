@@ -306,7 +306,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
       const filePromises = attachedFiles.map(async (file) => {
         try {
           const savedPath = await saveFileToTmp(fs, file);
-          return `File added to ${savedPath}`;
+          return `Added file: ${savedPath}`;
         } catch (error) {
           console.error('Failed to save file:', error);
           return `Failed to save file: ${file.name}`;

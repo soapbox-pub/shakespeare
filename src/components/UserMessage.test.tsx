@@ -12,7 +12,7 @@ describe('UserMessage', () => {
   });
 
   it('handles backward compatibility with string content containing file attachments', () => {
-    const content = 'Here is my file: File added to /tmp/test.txt';
+    const content = 'Here is my file: Added file: /tmp/test.txt';
 
     render(<UserMessage content={content} />);
 
@@ -23,21 +23,21 @@ describe('UserMessage', () => {
   it('renders file attachment badges for single file with text parts', () => {
     const content = [
       { type: 'text' as const, text: 'Here is my file:' },
-      { type: 'text' as const, text: 'File added to /tmp/test.txt' }
+      { type: 'text' as const, text: 'Added file: /tmp/test.txt' }
     ];
 
     render(<UserMessage content={content} />);
 
     expect(screen.getByText('Here is my file:')).toBeInTheDocument();
     expect(screen.getByText('test.txt')).toBeInTheDocument();
-    expect(screen.getByText('added to /tmp/test.txt')).toBeInTheDocument();
+    expect(screen.getByText('/tmp/test.txt')).toBeInTheDocument();
   });
 
   it('renders multiple file attachments with text parts', () => {
     const content = [
       { type: 'text' as const, text: 'Files uploaded:' },
-      { type: 'text' as const, text: 'File added to /tmp/document.pdf' },
-      { type: 'text' as const, text: 'File added to /tmp/image.jpg' },
+      { type: 'text' as const, text: 'Added file: /tmp/document.pdf' },
+      { type: 'text' as const, text: 'Added file: /tmp/image.jpg' },
       { type: 'text' as const, text: 'All done!' }
     ];
 
@@ -50,7 +50,7 @@ describe('UserMessage', () => {
   });
 
   it('renders text files with FileText icon', () => {
-    const content = [{ type: 'text' as const, text: 'File added to /tmp/script.js' }];
+    const content = [{ type: 'text' as const, text: 'Added file: /tmp/script.js' }];
 
     render(<UserMessage content={content} />);
 
@@ -59,27 +59,27 @@ describe('UserMessage', () => {
   });
 
   it('handles files without extensions', () => {
-    const content = [{ type: 'text' as const, text: 'File added to /tmp/README' }];
+    const content = [{ type: 'text' as const, text: 'Added file: /tmp/README' }];
 
     render(<UserMessage content={content} />);
 
     expect(screen.getByText('README')).toBeInTheDocument();
-    expect(screen.getByText('added to /tmp/README')).toBeInTheDocument();
+    expect(screen.getByText('/tmp/README')).toBeInTheDocument();
   });
 
   it('handles complex filenames with underscores and numbers', () => {
-    const content = [{ type: 'text' as const, text: 'File added to /tmp/my_file_1.txt' }];
+    const content = [{ type: 'text' as const, text: 'Added file: /tmp/my_file_1.txt' }];
 
     render(<UserMessage content={content} />);
 
     expect(screen.getByText('my_file_1.txt')).toBeInTheDocument();
-    expect(screen.getByText('added to /tmp/my_file_1.txt')).toBeInTheDocument();
+    expect(screen.getByText('/tmp/my_file_1.txt')).toBeInTheDocument();
   });
 
   it('preserves whitespace in text content', () => {
     const content = [
       { type: 'text' as const, text: 'Line 1\n\nLine 3 with spaces   \n\nFinal line' },
-      { type: 'text' as const, text: 'File added to /tmp/test.txt' }
+      { type: 'text' as const, text: 'Added file: /tmp/test.txt' }
     ];
 
     const { container } = render(<UserMessage content={content} />);
@@ -94,7 +94,7 @@ describe('UserMessage', () => {
   it('handles mixed content with file attachments in the middle', () => {
     const content = [
       { type: 'text' as const, text: 'Starting text' },
-      { type: 'text' as const, text: 'File added to /tmp/middle.txt' },
+      { type: 'text' as const, text: 'Added file: /tmp/middle.txt' },
       { type: 'text' as const, text: 'ending text' }
     ];
 

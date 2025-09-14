@@ -28,12 +28,10 @@ export class LsCommand implements ShellCommand {
 
       for (const path of targetPaths) {
         try {
-          // Handle absolute paths
-          if (path.startsWith('/') || path.startsWith('\\') || /^[A-Za-z]:[\\/]/.test(path)) {
-            return createErrorResult(`${this.name}: absolute paths are not supported: ${path}`);
-          }
-
-          const absolutePath = join(cwd, path);
+          // Determine the absolute path
+          const absolutePath = path.startsWith('/') || path.startsWith('\\') || /^[A-Za-z]:[\\/]/.test(path)
+            ? path  // Already absolute
+            : join(cwd, path);  // Make relative path absolute
           const stats = await this.fs.stat(absolutePath);
 
           if (stats.isFile()) {

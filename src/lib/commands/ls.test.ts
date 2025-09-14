@@ -131,10 +131,19 @@ describe('LsCommand', () => {
     expect(result.stderr).toContain('No such file or directory');
   });
 
-  it('should reject absolute paths', async () => {
+  it('should handle absolute paths', async () => {
+    vi.mocked(mockFS.stat).mockResolvedValue({
+      isDirectory: () => true,
+      isFile: () => false,
+    });
+    vi.mocked(mockFS.readdir).mockResolvedValue([
+      { name: 'file1.txt', isDirectory: () => false, isFile: () => true },
+    ]);
+
     const result = await lsCommand.execute(['/absolute/path'], testCwd);
 
-    expect(result.exitCode).toBe(1);
-    expect(result.stderr).toContain('absolute paths are not supported');
+    expect(result.exitCode).toBe(0);
+    expect(mockFS.stat).toHaveBeenCalledWith('/absolute/path');
+    expect(result.stdout).toContain('file1.txt');
   });
 });

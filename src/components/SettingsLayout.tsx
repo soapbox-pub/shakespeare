@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Menu, Columns2, Bot, GitBranch, Database } from 'lucide-react';
 import { ProjectSidebar } from '@/components/ProjectSidebar';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
@@ -136,22 +137,22 @@ export function SettingsLayout() {
 
   // Desktop 3-column layout
   return (
-    <div className="min-h-screen flex bg-white">
+    <div className="h-screen flex bg-white overflow-hidden">
       {/* Left Column - Projects Sidebar (optionally hidden) */}
       {isSidebarVisible && (
-        <div className="w-80 border-r bg-sidebar">
+        <div className="w-80 border-r bg-sidebar flex-shrink-0">
           <ProjectSidebar
             selectedProject={null}
             onSelectProject={handleProjectSelect}
-            className="h-screen sticky top-0"
+            className="h-full"
           />
         </div>
       )}
 
       {/* Middle Column - Settings Navigation */}
-      <div className="w-96 border-r bg-white flex flex-col">
+      <div className="w-96 border-r bg-white flex flex-col flex-shrink-0">
         {/* Header with toggle button */}
-        <div className="h-12 px-4 py-2 border-b">
+        <div className="h-12 px-4 py-2 border-b flex-shrink-0">
           <div className="flex items-center gap-3">
             <Button
               variant="ghost"
@@ -168,46 +169,48 @@ export function SettingsLayout() {
           </div>
         </div>
 
-        {/* Settings Navigation */}
-        <div className="flex-1 p-4">
-          <div className="space-y-2">
-            {settingsItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = currentSettingsId === item.id;
+        {/* Settings Navigation - Scrollable */}
+        <ScrollArea className="flex-1">
+          <div className="p-4">
+            <div className="space-y-2">
+              {settingsItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = currentSettingsId === item.id;
 
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => navigate(item.href)}
-                  className={cn('w-full text-left p-3 rounded-lg transition-colors border border-transparent', {
-                    'bg-primary/10 border border-primary/20': isActive,
-                    'hover:bg-muted/50': !isActive,
-                  })}
-                >
-                  <div className="flex items-start gap-3">
-                    <Icon className={`h-5 w-5 mt-0.5 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
-                    <div className="flex-1 min-w-0">
-                      <div className={`font-medium ${isActive ? 'text-primary' : 'text-foreground'}`}>
-                        {item.title}
-                      </div>
-                      <div className="text-sm text-muted-foreground mt-0.5">
-                        {item.description}
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => navigate(item.href)}
+                    className={cn('w-full text-left p-3 rounded-lg transition-colors border border-transparent', {
+                      'bg-primary/10 border border-primary/20': isActive,
+                      'hover:bg-muted/50': !isActive,
+                    })}
+                  >
+                    <div className="flex items-start gap-3">
+                      <Icon className={`h-5 w-5 mt-0.5 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
+                      <div className="flex-1 min-w-0">
+                        <div className={`font-medium ${isActive ? 'text-primary' : 'text-foreground'}`}>
+                          {item.title}
+                        </div>
+                        <div className="text-sm text-muted-foreground mt-0.5">
+                          {item.description}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </button>
-              );
-            })}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        </div>
+        </ScrollArea>
       </div>
 
-      {/* Right Column - Settings Content */}
-      <div className="flex-1 bg-white">
+      {/* Right Column - Settings Content - Scrollable */}
+      <ScrollArea className="flex-1 bg-white">
         <div className="max-w-4xl">
           <Outlet />
         </div>
-      </div>
+      </ScrollArea>
     </div>
   );
 }

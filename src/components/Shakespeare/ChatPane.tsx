@@ -5,6 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CircularProgress } from '@/components/ui/circular-progress';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { FileAttachment } from '@/components/ui/file-attachment';
 import { Square, Loader2, ChevronDown, ArrowUp } from 'lucide-react';
 import { useAISettings } from '@/hooks/useAISettings';
 import { useFS } from '@/hooks/useFS';
@@ -36,6 +37,7 @@ import { Tool } from '@/lib/tools/Tool';
 import OpenAI from 'openai';
 import { makeSystemPrompt } from '@/lib/system';
 import { assistantContentEmpty } from '@/lib/ai-messages';
+import { saveFileToTmp } from '@/lib/fileUtils';
 
 interface ChatPaneProps {
   projectId: string;
@@ -67,6 +69,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   const [input, setInput] = useState('');
   const [systemPrompt, setSystemPrompt] = useState('');
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
+  const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
 
   // Use external state if provided, otherwise default to false
   const isBuildLoading = externalIsBuildLoading || false;
@@ -274,12 +277,44 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     }
   }, [messages, streamingMessage, isLoading]);
 
-  const handleSend = async () => {
-    if (!input.trim() || isLoading || !providerModel.trim()) return;
+  const handleFileSelect = (file: File) => {
+    setAttachedFiles(prev => [...prev, file]);
+  };
 
-    const messageContent = input;
+  const handleFileRemove = (fileToRemove: File) => {
+    setAttachedFiles(prev => prev.filter(file => file !== fileToRemove));
+  };
+
+  const handleSend = async () => {
+    if ((!input.trim() && attachedFiles.length === 0) || isLoading || !providerModel.trim()) return;
+
+    let messageContent = input;
     const modelToUse = providerModel.trim();
+
+    // Process attached files
+    if (attachedFiles.length > 0) {
+      const filePromises = attachedFiles.map(async (file) => {
+        try {
+          const savedPath = await saveFileToTmp(fs, file);
+          return `File added to ${savedPath}`;
+        } catch (error) {
+          console.error('Failed to save file:', error);
+          return `Failed to save file: ${file.name}`;
+        }
+      });
+
+      const fileResults = await Promise.all(filePromises);
+
+      // Append file information to the message
+      if (messageContent.trim()) {
+        messageContent += '\n\n' + fileResults.join('\n');
+      } else {
+        messageContent = fileResults.join('\n');
+      }
+    }
+
     setInput('');
+    setAttachedFiles([]);
 
     // Add model to recently used when sending a message
     addRecentlyUsedModel(modelToUse);
@@ -464,6 +499,15 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
 
           {/* Bottom Controls Row */}
           <div className="absolute bottom-2 left-2 right-2 flex items-center gap-4">
+            {/* File Attachment */}
+            <FileAttachment
+              onFileSelect={handleFileSelect}
+              onFileRemove={handleFileRemove}
+              selectedFiles={attachedFiles}
+              disabled={isLoading}
+              multiple={true}
+            />
+
             {/* Context Usage Wheel */}
             {contextUsagePercentage >= 10 && currentModel?.contextLength && lastInputTokens > 0 && (
               <TooltipProvider>
@@ -526,7 +570,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
                 <Button
                   onClick={handleSend}
                   onMouseDown={handleFirstInteraction}
-                  disabled={!input.trim() || !providerModel.trim()}
+                  disabled={(!input.trim() && attachedFiles.length === 0) || !providerModel.trim()}
                   size="sm"
                   className="size-8 [&_svg]:size-5 rounded-full p-0"
                 >

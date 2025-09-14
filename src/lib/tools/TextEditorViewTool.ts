@@ -166,22 +166,12 @@ export class TextEditorViewTool implements Tool<TextEditorViewParams> {
     // Always ignore .git directory
     ig.add(".git");
 
-    // Default ignore patterns if no .gitignore is found
-    const defaultIgnorePatterns = [
-      "node_modules",
-      "dist",
-      "build",
-      ".next",
-      ".tmp",
-    ];
-
     try {
       // Try to read .gitignore file
       const gitignoreContent = await this.fs.readFile(".gitignore", "utf8");
       ig.add(gitignoreContent);
     } catch {
-      // If there's an error reading .gitignore, fall back to defaults
-      ig.add(defaultIgnorePatterns);
+      // If there's an error reading .gitignore, just proceed without it
     }
 
     return (path: string) => !ig.ignores(path);

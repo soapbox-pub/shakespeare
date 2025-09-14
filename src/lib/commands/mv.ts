@@ -32,7 +32,7 @@ export class MvCommand implements ShellCommand {
       const pathsToValidate = [destination, ...sources];
       for (const path of pathsToValidate) {
         try {
-          validateWritePath(path, this.name);
+          validateWritePath(path, this.name, cwd);
         } catch (error) {
           return createErrorResult(error instanceof Error ? error.message : 'Unknown error');
         }

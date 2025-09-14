@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import type { Tool } from "./Tool";
 import type { JSRuntimeFS } from "../JSRuntime";
-import { isAbsolutePath, createWriteAccessDeniedError } from "../security";
+import { isAbsolutePath, isWriteAllowed, createWriteAccessDeniedError } from "../security";
 
 interface TextEditorStrReplaceParams {
   path: string;
@@ -32,27 +32,12 @@ export class TextEditorStrReplaceTool implements Tool<TextEditorStrReplaceParams
     this.cwd = cwd;
   }
 
-  /**
-   * Check if write operations are allowed for the given absolute path
-   */
-  private isWriteAllowed(absolutePath: string): boolean {
-    // Allow writes to /tmp/ and its subdirectories
-    if (absolutePath.startsWith('/tmp/') || absolutePath === '/tmp') {
-      return true;
-    }
-
-    // For other absolute paths, deny write access
-    return false;
-  }
-
   async execute(args: TextEditorStrReplaceParams): Promise<string> {
     const { path, old_str, new_str, normalize_whitespace = true } = args;
 
-    // Check for absolute paths and validate write permissions
-    if (isAbsolutePath(path)) {
-      if (!this.isWriteAllowed(path)) {
-        throw new Error(createWriteAccessDeniedError(path, undefined, this.cwd));
-      }
+    // Check write permissions
+    if (!isWriteAllowed(path, this.cwd)) {
+      throw new Error(createWriteAccessDeniedError(path, undefined, this.cwd));
     }
 
     // Ban editing dependencies in package.json

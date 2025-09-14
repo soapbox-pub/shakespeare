@@ -366,7 +366,7 @@ export class CurlCommand implements ShellCommand {
   private async writeToFile(filename: string, content: string, cwd: string): Promise<void> {
     try {
       // Validate write permissions for absolute paths
-      validateWritePath(filename, 'curl');
+      validateWritePath(filename, 'curl', cwd);
 
       // Handle both absolute and relative paths
       let absolutePath: string;

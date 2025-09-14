@@ -36,7 +36,7 @@ export class CpCommand implements ShellCommand {
 
       // Check write permissions for destination (sources can be read from anywhere)
       try {
-        validateWritePath(destination, this.name);
+        validateWritePath(destination, this.name, cwd);
       } catch (error) {
         return createErrorResult(error instanceof Error ? error.message : 'Unknown error');
       }

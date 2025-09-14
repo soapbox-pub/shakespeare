@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { 
-  isAbsolutePath, 
-  isWriteAllowed, 
-  validateWritePath, 
-  createWriteAccessDeniedError 
+import {
+  isAbsolutePath,
+  isWriteAllowed,
+  validateWritePath,
+  createWriteAccessDeniedError
 } from './security';
 
 describe('security', () => {
@@ -36,11 +36,40 @@ describe('security', () => {
       expect(isWriteAllowed('/tmp/subdir/file.txt')).toBe(true);
     });
 
+    it('should allow writes to /projects/', () => {
+      expect(isWriteAllowed('/projects')).toBe(true);
+      expect(isWriteAllowed('/projects/')).toBe(true);
+      expect(isWriteAllowed('/projects/my-project/file.txt')).toBe(true);
+      expect(isWriteAllowed('/projects/my-project/src/index.ts')).toBe(true);
+    });
+
+    it('should allow writes within current working directory', () => {
+      const cwd = '/project';
+      expect(isWriteAllowed('/project', cwd)).toBe(true);
+      expect(isWriteAllowed('/project/file.txt', cwd)).toBe(true);
+      expect(isWriteAllowed('/project/src/index.ts', cwd)).toBe(true);
+      expect(isWriteAllowed('/project/deep/nested/file.txt', cwd)).toBe(true);
+    });
+
+    it('should allow relative paths with cwd', () => {
+      const cwd = '/project';
+      expect(isWriteAllowed('file.txt', cwd)).toBe(true);
+      expect(isWriteAllowed('src/index.ts', cwd)).toBe(true);
+      expect(isWriteAllowed('./file.txt', cwd)).toBe(true);
+      expect(isWriteAllowed('../parent/file.txt', cwd)).toBe(true);
+    });
+
     it('should deny writes to other absolute paths', () => {
       expect(isWriteAllowed('/home/user/file.txt')).toBe(false);
       expect(isWriteAllowed('/var/log/file.txt')).toBe(false);
       expect(isWriteAllowed('/absolute/path')).toBe(false);
       expect(isWriteAllowed('/etc/passwd')).toBe(false);
+    });
+
+    it('should deny writes outside current working directory', () => {
+      const cwd = '/project';
+      expect(isWriteAllowed('/other/path/file.txt', cwd)).toBe(false);
+      expect(isWriteAllowed('/home/user/file.txt', cwd)).toBe(false);
     });
   });
 
@@ -75,8 +104,9 @@ describe('security', () => {
       const error = createWriteAccessDeniedError('/absolute/path');
       expect(error).toContain('Write access denied to /absolute/path');
       expect(error).toContain('Write operations are only allowed in:');
-      expect(error).toContain('- Current project directory (relative paths)');
-      expect(error).toContain('- /tmp/ directory and its subdirectories');
+      expect(error).toContain('- Current working directory and subdirectories');
+      expect(error).toContain('- Project directories (/projects/ and subdirectories)');
+      expect(error).toContain('- Temporary directory (/tmp/ and subdirectories)');
       expect(error).toContain('💡 Examples of allowed paths:');
     });
 

@@ -29,7 +29,7 @@ export class TouchCommand implements ShellCommand {
         try {
           // Validate write permissions for absolute paths
           try {
-            validateWritePath(filePath, this.name);
+            validateWritePath(filePath, this.name, cwd);
           } catch (error) {
             return createErrorResult(error instanceof Error ? error.message : 'Unknown error');
           }

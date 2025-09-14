@@ -35,7 +35,7 @@ export class MkdirCommand implements ShellCommand {
         try {
           // Validate write permissions for absolute paths
           try {
-            validateWritePath(dirPath, this.name);
+            validateWritePath(dirPath, this.name, cwd);
           } catch (error) {
             return createErrorResult(error instanceof Error ? error.message : 'Unknown error');
           }

@@ -33,9 +33,14 @@ export class RmCommand implements ShellCommand {
 
       for (const path of paths) {
         try {
+          // Check for special cases first
+          if (path === '.' || path === '..') {
+            return createErrorResult(`${this.name}: cannot remove '${path}': Invalid argument`);
+          }
+
           // Validate write permissions for absolute paths
           try {
-            validateWritePath(path, this.name);
+            validateWritePath(path, this.name, cwd);
           } catch (error) {
             return createErrorResult(error instanceof Error ? error.message : 'Unknown error');
           }

@@ -7,6 +7,7 @@ import {
   CdCommand,
   ClearCommand,
   CpCommand,
+  CurlCommand,
   CutCommand,
   DateCommand,
   DiffCommand,
@@ -43,11 +44,11 @@ export class ShellTool implements Tool<ShellToolParams> {
   private cwd: string;
   private commands: Map<string, ShellCommand>;
 
-  readonly description = "Execute shell commands like cat, ls, cd, pwd, rm, cp, mv, echo, head, tail, grep, find, wc, touch, mkdir, sort, uniq, cut, tr, diff, which, whoami, date, env, clear, git. Supports compound commands with &&, ||, ;, and | operators";
+  readonly description = "Execute shell commands like cat, ls, cd, pwd, rm, cp, mv, echo, head, tail, grep, find, wc, touch, mkdir, sort, uniq, cut, tr, diff, which, whoami, date, env, clear, git, curl. Supports compound commands with &&, ||, ;, and | operators";
 
   readonly inputSchema = z.object({
     command: z.string().describe(
-      'Shell command to execute, e.g. "cat file.txt", "ls -la", "cd src", "pwd", "sort file.txt", "diff file1 file2", "git status", "git add .", "git commit -m \'message\'". Supports compound commands with &&, ||, ;, and | operators, e.g. "pwd && ls -la", "cat file.txt | grep pattern", "git add . && git commit -m \'update\'"'
+      'Shell command to execute, e.g. "cat file.txt", "ls -la", "cd src", "pwd", "sort file.txt", "diff file1 file2", "git status", "git add .", "git commit -m \'message\'", "curl -X GET https://api.example.com", "curl -H \'Content-Type: application/json\' -d \'{"key":"value"}\' https://api.example.com". Supports compound commands with &&, ||, ;, and | operators, e.g. "pwd && ls -la", "cat file.txt | grep pattern", "git add . && git commit -m \'update\'"'
     ),
   });
 
@@ -61,6 +62,7 @@ export class ShellTool implements Tool<ShellToolParams> {
     this.registerCommand(new CdCommand(fs));
     this.registerCommand(new ClearCommand());
     this.registerCommand(new CpCommand(fs));
+    this.registerCommand(new CurlCommand(fs));
     this.registerCommand(new CutCommand(fs));
     this.registerCommand(new DateCommand());
     this.registerCommand(new DiffCommand(fs));

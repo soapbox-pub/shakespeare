@@ -3,6 +3,7 @@ export { CatCommand } from './cat';
 export { CdCommand } from './cd';
 export { ClearCommand } from './clear';
 export { CpCommand } from './cp';
+export { CurlCommand } from './curl';
 export { CutCommand } from './cut';
 export { DateCommand } from './date';
 export { DiffCommand } from './diff';

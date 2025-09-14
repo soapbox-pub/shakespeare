@@ -28,7 +28,7 @@ describe('ShellTool', () => {
   });
 
   it('should have correct tool properties', () => {
-    expect(shellTool.description).toBe('Execute shell commands like cat, ls, cd, pwd, rm, cp, mv, echo, head, tail, grep, find, wc, touch, mkdir, sort, uniq, cut, tr, diff, which, whoami, date, env, clear, git. Supports compound commands with &&, ||, ;, and | operators');
+    expect(shellTool.description).toBe('Execute shell commands like cat, ls, cd, pwd, rm, cp, mv, echo, head, tail, grep, find, wc, touch, mkdir, sort, uniq, cut, tr, diff, which, whoami, date, env, clear, git, curl. Supports compound commands with &&, ||, ;, and | operators');
     expect(shellTool.inputSchema).toBeDefined();
   });
 

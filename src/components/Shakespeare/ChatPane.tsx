@@ -288,10 +288,20 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   const handleSend = async () => {
     if ((!input.trim() && attachedFiles.length === 0) || isLoading || !providerModel.trim()) return;
 
-    let messageContent = input;
     const modelToUse = providerModel.trim();
 
-    // Process attached files
+    // Build message content as text parts
+    const contentParts: Array<OpenAI.Chat.Completions.ChatCompletionContentPartText> = [];
+
+    // Add user input as text part if present
+    if (input.trim()) {
+      contentParts.push({
+        type: 'text',
+        text: input.trim()
+      });
+    }
+
+    // Process attached files and add as separate text parts
     if (attachedFiles.length > 0) {
       const filePromises = attachedFiles.map(async (file) => {
         try {
@@ -305,12 +315,13 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
 
       const fileResults = await Promise.all(filePromises);
 
-      // Append file information to the message
-      if (messageContent.trim()) {
-        messageContent += '\n\n' + fileResults.join('\n');
-      } else {
-        messageContent = fileResults.join('\n');
-      }
+      // Add each file as a separate text part
+      fileResults.forEach(fileResult => {
+        contentParts.push({
+          type: 'text',
+          text: fileResult
+        });
+      });
     }
 
     setInput('');
@@ -320,6 +331,8 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     addRecentlyUsedModel(modelToUse);
 
     try {
+      // Send as text parts if we have multiple parts, otherwise send as string for simplicity
+      const messageContent = contentParts.length === 1 ? contentParts[0].text : contentParts;
       await sendMessage(messageContent, modelToUse);
     } catch (error) {
       console.error('AI chat error:', error);

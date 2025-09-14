@@ -160,7 +160,7 @@ export class SessionManager {
   /**
    * Send a message and start AI generation
    */
-  async sendMessage(projectId: string, content: string, providerModel: string): Promise<void> {
+  async sendMessage(projectId: string, content: string | Array<OpenAI.Chat.Completions.ChatCompletionContentPartText>, providerModel: string): Promise<void> {
     const session = this.sessions.get(projectId);
 
     if (!session || session.isLoading) return;

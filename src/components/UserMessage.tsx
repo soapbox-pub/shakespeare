@@ -1,51 +1,45 @@
 import { FileText, File } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import type OpenAI from 'openai';
 
 interface UserMessageProps {
-  content: string;
+  content: string | Array<OpenAI.Chat.Completions.ChatCompletionContentPartText>;
 }
 
 /**
  * Component to render user messages nicely
+ * Handles both string content and array content (text parts)
  * Detects "File added to /tmp/<filename>" patterns and renders them as badges
  */
 export function UserMessage({ content }: UserMessageProps) {
+  // Convert content to array format for uniform processing
+  const contentParts = typeof content === 'string'
+    ? [{ type: 'text' as const, text: content }]
+    : content.filter(part => part.type === 'text') as Array<{ type: 'text'; text: string }>;
+
   // Regular expression to match "File added to /tmp/<filename>" patterns
-  const filePattern = /File added to (\/tmp\/[^\s\n]+)/g;
+  const filePattern = /^File added to (\/tmp\/[^\s\n]+)$/;
 
-  // Split content by file attachments to render them separately
-  const parts: Array<{ type: 'text' | 'file'; content: string; filepath?: string }> = [];
-  let lastIndex = 0;
-  let match;
+  // Process each content part and categorize as text or file
+  const processedParts: Array<{ type: 'text' | 'file'; content: string; filepath?: string }> = [];
 
-  while ((match = filePattern.exec(content)) !== null) {
-    // Add text before the file attachment
-    if (match.index > lastIndex) {
-      const textBefore = content.slice(lastIndex, match.index);
-      if (textBefore.trim()) {
-        parts.push({ type: 'text', content: textBefore });
-      }
+  contentParts.forEach(part => {
+    const text = part.text.trim();
+    const match = text.match(filePattern);
+
+    if (match) {
+      // This is a file attachment
+      const filepath = match[1]; // "/tmp/filename.txt"
+      processedParts.push({ type: 'file', content: text, filepath });
+    } else if (text) {
+      // This is regular text content
+      processedParts.push({ type: 'text', content: text });
     }
+  });
 
-    // Add the file attachment
-    const fullMatch = match[0]; // "File added to /tmp/filename.txt"
-    const filepath = match[1]; // "/tmp/filename.txt"
-    parts.push({ type: 'file', content: fullMatch, filepath });
-
-    lastIndex = match.index + fullMatch.length;
-  }
-
-  // Add remaining text after the last file attachment
-  if (lastIndex < content.length) {
-    const remainingText = content.slice(lastIndex);
-    if (remainingText.trim()) {
-      parts.push({ type: 'text', content: remainingText });
-    }
-  }
-
-  // If no file attachments found, render as normal text
-  if (parts.length === 0) {
-    return <span className="whitespace-pre-wrap">{content}</span>;
+  // If no content, return empty
+  if (processedParts.length === 0) {
+    return null;
   }
 
   const getFileIcon = (filename: string) => {
@@ -67,12 +61,12 @@ export function UserMessage({ content }: UserMessageProps) {
 
   return (
     <div className="space-y-2">
-      {parts.map((part, index) => {
+      {processedParts.map((part, index) => {
         if (part.type === 'text') {
           return (
-            <span key={index} className="whitespace-pre-wrap">
+            <div key={index} className="whitespace-pre-wrap">
               {part.content}
-            </span>
+            </div>
           );
         } else {
           const filename = getFileName(part.filepath!);

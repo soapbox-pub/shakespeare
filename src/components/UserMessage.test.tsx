@@ -11,8 +11,20 @@ describe('UserMessage', () => {
     expect(screen.getByText(content)).toBeInTheDocument();
   });
 
-  it('renders file attachment badges for single file', () => {
+  it('handles backward compatibility with string content containing file attachments', () => {
     const content = 'Here is my file: File added to /tmp/test.txt';
+
+    render(<UserMessage content={content} />);
+
+    // When using string content, it should still work but won't separate file attachments
+    expect(screen.getByText(content)).toBeInTheDocument();
+  });
+
+  it('renders file attachment badges for single file with text parts', () => {
+    const content = [
+      { type: 'text' as const, text: 'Here is my file:' },
+      { type: 'text' as const, text: 'File added to /tmp/test.txt' }
+    ];
 
     render(<UserMessage content={content} />);
 
@@ -21,8 +33,13 @@ describe('UserMessage', () => {
     expect(screen.getByText('added to /tmp/test.txt')).toBeInTheDocument();
   });
 
-  it('renders multiple file attachments', () => {
-    const content = 'Files uploaded:\nFile added to /tmp/document.pdf\nFile added to /tmp/image.jpg\nAll done!';
+  it('renders multiple file attachments with text parts', () => {
+    const content = [
+      { type: 'text' as const, text: 'Files uploaded:' },
+      { type: 'text' as const, text: 'File added to /tmp/document.pdf' },
+      { type: 'text' as const, text: 'File added to /tmp/image.jpg' },
+      { type: 'text' as const, text: 'All done!' }
+    ];
 
     render(<UserMessage content={content} />);
 
@@ -33,7 +50,7 @@ describe('UserMessage', () => {
   });
 
   it('renders text files with FileText icon', () => {
-    const content = 'File added to /tmp/script.js';
+    const content = [{ type: 'text' as const, text: 'File added to /tmp/script.js' }];
 
     render(<UserMessage content={content} />);
 
@@ -42,7 +59,7 @@ describe('UserMessage', () => {
   });
 
   it('handles files without extensions', () => {
-    const content = 'File added to /tmp/README';
+    const content = [{ type: 'text' as const, text: 'File added to /tmp/README' }];
 
     render(<UserMessage content={content} />);
 
@@ -51,7 +68,7 @@ describe('UserMessage', () => {
   });
 
   it('handles complex filenames with underscores and numbers', () => {
-    const content = 'File added to /tmp/my_file_1.txt';
+    const content = [{ type: 'text' as const, text: 'File added to /tmp/my_file_1.txt' }];
 
     render(<UserMessage content={content} />);
 
@@ -60,7 +77,10 @@ describe('UserMessage', () => {
   });
 
   it('preserves whitespace in text content', () => {
-    const content = 'Line 1\n\nLine 3 with spaces   \nFile added to /tmp/test.txt\n\nFinal line';
+    const content = [
+      { type: 'text' as const, text: 'Line 1\n\nLine 3 with spaces   \n\nFinal line' },
+      { type: 'text' as const, text: 'File added to /tmp/test.txt' }
+    ];
 
     const { container } = render(<UserMessage content={content} />);
 
@@ -72,7 +92,11 @@ describe('UserMessage', () => {
   });
 
   it('handles mixed content with file attachments in the middle', () => {
-    const content = 'Starting text File added to /tmp/middle.txt ending text';
+    const content = [
+      { type: 'text' as const, text: 'Starting text' },
+      { type: 'text' as const, text: 'File added to /tmp/middle.txt' },
+      { type: 'text' as const, text: 'ending text' }
+    ];
 
     render(<UserMessage content={content} />);
 

@@ -206,11 +206,17 @@ export const AIMessageItem = memo(({
   // Regular rendering for non-tool messages
   if (message.role === 'user') {
     // User messages: right-aligned bubble without avatar/name
+    const userContent = typeof message.content === 'string'
+      ? message.content
+      : Array.isArray(message.content)
+        ? message.content.filter(part => part.type === 'text') as OpenAI.Chat.Completions.ChatCompletionContentPartText[]
+        : '';
+
     return (
       <div className="flex justify-end py-6">
         <div className="max-w-[80%] bg-secondary rounded-2xl rounded-br-md px-4 py-3">
           <div className="text-sm break-words">
-            <UserMessage content={getContent()} />
+            <UserMessage content={userContent} />
           </div>
         </div>
       </div>

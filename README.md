@@ -5,7 +5,7 @@ Shakespeare is an AI chat application that allows users to build custom Nostr we
 ## Features
 
 - **AI-Powered Development**: Chat with an AI assistant to build your Nostr website
-- **File Attachments**: Attach files directly to chat messages with visual badges and deduplication
+- **File Attachments**: Attach files directly to chat messages with structured text parts, visual badges, and deduplication
 - **Project Management**: Create and manage multiple projects with sidebar navigation
 - **Real-time Editing**: Edit files directly in the browser with syntax highlighting
 - **File Explorer**: Browse and manage your project files

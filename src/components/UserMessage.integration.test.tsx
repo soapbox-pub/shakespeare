@@ -19,7 +19,8 @@ describe('UserMessage Integration', () => {
 
     // Check that file attachment is rendered as a badge
     expect(screen.getByText('data.csv')).toBeInTheDocument();
-    expect(screen.getByText('/tmp/data.csv')).toBeInTheDocument();
+    // Full path should not be displayed
+    expect(screen.queryByText('/tmp/data.csv')).not.toBeInTheDocument();
   });
 
   it('handles single text part with file attachment', () => {
@@ -30,7 +31,8 @@ describe('UserMessage Integration', () => {
     render(<UserMessage content={content} />);
 
     expect(screen.getByText('script.js')).toBeInTheDocument();
-    expect(screen.getByText('/tmp/script.js')).toBeInTheDocument();
+    // Full path should not be displayed
+    expect(screen.queryByText('/tmp/script.js')).not.toBeInTheDocument();
   });
 
   it('handles multiple file attachments in separate parts', () => {

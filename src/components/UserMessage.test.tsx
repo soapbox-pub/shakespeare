@@ -30,7 +30,8 @@ describe('UserMessage', () => {
 
     expect(screen.getByText('Here is my file:')).toBeInTheDocument();
     expect(screen.getByText('test.txt')).toBeInTheDocument();
-    expect(screen.getByText('/tmp/test.txt')).toBeInTheDocument();
+    // Full path should not be displayed
+    expect(screen.queryByText('/tmp/test.txt')).not.toBeInTheDocument();
   });
 
   it('renders multiple file attachments with text parts', () => {
@@ -64,7 +65,8 @@ describe('UserMessage', () => {
     render(<UserMessage content={content} />);
 
     expect(screen.getByText('README')).toBeInTheDocument();
-    expect(screen.getByText('/tmp/README')).toBeInTheDocument();
+    // Full path should not be displayed
+    expect(screen.queryByText('/tmp/README')).not.toBeInTheDocument();
   });
 
   it('handles complex filenames with underscores and numbers', () => {
@@ -73,7 +75,8 @@ describe('UserMessage', () => {
     render(<UserMessage content={content} />);
 
     expect(screen.getByText('my_file_1.txt')).toBeInTheDocument();
-    expect(screen.getByText('/tmp/my_file_1.txt')).toBeInTheDocument();
+    // Full path should not be displayed
+    expect(screen.queryByText('/tmp/my_file_1.txt')).not.toBeInTheDocument();
   });
 
   it('preserves whitespace in text content', () => {

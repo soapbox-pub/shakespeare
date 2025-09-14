@@ -75,7 +75,6 @@ export function UserMessage({ content }: UserMessageProps) {
               <Badge variant="secondary" className="flex items-center gap-1.5 px-2 py-1">
                 {getFileIcon(filename)}
                 <span className="text-xs font-medium">{filename}</span>
-                <span className="text-xs text-muted-foreground">{part.filepath}</span>
               </Badge>
             </div>
           );

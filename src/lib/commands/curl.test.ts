@@ -76,7 +76,7 @@ describe('CurlCommand', () => {
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toBe('Hello World');
-    expect(mockFetch).toHaveBeenCalledWith('https://example.com/', expect.objectContaining({
+    expect(mockFetch).toHaveBeenCalledWith('https://corsproxy.io/?url=https%3A%2F%2Fexample.com%2F', expect.objectContaining({
       method: 'GET',
       headers: expect.objectContaining({
         'User-Agent': 'curl/8.0.0 (compatible; JavaScript fetch)'
@@ -103,7 +103,7 @@ describe('CurlCommand', () => {
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toBe('{"success": true}');
-    expect(mockFetch).toHaveBeenCalledWith('https://example.com/api', expect.objectContaining({
+    expect(mockFetch).toHaveBeenCalledWith('https://corsproxy.io/?url=https%3A%2F%2Fexample.com%2Fapi', expect.objectContaining({
       method: 'POST',
       body: '{"name": "test"}',
       headers: expect.objectContaining({
@@ -131,7 +131,7 @@ describe('CurlCommand', () => {
     ], '/test');
 
     expect(result.exitCode).toBe(0);
-    expect(mockFetch).toHaveBeenCalledWith('https://example.com/', expect.objectContaining({
+    expect(mockFetch).toHaveBeenCalledWith('https://corsproxy.io/?url=https%3A%2F%2Fexample.com%2F', expect.objectContaining({
       headers: expect.objectContaining({
         'Authorization': 'Bearer token123',
         'Content-Type': 'application/json',
@@ -245,7 +245,7 @@ describe('CurlCommand', () => {
     ], '/test');
 
     expect(result.exitCode).toBe(0);
-    expect(mockFetch).toHaveBeenCalledWith('https://example.com/', expect.objectContaining({
+    expect(mockFetch).toHaveBeenCalledWith('https://corsproxy.io/?url=https%3A%2F%2Fexample.com%2F', expect.objectContaining({
       method: 'DELETE',
       headers: expect.objectContaining({
         'User-Agent': 'curl/8.0.0 (compatible; JavaScript fetch)'

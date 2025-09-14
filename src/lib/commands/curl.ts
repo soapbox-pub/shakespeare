@@ -59,6 +59,10 @@ export class CurlCommand implements ShellCommand {
         return createErrorResult(`${this.name}: unsupported protocol: ${url.protocol}`);
       }
 
+      // Proxy the URL through CorsProxy
+      const originalUrl = url.toString();
+      const proxiedUrl = `https://corsproxy.io/?url=${encodeURIComponent(originalUrl)}`;
+
       // Prepare request
       const requestInit: RequestInit = {
         method: options.method,
@@ -93,7 +97,7 @@ export class CurlCommand implements ShellCommand {
 
       try {
         if (options.verbose && !options.silent) {
-          console.log(`* Trying ${url.hostname}...`);
+          console.log(`* Trying ${url.hostname}... (via CorsProxy)`);
           console.log(`> ${options.method} ${url.pathname}${url.search} HTTP/1.1`);
           console.log(`> Host: ${url.hostname}`);
           for (const [key, value] of Object.entries(options.headers)) {
@@ -105,8 +109,8 @@ export class CurlCommand implements ShellCommand {
           }
         }
 
-        // Make the request
-        const response = await fetch(url.toString(), requestInit);
+        // Make the request using the proxied URL
+        const response = await fetch(proxiedUrl, requestInit);
 
         if (timeoutId) {
           clearTimeout(timeoutId);

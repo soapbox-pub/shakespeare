@@ -35,7 +35,7 @@ describe('CatCommand', () => {
 
   it('should return error when no arguments provided', async () => {
     const result = await catCommand.execute([], testCwd);
-    
+
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain('missing file operand');
     expect(result.stdout).toBe('');
@@ -96,12 +96,36 @@ describe('CatCommand', () => {
     expect(result.stdout).toBe('');
   });
 
-  it('should reject absolute paths', async () => {
+  it('should handle absolute paths', async () => {
+    const fileContent = 'Absolute path content';
+    vi.mocked(mockFS.stat).mockResolvedValue({
+      isDirectory: () => false,
+      isFile: () => true,
+    });
+    vi.mocked(mockFS.readFile).mockResolvedValue(fileContent);
+
     const result = await catCommand.execute(['/absolute/path.txt'], testCwd);
 
-    expect(result.exitCode).toBe(1);
-    expect(result.stderr).toContain('absolute paths are not supported');
-    expect(result.stdout).toBe('');
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toBe(fileContent);
+    expect(result.stderr).toBe('');
+    expect(mockFS.readFile).toHaveBeenCalledWith('/absolute/path.txt', 'utf8');
+  });
+
+  it('should handle Windows-style absolute paths', async () => {
+    const fileContent = 'Windows path content';
+    vi.mocked(mockFS.stat).mockResolvedValue({
+      isDirectory: () => false,
+      isFile: () => true,
+    });
+    vi.mocked(mockFS.readFile).mockResolvedValue(fileContent);
+
+    const result = await catCommand.execute(['C:\\temp\\file.txt'], testCwd);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toBe(fileContent);
+    expect(result.stderr).toBe('');
+    expect(mockFS.readFile).toHaveBeenCalledWith('C:\\temp\\file.txt', 'utf8');
   });
 
   it('should handle permission errors', async () => {

@@ -34,12 +34,16 @@ export class CatCommand implements ShellCommand {
 
       for (const filePath of args) {
         try {
-          // Handle absolute paths
-          if (filePath.startsWith('/') || filePath.startsWith('\\') || /^[A-Za-z]:[\\/]/.test(filePath)) {
-            return createErrorResult(`${this.name}: absolute paths are not supported: ${filePath}`);
-          }
+          // Handle both absolute and relative paths
+          let absolutePath: string;
 
-          const absolutePath = join(cwd, filePath);
+          if (filePath.startsWith('/') || filePath.startsWith('\\') || /^[A-Za-z]:[\\/]/.test(filePath)) {
+            // It's an absolute path - use it directly
+            absolutePath = filePath;
+          } else {
+            // It's a relative path - resolve it relative to the current working directory
+            absolutePath = join(cwd, filePath);
+          }
 
           // Check if path exists and is a file
           const stats = await this.fs.stat(absolutePath);

@@ -19,7 +19,7 @@ export class TextEditorViewTool implements Tool<TextEditorViewParams> {
 
   readonly inputSchema = z.object({
     path: z.string().describe(
-      'Path of the file or directory to view, eg "src/index.ts" or "src/"',
+      'Path of the file or directory to view, eg "src/index.ts" or "src/" for relative paths, or "/tmp/file.txt" for absolute paths',
     ),
     start_line: z.number().min(1).optional().describe(
       "Starting line number (1-indexed, inclusive). If provided, only show lines from this line onwards.",
@@ -38,12 +38,16 @@ export class TextEditorViewTool implements Tool<TextEditorViewParams> {
     const { path, start_line, end_line } = args;
 
     try {
-      // Check for absolute paths and provide helpful error
-      if (path.startsWith('/') || path.startsWith('\\') || /^[A-Za-z]:[\\/]/.test(path)) {
-        throw new Error(`❌ Absolute paths are not supported.\n\nThe path "${path}" appears to be an absolute path.\n\n💡 Please use a relative path instead. Examples:\n- "src/index.ts" (relative to current directory)\n- "./src/index.ts" (explicit relative path)\n- "../other-project/src/index.ts" (relative to parent directory)\n\nCurrent working directory: ${this.cwd}`);
-      }
+      // Handle both absolute and relative paths
+      let absolutePath: string;
 
-      const absolutePath = join(this.cwd, path);
+      if (path.startsWith('/') || path.startsWith('\\') || /^[A-Za-z]:[\\/]/.test(path)) {
+        // It's an absolute path - use it directly
+        absolutePath = path;
+      } else {
+        // It's a relative path - resolve it relative to the current working directory
+        absolutePath = join(this.cwd, path);
+      }
 
       // Check if the path is a directory
       const stats = await this.fs.stat(absolutePath);

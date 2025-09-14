@@ -13,10 +13,12 @@ class MockFS implements JSRuntimeFS {
     this.dirs.add('/project/.git');
     this.dirs.add('/project/src');
     this.dirs.add('/project/node_modules');
+    this.dirs.add('/tmp');
 
     this.files.set('/project/package.json', '{"name": "test"}');
     this.files.set('/project/src/index.ts', 'console.log("hello");');
     this.files.set('/project/.gitignore', 'node_modules\n.git\n');
+    this.files.set('/tmp/uploaded-file.txt', 'This is an uploaded file');
   }
 
   async readFile(path: string): Promise<Uint8Array>;
@@ -172,5 +174,27 @@ describe('TextEditorViewTool', () => {
     });
 
     expect(result).toBe('console.log("hello");');
+  });
+
+  it('should handle absolute paths', async () => {
+    const result = await tool.execute({ path: '/tmp/uploaded-file.txt' });
+
+    expect(result).toBe('This is an uploaded file');
+  });
+
+  it('should handle absolute directory paths', async () => {
+    const result = await tool.execute({ path: '/tmp' });
+
+    expect(result).toContain('uploaded-file.txt');
+  });
+
+  it('should handle absolute paths with line filtering', async () => {
+    const result = await tool.execute({
+      path: '/tmp/uploaded-file.txt',
+      start_line: 1,
+      end_line: 1
+    });
+
+    expect(result).toBe('This is an uploaded file');
   });
 });

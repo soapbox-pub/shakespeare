@@ -187,10 +187,11 @@ class FetchClient {
         throw new Error(`Unexpected Content-Type: ${response.headers["Content-Type"]}`);
       }
 
-      const decoded = atob(response.body);
+      const bytes = new Uint8Array(atob(response.body).split('').map(c => c.charCodeAt(0)));
+      const text = new TextDecoder().decode(bytes);
 
       // Replace current document with the site index content
-      this.replaceDocument(decoded);
+      this.replaceDocument(text);
     } catch (error) {
       this.showError("Failed to load site index", error);
     }

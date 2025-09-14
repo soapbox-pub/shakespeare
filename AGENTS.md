@@ -114,6 +114,9 @@ This project is a Nostr client application built with React 18.x, TailwindCSS 3.
 - `/src/components/`: UI components including NostrProvider for Nostr integration
   - `/src/components/ui/`: shadcn/ui components (48+ components available)
   - `/src/components/auth/`: Authentication-related components (LoginArea, LoginDialog, etc.)
+  - `/src/components/ai/`: AI-related components (GitCommit, GitHistoryDialog)
+  - `/src/components/comments/`: Comment system components (Comment, CommentForm, CommentsSection)
+  - `/src/components/Shakespeare/`: Core Shakespeare editor components (ChatPane, FileEditor, FileTree, PreviewPane)
   - Zap components: `ZapButton`, `ZapDialog`, `WalletModal` for Lightning payments
 - `/src/hooks/`: Custom hooks including:
   - `useNostr`: Core Nostr protocol integration
@@ -122,6 +125,13 @@ This project is a Nostr client application built with React 18.x, TailwindCSS 3.
   - `useNostrPublish`: Publish events to Nostr
   - `useUploadFile`: Upload files via Blossom servers
   - `useAppContext`: Access global app configuration
+  - `useFS`: Access virtual filesystem for project file operations
+  - `useAISettings`: Manage AI provider configurations and API keys
+  - `useGitSettings`: Manage Git credentials and repository settings
+  - `useSessionManager`: Access session management for AI chat sessions
+  - `useGitStatus`: Real-time Git repository status monitoring
+  - `useProjects`: Project management and CRUD operations
+  - `useProjectsManager`: Advanced project operations (creation, cloning, building)
   - `useTheme`: Theme management
   - `useToast`: Toast notifications
   - `useLocalStorage`: Persistent local storage
@@ -132,9 +142,27 @@ This project is a Nostr client application built with React 18.x, TailwindCSS 3.
   - `useWallet`: Unified wallet detection (WebLN + NWC)
   - `useNWC`: Nostr Wallet Connect connection management
   - `useNWCContext`: Access NWC context provider
-- `/src/pages/`: Page components used by React Router (Index, NotFound)
+- `/src/pages/`: Page components used by React Router (Index, NotFound, ProjectView, Settings pages)
 - `/src/lib/`: Utility functions and shared logic
-- `/src/contexts/`: React context providers (AppContext, NWCContext)
+  - `/src/lib/build/`: Project build system with esbuild integration (esmPlugin, fsPlugin)
+  - `/src/lib/commands/`: Shell command implementations for virtual filesystem
+    - `/src/lib/commands/git/`: Git command implementations (add, commit, push, pull, etc.)
+    - Unix-style commands: `cat`, `cd`, `cp`, `find`, `grep`, `ls`, `mkdir`, `mv`, `rm`, etc.
+  - `/src/lib/tools/`: AI tool implementations for project development
+    - File operations: `TextEditorViewTool`, `TextEditorWriteTool`, `TextEditorStrReplaceTool`
+    - Project tools: `BuildProjectTool`, `TypecheckTool`, `DeployProjectTool`
+    - Package management: `NpmAddPackageTool`, `NpmRemovePackageTool`
+    - Git integration: `GitCommitTool`
+    - Shell access: `ShellTool`
+    - Web access: `ReadWebpageTool`
+    - Nostr tools: `NostrReadNipTool`, `NostrFetchEventTool`, `NostrGenerateKindTool`, etc.
+- `/src/contexts/`: React context providers
+  - `AppContext`: Global app configuration and theme
+  - `FSContext`: Virtual filesystem access
+  - `AISettingsContext`: AI provider settings and API key management
+  - `GitSettingsContext`: Git credentials and repository configuration
+  - `SessionManagerContext`: AI chat session management
+  - `NWCContext`: Nostr Wallet Connect integration
 - `/src/test/`: Testing utilities including TestApp component
 - `/public/`: Static assets
 - `App.tsx`: Main app component with provider setup

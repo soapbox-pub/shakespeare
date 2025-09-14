@@ -147,22 +147,45 @@ export class GitResetCommand implements GitSubcommand {
               noCheckout: true, // Only update the index, not the working directory
             });
             return createSuccessResult(`HEAD is now at ${targetOid.substring(0, 7)}\n`);
-          } catch {
-            return createErrorResult('Failed to reset index');
+          } catch (error) {
+            return createErrorResult(`Failed to reset index: ${error instanceof Error ? error.message : 'Unknown error'}`);
           }
 
         case 'hard':
           // Move HEAD, reset staging area, and reset working directory
           try {
+            // For a hard reset, we need to:
+            // 1. Update HEAD to point to the target commit
+            // 2. Reset the index (staging area) to match the target
+            // 3. Reset the working directory to match the target
+
+            // Get the commit object to ensure it exists
+            await git.readCommit({
+              fs,
+              dir: cwd,
+              oid: targetOid,
+            });
+
+            // Update HEAD to point to the target commit
+            await git.writeRef({
+              fs,
+              dir: cwd,
+              ref: 'HEAD',
+              value: targetOid,
+            });
+
+            // Reset the working directory by checking out all files from the target commit
+            // Use force to overwrite any local changes
             await git.checkout({
               fs,
               dir: cwd,
-              ref: target,
+              ref: targetOid,
               force: true,
             });
+
             return createSuccessResult(`HEAD is now at ${targetOid.substring(0, 7)}\n`);
-          } catch {
-            return createErrorResult('Failed to reset working directory');
+          } catch (error) {
+            return createErrorResult(`Failed to reset working directory: ${error instanceof Error ? error.message : 'Unknown error'}`);
           }
 
         default:

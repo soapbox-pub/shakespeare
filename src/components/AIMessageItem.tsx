@@ -3,6 +3,7 @@ import { Streamdown } from 'streamdown';
 import { Wrench, Eye, FileText, Edit, Package, PackageMinus, GitCommit, BookOpen, Download, Hash, Tag, Network, List, Plus, Terminal, Globe, CheckCircle } from 'lucide-react';
 import type { AIMessage } from '@/lib/SessionManager';
 import { cn } from '@/lib/utils';
+import { UserMessage } from '@/components/UserMessage';
 import OpenAI from 'openai';
 
 interface AIMessageItemProps {
@@ -208,8 +209,8 @@ export const AIMessageItem = memo(({
     return (
       <div className="flex justify-end py-6">
         <div className="max-w-[80%] bg-secondary rounded-2xl rounded-br-md px-4 py-3">
-          <div className="text-sm whitespace-pre-wrap break-words">
-            {getContent()}
+          <div className="text-sm break-words">
+            <UserMessage content={getContent()} />
           </div>
         </div>
       </div>

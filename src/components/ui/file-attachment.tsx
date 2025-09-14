@@ -58,14 +58,14 @@ export function FileAttachment({
         className="hidden"
         disabled={disabled}
       />
-      
+
       <Button
         type="button"
         variant="ghost"
         size="sm"
         onClick={handleButtonClick}
         disabled={disabled}
-        className="h-8 w-8 p-0 hover:bg-muted/50"
+        className="h-8 w-8 p-0 rounded-full hover:bg-muted/50"
       >
         <Paperclip className="h-4 w-4" />
       </Button>

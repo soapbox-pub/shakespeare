@@ -19,6 +19,11 @@ class MockFS implements JSRuntimeFS {
     this.files.set('/project/src/index.ts', 'console.log("hello");');
     this.files.set('/project/.gitignore', 'node_modules\n.git\n');
     this.files.set('/tmp/uploaded-file.txt', 'This is an uploaded file');
+
+    // Add binary files for testing
+    this.files.set('/project/logo.png', 'BINARY_CONTENT_PNG');
+    this.files.set('/project/document.pdf', 'BINARY_CONTENT_PDF');
+    this.files.set('/tmp/image.jpg', 'BINARY_CONTENT_JPG');
   }
 
   async readFile(path: string): Promise<Uint8Array>;
@@ -30,7 +35,25 @@ class MockFS implements JSRuntimeFS {
     if (content === undefined) {
       throw new Error(`File not found: ${path}`);
     }
-    return encoding ? content : new TextEncoder().encode(content);
+
+    // If no encoding specified, return Uint8Array
+    if (!encoding) {
+      // For binary files, return mock binary data with null bytes
+      if (content.startsWith('BINARY_CONTENT')) {
+        const binaryData = new Uint8Array(100);
+        binaryData[0] = 0; // Add null byte to make it appear binary
+        binaryData[1] = 255; // Add some non-printable bytes
+        binaryData[2] = 0;
+        // Fill rest with some pattern
+        for (let i = 3; i < 100; i++) {
+          binaryData[i] = i % 256;
+        }
+        return binaryData;
+      }
+      return new TextEncoder().encode(content);
+    }
+
+    return content;
   }
 
   async writeFile(path: string, data: string | Uint8Array, _encoding?: string): Promise<void> {
@@ -196,5 +219,27 @@ describe('TextEditorViewTool', () => {
     });
 
     expect(result).toBe('This is an uploaded file');
+  });
+
+  it('should detect binary files by extension and show placeholder', async () => {
+    const result = await tool.execute({ path: 'logo.png' });
+
+    expect(result).toContain('[Binary file: PNG file');
+    expect(result).toContain('This appears to be a binary file and cannot be displayed as text.');
+    expect(result).not.toContain('BINARY_CONTENT_PNG');
+  });
+
+  it('should detect PDF files as binary', async () => {
+    const result = await tool.execute({ path: 'document.pdf' });
+
+    expect(result).toContain('[Binary file: PDF file');
+    expect(result).toContain('This appears to be a binary file and cannot be displayed as text.');
+  });
+
+  it('should detect binary files with absolute paths', async () => {
+    const result = await tool.execute({ path: '/tmp/image.jpg' });
+
+    expect(result).toContain('[Binary file: JPG file');
+    expect(result).toContain('This appears to be a binary file and cannot be displayed as text.');
   });
 });

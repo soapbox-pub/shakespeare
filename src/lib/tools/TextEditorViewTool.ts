@@ -59,7 +59,15 @@ export class TextEditorViewTool implements Tool<TextEditorViewParams> {
         return tree;
       }
 
-      // If it's a file, read and return its contents
+      // If it's a file, check if it's binary first
+      if (await this.isBinaryFile(absolutePath)) {
+        const stats = await this.fs.stat(absolutePath);
+        const fileSize = this.formatFileSize(stats.size || 0);
+        const fileExtension = this.getFileExtension(absolutePath);
+        return `[Binary file: ${fileExtension.toUpperCase()} file, ${fileSize}]\n\nThis appears to be a binary file and cannot be displayed as text.`;
+      }
+
+      // If it's a text file, read and return its contents
       let content = await this.fs.readFile(absolutePath, "utf8");
 
       // Apply line filtering if start_line or end_line are provided
@@ -209,5 +217,102 @@ export class TextEditorViewTool implements Tool<TextEditorViewParams> {
     // If it doesn't start with cwd, just return the path as-is
     // This handles cases where we might have relative paths already
     return absolutePath;
+  }
+
+  /**
+   * Check if a file is likely to be binary based on file extension and content sampling
+   */
+  private async isBinaryFile(filePath: string): Promise<boolean> {
+    // Check file extension first for known binary types
+    const extension = this.getFileExtension(filePath).toLowerCase();
+    const binaryExtensions = new Set([
+      // Images
+      'png', 'jpg', 'jpeg', 'gif', 'bmp', 'tiff', 'tif', 'webp', 'svg', 'ico', 'avif',
+      // Videos
+      'mp4', 'avi', 'mkv', 'mov', 'wmv', 'flv', 'webm', '3gp', 'm4v',
+      // Audio
+      'mp3', 'wav', 'flac', 'aac', 'ogg', 'wma', 'm4a', 'opus',
+      // Archives
+      'zip', 'rar', '7z', 'tar', 'gz', 'bz2', 'xz', 'lz4', 'zst',
+      // Executables
+      'exe', 'dll', 'so', 'dylib', 'bin', 'app', 'deb', 'rpm', 'msi',
+      // Documents (binary formats)
+      'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'odt', 'ods', 'odp',
+      // Fonts
+      'ttf', 'otf', 'woff', 'woff2', 'eot',
+      // Other binary formats
+      'sqlite', 'db', 'sqlite3', 'pyc', 'class', 'jar', 'war', 'ear',
+      // Development
+      'node_modules', 'git', 'gitignore', 'lock'
+    ]);
+
+    if (binaryExtensions.has(extension)) {
+      return true;
+    }
+
+    try {
+      // For files without clear binary extensions, sample the first chunk of content
+      // Read as Uint8Array to check for null bytes and non-printable characters
+      const bytes = await this.fs.readFile(filePath);
+
+      // Check first 1024 bytes (or entire file if smaller)
+      const sampleSize = Math.min(1024, bytes.length);
+
+      // Count null bytes and non-printable characters
+      let nullBytes = 0;
+      let nonPrintableBytes = 0;
+
+      for (let i = 0; i < sampleSize; i++) {
+        const byte = bytes[i];
+
+        if (byte === 0) {
+          nullBytes++;
+        }
+
+        // Consider bytes outside printable ASCII range (except common whitespace)
+        // Printable ASCII: 32-126, plus tab (9), newline (10), carriage return (13)
+        if (byte !== 9 && byte !== 10 && byte !== 13 && (byte < 32 || byte > 126)) {
+          nonPrintableBytes++;
+        }
+      }
+
+      // If more than 1% null bytes or more than 30% non-printable, consider it binary
+      const nullRatio = nullBytes / sampleSize;
+      const nonPrintableRatio = nonPrintableBytes / sampleSize;
+
+      return nullRatio > 0.01 || nonPrintableRatio > 0.3;
+
+    } catch {
+      // If we can't read the file, assume it might be binary
+      return true;
+    }
+  }
+
+  /**
+   * Get file extension from path
+   */
+  private getFileExtension(filePath: string): string {
+    const lastDotIndex = filePath.lastIndexOf('.');
+    const lastSlashIndex = Math.max(filePath.lastIndexOf('/'), filePath.lastIndexOf('\\'));
+
+    // If there's no dot, or the dot is before the last slash (hidden file), return empty string
+    if (lastDotIndex === -1 || lastDotIndex < lastSlashIndex) {
+      return '';
+    }
+
+    return filePath.slice(lastDotIndex + 1);
+  }
+
+  /**
+   * Format file size in human-readable format
+   */
+  private formatFileSize(bytes: number): string {
+    if (bytes === 0) return '0 B';
+
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const k = 1024;
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+    return `${(bytes / Math.pow(k, i)).toFixed(1)} ${units[i]}`;
   }
 };

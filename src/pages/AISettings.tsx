@@ -316,77 +316,85 @@ export function AISettings() {
 
         {/* Custom Provider */}
         <div className="space-y-3">
-          <h4 className="text-sm font-medium">Add Custom Provider</h4>
-          <div className="border rounded-lg p-4 space-y-3">
-            <div className="grid gap-2">
-              <Label htmlFor="custom-name">Provider Name</Label>
-              <Input
-                id="custom-name"
-                placeholder="e.g., my-custom-api"
-                value={customProviderName}
-                onChange={(e) => setCustomProviderName(e.target.value)}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="custom-baseurl">Base URL</Label>
-              <Input
-                id="custom-baseurl"
-                placeholder="https://api.example.com/v1"
-                value={customBaseURL}
-                onChange={(e) => setCustomBaseURL(e.target.value)}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="custom-auth">Authentication</Label>
-              <Select
-                value={customAuthMethod}
-                onValueChange={(value: 'api-key' | 'nostr') => {
-                  setCustomAuthMethod(value);
-                  if (value === 'nostr') {
-                    setCustomApiKey(''); // Clear API key when switching to Nostr auth
-                  }
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="api-key">API Key</SelectItem>
-                  <SelectItem value="nostr">Nostr</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            {customAuthMethod === 'api-key' && (
-              <div className="grid gap-2">
-                <Label htmlFor="custom-apikey">API Key</Label>
-                <Input
-                  id="custom-apikey"
-                  type="password"
-                  placeholder="Enter your API key (optional)"
-                  value={customApiKey}
-                  onChange={(e) => setCustomApiKey(e.target.value)}
-                />
-              </div>
-            )}
-            <Button
-              onClick={handleAddCustomProvider}
-              disabled={
-                !customProviderName.trim() ||
-                !customBaseURL.trim() ||
-                customProviderName.trim() in settings.providers
-              }
-              size="sm"
-              className="gap-2"
-            >
-              <Check className="h-4 w-4" />
-              Add Custom Provider
-            </Button>
-            {customProviderName.trim() in settings.providers && (
-              <p className="text-sm text-destructive">
-                Provider with this name already exists
-              </p>
-            )}
-          </div>
+          <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="custom-provider" className="border rounded-lg">
+              <AccordionTrigger className="px-4 py-3 hover:no-underline">
+                <h4 className="text-sm font-medium">Add Custom Provider</h4>
+              </AccordionTrigger>
+              <AccordionContent className="px-4 pb-4">
+                <div className="space-y-3">
+                  <div className="grid gap-2">
+                    <Label htmlFor="custom-name">Provider Name</Label>
+                    <Input
+                      id="custom-name"
+                      placeholder="e.g., my-custom-api"
+                      value={customProviderName}
+                      onChange={(e) => setCustomProviderName(e.target.value)}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="custom-baseurl">Base URL</Label>
+                    <Input
+                      id="custom-baseurl"
+                      placeholder="https://api.example.com/v1"
+                      value={customBaseURL}
+                      onChange={(e) => setCustomBaseURL(e.target.value)}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="custom-auth">Authentication</Label>
+                    <Select
+                      value={customAuthMethod}
+                      onValueChange={(value: 'api-key' | 'nostr') => {
+                        setCustomAuthMethod(value);
+                        if (value === 'nostr') {
+                          setCustomApiKey(''); // Clear API key when switching to Nostr auth
+                        }
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="api-key">API Key</SelectItem>
+                        <SelectItem value="nostr">Nostr</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {customAuthMethod === 'api-key' && (
+                    <div className="grid gap-2">
+                      <Label htmlFor="custom-apikey">API Key</Label>
+                      <Input
+                        id="custom-apikey"
+                        type="password"
+                        placeholder="Enter your API key (optional)"
+                        value={customApiKey}
+                        onChange={(e) => setCustomApiKey(e.target.value)}
+                      />
+                    </div>
+                  )}
+                  <Button
+                    onClick={handleAddCustomProvider}
+                    disabled={
+                      !customProviderName.trim() ||
+                      !customBaseURL.trim() ||
+                      customProviderName.trim() in settings.providers
+                    }
+                    size="sm"
+                    className="gap-2"
+                  >
+                    <Check className="h-4 w-4" />
+                    Add Custom Provider
+                  </Button>
+                  {customProviderName.trim() in settings.providers && (
+                    <p className="text-sm text-destructive">
+                      Provider with this name already exists
+                    </p>
+                  )}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         </div>
       </div>
     </div>

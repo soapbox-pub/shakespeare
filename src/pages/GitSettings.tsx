@@ -261,56 +261,64 @@ export function GitSettings() {
 
         {/* Custom Provider */}
         <div className="space-y-3">
-          <h4 className="text-sm font-medium">Add Custom Provider</h4>
-          <div className="border rounded-lg p-4 space-y-3">
-            <div className="grid gap-2">
-              <Label htmlFor="custom-origin">Origin</Label>
-              <Input
-                id="custom-origin"
-                placeholder="https://git.example.com"
-                value={customOrigin}
-                onChange={(e) => setCustomOrigin(e.target.value)}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="custom-username">Username</Label>
-              <Input
-                id="custom-username"
-                placeholder="git"
-                value={customUsername}
-                onChange={(e) => setCustomUsername(e.target.value)}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="custom-password">Password</Label>
-              <Input
-                id="custom-password"
-                type="password"
-                placeholder="Enter your password/token"
-                value={customPassword}
-                onChange={(e) => setCustomPassword(e.target.value)}
-              />
-            </div>
-            <Button
-              onClick={handleAddCustomProvider}
-              disabled={
-                !customOrigin.trim() ||
-                !customUsername.trim() ||
-                !customPassword.trim() ||
-                customOrigin.trim() in settings.credentials
-              }
-              size="sm"
-              className="gap-2"
-            >
-              <Check className="h-4 w-4" />
-              Add Custom Provider
-            </Button>
-            {customOrigin.trim() in settings.credentials && (
-              <p className="text-sm text-destructive">
-                Credentials for this origin already exist
-              </p>
-            )}
-          </div>
+          <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="custom-provider" className="border rounded-lg">
+              <AccordionTrigger className="px-4 py-3 hover:no-underline">
+                <h4 className="text-sm font-medium">Add Custom Provider</h4>
+              </AccordionTrigger>
+              <AccordionContent className="px-4 pb-4">
+                <div className="space-y-3">
+                  <div className="grid gap-2">
+                    <Label htmlFor="custom-origin">Origin</Label>
+                    <Input
+                      id="custom-origin"
+                      placeholder="https://git.example.com"
+                      value={customOrigin}
+                      onChange={(e) => setCustomOrigin(e.target.value)}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="custom-username">Username</Label>
+                    <Input
+                      id="custom-username"
+                      placeholder="git"
+                      value={customUsername}
+                      onChange={(e) => setCustomUsername(e.target.value)}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="custom-password">Password</Label>
+                    <Input
+                      id="custom-password"
+                      type="password"
+                      placeholder="Enter your password/token"
+                      value={customPassword}
+                      onChange={(e) => setCustomPassword(e.target.value)}
+                    />
+                  </div>
+                  <Button
+                    onClick={handleAddCustomProvider}
+                    disabled={
+                      !customOrigin.trim() ||
+                      !customUsername.trim() ||
+                      !customPassword.trim() ||
+                      customOrigin.trim() in settings.credentials
+                    }
+                    size="sm"
+                    className="gap-2"
+                  >
+                    <Check className="h-4 w-4" />
+                    Add Custom Provider
+                  </Button>
+                  {customOrigin.trim() in settings.credentials && (
+                    <p className="text-sm text-destructive">
+                      Credentials for this origin already exist
+                    </p>
+                  )}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         </div>
       </div>
     </div>

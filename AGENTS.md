@@ -1,23 +1,20 @@
 # Shakespeare - AI-Powered Nostr Website Builder
 
-Shakespeare is an AI chat application that allows users to build custom Nostr websites through natural language conversation. Simply describe what you want to build, and AI will help you create it.
+Shakespeare is a browser-based AI chat application that allows users to build custom Nostr websites through natural language conversation. All operations including AI chat and Git operations are executed in client-side JavaScript, with API keys stored in browser storage. Simply describe what you want to build, and AI will help you create it.
 
 ### Virtual Filesystem Layout
 
-Shakespeare uses LightningFS to provide a browser-based filesystem that persists project files in IndexedDB. Each project is stored in its own isolated directory structure within the virtual filesystem.
+Shakespeare uses LightningFS to provide a browser-based virtual filesystem (VFS) that persists project files in IndexedDB. This is the VFS within the browser that Shakespeare agents act upon. Each project is stored in its own isolated directory structure within the virtual filesystem.
 
-#### Filesystem Architecture
+#### Virtual Filesystem Architecture
 
 ```
-/projects/
-├── {projectId}/                    # Individual project directory
-│   ├── package.json               # Project configuration
-│   ├── src/                       # Source code
-│   ├── public/                    # Static assets
-│   ├── dist/                      # Build output (generated)
-│   ├── node_modules/              # Dependencies (generated)
-│   ├── NIP.md                     # Custom Nostr protocol documentation (optional)
-│   └── AGENTS.md                  # AI assistant system prompt
+/
+├── projects/
+│   └── {projectId}/               # Individual project directory
+│       └── ...                    # Project files (package.json, src/, public/, etc.)
+└── tmp/                           # Temporary files and scratch space
+    └── ...                        # Various temporary files and directories
 ```
 
 #### Key Features
@@ -28,6 +25,37 @@ Shakespeare uses LightningFS to provide a browser-based filesystem that persists
 - **Git Integration**: Projects can be initialized as Git repositories for template cloning
 
 This architecture allows Shakespeare to provide a full development environment entirely within the browser, with no server-side storage requirements.
+
+#### AI Tools Available in Shakespeare
+
+Shakespeare provides AI agents with specialized tools for project development (note: these are different from the tools available during Shakespeare's own development). These tools are defined in `src/lib/tools/`:
+
+- **ShellTool**: Execute shell commands in the virtual filesystem environment
+- **TextEditorViewTool**: Read file contents and view directory structures
+- **TextEditorWriteTool**: Create or overwrite files with new content
+- **TextEditorStrReplaceTool**: Replace strings in files
+- **BuildProjectTool**: Build and compile projects
+- **TypecheckTool**: Run TypeScript type checking
+- **NpmAddPackageTool**: Add npm packages to projects
+- **NpmRemovePackageTool**: Remove npm packages from projects
+- **GitCommitTool**: Commit changes to Git repositories
+- **DeployProjectTool**: Deploy projects to hosting platforms
+- **ReadWebpageTool**: Fetch and read web pages
+- **NostrReadNipTool**: Read Nostr protocol NIP documents
+- **NostrReadKindTool**: Read Nostr event kind documentation
+- **NostrReadTagTool**: Read Nostr tag documentation
+- **NostrReadProtocolTool**: Read Nostr protocol basics
+- **NostrReadNipsIndexTool**: Read the full list of NIPs, kinds, and tags
+- **NostrFetchEventTool**: Fetch Nostr events using NIP-19 identifiers
+- **NostrGenerateKindTool**: Generate unused Nostr event kind numbers
+
+#### Security
+
+AI filesystem access through tools (including shell commands via ShellTool) has path restrictions to ensure safe operation:
+
+- **Read operations**: Can access any file in the VFS, including absolute paths
+- **Write operations**: Restricted to current project directory and `/tmp/` directory (including subdirectories)
+- **Copy operations**: Can copy from any absolute path to relative paths or `/tmp/`, but cannot copy from relative to absolute paths outside allowed areas
 
 ### Git Integration with isomorphic-git
 

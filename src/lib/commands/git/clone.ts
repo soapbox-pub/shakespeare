@@ -1,4 +1,4 @@
-import http from 'isomorphic-git/http/web';
+// http is handled by the Git class
 import type { JSRuntimeFS } from "../../JSRuntime";
 import type { ShellCommandResult } from "../ShellCommand";
 import { createSuccessResult, createErrorResult } from "../ShellCommand";
@@ -47,10 +47,9 @@ export class GitCloneCommand implements GitSubcommand {
         // Directory doesn't exist, which is what we want
       }
 
-      // Parse URL to determine if we need CORS proxy
-      let url: URL;
+      // Validate URL format
       try {
-        url = new URL(repository);
+        new URL(repository);
       } catch {
         return createErrorResult(`fatal: repository '${repository}' does not appear to be a git repository`);
       }

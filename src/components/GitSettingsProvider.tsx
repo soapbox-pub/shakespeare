@@ -7,6 +7,7 @@ interface GitSettingsProviderProps {
 
 const DEFAULT_SETTINGS: GitSettings = {
   credentials: {},
+  corsProxy: 'https://cors.isomorphic-git.org',
 };
 
 const STORAGE_KEY = 'git-settings';
@@ -21,6 +22,7 @@ export function GitSettingsProvider({ children }: GitSettingsProviderProps) {
           const settings = parsed as Partial<GitSettings>;
           return {
             credentials: settings.credentials || {},
+            corsProxy: settings.corsProxy || DEFAULT_SETTINGS.corsProxy,
           };
         }
       } catch {

@@ -7,6 +7,7 @@ export interface GitCredential {
 
 export interface GitSettings {
   credentials: Record<string, GitCredential>; // keyed by origin
+  corsProxy: string;
 }
 
 export interface GitSettingsContextType {

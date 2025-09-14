@@ -4,7 +4,7 @@ import type { JSRuntimeFS } from './JSRuntime';
 
 /**
  * Git class that wraps isomorphic-git and provides a cleaner interface.
- * Instantiate with an fs implementation and optional corsProxy string.
+ * Instantiate with an fs implementation, optional corsProxy string, and optional corsProxyRegex.
  * All methods have the same names as isomorphic-git but don't require
  * passing fs, http, and corsProxy each time.
  */
@@ -16,6 +16,8 @@ export class Git {
     this.fs = fs;
     this.corsProxy = corsProxy;
   }
+
+
 
   // Repository initialization and configuration
   async init(options: Omit<Parameters<typeof git.init>[0], 'fs'>) {

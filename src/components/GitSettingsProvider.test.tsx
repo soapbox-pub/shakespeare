@@ -7,7 +7,7 @@ import type { GitCredential } from '@/contexts/GitSettingsContext';
 
 // Test component that uses the hook
 function TestComponent() {
-  const { settings, addCredential, removeCredential, updateCredential, isConfigured } = useGitSettings();
+  const { settings, updateSettings, addCredential, removeCredential, updateCredential, isConfigured } = useGitSettings();
 
   const handleAdd = () => {
     const credential: GitCredential = {
@@ -25,13 +25,21 @@ function TestComponent() {
     removeCredential('https://github.com');
   };
 
+  const handleUpdateCorsProxy = () => {
+    updateSettings({ corsProxy: 'https://custom-cors.example.com' });
+  };
+
+
+
   return (
     <div>
       <div data-testid="configured">{isConfigured ? 'configured' : 'not-configured'}</div>
       <div data-testid="count">{Object.keys(settings.credentials).length}</div>
+      <div data-testid="cors-proxy">{settings.corsProxy}</div>
       <button onClick={handleAdd}>Add GitHub</button>
       <button onClick={handleUpdate}>Update GitHub</button>
       <button onClick={handleRemove}>Remove GitHub</button>
+      <button onClick={handleUpdateCorsProxy}>Update CORS Proxy</button>
       {settings.credentials['https://github.com'] && (
         <div data-testid="github-creds">
           {settings.credentials['https://github.com'].username}:
@@ -126,12 +134,13 @@ describe('GitSettingsProvider', () => {
     // Check that settings were saved to localStorage
     const stored = localStorage.getItem('git-settings');
     expect(stored).toBeTruthy();
-    
+
     const parsed = JSON.parse(stored!);
     expect(parsed.credentials['https://github.com']).toEqual({
       username: 'git',
       password: 'test-token',
     });
+    expect(parsed.corsProxy).toBe('https://cors.isomorphic-git.org');
   });
 
   it('loads settings from localStorage', () => {
@@ -143,6 +152,7 @@ describe('GitSettingsProvider', () => {
           password: 'gitlab-token',
         },
       },
+      corsProxy: 'https://custom-cors.example.com',
     };
     localStorage.setItem('git-settings', JSON.stringify(settings));
 
@@ -154,5 +164,32 @@ describe('GitSettingsProvider', () => {
 
     expect(screen.getByTestId('configured')).toHaveTextContent('configured');
     expect(screen.getByTestId('count')).toHaveTextContent('1');
+    expect(screen.getByTestId('cors-proxy')).toHaveTextContent('https://custom-cors.example.com');
   });
+
+  it('provides default CORS proxy', () => {
+    render(
+      <TestWrapper>
+        <TestComponent />
+      </TestWrapper>
+    );
+
+    expect(screen.getByTestId('cors-proxy')).toHaveTextContent('https://cors.isomorphic-git.org');
+  });
+
+  it('can update CORS proxy', () => {
+    render(
+      <TestWrapper>
+        <TestComponent />
+      </TestWrapper>
+    );
+
+    expect(screen.getByTestId('cors-proxy')).toHaveTextContent('https://cors.isomorphic-git.org');
+
+    fireEvent.click(screen.getByText('Update CORS Proxy'));
+
+    expect(screen.getByTestId('cors-proxy')).toHaveTextContent('https://custom-cors.example.com');
+  });
+
+
 });

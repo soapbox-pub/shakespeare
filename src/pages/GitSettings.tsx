@@ -37,7 +37,7 @@ const PRESET_PROVIDERS: PresetProvider[] = [
 ];
 
 export function GitSettings() {
-  const { settings, addCredential, removeCredential, updateCredential } = useGitSettings();
+  const { settings, updateSettings, addCredential, removeCredential, updateCredential } = useGitSettings();
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const [customOrigin, setCustomOrigin] = useState('');
@@ -257,7 +257,7 @@ export function GitSettings() {
           </div>
         )}
 
-        {availablePresets.length > 0 && <Separator />}
+        <Separator />
 
         {/* Custom Provider */}
         <div className="space-y-3">
@@ -315,6 +315,30 @@ export function GitSettings() {
                       Credentials for this origin already exist
                     </p>
                   )}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+
+          {/* CORS Proxy Configuration */}
+          <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="cors-proxy" className="border rounded-lg">
+              <AccordionTrigger className="px-4 py-3 hover:no-underline">
+                <h4 className="text-sm font-medium">CORS Proxy</h4>
+              </AccordionTrigger>
+              <AccordionContent className="px-4 pb-4">
+                <div className="space-y-3">
+                  <div className="grid gap-2">
+                    <Input
+                      id="cors-proxy"
+                      placeholder="https://cors.isomorphic-git.org"
+                      value={settings.corsProxy}
+                      onChange={(e) => updateSettings({ corsProxy: e.target.value })}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      CORS proxy server used for all Git operations with remote repositories. Required for browser-based Git operations.
+                    </p>
+                  </div>
                 </div>
               </AccordionContent>
             </AccordionItem>

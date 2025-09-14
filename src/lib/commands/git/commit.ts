@@ -103,7 +103,7 @@ export class GitCommitCommand implements GitSubcommand {
       }
 
       // Create the commit
-      let commitOptions: {
+      const commitOptions: {
         dir: string;
         message: string;
         author: { name: string; email: string };

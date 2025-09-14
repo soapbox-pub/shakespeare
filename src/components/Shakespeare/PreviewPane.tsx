@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { RefreshCw, FolderOpen, ArrowLeft } from 'lucide-react';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { GitStatusIndicator } from '@/components/GitStatusIndicator';
+import { BrowserAddressBar } from '@/components/ui/browser-address-bar';
 
 import { FileTree } from './FileTree';
 import { FileEditor } from './FileEditor';
@@ -53,6 +54,9 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
   const [mobileCodeView, setMobileCodeView] = useState<'explorer' | 'editor'>('explorer');
   const isMobile = useIsMobile();
   const [hasBuiltProject, setHasBuiltProject] = useState(false);
+  const [currentPath, setCurrentPath] = useState('/');
+  const [navigationHistory, setNavigationHistory] = useState<string[]>(['/']);
+  const [historyIndex, setHistoryIndex] = useState(0);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const { fs } = useFS();
   const projectsManager = useProjectsManager();
@@ -119,6 +123,51 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
       }, 10);
     }
   }, []);
+
+  const navigateToPath = useCallback((path: string) => {
+    if (iframeRef.current) {
+      const baseUrl = `https://${projectId}.local-shakespeare.dev`;
+      const newUrl = `${baseUrl}${path}`;
+      iframeRef.current.src = newUrl;
+      setCurrentPath(path);
+
+      // Update navigation history
+      const newHistory = navigationHistory.slice(0, historyIndex + 1);
+      newHistory.push(path);
+      setNavigationHistory(newHistory);
+      setHistoryIndex(newHistory.length - 1);
+    }
+  }, [projectId, navigationHistory, historyIndex]);
+
+  const goBack = useCallback(() => {
+    if (historyIndex > 0) {
+      const newIndex = historyIndex - 1;
+      const path = navigationHistory[newIndex];
+      setHistoryIndex(newIndex);
+      setCurrentPath(path);
+
+      if (iframeRef.current) {
+        const baseUrl = `https://${projectId}.local-shakespeare.dev`;
+        const newUrl = `${baseUrl}${path}`;
+        iframeRef.current.src = newUrl;
+      }
+    }
+  }, [historyIndex, navigationHistory, projectId]);
+
+  const goForward = useCallback(() => {
+    if (historyIndex < navigationHistory.length - 1) {
+      const newIndex = historyIndex + 1;
+      const path = navigationHistory[newIndex];
+      setHistoryIndex(newIndex);
+      setCurrentPath(path);
+
+      if (iframeRef.current) {
+        const baseUrl = `https://${projectId}.local-shakespeare.dev`;
+        const newUrl = `${baseUrl}${path}`;
+        iframeRef.current.src = newUrl;
+      }
+    }
+  }, [historyIndex, navigationHistory, projectId]);
 
   const sendResponse = useCallback((message: JSONRPCResponse) => {
     if (iframeRef.current?.contentWindow) {
@@ -303,20 +352,18 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
         <TabsContent value="preview" className="h-full mt-0">
           {hasBuiltProject ? (
             <div className="h-full w-full flex flex-col">
-              <div className="flex items-center justify-between p-2 border-b bg-gradient-to-r from-primary/5 to-accent/5">
-                <span className="text-sm font-medium bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">Project Preview</span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={refreshIframe}
-                  className="h-8 w-8 p-0 hover:bg-primary/10"
-                >
-                  <RefreshCw className="h-4 w-4" />
-                </Button>
-              </div>
+              <BrowserAddressBar
+                currentPath={currentPath}
+                onNavigate={navigateToPath}
+                onRefresh={refreshIframe}
+                onBack={goBack}
+                onForward={goForward}
+                canGoBack={historyIndex > 0}
+                canGoForward={historyIndex < navigationHistory.length - 1}
+              />
               <iframe
                 ref={iframeRef}
-                src={`https://${projectId}.local-shakespeare.dev/`}
+                src={`https://${projectId}.local-shakespeare.dev${currentPath}`}
                 className="w-full flex-1 border-0"
                 title="Project Preview"
                 sandbox="allow-scripts allow-same-origin"

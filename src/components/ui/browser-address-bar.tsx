@@ -1,0 +1,96 @@
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+interface BrowserAddressBarProps {
+  currentPath?: string;
+  onNavigate?: (path: string) => void;
+  onRefresh?: () => void;
+  onBack?: () => void;
+  onForward?: () => void;
+  canGoBack?: boolean;
+  canGoForward?: boolean;
+  className?: string;
+}
+
+export function BrowserAddressBar({
+  currentPath = '/',
+  onNavigate,
+  onRefresh,
+  onBack,
+  onForward,
+  canGoBack = false,
+  canGoForward = false,
+  className,
+}: BrowserAddressBarProps) {
+  const [inputValue, setInputValue] = useState(currentPath);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    let path = inputValue.trim();
+    
+    // Ensure path starts with /
+    if (!path.startsWith('/')) {
+      path = '/' + path;
+    }
+    
+    onNavigate?.(path);
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInputValue(e.target.value);
+  };
+
+  return (
+    <div className={cn(
+      "flex items-center gap-1 p-2 border-b bg-background",
+      className
+    )}>
+      {/* Navigation buttons */}
+      <div className="flex items-center gap-1">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onBack}
+          disabled={!canGoBack}
+          className="h-8 w-8 p-0"
+          title="Go back"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onForward}
+          disabled={!canGoForward}
+          className="h-8 w-8 p-0"
+          title="Go forward"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onRefresh}
+          className="h-8 w-8 p-0"
+          title="Refresh"
+        >
+          <RefreshCw className="h-4 w-4" />
+        </Button>
+      </div>
+
+      {/* Address bar */}
+      <form onSubmit={handleSubmit} className="flex-1 mx-2">
+        <Input
+          type="text"
+          value={inputValue}
+          onChange={handleInputChange}
+          placeholder="Enter path (e.g., /, /about)"
+          className="h-8 bg-muted/50 border-muted-foreground/20 focus:bg-background"
+        />
+      </form>
+    </div>
+  );
+}

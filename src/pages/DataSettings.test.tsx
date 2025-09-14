@@ -15,7 +15,7 @@ describe('DataSettings', () => {
     expect(screen.getByText('Data')).toBeInTheDocument();
 
     // Check for description
-    expect(screen.getByText('Export your projects or clear all local data from this browser.')).toBeInTheDocument();
+    expect(screen.getByText('Export files and manage local data.')).toBeInTheDocument();
 
     // Check for Export Files section
     expect(screen.getByText('Export Files')).toBeInTheDocument();

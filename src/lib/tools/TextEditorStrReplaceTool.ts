@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import type { Tool } from "./Tool";
 import type { JSRuntimeFS } from "../JSRuntime";
+import { isAbsolutePath, createWriteAccessDeniedError } from "../security";
 
 interface TextEditorStrReplaceParams {
   path: string;
@@ -31,12 +32,27 @@ export class TextEditorStrReplaceTool implements Tool<TextEditorStrReplaceParams
     this.cwd = cwd;
   }
 
+  /**
+   * Check if write operations are allowed for the given absolute path
+   */
+  private isWriteAllowed(absolutePath: string): boolean {
+    // Allow writes to /tmp/ and its subdirectories
+    if (absolutePath.startsWith('/tmp/') || absolutePath === '/tmp') {
+      return true;
+    }
+
+    // For other absolute paths, deny write access
+    return false;
+  }
+
   async execute(args: TextEditorStrReplaceParams): Promise<string> {
     const { path, old_str, new_str, normalize_whitespace = true } = args;
 
-    // Check for absolute paths and provide helpful error
-    if (path.startsWith('/') || path.startsWith('\\') || /^[A-Za-z]:[\\/]/.test(path)) {
-      throw new Error(`❌ Absolute paths are not supported.\n\nThe path "${path}" appears to be an absolute path.\n\n💡 Please use a relative path instead. Examples:\n- "src/index.ts" (relative to current directory)\n- "./src/index.ts" (explicit relative path)\n- "../other-project/src/index.ts" (relative to parent directory)\n\nCurrent working directory: ${this.cwd}`);
+    // Check for absolute paths and validate write permissions
+    if (isAbsolutePath(path)) {
+      if (!this.isWriteAllowed(path)) {
+        throw new Error(createWriteAccessDeniedError(path, undefined, this.cwd));
+      }
     }
 
     // Ban editing dependencies in package.json
@@ -60,7 +76,14 @@ export class TextEditorStrReplaceTool implements Tool<TextEditorStrReplaceParams
     }
 
     try {
-      const absolutePath = join(this.cwd, path);
+      // Handle both absolute and relative paths
+      let absolutePath: string;
+      if (isAbsolutePath(path)) {
+        absolutePath = path;
+      } else {
+        absolutePath = join(this.cwd, path);
+      }
+
       const content = await this.fs.readFile(absolutePath, "utf8");
 
       // Helper function to normalize whitespace

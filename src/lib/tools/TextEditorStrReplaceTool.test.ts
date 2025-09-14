@@ -134,7 +134,21 @@ describe('TextEditorStrReplaceTool', () => {
       path: '/absolute/path/test.ts',
       old_str: 'old',
       new_str: 'new'
-    })).rejects.toThrow('❌ Absolute paths are not supported');
+    })).rejects.toThrow('Write access denied');
+  });
+
+  it('should allow writes to /tmp/ directory', async () => {
+    // First create the file in /tmp/
+    await mockFS.writeFile('/tmp/temp-file.txt', 'original content');
+
+    const result = await tool.execute({
+      path: '/tmp/temp-file.txt',
+      old_str: 'original',
+      new_str: 'modified'
+    });
+
+    expect(result).toContain('String successfully replaced');
+    expect(mockFS.getFileContent('/tmp/temp-file.txt')).toBe('modified content');
   });
 
   it('should handle whitespace normalization', async () => {

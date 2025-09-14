@@ -2,6 +2,7 @@ import { join, dirname } from "@std/path";
 import type { JSRuntimeFS } from "../JSRuntime";
 import type { ShellCommand, ShellCommandResult } from "./ShellCommand";
 import { createSuccessResult, createErrorResult } from "./ShellCommand";
+import { isAbsolutePath, validateWritePath } from "../security";
 
 /**
  * Implementation of the 'touch' command
@@ -26,12 +27,20 @@ export class TouchCommand implements ShellCommand {
     try {
       for (const filePath of args) {
         try {
-          // Handle absolute paths
-          if (filePath.startsWith('/') || filePath.startsWith('\\') || /^[A-Za-z]:[\\/]/.test(filePath)) {
-            return createErrorResult(`${this.name}: absolute paths are not supported: ${filePath}`);
+          // Validate write permissions for absolute paths
+          try {
+            validateWritePath(filePath, this.name);
+          } catch (error) {
+            return createErrorResult(error instanceof Error ? error.message : 'Unknown error');
           }
 
-          const absolutePath = join(cwd, filePath);
+          // Handle both absolute and relative paths
+          let absolutePath: string;
+          if (isAbsolutePath(filePath)) {
+            absolutePath = filePath;
+          } else {
+            absolutePath = join(cwd, filePath);
+          }
 
           try {
             // Check if file exists

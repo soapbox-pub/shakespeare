@@ -39,56 +39,56 @@ describe('MkdirCommand', () => {
 
   it('should create new directory', async () => {
     const result = await command.execute(['newdir'], '/project');
-    
+
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toBe('');
   });
 
   it('should handle existing directory error', async () => {
     const result = await command.execute(['existing'], '/project');
-    
+
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain('File exists');
   });
 
   it('should handle existing file error', async () => {
     const result = await command.execute(['file.txt'], '/project');
-    
+
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain('File exists');
   });
 
   it('should create parent directories with -p', async () => {
     const result = await command.execute(['-p', 'deep/nested'], '/project');
-    
+
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toBe('');
   });
 
   it('should handle missing parent directory without -p', async () => {
     const result = await command.execute(['nonexistent/newdir'], '/project');
-    
+
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain('No such file or directory');
   });
 
   it('should require directory operand', async () => {
     const result = await command.execute([], '/project');
-    
+
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain('missing operand');
   });
 
-  it('should reject absolute paths', async () => {
+  it('should reject absolute paths outside allowed directories', async () => {
     const result = await command.execute(['/absolute/path'], '/project');
-    
+
     expect(result.exitCode).toBe(1);
-    expect(result.stderr).toContain('absolute paths are not supported');
+    expect(result.stderr).toContain('write access denied');
   });
 
   it('should handle multiple directories', async () => {
     const result = await command.execute(['newdir', 'deep'], '/project');
-    
+
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toBe('');
   });

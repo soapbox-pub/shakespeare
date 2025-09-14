@@ -2,6 +2,7 @@ import { join } from "@std/path";
 import type { JSRuntimeFS } from "../JSRuntime";
 import type { ShellCommand, ShellCommandResult } from "./ShellCommand";
 import { createSuccessResult, createErrorResult } from "./ShellCommand";
+import { isAbsolutePath, validateWritePath } from "../security";
 
 /**
  * Parsed curl options
@@ -364,12 +365,16 @@ export class CurlCommand implements ShellCommand {
    */
   private async writeToFile(filename: string, content: string, cwd: string): Promise<void> {
     try {
-      // Handle absolute paths
-      if (filename.startsWith('/') || filename.startsWith('\\') || /^[A-Za-z]:[\\/]/.test(filename)) {
-        throw new Error('absolute paths are not supported');
-      }
+      // Validate write permissions for absolute paths
+      validateWritePath(filename, 'curl');
 
-      const absolutePath = join(cwd, filename);
+      // Handle both absolute and relative paths
+      let absolutePath: string;
+      if (isAbsolutePath(filename)) {
+        absolutePath = filename;
+      } else {
+        absolutePath = join(cwd, filename);
+      }
 
       await this.fs.writeFile(absolutePath, content, 'utf8');
     } catch (error) {

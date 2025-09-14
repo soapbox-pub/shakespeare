@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import type { Tool } from "./Tool";
 import type { JSRuntimeFS } from "../JSRuntime";
+import { isAbsolutePath, createWriteAccessDeniedError } from "../security";
 
 interface TextEditorWriteParams {
   path: string;
@@ -27,12 +28,27 @@ export class TextEditorWriteTool implements Tool<TextEditorWriteParams> {
     this.cwd = cwd;
   }
 
+  /**
+   * Check if write operations are allowed for the given absolute path
+   */
+  private isWriteAllowed(absolutePath: string): boolean {
+    // Allow writes to /tmp/ and its subdirectories
+    if (absolutePath.startsWith('/tmp/') || absolutePath === '/tmp') {
+      return true;
+    }
+
+    // For other absolute paths, deny write access
+    return false;
+  }
+
   async execute(args: TextEditorWriteParams): Promise<string> {
     const { path, file_text } = args;
 
-    // Check for absolute paths and provide helpful error
-    if (path.startsWith('/') || path.startsWith('\\') || /^[A-Za-z]:[\\/]/.test(path)) {
-      throw new Error(`❌ Absolute paths are not supported.\n\nThe path "${path}" appears to be an absolute path.\n\n💡 Please use a relative path instead. Examples:\n- "src/index.ts" (relative to current directory)\n- "./src/index.ts" (explicit relative path)\n- "../other-project/src/index.ts" (relative to parent directory)\n\nCurrent working directory: ${this.cwd}`);
+    // Check for absolute paths and validate write permissions
+    if (isAbsolutePath(path)) {
+      if (!this.isWriteAllowed(path)) {
+        throw new Error(createWriteAccessDeniedError(path, undefined, this.cwd));
+      }
     }
 
     if (
@@ -43,7 +59,14 @@ export class TextEditorWriteTool implements Tool<TextEditorWriteParams> {
     }
 
     try {
-      const absolutePath = join(this.cwd, path);
+      // Handle both absolute and relative paths
+      let absolutePath: string;
+      if (isAbsolutePath(path)) {
+        absolutePath = path;
+      } else {
+        absolutePath = join(this.cwd, path);
+      }
+
       await this.fs.mkdir(dirname(absolutePath), { recursive: true });
       await this.fs.writeFile(absolutePath, file_text, "utf8");
       return `File successfully written to ${path}`;

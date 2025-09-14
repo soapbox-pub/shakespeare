@@ -2,6 +2,7 @@ import { join, dirname } from "@std/path";
 import type { JSRuntimeFS } from "../JSRuntime";
 import type { ShellCommand, ShellCommandResult } from "./ShellCommand";
 import { createSuccessResult, createErrorResult } from "./ShellCommand";
+import { isAbsolutePath, validateWritePath } from "../security";
 
 /**
  * Implementation of the 'mkdir' command
@@ -32,12 +33,20 @@ export class MkdirCommand implements ShellCommand {
     try {
       for (const dirPath of directories) {
         try {
-          // Handle absolute paths
-          if (dirPath.startsWith('/') || dirPath.startsWith('\\') || /^[A-Za-z]:[\\/]/.test(dirPath)) {
-            return createErrorResult(`${this.name}: absolute paths are not supported: ${dirPath}`);
+          // Validate write permissions for absolute paths
+          try {
+            validateWritePath(dirPath, this.name);
+          } catch (error) {
+            return createErrorResult(error instanceof Error ? error.message : 'Unknown error');
           }
 
-          const absolutePath = join(cwd, dirPath);
+          // Handle both absolute and relative paths
+          let absolutePath: string;
+          if (isAbsolutePath(dirPath)) {
+            absolutePath = dirPath;
+          } else {
+            absolutePath = join(cwd, dirPath);
+          }
 
           if (options.parents) {
             // Create parent directories as needed (-p option)

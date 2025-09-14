@@ -2,6 +2,7 @@ import { join, dirname, basename } from "@std/path";
 import type { JSRuntimeFS } from "../JSRuntime";
 import type { ShellCommand, ShellCommandResult } from "./ShellCommand";
 import { createSuccessResult, createErrorResult } from "./ShellCommand";
+import { isAbsolutePath, validateWritePath } from "../security";
 
 /**
  * Implementation of the 'mv' command
@@ -27,14 +28,23 @@ export class MvCommand implements ShellCommand {
       const sources = args.slice(0, -1);
       const destination = args[args.length - 1];
 
-      // Check for absolute paths
-      for (const path of [...sources, destination]) {
-        if (path.startsWith('/') || path.startsWith('\\') || /^[A-Za-z]:[\\/]/.test(path)) {
-          return createErrorResult(`${this.name}: absolute paths are not supported: ${path}`);
+      // Check write permissions for destination and sources (since mv deletes the source)
+      const pathsToValidate = [destination, ...sources];
+      for (const path of pathsToValidate) {
+        try {
+          validateWritePath(path, this.name);
+        } catch (error) {
+          return createErrorResult(error instanceof Error ? error.message : 'Unknown error');
         }
       }
 
-      const destAbsolutePath = join(cwd, destination);
+      // Handle both absolute and relative paths for destination
+      let destAbsolutePath: string;
+      if (isAbsolutePath(destination)) {
+        destAbsolutePath = destination;
+      } else {
+        destAbsolutePath = join(cwd, destination);
+      }
 
       // Check if destination exists and is a directory
       let destIsDir = false;
@@ -52,7 +62,13 @@ export class MvCommand implements ShellCommand {
 
       for (const source of sources) {
         try {
-          const sourceAbsolutePath = join(cwd, source);
+          // Handle both absolute and relative paths for source
+          let sourceAbsolutePath: string;
+          if (isAbsolutePath(source)) {
+            sourceAbsolutePath = source;
+          } else {
+            sourceAbsolutePath = join(cwd, source);
+          }
 
           // Check if source exists
           await this.fs.stat(sourceAbsolutePath);

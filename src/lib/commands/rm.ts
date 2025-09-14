@@ -2,6 +2,7 @@ import { join } from "@std/path";
 import type { JSRuntimeFS } from "../JSRuntime";
 import type { ShellCommand, ShellCommandResult } from "./ShellCommand";
 import { createSuccessResult, createErrorResult } from "./ShellCommand";
+import { isAbsolutePath, validateWritePath } from "../security";
 
 /**
  * Implementation of the 'rm' command
@@ -32,9 +33,19 @@ export class RmCommand implements ShellCommand {
 
       for (const path of paths) {
         try {
-          // Handle absolute paths
-          if (path.startsWith('/') || path.startsWith('\\') || /^[A-Za-z]:[\\/]/.test(path)) {
-            return createErrorResult(`${this.name}: absolute paths are not supported: ${path}`);
+          // Validate write permissions for absolute paths
+          try {
+            validateWritePath(path, this.name);
+          } catch (error) {
+            return createErrorResult(error instanceof Error ? error.message : 'Unknown error');
+          }
+
+          // Handle both absolute and relative paths
+          let absolutePath: string;
+          if (isAbsolutePath(path)) {
+            absolutePath = path;
+          } else {
+            absolutePath = join(cwd, path);
           }
 
           // Prevent removing current directory or parent directory
@@ -42,7 +53,7 @@ export class RmCommand implements ShellCommand {
             return createErrorResult(`${this.name}: cannot remove '${path}': Invalid argument`);
           }
 
-          const absolutePath = join(cwd, path);
+
 
           try {
             const stats = await this.fs.stat(absolutePath);

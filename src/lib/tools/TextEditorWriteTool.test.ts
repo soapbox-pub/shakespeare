@@ -124,11 +124,22 @@ describe('TextEditorWriteTool', () => {
     expect(mockFS.getFileContent('/project/src/test.ts')).toBe('console.log("test");');
   });
 
-  it('should reject absolute paths with helpful error message', async () => {
+  it('should reject absolute paths outside allowed directories', async () => {
     await expect(tool.execute({
       path: '/absolute/path/test.ts',
       file_text: 'test content'
-    })).rejects.toThrow('❌ Absolute paths are not supported');
+    })).rejects.toThrow('Write access denied');
+  });
+
+  it('should allow writes to /tmp/ directory', async () => {
+    const result = await tool.execute({
+      path: '/tmp/temp-file.txt',
+      file_text: 'temporary content'
+    });
+
+    expect(result).toContain('File successfully written to /tmp/temp-file.txt');
+    expect(mockFS.hasFile('/tmp/temp-file.txt')).toBe(true);
+    expect(mockFS.getFileContent('/tmp/temp-file.txt')).toBe('temporary content');
   });
 
   it('should reject package.json writes', async () => {

@@ -118,11 +118,11 @@ describe('CpCommand', () => {
     expect(result.stderr).toContain('No such file or directory');
   });
 
-  it('should reject absolute paths', async () => {
-    const result = await cpCommand.execute(['/absolute/source', 'dest'], testCwd);
+  it('should reject absolute destination paths outside allowed directories', async () => {
+    const result = await cpCommand.execute(['src/test.txt', '/absolute/dest'], testCwd);
 
     expect(result.exitCode).toBe(1);
-    expect(result.stderr).toContain('absolute paths are not supported');
+    expect(result.stderr).toContain('write access denied');
   });
 
   it('should return error when missing operands', async () => {

@@ -104,11 +104,11 @@ describe('MvCommand', () => {
     expect(result.stderr).toContain('File exists');
   });
 
-  it('should reject absolute paths', async () => {
+  it('should reject absolute paths outside allowed directories', async () => {
     const result = await mvCommand.execute(['/absolute/source', 'dest'], testCwd);
 
     expect(result.exitCode).toBe(1);
-    expect(result.stderr).toContain('absolute paths are not supported');
+    expect(result.stderr).toContain('write access denied');
   });
 
   it('should return error when missing operands', async () => {

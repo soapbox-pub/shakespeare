@@ -65,11 +65,11 @@ describe('TouchCommand', () => {
     expect(result.stderr).toContain('missing file operand');
   });
 
-  it('should reject absolute paths', async () => {
+  it('should reject absolute paths outside allowed directories', async () => {
     const result = await command.execute(['/absolute/path'], '/project');
 
     expect(result.exitCode).toBe(1);
-    expect(result.stderr).toContain('absolute paths are not supported');
+    expect(result.stderr).toContain('write access denied');
   });
 
   it('should handle missing parent directory', async () => {

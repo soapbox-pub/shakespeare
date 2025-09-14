@@ -89,11 +89,11 @@ describe('RmCommand', () => {
     expect(result.exitCode).toBe(0);
   });
 
-  it('should reject absolute paths', async () => {
+  it('should reject absolute paths outside allowed directories', async () => {
     const result = await rmCommand.execute(['/absolute/path'], testCwd);
 
     expect(result.exitCode).toBe(1);
-    expect(result.stderr).toContain('absolute paths are not supported');
+    expect(result.stderr).toContain('write access denied');
   });
 
   it('should reject removing current or parent directory', async () => {

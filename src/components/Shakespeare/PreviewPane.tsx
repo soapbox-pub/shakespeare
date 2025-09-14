@@ -4,7 +4,7 @@ import { useFS } from '@/hooks/useFS';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, FolderOpen, ArrowLeft } from 'lucide-react';
+import { FolderOpen, ArrowLeft } from 'lucide-react';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { GitStatusIndicator } from '@/components/GitStatusIndicator';
 import { BrowserAddressBar } from '@/components/ui/browser-address-bar';
@@ -376,20 +376,6 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
                 <p className="text-muted-foreground mb-4">
                   Build your project to see the preview here
                 </p>
-                <div className="bg-background border rounded-lg p-8 max-w-md">
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Run the build command to generate <code className="bg-muted px-1 rounded">dist/index.html</code>
-                  </p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={checkForBuiltProject}
-                    className="gap-2"
-                  >
-                    <RefreshCw className="h-4 w-4" />
-                    Check for Build
-                  </Button>
-                </div>
               </div>
             </div>
           )}

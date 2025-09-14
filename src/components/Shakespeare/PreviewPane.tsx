@@ -1,3 +1,4 @@
+import { encodeBase64 } from '@std/encoding/base64';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { useFS } from '@/hooks/useFS';
@@ -214,8 +215,9 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
 
       // SPA routing: try to serve the exact file first
       try {
-        const file = await projectsManager.readFile(projectId, 'dist' + filePath);
+        const bytes = await projectsManager.readFileBytes(projectId, 'dist' + filePath);
         console.log(`Serving file: ${filePath}`);
+
         sendResponse({
           jsonrpc: '2.0',
           result: {
@@ -225,7 +227,7 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
               'Content-Type': getContentType(filePath),
               'Cache-Control': 'no-cache',
             },
-            body: file,
+            body: encodeBase64(bytes),
           },
           id
         });
@@ -237,8 +239,9 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
 
       // SPA fallback: serve index.html for non-file requests
       try {
-        const indexFile = await projectsManager.readFile(projectId, 'dist/index.html');
+        const bytes = await projectsManager.readFileBytes(projectId, 'dist/index.html');
         console.log(`Serving index.html fallback for: ${path}`);
+
         sendResponse({
           jsonrpc: '2.0',
           result: {
@@ -248,13 +251,14 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
               'Content-Type': 'text/html',
               'Cache-Control': 'no-cache',
             },
-            body: indexFile,
+            body: encodeBase64(bytes),
           },
           id
         });
       } catch {
         // Even index.html doesn't exist
         console.log(`No files found, returning 404 for: ${path}`);
+
         sendResponse({
           jsonrpc: '2.0',
           result: {
@@ -263,7 +267,7 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
             headers: {
               'Content-Type': 'text/plain',
             },
-            body: `File not found: ${path}`,
+            body: encodeBase64(`File not found: ${path}`),
           },
           id
         });

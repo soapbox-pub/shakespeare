@@ -180,8 +180,17 @@ class FetchClient {
 
       const response = await this.rpcClient.fetch(serializedRequest);
 
+      if (response.status !== 200) {
+        throw new Error(`Failed to fetch site index: ${response.status} ${response.statusText}`);
+      }
+      if (response.headers["Content-Type"] !== "text/html") {
+        throw new Error(`Unexpected Content-Type: ${response.headers["Content-Type"]}`);
+      }
+
+      const decoded = atob(response.body);
+
       // Replace current document with the site index content
-      this.replaceDocument(response.body);
+      this.replaceDocument(decoded);
     } catch (error) {
       this.showError("Failed to load site index", error);
     }

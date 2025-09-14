@@ -41,7 +41,7 @@ All messages follow JSON-RPC 2.0 specification:
 {
     "jsonrpc": "2.0",
     "method": "fetch",
-    "params": { 
+    "params": {
         "request": {
             "url": "https://app123.example.com/assets/main.js",
             "method": "GET",
@@ -54,6 +54,23 @@ All messages follow JSON-RPC 2.0 specification:
     "id": 123
 }
 
+// POST Request with JSON body
+{
+    "jsonrpc": "2.0",
+    "method": "fetch",
+    "params": {
+        "request": {
+            "url": "https://app123.example.com/api/data",
+            "method": "POST",
+            "headers": {
+                "Content-Type": "application/json"
+            },
+            "body": "eyJuYW1lIjoiSm9obiIsImFnZSI6MzB9"  // base64 of: {"name":"John","age":30}
+        }
+    },
+    "id": 124
+}
+
 // Success Response
 {
     "jsonrpc": "2.0",
@@ -64,7 +81,7 @@ All messages follow JSON-RPC 2.0 specification:
             "Content-Type": "application/javascript",
             "Cache-Control": "no-cache"
         },
-        "body": "console.log('hello');"
+        "body": "Y29uc29sZS5sb2coJ2hlbGxvJyk7"
     },
     "id": 123
 }
@@ -94,14 +111,14 @@ full request body support
   - `url` (string): Full URL of the request
   - `method` (string): HTTP method (GET, POST, etc.)
   - `headers` (object): Request headers as key-value pairs
-  - `body` (string|null): Request body as string, or null if no body
+  - `body` (string|null): Request body as base64 encoded string, or null if no body
 
 **Result:**
 
 - `status` (number): HTTP status code (200, 404, etc.)
 - `statusText` (string): HTTP status text ("OK", "Not Found", etc.)
 - `headers` (object): Response headers as key-value pairs
-- `body` (string|null): Response body content (null if status is 204)
+- `body` (string|null): Response body content as base64 encoded string (null if status is 204)
 
 **Error Codes:**
 
@@ -117,8 +134,8 @@ full request body support
 - File uploads (as base64 strings)
 - Any HTTP method with body content
 
-Request bodies are serialized as strings, so binary data should be
-base64-encoded.
+Request bodies must be base64-encoded strings when not null. This ensures
+consistent handling of both text and binary data across the messaging protocol.
 
 ## Implementation
 
@@ -153,6 +170,9 @@ class FetchClientParent {
     const url = new URL(fetchRequest.url);
     const path = url.pathname;
 
+    // Decode request body if present
+    const requestBody = fetchRequest.body ? atob(fetchRequest.body) : null;
+
     const file = this.files.get(path);
 
     if (file) {
@@ -166,7 +186,7 @@ class FetchClientParent {
             "Content-Type": file.contentType,
             "Cache-Control": "no-cache",
           },
-          body: file.content,
+          body: btoa(file.content), // base64 encode the response body
         },
       });
     } else {
@@ -180,7 +200,7 @@ class FetchClientParent {
           headers: {
             "Content-Type": "text/plain",
           },
-          body: `File not found: ${path}`,
+          body: btoa(`File not found: ${path}`), // base64 encode the error message
         },
       });
     }
@@ -262,6 +282,23 @@ class JSONRPCClient {
     }
   }
 }
+```
+
+## Base64 Encoding
+
+All request and response bodies must be base64 encoded when not null. This ensures:
+
+- **Consistent Data Handling:** Both text and binary data are handled uniformly
+- **JSON Compatibility:** Avoids issues with special characters in JSON messages
+- **Binary Data Support:** Enables transmission of images, files, and other binary content
+
+**Encoding/Decoding:**
+```javascript
+// Encoding (before sending)
+const encodedBody = btoa(originalBody);
+
+// Decoding (after receiving)
+const decodedBody = atob(encodedBody);
 ```
 
 ## Security

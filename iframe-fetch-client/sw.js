@@ -48,7 +48,14 @@ function handleJSONRPCResponse(message) {
 
   // Create response from serialized response
   const { status, statusText, headers, body } = result;
-  const response = new Response(body, {
+
+  // Decode base64 body if present
+  let decoded = null;
+  if (typeof body === "string") {
+    decoded = new Uint8Array(atob(body).split('').map(c => c.charCodeAt(0)));
+  }
+
+  const response = new Response(decoded, {
     status: status || 200,
     statusText: statusText || "OK",
     headers: headers || {},
@@ -65,8 +72,9 @@ async function requestViaJSONRPC(request) {
     let body = null;
     if (request.body) {
       try {
-        // Convert body to string (JSON-serializable)
-        body = await request.text();
+        // Convert body to Uint8Array then base64 encode
+        const bytes = await request.bytes();
+        body = btoa(String.fromCharCode(...bytes));
       } catch (error) {
         reject(new Error(`Failed to serialize request body: ${error.message}`));
         return;

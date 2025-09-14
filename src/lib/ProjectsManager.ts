@@ -205,6 +205,24 @@ export class ProjectsManager {
     }
   }
 
+  async readFileBytes(projectId: string, filePath: string): Promise<Uint8Array> {
+    const fullPath = `${this.dir}/${projectId}/${filePath}`;
+    try {
+      const stat = await this.fs.stat(fullPath);
+      if (stat.isFile()) {
+        return await this.fs.readFile(fullPath);
+      } else {
+        throw new Error(`Path is not a file: ${filePath}`);
+      }
+    } catch (error) {
+      const fsError = error as NodeJS.ErrnoException;
+      if (fsError.code === 'ENOENT') {
+        throw new Error(`File not found: ${filePath}`);
+      }
+      throw error;
+    }
+  }
+
   async writeFile(projectId: string, filePath: string, content: string): Promise<void> {
     const fullPath = `${this.dir}/${projectId}/${filePath}`;
     const dir = fullPath.split('/').slice(0, -1).join('/');

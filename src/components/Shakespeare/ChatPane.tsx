@@ -5,7 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CircularProgress } from '@/components/ui/circular-progress';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Send, Square, Loader2, ChevronDown } from 'lucide-react';
+import { Square, Loader2, ChevronDown, ArrowUp } from 'lucide-react';
 import { useAISettings } from '@/hooks/useAISettings';
 import { useFS } from '@/hooks/useFS';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
@@ -463,7 +463,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
           />
 
           {/* Bottom Controls Row */}
-          <div className="absolute bottom-2 left-2 right-2 flex items-center gap-2">
+          <div className="absolute bottom-2 left-2 right-2 flex items-center gap-4">
             {/* Context Usage Wheel */}
             {contextUsagePercentage >= 10 && currentModel?.contextLength && lastInputTokens > 0 && (
               <TooltipProvider>
@@ -518,9 +518,9 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
                   onClick={stopGeneration}
                   size="sm"
                   variant="ghost"
-                  className="h-8 w-8 rounded-lg p-0 hover:bg-muted"
+                  className="size-8 rounded-full p-0 bg-foreground/10 [&_svg]:size-3.5 [&_svg]:fill-foreground hover:bg-foreground/20"
                 >
-                  <Square className="h-4 w-4" />
+                  <Square />
                 </Button>
               ) : (
                 <Button
@@ -528,9 +528,9 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
                   onMouseDown={handleFirstInteraction}
                   disabled={!input.trim() || !providerModel.trim()}
                   size="sm"
-                  className="h-8 w-8 rounded-lg p-0"
+                  className="size-8 [&_svg]:size-5 rounded-full p-0"
                 >
-                  <Send className="h-4 w-4" />
+                  <ArrowUp />
                 </Button>
               )}
             </div>

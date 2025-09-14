@@ -119,7 +119,7 @@ export function ModelSelector({
             role="combobox"
             aria-expanded={open}
             className={cn(
-              "h-8 justify-between text-xs border-0 bg-transparent hover:bg-transparent hover:text-foreground focus-visible:ring-0 focus-visible:ring-offset-0 text-muted-foreground text-right",
+              "h-8 p-0 gap-0.5 justify-between text-xs border-0 bg-transparent hover:bg-transparent hover:text-foreground focus-visible:ring-0 focus-visible:ring-offset-0 text-muted-foreground text-right",
               className
             )}
             disabled={disabled}
@@ -127,7 +127,7 @@ export function ModelSelector({
             <span className="w-full truncate">
               {value || placeholder}
             </span>
-            <ChevronDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
+            <ChevronDown className="size-3 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
       <PopoverContent className="w-96 p-0" align="end">

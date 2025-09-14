@@ -49,6 +49,16 @@ Shakespeare provides AI agents with specialized tools for project development (n
 - **NostrFetchEventTool**: Fetch Nostr events using NIP-19 identifiers
 - **NostrGenerateKindTool**: Generate unused Nostr event kind numbers
 
+#### Shell Commands
+
+Shakespeare provides a comprehensive set of shell commands that are JavaScript reimplementations of common Unix commands. These commands operate on the virtual filesystem (VFS) and are accessible through the ShellTool. The shell commands are implemented in `src/lib/commands/` and provide familiar Unix-like functionality for file and directory operations.
+
+**Available Commands:**
+- **File Operations**: `cat`, `cp`, `mv`, `rm`, `touch`, `find`, `grep`
+- **Directory Operations**: `cd`, `ls`, `mkdir`, `pwd`, `tree`
+- **System Commands**: `echo`, `which`, `wc`, `head`, `tail`
+- **Git Commands**: `git add`, `git commit`, `git push`, `git pull`, `git status`, `git log`, etc.
+
 #### Security
 
 AI filesystem access through tools (including shell commands via ShellTool) has path restrictions to ensure safe operation:

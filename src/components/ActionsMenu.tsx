@@ -36,9 +36,9 @@ import { AppSettingsDialog } from '@/components/AppSettingsDialog';
 import { useNavigate } from 'react-router-dom';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { useToast } from '@/hooks/useToast';
+import { useGit } from '@/hooks/useGit';
 import { useFS } from '@/hooks/useFS';
 import JSZip from 'jszip';
-import git from 'isomorphic-git';
 
 interface ActionsMenuProps {
   projectId: string;
@@ -75,6 +75,7 @@ export function ActionsMenu({
   const navigate = useNavigate();
   const projectsManager = useProjectsManager();
   const { toast } = useToast();
+  const git = useGit();
   const { fs } = useFS();
 
   const isAnyLoading = isLoading || isBuildLoading || isDeployLoading || isDeleting || isExporting;
@@ -156,7 +157,6 @@ export function ActionsMenu({
       try {
         // Get the current commit hash
         const commits = await git.log({
-          fs,
           dir: projectPath,
           depth: 1,
         });

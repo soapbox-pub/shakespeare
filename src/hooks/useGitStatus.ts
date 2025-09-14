@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import git from 'isomorphic-git';
-import { useFS } from './useFS';
+import { useGit } from './useGit';
 
 interface GitFileChange {
   filepath: string;
@@ -41,7 +40,7 @@ interface GitStatus {
 }
 
 export function useGitStatus(projectId: string | null) {
-  const { fs } = useFS();
+  const git = useGit();
 
   return useQuery({
     queryKey: ['git-status', projectId],
@@ -66,7 +65,7 @@ export function useGitStatus(projectId: string | null) {
 
         // Check if we're in a git repository
         try {
-          await fs.stat(`${cwd}/.git`);
+          await git.findRoot({ filepath: cwd });
         } catch {
           return {
             hasUncommittedChanges: false,
@@ -86,7 +85,6 @@ export function useGitStatus(projectId: string | null) {
         let currentBranch: string | null = null;
         try {
           const branch = await git.currentBranch({
-            fs,
             dir: cwd,
             fullname: false,
           });
@@ -99,7 +97,6 @@ export function useGitStatus(projectId: string | null) {
         const branches: string[] = [];
         try {
           const allBranches = await git.listBranches({
-            fs,
             dir: cwd,
           });
           branches.push(...allBranches);
@@ -112,7 +109,6 @@ export function useGitStatus(projectId: string | null) {
         let totalCommits = 0;
         try {
           const commits = await git.log({
-            fs,
             dir: cwd,
             depth: 1,
           });
@@ -137,7 +133,6 @@ export function useGitStatus(projectId: string | null) {
 
           // Get total commit count
           const allCommits = await git.log({
-            fs,
             dir: cwd,
           });
           totalCommits = allCommits.length;
@@ -149,7 +144,6 @@ export function useGitStatus(projectId: string | null) {
         const remotes: GitRemote[] = [];
         try {
           const remoteNames = await git.listRemotes({
-            fs,
             dir: cwd,
           });
 
@@ -165,7 +159,6 @@ export function useGitStatus(projectId: string | null) {
 
         // Get git status to see what files have changed
         const statusMatrix = await git.statusMatrix({
-          fs,
           dir: cwd,
         });
 
@@ -207,13 +200,11 @@ export function useGitStatus(projectId: string | null) {
             try {
               // Try to get the remote branch reference
               const remoteRef = await git.resolveRef({
-                fs,
                 dir: cwd,
                 ref: remoteBranchName,
               });
 
               const localRef = await git.resolveRef({
-                fs,
                 dir: cwd,
                 ref: currentBranch,
               });
@@ -221,13 +212,11 @@ export function useGitStatus(projectId: string | null) {
               if (remoteRef && localRef && remoteRef !== localRef) {
                 // Get commits between local and remote
                 const localCommits = await git.log({
-                  fs,
                   dir: cwd,
                   ref: currentBranch,
                 });
 
                 const remoteCommits = await git.log({
-                  fs,
                   dir: cwd,
                   ref: remoteBranchName,
                 });

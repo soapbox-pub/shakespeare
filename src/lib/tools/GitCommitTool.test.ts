@@ -2,19 +2,19 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { GitCommitTool } from './GitCommitTool';
 import type { JSRuntimeFS } from '../JSRuntime';
 
-// Mock isomorphic-git
-vi.mock('isomorphic-git', () => ({
-  default: {
-    statusMatrix: vi.fn(),
-    add: vi.fn(),
-    remove: vi.fn(),
-    commit: vi.fn(),
-    currentBranch: vi.fn(),
-    getConfig: vi.fn(),
-  },
-}));
+// Mock the Git class
+const mockGitInstance = {
+  statusMatrix: vi.fn(),
+  add: vi.fn(),
+  remove: vi.fn(),
+  commit: vi.fn(),
+  currentBranch: vi.fn(),
+  getConfig: vi.fn(),
+};
 
-import git from 'isomorphic-git';
+vi.mock('../git', () => ({
+  Git: vi.fn().mockImplementation(() => mockGitInstance),
+}));
 
 // Mock filesystem
 const mockFS: JSRuntimeFS = {
@@ -39,14 +39,15 @@ describe('GitCommitTool', () => {
     tool = new GitCommitTool(mockFS, '/test/project');
 
     // Setup default mocks
-    vi.mocked(git.statusMatrix).mockResolvedValue([
+    mockGitInstance.statusMatrix.mockResolvedValue([
       ['src/file1.ts', 1, 1, 0], // Modified file (present in head and workdir, but not staged)
       ['src/file2.ts', 0, 1, 0], // New file (absent in head, present in workdir, not staged)
     ]);
-    vi.mocked(git.add).mockResolvedValue();
-    vi.mocked(git.commit).mockResolvedValue('abcd1234567890abcdef1234567890abcdef12');
-    vi.mocked(git.currentBranch).mockResolvedValue('main');
-    vi.mocked(git.getConfig).mockRejectedValue(new Error('Config not found'));
+    mockGitInstance.add.mockResolvedValue(undefined);
+    mockGitInstance.remove.mockResolvedValue(undefined);
+    mockGitInstance.commit.mockResolvedValue('abcd1234567890abcdef1234567890abcdef12');
+    mockGitInstance.currentBranch.mockResolvedValue('main');
+    mockGitInstance.getConfig.mockRejectedValue(new Error('Config not found'));
   });
 
   it('should have correct description and inputSchema', () => {
@@ -64,13 +65,11 @@ describe('GitCommitTool', () => {
     const result = await tool.execute({ message: 'Add new feature' });
 
     expect(mockFS.stat).toHaveBeenCalledWith('/test/project/.git');
-    expect(git.statusMatrix).toHaveBeenCalledWith({
-      fs: mockFS,
+    expect(mockGitInstance.statusMatrix).toHaveBeenCalledWith({
       dir: '/test/project',
     });
-    expect(git.add).toHaveBeenCalled();
-    expect(git.commit).toHaveBeenCalledWith({
-      fs: mockFS,
+    expect(mockGitInstance.add).toHaveBeenCalled();
+    expect(mockGitInstance.commit).toHaveBeenCalledWith({
       dir: '/test/project',
       message: 'Add new feature',
       author: {
@@ -124,7 +123,7 @@ describe('GitCommitTool', () => {
     const specialMessage = 'Fix: handle "quotes" and \'apostrophes\' in commit message';
     const result = await tool.execute({ message: specialMessage });
 
-    expect(git.commit).toHaveBeenCalledWith(expect.objectContaining({
+    expect(mockGitInstance.commit).toHaveBeenCalledWith(expect.objectContaining({
       message: specialMessage,
     }));
     expect(result).toContain('✅ Successfully committed');
@@ -141,7 +140,7 @@ describe('GitCommitTool', () => {
     const multilineMessage = 'Add new feature\n\nThis commit adds a new feature that allows users to do something amazing.\n\nCloses #123';
     const result = await tool.execute({ message: multilineMessage });
 
-    expect(git.commit).toHaveBeenCalled();
+    expect(mockGitInstance.commit).toHaveBeenCalled();
     expect(result).toContain('✅ Successfully committed');
     expect(result).toContain('Add new feature');
   });
@@ -154,12 +153,12 @@ describe('GitCommitTool', () => {
     });
 
     // Mock no changes in status matrix
-    vi.mocked(git.statusMatrix).mockResolvedValue([]);
+    vi.mocked(mockGitInstance.statusMatrix).mockResolvedValue([]);
 
     const result = await tool.execute({ message: 'Update documentation' });
 
     expect(result).toContain('ℹ️ No changes to commit. Working tree is clean.');
-    expect(git.commit).not.toHaveBeenCalled();
+    expect(mockGitInstance.commit).not.toHaveBeenCalled();
   });
 
   it('should provide detailed commit information', async () => {
@@ -185,14 +184,13 @@ describe('GitCommitTool', () => {
     });
 
     // Mock git config
-    vi.mocked(git.getConfig)
+    vi.mocked(mockGitInstance.getConfig)
       .mockResolvedValueOnce('John Doe') // user.name
       .mockResolvedValueOnce('john@example.com'); // user.email
 
     const result = await tool.execute({ message: 'Test commit' });
 
-    expect(git.commit).toHaveBeenCalledWith({
-      fs: mockFS,
+    expect(mockGitInstance.commit).toHaveBeenCalledWith({
       dir: '/test/project',
       message: 'Test commit',
       author: {

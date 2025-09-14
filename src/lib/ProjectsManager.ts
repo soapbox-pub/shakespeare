@@ -1,6 +1,5 @@
-import git from 'isomorphic-git';
-import http from 'isomorphic-git/http/web';
 import { Buffer } from 'buffer';
+import { Git } from '@/lib/git';
 import type { JSRuntimeFS } from '@/lib/JSRuntime';
 
 
@@ -21,10 +20,12 @@ export interface Project {
 
 export class ProjectsManager {
   fs: JSRuntimeFS;
+  git: Git;
   dir: string;
 
   constructor(fs: JSRuntimeFS) {
     this.fs = fs;
+    this.git = new Git(fs, 'https://cors.isomorphic-git.org');
     this.dir = '/projects';
   }
 
@@ -60,8 +61,7 @@ export class ProjectsManager {
     }
 
     // Initialize new git repository
-    await git.init({
-      fs: this.fs,
+    await this.git.init({
       dir: project.path,
       defaultBranch: 'main',
     });
@@ -71,8 +71,7 @@ export class ProjectsManager {
     for (const file of files) {
       // Skip .git directory and other hidden files we don't want to track
       if (!file.startsWith('.git/') && !file.startsWith('.ai/')) {
-        await git.add({
-          fs: this.fs,
+        await this.git.add({
           dir: project.path,
           filepath: file,
         });
@@ -80,8 +79,7 @@ export class ProjectsManager {
     }
 
     // Make initial commit
-    await git.commit({
-      fs: this.fs,
+    await this.git.commit({
       dir: project.path,
       message: 'New project created with Shakespeare',
       author: {
@@ -94,7 +92,6 @@ export class ProjectsManager {
   }
 
   async cloneProject(name: string, repoUrl: string, customId?: string, options?: { depth?: number }): Promise<Project> {
-    const url = new URL(repoUrl);
     const id = customId || await this.generateUniqueProjectId(name);
 
     // Check if project with this ID already exists when using custom ID
@@ -107,18 +104,11 @@ export class ProjectsManager {
     await this.fs.mkdir(projectPath);
 
     // Clone the repository
-    await git.clone({
-      fs: this.fs,
-      http,
+    await this.git.clone({
       dir: projectPath,
       url: repoUrl,
       singleBranch: true,
       depth: options?.depth, // Use depth if provided, otherwise clone full history
-      // Use the CORS proxy only for GitHub and GitLab URLs
-      // More info: https://github.com/isomorphic-git/isomorphic-git#cors-support
-      corsProxy: url.hostname === 'github.com' || url.hostname === 'gitlab.com'
-        ? 'https://cors.isomorphic-git.org'
-        : undefined,
     });
 
     // Get filesystem stats for timestamps
@@ -319,8 +309,7 @@ export class ProjectsManager {
   async getNostrRepoAddress(projectId: string): Promise<string | null> {
     try {
       const projectPath = `${this.dir}/${projectId}`;
-      const config = await git.getConfig({
-        fs: this.fs,
+      const config = await this.git.getConfig({
         dir: projectPath,
         path: 'nostr.repo',
       });

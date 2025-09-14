@@ -3,21 +3,22 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { TestApp } from '@/test/TestApp';
 import { GitHistoryDialog } from './GitHistoryDialog';
 
-// Mock isomorphic-git
-vi.mock('isomorphic-git', () => ({
-  default: {
-    log: vi.fn(),
-    resolveRef: vi.fn(),
-    readCommit: vi.fn(),
-    listFiles: vi.fn(),
-    readBlob: vi.fn(),
-    add: vi.fn(),
-    remove: vi.fn(),
-    commit: vi.fn(),
-  },
-}));
+// Mock the useGit hook
+const mockGit = {
+  log: vi.fn(),
+  resolveRef: vi.fn(),
+  readCommit: vi.fn(),
+  listFiles: vi.fn(),
+  readBlob: vi.fn(),
+  add: vi.fn(),
+  remove: vi.fn(),
+  commit: vi.fn(),
+  findRoot: vi.fn(),
+};
 
-// Mock the useFS hook
+vi.mock('@/hooks/useGit', () => ({
+  useGit: () => mockGit,
+}));
 vi.mock('@/hooks/useFS', () => ({
   useFS: () => ({
     fs: {
@@ -107,8 +108,8 @@ describe('GitHistoryDialog', () => {
       },
     ];
 
-    const git = await import('isomorphic-git');
-    vi.mocked(git.default.log).mockResolvedValue(mockCommits);
+    mockGit.findRoot.mockResolvedValue('/projects/test-project/.git');
+    mockGit.log.mockResolvedValue(mockCommits);
 
     render(
       <TestApp>
@@ -144,8 +145,8 @@ describe('GitHistoryDialog', () => {
       },
     ];
 
-    const git = await import('isomorphic-git');
-    vi.mocked(git.default.log).mockResolvedValue(mockCommits);
+    mockGit.findRoot.mockResolvedValue('/projects/test-project/.git');
+    mockGit.log.mockResolvedValue(mockCommits);
 
     render(
       <TestApp>

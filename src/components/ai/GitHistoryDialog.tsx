@@ -5,9 +5,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { History, GitCommit, RotateCcw, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
+import { useGit } from '@/hooks/useGit';
 import { useFS } from '@/hooks/useFS';
 import { useToast } from '@/hooks/useToast';
-import git from 'isomorphic-git';
 
 interface GitCommit {
   oid: string;
@@ -43,12 +43,11 @@ export function GitHistoryDialog({ projectId, open: controlledOpen, onOpenChange
   const setIsOpen = onOpenChange || setInternalOpen;
   const [isRollingBack, setIsRollingBack] = useState<string | null>(null);
   const [expandedCommits, setExpandedCommits] = useState<Set<string>>(new Set());
+  const git = useGit();
   const { fs } = useFS();
   const { toast } = useToast();
 
   const loadGitHistory = useCallback(async () => {
-    if (!fs) return;
-
     setIsLoading(true);
     setError(null);
 
@@ -57,7 +56,7 @@ export function GitHistoryDialog({ projectId, open: controlledOpen, onOpenChange
 
       // Check if git repository exists
       try {
-        await fs.stat(`${projectPath}/.git`);
+        await git.findRoot({ filepath: projectPath });
       } catch {
         setError('No git repository found in this project');
         return;
@@ -65,7 +64,6 @@ export function GitHistoryDialog({ projectId, open: controlledOpen, onOpenChange
 
       // Get git log
       const gitLog = await git.log({
-        fs,
         dir: projectPath,
         depth: 50, // Limit to last 50 commits
       });
@@ -77,7 +75,7 @@ export function GitHistoryDialog({ projectId, open: controlledOpen, onOpenChange
     } finally {
       setIsLoading(false);
     }
-  }, [fs, projectId]);
+  }, [git, projectId]);
 
   const rollbackToCommit = useCallback(async (targetCommit: GitCommit) => {
     if (!fs) return;
@@ -89,7 +87,6 @@ export function GitHistoryDialog({ projectId, open: controlledOpen, onOpenChange
 
       // Get the current HEAD commit
       const currentCommit = await git.resolveRef({
-        fs,
         dir: projectPath,
         ref: 'HEAD',
       });
@@ -105,7 +102,6 @@ export function GitHistoryDialog({ projectId, open: controlledOpen, onOpenChange
 
       // Get all commits between the target commit and HEAD
       const allCommits = await git.log({
-        fs,
         dir: projectPath,
         depth: 1000,
       });
@@ -138,14 +134,12 @@ export function GitHistoryDialog({ projectId, open: controlledOpen, onOpenChange
 
       // Get all files from the target commit
       const targetFiles = await git.listFiles({
-        fs,
         dir: projectPath,
         ref: targetCommit.oid,
       });
 
       // Get current files to know what to remove
       const currentFiles = await git.listFiles({
-        fs,
         dir: projectPath,
         ref: 'HEAD',
       });
@@ -156,7 +150,6 @@ export function GitHistoryDialog({ projectId, open: controlledOpen, onOpenChange
           try {
             await fs.unlink(`${projectPath}/${filepath}`);
             await git.remove({
-              fs,
               dir: projectPath,
               filepath,
             });
@@ -171,7 +164,6 @@ export function GitHistoryDialog({ projectId, open: controlledOpen, onOpenChange
       for (const filepath of targetFiles) {
         try {
           const { blob } = await git.readBlob({
-            fs,
             dir: projectPath,
             oid: targetCommit.oid,
             filepath,
@@ -188,7 +180,6 @@ export function GitHistoryDialog({ projectId, open: controlledOpen, onOpenChange
 
           // Stage the file
           await git.add({
-            fs,
             dir: projectPath,
             filepath,
           });
@@ -210,7 +201,6 @@ ${commitsToRevert.map(c => {
 }).join('\n')}`;
 
       await git.commit({
-        fs,
         dir: projectPath,
         message: revertMessage,
         author: {
@@ -237,7 +227,7 @@ ${commitsToRevert.map(c => {
     } finally {
       setIsRollingBack(null);
     }
-  }, [fs, projectId, toast, loadGitHistory]);
+  }, [git, fs, projectId, toast, loadGitHistory]);
 
   useEffect(() => {
     if (isOpen) {

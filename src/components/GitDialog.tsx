@@ -37,13 +37,10 @@ import {
 } from 'lucide-react';
 import { useGitStatus } from '@/hooks/useGitStatus';
 import { useGitSettings } from '@/hooks/useGitSettings';
-import { useFS } from '@/hooks/useFS';
+import { useGit } from '@/hooks/useGit';
 import { useToast } from '@/hooks/useToast';
 import { cn } from '@/lib/utils';
 import { findCredentialsForRepo, getOriginDisplayName } from '@/lib/gitCredentials';
-
-import git from 'isomorphic-git';
-import http from 'isomorphic-git/http/web';
 
 interface GitDialogProps {
   projectId: string;
@@ -61,7 +58,7 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
 
   const { data: gitStatus, refetch: refetchGitStatus } = useGitStatus(projectId);
   const { settings } = useGitSettings();
-  const { fs } = useFS();
+  const git = useGit();
   const { toast } = useToast();
 
   const projectPath = `/projects/${projectId}`;
@@ -118,12 +115,9 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
       } : {};
 
       await git.push({
-        fs,
-        http,
         dir: projectPath,
         remote: remote.name,
         ref: gitStatus.currentBranch,
-        corsProxy: 'https://cors.isomorphic-git.org',
         ...authOptions,
       });
 
@@ -182,12 +176,9 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
       } : {};
 
       await git.pull({
-        fs,
-        http,
         dir: projectPath,
         ref: gitStatus.currentBranch,
         singleBranch: true,
-        corsProxy: 'https://cors.isomorphic-git.org',
         author: {
           name: 'shakespeare.diy',
           email: 'assistant@shakespeare.diy',

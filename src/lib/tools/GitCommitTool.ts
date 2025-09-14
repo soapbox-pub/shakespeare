@@ -1,5 +1,5 @@
 import { z } from "zod";
-import git from 'isomorphic-git';
+import { Git } from "../git";
 
 import type { Tool } from "./Tool";
 import type { JSRuntimeFS } from "../JSRuntime";
@@ -10,6 +10,7 @@ interface GitCommitParams {
 
 export class GitCommitTool implements Tool<GitCommitParams> {
   private fs: JSRuntimeFS;
+  private git: Git;
   private cwd: string;
 
   readonly description = "Commit changes to git with a commit message. Automatically adds all unstaged files.";
@@ -20,6 +21,7 @@ export class GitCommitTool implements Tool<GitCommitParams> {
 
   constructor(fs: JSRuntimeFS, cwd: string) {
     this.fs = fs;
+    this.git = new Git(fs);
     this.cwd = cwd;
   }
 
@@ -40,8 +42,7 @@ export class GitCommitTool implements Tool<GitCommitParams> {
       }
 
       // Get git status to see what files have changed
-      const statusMatrix = await git.statusMatrix({
-        fs: this.fs,
+      const statusMatrix = await this.git.statusMatrix({
         dir: this.cwd,
       });
 
@@ -60,16 +61,14 @@ export class GitCommitTool implements Tool<GitCommitParams> {
       // Add all changed files to staging
       for (const [filepath] of changedFiles) {
         try {
-          await git.add({
-            fs: this.fs,
+          await this.git.add({
             dir: this.cwd,
             filepath,
           });
         } catch {
           // If file was deleted, use git.remove instead
           try {
-            await git.remove({
-              fs: this.fs,
+            await this.git.remove({
               dir: this.cwd,
               filepath,
             });
@@ -83,8 +82,7 @@ export class GitCommitTool implements Tool<GitCommitParams> {
       // Get current branch name
       let currentBranch = 'main';
       try {
-        currentBranch = await git.currentBranch({
-          fs: this.fs,
+        currentBranch = await this.git.currentBranch({
           dir: this.cwd,
         }) || 'main';
       } catch {
@@ -99,13 +97,11 @@ export class GitCommitTool implements Tool<GitCommitParams> {
 
       // Try to get configured author from git config
       try {
-        const configName = await git.getConfig({
-          fs: this.fs,
+        const configName = await this.git.getConfig({
           dir: this.cwd,
           path: 'user.name',
         });
-        const configEmail = await git.getConfig({
-          fs: this.fs,
+        const configEmail = await this.git.getConfig({
           dir: this.cwd,
           path: 'user.email',
         });
@@ -116,8 +112,7 @@ export class GitCommitTool implements Tool<GitCommitParams> {
       }
 
       // Commit the changes
-      const commitSha = await git.commit({
-        fs: this.fs,
+      const commitSha = await this.git.commit({
         dir: this.cwd,
         message: message.trim(),
         author,

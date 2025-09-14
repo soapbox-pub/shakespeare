@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Download, Trash2, AlertTriangle, Loader2, Database, HardDrive, Info } from 'lucide-react';
+import { Download, Trash2, AlertTriangle, Loader2, Database, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Progress } from '@/components/ui/progress';
-import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/useToast';
 import { useFS } from '@/hooks/useFS';
 import JSZip from 'jszip';
@@ -21,7 +20,6 @@ interface StorageInfo {
   quota: number;
   usage: number;
   usageDetails?: StorageUsageDetails;
-  isPersistent?: boolean;
 }
 
 export function DataSettings() {
@@ -55,14 +53,6 @@ export function DataSettings() {
         // Get storage estimate
         const estimate = await navigator.storage.estimate();
 
-        // Get persistence status
-        let isPersistent = false;
-        try {
-          isPersistent = await navigator.storage.persisted();
-        } catch (error) {
-          console.warn('Failed to check persistence status:', error);
-        }
-
         // Extract usage details safely
         const usageDetails: StorageUsageDetails | undefined = (estimate as StorageEstimate & { usageDetails?: StorageUsageDetails }).usageDetails;
 
@@ -70,7 +60,6 @@ export function DataSettings() {
           quota: estimate.quota || 0,
           usage: estimate.usage || 0,
           usageDetails,
-          isPersistent,
         });
       } catch (error) {
         console.error('Failed to get storage information:', error);
@@ -211,112 +200,44 @@ export function DataSettings() {
           Data
         </h1>
         <p className="text-muted-foreground">
-          Export your projects or clear all local data from this browser.
+          Export files and manage local data.
         </p>
       </div>
 
       <div className="space-y-4">
         {/* Storage Information */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <HardDrive className="h-5 w-5" />
-              Storage Usage
-            </CardTitle>
-            <CardDescription>
-              Information about local storage usage in this browser.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {storageError ? (
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Info className="h-4 w-4" />
-                <span className="text-sm">{storageError}</span>
+        {storageError ? (
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Info className="h-4 w-4" />
+            <span className="text-sm">{storageError}</span>
+          </div>
+        ) : storageInfo ? (
+          <div className="space-y-4">
+            {/* Usage Progress */}
+            <div className="space-y-2">
+              <div className="flex justify-between items-center text-sm">
+                <span>Used: {formatBytes(storageInfo.usage)}</span>
+                <span>Available: {formatBytes(storageInfo.quota)}</span>
               </div>
-            ) : storageInfo ? (
-              <div className="space-y-4">
-                {/* Usage Progress */}
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center text-sm">
-                    <span>Used: {formatBytes(storageInfo.usage)}</span>
-                    <span>Available: {formatBytes(storageInfo.quota)}</span>
-                  </div>
-                  <Progress
-                    value={storageInfo.quota > 0 ? (storageInfo.usage / storageInfo.quota) * 100 : 0}
-                    className="h-2"
-                  />
-                  <div className="text-xs text-muted-foreground text-center">
-                    {storageInfo.quota > 0
-                      ? `${((storageInfo.usage / storageInfo.quota) * 100).toFixed(1)}% used`
-                      : 'Usage percentage unavailable'
-                    }
-                  </div>
-                </div>
+              <Progress
+                value={storageInfo.quota > 0 ? (storageInfo.usage / storageInfo.quota) * 100 : 0}
+                className="h-2"
+              />
+              <div className="text-xs text-muted-foreground text-center">
+                {storageInfo.quota > 0
+                  ? `${((storageInfo.usage / storageInfo.quota) * 100).toFixed(1)}% used`
+                  : 'Usage percentage unavailable'
+                }
+              </div>
+            </div>
 
-                {/* Storage Details */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                  <div className="space-y-2">
-                    <h4 className="font-medium text-sm">Storage Details</h4>
-                    <div className="text-sm space-y-1">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Total Used:</span>
-                        <span>{formatBytes(storageInfo.usage)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Available:</span>
-                        <span>{formatBytes(storageInfo.quota)}</span>
-                      </div>
-                      {storageInfo.usageDetails && (
-                        <>
-                          {storageInfo.usageDetails.indexedDB !== undefined && (
-                            <div className="flex justify-between">
-                              <span className="text-muted-foreground">IndexedDB:</span>
-                              <span>{formatBytes(storageInfo.usageDetails.indexedDB)}</span>
-                            </div>
-                          )}
-                          {storageInfo.usageDetails.caches !== undefined && (
-                            <div className="flex justify-between">
-                              <span className="text-muted-foreground">Cache:</span>
-                              <span>{formatBytes(storageInfo.usageDetails.caches)}</span>
-                            </div>
-                          )}
-                          {storageInfo.usageDetails.serviceWorkerRegistrations !== undefined && (
-                            <div className="flex justify-between">
-                              <span className="text-muted-foreground">Service Workers:</span>
-                              <span>{formatBytes(storageInfo.usageDetails.serviceWorkerRegistrations)}</span>
-                            </div>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <h4 className="font-medium text-sm">Storage Status</h4>
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <Badge variant={storageInfo.isPersistent ? "default" : "secondary"}>
-                          {storageInfo.isPersistent ? "Persistent" : "Not Persistent"}
-                        </Badge>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        {storageInfo.isPersistent
-                          ? "Data is protected from eviction by the browser."
-                          : "Data may be cleared by the browser when storage is low."
-                        }
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span className="text-sm">Loading storage information...</span>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span className="text-sm">Loading storage information...</span>
+          </div>
+        )}
 
         {/* Export Files */}
         <Card>

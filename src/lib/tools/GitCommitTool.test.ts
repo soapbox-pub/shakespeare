@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { GitCommitTool } from './GitCommitTool';
+import { Git } from '../git';
 import type { JSRuntimeFS } from '../JSRuntime';
 
 // Mock the Git class
@@ -33,10 +34,12 @@ const mockFS: JSRuntimeFS = {
 
 describe('GitCommitTool', () => {
   let tool: GitCommitTool;
+  let mockGit: Git;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    tool = new GitCommitTool(mockFS, '/test/project');
+    mockGit = mockGitInstance as unknown as Git;
+    tool = new GitCommitTool(mockFS, '/test/project', mockGit);
 
     // Setup default mocks
     mockGitInstance.statusMatrix.mockResolvedValue([

@@ -19,9 +19,9 @@ export class GitCommitTool implements Tool<GitCommitParams> {
     message: z.string().describe('Commit message text'),
   });
 
-  constructor(fs: JSRuntimeFS, cwd: string) {
+  constructor(fs: JSRuntimeFS, cwd: string, git: Git) {
     this.fs = fs;
-    this.git = new Git(fs);
+    this.git = git;
     this.cwd = cwd;
   }
 

@@ -56,12 +56,12 @@ export class GitCommitCommand implements GitSubcommand {
 
       try {
         const configName = await this.git.getConfig({
-          
+
           dir: this.pwd,
           path: 'user.name',
         });
         const configEmail = await this.git.getConfig({
-          
+
           dir: this.pwd,
           path: 'user.email',
         });
@@ -76,7 +76,7 @@ export class GitCommitCommand implements GitSubcommand {
         // Get the last commit message if amending
         try {
           const commits = await this.git.log({
-            
+
             dir: this.pwd,
             depth: 1,
           });
@@ -95,7 +95,7 @@ export class GitCommitCommand implements GitSubcommand {
       let currentBranch = 'main';
       try {
         currentBranch = await this.git.currentBranch({
-          
+
           dir: this.pwd,
         }) || 'main';
       } catch {
@@ -103,8 +103,7 @@ export class GitCommitCommand implements GitSubcommand {
       }
 
       // Create the commit
-      const commitOptions: {
-        fs: JSRuntimeFS;
+      let commitOptions: {
         dir: string;
         message: string;
         author: { name: string; email: string };
@@ -121,7 +120,6 @@ export class GitCommitCommand implements GitSubcommand {
         // For amend, we need to reset to the parent of the current commit
         try {
           const commits = await this.git.log({
-            
             dir: this.pwd,
             depth: 2,
           });

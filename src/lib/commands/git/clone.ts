@@ -57,15 +57,10 @@ export class GitCloneCommand implements GitSubcommand {
 
       // Clone the repository
       await this.git.clone({
-
-        http,
         dir: targetPath,
         url: repository,
         singleBranch: options.singleBranch,
         depth: options.depth,
-        corsProxy: (url.hostname === 'github.com' || url.hostname === 'gitlab.com')
-          ? 'https://cors.isomorphic-git.org'
-          : undefined,
       });
 
       return createSuccessResult(`Cloning into '${targetDir}'...\ndone.\n`);

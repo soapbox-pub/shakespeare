@@ -92,7 +92,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   const customTools = useMemo(() => {
     const git = new Git(fs);
     const baseTools = {
-      git_commit: new GitCommitTool(fs, cwd),
+      git_commit: new GitCommitTool(fs, cwd, git),
       text_editor_view: new TextEditorViewTool(fs, cwd),
       text_editor_write: new TextEditorWriteTool(fs, cwd),
       text_editor_str_replace: new TextEditorStrReplaceTool(fs, cwd),

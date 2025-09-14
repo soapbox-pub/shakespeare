@@ -104,6 +104,44 @@ Shakespeare provides full Git functionality in the browser using `isomorphic-git
 
 Git operations happen transparently in the background, providing professional version control without requiring Git knowledge from users.
 
+## AI Message Format
+
+Shakespeare uses OpenAI-compatible messages for communication between users and AI assistants. The message format follows these conventions:
+
+### User Messages
+
+**String Content**: When the user message `content` is a string, it represents the actual user's message directly.
+
+```json
+{
+  "role": "user",
+  "content": "Please help me build a todo app"
+}
+```
+
+**Array Content**: When the user message `content` is an array of parts, the structure follows this pattern:
+
+- **First text part**: Represents the user's actual message
+- **Subsequent text parts**: Represent user actions, such as adding files to the VFS
+
+```json
+{
+  "role": "user",
+  "content": [
+    {
+      "type": "text",
+      "text": "Can you add this logo to my site?"
+    },
+    {
+      "type": "text",
+      "text": "Added file: /tmp/logo.svg"
+    }
+  ]
+}
+```
+
+This format allows the Shakespeare UI to parse and display user actions appropriately while maintaining compatibility with OpenAI's message format standard.
+
 # Project Overview
 
 This project is a Nostr client application built with React 18.x, TailwindCSS 3.x, Vite, shadcn/ui, and Nostrify.

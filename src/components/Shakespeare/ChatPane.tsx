@@ -349,6 +349,35 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     }
   };
 
+  const handlePaste = async (e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+
+      // Check if the item is an image
+      if (item.type.startsWith('image/')) {
+        e.preventDefault(); // Prevent default paste behavior for images
+
+        const file = item.getAsFile();
+        if (file) {
+          // Generate a filename with timestamp
+          const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+          const extension = file.type.split('/')[1] || 'png';
+          const filename = `pasted-image-${timestamp}.${extension}`;
+
+          // Create a new File object with the generated name
+          const namedFile = new File([file], filename, { type: file.type });
+
+          // Add to attached files
+          setAttachedFiles(prev => [...prev, namedFile]);
+        }
+        break; // Only handle the first image found
+      }
+    }
+  };
+
   // Handle first user interaction to enable audio context
   const handleFirstInteraction = () => {
     // This will be handled automatically by the useKeepAlive hook
@@ -496,6 +525,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
             onFocus={handleFirstInteraction}
             placeholder={providerModel.trim() ? "Ask me to add features, edit files, or build your project..." : "Please select a model to start chatting..."}
             className="min-h-[52px] max-h-32 resize-none border-0 bg-transparent px-4 py-3 pb-12 text-sm focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground"

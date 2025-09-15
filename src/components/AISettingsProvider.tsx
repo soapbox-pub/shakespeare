@@ -41,6 +41,11 @@ export function AISettingsProvider({ children }: AISettingsProviderProps) {
 
   const updateSettings = (newSettings: Partial<AISettings>) => {
     setSettings(prev => ({ ...prev, ...newSettings }));
+
+    // If providers are being updated, invalidate the provider-models query
+    if ('providers' in newSettings) {
+      queryClient.invalidateQueries({ queryKey: ['provider-models'] });
+    }
   };
 
   const addProvider = (name: string, connection: AIConnection) => {

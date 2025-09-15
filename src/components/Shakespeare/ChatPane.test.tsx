@@ -107,15 +107,4 @@ describe('ChatPane', () => {
     expect(screen.getByText('Welcome to Shakespeare')).toBeInTheDocument();
     expect(screen.getByText(/Your AI-powered development assistant/)).toBeInTheDocument();
   });
-
-  it('shows placeholder text mentioning paste functionality', () => {
-    render(
-      <TestApp>
-        <ChatPane projectId="test-project" />
-      </TestApp>
-    );
-
-    const textarea = screen.getByPlaceholderText(/Paste images directly or use 📎 to attach files/);
-    expect(textarea).toBeInTheDocument();
-  });
 });

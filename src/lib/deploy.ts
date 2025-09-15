@@ -1,5 +1,5 @@
 import JSZip from 'jszip';
-import { NIP98Client } from './NIP98Client';
+import { NIP98Client } from '@nostrify/nostrify';
 import type { NostrSigner } from '@nostrify/nostrify';
 import type { JSRuntimeFS } from './JSRuntime';
 
@@ -56,7 +56,7 @@ export async function deployProject(options: DeployOptions): Promise<DeployResul
   formData.append('file', zipBlob, `${projectId}.zip`);
 
   // Create NIP-98 authenticated client and deploy
-  const nip98Client = new NIP98Client(signer);
+  const nip98Client = new NIP98Client({ signer });
   const response = await nip98Client.fetch(deployUrl, {
     method: 'POST',
     body: formData,

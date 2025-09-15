@@ -1,5 +1,5 @@
 import OpenAI from 'openai';
-import { NIP98Client } from './NIP98Client';
+import { NIP98Client } from '@nostrify/nostrify';
 import type { AIConnection } from '@/contexts/AISettingsContext';
 import type { NUser } from '@nostrify/react/login';
 
@@ -17,8 +17,8 @@ export function createAIClient(connection: AIConnection, user?: NUser): OpenAI {
 
   // If Nostr authentication is required and we have a user, use NIP-98
   if (connection.nostr && user?.signer) {
-    const nip98Client = new NIP98Client(user.signer);
-    
+    const nip98Client = new NIP98Client({ signer: user.signer });
+
     return new OpenAI({
       ...baseConfig,
       fetch: (input, init) => nip98Client.fetch(input, init),

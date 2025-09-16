@@ -126,6 +126,71 @@ full request body support
 - `-32002`: Request processing error
 - `-32003`: Invalid URL
 
+### `console.log`
+
+**Purpose:** Forward console log messages from iframe to parent for display
+
+**Parameters:**
+
+- `level` (string): Log level - "log", "warn", "error", "info", "debug"
+- `message` (string): The log message
+- `timestamp` (number): Unix timestamp when the log was created
+- `args` (array): Additional arguments passed to the console method (optional)
+
+**Result:** None (notification only, no response expected)
+
+### `console.warn`
+
+**Purpose:** Forward console warn messages from iframe to parent for display
+
+**Parameters:**
+
+- `level` (string): Log level - "log", "warn", "error", "info", "debug"
+- `message` (string): The log message
+- `timestamp` (number): Unix timestamp when the log was created
+- `args` (array): Additional arguments passed to the console method (optional)
+
+**Result:** None (notification only, no response expected)
+
+### `console.error`
+
+**Purpose:** Forward console error messages from iframe to parent for display
+
+**Parameters:**
+
+- `level` (string): Log level - "log", "warn", "error", "info", "debug"
+- `timestamp` (number): Unix timestamp when the log was created
+- `message` (string): The log message
+- `args` (array): Additional arguments passed to the console method (optional)
+
+**Result:** None (notification only, no response expected)
+
+### `console.info`
+
+**Purpose:** Forward console info messages from iframe to parent for display
+
+**Parameters:**
+
+- `level` (string): Log level - "log", "warn", "error", "info", "debug"
+- `message` (string): The log message
+- `timestamp` (number): Unix timestamp when the log was created
+- `args` (array): Additional arguments passed to the console method (optional)
+
+**Result:** None (notification only, no response expected)
+
+### `console.debug`
+
+**Purpose:** Forward console debug messages from iframe to parent for display
+
+**Parameters:**
+
+- `level` (string): Log level - "log", "warn", "error", "info", "debug"
+- `message` (string): The log message
+- `timestamp` (number): Unix timestamp when the log was created
+- `args` (array): Additional arguments passed to the console method (optional)
+
+**Result:** None (notification only, no response expected)
+
 **Request Body Support:** The system fully supports request bodies, enabling:
 
 - POST/PUT requests with JSON data
@@ -326,7 +391,186 @@ const decodedBody = atob(encodedBody);
     }],
   ]);
 
+  // Example static file server with console logging
+  class FetchClientParent {
+    constructor(files) {
+      this.files = files; // Map of path -> {content, contentType}
+      this.consoleLogs = []; // Store console messages
+      this.setupMessageListener();
+    }
+
+    setupMessageListener() {
+      window.addEventListener("message", (event) => {
+        // Verify origin for security
+        if (event.origin !== "https://app123.example.com") return;
+
+        const message = event.data;
+
+        // Handle fetch requests
+        if (message.jsonrpc === "2.0" && message.method === "fetch") {
+          this.handleFetch(message);
+        }
+
+        // Handle console messages
+        if (message.jsonrpc === "2.0" && message.method && message.method.startsWith("console.")) {
+          this.handleConsoleMessage(message);
+        }
+      });
+    }
+
+    handleConsoleMessage(message) {
+      const { method, params } = message;
+      const { level, message: logMessage, timestamp, args = [] } = params;
+
+      // Store the log message
+      this.consoleLogs.push({
+        level,
+        message: logMessage,
+        timestamp,
+        args,
+        id: Date.now() // Unique ID for UI purposes
+      });
+
+      // Update UI to show new logs
+      this.updateConsoleUI();
+
+      // Also log to parent's console for debugging
+      console[level](`[IFRAME] ${logMessage}`, ...args);
+    }
+
+    updateConsoleUI() {
+      // This would update the parent page UI to show console logs
+      // Implementation depends on your UI framework
+      console.log(`Total console logs: ${this.consoleLogs.length}`);
+    }
+
+    handleFetch(request) {
+      const { params, id } = request;
+      const { request: fetchRequest } = params;
+
+      // Extract path from URL
+      const url = new URL(fetchRequest.url);
+      const path = url.pathname;
+
+      // Decode request body if present
+      const requestBody = fetchRequest.body ? atob(fetchRequest.body) : null;
+
+      const file = this.files.get(path);
+
+      if (file) {
+        this.sendResponse({
+          id,
+          jsonrpc: "2.0",
+          result: {
+            status: 200,
+            statusText: "OK",
+            headers: {
+              "Content-Type": file.contentType,
+              "Cache-Control": "no-cache",
+            },
+            body: btoa(file.content), // base64 encode the response body
+          },
+        });
+      } else {
+        // Return 404 response (not a JSON-RPC error)
+        this.sendResponse({
+          id,
+          jsonrpc: "2.0",
+          result: {
+            status: 404,
+            statusText: "Not Found",
+            headers: {
+              "Content-Type": "text/plain",
+            },
+            body: btoa(`File not found: ${path}`), // base64 encode the error message
+          },
+        });
+      }
+    }
+
+    sendResponse(message) {
+      const iframe = document.getElementById("preview-iframe");
+      iframe.contentWindow.postMessage(message, "https://app123.example.com");
+    }
+
+    sendError(message) {
+      const iframe = document.getElementById("preview-iframe");
+      iframe.contentWindow.postMessage(message, "https://app123.example.com");
+    }
+  }
+
   // Example static file server
   new FetchClientParent(files);
 </script>
+```
+
+## Console Logging Implementation
+
+To enable console logging from the iframe to the parent page, the iframe's bootstrap script should override the console methods:
+
+```javascript
+// In the iframe's bootstrap script
+class ConsoleInterceptor {
+  constructor() {
+    this.originalConsole = {
+      log: console.log,
+      warn: console.warn,
+      error: console.error,
+      info: console.info,
+      debug: console.debug
+    };
+
+    this.overrideConsoleMethods();
+  }
+
+  overrideConsoleMethods() {
+    const methods = ['log', 'warn', 'error', 'info', 'debug'];
+
+    methods.forEach(method => {
+      console[method] = (...args) => {
+        // Call original method first
+        this.originalConsole[method](...args);
+
+        // Send to parent via JSON-RPC
+        this.sendConsoleMessage(method, ...args);
+      };
+    });
+  }
+
+  sendConsoleMessage(level, ...args) {
+    const message = args.map(arg => {
+      if (typeof arg === 'object') {
+        try {
+          return JSON.stringify(arg);
+        } catch {
+          return String(arg);
+        }
+      }
+      return String(arg);
+    }).join(' ');
+
+    window.parent.postMessage({
+      jsonrpc: "2.0",
+      method: `console.${level}`,
+      params: {
+        level,
+        message,
+        timestamp: Date.now(),
+        args: args.map(arg => {
+          if (typeof arg === 'object') {
+            try {
+              return JSON.parse(JSON.stringify(arg));
+            } catch {
+              return String(arg);
+            }
+          }
+          return arg;
+        })
+      }
+    }, "*");
+  }
+}
+
+// Initialize console interception
+new ConsoleInterceptor();
 ```

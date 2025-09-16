@@ -3,6 +3,67 @@
  * JSON-RPC based communication with parent page
  */
 
+class ConsoleInterceptor {
+  constructor() {
+    this.originalConsole = {
+      log: console.log,
+      warn: console.warn,
+      error: console.error,
+      info: console.info,
+      debug: console.debug
+    };
+
+    this.overrideConsoleMethods();
+  }
+
+  overrideConsoleMethods() {
+    const methods = ['log', 'warn', 'error', 'info', 'debug'];
+
+    methods.forEach(method => {
+      console[method] = (...args) => {
+        // Call original method first (for local debugging)
+        this.originalConsole[method](...args);
+
+        // Send to parent via JSON-RPC
+        this.sendConsoleMessage(method, ...args);
+      };
+    });
+  }
+
+  sendConsoleMessage(level, ...args) {
+    const message = args.map(arg => {
+      if (typeof arg === 'object') {
+        try {
+          return JSON.stringify(arg);
+        } catch {
+          return String(arg);
+        }
+      }
+      return String(arg);
+    }).join(' ');
+
+    window.parent.postMessage({
+      jsonrpc: "2.0",
+      method: `console.${level}`,
+      params: {
+        level,
+        message,
+        timestamp: Date.now(),
+        args: args.map(arg => {
+          if (typeof arg === 'object') {
+            try {
+              return JSON.parse(JSON.stringify(arg));
+            } catch {
+              return String(arg);
+            }
+          }
+          return arg;
+        })
+      }
+    }, "*");
+  }
+}
+
 class JSONRPCClient {
   constructor() {
     this.requestId = 0;
@@ -76,6 +137,7 @@ class FetchClient {
   constructor() {
     this.rpcClient = new JSONRPCClient();
     this.swReady = false;
+    this.consoleInterceptor = new ConsoleInterceptor();
 
     this.init();
   }

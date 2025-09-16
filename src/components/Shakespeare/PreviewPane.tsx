@@ -6,10 +6,15 @@ import { useFS } from '@/hooks/useFS';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { FolderOpen, ArrowLeft } from 'lucide-react';
+import { FolderOpen, ArrowLeft, Terminal, X } from 'lucide-react';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { GitStatusIndicator } from '@/components/GitStatusIndicator';
 import { BrowserAddressBar } from '@/components/ui/browser-address-bar';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 import { FileTree } from './FileTree';
 import { FileEditor } from './FileEditor';
@@ -49,6 +54,14 @@ interface JSONRPCResponse {
   id: number;
 }
 
+interface ConsoleMessage {
+  id: number;
+  level: 'log' | 'warn' | 'error' | 'info' | 'debug';
+  message: string;
+  timestamp: number;
+  args: unknown[];
+}
+
 export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
   const { t } = useTranslation();
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
@@ -60,6 +73,7 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
   const [currentPath, setCurrentPath] = useState('/');
   const [navigationHistory, setNavigationHistory] = useState<string[]>(['/']);
   const [historyIndex, setHistoryIndex] = useState(0);
+  const [consoleMessages, setConsoleMessages] = useState<ConsoleMessage[]>([]);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const { fs } = useFS();
   const projectsManager = useProjectsManager();
@@ -187,6 +201,31 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
     }
   }, [projectId]);
 
+  const handleConsoleMessage = useCallback((message: {
+    jsonrpc: '2.0';
+    method: string;
+    params: {
+      level: 'log' | 'warn' | 'error' | 'info' | 'debug';
+      message: string;
+      timestamp: number;
+      args: unknown[];
+    };
+  }) => {
+    const { params } = message;
+    const newConsoleMessage: ConsoleMessage = {
+      id: Date.now(),
+      level: params.level,
+      message: params.message,
+      timestamp: params.timestamp,
+      args: params.args,
+    };
+
+    setConsoleMessages(prev => [...prev, newConsoleMessage]);
+
+    // Log to parent console for debugging
+    console.log(`[IFRAME ${params.level.toUpperCase()}] ${params.message}`, ...params.args);
+  }, []);
+
   const handleFetch = useCallback(async (request: JSONRPCRequest) => {
     const { params, id } = request;
     const { request: fetchRequest } = params;
@@ -302,12 +341,14 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
       console.log('Received message from iframe:', message);
       if (message.jsonrpc === '2.0' && message.method === 'fetch') {
         handleFetch(message);
+      } else if (message.jsonrpc === '2.0' && message.method && message.method.startsWith('console.')) {
+        handleConsoleMessage(message);
       }
     };
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [handleFetch, projectId]);
+  }, [handleFetch, handleConsoleMessage, projectId]);
 
   useEffect(() => {
     if (selectedFile) {
@@ -352,21 +393,103 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
     }
   };
 
+  const ConsoleDropdown = () => {
+  const getLevelColor = (level: ConsoleMessage['level']) => {
+    switch (level) {
+      case 'error': return 'text-red-500';
+      case 'warn': return 'text-yellow-500';
+      case 'info': return 'text-blue-500';
+      case 'debug': return 'text-gray-500';
+      default: return 'text-gray-400';
+    }
+  };
+
+  const getLevelIcon = (level: ConsoleMessage['level']) => {
+    switch (level) {
+      case 'error': return '!';
+      case 'warn': return '⚠';
+      case 'info': return 'ℹ';
+      case 'debug': return '🔍';
+      default: return '•';
+    }
+  };
+
+  const formatTimestamp = (timestamp: number) => {
+    return new Date(timestamp).toLocaleTimeString();
+  };
+
+  const clearConsole = () => {
+    setConsoleMessages([]);
+  };
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" size="sm" className="ml-2">
+          <Terminal className="h-4 w-4 mr-2" />
+          Console ({consoleMessages.length})
+          {consoleMessages.some(msg => msg.level === 'error') && (
+            <span className="ml-2 h-2 w-2 bg-red-500 rounded-full"></span>
+          )}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-96 max-h-96">
+        <div className="flex items-center justify-between p-2 border-b">
+          <span className="font-medium text-sm">Console Output</span>
+          <Button variant="ghost" size="sm" onClick={clearConsole}>
+            <X className="h-3 w-3" />
+          </Button>
+        </div>
+        <ScrollArea className="h-80">
+          <div className="space-y-1 p-2">
+            {consoleMessages.length === 0 ? (
+              <div className="text-center text-muted-foreground text-sm py-4">
+                No console messages
+              </div>
+            ) : (
+              consoleMessages.map((msg) => (
+                <div
+                  key={msg.id}
+                  className={`text-xs font-mono p-2 rounded ${getLevelColor(msg.level)} bg-muted/50`}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <span>{getLevelIcon(msg.level)}</span>
+                    <span className="opacity-60">{formatTimestamp(msg.timestamp)}</span>
+                  </div>
+                  <div className="whitespace-pre-wrap break-all">{msg.message}</div>
+                  {msg.args.length > 0 && (
+                    <div className="mt-1 opacity-70">
+                      Args: {JSON.stringify(msg.args)}
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        </ScrollArea>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+};
+
   return (
     <div className="h-full">
       <Tabs value={activeTab} className="h-full">
         <TabsContent value="preview" className="h-full mt-0">
           {hasBuiltProject ? (
             <div className="h-full w-full flex flex-col">
-              <BrowserAddressBar
-                currentPath={currentPath}
-                onNavigate={navigateToPath}
-                onRefresh={refreshIframe}
-                onBack={goBack}
-                onForward={goForward}
-                canGoBack={historyIndex > 0}
-                canGoForward={historyIndex < navigationHistory.length - 1}
-              />
+              <div className="flex items-center border-b">
+                <BrowserAddressBar
+                  currentPath={currentPath}
+                  onNavigate={navigateToPath}
+                  onRefresh={refreshIframe}
+                  onBack={goBack}
+                  onForward={goForward}
+                  canGoBack={historyIndex > 0}
+                  canGoForward={historyIndex < navigationHistory.length - 1}
+                />
+                <ConsoleDropdown />
+              </div>
               <iframe
                 ref={iframeRef}
                 src={`https://${projectId}.local-shakespeare.dev${currentPath}`}

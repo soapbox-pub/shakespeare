@@ -4,7 +4,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createHead, UnheadProvider } from '@unhead/react/client';
 import { InferSeoMetaPlugin } from '@unhead/addons';
-import { Suspense } from 'react';
+import { Suspense, useEffect } from 'react';
 import LightningFS from '@isomorphic-git/lightning-fs';
 import NostrProvider from '@/components/NostrProvider';
 import { Toaster } from "@/components/ui/toaster";
@@ -17,6 +17,7 @@ import { GitSettingsProvider } from '@/components/GitSettingsProvider';
 import { SessionManagerProvider } from '@/components/SessionManagerProvider';
 import { FSProvider } from '@/components/FSProvider';
 import { LightningFSAdapter } from '@/lib/LightningFSAdapter';
+import { cleanupTmpDirectory } from '@/lib/tmpCleanup';
 
 import AppRouter from './AppRouter';
 
@@ -53,12 +54,25 @@ const presetRelays = [
 const lightningFS = new LightningFS('shakespeare-fs');
 const fs = new LightningFSAdapter(lightningFS.promises);
 
+// Component to handle filesystem cleanup on startup
+// Automatically removes files older than 1 hour from /tmp directory
+function FSCleanupHandler() {
+  useEffect(() => {
+    // Run cleanup on application startup to remove stale temporary files
+    // This helps prevent the VFS from accumulating old files over time
+    cleanupTmpDirectory(fs).catch(console.error);
+  }, []);
+
+  return null;
+}
+
 export function App() {
   return (
     <UnheadProvider head={head}>
       <QueryClientProvider client={queryClient}>
         <AppProvider storageKey="nostr:app-config" defaultConfig={defaultConfig} presetRelays={presetRelays}>
           <FSProvider fs={fs}>
+            <FSCleanupHandler />
               <NostrLoginProvider storageKey='nostr:login'>
                 <NostrProvider>
                   <AISettingsProvider>

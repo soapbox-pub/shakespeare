@@ -19,6 +19,9 @@ import {
 import { FileTree } from './FileTree';
 import { FileEditor } from './FileEditor';
 
+// Get iframe domain from environment variable
+const IFRAME_DOMAIN = import.meta.env.VITE_IFRAME_DOMAIN || 'local-shakespeare.dev';
+
 interface PreviewPaneProps {
   projectId: string;
   activeTab: 'preview' | 'code';
@@ -143,7 +146,7 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
 
   const navigateToPath = useCallback((path: string) => {
     if (iframeRef.current) {
-      const baseUrl = `https://${projectId}.local-shakespeare.dev`;
+      const baseUrl = `https://${projectId}.${IFRAME_DOMAIN}`;
       const newUrl = `${baseUrl}${path}`;
       iframeRef.current.src = newUrl;
       setCurrentPath(path);
@@ -164,7 +167,7 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
       setCurrentPath(path);
 
       if (iframeRef.current) {
-        const baseUrl = `https://${projectId}.local-shakespeare.dev`;
+        const baseUrl = `https://${projectId}.${IFRAME_DOMAIN}`;
         const newUrl = `${baseUrl}${path}`;
         iframeRef.current.src = newUrl;
       }
@@ -179,7 +182,7 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
       setCurrentPath(path);
 
       if (iframeRef.current) {
-        const baseUrl = `https://${projectId}.local-shakespeare.dev`;
+        const baseUrl = `https://${projectId}.${IFRAME_DOMAIN}`;
         const newUrl = `${baseUrl}${path}`;
         iframeRef.current.src = newUrl;
       }
@@ -189,14 +192,14 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
   const sendResponse = useCallback((message: JSONRPCResponse) => {
     if (iframeRef.current?.contentWindow) {
       console.log(`Sending response to iframe:`, message);
-      const targetOrigin = `https://${projectId}.local-shakespeare.dev`;
+      const targetOrigin = `https://${projectId}.${IFRAME_DOMAIN}`;
       iframeRef.current.contentWindow.postMessage(message, targetOrigin);
     }
   }, [projectId]);
 
   const sendError = useCallback((message: JSONRPCResponse) => {
     if (iframeRef.current?.contentWindow) {
-      const targetOrigin = `https://${projectId}.local-shakespeare.dev`;
+      const targetOrigin = `https://${projectId}.${IFRAME_DOMAIN}`;
       iframeRef.current.contentWindow.postMessage(message, targetOrigin);
     }
   }, [projectId]);
@@ -235,7 +238,7 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
     try {
       // Parse the URL and validate origin
       const url = new URL(fetchRequest.url);
-      const expectedOrigin = `https://${projectId}.local-shakespeare.dev`;
+      const expectedOrigin = `https://${projectId}.${IFRAME_DOMAIN}`;
 
       if (url.origin !== expectedOrigin) {
         console.log(`Invalid origin: ${url.origin}, expected: ${expectedOrigin}`);
@@ -331,7 +334,7 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       // Verify origin for security
-      const expectedOrigin = `https://${projectId}.local-shakespeare.dev`;
+      const expectedOrigin = `https://${projectId}.${IFRAME_DOMAIN}`;
       if (event.origin !== expectedOrigin) {
         console.log(`Ignoring message from unexpected origin: ${event.origin}, expected: ${expectedOrigin}`);
         return;
@@ -492,7 +495,7 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
               </div>
               <iframe
                 ref={iframeRef}
-                src={`https://${projectId}.local-shakespeare.dev${currentPath}`}
+                src={`https://${projectId}.${IFRAME_DOMAIN}${currentPath}`}
                 className="w-full flex-1 border-0"
                 title="Project Preview"
                 sandbox="allow-scripts allow-same-origin"

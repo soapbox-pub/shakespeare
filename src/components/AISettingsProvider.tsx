@@ -1,6 +1,8 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { ReactNode, useState, useEffect } from 'react';
 import { AISettingsContext, type AISettings, type AIConnection, type AISettingsContextType } from '@/contexts/AISettingsContext';
+import { useFS } from '@/hooks/useFS';
+import { readAISettings, writeAISettings } from '@/lib/configUtils';
 
 interface AISettingsProviderProps {
   children: ReactNode;
@@ -11,33 +13,43 @@ const DEFAULT_SETTINGS: AISettings = {
   recentlyUsedModels: [],
 };
 
-const STORAGE_KEY = 'ai-settings';
-
 export function AISettingsProvider({ children }: AISettingsProviderProps) {
   const queryClient = useQueryClient();
+  const { fs } = useFS();
+  const [settings, setSettings] = useState<AISettings>(DEFAULT_SETTINGS);
+  const [isInitialized, setIsInitialized] = useState(false);
 
-  const [settings, setSettings] = useState<AISettings>(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        if (parsed && typeof parsed === 'object' && 'providers' in parsed) {
-          const settings = parsed as Partial<AISettings>;
-          return {
-            providers: settings.providers || {},
-            recentlyUsedModels: settings.recentlyUsedModels || [],
-          };
-        }
-      } catch {
-        return DEFAULT_SETTINGS;
-      }
-    }
-    return DEFAULT_SETTINGS;
-  });
-
+  // Initialize settings from VFS on mount
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-  }, [settings]);
+    const initializeSettings = async () => {
+      try {
+        const settings = await readAISettings(fs);
+        setSettings(settings);
+      } catch (error) {
+        console.error('Failed to initialize AI settings:', error);
+        setSettings(DEFAULT_SETTINGS);
+      } finally {
+        setIsInitialized(true);
+      }
+    };
+
+    initializeSettings();
+  }, [fs]);
+
+  // Save settings to VFS whenever they change (but not during initialization)
+  useEffect(() => {
+    if (!isInitialized) return;
+
+    const saveSettings = async () => {
+      try {
+        await writeAISettings(fs, settings);
+      } catch (error) {
+        console.error('Failed to save AI settings:', error);
+      }
+    };
+
+    saveSettings();
+  }, [fs, settings, isInitialized]);
 
   const updateSettings = (newSettings: Partial<AISettings>) => {
     setSettings(prev => ({ ...prev, ...newSettings }));

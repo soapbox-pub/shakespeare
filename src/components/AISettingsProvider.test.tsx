@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+import { renderHook, act, waitFor } from '@testing-library/react';
 import { useQueryClient } from '@tanstack/react-query';
 import React from 'react';
 import { useAISettings } from '@/hooks/useAISettings';
@@ -17,23 +17,42 @@ Object.defineProperty(window, 'localStorage', {
   value: localStorageMock,
 });
 
+// Mock the config utils
+vi.mock('@/lib/configUtils', () => ({
+  readAISettings: vi.fn(),
+  writeAISettings: vi.fn(),
+}));
+
 describe('AISettingsProvider', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
     localStorageMock.getItem.mockReturnValue(null);
+
+    // Mock the read function to return default settings
+    const { readAISettings } = await import('@/lib/configUtils');
+    vi.mocked(readAISettings).mockResolvedValue({
+      providers: {},
+      recentlyUsedModels: [],
+    });
   });
 
-  it('should initialize with empty recentlyUsedModels array', () => {
+  it('should initialize with empty recentlyUsedModels array', async () => {
     const { result } = renderHook(() => useAISettings(), {
       wrapper: ({ children }) => <TestApp>{children}</TestApp>,
     });
 
-    expect(result.current.settings.recentlyUsedModels).toEqual([]);
+    await waitFor(() => {
+      expect(result.current.settings.recentlyUsedModels).toEqual([]);
+    });
   });
 
-  it('should add recently used models correctly', () => {
+  it('should add recently used models correctly', async () => {
     const { result } = renderHook(() => useAISettings(), {
       wrapper: ({ children }) => <TestApp>{children}</TestApp>,
+    });
+
+    await waitFor(() => {
+      expect(result.current.settings.recentlyUsedModels).toEqual([]);
     });
 
     act(() => {
@@ -45,9 +64,13 @@ describe('AISettingsProvider', () => {
     ]);
   });
 
-  it('should move existing model to front when used again', () => {
+  it('should move existing model to front when used again', async () => {
     const { result } = renderHook(() => useAISettings(), {
       wrapper: ({ children }) => <TestApp>{children}</TestApp>,
+    });
+
+    await waitFor(() => {
+      expect(result.current.settings.recentlyUsedModels).toEqual([]);
     });
 
     // Add multiple models
@@ -75,9 +98,13 @@ describe('AISettingsProvider', () => {
     ]);
   });
 
-  it('should limit recently used models to 10 items', () => {
+  it('should limit recently used models to 10 items', async () => {
     const { result } = renderHook(() => useAISettings(), {
       wrapper: ({ children }) => <TestApp>{children}</TestApp>,
+    });
+
+    await waitFor(() => {
+      expect(result.current.settings.recentlyUsedModels).toEqual([]);
     });
 
     // Add 12 models
@@ -93,27 +120,31 @@ describe('AISettingsProvider', () => {
     expect(result.current.settings.recentlyUsedModels[9]).toBe('provider/model-3');
   });
 
-  it('should migrate old settings without recentlyUsedModels', () => {
+  it('should migrate old settings without recentlyUsedModels', async () => {
     const oldSettings = {
       providers: {
         openrouter: {
           baseURL: 'https://openrouter.ai/api/v1',
           apiKey: 'test-key'
         }
-      }
+      },
+      recentlyUsedModels: []
     };
 
-    localStorageMock.getItem.mockReturnValue(JSON.stringify(oldSettings));
+    const { readAISettings } = await import('@/lib/configUtils');
+    vi.mocked(readAISettings).mockResolvedValue(oldSettings);
 
     const { result } = renderHook(() => useAISettings(), {
       wrapper: ({ children }) => <TestApp>{children}</TestApp>,
     });
 
-    expect(result.current.settings.recentlyUsedModels).toEqual([]);
-    expect(result.current.settings.providers).toEqual(oldSettings.providers);
+    await waitFor(() => {
+      expect(result.current.settings.recentlyUsedModels).toEqual([]);
+      expect(result.current.settings.providers).toEqual(oldSettings.providers);
+    });
   });
 
-  it('should invalidate provider-models query when updateSettings is called with providers', () => {
+  it('should invalidate provider-models query when updateSettings is called with providers', async () => {
     // Mock the QueryClient.invalidateQueries method
     const mockInvalidateQueries = vi.fn();
 
@@ -130,6 +161,10 @@ describe('AISettingsProvider', () => {
           <MockedTestApp>{children}</MockedTestApp>
         </TestApp>
       ),
+    });
+
+    await waitFor(() => {
+      expect(result.current.settings.recentlyUsedModels).toEqual([]);
     });
 
     act(() => {
@@ -146,7 +181,7 @@ describe('AISettingsProvider', () => {
     expect(mockInvalidateQueries).toHaveBeenCalledWith({ queryKey: ['provider-models'] });
   });
 
-  it('should not invalidate provider-models query when updateSettings is called without providers', () => {
+  it('should not invalidate provider-models query when updateSettings is called without providers', async () => {
     // Mock the QueryClient.invalidateQueries method
     const mockInvalidateQueries = vi.fn();
 
@@ -163,6 +198,10 @@ describe('AISettingsProvider', () => {
           <MockedTestApp>{children}</MockedTestApp>
         </TestApp>
       ),
+    });
+
+    await waitFor(() => {
+      expect(result.current.settings.recentlyUsedModels).toEqual([]);
     });
 
     act(() => {

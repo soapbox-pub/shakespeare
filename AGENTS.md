@@ -13,6 +13,9 @@ Shakespeare uses LightningFS to provide a browser-based virtual filesystem (VFS)
 ├── projects/
 │   └── {projectId}/               # Individual project directory
 │       └── ...                    # Project files (package.json, src/, public/, etc.)
+├── config/                        # Configuration files
+│   ├── ai.json                    # AI provider settings and API keys
+│   └── git.json                   # Git credentials and repository settings
 └── tmp/                           # Temporary files and scratch space
     └── ...                        # Various temporary files and directories
 ```

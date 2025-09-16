@@ -1,5 +1,7 @@
 import { ReactNode, useState, useEffect } from 'react';
 import { GitSettingsContext, type GitSettings, type GitCredential, type GitSettingsContextType } from '@/contexts/GitSettingsContext';
+import { useFS } from '@/hooks/useFS';
+import { readGitSettings, writeGitSettings } from '@/lib/configUtils';
 
 interface GitSettingsProviderProps {
   children: ReactNode;
@@ -10,31 +12,42 @@ const DEFAULT_SETTINGS: GitSettings = {
   corsProxy: 'https://cors.isomorphic-git.org',
 };
 
-const STORAGE_KEY = 'git-settings';
-
 export function GitSettingsProvider({ children }: GitSettingsProviderProps) {
-  const [settings, setSettings] = useState<GitSettings>(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        if (parsed && typeof parsed === 'object' && 'credentials' in parsed) {
-          const settings = parsed as Partial<GitSettings>;
-          return {
-            credentials: settings.credentials || {},
-            corsProxy: settings.corsProxy || DEFAULT_SETTINGS.corsProxy,
-          };
-        }
-      } catch {
-        return DEFAULT_SETTINGS;
-      }
-    }
-    return DEFAULT_SETTINGS;
-  });
+  const { fs } = useFS();
+  const [settings, setSettings] = useState<GitSettings>(DEFAULT_SETTINGS);
+  const [isInitialized, setIsInitialized] = useState(false);
 
+  // Initialize settings from VFS on mount
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-  }, [settings]);
+    const initializeSettings = async () => {
+      try {
+        const settings = await readGitSettings(fs);
+        setSettings(settings);
+      } catch (error) {
+        console.error('Failed to initialize Git settings:', error);
+        setSettings(DEFAULT_SETTINGS);
+      } finally {
+        setIsInitialized(true);
+      }
+    };
+
+    initializeSettings();
+  }, [fs]);
+
+  // Save settings to VFS whenever they change (but not during initialization)
+  useEffect(() => {
+    if (!isInitialized) return;
+
+    const saveSettings = async () => {
+      try {
+        await writeGitSettings(fs, settings);
+      } catch (error) {
+        console.error('Failed to save Git settings:', error);
+      }
+    };
+
+    saveSettings();
+  }, [fs, settings, isInitialized]);
 
   const updateSettings = (newSettings: Partial<GitSettings>) => {
     setSettings(prev => ({ ...prev, ...newSettings }));

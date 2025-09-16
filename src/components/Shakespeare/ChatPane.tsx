@@ -82,6 +82,12 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     return settings.recentlyUsedModels?.[0] || '';
   });
 
+  useEffect(() => {
+    if (!providerModel && settings.recentlyUsedModels?.length) {
+      setProviderModel(settings.recentlyUsedModels[0]);
+    }
+  }, [providerModel, settings.recentlyUsedModels]);
+
   const [searchParams, setSearchParams] = useSearchParams();
   const { fs } = useFS();
   const { user, metadata } = useCurrentUser();

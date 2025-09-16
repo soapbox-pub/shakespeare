@@ -31,6 +31,12 @@ export default function Index() {
   });
   const isMobile = useIsMobile();
 
+  useEffect(() => {
+    if (!providerModel && settings.recentlyUsedModels?.length) {
+      setProviderModel(settings.recentlyUsedModels[0]);
+    }
+  }, [providerModel, settings.recentlyUsedModels]);
+
   useSeoMeta({
     title: 'Shakespeare - AI-Powered Nostr Development',
     description: 'Build custom Nostr websites with AI assistance using Shakespeare, an AI-powered development environment.',

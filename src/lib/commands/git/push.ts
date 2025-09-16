@@ -3,6 +3,8 @@ import type { ShellCommandResult } from "../ShellCommand";
 import { createSuccessResult, createErrorResult } from "../ShellCommand";
 import type { GitSubcommand, GitSubcommandOptions } from "../git";
 import type { Git } from "../../git";
+import { findCredentialsForRepo } from "@/lib/gitCredentials";
+import { readGitSettings } from "@/lib/configUtils";
 
 export class GitPushCommand implements GitSubcommand {
   name = 'push';
@@ -35,7 +37,7 @@ export class GitPushCommand implements GitSubcommand {
       if (!targetBranch) {
         try {
           targetBranch = await this.git.currentBranch({
-            
+
             dir: this.pwd,
           }) || undefined;
           if (!targetBranch) {
@@ -50,7 +52,6 @@ export class GitPushCommand implements GitSubcommand {
       let remoteUrl: string;
       try {
         const remotes = await this.git.listRemotes({
-          
           dir: this.pwd,
         });
 
@@ -63,12 +64,24 @@ export class GitPushCommand implements GitSubcommand {
         return createErrorResult(`fatal: '${remote}' does not appear to be a git repository`);
       }
 
+      const settings = await readGitSettings(this.fs);
+      const currentCredentials = findCredentialsForRepo(remoteUrl, settings.credentials);
+
+      // Prepare authentication if credentials are available
+      const authOptions = currentCredentials ? {
+        onAuth: () => ({
+          username: currentCredentials.username,
+          password: currentCredentials.password,
+        }),
+      } : {};
+
       try {
         await this.git.push({
           dir: this.pwd,
           remote: remote,
           ref: targetBranch,
           remoteRef: targetBranch,
+          ...authOptions,
         });
 
         return createSuccessResult(`To ${remoteUrl}\n   ${targetBranch} -> ${targetBranch}\n`);
@@ -100,7 +113,9 @@ export class GitPushCommand implements GitSubcommand {
     const options = { force: false, setUpstream: false };
     let remote = 'origin'; // Default remote
     let branch: string | undefined;
+    const positionalArgs: string[] = [];
 
+    // First, collect all non-option arguments
     for (let i = 0; i < args.length; i++) {
       const arg = args[i];
 
@@ -109,14 +124,16 @@ export class GitPushCommand implements GitSubcommand {
       } else if (arg === '--set-upstream' || arg === '-u') {
         options.setUpstream = true;
       } else if (!arg.startsWith('-')) {
-        if (remote === 'origin' && !branch) {
-          // First non-option argument is remote
-          remote = arg;
-        } else if (!branch) {
-          // Second non-option argument is branch
-          branch = arg;
-        }
+        positionalArgs.push(arg);
       }
+    }
+
+    // Parse positional arguments: [remote] [branch]
+    if (positionalArgs.length >= 1) {
+      remote = positionalArgs[0];
+    }
+    if (positionalArgs.length >= 2) {
+      branch = positionalArgs[1];
     }
 
     return { remote, branch, options };

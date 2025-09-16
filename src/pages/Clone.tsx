@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AppLayout } from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,6 +26,7 @@ export default function Clone() {
   const [isCloning, setIsCloning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const projectsManager = useProjectsManager();
   const { toast } = useToast();
   const { nostr } = useNostr();
@@ -34,6 +35,18 @@ export default function Clone() {
     title: 'Import Repository - Shakespeare',
     description: 'Import a Git repository into your Shakespeare workspace',
   });
+
+  // Initialize repoUrl from URL parameters and auto-import if URL is provided
+  useEffect(() => {
+    const urlParam = searchParams.get('url');
+    if (urlParam) {
+      const decodedUrl = decodeURIComponent(urlParam);
+      setRepoUrl(decodedUrl);
+      
+      // Automatically start the clone process with the URL directly
+      handleClone(decodedUrl);
+    }
+  }, [searchParams]);
 
   const extractRepoName = (url: string): string => {
     try {
@@ -200,13 +213,15 @@ export default function Clone() {
     throw lastError || new Error('All clone attempts failed');
   };
 
-  const handleClone = async () => {
-    if (!repoUrl.trim()) {
+  const handleClone = async (url?: string) => {
+    const targetUrl = url || repoUrl;
+    
+    if (!targetUrl.trim()) {
       setError('Please enter a repository URL');
       return;
     }
 
-    if (!validateGitUrl(repoUrl)) {
+    if (!validateGitUrl(targetUrl)) {
       setError('Please enter a valid Git repository URL or Nostr clone URI (e.g., nostr://npub.../repo-name)');
       return;
     }
@@ -218,7 +233,7 @@ export default function Clone() {
       await projectsManager.init();
 
       // Check if it's a Nostr clone URI
-      const nostrUri = await parseNostrCloneUri(repoUrl.trim());
+      const nostrUri = await parseNostrCloneUri(targetUrl.trim());
 
       if (nostrUri) {
         // Handle Nostr clone URI
@@ -243,8 +258,8 @@ export default function Clone() {
         navigate(`/project/${project.id}`);
       } else {
         // Handle regular Git URL
-        const repoName = extractRepoName(repoUrl);
-        const project = await projectsManager.cloneProject(repoName, repoUrl.trim());
+        const repoName = extractRepoName(targetUrl);
+        const project = await projectsManager.cloneProject(repoName, targetUrl.trim());
 
         toast({
           title: "Repository imported successfully",

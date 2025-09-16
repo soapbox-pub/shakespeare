@@ -73,22 +73,22 @@ export function App() {
         <AppProvider storageKey="nostr:app-config" defaultConfig={defaultConfig} presetRelays={presetRelays}>
           <FSProvider fs={fs}>
             <FSCleanupHandler />
-              <NostrLoginProvider storageKey='nostr:login'>
-                <NostrProvider>
-                  <AISettingsProvider>
-                    <GitSettingsProvider>
-                      <SessionManagerProvider>
-                      <TooltipProvider>
-                        <Toaster />
-                        <Suspense>
-                          <AppRouter />
-                        </Suspense>
-                      </TooltipProvider>
-                    </SessionManagerProvider>
-                    </GitSettingsProvider>
-                  </AISettingsProvider>
-                </NostrProvider>
-              </NostrLoginProvider>
+            <NostrLoginProvider storageKey='nostr:login'>
+              <NostrProvider>
+                <AISettingsProvider>
+                  <GitSettingsProvider>
+                    <SessionManagerProvider>
+                    <TooltipProvider>
+                      <Toaster />
+                      <Suspense>
+                        <AppRouter />
+                      </Suspense>
+                    </TooltipProvider>
+                  </SessionManagerProvider>
+                  </GitSettingsProvider>
+                </AISettingsProvider>
+              </NostrProvider>
+            </NostrLoginProvider>
           </FSProvider>
         </AppProvider>
       </QueryClientProvider>

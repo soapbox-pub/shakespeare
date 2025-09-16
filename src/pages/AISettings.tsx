@@ -40,6 +40,12 @@ const PRESET_PROVIDERS: PresetProvider[] = [
     apiKeysURL: "https://ppq.ai/api-docs",
   },
   {
+    id: "routstr",
+    name: "Routstr",
+    baseURL: "https://api.routstr.com/v1",
+    apiKeysURL: "https://chat.routstr.com/",
+  },
+  {
     id: "zai",
     name: "Z.ai",
     baseURL: "https://api.z.ai/api/paas/v4",
@@ -270,7 +276,7 @@ export function AISettings() {
                 <div key={preset.id} className="border rounded-lg p-4 space-y-3">
                   <div className="flex items-center justify-between">
                     <h5 className="font-medium">{preset.name}</h5>
-                    {preset.apiKeysURL && (
+                    {(preset.apiKeysURL && preset.id !== "routstr") && (
                       <button
                         type="button"
                         className="text-xs text-muted-foreground underline hover:text-foreground"
@@ -283,7 +289,7 @@ export function AISettings() {
                   <div className="flex gap-2">
                     {!preset.nostr && (
                       <Input
-                        placeholder="Enter your API key"
+                        placeholder={preset.id === "routstr" ? "Enter a Cashu token" : "Enter your API key"}
                         type="password"
                         className="flex-1"
                         value={presetApiKeys[preset.id] || ''}

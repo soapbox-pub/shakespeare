@@ -351,7 +351,7 @@ export default function Clone() {
             )}
 
             <Button
-              onClick={handleClone}
+              onClick={() => handleClone()}
               disabled={!repoUrl.trim() || isCloning}
               className="w-full focus-ring bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80 shadow-lg"
               size="lg"

@@ -45,6 +45,8 @@ describe('AccountSwitcher', () => {
     expect(screen.getByRole('button')).toBeInTheDocument();
   });
 
+
+
   it('returns null when no current user', () => {
     mockUseLoggedInAccounts.mockReturnValue({
       authors: [],

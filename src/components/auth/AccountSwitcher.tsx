@@ -1,7 +1,7 @@
 // NOTE: This file is stable and usually should not be modified.
 // It is important that all functionality in this file is preserved, and should only be modified if explicitly requested.
 
-import { ChevronDown, LogOut, UserIcon, UserPlus, Settings } from 'lucide-react';
+import { ChevronDown, LogOut, UserIcon, UserPlus, Settings, HelpCircle } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -71,6 +71,13 @@ export function AccountSwitcher({ onAddAccountClick }: AccountSwitcherProps) {
         >
           <Settings className='w-4 h-4' />
           <span>Settings</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={() => window.open('https://soapbox.pub/shakespeare-resources/', '_blank')}
+          className='flex items-center gap-2 cursor-pointer p-2 rounded-md'
+        >
+          <HelpCircle className='w-4 h-4' />
+          <span>Help</span>
         </DropdownMenuItem>
         <DropdownMenuItem
           onClick={onAddAccountClick}

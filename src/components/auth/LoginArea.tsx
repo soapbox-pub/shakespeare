@@ -2,7 +2,7 @@
 // It is important that all functionality in this file is preserved, and should only be modified if explicitly requested.
 
 import { useState } from 'react';
-import { User, UserPlus, ChevronDown, Settings } from 'lucide-react';
+import { User, UserPlus, ChevronDown, Settings, HelpCircle } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -63,6 +63,13 @@ export function LoginArea({ className }: LoginAreaProps) {
             >
               <Settings className='w-4 h-4' />
               <span>Settings</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => window.open('https://soapbox.pub/shakespeare-resources/', '_blank')}
+              className='flex items-center gap-2 cursor-pointer p-2 rounded-md'
+            >
+              <HelpCircle className='w-4 h-4' />
+              <span>Help</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem

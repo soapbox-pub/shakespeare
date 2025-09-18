@@ -88,6 +88,8 @@ describe('LoginArea', () => {
     expect(screen.getByRole('button')).toBeInTheDocument();
   });
 
+
+
   it('maintains consistent layout structure whether logged in or not', () => {
     // Test logged out state
     mockUseLoggedInAccounts.mockReturnValue({

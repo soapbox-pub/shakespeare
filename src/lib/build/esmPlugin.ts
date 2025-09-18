@@ -78,11 +78,11 @@ export function esmPlugin(packageLock: PackageLock, target?: string): Plugin {
           // fallthrough
         }
 
-        keys.push(`node_modules/${packageName}`);
-
         if (packageName.startsWith("@jsr/")) {
           keys.push(`node_modules/@${packageName.slice(5).replace("__", "/")}`);
         }
+
+        keys.push(`node_modules/${packageName}`);
 
         const packageInfo = keys
           .map((key) => packageLock.packages[key])

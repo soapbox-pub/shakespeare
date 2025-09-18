@@ -95,9 +95,17 @@ export function ProjectSidebar({
 
   const navigate = useNavigate();
 
+  // Custom navigate function that closes sidebar on mobile
+  const navigateAndClose = (path: string) => {
+    navigate(path);
+    if (isMobile && onClose) {
+      onClose();
+    }
+  };
+
   const handleNewProject = () => {
     onSelectProject(null);
-    navigate('/');
+    navigateAndClose('/');
   };
 
   const handleToggleSidebar = () => {
@@ -122,7 +130,7 @@ export function ProjectSidebar({
       <div className="flex px-4 h-12 border-b border-sidebar-border bg-gradient-to-r from-primary/10 via-accent/5 to-primary/10">
         <div className="flex items-center justify-between w-full">
           <button
-            onClick={() => navigate('/')}
+            onClick={() => navigateAndClose('/')}
             className="flex items-center gap-3 hover:opacity-80 transition-opacity text-left"
           >
             <span className="text-2xl">🎭</span>
@@ -171,7 +179,7 @@ export function ProjectSidebar({
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-48">
                     <DropdownMenuItem
-                      onClick={() => navigate('/clone')}
+                      onClick={() => navigateAndClose('/clone')}
                       className="flex items-center gap-2 w-full"
                     >
                       <GitBranch className="h-4 w-4" />

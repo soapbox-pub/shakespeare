@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AppLayout } from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
@@ -35,18 +35,6 @@ export default function Clone() {
     title: 'Import Repository - Shakespeare',
     description: 'Import a Git repository into your Shakespeare workspace',
   });
-
-  // Initialize repoUrl from URL parameters and auto-import if URL is provided
-  useEffect(() => {
-    const urlParam = searchParams.get('url');
-    if (urlParam) {
-      const decodedUrl = decodeURIComponent(urlParam);
-      setRepoUrl(decodedUrl);
-      
-      // Automatically start the clone process with the URL directly
-      handleClone(decodedUrl);
-    }
-  }, [searchParams]);
 
   const extractRepoName = (url: string): string => {
     try {
@@ -126,7 +114,7 @@ export default function Clone() {
     }
   };
 
-  const validateGitUrl = (url: string): boolean => {
+  const validateGitUrl = useCallback((url: string): boolean => {
     if (!url.trim()) return false;
 
     // Check if it's a Nostr clone URI
@@ -144,9 +132,9 @@ export default function Clone() {
     // Check if it looks like a git repository URL
     const gitUrlPattern = /^https?:\/\/.*\.git$|^https?:\/\/github\.com\/.*\/.*$|^https?:\/\/gitlab\.com\/.*\/.*$/i;
     return gitUrlPattern.test(url) || url.includes('github.com') || url.includes('gitlab.com');
-  };
+  }, []);
 
-  const fetchNostrRepository = async (nostrUri: NostrCloneUri): Promise<string[]> => {
+  const fetchNostrRepository = useCallback(async (nostrUri: NostrCloneUri): Promise<string[]> => {
     const signal = AbortSignal.timeout(10000); // 10 second timeout
 
     // Build the filter for the NIP-34 repository announcement
@@ -184,9 +172,9 @@ export default function Clone() {
     }
 
     return cloneUrls;
-  };
+  }, [nostr]);
 
-  const tryCloneUrls = async (cloneUrls: string[], repoName: string): Promise<Project> => {
+  const tryCloneUrls = useCallback(async (cloneUrls: string[], repoName: string): Promise<Project> => {
     let lastError: Error | null = null;
 
     for (const cloneUrl of cloneUrls) {
@@ -211,9 +199,9 @@ export default function Clone() {
 
     // If we get here, all clone attempts failed
     throw lastError || new Error('All clone attempts failed');
-  };
+  }, [projectsManager]);
 
-  const handleClone = async (url?: string) => {
+  const handleClone = useCallback(async (url?: string) => {
     const targetUrl = url || repoUrl;
     
     if (!targetUrl.trim()) {
@@ -301,13 +289,25 @@ export default function Clone() {
     } finally {
       setIsCloning(false);
     }
-  };
+  }, [fetchNostrRepository, navigate, projectsManager, repoUrl, toast, tryCloneUrls, validateGitUrl]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !isCloning) {
       handleClone();
     }
   };
+
+  // Initialize repoUrl from URL parameters and auto-import if URL is provided
+  useEffect(() => {
+    const urlParam = searchParams.get('url');
+    if (urlParam) {
+      const decodedUrl = decodeURIComponent(urlParam);
+      setRepoUrl(decodedUrl);
+      
+      // Automatically start the clone process with the URL directly
+      handleClone(decodedUrl);
+    }
+  }, [handleClone, searchParams]);
 
   return (
     <AppLayout title="Import Repository">

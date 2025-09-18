@@ -3,7 +3,6 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
 import { RelaySelector } from '@/components/RelaySelector';
 import LoginDialog from '@/components/auth/LoginDialog';
 import SignupDialog from '@/components/auth/SignupDialog';
@@ -106,12 +105,14 @@ export function NostrSettings() {
               </div>
             ) : (
               <>
-                {/* Account List */}
-                <div className="space-y-3">
-                  {authors.map((account) => (
+                {/* Account List - Joined Together */}
+                <div className="border rounded-lg overflow-hidden">
+                  {authors.map((account, index) => (
                     <div
                       key={account.id}
-                      className={`flex items-center gap-3 p-3 rounded-lg border transition-colors relative ${
+                      className={`flex items-center gap-3 p-3 transition-colors relative ${
+                        index !== authors.length - 1 ? 'border-b' : ''
+                      } ${
                         currentUser?.id === account.id
                           ? 'bg-primary/5 border-primary/20'
                           : 'hover:bg-muted/50 cursor-pointer'
@@ -126,38 +127,22 @@ export function NostrSettings() {
                       </Avatar>
 
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="font-medium truncate">
-                            {getDisplayName(account)}
-                          </p>
-                          {currentUser?.id === account.id && (
-                            <Badge variant="secondary" className="text-xs">
-                              Current
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-sm text-muted-foreground truncate">
-                          {account.pubkey.slice(0, 16)}...
+                        <p className="font-medium truncate">
+                          {getDisplayName(account)}
                         </p>
-                        {account.metadata?.about && (
-                          <p className="text-xs text-muted-foreground truncate mt-1">
-                            {account.metadata.about}
-                          </p>
-                        )}
                       </div>
 
                       <div className="flex items-center gap-2 z-10">
                         <Button
-                          variant="outline"
-                          size="sm"
+                          variant="ghost"
+                          size="icon"
                           onClick={(e) => {
                             e.stopPropagation();
                             handleRemoveAccount(account.id);
                           }}
-                          className="gap-1 text-destructive hover:text-destructive"
+                          className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-transparent"
                         >
-                          <Trash2 className="h-3 w-3" />
-                          Remove
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </div>
@@ -165,7 +150,7 @@ export function NostrSettings() {
                 </div>
 
                 {/* Add Account Actions */}
-                <div className="pt-4 border-t">
+                <div className="pt-2">
                   <div className="flex flex-col sm:flex-row gap-2">
                     <Button
                       variant="outline"

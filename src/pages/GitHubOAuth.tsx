@@ -16,6 +16,7 @@ export default function GitHubOAuth() {
     const state = searchParams.get('state');
     const error = searchParams.get('error');
     const errorDescription = searchParams.get('error_description');
+    const storedState = localStorage.getItem('github_oauth_state');
 
     // Handle OAuth errors
     if (error) {
@@ -29,7 +30,7 @@ export default function GitHubOAuth() {
     }
 
     // Handle successful OAuth callback
-    if (code && state) {
+    if (code && state && storedState) {
       handleCallback(code, state).then((success) => {
         if (success) {
           toast({

@@ -10,39 +10,20 @@
       // Set up console interception as early as possible to catch all errors
       (function() {
         // Store original console methods before any other script runs
-        const originalConsole = {
-          log: console.log,
-          warn: console.warn,
-          error: console.error,
-          info: console.info,
-          debug: console.debug,
-          exception: console.exception,
-          assert: console.assert,
-          clear: console.clear,
-          count: console.count,
-          countReset: console.countReset,
-          dir: console.dir,
-          dirxml: console.dirxml,
-          group: console.group,
-          groupCollapsed: console.groupCollapsed,
-          groupEnd: console.groupEnd,
-          table: console.table,
-          time: console.time,
-          timeEnd: console.timeEnd,
-          timeLog: console.timeLog,
-          trace: console.trace,
-        };
+        const originalConsole = {};
+        const methods = ['log', 'warn', 'error', 'info', 'debug', 'exception', 'assert', 'clear', 'count', 'countReset', 'dir', 'dirxml', 'group', 'groupCollapsed', 'groupEnd', 'table', 'time', 'timeEnd', 'timeLog', 'trace'];
+        methods.forEach(method => {
+          if (typeof console[method] === 'function') {
+            originalConsole[method] = console[method];
+          }
+        });
 
         // Early error handlers to catch setup errors
         const earlyErrors = [];
 
-        // Override console methods immediately
-        const methods = ['log', 'warn', 'error', 'info', 'debug', 'exception', 'assert', 'clear', 'count', 'countReset', 'dir', 'dirxml', 'group', 'groupCollapsed', 'groupEnd', 'table', 'time', 'timeEnd', 'timeLog', 'trace'];
-
         methods.forEach(method => {
           if (typeof console[method] === 'function') {
             console[method] = function(...args) {
-              // Call original method
               try {
                 originalConsole[method](...args);
               } catch (e) {

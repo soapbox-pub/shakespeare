@@ -3,95 +3,14 @@
  * JSON-RPC based communication with parent page
  */
 
+import { storeOriginalConsole, overrideConsoleMethods, setupGlobalErrorHandlers, CONSOLE_METHODS } from './console-utils.js';
+
 class ConsoleInterceptor {
   constructor() {
-    this.originalConsole = {
-      log: console.log,
-      warn: console.warn,
-      error: console.error,
-      info: console.info,
-      debug: console.debug,
-      exception: console.exception,
-      assert: console.assert,
-      clear: console.clear,
-      count: console.count,
-      countReset: console.countReset,
-      dir: console.dir,
-      dirxml: console.dirxml,
-      group: console.group,
-      groupCollapsed: console.groupCollapsed,
-      groupEnd: console.groupEnd,
-      table: console.table,
-      time: console.time,
-      timeEnd: console.timeEnd,
-      timeLog: console.timeLog,
-      trace: console.trace,
-    };
-
-    this.overrideConsoleMethods();
-    this.overrideErrorHandlers();
+    this.originalConsole = storeOriginalConsole();
+    overrideConsoleMethods(this.originalConsole, this.sendConsoleMessage.bind(this));
+    setupGlobalErrorHandlers(this.sendConsoleMessage.bind(this));
     this.overrideWindowError();
-  }
-
-  overrideConsoleMethods() {
-    const methods = ['log', 'warn', 'error', 'info', 'debug', 'exception', 'assert', 'clear', 'count', 'countReset', 'dir', 'dirxml', 'group', 'groupCollapsed', 'groupEnd', 'table', 'time', 'timeEnd', 'timeLog', 'trace'];
-
-    methods.forEach(method => {
-      if (typeof console[method] === 'function') {
-        console[method] = (...args) => {
-          // Call original method first (for local debugging)
-          try {
-            this.originalConsole[method](...args);
-          } catch (e) {
-            // If original method fails, at least try to send to parent
-            this.sendConsoleMessage(method, ...args);
-            return;
-          }
-
-          // Send to parent via JSON-RPC
-          this.sendConsoleMessage(method, ...args);
-        };
-      }
-    });
-  }
-
-  overrideErrorHandlers() {
-    // Override window.onerror to catch unhandled errors
-    const originalOnError = window.onerror;
-    window.onerror = (message, source, lineno, colno, error) => {
-      // Call original handler first
-      if (originalOnError) {
-        originalOnError(message, source, lineno, colno, error);
-      }
-
-      // Send to parent
-      this.sendConsoleMessage('error', `Uncaught Error: ${message}`, {
-        source,
-        lineno,
-        colno,
-        error: error ? error.message : 'No error object',
-        stack: error ? error.stack : 'No stack trace'
-      });
-
-      return false; // Don't prevent default
-    };
-
-    // Override window.onunhandledrejection for Promise rejections
-    const originalOnUnhandledRejection = window.onunhandledrejection;
-    window.onunhandledrejection = (event) => {
-      // Call original handler first
-      if (originalOnUnhandledRejection) {
-        originalOnUnhandledRejection(event);
-      }
-
-      // Send to parent
-      this.sendConsoleMessage('error', 'Unhandled Promise Rejection', {
-        reason: event.reason,
-        promise: event.promise ? 'Promise object' : 'No promise object'
-      });
-
-      event.preventDefault(); // Prevent default console warning
-    };
   }
 
   overrideWindowError() {

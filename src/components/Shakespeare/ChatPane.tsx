@@ -71,6 +71,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   const [systemPrompt, setSystemPrompt] = useState('');
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
+  const [scrolledProjects] = useState(() => new Set<string>());
 
   // Use external state if provided, otherwise default to false
   const isBuildLoading = externalIsBuildLoading || false;
@@ -284,6 +285,31 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
       checkScrollPosition();
     }
   }, [messages, streamingMessage, isLoading]);
+
+  // Scroll to bottom when first visiting a project (including page refresh)
+  useEffect(() => {
+    if (projectId && !scrolledProjects.has(projectId)) {
+      // Small delay to ensure messages have loaded
+      const timer = setTimeout(() => {
+        scrollToBottom();
+        scrolledProjects.add(projectId);
+      }, 100);
+
+      return () => clearTimeout(timer);
+    }
+  }, [projectId, scrolledProjects]);
+
+  // Also scroll on initial mount if we have a projectId
+  useEffect(() => {
+    if (projectId && !scrolledProjects.has(projectId)) {
+      const timer = setTimeout(() => {
+        scrollToBottom();
+        scrolledProjects.add(projectId);
+      }, 100);
+
+      return () => clearTimeout(timer);
+    }
+  }, []); // Empty dependency array = runs on mount
 
   const handleFileSelect = (file: File) => {
     setAttachedFiles(prev => [...prev, file]);

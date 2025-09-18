@@ -1,19 +1,17 @@
 import { useEffect, useState } from "react"
 
-const ASPECT_RATIO = '11/9';
-const makeMql = () => window.matchMedia(`(max-aspect-ratio: ${ASPECT_RATIO})`);
+const MOBILE_BREAKPOINT = 1080;
 
 export function useIsMobile(): boolean {
-  const [isMobile, setIsMobile] = useState(makeMql().matches);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < MOBILE_BREAKPOINT);
 
   useEffect(() => {
-    const mql = makeMql();
-    
+    const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`);
     const onChange = () => {
-      setIsMobile(mql.matches);
+      setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
     }
     mql.addEventListener("change", onChange);
-    setIsMobile(mql.matches);
+    setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
     return () => mql.removeEventListener("change", onChange);
   }, []);
 

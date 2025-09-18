@@ -11,7 +11,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu.tsx';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar.tsx';
-import { RelaySelector } from '@/components/RelaySelector';
 import LoginDialog from './LoginDialog';
 import SignupDialog from './SignupDialog';
 import { useLoggedInAccounts } from '@/hooks/useLoggedInAccounts';
@@ -54,9 +53,6 @@ export function LoginArea({ className }: LoginAreaProps) {
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className='w-56 p-2 animate-scale-in'>
-            <div className='font-medium text-sm px-2 py-1.5'>Switch Relay</div>
-            <RelaySelector className="w-full" />
-            <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={() => navigate('/settings')}
               className='flex items-center gap-2 cursor-pointer p-2 rounded-md'

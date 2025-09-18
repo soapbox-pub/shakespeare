@@ -71,6 +71,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   const [systemPrompt, setSystemPrompt] = useState('');
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
+  const [scrolledProjects] = useState(() => new Set<string>());
 
   // Use external state if provided, otherwise default to false
   const isBuildLoading = externalIsBuildLoading || false;
@@ -235,16 +236,6 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     }
   }, [addRecentlyUsedModel, isConfigured, providerModel, searchParams, setSearchParams, startGeneration]);
 
-  // Function to check if user is at the bottom of the scroll area
-  const checkScrollPosition = () => {
-    if (!scrollAreaRef.current) return;
-
-    const container = scrollAreaRef.current;
-    const threshold = 100; // 100px threshold
-    const isNearBottom = container.scrollTop + container.clientHeight >= container.scrollHeight - threshold;
-
-    setShowScrollToBottom(!isNearBottom && container.scrollHeight > container.clientHeight);
-  };
 
   // Function to scroll to bottom
   const scrollToBottom = () => {
@@ -253,20 +244,28 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     }
   };
 
-  // Add scroll event listener
+  // Simple scroll event listener
   useEffect(() => {
     const container = scrollAreaRef.current;
     if (!container) return;
 
-    container.addEventListener('scroll', checkScrollPosition);
+    const handleScroll = () => {
+      const threshold = 100;
+      const isNearBottom = container.scrollTop + container.clientHeight >= container.scrollHeight - threshold;
+      const hasScrollableContent = container.scrollHeight > container.clientHeight;
 
-    // Check initial position
-    checkScrollPosition();
+      setShowScrollToBottom(!isNearBottom && hasScrollableContent);
+    };
+
+    container.addEventListener('scroll', handleScroll);
+
+    // Check immediately
+    handleScroll();
 
     return () => {
-      container.removeEventListener('scroll', checkScrollPosition);
+      container.removeEventListener('scroll', handleScroll);
     };
-  }, []);
+  }, [messages]); // Re-run when messages change to ensure proper setup
 
   useEffect(() => {
     if (scrollAreaRef.current && (messages || streamingMessage)) {
@@ -280,10 +279,33 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
         container.scrollTop = container.scrollHeight;
       }
 
-      // Update scroll button visibility
-      checkScrollPosition();
     }
   }, [messages, streamingMessage, isLoading]);
+
+  // Scroll to bottom when first visiting a project (including page refresh)
+  useEffect(() => {
+    if (projectId && !scrolledProjects.has(projectId)) {
+      // Small delay to ensure messages have loaded
+      const timer = setTimeout(() => {
+        scrollToBottom();
+        scrolledProjects.add(projectId);
+      }, 100);
+
+      return () => clearTimeout(timer);
+    }
+  }, [projectId, scrolledProjects]);
+
+  // Also scroll on initial mount if we have a projectId
+  useEffect(() => {
+    if (projectId && !scrolledProjects.has(projectId)) {
+      const timer = setTimeout(() => {
+        scrollToBottom();
+        scrolledProjects.add(projectId);
+      }, 100);
+
+      return () => clearTimeout(timer);
+    }
+  }, []); // Empty dependency array = runs on mount
 
   const handleFileSelect = (file: File) => {
     setAttachedFiles(prev => [...prev, file]);
@@ -526,7 +548,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
 
       <div className="border-t p-4">
         {/* Chat Input Container */}
-        <div className="relative rounded-2xl border border-input bg-background shadow-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 transition-all">
+        <div className="flex flex-col rounded-2xl border border-input bg-background shadow-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 transition-all">
           <Textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -534,7 +556,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
             onPaste={handlePaste}
             onFocus={handleFirstInteraction}
             placeholder={providerModel.trim() ? "Ask me to add features, edit files, or build your project..." : "Please select a model to start chatting..."}
-            className="min-h-[52px] max-h-32 resize-none border-0 bg-transparent px-4 py-3 pb-12 text-sm focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground"
+            className="flex-1 resize-none border-0 bg-transparent px-4 py-3 text-sm focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground"
             disabled={isLoading || !providerModel.trim()}
             rows={1}
             style={{
@@ -549,7 +571,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
           />
 
           {/* Bottom Controls Row */}
-          <div className="absolute bottom-2 left-2 right-2 flex items-center gap-4">
+          <div className="flex items-center gap-4 px-2 py-2">
             {/* File Attachment */}
             <FileAttachment
               onFileSelect={handleFileSelect}

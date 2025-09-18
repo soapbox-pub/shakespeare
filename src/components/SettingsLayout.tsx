@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Menu, Bot, GitBranch, Database } from 'lucide-react';
+import { Menu, Bot, GitBranch, Database, Wifi } from 'lucide-react';
 import { ProjectSidebar } from '@/components/ProjectSidebar';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { useIsMobile } from '@/hooks/useIsMobile';
@@ -32,6 +32,13 @@ const settingsItems: SettingsItem[] = [
     description: 'Configure Git credentials for HTTP authentication',
     icon: GitBranch,
     href: '/settings/git',
+  },
+  {
+    id: 'nostr',
+    title: 'Nostr Settings',
+    description: 'Configure relay connections and Nostr preferences',
+    icon: Wifi,
+    href: '/settings/nostr',
   },
   {
     id: 'data',

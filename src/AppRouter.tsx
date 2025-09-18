@@ -5,6 +5,7 @@ import { SessionMonitor } from "./components/SessionMonitor";
 import Index from "./pages/Index";
 import Clone from "./pages/Clone";
 import Settings from "./pages/Settings";
+import NostrSettings from "./pages/NostrSettings";
 import AISettings from "./pages/AISettings";
 import GitSettings from "./pages/GitSettings";
 import DataSettings from "./pages/DataSettings";
@@ -25,6 +26,7 @@ export function AppRouter() {
         <Route path="/oauth/github" element={<GitHubOAuth />} />
         <Route path="/settings" element={<SettingsLayout />}>
           <Route index element={<Settings />} />
+          <Route path="nostr" element={<NostrSettings />} />
           <Route path="ai" element={<AISettings />} />
           <Route path="git" element={<GitSettings />} />
           <Route path="data" element={<DataSettings />} />

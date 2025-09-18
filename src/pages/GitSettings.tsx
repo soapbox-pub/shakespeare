@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Check, GitBranch, ArrowLeft } from 'lucide-react';
+import { Check, GitBranch, ArrowLeft, Github, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -7,6 +7,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useGitSettings } from '@/hooks/useGitSettings';
+import { useGitHubOAuth } from '@/hooks/useGitHubOAuth';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { useNavigate } from 'react-router-dom';
 import type { GitCredential } from '@/contexts/GitSettingsContext';
@@ -37,7 +38,8 @@ const PRESET_PROVIDERS: PresetProvider[] = [
 ];
 
 export function GitSettings() {
-  const { settings, updateSettings, addCredential, removeCredential, updateCredential } = useGitSettings();
+  const { settings, addCredential, removeCredential, updateCredential, updateSettings } = useGitSettings();
+  const { initiateOAuth, isLoading: isOAuthLoading, error: oauthError, isOAuthConfigured } = useGitHubOAuth();
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const [customOrigin, setCustomOrigin] = useState('');
@@ -152,18 +154,17 @@ export function GitSettings() {
                           </span>
                           {isCustom && <Badge variant="outline">Custom</Badge>}
                         </div>
-                        <button
-                          type="button"
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           onClick={(e) => {
                             e.stopPropagation();
                             handleRemoveCredential(origin);
                           }}
-                          className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive rounded-md hover:bg-accent"
+                          className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-transparent"
                         >
-                          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </AccordionTrigger>
                     <AccordionContent className="px-4 pb-4">
@@ -217,7 +218,7 @@ export function GitSettings() {
                 <div key={preset.id} className="border rounded-lg p-4 space-y-3">
                   <div className="flex items-center justify-between">
                     <h5 className="font-medium">{preset.name}</h5>
-                    {preset.tokenURL && (
+                    {preset.tokenURL && (preset.id !== 'github' || !isOAuthConfigured) && (
                       <button
                         type="button"
                         className="text-xs text-muted-foreground underline hover:text-foreground"
@@ -227,30 +228,88 @@ export function GitSettings() {
                       </button>
                     )}
                   </div>
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Enter your token"
-                      type="password"
-                      className="flex-1"
-                      value={presetTokens[preset.id] || ''}
-                      onChange={(e) => setPresetTokens(prev => ({
-                        ...prev,
-                        [preset.id]: e.target.value,
-                      }))}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && presetTokens[preset.id]?.trim()) {
-                          handleAddPresetProvider(preset);
-                        }
-                      }}
-                    />
-                    <Button
-                      onClick={() => handleAddPresetProvider(preset)}
-                      disabled={!presetTokens[preset.id]?.trim()}
-                      size="sm"
-                    >
-                      Add
-                    </Button>
-                  </div>
+
+                  {preset.id === 'github' ? (
+                    // Special rendering for GitHub - OAuth button if configured, otherwise token input
+                    isOAuthConfigured ? (
+                      <div className="space-y-3">
+                        <Button
+                          onClick={initiateOAuth}
+                          disabled={isOAuthLoading}
+                          className="w-full gap-2"
+                          variant="default"
+                        >
+                          {isOAuthLoading ? (
+                            <>
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                              Connecting...
+                            </>
+                          ) : (
+                            <>
+                              <Github className="h-4 w-4" />
+                              Connect to GitHub
+                            </>
+                          )}
+                        </Button>
+                        {oauthError && (
+                          <p className="text-sm text-destructive">
+                            {oauthError}
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="Enter your token"
+                          type="password"
+                          className="flex-1"
+                          value={presetTokens[preset.id] || ''}
+                          onChange={(e) => setPresetTokens(prev => ({
+                            ...prev,
+                            [preset.id]: e.target.value,
+                          }))}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && presetTokens[preset.id]?.trim()) {
+                              handleAddPresetProvider(preset);
+                            }
+                          }}
+                        />
+                        <Button
+                          onClick={() => handleAddPresetProvider(preset)}
+                          disabled={!presetTokens[preset.id]?.trim()}
+                          size="sm"
+                        >
+                          Add
+                        </Button>
+                      </div>
+                    )
+                  ) : (
+                    // Standard rendering for other providers
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Enter your token"
+                        type="password"
+                        className="flex-1"
+                        value={presetTokens[preset.id] || ''}
+                        onChange={(e) => setPresetTokens(prev => ({
+                          ...prev,
+                          [preset.id]: e.target.value,
+                        }))}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && presetTokens[preset.id]?.trim()) {
+                            handleAddPresetProvider(preset);
+                          }
+                        }}
+                      />
+                      <Button
+                        onClick={() => handleAddPresetProvider(preset)}
+                        disabled={!presetTokens[preset.id]?.trim()}
+                        size="sm"
+                      >
+                        Add
+                      </Button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

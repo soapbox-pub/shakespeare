@@ -2,9 +2,10 @@ import { useState, useEffect, useCallback } from 'react';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { useFS } from '@/hooks/useFS';
 import { useGitStatus } from '@/hooks/useGitStatus';
-import { ChevronRight, ChevronDown, File, Folder } from 'lucide-react';
+import { ChevronRight, ChevronDown, File, Folder, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { createGitignoreFilter, normalizePathForGitignore } from '@/lib/gitignore';
+import { Input } from '@/components/ui/input';
 
 interface FileTreeProps {
   projectId: string;
@@ -22,11 +23,14 @@ interface FileNode {
 
 export function FileTree({ projectId, onFileSelect, selectedFile }: FileTreeProps) {
   const [tree, setTree] = useState<FileNode[]>([]);
+  const [filteredTree, setFilteredTree] = useState<FileNode[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [gitignoreFilter, setGitignoreFilter] = useState<{
     isIgnored: (path: string) => boolean;
     shouldShow: (path: string) => boolean;
   } | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
   const { fs } = useFS();
   const projectsManager = useProjectsManager();
   const { data: gitStatus } = useGitStatus(projectId);
@@ -127,6 +131,7 @@ export function FileTree({ projectId, onFileSelect, selectedFile }: FileTreeProp
 
       const structure = await buildFileTree(projectId, '');
       setTree(structure);
+      setFilteredTree(structure);
     } catch (_error) {
       console.error('Failed to load file tree:', _error);
     } finally {
@@ -151,7 +156,9 @@ export function FileTree({ projectId, onFileSelect, selectedFile }: FileTreeProp
       });
     };
 
+    // Update both the original tree and filtered tree
     setTree(prev => toggleNode(prev));
+    setFilteredTree(prev => toggleNode(prev));
   };
 
   const handleFileClick = (filePath: string, type: 'file' | 'directory') => {
@@ -161,6 +168,58 @@ export function FileTree({ projectId, onFileSelect, selectedFile }: FileTreeProp
       toggleDirectory(filePath);
     }
   };
+
+  // Search functions
+  const searchInFiles = useCallback(async (nodes: FileNode[], term: string): Promise<FileNode[]> => {
+    if (!term.trim()) return nodes;
+
+    const results: FileNode[] = [];
+    const searchTermLower = term.toLowerCase();
+
+    for (const node of nodes) {
+      if (node.type === 'file') {
+        const fileNameMatch = node.name.toLowerCase().includes(searchTermLower);
+        
+        if (fileNameMatch) {
+          results.push(node);
+        }
+      } else if (node.type === 'directory' && node.children) {
+        const childResults = await searchInFiles(node.children, term);
+        if (childResults.length > 0) {
+          // Create a filtered directory node with matching children
+          results.push({
+            ...node,
+            children: childResults,
+            isOpen: true, // Auto-expand directories with matches
+          });
+        }
+      }
+    }
+
+    return results  }, []);
+
+  // Perform search when search term changes
+  useEffect(() => {
+    const performSearch = async () => {
+      if (!searchTerm.trim()) {
+        setFilteredTree(tree);
+        return;
+      }
+
+      setIsSearching(true);
+      try {
+        const results = await searchInFiles(tree, searchTerm);
+        setFilteredTree(results);
+      } catch (error) {
+        console.error('Search failed:', error);
+        setFilteredTree([]);
+      } finally {
+        setIsSearching(false);
+      }
+    };
+
+    performSearch();
+  }, [searchTerm, tree, searchInFiles]);
 
   const renderNode = (node: FileNode, depth: number = 0) => {
     const isSelected = selectedFile === node.path;
@@ -232,12 +291,32 @@ export function FileTree({ projectId, onFileSelect, selectedFile }: FileTreeProp
 
   return (
     <div className="p-2">
-      {tree.length === 0 ? (
-        <div className="text-center text-sm text-muted-foreground py-8">
-          No files found
+      {/* Search Section */}
+      <div className="mb-3">
+        <div className="relative">
+          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search files..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-8"
+          />
+        </div>
+      </div>
+
+      {/* File Tree */}
+      {isSearching ? (
+        <div className="space-y-2">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="h-6 bg-muted rounded animate-pulse"></div>
+          ))}
+        </div>
+      ) : filteredTree.length === 0 ? (
+        <div className="text-center text-sm text-muted-foreground py-4">
+          {searchTerm ? 'No files found matching your search' : 'No files found'}
         </div>
       ) : (
-        tree.map(node => renderNode(node))
+        filteredTree.map(node => renderNode(node))
       )}
     </div>
   );

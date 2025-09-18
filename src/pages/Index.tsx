@@ -109,19 +109,6 @@ export default function Index() {
 
     // Add all files without validation
     setAttachedFiles(prev => [...prev, ...files]);
-
-    // Announce files added via toast
-    if (files.length === 1) {
-      toast({
-        title: "File added",
-        description: `${files[0].name} has been added to attachments.`,
-      });
-    } else {
-      toast({
-        title: "Files added",
-        description: `${files.length} files have been added to attachments.`,
-      });
-    }
   };
 
   // Handle keyboard shortcuts (physical keyboards only)

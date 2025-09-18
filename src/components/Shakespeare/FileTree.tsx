@@ -2,11 +2,10 @@ import { useState, useEffect, useCallback } from 'react';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { useFS } from '@/hooks/useFS';
 import { useGitStatus } from '@/hooks/useGitStatus';
-import { ChevronRight, ChevronDown, File, Folder, Search, FileText } from 'lucide-react';
+import { ChevronRight, ChevronDown, File, Folder, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { createGitignoreFilter, normalizePathForGitignore } from '@/lib/gitignore';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 
 interface FileTreeProps {
   projectId: string;
@@ -31,7 +30,6 @@ export function FileTree({ projectId, onFileSelect, selectedFile }: FileTreeProp
     shouldShow: (path: string) => boolean;
   } | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [searchInContent, setSearchInContent] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const { fs } = useFS();
   const projectsManager = useProjectsManager();
@@ -184,18 +182,6 @@ export function FileTree({ projectId, onFileSelect, selectedFile }: FileTreeProp
         
         if (fileNameMatch) {
           results.push(node);
-        } else if (searchInContent) {
-          try {
-            const content = await projectsManager.readFile(projectId, node.path);
-            const contentMatch = content.toLowerCase().includes(searchTermLower);
-            
-            if (contentMatch) {
-              results.push(node);
-            }
-          } catch (error) {
-            // Skip files that can't be read
-            console.warn(`Could not read file ${node.path}:`, error);
-          }
         }
       } else if (node.type === 'directory' && node.children) {
         const childResults = await searchInFiles(node.children, term);
@@ -210,10 +196,9 @@ export function FileTree({ projectId, onFileSelect, selectedFile }: FileTreeProp
       }
     }
 
-    return results;
-  }, [projectsManager, projectId, searchInContent]);
+    return results  }, []);
 
-  // Perform search when search term or searchInContent changes
+  // Perform search when search term changes
   useEffect(() => {
     const performSearch = async () => {
       if (!searchTerm.trim()) {
@@ -234,7 +219,7 @@ export function FileTree({ projectId, onFileSelect, selectedFile }: FileTreeProp
     };
 
     performSearch();
-  }, [searchTerm, searchInContent, tree, searchInFiles]);
+  }, [searchTerm, tree, searchInFiles]);
 
   const renderNode = (node: FileNode, depth: number = 0) => {
     const isSelected = selectedFile === node.path;
@@ -307,7 +292,7 @@ export function FileTree({ projectId, onFileSelect, selectedFile }: FileTreeProp
   return (
     <div className="p-2">
       {/* Search Section */}
-      <div className="mb-3 space-y-2">
+      <div className="mb-3">
         <div className="relative">
           <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
@@ -316,20 +301,6 @@ export function FileTree({ projectId, onFileSelect, selectedFile }: FileTreeProp
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-8"
           />
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant={searchInContent ? "default" : "outline"}
-            size="sm"
-            onClick={() => setSearchInContent(!searchInContent)}
-            className="flex items-center gap-1"
-          >
-            <FileText className="h-3 w-3" />
-            Search in content
-          </Button>
-          {isSearching && (
-            <div className="text-xs text-muted-foreground">Searching...</div>
-          )}
         </div>
       </div>
 

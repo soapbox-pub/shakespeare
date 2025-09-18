@@ -1,4 +1,4 @@
-import { ArrowLeft, Wifi, Users, UserPlus, LogOut, Trash2, User } from 'lucide-react';
+import { ArrowLeft, Wifi, Users, UserPlus, LogOut, Trash2, User, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -107,12 +107,10 @@ export function NostrSettings() {
               <>
                 {/* Account List - Joined Together */}
                 <div className="border rounded-lg overflow-hidden">
-                  {authors.map((account, index) => (
+                  {authors.map((account) => (
                     <div
                       key={account.id}
-                      className={`flex items-center gap-3 p-3 transition-colors relative ${
-                        index !== authors.length - 1 ? 'border-b' : ''
-                      } ${
+                      className={`flex items-center gap-3 p-3 transition-colors relative border-b ${
                         currentUser?.id === account.id
                           ? 'bg-primary/5 border-primary/20'
                           : 'hover:bg-muted/50 cursor-pointer'
@@ -147,27 +145,20 @@ export function NostrSettings() {
                       </div>
                     </div>
                   ))}
-                </div>
 
-                {/* Add Account Actions */}
-                <div className="pt-2">
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <Button
-                      variant="outline"
-                      onClick={() => setShowSignupDialog(true)}
-                      className="gap-2 flex-1"
-                    >
-                      <UserPlus className="h-4 w-4" />
-                      Create New Account
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => setShowLoginDialog(true)}
-                      className="gap-2 flex-1"
-                    >
-                      <LogOut className="h-4 w-4 rotate-180" />
-                      Add Existing Account
-                    </Button>
+                  {/* Add Account Button - Integrated into the list */}
+                  <div
+                    className="flex items-center gap-3 p-3 transition-colors hover:bg-muted/50 cursor-pointer"
+                    onClick={() => setShowLoginDialog(true)}
+                  >
+                    <div className="h-10 w-10 rounded-full border-2 border-dashed border-muted-foreground/30 flex items-center justify-center">
+                      <Plus className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-muted-foreground">
+                        Add Account
+                      </p>
+                    </div>
                   </div>
                 </div>
               </>

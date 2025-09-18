@@ -2,10 +2,7 @@ import * as React from "react"
 import { Eye, EyeOff } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-export interface PasswordInputProps
-  extends React.InputHTMLAttributes<HTMLInputElement> {}
-
-const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputProps>(
+const PasswordInput = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
   ({ className, ...props }, ref) => {
     const [showPassword, setShowPassword] = React.useState(false)
     const [isFocused, setIsFocused] = React.useState(false)

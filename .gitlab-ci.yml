@@ -10,9 +10,6 @@ stages:
 
 test:
   stage: test
-  variables:
-    VITE_GITHUB_OAUTH_CLIENT_ID: "********************"
-    VITE_GITHUB_OAUTH_CLIENT_SECRET: "****************************************"
   script:
     - npm run test
 

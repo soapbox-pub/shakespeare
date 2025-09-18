@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Bot, GitBranch, Database } from 'lucide-react';
+import { Bot, GitBranch, Database, Wifi } from 'lucide-react';
 import { useIsMobile } from '@/hooks/useIsMobile';
 
 interface SettingsItem {
@@ -24,6 +24,13 @@ const settingsItems: SettingsItem[] = [
     description: 'Configure Git credentials for HTTP authentication',
     icon: GitBranch,
     href: '/settings/git',
+  },
+  {
+    id: 'nostr',
+    title: 'Nostr Settings',
+    description: 'Configure relay connections and Nostr preferences',
+    icon: Wifi,
+    href: '/settings/nostr',
   },
   {
     id: 'data',

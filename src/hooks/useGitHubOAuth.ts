@@ -40,7 +40,7 @@ export function useGitHubOAuth() {
     // Redirect to GitHub OAuth
     const params = new URLSearchParams({
       client_id: clientId,
-      redirect_uri: window.location.origin + '/',
+      redirect_uri: window.location.origin + '/oauth/github',
       scope: 'repo',
       state: state,
     });

@@ -6,7 +6,7 @@ import { useFS } from '@/hooks/useFS';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { FolderOpen, ArrowLeft, Terminal, X } from 'lucide-react';
+import { FolderOpen, ArrowLeft, X, Bug } from 'lucide-react';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { GitStatusIndicator } from '@/components/GitStatusIndicator';
 import { BrowserAddressBar } from '@/components/ui/browser-address-bar';
@@ -440,7 +440,7 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="sm" className="h-8 w-8 p-0 relative">
-          <Terminal className="h-4 w-4" />
+          <Bug className="h-4 w-4" />
           {consoleMessages.some(msg => msg.level === 'error') && (
             <span className="absolute bottom-0 left-0 h-2 w-2 bg-red-500 rounded-full"></span>
           )}

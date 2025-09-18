@@ -3,11 +3,12 @@
  * JSON-RPC based communication with parent page
  */
 
-import { storeOriginalConsole, overrideConsoleMethods, setupGlobalErrorHandlers, CONSOLE_METHODS } from './console-utils.js';
+import { overrideConsoleMethods, setupGlobalErrorHandlers, CONSOLE_METHODS } from './console-utils.js';
 
 class ConsoleInterceptor {
   constructor() {
-    this.originalConsole = storeOriginalConsole();
+    // Use the original console stored by the inject script
+    this.originalConsole = window._originalConsole || console;
     overrideConsoleMethods(this.originalConsole, this.sendConsoleMessage.bind(this));
     setupGlobalErrorHandlers(this.sendConsoleMessage.bind(this));
     this.overrideWindowError();

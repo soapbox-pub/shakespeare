@@ -17,6 +17,7 @@ export default function GitHubOAuth() {
     const error = searchParams.get('error');
     const errorDescription = searchParams.get('error_description');
     const storedState = localStorage.getItem('github_oauth_state');
+    const storedCodeVerifier = localStorage.getItem('github_oauth_code_verifier');
 
     // Handle OAuth errors
     if (error) {
@@ -30,7 +31,7 @@ export default function GitHubOAuth() {
     }
 
     // Handle successful OAuth callback
-    if (code && state && storedState) {
+    if (code && state && storedState && storedCodeVerifier) {
       handleCallback(code, state).then((success) => {
         if (success) {
           toast({
@@ -47,6 +48,17 @@ export default function GitHubOAuth() {
         // Always redirect to Git settings after handling the callback
         navigate('/settings/git');
       });
+    } else if (code && state && storedState && !storedCodeVerifier) {
+      // Missing code verifier - likely an incomplete PKCE flow
+      toast({
+        title: "Authentication Error",
+        description: "OAuth flow is incomplete. Please try connecting to GitHub again.",
+        variant: "destructive",
+      });
+      // Clean up any remaining OAuth data
+      localStorage.removeItem('github_oauth_state');
+      localStorage.removeItem('github_oauth_code_verifier');
+      navigate('/settings/git');
     } else {
       // No code or state parameters - redirect to Git settings
       navigate('/settings/git');

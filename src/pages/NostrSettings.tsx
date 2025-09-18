@@ -111,11 +111,12 @@ export function NostrSettings() {
                   {authors.map((account) => (
                     <div
                       key={account.id}
-                      className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${
+                      className={`flex items-center gap-3 p-3 rounded-lg border transition-colors relative ${
                         currentUser?.id === account.id
                           ? 'bg-primary/5 border-primary/20'
-                          : 'hover:bg-muted/50'
+                          : 'hover:bg-muted/50 cursor-pointer'
                       }`}
+                      onClick={() => currentUser?.id !== account.id && handleSwitchAccount(account.id)}
                     >
                       <Avatar className="h-10 w-10">
                         <AvatarImage src={account.metadata?.picture} alt={getDisplayName(account)} />
@@ -145,21 +146,14 @@ export function NostrSettings() {
                         )}
                       </div>
 
-                      <div className="flex items-center gap-2">
-                        {currentUser?.id !== account.id && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleSwitchAccount(account.id)}
-                            className="gap-1"
-                          >
-                            Switch
-                          </Button>
-                        )}
+                      <div className="flex items-center gap-2 z-10">
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleRemoveAccount(account.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemoveAccount(account.id);
+                          }}
                           className="gap-1 text-destructive hover:text-destructive"
                         >
                           <Trash2 className="h-3 w-3" />

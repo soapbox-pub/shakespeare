@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Folder, GitBranch, Settings, Loader2, ChevronDown, Star } from 'lucide-react';
+import { Plus, Folder, GitBranch, Settings, Loader2, ChevronDown, Star, Columns2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -76,12 +76,16 @@ interface ProjectSidebarProps {
   selectedProject: Project | null;
   onSelectProject: (project: Project | null) => void;
   className?: string;
+  showCollapseButton?: boolean;
+  onCollapse?: () => void;
 }
 
 export function ProjectSidebar({
   selectedProject,
   onSelectProject,
-  className
+  className,
+  showCollapseButton = false,
+  onCollapse
 }: ProjectSidebarProps) {
   const queryClient = useQueryClient();
   const { data: projects = [], isLoading, error } = useProjects();
@@ -117,6 +121,18 @@ export function ProjectSidebar({
             </h1>
           </button>
           <div className="flex items-center gap-1">
+            {/* Collapse button - shown when showCollapseButton is true */}
+            {showCollapseButton && onCollapse && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0 hover:bg-primary/10"
+                onClick={onCollapse}
+                aria-label="Collapse sidebar"
+              >
+                <Columns2 className="h-4 w-4 text-primary/60 hover:text-primary" />
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="sm"

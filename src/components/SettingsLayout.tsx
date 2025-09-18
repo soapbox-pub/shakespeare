@@ -61,7 +61,7 @@ export function SettingsLayout() {
       // Set initial sidebar state based on projects and device type
       if (!hasSetInitialState && !isMobile) {
         // On desktop, show sidebar if there are projects
-        setIsSidebarVisible(projectList.length > 0);
+        setIsSidebarVisible(true);
         setHasSetInitialState(true);
       } else if (!hasSetInitialState && isMobile) {
         // On mobile, always start hidden

@@ -13,6 +13,7 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useKeepAlive } from '@/hooks/useKeepAlive';
 import { useAIChat } from '@/hooks/useAIChat';
 import { useProviderModels } from '@/hooks/useProviderModels';
+import { useToast } from '@/hooks/useToast';
 import { ModelSelector } from '@/components/ModelSelector';
 import { AIMessageItem } from '@/components/AIMessageItem';
 import { TextEditorViewTool } from '@/lib/tools/TextEditorViewTool';
@@ -39,6 +40,7 @@ import OpenAI from 'openai';
 import { makeSystemPrompt } from '@/lib/system';
 import { assistantContentEmpty } from '@/lib/ai-messages';
 import { saveFileToTmp } from '@/lib/fileUtils';
+import { validateFiles, DEFAULT_MAX_SIZE, DEFAULT_ACCEPT } from '@/lib/fileValidation';
 
 interface ChatPaneProps {
   projectId: string;
@@ -71,6 +73,8 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   const [systemPrompt, setSystemPrompt] = useState('');
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const { toast } = useToast();
 
   // Use external state if provided, otherwise default to false
   const isBuildLoading = externalIsBuildLoading || false;
@@ -291,6 +295,80 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
 
   const handleFileRemove = (fileToRemove: File) => {
     setAttachedFiles(prev => prev.filter(file => file !== fileToRemove));
+  };
+
+  // Drag and drop handlers
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isDragOver) {
+      setIsDragOver(true);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Only reset drag state if we're actually leaving the container
+    // This prevents flickering when dragging over child elements
+    const container = e.currentTarget;
+    const relatedTarget = e.relatedTarget as Node;
+
+    if (!container.contains(relatedTarget)) {
+      setIsDragOver(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+
+    if (isLoading || !providerModel.trim()) return;
+
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length === 0) return;
+
+    // Validate files using the same logic as FileAttachment
+    const { validFiles, errors } = validateFiles(files, {
+      maxSize: DEFAULT_MAX_SIZE,
+      accept: DEFAULT_ACCEPT,
+      maxFiles: 10 // Limit to 10 files at once
+    });
+
+    // Add valid files to attachments
+    if (validFiles.length > 0) {
+      setAttachedFiles(prev => [...prev, ...validFiles]);
+
+      // Announce files added via toast
+      if (validFiles.length === 1) {
+        toast({
+          title: "File added",
+          description: `${validFiles[0].name} has been added to attachments.`,
+        });
+      } else {
+        toast({
+          title: "Files added",
+          description: `${validFiles.length} files have been added to attachments.`,
+        });
+      }
+    }
+
+    // Show errors for invalid files
+    errors.forEach(error => {
+      toast({
+        title: "File upload error",
+        description: error.error,
+        variant: "destructive",
+      });
+    });
   };
 
   const handleSend = async () => {
@@ -526,7 +604,15 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
 
       <div className="border-t p-4">
         {/* Chat Input Container */}
-        <div className="relative rounded-2xl border border-input bg-background shadow-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 transition-all">
+        <div
+          className={`relative rounded-2xl border border-input bg-background shadow-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 transition-all ${
+            isDragOver ? 'border-primary bg-primary/5 ring-2 ring-primary/20' : ''
+          }`}
+          onDragEnter={handleDragEnter}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
           <Textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -537,6 +623,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
             className="min-h-[52px] max-h-32 resize-none border-0 bg-transparent px-4 py-3 pb-12 text-sm focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground"
             disabled={isLoading || !providerModel.trim()}
             rows={1}
+            aria-label="Chat message input"
             style={{
               height: 'auto',
               minHeight: '96px'

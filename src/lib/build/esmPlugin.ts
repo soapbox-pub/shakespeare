@@ -44,6 +44,23 @@ export function esmPlugin(packageLock: PackageLock, target?: string): Plugin {
         };
       });
 
+      // node built-in modules
+      build.onResolve({ filter: /^node:/ }, (args) => {
+        const moduleName = args.path.slice(5);
+
+        switch (moduleName) {
+          case "buffer":
+            return {
+              path: `https://esm.sh/${moduleName}?target=${target ?? "esnext"}`,
+              namespace: "esm",
+            };
+          default:
+            return {
+              errors: [{ text: `Module not found: ${args.path}` }],
+            };
+        }
+      });
+
       // Handle bare imports like "react"
       build.onResolve({ filter: /^[^./].*/ }, (args) => {
         const packageName = args.path.startsWith("@")
@@ -59,6 +76,10 @@ export function esmPlugin(packageLock: PackageLock, target?: string): Plugin {
           );
         } catch {
           // fallthrough
+        }
+
+        if (packageName.startsWith("@jsr/")) {
+          keys.push(`node_modules/@${packageName.slice(5).replace("__", "/")}`);
         }
 
         keys.push(`node_modules/${packageName}`);

@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Folder, GitBranch, Loader2, ChevronDown, Star, Columns2 } from 'lucide-react';
+import { Plus, Folder, GitBranch, Loader2, ChevronDown, Star, Columns2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -8,6 +8,7 @@ import { LoginArea } from '@/components/auth/LoginArea';
 import { useProjects } from '@/hooks/useProjects';
 import { useProjectSessionStatus } from '@/hooks/useProjectSessionStatus';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { useIsMobile } from '@/hooks/useIsMobile';
 import type { Project } from '@/lib/ProjectsManager';
 import { cn } from '@/lib/utils';
 import { useQueryClient } from '@tanstack/react-query';
@@ -77,23 +78,42 @@ interface ProjectSidebarProps {
   onSelectProject: (project: Project | null) => void;
   className?: string;
   onToggleSidebar?: () => void;
+  onClose?: () => void;
 }
 
 export function ProjectSidebar({
   selectedProject,
   onSelectProject,
   className,
-  onToggleSidebar
+  onToggleSidebar,
+  onClose
 }: ProjectSidebarProps) {
   const queryClient = useQueryClient();
   const { data: projects = [], isLoading, error } = useProjects();
   const [favorites] = useLocalStorage<string[]>('project-favorites', []);
+  const isMobile = useIsMobile();
 
   const navigate = useNavigate();
 
+  // Custom navigate function that closes sidebar on mobile
+  const navigateAndClose = (path: string) => {
+    navigate(path);
+    if (isMobile && onClose) {
+      onClose();
+    }
+  };
+
   const handleNewProject = () => {
     onSelectProject(null);
-    navigate('/');
+    navigateAndClose('/');
+  };
+
+  const handleToggleSidebar = () => {
+    if (onToggleSidebar) {
+      onToggleSidebar();
+    } else if (onClose && isMobile) {
+      onClose();
+    }
   };
 
   useEffect(() => {
@@ -110,7 +130,7 @@ export function ProjectSidebar({
       <div className="flex px-4 h-12 border-b border-sidebar-border bg-gradient-to-r from-primary/10 via-accent/5 to-primary/10">
         <div className="flex items-center justify-between w-full">
           <button
-            onClick={() => navigate('/')}
+            onClick={() => navigateAndClose('/')}
             className="flex items-center gap-3 hover:opacity-80 transition-opacity text-left"
           >
             <span className="text-2xl">🎭</span>
@@ -118,16 +138,20 @@ export function ProjectSidebar({
               Shakespeare
             </h1>
           </button>
-          {onToggleSidebar && (
+          {(onToggleSidebar || (onClose && isMobile)) && (
             <div className="flex items-center gap-1">
               <Button
                 variant="ghost"
                 size="sm"
                 className="h-8 w-8 p-0 hover:bg-primary/10 -mr-2"
-                onClick={onToggleSidebar}
-                aria-label="Collapse sidebar"
+                onClick={handleToggleSidebar}
+                aria-label={(onClose && isMobile) ? "Close sidebar" : "Collapse sidebar"}
               >
-                <Columns2 className="h-4 w-4 text-primary/60 hover:text-primary" />
+                {(onClose && isMobile) ? (
+                  <X className="h-4 w-4 text-primary/60 hover:text-primary" />
+                ) : (
+                  <Columns2 className="h-4 w-4 text-primary/60 hover:text-primary" />
+                )}
               </Button>
             </div>
           )}
@@ -155,7 +179,7 @@ export function ProjectSidebar({
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-48">
                     <DropdownMenuItem
-                      onClick={() => navigate('/clone')}
+                      onClick={() => navigateAndClose('/clone')}
                       className="flex items-center gap-2 w-full"
                     >
                       <GitBranch className="h-4 w-4" />

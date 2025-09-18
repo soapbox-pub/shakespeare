@@ -73,7 +73,6 @@ async function tryFileVariants(
         return indexFile;
       }
     }
-    throw new Error("Directory without index file");
   }
 
   // Try direct file with extensions

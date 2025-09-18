@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Check, Bot, ArrowLeft, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
@@ -245,9 +246,8 @@ export function AISettings() {
                         {!provider?.nostr && (
                           <div className="grid gap-2">
                             <Label htmlFor={`${providerId}-apiKey`}>API Key</Label>
-                            <Input
+                            <PasswordInput
                               id={`${providerId}-apiKey`}
-                              type="password"
                               placeholder="Enter your API key"
                               value={provider?.apiKey || ''}
                               onChange={(e) => handleUpdateProvider(providerId, { apiKey: e.target.value })}
@@ -286,9 +286,8 @@ export function AISettings() {
                   </div>
                   <div className="flex gap-2">
                     {!preset.nostr && (
-                      <Input
+                      <PasswordInput
                         placeholder={preset.id === "routstr" ? "Enter a Cashu token" : "Enter your API key"}
-                        type="password"
                         className="flex-1"
                         value={presetApiKeys[preset.id] || ''}
                         onChange={(e) => setPresetApiKeys(prev => ({
@@ -368,9 +367,8 @@ export function AISettings() {
                   {customAuthMethod === 'api-key' && (
                     <div className="grid gap-2">
                       <Label htmlFor="custom-apikey">API Key</Label>
-                      <Input
+                      <PasswordInput
                         id="custom-apikey"
-                        type="password"
                         placeholder="Enter your API key (optional)"
                         value={customApiKey}
                         onChange={(e) => setCustomApiKey(e.target.value)}

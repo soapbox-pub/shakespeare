@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Menu, Columns2, Bot, GitBranch, Database } from 'lucide-react';
+import { Menu, Bot, GitBranch, Database } from 'lucide-react';
 import { ProjectSidebar } from '@/components/ProjectSidebar';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { useIsMobile } from '@/hooks/useIsMobile';
@@ -61,7 +61,7 @@ export function SettingsLayout() {
       // Set initial sidebar state based on projects and device type
       if (!hasSetInitialState && !isMobile) {
         // On desktop, show sidebar if there are projects
-        setIsSidebarVisible(projectList.length > 0);
+        setIsSidebarVisible(true);
         setHasSetInitialState(true);
       } else if (!hasSetInitialState && isMobile) {
         // On mobile, always start hidden
@@ -145,6 +145,7 @@ export function SettingsLayout() {
             selectedProject={null}
             onSelectProject={handleProjectSelect}
             className="h-full"
+            onToggleSidebar={() => setIsSidebarVisible(false)}
           />
         </div>
       )}
@@ -154,15 +155,17 @@ export function SettingsLayout() {
         {/* Header with toggle button */}
         <div className="h-12 px-4 py-2 border-b flex-shrink-0">
           <div className="flex items-center gap-3">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsSidebarVisible(!isSidebarVisible)}
-              className="h-8 w-8 p-0"
-              aria-label="Toggle sidebar"
-            >
-              {isSidebarVisible ? <Columns2 className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
-            </Button>
+            {!isSidebarVisible && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsSidebarVisible(true)}
+                className="h-8 w-8 p-0"
+                aria-label="Open sidebar"
+              >
+                <Menu className="h-4 w-4" />
+              </Button>
+            )}
             <h1 className="text-xl font-bold flex items-center gap-2">
               Settings
             </h1>

@@ -25,7 +25,28 @@ export function useGitHubOAuth() {
     import.meta.env.VITE_GITHUB_OAUTH_CLIENT_SECRET
   );
 
-  const initiateOAuth = useCallback(() => {
+  // Generate a cryptographically secure random string for PKCE code verifier
+  const generateCodeVerifier = (): string => {
+    const array = new Uint8Array(32);
+    crypto.getRandomValues(array);
+    return btoa(String.fromCharCode(...array))
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=/g, '');
+  };
+
+  // Create SHA-256 hash of the code verifier for PKCE code challenge
+  const generateCodeChallenge = async (codeVerifier: string): Promise<string> => {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(codeVerifier);
+    const digest = await crypto.subtle.digest('SHA-256', data);
+    return btoa(String.fromCharCode(...new Uint8Array(digest)))
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=/g, '');
+  };
+
+  const initiateOAuth = useCallback(async () => {
     const clientId = import.meta.env.VITE_GITHUB_OAUTH_CLIENT_ID;
 
     if (!clientId) {
@@ -33,19 +54,36 @@ export function useGitHubOAuth() {
       return;
     }
 
-    // Generate a random state parameter for security
-    const state = crypto.randomUUID();
-    localStorage.setItem('github_oauth_state', state);
+    try {
+      // Generate PKCE parameters
+      const codeVerifier = generateCodeVerifier();
+      const codeChallenge = await generateCodeChallenge(codeVerifier);
 
-    // Redirect to GitHub OAuth
-    const params = new URLSearchParams({
-      client_id: clientId,
-      redirect_uri: window.location.origin + '/',
-      scope: 'repo',
-      state: state,
-    });
+      // Generate a random state parameter for security
+      const state = crypto.randomUUID();
 
-    window.location.href = `https://github.com/login/oauth/authorize?${params.toString()}`;
+      // Store both state and code verifier for later use
+      localStorage.setItem('github_oauth_state', state);
+      localStorage.setItem('github_oauth_code_verifier', codeVerifier);
+
+      // Redirect to GitHub OAuth with PKCE parameters
+      const params = new URLSearchParams({
+        client_id: clientId,
+        redirect_uri: window.location.origin + '/oauth/github',
+        scope: 'repo',
+        state: state,
+        code_challenge: codeChallenge,
+        code_challenge_method: 'S256',
+      });
+
+      window.location.href = `https://github.com/login/oauth/authorize?${params.toString()}`;
+    } catch (error) {
+      console.error('Failed to initiate OAuth with PKCE:', error);
+      setState(prev => ({
+        ...prev,
+        error: 'Failed to generate PKCE parameters. Please try again.'
+      }));
+    }
   }, []);
 
   const handleCallback = useCallback(async (code: string, state: string) => {
@@ -58,8 +96,15 @@ export function useGitHubOAuth() {
         throw new Error('Invalid OAuth state parameter');
       }
 
-      // Clean up stored state
+      // Get the stored code verifier for PKCE
+      const codeVerifier = localStorage.getItem('github_oauth_code_verifier');
+      if (!codeVerifier) {
+        throw new Error('PKCE code verifier not found. Please restart the OAuth flow.');
+      }
+
+      // Clean up stored values
       localStorage.removeItem('github_oauth_state');
+      localStorage.removeItem('github_oauth_code_verifier');
 
       const clientId = import.meta.env.VITE_GITHUB_OAUTH_CLIENT_ID;
       const clientSecret = import.meta.env.VITE_GITHUB_OAUTH_CLIENT_SECRET;
@@ -68,18 +113,22 @@ export function useGitHubOAuth() {
         throw new Error('GitHub OAuth credentials not configured');
       }
 
-      // Exchange code for access token
+      // Exchange code for access token with PKCE code verifier
+      const tokenRequestBody = {
+        client_id: clientId,
+        client_secret: clientSecret,
+        code: code,
+        redirect_uri: window.location.origin + '/oauth/github',
+        code_verifier: codeVerifier,
+      };
+
       const tokenResponse = await fetch('https://corsproxy.io/?url=https://github.com/login/oauth/access_token', {
         method: 'POST',
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          client_id: clientId,
-          client_secret: clientSecret,
-          code: code,
-        }),
+        body: JSON.stringify(tokenRequestBody),
       });
 
       if (!tokenResponse.ok) {
@@ -116,6 +165,11 @@ export function useGitHubOAuth() {
       return true;
     } catch (error) {
       console.error('GitHub OAuth error:', error);
+
+      // Clean up any remaining OAuth data on error
+      localStorage.removeItem('github_oauth_state');
+      localStorage.removeItem('github_oauth_code_verifier');
+
       setState(prev => ({
         ...prev,
         isLoading: false,

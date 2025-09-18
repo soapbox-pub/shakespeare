@@ -2,13 +2,22 @@
 // It is important that all functionality in this file is preserved, and should only be modified if explicitly requested.
 
 import { useState } from 'react';
-import { User, UserPlus } from 'lucide-react';
-import { Button } from '@/components/ui/button.tsx';
+import { User, UserPlus, ChevronDown, Settings, HelpCircle } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu.tsx';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar.tsx';
+import { RelaySelector } from '@/components/RelaySelector';
 import LoginDialog from './LoginDialog';
 import SignupDialog from './SignupDialog';
 import { useLoggedInAccounts } from '@/hooks/useLoggedInAccounts';
 import { AccountSwitcher } from './AccountSwitcher';
 import { cn } from '@/lib/utils';
+import { useNavigate } from 'react-router-dom';
 
 export interface LoginAreaProps {
   className?: string;
@@ -16,6 +25,7 @@ export interface LoginAreaProps {
 
 export function LoginArea({ className }: LoginAreaProps) {
   const { currentUser } = useLoggedInAccounts();
+  const navigate = useNavigate();
   const [loginDialogOpen, setLoginDialogOpen] = useState(false);
   const [signupDialogOpen, setSignupDialogOpen] = useState(false);
 
@@ -29,22 +39,55 @@ export function LoginArea({ className }: LoginAreaProps) {
       {currentUser ? (
         <AccountSwitcher onAddAccountClick={() => setLoginDialogOpen(true)} />
       ) : (
-        <div className="flex gap-3 justify-center">
-          <Button
-            onClick={() => setLoginDialogOpen(true)}
-            className='flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-primary-foreground w-full font-medium transition-all hover:bg-primary/90 animate-scale-in'
-          >
-            <User className='w-4 h-4' />
-            <span className='truncate'>Log in</span>
-          </Button><Button
-            onClick={() => setSignupDialogOpen(true)}
-            variant="outline"
-            className="flex items-center gap-2 px-4 py-2 rounded-full font-medium transition-all"
-          >
-            <UserPlus className="w-4 h-4" />
-            <span>Sign Up</span>
-          </Button>
-        </div>
+        <DropdownMenu modal={false}>
+          <DropdownMenuTrigger asChild>
+            <button className='flex items-center gap-3 p-3 rounded-full hover:bg-accent transition-all w-full text-foreground'>
+              <Avatar className='w-10 h-10'>
+                <AvatarFallback>
+                  <User className='w-5 h-5 text-muted-foreground' />
+                </AvatarFallback>
+              </Avatar>
+              <div className='flex-1 text-left truncate'>
+                <p className='font-medium text-sm truncate'>Anonymous</p>
+              </div>
+              <ChevronDown className='w-4 h-4 text-muted-foreground' />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className='w-56 p-2 animate-scale-in'>
+            <div className='font-medium text-sm px-2 py-1.5'>Switch Relay</div>
+            <RelaySelector className="w-full" />
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() => navigate('/settings')}
+              className='flex items-center gap-2 cursor-pointer p-2 rounded-md'
+            >
+              <Settings className='w-4 h-4' />
+              <span>Settings</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => window.open('https://soapbox.pub/shakespeare-resources/', '_blank')}
+              className='flex items-center gap-2 cursor-pointer p-2 rounded-md'
+            >
+              <HelpCircle className='w-4 h-4' />
+              <span>Help</span>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() => setLoginDialogOpen(true)}
+              className='flex items-center gap-2 cursor-pointer p-2 rounded-md'
+            >
+              <User className='w-4 h-4' />
+              <span>Log in</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => setSignupDialogOpen(true)}
+              className='flex items-center gap-2 cursor-pointer p-2 rounded-md'
+            >
+              <UserPlus className='w-4 h-4' />
+              <span>Sign up</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       )}
 
       <LoginDialog

@@ -236,7 +236,7 @@ export function GitSettings() {
                         <Button
                           onClick={initiateOAuth}
                           disabled={isOAuthLoading}
-                          className="w-full gap-2"
+                          className="w-full max-w-full gap-2"
                           variant="default"
                         >
                           {isOAuthLoading ? (
@@ -247,7 +247,9 @@ export function GitSettings() {
                           ) : (
                             <>
                               <Github className="h-4 w-4" />
-                              Connect to GitHub
+                              <span className="truncate text-ellipsis overflow-hidden">
+                                Connect to GitHub
+                              </span>
                             </>
                           )}
                         </Button>

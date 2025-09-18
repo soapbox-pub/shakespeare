@@ -1,13 +1,11 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { useAIProjectId } from '@/hooks/useAIProjectId';
 import { useFS } from '@/hooks/useFS';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { useAISettings } from '@/hooks/useAISettings';
-import { useGitHubOAuth } from '@/hooks/useGitHubOAuth';
-import { useToast } from '@/hooks/useToast';
 import { AppLayout } from '@/components/AppLayout';
 import { DotAI } from '@/lib/DotAI';
 import type { AIMessage } from '@/lib/SessionManager';
@@ -24,14 +22,11 @@ export default function Index() {
   const [prompt, setPrompt] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [storedPrompt, setStoredPrompt] = useLocalStorage('shakespeare-draft-prompt', '');
-  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const projectsManager = useProjectsManager();
   const { fs } = useFS();
   const { generateProjectId, isLoading: isGeneratingId, isConfigured: isAIConfigured } = useAIProjectId();
   const { settings, addRecentlyUsedModel } = useAISettings();
-  const { handleCallback: handleGitHubCallback } = useGitHubOAuth();
-  const { toast } = useToast();
   const [providerModel, setProviderModel] = useState(() => {
     // Initialize with first recently used model if available, otherwise empty
     return settings.recentlyUsedModels?.[0] || '';
@@ -50,27 +45,6 @@ export default function Index() {
     title: 'Shakespeare - AI-Powered Nostr Development',
     description: 'Build custom Nostr websites with AI assistance using Shakespeare, an AI-powered development environment.',
   });
-
-  // Handle GitHub OAuth callback
-  useEffect(() => {
-    const code = searchParams.get('code');
-    const state = searchParams.get('state');
-
-    if (code && state) {
-      // Handle GitHub OAuth callback
-      handleGitHubCallback(code, state).then((success) => {
-        if (success) {
-          // Clean up URL parameters
-          setSearchParams({});
-          // Show success toast
-          toast({
-            title: "GitHub Connected",
-            description: "Successfully connected to GitHub. You can now push and pull from GitHub repositories.",
-          });
-        }
-      });
-    }
-  }, [searchParams, setSearchParams, handleGitHubCallback, toast]);
 
   // Restore prompt from local storage on mount
   useEffect(() => {

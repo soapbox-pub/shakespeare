@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Check, GitBranch, ArrowLeft, Github } from 'lucide-react';
+import { Check, GitBranch, ArrowLeft, Github, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -154,18 +154,17 @@ export function GitSettings() {
                           </span>
                           {isCustom && <Badge variant="outline">Custom</Badge>}
                         </div>
-                        <button
-                          type="button"
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           onClick={(e) => {
                             e.stopPropagation();
                             handleRemoveCredential(origin);
                           }}
-                          className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive rounded-md hover:bg-accent"
+                          className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-transparent"
                         >
-                          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </AccordionTrigger>
                     <AccordionContent className="px-4 pb-4">

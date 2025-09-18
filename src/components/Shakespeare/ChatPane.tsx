@@ -526,7 +526,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
 
       <div className="border-t p-4">
         {/* Chat Input Container */}
-        <div className="relative rounded-2xl border border-input bg-background shadow-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 transition-all">
+        <div className="flex flex-col rounded-2xl border border-input bg-background shadow-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 transition-all">
           <Textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -534,7 +534,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
             onPaste={handlePaste}
             onFocus={handleFirstInteraction}
             placeholder={providerModel.trim() ? "Ask me to add features, edit files, or build your project..." : "Please select a model to start chatting..."}
-            className="min-h-[52px] max-h-32 resize-none border-0 bg-transparent px-4 py-3 pb-12 text-sm focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground"
+            className="flex-1 resize-none border-0 bg-transparent px-4 py-3 text-sm focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground"
             disabled={isLoading || !providerModel.trim()}
             rows={1}
             style={{
@@ -549,7 +549,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
           />
 
           {/* Bottom Controls Row */}
-          <div className="absolute bottom-2 left-2 right-2 flex items-center gap-4">
+          <div className="flex items-center gap-4 px-2 py-2">
             {/* File Attachment */}
             <FileAttachment
               onFileSelect={handleFileSelect}

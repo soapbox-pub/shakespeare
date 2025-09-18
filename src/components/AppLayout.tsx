@@ -108,6 +108,7 @@ export function AppLayout({
                   setIsSidebarVisible(false); // Always collapse sidebar on mobile navigation
                   handleProjectSelect(project);
                 }}
+                onClose={() => setIsSidebarVisible(false)}
               />
             </div>
           </div>

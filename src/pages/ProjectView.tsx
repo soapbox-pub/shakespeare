@@ -263,6 +263,7 @@ export function ProjectView() {
                     navigate('/');
                   }
                 }}
+                onClose={() => setIsSidebarVisible(false)}
               />
             </div>
           </div>

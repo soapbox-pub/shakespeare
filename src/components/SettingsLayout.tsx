@@ -125,6 +125,7 @@ export function SettingsLayout() {
                   setIsSidebarVisible(false);
                   handleProjectSelect(project);
                 }}
+                onClose={() => setIsSidebarVisible(false)}
               />
             </div>
           </div>

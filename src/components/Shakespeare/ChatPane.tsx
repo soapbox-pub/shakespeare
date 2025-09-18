@@ -71,6 +71,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   const [systemPrompt, setSystemPrompt] = useState('');
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
+  const [scrolledProjects] = useState(() => new Set<string>());
 
   // Use external state if provided, otherwise default to false
   const isBuildLoading = externalIsBuildLoading || false;
@@ -235,16 +236,6 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     }
   }, [addRecentlyUsedModel, isConfigured, providerModel, searchParams, setSearchParams, startGeneration]);
 
-  // Function to check if user is at the bottom of the scroll area
-  const checkScrollPosition = () => {
-    if (!scrollAreaRef.current) return;
-
-    const container = scrollAreaRef.current;
-    const threshold = 100; // 100px threshold
-    const isNearBottom = container.scrollTop + container.clientHeight >= container.scrollHeight - threshold;
-
-    setShowScrollToBottom(!isNearBottom && container.scrollHeight > container.clientHeight);
-  };
 
   // Function to scroll to bottom
   const scrollToBottom = () => {
@@ -253,20 +244,28 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     }
   };
 
-  // Add scroll event listener
+  // Simple scroll event listener
   useEffect(() => {
     const container = scrollAreaRef.current;
     if (!container) return;
 
-    container.addEventListener('scroll', checkScrollPosition);
+    const handleScroll = () => {
+      const threshold = 100;
+      const isNearBottom = container.scrollTop + container.clientHeight >= container.scrollHeight - threshold;
+      const hasScrollableContent = container.scrollHeight > container.clientHeight;
 
-    // Check initial position
-    checkScrollPosition();
+      setShowScrollToBottom(!isNearBottom && hasScrollableContent);
+    };
+
+    container.addEventListener('scroll', handleScroll);
+
+    // Check immediately
+    handleScroll();
 
     return () => {
-      container.removeEventListener('scroll', checkScrollPosition);
+      container.removeEventListener('scroll', handleScroll);
     };
-  }, []);
+  }, [messages]); // Re-run when messages change to ensure proper setup
 
   useEffect(() => {
     if (scrollAreaRef.current && (messages || streamingMessage)) {
@@ -280,10 +279,33 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
         container.scrollTop = container.scrollHeight;
       }
 
-      // Update scroll button visibility
-      checkScrollPosition();
     }
   }, [messages, streamingMessage, isLoading]);
+
+  // Scroll to bottom when first visiting a project (including page refresh)
+  useEffect(() => {
+    if (projectId && !scrolledProjects.has(projectId)) {
+      // Small delay to ensure messages have loaded
+      const timer = setTimeout(() => {
+        scrollToBottom();
+        scrolledProjects.add(projectId);
+      }, 100);
+
+      return () => clearTimeout(timer);
+    }
+  }, [projectId, scrolledProjects]);
+
+  // Also scroll on initial mount if we have a projectId
+  useEffect(() => {
+    if (projectId && !scrolledProjects.has(projectId)) {
+      const timer = setTimeout(() => {
+        scrollToBottom();
+        scrolledProjects.add(projectId);
+      }, 100);
+
+      return () => clearTimeout(timer);
+    }
+  }, []); // Empty dependency array = runs on mount
 
   const handleFileSelect = (file: File) => {
     setAttachedFiles(prev => [...prev, file]);

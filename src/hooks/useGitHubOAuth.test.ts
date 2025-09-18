@@ -3,6 +3,10 @@ import { renderHook, act } from '@testing-library/react';
 import { useGitHubOAuth } from './useGitHubOAuth';
 import { TestApp } from '@/test/TestApp';
 
+// Mock environment variables for testing
+vi.stubEnv('VITE_GITHUB_OAUTH_CLIENT_ID', '********************');
+vi.stubEnv('VITE_GITHUB_OAUTH_CLIENT_SECRET', '****************************************');
+
 // Mock crypto.subtle for PKCE testing
 const mockCryptoSubtle = {
   digest: vi.fn(),
@@ -57,7 +61,7 @@ describe('useGitHubOAuth PKCE', () => {
       wrapper: TestApp,
     });
 
-    // Mock fetch for token exchange and user info
+    // Mock fetch for token exchange and user info (using corsproxy.io URLs)
     const mockFetch = vi.fn()
       .mockResolvedValueOnce({
         ok: true,
@@ -143,7 +147,7 @@ describe('useGitHubOAuth PKCE', () => {
 
     // Check that the token request includes the code verifier
     expect(mockFetch).toHaveBeenCalledWith(
-      expect.stringContaining('github.com/login/oauth/access_token'),
+      expect.stringContaining('corsproxy.io/?url=https://github.com/login/oauth/access_token'),
       expect.objectContaining({
         method: 'POST',
         body: expect.stringContaining('"code_verifier":"test-verifier"'),

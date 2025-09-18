@@ -9,7 +9,6 @@ import { useAISettings } from '@/hooks/useAISettings';
 import { AppLayout } from '@/components/AppLayout';
 import { DotAI } from '@/lib/DotAI';
 import type { AIMessage } from '@/lib/SessionManager';
-import { saveFileToTmp } from '@/lib/fileUtils';
 
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -24,7 +23,7 @@ export default function Index() {
   const [storedPrompt, setStoredPrompt] = useLocalStorage('shakespeare-draft-prompt', '');
   const navigate = useNavigate();
   const projectsManager = useProjectsManager();
-  const { fs } = useFS();
+    const { fs } = useFS();
   const { generateProjectId, isLoading: isGeneratingId, isConfigured: isAIConfigured } = useAIProjectId();
   const { settings, addRecentlyUsedModel } = useAISettings();
   const [providerModel, setProviderModel] = useState(() => {
@@ -135,7 +134,7 @@ export default function Index() {
   };
 
   const handleCreateProject = async () => {
-    if (!prompt.trim() && attachedFiles.length === 0) return;
+    if (!prompt.trim() || !providerModel.trim()) return;
 
     // Clear stored prompt when creating project
     setStoredPrompt('');
@@ -154,45 +153,10 @@ export default function Index() {
       // Store the initial message in chat history using DotAI
       const dotAI = new DotAI(fs, `/projects/${project.id}`);
       const sessionName = DotAI.generateSessionName();
-
-      // Build message content as text parts array
-      const contentParts: Array<{ type: 'text'; text: string }> = [];
-
-      // Add user input as text part if present
-      if (prompt.trim()) {
-        contentParts.push({
-          type: 'text',
-          text: prompt.trim()
-        });
-      }
-
-      // Process attached files and add as separate text parts
-      if (attachedFiles.length > 0) {
-        const filePromises = attachedFiles.map(async (file) => {
-          try {
-            const savedPath = await saveFileToTmp(fs, file);
-            return `Added file: ${savedPath}`;
-          } catch (error) {
-            console.error('Failed to save file:', error);
-            return `Failed to save file: ${file.name}`;
-          }
-        });
-
-        const fileResults = await Promise.all(filePromises);
-
-        // Add each file as a separate text part
-        fileResults.forEach(fileResult => {
-          contentParts.push({
-            type: 'text',
-            text: fileResult
-          });
-        });
-      }
-
       // Create initial message with content parts
       const initialMessage: AIMessage = {
         role: 'user',
-        content: contentParts.length === 1 ? contentParts[0].text : contentParts
+        content: prompt.trim()
       };
       await dotAI.setHistory(sessionName, [initialMessage]);
 

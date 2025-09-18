@@ -13,7 +13,6 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useKeepAlive } from '@/hooks/useKeepAlive';
 import { useAIChat } from '@/hooks/useAIChat';
 import { useProviderModels } from '@/hooks/useProviderModels';
-import { useToast } from '@/hooks/useToast';
 import { ModelSelector } from '@/components/ModelSelector';
 import { AIMessageItem } from '@/components/AIMessageItem';
 import { TextEditorViewTool } from '@/lib/tools/TextEditorViewTool';
@@ -73,7 +72,6 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
-  const { toast } = useToast();
   const [scrolledProjects] = useState(() => new Set<string>());
 
   // Use external state if provided, otherwise default to false
@@ -347,19 +345,6 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
 
     // Add all files without validation
     setAttachedFiles(prev => [...prev, ...files]);
-
-    // Announce files added via toast
-    if (files.length === 1) {
-      toast({
-        title: "File added",
-        description: `${files[0].name} has been added to attachments.`,
-      });
-    } else {
-      toast({
-        title: "Files added",
-        description: `${files.length} files have been added to attachments.`,
-      });
-    }
   };
 
   const handleSend = async () => {

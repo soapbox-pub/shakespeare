@@ -12,7 +12,6 @@ import { AppLayout } from '@/components/AppLayout';
 import { DotAI } from '@/lib/DotAI';
 import type { AIMessage } from '@/lib/SessionManager';
 import { saveFileToTmp } from '@/lib/fileUtils';
-import { validateFiles, DEFAULT_MAX_SIZE, DEFAULT_ACCEPT } from '@/lib/fileValidation';
 
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -134,39 +133,21 @@ export default function Index() {
     const files = Array.from(e.dataTransfer.files);
     if (files.length === 0) return;
 
-    // Validate files using the same logic as FileAttachment
-    const { validFiles, errors } = validateFiles(files, {
-      maxSize: DEFAULT_MAX_SIZE,
-      accept: DEFAULT_ACCEPT,
-      maxFiles: 10 // Limit to 10 files at once
-    });
+    // Add all files without validation
+    setAttachedFiles(prev => [...prev, ...files]);
 
-    // Add valid files to attachments
-    if (validFiles.length > 0) {
-      setAttachedFiles(prev => [...prev, ...validFiles]);
-
-      // Announce files added via toast
-      if (validFiles.length === 1) {
-        toast({
-          title: "File added",
-          description: `${validFiles[0].name} has been added to attachments.`,
-        });
-      } else {
-        toast({
-          title: "Files added",
-          description: `${validFiles.length} files have been added to attachments.`,
-        });
-      }
-    }
-
-    // Show errors for invalid files
-    errors.forEach(error => {
+    // Announce files added via toast
+    if (files.length === 1) {
       toast({
-        title: "File upload error",
-        description: error.error,
-        variant: "destructive",
+        title: "File added",
+        description: `${files[0].name} has been added to attachments.`,
       });
-    });
+    } else {
+      toast({
+        title: "Files added",
+        description: `${files.length} files have been added to attachments.`,
+      });
+    }
   };
 
   // Handle keyboard shortcuts (physical keyboards only)

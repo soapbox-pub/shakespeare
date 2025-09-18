@@ -33,12 +33,21 @@ describe('Index Page', () => {
       </TestApp>
     );
 
-    // Look for the paperclip icon button which is part of FileAttachment
-    const buttons = screen.getAllByRole('button');
-    const paperclipButton = buttons.find(button => 
-      button.querySelector('svg')?.getAttribute('data-lucide') === 'paperclip'
+    // Query the paperclip button by test id or aria label
+    const paperclipButton = screen.getByTestId('paperclip-button');
+    expect(paperclipButton).toBeInTheDocument();
+    expect(paperclipButton).toHaveAttribute('aria-label', 'Attach files');
+  });
+
+  it('shows FileAttachment component by role and name', () => {
+    render(
+      <TestApp>
+        <Index />
+      </TestApp>
     );
-    
+
+    // Query the paperclip button by role and aria-label
+    const paperclipButton = screen.getByRole('button', { name: /attach files/i });
     expect(paperclipButton).toBeInTheDocument();
   });
 
@@ -51,16 +60,16 @@ describe('Index Page', () => {
 
     const textarea = screen.getByPlaceholderText('Please select a model below, then describe what you\'d like to build...');
     const container = textarea.closest('div');
-    
+
     expect(container).toBeInTheDocument();
-    
+
     // Verify the container can handle drag events by checking if it's interactive
     expect(container).toHaveClass('relative', 'rounded-2xl', 'border', 'border-input');
   });
 
   it('enables create button when text prompt is provided and model is selected', async () => {
     const user = await import('@testing-library/user-event').then(mod => mod.userEvent);
-    
+
     render(
       <TestApp>
         <Index />

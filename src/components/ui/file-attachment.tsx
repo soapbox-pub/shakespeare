@@ -66,6 +66,8 @@ export function FileAttachment({
         onClick={handleButtonClick}
         disabled={disabled}
         className="h-8 w-8 p-0 rounded-full hover:bg-muted/50"
+        aria-label="Attach files"
+        data-testid="paperclip-button"
       >
         <Paperclip className="h-4 w-4" />
       </Button>

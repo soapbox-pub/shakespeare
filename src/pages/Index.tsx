@@ -327,7 +327,7 @@ export default function Index() {
                   onFileSelect={handleFileSelect}
                   onFileRemove={handleFileRemove}
                   selectedFiles={attachedFiles}
-                  disabled={isCreating || isGeneratingId || !providerModel.trim()}
+                  disabled={isCreating || isGeneratingId}
                   multiple={true}
                 />
 

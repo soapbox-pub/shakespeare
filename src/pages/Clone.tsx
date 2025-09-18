@@ -3,8 +3,6 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AppLayout } from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
 import { GitBranch, Loader2, AlertCircle } from 'lucide-react';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { useToast } from '@/hooks/useToast';
@@ -324,52 +322,46 @@ export default function Clone() {
           </p>
         </div>
 
-        <Card className="bg-gradient-to-br from-card to-card/50 border-primary/20 shadow-lg">
-          <CardContent className="space-y-4 p-6">
-            <div className="space-y-2">
-              <Label htmlFor="repo-url">Repository URL</Label>
-              <Input
-                id="repo-url"
-                type="text"
-                placeholder="https://github.com/username/repository.git"
-                value={repoUrl}
-                onChange={(e) => {
-                  setRepoUrl(e.target.value);
-                  setError(null); // Clear error when user types
-                }}
-                onKeyDown={handleKeyDown}
-                disabled={isCloning}
-                className="text-base"
-              />
+        <div className="space-y-2">
+          <Input
+            id="repo-url"
+            type="text"
+            placeholder="https://github.com/username/repository.git"
+            value={repoUrl}
+            onChange={(e) => {
+              setRepoUrl(e.target.value);
+              setError(null); // Clear error when user types
+            }}
+            onKeyDown={handleKeyDown}
+            disabled={isCloning}
+          />
+
+          {error && (
+            <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-md">
+              <AlertCircle className="h-4 w-4 text-destructive flex-shrink-0" />
+              <p className="text-sm text-destructive">{error}</p>
             </div>
+          )}
 
-            {error && (
-              <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-md">
-                <AlertCircle className="h-4 w-4 text-destructive flex-shrink-0" />
-                <p className="text-sm text-destructive">{error}</p>
-              </div>
+          <Button
+            onClick={() => handleClone()}
+            disabled={!repoUrl.trim() || isCloning}
+            className="w-full focus-ring bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80 shadow-lg"
+            size="lg"
+          >
+            {isCloning ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Cloning Repository...
+              </>
+            ) : (
+              <>
+                <GitBranch className="mr-2 h-4 w-4" />
+                Import Repository
+              </>
             )}
-
-            <Button
-              onClick={() => handleClone()}
-              disabled={!repoUrl.trim() || isCloning}
-              className="w-full focus-ring bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80 shadow-lg"
-              size="lg"
-            >
-              {isCloning ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Cloning Repository...
-                </>
-              ) : (
-                <>
-                  <GitBranch className="mr-2 h-4 w-4" />
-                  Import Repository
-                </>
-              )}
-            </Button>
-          </CardContent>
-        </Card>
+          </Button>
+        </div>
       </div>
     </AppLayout>
   );

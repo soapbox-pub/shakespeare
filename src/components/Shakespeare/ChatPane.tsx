@@ -295,18 +295,6 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     }
   }, [projectId, scrolledProjects]);
 
-  // Also scroll on initial mount if we have a projectId
-  useEffect(() => {
-    if (projectId && !scrolledProjects.has(projectId)) {
-      const timer = setTimeout(() => {
-        scrollToBottom();
-        scrolledProjects.add(projectId);
-      }, 100);
-
-      return () => clearTimeout(timer);
-    }
-  }, []); // Empty dependency array = runs on mount
-
   const handleFileSelect = (file: File) => {
     setAttachedFiles(prev => [...prev, file]);
   };

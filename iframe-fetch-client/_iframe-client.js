@@ -10,57 +10,193 @@ class ConsoleInterceptor {
       warn: console.warn,
       error: console.error,
       info: console.info,
-      debug: console.debug
+      debug: console.debug,
+      exception: console.exception,
+      assert: console.assert,
+      clear: console.clear,
+      count: console.count,
+      countReset: console.countReset,
+      dir: console.dir,
+      dirxml: console.dirxml,
+      group: console.group,
+      groupCollapsed: console.groupCollapsed,
+      groupEnd: console.groupEnd,
+      table: console.table,
+      time: console.time,
+      timeEnd: console.timeEnd,
+      timeLog: console.timeLog,
+      trace: console.trace,
     };
 
     this.overrideConsoleMethods();
+    this.overrideErrorHandlers();
+    this.overrideWindowError();
   }
 
   overrideConsoleMethods() {
-    const methods = ['log', 'warn', 'error', 'info', 'debug'];
+    const methods = ['log', 'warn', 'error', 'info', 'debug', 'exception', 'assert', 'clear', 'count', 'countReset', 'dir', 'dirxml', 'group', 'groupCollapsed', 'groupEnd', 'table', 'time', 'timeEnd', 'timeLog', 'trace'];
 
     methods.forEach(method => {
-      console[method] = (...args) => {
-        // Call original method first (for local debugging)
-        this.originalConsole[method](...args);
+      if (typeof console[method] === 'function') {
+        console[method] = (...args) => {
+          // Call original method first (for local debugging)
+          try {
+            this.originalConsole[method](...args);
+          } catch (e) {
+            // If original method fails, at least try to send to parent
+            this.sendConsoleMessage(method, ...args);
+            return;
+          }
 
-        // Send to parent via JSON-RPC
-        this.sendConsoleMessage(method, ...args);
-      };
+          // Send to parent via JSON-RPC
+          this.sendConsoleMessage(method, ...args);
+        };
+      }
     });
   }
 
-  sendConsoleMessage(level, ...args) {
-    const message = args.map(arg => {
-      if (typeof arg === 'object') {
-        try {
-          return JSON.stringify(arg);
-        } catch {
-          return String(arg);
-        }
+  overrideErrorHandlers() {
+    // Override window.onerror to catch unhandled errors
+    const originalOnError = window.onerror;
+    window.onerror = (message, source, lineno, colno, error) => {
+      // Call original handler first
+      if (originalOnError) {
+        originalOnError(message, source, lineno, colno, error);
       }
-      return String(arg);
-    }).join(' ');
 
-    window.parent.postMessage({
-      jsonrpc: "2.0",
-      method: `console.${level}`,
-      params: {
-        level,
-        message,
-        timestamp: Date.now(),
-        args: args.map(arg => {
-          if (typeof arg === 'object') {
-            try {
-              return JSON.parse(JSON.stringify(arg));
-            } catch {
-              return String(arg);
-            }
-          }
-          return arg;
-        })
+      // Send to parent
+      this.sendConsoleMessage('error', `Uncaught Error: ${message}`, {
+        source,
+        lineno,
+        colno,
+        error: error ? error.message : 'No error object',
+        stack: error ? error.stack : 'No stack trace'
+      });
+
+      return false; // Don't prevent default
+    };
+
+    // Override window.onunhandledrejection for Promise rejections
+    const originalOnUnhandledRejection = window.onunhandledrejection;
+    window.onunhandledrejection = (event) => {
+      // Call original handler first
+      if (originalOnUnhandledRejection) {
+        originalOnUnhandledRejection(event);
       }
-    }, "*");
+
+      // Send to parent
+      this.sendConsoleMessage('error', 'Unhandled Promise Rejection', {
+        reason: event.reason,
+        promise: event.promise ? 'Promise object' : 'No promise object'
+      });
+
+      event.preventDefault(); // Prevent default console warning
+    };
+  }
+
+  overrideWindowError() {
+    // Also try to catch errors that might occur during early execution
+    setTimeout(() => {
+      // Capture any errors that might have occurred before we were ready
+      this.sendConsoleMessage('info', 'Console interceptor initialized at:', Date.now());
+    }, 0);
+  }
+
+  sendConsoleMessage(level, ...args) {
+    try {
+      const message = args.map(arg => {
+        if (arg === undefined) return 'undefined';
+        if (arg === null) return 'null';
+        if (typeof arg === 'object') {
+          try {
+            return JSON.stringify(arg, (key, value) => {
+              if (value instanceof Error) {
+                return {
+                  name: value.name,
+                  message: value.message,
+                  stack: value.stack
+                };
+              }
+              return value;
+            });
+          } catch {
+            return String(arg);
+          }
+        }
+        if (typeof arg === 'function') {
+          return arg.toString();
+        }
+        return String(arg);
+      }).join(' ');
+
+      // Try to send to parent, but don't fail if parent isn't ready
+      try {
+        window.parent.postMessage({
+          jsonrpc: "2.0",
+          method: `console.${level}`,
+          params: {
+            level,
+            message,
+            timestamp: Date.now(),
+            args: args.map(arg => {
+              if (arg === undefined) return undefined;
+              if (arg === null) return null;
+              if (typeof arg === 'object') {
+                try {
+                  return JSON.parse(JSON.stringify(arg, (key, value) => {
+                    if (value instanceof Error) {
+                      return {
+                        name: value.name,
+                        message: value.message,
+                        stack: value.stack
+                      };
+                    }
+                    return value;
+                  }));
+                } catch {
+                  return String(arg);
+                }
+              }
+              return arg;
+            })
+          }
+        }, "*");
+      } catch (postMessageError) {
+        // Parent might not be ready yet, try again later
+        setTimeout(() => {
+          try {
+            window.parent.postMessage({
+              jsonrpc: "2.0",
+              method: `console.${level}`,
+              params: {
+                level,
+                message: `[DELAYED] ${message}`,
+                timestamp: Date.now(),
+                args: []
+              }
+            }, "*");
+          } catch {
+            // Give up - parent isn't available
+          }
+        }, 100);
+      }
+    } catch (error) {
+      // If serialization fails, at least try to send a simple message
+      try {
+        window.parent.postMessage({
+          jsonrpc: "2.0",
+          method: "console.error",
+          params: {
+            level: "error",
+            message: `Console interceptor error: ${error.message}`,
+            timestamp: Date.now(),
+            args: []
+          }
+        }, "*");
+      } catch {
+        // If even this fails, we can't do anything
+      }
+    }
   }
 }
 
@@ -139,7 +275,21 @@ class FetchClient {
     this.swReady = false;
     this.consoleInterceptor = new ConsoleInterceptor();
 
+    // Process any early errors captured by inline script
+    this.processEarlyErrors();
+
     this.init();
+  }
+
+  processEarlyErrors() {
+    // Check for early errors captured before main script loaded
+    if (window._earlyConsoleErrors && Array.isArray(window._earlyConsoleErrors)) {
+      window._earlyConsoleErrors.forEach(error => {
+        console.log(`[EARLY ${error.level.toUpperCase()}] ${error.message}`, ...error.args);
+      });
+      // Clear the early errors
+      window._earlyConsoleErrors = [];
+    }
   }
 
   async init() {

@@ -208,16 +208,30 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
     jsonrpc: '2.0';
     method: string;
     params: {
-      level: 'log' | 'warn' | 'error' | 'info' | 'debug';
+      level: 'log' | 'warn' | 'error' | 'info' | 'debug' | 'exception' | 'assert' | 'clear' | 'count' | 'countReset' | 'dir' | 'dirxml' | 'group' | 'groupCollapsed' | 'groupEnd' | 'table' | 'time' | 'timeEnd' | 'timeLog' | 'trace';
       message: string;
       timestamp: number;
       args: unknown[];
     };
   }) => {
     const { params } = message;
+
+    // Normalize level to ensure it's one of our supported types
+    let normalizedLevel: ConsoleMessage['level'] = params.level;
+    if (!['log', 'warn', 'error', 'info', 'debug'].includes(normalizedLevel)) {
+      // Map other console methods to appropriate levels
+      if (['exception', 'assert'].includes(normalizedLevel)) {
+        normalizedLevel = 'error';
+      } else if (['clear', 'count', 'countReset', 'dir', 'dirxml', 'group', 'groupCollapsed', 'groupEnd', 'table', 'time', 'timeEnd', 'timeLog', 'trace'].includes(normalizedLevel)) {
+        normalizedLevel = 'info';
+      } else {
+        normalizedLevel = 'log';
+      }
+    }
+
     const newConsoleMessage: ConsoleMessage = {
       id: Date.now(),
-      level: params.level,
+      level: normalizedLevel,
       message: params.message,
       timestamp: params.timestamp,
       args: params.args,
@@ -225,8 +239,8 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
 
     setConsoleMessages(prev => [...prev, newConsoleMessage]);
 
-    // Log to parent console for debugging
-    console.log(`[IFRAME ${params.level.toUpperCase()}] ${params.message}`, ...params.args);
+    // Log to parent console for debugging with appropriate level
+    console[normalizedLevel](`[IFRAME ${params.level.toUpperCase()}] ${params.message}`, ...params.args);
   }, []);
 
   const handleFetch = useCallback(async (request: JSONRPCRequest) => {

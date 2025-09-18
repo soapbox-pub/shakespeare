@@ -4,7 +4,7 @@ import { type Project } from '@/lib/ProjectsManager';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { ProjectSidebar } from '@/components/ProjectSidebar';
 import { Button } from '@/components/ui/button';
-import { Menu, Columns2 } from 'lucide-react';
+import { Menu } from 'lucide-react';
 import { useIsMobile } from '@/hooks/useIsMobile';
 
 interface AppLayoutProps {
@@ -129,6 +129,7 @@ export function AppLayout({
             selectedProject={selectedProject}
             onSelectProject={handleProjectSelect}
             className="h-screen sticky top-0"
+            onToggleSidebar={() => setIsSidebarVisible(false)}
           />
         </div>
       )}
@@ -136,16 +137,16 @@ export function AppLayout({
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col bg-background">
         <div className="min-h-screen bg-gradient-to-br from-primary/5 to-accent/5 relative">
-          {/* Toggle Button - positioned absolutely in top-left corner */}
-          {showSidebar && (
+          {/* Show open button when sidebar is collapsed */}
+          {showSidebar && !isSidebarVisible && (
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setIsSidebarVisible(!isSidebarVisible)}
+              onClick={() => setIsSidebarVisible(true)}
               className="absolute top-2 left-4 h-8 w-8 p-0 z-10 bg-transparent backdrop-blur-sm hover:bg-transparent text-foreground/70 hover:text-foreground"
-              aria-label="Toggle sidebar"
+              aria-label="Open sidebar"
             >
-              {isSidebarVisible ? <Columns2 className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+              <Menu className="h-4 w-4" />
             </Button>
           )}
 

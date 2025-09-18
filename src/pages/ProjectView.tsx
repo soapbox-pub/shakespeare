@@ -9,7 +9,7 @@ import { ProjectInfoDialog } from '@/components/ProjectInfoDialog';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, MessageSquare, Eye, Code, Menu, Columns2 } from 'lucide-react';
+import { ArrowLeft, MessageSquare, Eye, Code, Menu } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { ActionsMenu } from '@/components/ActionsMenu';
 
@@ -371,6 +371,7 @@ export function ProjectView() {
               navigate('/');
             }
           }}
+          onToggleSidebar={() => setIsSidebarVisible(!isSidebarVisible)}
           className="h-full"
         />
       </div>
@@ -385,32 +386,34 @@ export function ProjectView() {
                 {/* Chat Header */}
                 <div className="h-12 px-4 border-b flex-shrink-0">
                   <div className="flex items-center justify-between h-12">
-                    {/* Left side - Sidebar toggle */}
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setIsSidebarVisible(!isSidebarVisible)}
-                        className="h-8 w-8 p-0"
-                        aria-label="Toggle sidebar"
-                      >
-                        <Columns2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-
-                    {/* Center - Project title */}
-                    <div className="flex flex-1 min-w-0 px-4 truncate">
-                      {project ? (
+                    {/* Left side - Sidebar toggle (when collapsed) */}
+                    <div className="flex items-center gap-3">
+                      {!isSidebarVisible && (
                         <Button
                           variant="ghost"
-                          className="block p-0 h-auto font-semibold text-lg truncate hover:bg-transparent hover:text-primary"
-                          onClick={() => setIsProjectInfoOpen(true)}
+                          size="sm"
+                          onClick={() => setIsSidebarVisible(true)}
+                          className="h-8 w-8 p-0"
+                          aria-label="Open sidebar"
                         >
-                          {project.name}
+                          <Menu className="h-4 w-4" />
                         </Button>
-                      ) : (
-                        <Skeleton className="h-6 w-40" />
                       )}
+
+                      {/* Project title */}
+                      <div className="flex flex-1 min-w-0 truncate">
+                        {project ? (
+                          <Button
+                            variant="ghost"
+                            className="block p-0 h-auto font-semibold text-lg truncate hover:bg-transparent hover:text-primary"
+                            onClick={() => setIsProjectInfoOpen(true)}
+                          >
+                            {project.name}
+                          </Button>
+                        ) : (
+                          <Skeleton className="h-6 w-40" />
+                        )}
+                      </div>
                     </div>
 
                     {/* Right side - Star and Actions Menu */}

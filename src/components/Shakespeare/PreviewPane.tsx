@@ -217,16 +217,13 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
     const { params } = message;
 
     // Normalize level to ensure it's one of our supported types
-    let normalizedLevel: ConsoleMessage['level'] = params.level;
-    if (!['log', 'warn', 'error', 'info', 'debug'].includes(normalizedLevel)) {
-      // Map other console methods to appropriate levels
-      if (['exception', 'assert'].includes(normalizedLevel)) {
-        normalizedLevel = 'error';
-      } else if (['clear', 'count', 'countReset', 'dir', 'dirxml', 'group', 'groupCollapsed', 'groupEnd', 'table', 'time', 'timeEnd', 'timeLog', 'trace'].includes(normalizedLevel)) {
-        normalizedLevel = 'info';
-      } else {
-        normalizedLevel = 'log';
-      }
+    let normalizedLevel: ConsoleMessage['level'] = 'log';
+    if (['log', 'warn', 'error', 'info', 'debug'].includes(params.level as ConsoleMessage['level'])) {
+      normalizedLevel = params.level as ConsoleMessage['level'];
+    } else if (['exception', 'assert'].includes(params.level)) {
+      normalizedLevel = 'error';
+    } else if (['clear', 'count', 'countReset', 'dir', 'dirxml', 'group', 'groupCollapsed', 'groupEnd', 'table', 'time', 'timeEnd', 'timeLog', 'trace'].includes(params.level)) {
+      normalizedLevel = 'info';
     }
 
     const newConsoleMessage: ConsoleMessage = {
@@ -442,17 +439,16 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className="ml-2">
-          <Terminal className="h-4 w-4 mr-2" />
-          Console ({consoleMessages.length})
+        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 relative">
+          <Terminal className="h-4 w-4" />
           {consoleMessages.some(msg => msg.level === 'error') && (
-            <span className="ml-2 h-2 w-2 bg-red-500 rounded-full"></span>
+            <span className="absolute bottom-0 left-0 h-2 w-2 bg-red-500 rounded-full"></span>
           )}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-96 max-h-96">
         <div className="flex items-center justify-between p-2 border-b">
-          <span className="font-medium text-sm">Console Output</span>
+          <span className="font-medium text-sm">Console Output ({consoleMessages.length})</span>
           <Button variant="ghost" size="sm" onClick={clearConsole}>
             <X className="h-3 w-3" />
           </Button>
@@ -495,7 +491,7 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
         <TabsContent value="preview" className="h-full mt-0">
           {hasBuiltProject ? (
             <div className="h-full w-full flex flex-col">
-              <div className="flex items-center border-b">
+              <div className="flex items-center border-b w-full">
                 <BrowserAddressBar
                   currentPath={currentPath}
                   onNavigate={navigateToPath}
@@ -504,8 +500,8 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
                   onForward={goForward}
                   canGoBack={historyIndex > 0}
                   canGoForward={historyIndex < navigationHistory.length - 1}
+                  extraContent={<ConsoleDropdown />}
                 />
-                <ConsoleDropdown />
               </div>
               <iframe
                 ref={iframeRef}

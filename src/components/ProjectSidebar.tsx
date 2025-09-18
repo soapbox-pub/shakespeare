@@ -1,7 +1,6 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Folder, GitBranch, Settings, Loader2, ChevronDown, Star } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Plus, Folder, GitBranch, Loader2, ChevronDown, Star } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { LoginArea } from '@/components/auth/LoginArea';
@@ -116,16 +115,6 @@ export function ProjectSidebar({
               Shakespeare
             </h1>
           </button>
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0 hover:bg-primary/10 -mr-2"
-              onClick={() => navigate('/settings')}
-            >
-              <Settings className="h-4 w-4 text-primary/60 hover:text-primary" />
-            </Button>
-          </div>
         </div>
       </div>
 

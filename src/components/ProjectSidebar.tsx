@@ -11,6 +11,7 @@ import { useIsMobile } from '@/hooks/useIsMobile';
 import type { Project } from '@/lib/ProjectsManager';
 import { cn } from '@/lib/utils';
 import { useQueryClient } from '@tanstack/react-query';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 interface ProjectItemProps {
   project: Project;
@@ -235,6 +236,7 @@ export function ProjectSidebar({
             <Settings className="h-4 w-4" />
             Settings
           </Button>
+          <ThemeToggle />
           <Button
             variant="ghost"
             size="sm"

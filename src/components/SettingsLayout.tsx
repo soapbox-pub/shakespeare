@@ -102,9 +102,9 @@ export function SettingsLayout() {
 
   if (isMobile) {
     return (
-      <div className="min-h-dvh bg-white">
+      <div className="min-h-dvh bg-background">
         {/* Mobile Header */}
-        <header className="h-12 border-b bg-white px-4 py-3 flex items-center justify-between">
+        <header className="h-12 border-b bg-background px-4 py-3 flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <Button
               variant="ghost"
@@ -145,7 +145,7 @@ export function SettingsLayout() {
 
   // Desktop 3-column layout
   return (
-    <div className="h-screen flex bg-white overflow-hidden">
+    <div className="h-screen flex bg-background overflow-hidden">
       {/* Left Column - Projects Sidebar (optionally hidden) */}
       {isSidebarVisible && (
         <div className="w-80 border-r bg-sidebar flex-shrink-0">
@@ -159,7 +159,7 @@ export function SettingsLayout() {
       )}
 
       {/* Middle Column - Settings Navigation */}
-      <div className="w-96 border-r bg-white flex flex-col flex-shrink-0">
+      <div className="w-96 border-r bg-background flex flex-col flex-shrink-0">
         {/* Header with toggle button */}
         <div className="h-12 px-4 py-2 border-b flex-shrink-0">
           <div className="flex items-center gap-3">
@@ -217,7 +217,7 @@ export function SettingsLayout() {
       </div>
 
       {/* Right Column - Settings Content - Scrollable */}
-      <ScrollArea className="flex-1 bg-white">
+      <ScrollArea className="flex-1 bg-background">
         <div className="max-w-4xl">
           <Outlet />
         </div>

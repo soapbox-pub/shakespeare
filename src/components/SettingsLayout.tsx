@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Menu, Bot, GitBranch, Database, Wifi } from 'lucide-react';
+import { Menu, Bot, GitBranch, Database, Wifi, Settings2 } from 'lucide-react';
 import { ProjectSidebar } from '@/components/ProjectSidebar';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { useIsMobile } from '@/hooks/useIsMobile';
@@ -19,6 +19,13 @@ interface SettingsItem {
 }
 
 const settingsItems: SettingsItem[] = [
+  {
+    id: 'preferences',
+    title: 'Preferences',
+    description: 'General application preferences and appearance',
+    icon: Settings2,
+    href: '/settings/preferences',
+  },
   {
     id: 'ai',
     title: 'AI Settings',

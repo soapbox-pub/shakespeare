@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import QRCode from 'qrcode';
-import { CreditCard, Zap, ExternalLink, RefreshCw, Check, X, Clock, AlertCircle, Copy } from 'lucide-react';
+import { CreditCard, Zap, ExternalLink, RefreshCw, Check, X, Clock, AlertCircle, Copy, RotateCcw } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -204,6 +204,7 @@ export function CreditsDialog({ open, onOpenChange, providerId, connection }: Cr
   const [amount, setAmount] = useState<number>(10);
   const [paymentMethod, setPaymentMethod] = useState<'stripe' | 'lightning'>('stripe');
   const [lightningInvoice, setLightningInvoice] = useState<string | null>(null);
+  const [refreshingPayments, setRefreshingPayments] = useState<Set<string>>(new Set());
 
   // Query for payment history
   const { data: payments, isLoading: isLoadingPayments } = useQuery({
@@ -253,6 +254,75 @@ export function CreditsDialog({ open, onOpenChange, providerId, connection }: Cr
       const errorMessage = error?.message || 'Failed to initiate payment';
       toast({
         title: 'Payment failed',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Mutation for checking payment status
+  const checkPaymentMutation = useMutation({
+    mutationFn: async (paymentId: string): Promise<Payment> => {
+      const ai = createAIClient(connection, user);
+      return await ai.get(`/credits/payments/${paymentId}`) as Payment;
+    },
+    onMutate: async (paymentId: string) => {
+      // Add this payment to the refreshing set
+      setRefreshingPayments(prev => new Set(prev).add(paymentId));
+    },
+    onSuccess: (updatedPayment) => {
+      // Remove from refreshing set
+      setRefreshingPayments(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(updatedPayment.id);
+        return newSet;
+      });
+
+      // Update the specific payment in the cache instead of refetching
+      queryClient.setQueryData<Payment[]>(
+        ['ai-payments', connection.nostr ? user?.pubkey ?? '' : '', providerId],
+        (oldPayments) => {
+          if (!oldPayments) return oldPayments;
+          return oldPayments.map(payment =>
+            payment.id === updatedPayment.id ? updatedPayment : payment
+          );
+        }
+      );
+
+      // If payment completed, refresh credits balance
+      if (updatedPayment.status === 'completed') {
+        queryClient.invalidateQueries({
+          queryKey: ['ai-credits', connection.nostr ? user?.pubkey ?? '' : '', providerId],
+        });
+        toast({
+          title: 'Payment completed!',
+          description: `${formatCurrency(updatedPayment.amount)} has been added to your account.`,
+        });
+      } else if (updatedPayment.status === 'failed') {
+        toast({
+          title: 'Payment failed',
+          description: 'The payment has failed. Please try again.',
+          variant: 'destructive',
+        });
+      } else if (updatedPayment.status === 'expired') {
+        toast({
+          title: 'Payment expired',
+          description: 'The payment has expired. Please create a new payment.',
+          variant: 'destructive',
+        });
+      }
+    },
+    onError: (error: Error, paymentId: string) => {
+      // Remove from refreshing set on error
+      setRefreshingPayments(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(paymentId);
+        return newSet;
+      });
+
+      const errorMessage = error?.message || 'Failed to check payment status';
+      toast({
+        title: 'Refresh failed',
         description: errorMessage,
         variant: 'destructive',
       });
@@ -450,7 +520,23 @@ export function CreditsDialog({ open, onOpenChange, providerId, connection }: Cr
 
           {/* Transaction History */}
           <div className="space-y-4">
-            <h3 className="text-base font-semibold">Recent Transactions</h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-semibold">Recent Transactions</h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  queryClient.invalidateQueries({
+                    queryKey: ['ai-payments', connection.nostr ? user?.pubkey ?? '' : '', providerId],
+                  });
+                }}
+                disabled={isLoadingPayments}
+                className="h-8 px-2"
+                title="Refresh transaction list"
+              >
+                <RefreshCw className={`h-4 w-4 ${isLoadingPayments ? 'animate-spin' : ''}`} />
+              </Button>
+            </div>
 
             {isLoadingPayments ? (
               <div className="space-y-3">
@@ -500,22 +586,36 @@ export function CreditsDialog({ open, onOpenChange, providerId, connection }: Cr
 
                     <div className="flex items-center justify-between text-xs text-muted-foreground">
                       <span>{formatDate(payment.created_at)}</span>
-                      {payment.status === 'pending' && payment.url && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            if (payment.method === 'lightning') {
-                              setLightningInvoice(payment.url);
-                            } else {
-                              window.open(payment.url, '_blank');
-                            }
-                          }}
-                          className="h-6 px-2 text-xs"
-                        >
-                          <ExternalLink className="h-3 w-3 mr-1" />
-                          {payment.method === 'lightning' ? 'Pay' : 'Pay'}
-                        </Button>
+                      {payment.status === 'pending' && (
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => checkPaymentMutation.mutate(payment.id)}
+                            disabled={refreshingPayments.has(payment.id)}
+                            className="h-6 px-2 text-xs"
+                            title="Refresh payment status"
+                          >
+                            <RotateCcw className={`h-3 w-3 ${refreshingPayments.has(payment.id) ? 'animate-spin' : ''}`} />
+                          </Button>
+                          {payment.url && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                if (payment.method === 'lightning') {
+                                  setLightningInvoice(payment.url);
+                                } else {
+                                  window.open(payment.url, '_blank');
+                                }
+                              }}
+                              className="h-6 px-2 text-xs"
+                            >
+                              <ExternalLink className="h-3 w-3 mr-1" />
+                              {payment.method === 'lightning' ? 'Pay' : 'Pay'}
+                            </Button>
+                          )}
+                        </div>
                       )}
                     </div>
                   </div>

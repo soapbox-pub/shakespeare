@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { useAIProjectId } from '@/hooks/useAIProjectId';
 import { useFS } from '@/hooks/useFS';
@@ -17,6 +18,7 @@ import { Plus } from 'lucide-react';
 import { useSeoMeta } from '@unhead/react';
 
 export default function Index() {
+  const { t } = useTranslation();
   const [prompt, setPrompt] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [storedPrompt, setStoredPrompt] = useLocalStorage('shakespeare-draft-prompt', '');
@@ -127,10 +129,10 @@ export default function Index() {
           <div className="text-center mb-8 md:mb-12">
             <div className="text-4xl md:text-6xl mb-4 md:mb-6">🎭</div>
             <h1 className="text-3xl md:text-4xl font-bold mb-3 md:mb-4 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              Build Nostr apps with AI
+              {t('buildNostrApps')}
             </h1>
             <p className="text-lg md:text-xl text-muted-foreground">
-              What would you like to build?
+              {t('whatToBuild')}
             </p>
           </div>
 
@@ -140,8 +142,8 @@ export default function Index() {
               <Textarea
                 placeholder={
                   !providerModel.trim()
-                    ? "Please select a model below, then describe what you'd like to build..."
-                    : "e.g., Create a farming equipment marketplace for local farmers to buy and sell tractors, tools, and supplies..."
+                    ? t('selectModelToDescribe')
+                    : t('examplePrompt')
                 }
                 value={prompt}
                 onChange={handlePromptChange}
@@ -169,7 +171,7 @@ export default function Index() {
                     onChange={setProviderModel}
                     className="w-full"
                     disabled={isCreating || isGeneratingId}
-                    placeholder="Choose a model..."
+                    placeholder={t('chooseModel')}
                   />
                 </div>
 
@@ -188,12 +190,12 @@ export default function Index() {
                   {isCreating || isGeneratingId ? (
                     <>
                       <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
-                      {isGeneratingId ? 'Generating...' : 'Creating...'}
+                      {isGeneratingId ? t('generating') : t('creating')}
                     </>
                   ) : (
                     <>
                       <Plus className="mr-2 h-3 w-3" />
-                      Create Project
+                      {t('createProject')}
                     </>
                   )}
                 </Button>

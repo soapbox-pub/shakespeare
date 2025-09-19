@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Check, Bot, ArrowLeft, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -79,6 +80,7 @@ const PRESET_PROVIDERS: PresetProvider[] = [
 ];
 
 export function AISettings() {
+  const { t } = useTranslation();
   const { settings, addProvider, removeProvider, updateProvider } = useAISettings();
   const isMobile = useIsMobile();
   const navigate = useNavigate();
@@ -154,15 +156,15 @@ export function AISettings() {
             className="h-8 w-auto px-2 -ml-2"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Settings
+            {t('backToSettings')}
           </Button>
           <div className="space-y-2">
             <h1 className="text-2xl font-bold flex items-center gap-3">
               <Bot className="h-6 w-6 text-primary" />
-              AI Settings
+              {t('aiSettings')}
             </h1>
             <p className="text-muted-foreground">
-              Configure AI providers by adding your API keys. Settings are automatically saved and stored locally in your browser.
+              {t('aiSettingsDescriptionLong')}
             </p>
           </div>
         </div>
@@ -172,10 +174,10 @@ export function AISettings() {
         <div className="space-y-2">
           <h1 className="text-2xl font-bold flex items-center gap-3">
             <Bot className="h-6 w-6 text-primary" />
-            AI Settings
+            {t('aiSettings')}
           </h1>
           <p className="text-muted-foreground">
-            Configure AI providers by adding your API keys. Settings are automatically saved and stored locally in your browser.
+            {t('aiSettingsDescriptionLong')}
           </p>
         </div>
       )}
@@ -184,7 +186,7 @@ export function AISettings() {
         {/* Configured Providers */}
         {configuredProviderIds.length > 0 && (
           <div className="space-y-3">
-            <h4 className="text-sm font-medium">Configured Providers</h4>
+            <h4 className="text-sm font-medium">{t('configuredProviders')}</h4>
             <Accordion type="multiple" className="w-full space-y-2">
               {configuredProviderIds.map((providerId) => {
                 const preset = PRESET_PROVIDERS.find(p => p.id === providerId);
@@ -199,7 +201,7 @@ export function AISettings() {
                           <span className="font-medium">
                             {preset?.name || providerId}
                           </span>
-                          {isCustom && <Badge variant="outline">Custom</Badge>}
+                          {isCustom && <Badge variant="outline">{t('custom')}</Badge>}
                         </div>
                         <Button
                           variant="ghost"
@@ -217,7 +219,7 @@ export function AISettings() {
                     <AccordionContent className="px-4 pb-4">
                       <div className="space-y-3">
                         <div className="grid gap-2">
-                          <Label htmlFor={`${providerId}-baseURL`}>Base URL</Label>
+                          <Label htmlFor={`${providerId}-baseURL`}>{t('baseUrl')}</Label>
                           <Input
                             id={`${providerId}-baseURL`}
                             placeholder="https://api.example.com/v1"
@@ -226,7 +228,7 @@ export function AISettings() {
                           />
                         </div>
                         <div className="grid gap-2">
-                          <Label htmlFor={`${providerId}-auth`}>Authentication</Label>
+                          <Label htmlFor={`${providerId}-auth`}>{t('authentication')}</Label>
                           <Select
                             value={provider?.nostr ? 'nostr' : 'api-key'}
                             onValueChange={(value: 'api-key' | 'nostr') => handleUpdateProvider(providerId, {
@@ -238,17 +240,17 @@ export function AISettings() {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="api-key">API Key</SelectItem>
+                              <SelectItem value="api-key">{t('apiKey')}</SelectItem>
                               <SelectItem value="nostr">Nostr</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
                         {!provider?.nostr && (
                           <div className="grid gap-2">
-                            <Label htmlFor={`${providerId}-apiKey`}>API Key</Label>
+                            <Label htmlFor={`${providerId}-apiKey`}>{t('apiKey')}</Label>
                             <PasswordInput
                               id={`${providerId}-apiKey`}
-                              placeholder="Enter your API key"
+                              placeholder={t('enterApiKey')}
                               value={provider?.apiKey || ''}
                               onChange={(e) => handleUpdateProvider(providerId, { apiKey: e.target.value })}
                             />
@@ -268,7 +270,7 @@ export function AISettings() {
         {/* Available Preset Providers */}
         {availablePresets.length > 0 && (
           <div className="space-y-3">
-            <h4 className="text-sm font-medium">Add Provider</h4>
+            <h4 className="text-sm font-medium">{t('addProvider')}</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {availablePresets.map((preset) => (
                 <div key={preset.id} className="border rounded-lg p-4 space-y-3">
@@ -280,14 +282,14 @@ export function AISettings() {
                         className="text-xs text-muted-foreground underline hover:text-foreground"
                         onClick={() => window.open(preset.apiKeysURL, '_blank')}
                       >
-                        Get API key
+                        {t('getApiKey')}
                       </button>
                     )}
                   </div>
                   <div className="flex gap-2">
                     {!preset.nostr && (
                       <PasswordInput
-                        placeholder={preset.id === "routstr" ? "Enter a Cashu token" : "Enter your API key"}
+                        placeholder={preset.id === "routstr" ? t('enterCashuToken') : t('enterApiKey')}
                         className="flex-1"
                         value={presetApiKeys[preset.id] || ''}
                         onChange={(e) => setPresetApiKeys(prev => ({
@@ -306,7 +308,7 @@ export function AISettings() {
                       disabled={!!preset.apiKeysURL && !presetApiKeys[preset.id]?.trim()}
                       size="sm"
                     >
-                      Add
+                      {t('add')}
                     </Button>
                   </div>
                 </div>
@@ -322,12 +324,12 @@ export function AISettings() {
           <Accordion type="single" collapsible className="w-full">
             <AccordionItem value="custom-provider" className="border rounded-lg">
               <AccordionTrigger className="px-4 py-3 hover:no-underline">
-                <h4 className="text-sm font-medium">Add Custom Provider</h4>
+                <h4 className="text-sm font-medium">{t('addCustomProvider')}</h4>
               </AccordionTrigger>
               <AccordionContent className="px-4 pb-4">
                 <div className="space-y-3">
                   <div className="grid gap-2">
-                    <Label htmlFor="custom-name">Provider Name</Label>
+                    <Label htmlFor="custom-name">{t('providerName')}</Label>
                     <Input
                       id="custom-name"
                       placeholder="e.g., my-custom-api"
@@ -336,7 +338,7 @@ export function AISettings() {
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="custom-baseurl">Base URL</Label>
+                    <Label htmlFor="custom-baseurl">{t('baseUrl')}</Label>
                     <Input
                       id="custom-baseurl"
                       placeholder="https://api.example.com/v1"
@@ -345,7 +347,7 @@ export function AISettings() {
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="custom-auth">Authentication</Label>
+                    <Label htmlFor="custom-auth">{t('authentication')}</Label>
                     <Select
                       value={customAuthMethod}
                       onValueChange={(value: 'api-key' | 'nostr') => {
@@ -359,17 +361,17 @@ export function AISettings() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="api-key">API Key</SelectItem>
+                        <SelectItem value="api-key">{t('apiKey')}</SelectItem>
                         <SelectItem value="nostr">Nostr</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   {customAuthMethod === 'api-key' && (
                     <div className="grid gap-2">
-                      <Label htmlFor="custom-apikey">API Key</Label>
+                      <Label htmlFor="custom-apikey">{t('apiKey')}</Label>
                       <PasswordInput
                         id="custom-apikey"
-                        placeholder="Enter your API key (optional)"
+                        placeholder={t('enterApiKey') + ' (optional)'}
                         value={customApiKey}
                         onChange={(e) => setCustomApiKey(e.target.value)}
                       />
@@ -386,11 +388,11 @@ export function AISettings() {
                     className="gap-2"
                   >
                     <Check className="h-4 w-4" />
-                    Add Custom Provider
+                    {t('addCustomProviderButton')}
                   </Button>
                   {customProviderName.trim() in settings.providers && (
                     <p className="text-sm text-destructive">
-                      Provider with this name already exists
+                      {t('providerExists')}
                     </p>
                   )}
                 </div>

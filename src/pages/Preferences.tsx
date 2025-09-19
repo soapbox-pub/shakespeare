@@ -29,7 +29,7 @@ export function Preferences() {
           <div className="space-y-2">
             <h1 className="text-2xl font-bold flex items-center gap-3">
               <Settings2 className="h-6 w-6 text-primary" />
-              {t('preferencesTitle')}
+              {t('preferences')}
             </h1>
             <p className="text-muted-foreground">
               {t('preferencesDescription')}
@@ -42,7 +42,7 @@ export function Preferences() {
         <div className="space-y-2">
           <h1 className="text-2xl font-bold flex items-center gap-3">
             <Settings2 className="h-6 w-6 text-primary" />
-            {t('preferencesTitle')}
+            {t('preferences')}
           </h1>
           <p className="text-muted-foreground">
             {t('preferencesDescription')}

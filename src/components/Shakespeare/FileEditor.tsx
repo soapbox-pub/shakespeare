@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,6 +16,7 @@ interface FileEditorProps {
 }
 
 export function FileEditor({ filePath, content, onSave, isLoading, projectId }: FileEditorProps) {
+  const { t } = useTranslation();
   const [editedContent, setEditedContent] = useState(content);
   const [isSaving, setIsSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
@@ -99,7 +101,7 @@ export function FileEditor({ filePath, content, onSave, isLoading, projectId }: 
           <CardTitle className={cn("text-sm sm:text-base truncate flex-1 mr-2", gitStatusClasses)}>{filePath}</CardTitle>
           <div className="flex items-center space-x-1 sm:space-x-2">
             {hasChanges && (
-              <span className="text-xs sm:text-sm text-muted-foreground hidden sm:inline">Unsaved changes</span>
+              <span className="text-xs sm:text-sm text-muted-foreground hidden sm:inline">{t('unsavedChanges')}</span>
             )}
             <Button
               onClick={handleSave}
@@ -110,19 +112,19 @@ export function FileEditor({ filePath, content, onSave, isLoading, projectId }: 
               {isSaving ? (
                 <>
                   <Loader2 className="mr-1 sm:mr-2 h-4 w-4 animate-spin" />
-                  <span className="hidden sm:inline">Saving...</span>
+                  <span className="hidden sm:inline">{t('saving')}</span>
                 </>
               ) : (
                 <>
                   <Save className="sm:mr-2 h-4 w-4" />
-                  <span className="hidden sm:inline">Save</span>
+                  <span className="hidden sm:inline">{t('save')}</span>
                 </>
               )}
             </Button>
           </div>
         </div>
         <div className="text-xs text-muted-foreground mt-1">
-          Language: {getLanguageFromPath(filePath)}
+          {t('languageLabel')}: {getLanguageFromPath(filePath)}
         </div>
       </CardHeader>
 

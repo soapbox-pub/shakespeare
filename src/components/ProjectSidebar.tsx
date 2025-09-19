@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Plus, Folder, GitBranch, Loader2, ChevronDown, Star, Columns2, X, Settings, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -87,6 +88,7 @@ export function ProjectSidebar({
   onToggleSidebar,
   onClose
 }: ProjectSidebarProps) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { data: projects = [], isLoading, error } = useProjects();
   const [favorites] = useLocalStorage<string[]>('project-favorites', []);
@@ -144,7 +146,7 @@ export function ProjectSidebar({
                 size="sm"
                 className="h-8 w-8 p-0 hover:bg-primary/10 -mr-2"
                 onClick={handleToggleSidebar}
-                aria-label={(onClose && isMobile) ? "Close sidebar" : "Collapse sidebar"}
+                aria-label={(onClose && isMobile) ? t('closeSidebar') : t('collapseSidebar')}
               >
                 {(onClose && isMobile) ? (
                   <X className="h-4 w-4 text-primary/60 hover:text-primary" />
@@ -167,7 +169,7 @@ export function ProjectSidebar({
                   className="flex-1 flex items-center justify-center px-3 py-2 text-sm font-medium text-primary-foreground rounded-l-md hover:bg-white/10 transition-colors"
                 >
                   <Plus className="h-4 w-4 mr-2" />
-                  New Project
+                  {t('newProject')}
                 </button>
                 <div className="w-px bg-white/20" />
                 <DropdownMenu>
@@ -182,7 +184,7 @@ export function ProjectSidebar({
                       className="flex items-center gap-2 w-full"
                     >
                       <GitBranch className="h-4 w-4" />
-                      Import Repository
+                      {t('importRepository')}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -204,8 +206,8 @@ export function ProjectSidebar({
           ) : projects.length === 0 ? (
             <div className="text-center p-6 text-muted-foreground">
               <Folder className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p className="text-sm">No projects yet</p>
-              <p className="text-xs">Create your first project to get started</p>
+              <p className="text-sm">{t('noProjectsYet')}</p>
+              <p className="text-xs">{t('createFirstProject')}</p>
             </div>
           ) : (
             <div className="space-y-1">
@@ -233,14 +235,14 @@ export function ProjectSidebar({
             onClick={() => navigateAndClose('/settings')}
           >
             <Settings className="h-4 w-4 transition-colors duration-200" />
-            Settings
+            {t('settings')}
           </Button>
           <Button
             variant="ghost"
             size="sm"
             className="h-9 w-9 p-0 text-sidebar-foreground dark:hover:text-sidebar-primary hover:bg-primary/10 dark:hover:bg-sidebar-accent/30 transition-all duration-200"
             onClick={() => window.open('https://soapbox.pub/shakespeare-resources/', '_blank')}
-            aria-label="Help"
+            aria-label={t('help')}
           >
             <HelpCircle className="h-4 w-4 transition-colors duration-200" />
           </Button>

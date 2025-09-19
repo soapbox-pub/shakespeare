@@ -61,7 +61,7 @@ export function Settings() {
     return (
       <div className="p-6 space-y-4">
         <div className="space-y-2">
-          <h2 className="text-xl font-bold">{t('settingsTitle')}</h2>
+          <h2 className="text-xl font-bold">{t('settings')}</h2>
           <p className="text-muted-foreground">
             {t('settingsDescription')}
           </p>

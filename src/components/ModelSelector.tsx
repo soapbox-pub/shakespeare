@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Check, ChevronDown, Edit3, RefreshCw, AlertCircle, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,14 +24,17 @@ export function ModelSelector({
   onChange,
   className,
   disabled = false,
-  placeholder = "Select or enter a model...",
+  placeholder,
 }: ModelSelectorProps) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [isCustomInput, setIsCustomInput] = useState(false);
   const [customValue, setCustomValue] = useState('');
   const { settings, addRecentlyUsedModel, isConfigured } = useAISettings();
   const { models, isLoading, error, refetch } = useProviderModels();
   const navigate = useNavigate();
+
+  const defaultPlaceholder = t('selectOrEnterModel');
 
   const recentlyUsedModels = useMemo(() => settings.recentlyUsedModels || [], [settings.recentlyUsedModels]);
 
@@ -125,14 +129,14 @@ export function ModelSelector({
             disabled={disabled}
           >
             <span className="w-full truncate">
-              {value || placeholder}
+              {value || placeholder || defaultPlaceholder}
             </span>
             <ChevronDown className="size-3 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
       <PopoverContent className="w-96 p-0" align="end">
         <Command>
-          {isConfigured && <CommandInput placeholder="Search models..." className="h-9" />}
+          {isConfigured && <CommandInput placeholder={t('searchModels')} className="h-9" />}
           <CommandList className="max-h-[300px]">
             {/* Custom model option and manage providers */}
             <CommandGroup>
@@ -143,7 +147,7 @@ export function ModelSelector({
                   className="cursor-pointer"
                 >
                   <Edit3 className="mr-2 h-4 w-4" />
-                  Enter custom model...
+                  {t('enterCustomModel')}
                 </CommandItem>
               )}
               <CommandItem
@@ -152,7 +156,7 @@ export function ModelSelector({
                 className="cursor-pointer"
               >
                 <Settings className="mr-2 h-4 w-4" />
-                Manage providers...
+                {t('manageProviders')}
               </CommandItem>
             </CommandGroup>
 
@@ -160,13 +164,13 @@ export function ModelSelector({
 
             <CommandEmpty>
               <div className="py-6 text-center text-sm text-muted-foreground">
-                <p>No models found.</p>
-                <p className="mt-2 text-xs">Try using a custom model instead.</p>
+                <p>{t('noModelsFound')}</p>
+                <p className="mt-2 text-xs">{t('tryCustomModel')}</p>
               </div>
             </CommandEmpty>
 
             {recentlyUsedModels.length > 0 && (
-              <CommandGroup heading="Recently Used">
+              <CommandGroup heading={t('recentlyUsed')}>
                 {recentlyUsedModels.map((model) => (
                   <CommandItem
                     key={model}
@@ -190,7 +194,7 @@ export function ModelSelector({
 
             {/* Loading state */}
             {isLoading && (
-              <CommandGroup heading="Loading Models...">
+              <CommandGroup heading={t('loading')}>
                 <div className="px-2 py-1.5">
                   <div className="space-y-2">
                     <Skeleton className="h-4 w-full" />
@@ -203,7 +207,7 @@ export function ModelSelector({
 
             {/* Error state */}
             {error && !isLoading && (
-              <CommandGroup heading="Error Loading Models">
+              <CommandGroup heading={t('errorLoadingModels')}>
                 <div className="px-2 py-1.5 text-sm text-muted-foreground">
                   <div className="flex items-start gap-2">
                     <AlertCircle className="h-4 w-4 text-destructive flex-shrink-0 mt-0.5" />
@@ -216,7 +220,7 @@ export function ModelSelector({
                         className="h-7 text-xs"
                       >
                         <RefreshCw className="h-3 w-3 mr-1" />
-                        Retry
+                        {t('retry')}
                       </Button>
                     </div>
                   </div>

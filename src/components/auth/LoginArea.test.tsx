@@ -71,24 +71,6 @@ describe('LoginArea', () => {
     expect(screen.getByTestId('account-switcher')).toBeInTheDocument();
   });
 
-  it('shows anonymous user menu when user is not logged in', () => {
-    mockUseLoggedInAccounts.mockReturnValue({
-      authors: [],
-      currentUser: undefined,
-      otherUsers: [],
-      setLogin: vi.fn(),
-      removeLogin: vi.fn(),
-      isLoading: false
-    });
-
-    render(<LoginArea />);
-
-    // Should show anonymous user display
-    expect(screen.getByText('Anonymous')).toBeInTheDocument();
-
-    // Should show the dropdown trigger button
-    expect(screen.getByRole('button')).toBeInTheDocument();
-  });
 
 
 

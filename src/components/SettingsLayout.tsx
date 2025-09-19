@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Menu, Bot, GitBranch, Database, Wifi, Settings2 } from 'lucide-react';
@@ -18,45 +19,47 @@ interface SettingsItem {
   href: string;
 }
 
-const settingsItems: SettingsItem[] = [
+// Define settings items as a function to get fresh translations
+const getSettingsItems = (t: (key: string) => string): SettingsItem[] => [
   {
     id: 'preferences',
-    title: 'Preferences',
-    description: 'General application preferences and appearance',
+    title: t('preferences'),
+    description: t('preferencesDescription'),
     icon: Settings2,
     href: '/settings/preferences',
   },
   {
     id: 'ai',
-    title: 'AI Settings',
-    description: 'Configure AI providers and API keys',
+    title: t('aiSettings'),
+    description: t('aiSettingsDescription'),
     icon: Bot,
     href: '/settings/ai',
   },
   {
     id: 'git',
-    title: 'Git Settings',
-    description: 'Configure Git credentials for HTTP authentication',
+    title: t('gitSettings'),
+    description: t('gitSettingsDescription'),
     icon: GitBranch,
     href: '/settings/git',
   },
   {
     id: 'nostr',
-    title: 'Nostr Settings',
-    description: 'Configure relay connections and Nostr preferences',
+    title: t('nostrSettings'),
+    description: t('nostrSettingsDescription'),
     icon: Wifi,
     href: '/settings/nostr',
   },
   {
     id: 'data',
-    title: 'Data',
-    description: 'Export files and manage local data',
+    title: t('dataSettings'),
+    description: t('dataSettingsDescription'),
     icon: Database,
     href: '/settings/data',
   },
 ];
 
 export function SettingsLayout() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const isMobile = useIsMobile();
@@ -104,6 +107,7 @@ export function SettingsLayout() {
   };
 
   // Get current settings page
+  const settingsItems = getSettingsItems(t);
   const currentPath = location.pathname;
   const currentSettingsId = settingsItems.find(item => item.href === currentPath)?.id;
 
@@ -117,11 +121,11 @@ export function SettingsLayout() {
               variant="ghost"
               size="sm"
               onClick={() => setIsSidebarVisible(!isSidebarVisible)}
-              aria-label="Toggle sidebar"
+              aria-label={t('toggleSidebar')}
             >
               <Menu className="h-4 w-4" />
             </Button>
-            <h1 className="text-lg font-semibold">Settings</h1>
+            <h1 className="text-lg font-semibold">{t('settings')}</h1>
           </div>
         </header>
 
@@ -176,13 +180,13 @@ export function SettingsLayout() {
                 size="sm"
                 onClick={() => setIsSidebarVisible(true)}
                 className="h-8 w-8 p-0"
-                aria-label="Open sidebar"
+                aria-label={t('openSidebar')}
               >
                 <Menu className="h-4 w-4" />
               </Button>
             )}
             <h1 className="text-xl font-bold flex items-center gap-2">
-              Settings
+              {t('settings')}
             </h1>
           </div>
         </div>

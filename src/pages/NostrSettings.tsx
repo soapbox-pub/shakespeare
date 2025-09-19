@@ -1,4 +1,5 @@
 import { ArrowLeft, Wifi, Users, UserPlus, LogOut, Trash2, User, Plus } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,6 +15,7 @@ import { genUserName } from '@/lib/genUserName';
 import { useState } from 'react';
 
 export function NostrSettings() {
+  const { t } = useTranslation();
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const { authors, currentUser, setLogin, removeLogin, isLoading } = useLoggedInAccounts();
@@ -51,15 +53,15 @@ export function NostrSettings() {
             className="h-8 w-auto px-2 -ml-2"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Settings
+            {t('backToSettings')}
           </Button>
           <div className="space-y-2">
             <h1 className="text-2xl font-bold flex items-center gap-3">
               <Wifi className="h-6 w-6 text-primary" />
-              Nostr Settings
+              {t('nostrSettings')}
             </h1>
             <p className="text-muted-foreground">
-              Configure your Nostr connection settings and relay preferences.
+              {t('nostrSettingsDescriptionLong')}
             </p>
           </div>
         </div>
@@ -69,10 +71,10 @@ export function NostrSettings() {
         <div className="space-y-2">
           <h1 className="text-2xl font-bold flex items-center gap-3">
             <Wifi className="h-6 w-6 text-primary" />
-            Nostr Settings
+            {t('nostrSettings')}
           </h1>
           <p className="text-muted-foreground">
-            Configure your Nostr connection settings and relay preferences.
+            {t('nostrSettingsDescriptionLong')}
           </p>
         </div>
       )}
@@ -83,7 +85,7 @@ export function NostrSettings() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Users className="h-5 w-5" />
-              Nostr Accounts
+              {t('nostrAccounts')}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -111,16 +113,16 @@ export function NostrSettings() {
               <div className="text-center py-8">
                 <User className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                 <p className="text-muted-foreground mb-4">
-                  No accounts logged in. Add an account to get started.
+                  {t('noAccountsLoggedIn')}
                 </p>
                 <div className="flex flex-col sm:flex-row gap-2 justify-center">
                   <Button onClick={() => setShowSignupDialog(true)} className="gap-2">
                     <UserPlus className="h-4 w-4" />
-                    Create Account
+                    {t('createAccount')}
                   </Button>
                   <Button variant="outline" onClick={() => setShowLoginDialog(true)} className="gap-2">
                     <LogOut className="h-4 w-4 rotate-180" />
-                    Add Existing Account
+                    {t('addExistingAccount')}
                   </Button>
                 </div>
               </div>
@@ -177,7 +179,7 @@ export function NostrSettings() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-muted-foreground">
-                        Add Account
+                        {t('addAccount')}
                       </p>
                     </div>
                   </div>
@@ -192,12 +194,12 @@ export function NostrSettings() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Wifi className="h-5 w-5" />
-              Relay Configuration
+              {t('relayConfiguration')}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid gap-2">
-              <Label htmlFor="relay-selector">Selected Relay</Label>
+              <Label htmlFor="relay-selector">{t('selectedRelay')}</Label>
               <RelaySelector className="w-full max-w-md" />
             </div>
           </CardContent>

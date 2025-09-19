@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Check, GitBranch, ArrowLeft, Github, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -38,6 +39,7 @@ const PRESET_PROVIDERS: PresetProvider[] = [
 ];
 
 export function GitSettings() {
+  const { t } = useTranslation();
   const { settings, addCredential, removeCredential, updateCredential, updateSettings } = useGitSettings();
   const { initiateOAuth, isLoading: isOAuthLoading, error: oauthError, isOAuthConfigured } = useGitHubOAuth();
   const isMobile = useIsMobile();
@@ -107,15 +109,15 @@ export function GitSettings() {
             className="h-8 w-auto px-2 -ml-2"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Settings
+            {t('backToSettings')}
           </Button>
           <div className="space-y-2">
             <h1 className="text-2xl font-bold flex items-center gap-3">
               <GitBranch className="h-6 w-6 text-primary" />
-              Git Settings
+              {t('gitSettings')}
             </h1>
             <p className="text-muted-foreground">
-              Configure Git credentials for HTTP authentication. Settings are automatically saved and stored locally in your browser.
+              {t('gitSettingsDescriptionLong')}
             </p>
           </div>
         </div>
@@ -125,10 +127,10 @@ export function GitSettings() {
         <div className="space-y-2">
           <h1 className="text-2xl font-bold flex items-center gap-3">
             <GitBranch className="h-6 w-6 text-primary" />
-            Git Settings
+            {t('gitSettings')}
           </h1>
           <p className="text-muted-foreground">
-            Configure Git credentials for HTTP authentication. Settings are automatically saved and stored locally in your browser.
+            {t('gitSettingsDescriptionLong')}
           </p>
         </div>
       )}
@@ -137,7 +139,7 @@ export function GitSettings() {
         {/* Configured Credentials */}
         {configuredOrigins.length > 0 && (
           <div className="space-y-3">
-            <h4 className="text-sm font-medium">Configured Credentials</h4>
+            <h4 className="text-sm font-medium">{t('configuredCredentials')}</h4>
             <Accordion type="multiple" className="w-full space-y-2">
               {configuredOrigins.map((origin) => {
                 const preset = PRESET_PROVIDERS.find(p => p.origin === origin);
@@ -152,7 +154,7 @@ export function GitSettings() {
                           <span className="font-medium">
                             {preset?.name || new URL(origin).hostname}
                           </span>
-                          {isCustom && <Badge variant="outline">Custom</Badge>}
+                          {isCustom && <Badge variant="outline">{t('custom')}</Badge>}
                         </div>
                         <Button
                           variant="ghost"
@@ -170,7 +172,7 @@ export function GitSettings() {
                     <AccordionContent className="px-4 pb-4">
                       <div className="space-y-3">
                         <div className="grid gap-2">
-                          <Label htmlFor={`${origin}-origin`}>Origin</Label>
+                          <Label htmlFor={`${origin}-origin`}>{t('origin')}</Label>
                           <Input
                             id={`${origin}-origin`}
                             placeholder="https://github.com"
@@ -180,7 +182,7 @@ export function GitSettings() {
                           />
                         </div>
                         <div className="grid gap-2">
-                          <Label htmlFor={`${origin}-username`}>Username</Label>
+                          <Label htmlFor={`${origin}-username`}>{t('username')}</Label>
                           <Input
                             id={`${origin}-username`}
                             placeholder="git"
@@ -189,11 +191,11 @@ export function GitSettings() {
                           />
                         </div>
                         <div className="grid gap-2">
-                          <Label htmlFor={`${origin}-password`}>Password</Label>
+                          <Label htmlFor={`${origin}-password`}>{t('password')}</Label>
                           <Input
                             id={`${origin}-password`}
                             type="password"
-                            placeholder="Enter your password/token"
+                            placeholder={t('enterPassword')}
                             value={credential?.password || ''}
                             onChange={(e) => handleUpdateCredential(origin, { password: e.target.value })}
                           />
@@ -212,7 +214,7 @@ export function GitSettings() {
         {/* Available Preset Providers */}
         {availablePresets.length > 0 && (
           <div className="space-y-3">
-            <h4 className="text-sm font-medium">Add Provider</h4>
+            <h4 className="text-sm font-medium">{t('addProvider')}</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {availablePresets.map((preset) => (
                 <div key={preset.id} className="border rounded-lg p-4 space-y-3">
@@ -224,7 +226,7 @@ export function GitSettings() {
                         className="text-xs text-muted-foreground underline hover:text-foreground"
                         onClick={() => window.open(preset.tokenURL, '_blank')}
                       >
-                        Get token
+                        {t('getToken')}
                       </button>
                     )}
                   </div>
@@ -262,7 +264,7 @@ export function GitSettings() {
                     ) : (
                       <div className="flex gap-2">
                         <Input
-                          placeholder="Enter your token"
+                          placeholder={t('enterToken')}
                           type="password"
                           className="flex-1"
                           value={presetTokens[preset.id] || ''}
@@ -281,7 +283,7 @@ export function GitSettings() {
                           disabled={!presetTokens[preset.id]?.trim()}
                           size="sm"
                         >
-                          Add
+                          {t('add')}
                         </Button>
                       </div>
                     )
@@ -289,7 +291,7 @@ export function GitSettings() {
                     // Standard rendering for other providers
                     <div className="flex gap-2">
                       <Input
-                        placeholder="Enter your token"
+                        placeholder={t('enterToken')}
                         type="password"
                         className="flex-1"
                         value={presetTokens[preset.id] || ''}
@@ -308,7 +310,7 @@ export function GitSettings() {
                         disabled={!presetTokens[preset.id]?.trim()}
                         size="sm"
                       >
-                        Add
+                        {t('add')}
                       </Button>
                     </div>
                   )}
@@ -325,12 +327,12 @@ export function GitSettings() {
           <Accordion type="single" collapsible className="w-full">
             <AccordionItem value="custom-provider" className="border rounded-lg">
               <AccordionTrigger className="px-4 py-3 hover:no-underline">
-                <h4 className="text-sm font-medium">Add Custom Provider</h4>
+                <h4 className="text-sm font-medium">{t('addCustomProvider')}</h4>
               </AccordionTrigger>
               <AccordionContent className="px-4 pb-4">
                 <div className="space-y-3">
                   <div className="grid gap-2">
-                    <Label htmlFor="custom-origin">Origin</Label>
+                    <Label htmlFor="custom-origin">{t('origin')}</Label>
                     <Input
                       id="custom-origin"
                       placeholder="https://git.example.com"
@@ -339,7 +341,7 @@ export function GitSettings() {
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="custom-username">Username</Label>
+                    <Label htmlFor="custom-username">{t('username')}</Label>
                     <Input
                       id="custom-username"
                       placeholder="git"
@@ -348,11 +350,11 @@ export function GitSettings() {
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="custom-password">Password</Label>
+                    <Label htmlFor="custom-password">{t('password')}</Label>
                     <Input
                       id="custom-password"
                       type="password"
-                      placeholder="Enter your password/token"
+                      placeholder={t('enterPassword')}
                       value={customPassword}
                       onChange={(e) => setCustomPassword(e.target.value)}
                     />
@@ -369,11 +371,11 @@ export function GitSettings() {
                     className="gap-2"
                   >
                     <Check className="h-4 w-4" />
-                    Add Custom Provider
+                    {t('addCustomProviderButton')}
                   </Button>
                   {customOrigin.trim() in settings.credentials && (
                     <p className="text-sm text-destructive">
-                      Credentials for this origin already exist
+                      {t('credentialsExist')}
                     </p>
                   )}
                 </div>
@@ -385,7 +387,7 @@ export function GitSettings() {
           <Accordion type="single" collapsible className="w-full">
             <AccordionItem value="cors-proxy" className="border rounded-lg">
               <AccordionTrigger className="px-4 py-3 hover:no-underline">
-                <h4 className="text-sm font-medium">CORS Proxy</h4>
+                <h4 className="text-sm font-medium">{t('corsProxy')}</h4>
               </AccordionTrigger>
               <AccordionContent className="px-4 pb-4">
                 <div className="space-y-3">
@@ -397,7 +399,7 @@ export function GitSettings() {
                       onChange={(e) => updateSettings({ corsProxy: e.target.value })}
                     />
                     <p className="text-xs text-muted-foreground">
-                      CORS proxy server used for all Git operations with remote repositories. Required for browser-based Git operations.
+                      {t('corsProxyDescription')}
                     </p>
                   </div>
                 </div>

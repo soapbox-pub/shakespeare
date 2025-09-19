@@ -390,7 +390,7 @@ export function ProjectView() {
                 <div className="h-12 px-4 border-b flex-shrink-0">
                   <div className="flex items-center justify-between h-12">
                     {/* Left side - Sidebar toggle (when collapsed) */}
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 overflow-hidden">
                       {!isSidebarVisible && (
                         <Button
                           variant="ghost"

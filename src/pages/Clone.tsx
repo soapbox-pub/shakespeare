@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { AppLayout } from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,6 +21,7 @@ interface NostrCloneUri {
 }
 
 export default function Clone() {
+  const { t } = useTranslation();
   const [repoUrl, setRepoUrl] = useState('');
   const [isCloning, setIsCloning] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,8 +32,8 @@ export default function Clone() {
   const { nostr } = useNostr();
 
   useSeoMeta({
-    title: 'Import Repository - Shakespeare',
-    description: 'Import a Git repository into your Shakespeare workspace',
+    title: `${t('importRepository')} - Shakespeare`,
+    description: t('cloneGitRepository'),
   });
 
   const extractRepoName = (url: string): string => {
@@ -201,14 +203,14 @@ export default function Clone() {
 
   const handleClone = useCallback(async (url?: string) => {
     const targetUrl = url || repoUrl;
-    
+
     if (!targetUrl.trim()) {
-      setError('Please enter a repository URL');
+      setError(t('pleaseEnterRepositoryUrl'));
       return;
     }
 
     if (!validateGitUrl(targetUrl)) {
-      setError('Please enter a valid Git repository URL or Nostr clone URI (e.g., nostr://npub.../repo-name)');
+      setError(t('pleaseEnterValidGitUrl'));
       return;
     }
 
@@ -236,8 +238,8 @@ export default function Clone() {
         const project = await tryCloneUrls(cloneUrls, repoName);
 
         toast({
-          title: "Nostr repository imported successfully",
-          description: `"${repoName}" has been cloned from Nostr and is ready for development.`,
+          title: t('nostrRepositoryImportedSuccessfully'),
+          description: t('repositoryClonedFromNostr', { repoName }),
         });
 
         // Navigate to the new project
@@ -248,8 +250,8 @@ export default function Clone() {
         const project = await projectsManager.cloneProject(repoName, targetUrl.trim());
 
         toast({
-          title: "Repository imported successfully",
-          description: `"${repoName}" has been cloned and is ready for development.`,
+          title: t('repositoryImportedSuccessfully'),
+          description: t('repositoryClonedReady', { repoName }),
         });
 
         // Navigate to the new project
@@ -258,20 +260,20 @@ export default function Clone() {
     } catch (error) {
       console.error('Failed to clone repository:', error);
 
-      let errorMessage = 'Failed to clone repository';
+      let errorMessage = t('failedToImportRepository');
       if (error instanceof Error) {
         if (error.message.includes('Repository not found on Nostr network')) {
-          errorMessage = 'Repository not found on Nostr network. Please check the URI and try again.';
+          errorMessage = t('repositoryNotFoundOnNostr');
         } else if (error.message.includes('No clone URLs found')) {
-          errorMessage = 'Repository announcement found but no clone URLs available.';
+          errorMessage = t('noCloneUrlsFound');
         } else if (error.message.includes('All clone attempts failed')) {
-          errorMessage = 'Repository found but all clone URLs failed. The repository may be unavailable.';
+          errorMessage = t('allCloneAttemptsFailed');
         } else if (error.message.includes('404') || error.message.includes('not found')) {
-          errorMessage = 'Repository not found. Please check the URL and try again.';
+          errorMessage = t('repositoryNotFound');
         } else if (error.message.includes('403') || error.message.includes('forbidden')) {
-          errorMessage = 'Access denied. The repository may be private or require authentication.';
+          errorMessage = t('accessDenied');
         } else if (error.message.includes('network') || error.message.includes('fetch')) {
-          errorMessage = 'Network error. Please check your connection and try again.';
+          errorMessage = t('networkError');
         } else {
           errorMessage = error.message;
         }
@@ -280,14 +282,14 @@ export default function Clone() {
       setError(errorMessage);
 
       toast({
-        title: "Failed to import repository",
+        title: t('failedToImportRepository'),
         description: errorMessage,
         variant: "destructive",
       });
     } finally {
       setIsCloning(false);
     }
-  }, [fetchNostrRepository, navigate, projectsManager, repoUrl, toast, tryCloneUrls, validateGitUrl]);
+  }, [fetchNostrRepository, navigate, projectsManager, repoUrl, t, toast, tryCloneUrls, validateGitUrl]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !isCloning) {
@@ -301,24 +303,24 @@ export default function Clone() {
     if (urlParam) {
       const decodedUrl = decodeURIComponent(urlParam);
       setRepoUrl(decodedUrl);
-      
+
       // Automatically start the clone process with the URL directly
       handleClone(decodedUrl);
     }
   }, [handleClone, searchParams]);
 
   return (
-    <AppLayout title="Import Repository">
+    <AppLayout title={t('importRepository')}>
       <div className="max-w-2xl mx-auto">
         <div className="text-center mb-8">
           <div className="text-4xl mb-4">
             <GitBranch className="h-12 w-12 mx-auto text-primary" />
           </div>
           <h1 className="text-3xl font-bold mb-3 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-            Import Repository
+            {t('importRepository')}
           </h1>
           <p className="text-lg text-muted-foreground">
-            Clone a Git repository into your Shakespeare workspace
+            {t('cloneGitRepository')}
           </p>
         </div>
 
@@ -352,12 +354,12 @@ export default function Clone() {
             {isCloning ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Cloning Repository...
+                {t('cloningRepository')}
               </>
             ) : (
               <>
                 <GitBranch className="mr-2 h-4 w-4" />
-                Import Repository
+                {t('importRepository')}
               </>
             )}
           </Button>

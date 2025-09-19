@@ -103,6 +103,19 @@ const resources = {
       stopGeneration: 'Stop generation',
       running: 'Running',
 
+      // Project View Navigation
+      chat: 'Chat',
+      preview: 'Preview',
+      code: 'Code',
+
+      // Preview Pane
+      projectPreview: 'Project Preview',
+      buildProjectToSeePreview: 'Build your project to see the preview here',
+      fileExplorer: 'File Explorer',
+      fileEditor: 'File Editor',
+      selectFileFromExplorer: 'Select a file from the explorer to edit',
+      openFileExplorer: 'Open File Explorer',
+
       // File Editor
       unsavedChanges: 'Unsaved changes',
       saving: 'Saving...',
@@ -252,6 +265,23 @@ const resources = {
       addAccount: 'Add Account',
       relayConfiguration: 'Relay Configuration',
       selectedRelay: 'Selected Relay',
+
+      // Clone Page
+      cloneGitRepository: 'Clone a Git repository into your Shakespeare workspace',
+      pleaseEnterRepositoryUrl: 'Please enter a repository URL',
+      pleaseEnterValidGitUrl: 'Please enter a valid Git repository URL or Nostr clone URI (e.g., nostr://npub.../repo-name)',
+      cloningRepository: 'Cloning Repository...',
+      nostrRepositoryImportedSuccessfully: 'Nostr repository imported successfully',
+      repositoryClonedFromNostr: '"{{repoName}}" has been cloned from Nostr and is ready for development.',
+      repositoryImportedSuccessfully: 'Repository imported successfully',
+      repositoryClonedReady: '"{{repoName}}" has been cloned and is ready for development.',
+      failedToImportRepository: 'Failed to import repository',
+      repositoryNotFoundOnNostr: 'Repository not found on Nostr network. Please check the URI and try again.',
+      noCloneUrlsFound: 'Repository announcement found but no clone URLs available.',
+      allCloneAttemptsFailed: 'Repository found but all clone URLs failed. The repository may be unavailable.',
+      repositoryNotFound: 'Repository not found. Please check the URL and try again.',
+      accessDenied: 'Access denied. The repository may be private or require authentication.',
+      networkError: 'Network error. Please check your connection and try again.',
     }
   },
   pt: {
@@ -353,6 +383,19 @@ const resources = {
       sendMessage: 'Enviar mensagem',
       stopGeneration: 'Parar geração',
       running: 'Executando',
+
+      // Project View Navigation
+      chat: 'Chat',
+      preview: 'Visualização',
+      code: 'Código',
+
+      // Preview Pane
+      projectPreview: 'Visualização do Projeto',
+      buildProjectToSeePreview: 'Construa seu projeto para ver a visualização aqui',
+      fileExplorer: 'Explorador de Arquivos',
+      fileEditor: 'Editor de Arquivos',
+      selectFileFromExplorer: 'Selecione um arquivo do explorador para editar',
+      openFileExplorer: 'Abrir Explorador de Arquivos',
 
       // File Editor
       unsavedChanges: 'Alterações não salvas',
@@ -503,6 +546,23 @@ const resources = {
       addAccount: 'Adicionar Conta',
       relayConfiguration: 'Configuração de Relay',
       selectedRelay: 'Relay Selecionado',
+
+      // Clone Page
+      cloneGitRepository: 'Clone um repositório Git para seu workspace Shakespeare',
+      pleaseEnterRepositoryUrl: 'Por favor, digite uma URL do repositório',
+      pleaseEnterValidGitUrl: 'Por favor, digite uma URL válida de repositório Git ou URI de clone Nostr (ex: nostr://npub.../nome-repo)',
+      cloningRepository: 'Clonando Repositório...',
+      nostrRepositoryImportedSuccessfully: 'Repositório Nostr importado com sucesso',
+      repositoryClonedFromNostr: '"{{repoName}}" foi clonado do Nostr e está pronto para desenvolvimento.',
+      repositoryImportedSuccessfully: 'Repositório importado com sucesso',
+      repositoryClonedReady: '"{{repoName}}" foi clonado e está pronto para desenvolvimento.',
+      failedToImportRepository: 'Falha ao importar repositório',
+      repositoryNotFoundOnNostr: 'Repositório não encontrado na rede Nostr. Verifique a URI e tente novamente.',
+      noCloneUrlsFound: 'Anúncio do repositório encontrado, mas nenhuma URL de clone disponível.',
+      allCloneAttemptsFailed: 'Repositório encontrado, mas todas as URLs de clone falharam. O repositório pode estar indisponível.',
+      repositoryNotFound: 'Repositório não encontrado. Verifique a URL e tente novamente.',
+      accessDenied: 'Acesso negado. O repositório pode ser privado ou requer autenticação.',
+      networkError: 'Erro de rede. Verifique sua conexão e tente novamente.',
     }
   },
   zh: {
@@ -604,6 +664,19 @@ const resources = {
       sendMessage: '发送消息',
       stopGeneration: '停止生成',
       running: '运行中',
+
+      // Project View Navigation
+      chat: '聊天',
+      preview: '预览',
+      code: '代码',
+
+      // Preview Pane
+      projectPreview: '项目预览',
+      buildProjectToSeePreview: '构建您的项目以在此处查看预览',
+      fileExplorer: '文件浏览器',
+      fileEditor: '文件编辑器',
+      selectFileFromExplorer: '从浏览器中选择一个文件进行编辑',
+      openFileExplorer: '打开文件浏览器',
 
       // File Editor
       unsavedChanges: '未保存的更改',
@@ -754,6 +827,23 @@ const resources = {
       addAccount: '添加账户',
       relayConfiguration: '中继配置',
       selectedRelay: '选定的中继',
+
+      // Clone Page
+      cloneGitRepository: '将Git仓库克隆到您的Shakespeare工作空间',
+      pleaseEnterRepositoryUrl: '请输入仓库URL',
+      pleaseEnterValidGitUrl: '请输入有效的Git仓库URL或Nostr克隆URI（例如：nostr://npub.../仓库名）',
+      cloningRepository: '正在克隆仓库...',
+      nostrRepositoryImportedSuccessfully: 'Nostr仓库导入成功',
+      repositoryClonedFromNostr: '"{{repoName}}"已从Nostr克隆并准备好进行开发。',
+      repositoryImportedSuccessfully: '仓库导入成功',
+      repositoryClonedReady: '"{{repoName}}"已克隆并准备好进行开发。',
+      failedToImportRepository: '导入仓库失败',
+      repositoryNotFoundOnNostr: '在Nostr网络上未找到仓库。请检查URI并重试。',
+      noCloneUrlsFound: '找到仓库公告但没有可用的克隆URL。',
+      allCloneAttemptsFailed: '找到仓库但所有克隆URL都失败了。仓库可能不可用。',
+      repositoryNotFound: '未找到仓库。请检查URL并重试。',
+      accessDenied: '访问被拒绝。仓库可能是私有的或需要身份验证。',
+      networkError: '网络错误。请检查您的连接并重试。',
     }
   }
 };

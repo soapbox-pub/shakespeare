@@ -1,5 +1,6 @@
 import { encodeBase64 } from '@std/encoding/base64';
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { useFS } from '@/hooks/useFS';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
@@ -49,6 +50,7 @@ interface JSONRPCResponse {
 }
 
 export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
+  const { t } = useTranslation();
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [fileContent, setFileContent] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
@@ -376,9 +378,9 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
           ) : (
             <div className="h-full flex items-center justify-center bg-muted">
               <div className="text-center">
-                <h3 className="text-lg font-semibold mb-2">Project Preview</h3>
+                <h3 className="text-lg font-semibold mb-2">{t('projectPreview')}</h3>
                 <p className="text-muted-foreground mb-4">
-                  Build your project to see the preview here
+                  {t('buildProjectToSeePreview')}
                 </p>
               </div>
             </div>
@@ -392,7 +394,7 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
                 <>
                   <div className="p-3 border-b bg-gradient-to-r from-primary/5 to-accent/5">
                     <div className="flex items-center justify-between">
-                      <h3 className="font-semibold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">File Explorer</h3>
+                      <h3 className="font-semibold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">{t('fileExplorer')}</h3>
                       <GitStatusIndicator projectId={projectId} />
                     </div>
                   </div>
@@ -419,7 +421,7 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
                       <ArrowLeft className="h-4 w-4" />
                     </Button>
                     <h3 className="font-semibold flex-1 truncate bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                      {selectedFile ? selectedFile.split('/').pop() : 'File Editor'}
+                      {selectedFile ? selectedFile.split('/').pop() : t('fileEditor')}
                     </h3>
                     <GitStatusIndicator projectId={projectId} />
                   </div>
@@ -437,7 +439,7 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
                         <div className="text-center">
                           <FolderOpen className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                           <p className="text-muted-foreground">
-                            Select a file from the explorer to edit
+                            {t('selectFileFromExplorer')}
                           </p>
                           <Button
                             variant="outline"
@@ -445,7 +447,7 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
                             onClick={() => setMobileCodeView('explorer')}
                             className="mt-4"
                           >
-                            Open File Explorer
+                            {t('openFileExplorer')}
                           </Button>
                         </div>
                       </div>
@@ -459,7 +461,7 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
               <div className="w-1/3 border-r">
                 <div className="p-4 border-b bg-gradient-to-r from-primary/5 to-accent/5">
                   <div className="flex items-center justify-between">
-                    <h3 className="font-semibold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">File Explorer</h3>
+                    <h3 className="font-semibold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">{t('fileExplorer')}</h3>
                     <GitStatusIndicator projectId={projectId} />
                   </div>
                 </div>
@@ -488,7 +490,7 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
                   <div className="h-full flex items-center justify-center">
                     <div className="text-center">
                       <p className="text-muted-foreground">
-                        Select a file from the explorer to edit
+                        {t('selectFileFromExplorer')}
                       </p>
                     </div>
                   </div>

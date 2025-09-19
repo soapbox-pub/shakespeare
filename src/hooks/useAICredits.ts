@@ -56,7 +56,9 @@ export function useAICredits(providerId: string, connection: AIConnection) {
         // Already in V1 format
         return parsed;
       } catch (error) {
-        console.error('Error fetching AI credits:', error);
+        if (error instanceof Error && !error.message.includes('Connection error')) {
+          console.error('Error fetching AI credits:', error);
+        }
         throw error;
       }
     },

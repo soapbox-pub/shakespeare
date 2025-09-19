@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { useAICredits } from '@/hooks/useAICredits';
+import { CreditsDialog } from '@/components/CreditsDialog';
 import type { AIConnection } from '@/contexts/AISettingsContext';
 
 interface CreditsBadgeProps {
@@ -9,10 +11,11 @@ interface CreditsBadgeProps {
 }
 
 /**
- * Displays a credits badge showing the remaining credits for an AI provider
+ * Displays a clickable credits badge showing the remaining credits for an AI provider
  */
 export function CreditsBadge({ providerId, connection, className }: CreditsBadgeProps) {
   const { data: credits, isLoading, error } = useAICredits(providerId, connection);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   // Don't render anything if there's an error (provider doesn't support credits endpoint)
   if (error || isLoading) {
@@ -33,8 +36,24 @@ export function CreditsBadge({ providerId, connection, className }: CreditsBadge
   }).format(credits.amount);
 
   return (
-    <Badge variant="secondary" className={className}>
-      {formattedAmount}
-    </Badge>
+    <>
+      <Badge
+        variant="secondary"
+        className={`cursor-pointer hover:bg-secondary/80 transition-colors ${className}`}
+        onClick={(e) => {
+          e.stopPropagation();
+          setDialogOpen(true);
+        }}
+      >
+        {formattedAmount}
+      </Badge>
+
+      <CreditsDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        providerId={providerId}
+        connection={connection}
+      />
+    </>
   );
 }

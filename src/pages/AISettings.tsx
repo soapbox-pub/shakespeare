@@ -306,7 +306,7 @@ export function AISettings() {
                     <Button
                       onClick={() => handleAddPresetProvider(preset)}
                       disabled={!!preset.apiKeysURL && !presetApiKeys[preset.id]?.trim()}
-                      size="sm"
+                      className="h-10 px-4 ml-auto"
                     >
                       {t('add')}
                     </Button>
@@ -384,8 +384,7 @@ export function AISettings() {
                       !customBaseURL.trim() ||
                       customProviderName.trim() in settings.providers
                     }
-                    size="sm"
-                    className="gap-2"
+                    className="gap-2 ml-auto"
                   >
                     <Check className="h-4 w-4" />
                     {t('addCustomProviderButton')}

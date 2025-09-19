@@ -41,6 +41,7 @@ const defaultConfig: AppConfig = {
   theme: "light",
   relayUrl: "wss://relay.primal.net",
   deployServer: "shakespeare.wtf",
+  language: "en",
 };
 
 const presetRelays = [

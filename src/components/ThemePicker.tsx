@@ -1,4 +1,5 @@
 import { ChevronsUpDown, Monitor, Moon, Sun } from "lucide-react";
+import { useTranslation } from 'react-i18next';
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -10,12 +11,13 @@ import { useTheme } from "@/hooks/useTheme";
 import { type Theme } from "@/contexts/AppContext";
 
 export function ThemePicker() {
+  const { t } = useTranslation();
   const { theme, setTheme } = useTheme();
 
   const themeOptions: { value: Theme; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-    { value: "system", label: "System", icon: Monitor },
-    { value: "light", label: "Light", icon: Sun },
-    { value: "dark", label: "Dark", icon: Moon },
+    { value: "system", label: t('system'), icon: Monitor },
+    { value: "light", label: t('light'), icon: Sun },
+    { value: "dark", label: t('dark'), icon: Moon },
   ];
 
   const currentTheme = themeOptions.find(option => option.value === theme);
@@ -27,7 +29,7 @@ export function ThemePicker() {
         <Button variant="outline" className="w-full justify-between">
           <div className="flex items-center gap-2">
             <CurrentIcon className="h-4 w-4" />
-            <span>{currentTheme?.label || "System"}</span>
+            <span>{currentTheme?.label || t('system')}</span>
           </div>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>

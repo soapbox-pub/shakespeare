@@ -1,12 +1,15 @@
 import { Settings2, ArrowLeft } from "lucide-react";
+import { useTranslation } from 'react-i18next';
 import { Button } from "@/components/ui/button";
 import { ThemePicker } from "@/components/ThemePicker";
+import { LanguagePicker } from "@/components/LanguagePicker";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useNavigate } from "react-router-dom";
 
 export function Preferences() {
+  const { t } = useTranslation();
   const isMobile = useIsMobile();
   const navigate = useNavigate();
 
@@ -21,15 +24,15 @@ export function Preferences() {
             className="h-8 w-auto px-2 -ml-2"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Settings
+            {t('backToSettings')}
           </Button>
           <div className="space-y-2">
             <h1 className="text-2xl font-bold flex items-center gap-3">
               <Settings2 className="h-6 w-6 text-primary" />
-              Preferences
+              {t('preferencesTitle')}
             </h1>
             <p className="text-muted-foreground">
-              Manage your general application preferences and appearance settings.
+              {t('preferencesDescription')}
             </p>
           </div>
         </div>
@@ -39,29 +42,39 @@ export function Preferences() {
         <div className="space-y-2">
           <h1 className="text-2xl font-bold flex items-center gap-3">
             <Settings2 className="h-6 w-6 text-primary" />
-            Preferences
+            {t('preferencesTitle')}
           </h1>
           <p className="text-muted-foreground">
-            Manage your general application preferences and appearance settings.
+            {t('preferencesDescription')}
           </p>
         </div>
       )}
 
       <Card>
         <CardHeader>
-          <CardTitle>Appearance</CardTitle>
+          <CardTitle>{t('appearance')}</CardTitle>
           <CardDescription>
-            Customize how the application looks and feels.
+            {t('appearanceDescription')}
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="theme-picker">Theme</Label>
+            <Label htmlFor="theme-picker">{t('theme')}</Label>
             <div className="w-full max-w-xs">
               <ThemePicker />
             </div>
             <p className="text-sm text-muted-foreground">
-              Choose between light, dark, or system theme preference.
+              {t('themeDescription')}
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="language-picker">{t('language')}</Label>
+            <div className="w-full max-w-xs">
+              <LanguagePicker />
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {t('languageDescription')}
             </p>
           </div>
         </CardContent>

@@ -11,6 +11,7 @@ import { LightningFSAdapter } from '@/lib/LightningFSAdapter';
 import { AISettingsProvider } from '@/components/AISettingsProvider';
 import { GitSettingsProvider } from '@/components/GitSettingsProvider';
 import { SessionManagerProvider } from '@/components/SessionManagerProvider';
+import '@/lib/i18n';
 
 interface TestAppProps {
   children: React.ReactNode;
@@ -30,6 +31,7 @@ export function TestApp({ children }: TestAppProps) {
     theme: 'light',
     relayUrl: 'wss://relay.nostr.band',
     deployServer: 'shakespeare.wtf',
+    language: 'en',
   };
 
   // Initialize LightningFS for testing

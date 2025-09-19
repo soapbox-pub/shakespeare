@@ -1,7 +1,8 @@
 import { ReactNode, useEffect } from 'react';
 import { z } from 'zod';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
-import { AppContext, type AppConfig, type AppContextType, type Theme } from '@/contexts/AppContext';
+import { AppContext, type AppConfig, type AppContextType, type Theme, type Language } from '@/contexts/AppContext';
+import i18n from '@/lib/i18n';
 
 interface AppProviderProps {
   children: ReactNode;
@@ -18,6 +19,7 @@ const AppConfigSchema: z.ZodType<AppConfig, z.ZodTypeDef, unknown> = z.object({
   theme: z.enum(['dark', 'light', 'system']),
   relayUrl: z.string().url(),
   deployServer: z.string().min(1),
+  language: z.enum(['en', 'pt']),
 });
 
 export function AppProvider(props: AppProviderProps) {
@@ -54,6 +56,9 @@ export function AppProvider(props: AppProviderProps) {
 
   // Apply theme effects to document
   useApplyTheme(config.theme);
+
+  // Apply language effects to i18n
+  useApplyLanguage(config.language);
 
   return (
     <AppContext.Provider value={appContextValue}>
@@ -101,4 +106,13 @@ function useApplyTheme(theme: Theme) {
     mediaQuery.addEventListener('change', handleChange);
     return () => mediaQuery.removeEventListener('change', handleChange);
   }, [theme]);
+}
+
+/**
+ * Hook to apply language changes to i18n
+ */
+function useApplyLanguage(language: Language) {
+  useEffect(() => {
+    i18n.changeLanguage(language);
+  }, [language]);
 }

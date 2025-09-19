@@ -62,7 +62,8 @@ describe('LoginArea', () => {
       },
       otherUsers: [],
       setLogin: vi.fn(),
-      removeLogin: vi.fn()
+      removeLogin: vi.fn(),
+      isLoading: false
     });
 
     render(<LoginArea />);
@@ -76,7 +77,8 @@ describe('LoginArea', () => {
       currentUser: undefined,
       otherUsers: [],
       setLogin: vi.fn(),
-      removeLogin: vi.fn()
+      removeLogin: vi.fn(),
+      isLoading: false
     });
 
     render(<LoginArea />);
@@ -97,7 +99,8 @@ describe('LoginArea', () => {
       currentUser: undefined,
       otherUsers: [],
       setLogin: vi.fn(),
-      removeLogin: vi.fn()
+      removeLogin: vi.fn(),
+      isLoading: false
     });
 
     const { rerender } = render(<LoginArea />);
@@ -119,7 +122,8 @@ describe('LoginArea', () => {
       },
       otherUsers: [],
       setLogin: vi.fn(),
-      removeLogin: vi.fn()
+      removeLogin: vi.fn(),
+      isLoading: false
     });
 
     rerender(<LoginArea />);

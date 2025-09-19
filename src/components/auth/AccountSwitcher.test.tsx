@@ -33,7 +33,8 @@ describe('AccountSwitcher', () => {
       },
       otherUsers: [],
       setLogin: vi.fn(),
-      removeLogin: vi.fn()
+      removeLogin: vi.fn(),
+      isLoading: false
     });
 
     render(<AccountSwitcher onAddAccountClick={vi.fn()} />);
@@ -53,7 +54,8 @@ describe('AccountSwitcher', () => {
       currentUser: undefined,
       otherUsers: [],
       setLogin: vi.fn(),
-      removeLogin: vi.fn()
+      removeLogin: vi.fn(),
+      isLoading: false
     });
 
     const { container } = render(<AccountSwitcher onAddAccountClick={vi.fn()} />);

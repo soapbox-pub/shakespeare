@@ -24,9 +24,9 @@ interface PresetProvider {
 
 const PRESET_PROVIDERS: PresetProvider[] = [
   {
-    id: "lemon",
-    name: "Lemon",
-    baseURL: "https://internal-lucienne-nublar-6932a6f0.koyeb.app/v1",
+    id: "shakespeare",
+    name: "Shakespeare AI",
+    baseURL: "https://ai.shakespeare.diy/v1",
     nostr: true,
   },
   {

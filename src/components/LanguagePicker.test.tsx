@@ -26,9 +26,10 @@ describe('LanguagePicker', () => {
     const trigger = screen.getByRole('combobox');
     fireEvent.click(trigger);
 
-    // Should show both language options (using getAllByText since there might be duplicates)
+    // Should show all language options (using getAllByText since there might be duplicates)
     expect(screen.getAllByText('English').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Portuguese').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Chinese').length).toBeGreaterThan(0);
   });
 
   it('displays flag emojis for languages', async () => {
@@ -45,5 +46,6 @@ describe('LanguagePicker', () => {
     // Should show flag emojis (using getAllByText since there might be duplicates)
     expect(screen.getAllByText('🇺🇸').length).toBeGreaterThan(0);
     expect(screen.getAllByText('🇧🇷').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('🇨🇳').length).toBeGreaterThan(0);
   });
 });

@@ -1,7 +1,7 @@
 import { createContext } from "react";
 
 export type Theme = "dark" | "light" | "system";
-export type Language = "en" | "pt";
+export type Language = "en" | "pt" | "zh";
 
 export interface AppConfig {
   /** Current theme */

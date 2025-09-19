@@ -32,6 +32,7 @@ const resources = {
       // Language Options
       english: 'English',
       portuguese: 'Portuguese',
+      chinese: 'Chinese',
 
       // Theme Options
       light: 'Light',
@@ -281,6 +282,7 @@ const resources = {
       // Language Options
       english: 'Inglês',
       portuguese: 'Português',
+      chinese: 'Chinês',
 
       // Theme Options
       light: 'Claro',
@@ -499,6 +501,256 @@ const resources = {
       addAccount: 'Adicionar Conta',
       relayConfiguration: 'Configuração de Relay',
       selectedRelay: 'Relay Selecionado',
+    }
+  },
+  zh: {
+    translation: {
+      // Navigation and Layout
+      preferences: '偏好设置',
+      settings: '设置',
+      backToSettings: '返回设置',
+      help: '帮助',
+      anonymous: '匿名',
+
+      // Authentication
+      logIn: '登录',
+      signUp: '注册',
+
+      // Preferences Page
+      preferencesDescription: '管理您的应用程序偏好设置和外观设置。',
+
+      // Appearance Section
+      appearance: '外观',
+      appearanceDescription: '自定义应用程序的外观和感觉。',
+      theme: '主题',
+      themeDescription: '选择浅色、深色或系统主题偏好。',
+
+      // Language Section
+      language: '语言',
+      languageDescription: '选择您的界面首选语言。',
+
+      // Language Options
+      english: 'English',
+      portuguese: 'Português',
+      chinese: '中文',
+
+      // Theme Options
+      light: '浅色',
+      dark: '深色',
+      system: '系统',
+
+      // Common UI Elements
+      save: '保存',
+      cancel: '取消',
+      close: '关闭',
+      open: '打开',
+      edit: '编辑',
+      delete: '删除',
+      create: '创建',
+      update: '更新',
+      loading: '加载中...',
+      error: '错误',
+      success: '成功',
+      warning: '警告',
+      info: '信息',
+      add: '添加',
+      remove: '移除',
+      retry: '重试',
+
+      // Shakespeare Main Page
+      buildNostrApps: '使用AI构建Nostr应用',
+      whatToBuild: '您想构建什么？',
+      createProject: '创建项目',
+      generating: '生成中...',
+      creating: '创建中...',
+      chooseModel: '选择模型...',
+      selectModelToDescribe: "请在下方选择一个模型，然后描述您想要构建的内容...",
+      examplePrompt: "例如：为当地农民创建一个农业设备市场，用于买卖拖拉机、工具和用品...",
+
+      // Settings Page
+      settingsDescription: '管理您的应用程序设置和偏好。',
+      aiSettings: 'AI设置',
+      aiSettingsDescription: '配置AI提供商和API密钥',
+      gitSettings: 'Git设置',
+      gitSettingsDescription: '配置HTTP身份验证的Git凭据',
+      nostrSettings: 'Nostr设置',
+      nostrSettingsDescription: '配置中继连接和Nostr偏好',
+      dataSettings: '数据',
+      dataSettingsDescription: '导出文件和管理本地数据',
+
+      // Project Sidebar
+      newProject: '新项目',
+      importRepository: '导入仓库',
+      noProjectsYet: '还没有项目',
+      createFirstProject: '创建您的第一个项目开始使用',
+      closeSidebar: '关闭侧边栏',
+      collapseSidebar: '折叠侧边栏',
+
+      // Chat Interface
+      welcomeToShakespeare: '欢迎使用Shakespeare',
+      aiAssistantReady: '您的AI驱动开发助手已准备好帮助您构建、编辑和增强您的项目。',
+      askMeFeatures: '💡 请我添加新功能',
+      requestEdits: '📝 请求文件编辑和改进',
+      getHelp: '🔧 获得调试和优化帮助',
+      buildDeploy: '🚀 构建和部署您的项目',
+      aiNotConfigured: 'AI助手未配置',
+      configureAI: '请配置您的AI设置以开始使用AI助手构建。',
+      useMenuForAI: '使用顶部栏中的菜单访问AI设置。',
+      askToAddFeatures: '请我添加功能、编辑文件或构建您的项目...',
+      selectModelFirst: '请先选择一个模型开始聊天...',
+      sendMessage: '发送消息',
+      stopGeneration: '停止生成',
+      running: '运行中',
+
+      // File Editor
+      unsavedChanges: '未保存的更改',
+      saving: '保存中...',
+      languageLabel: '语言',
+
+      // File Tree
+      searchFiles: '搜索文件...',
+      noFilesFound: '未找到文件',
+      noFilesFoundSearch: '未找到与您搜索匹配的文件',
+
+      // Git Dialog
+      gitRepositoryStatus: 'Git仓库状态',
+      repositoryStatusDescription: '查看仓库状态并与远程仓库同步',
+      repositoryInformation: '仓库信息',
+      currentBranch: '当前分支',
+      totalCommits: '总提交数',
+      latestCommit: '最新提交',
+      remotes: '远程仓库',
+      notGitRepository: '不是Git仓库',
+      gitAuthentication: '身份验证',
+      credentialsDescription: '推送/拉取操作的凭据',
+      configured: '已配置',
+      noCredentials: '无凭据',
+      noCredentialsWarning: '未为{{provider}}配置凭据。私有仓库的推送/拉取操作可能失败。',
+      configureCredentials: '配置凭据',
+      syncStatus: '同步状态',
+      pull: '拉取',
+      push: '推送',
+      pulling: '拉取中...',
+      pushing: '推送中...',
+      upToDate: '已是最新',
+      commitsAhead: '领先{{count}}个提交',
+      commitsBehind: '落后{{count}}个提交',
+      uncommittedChanges: '{{count}}个未提交的更改',
+      noRemoteConfigured: '未配置远程仓库',
+      workingDirectoryChanges: '工作目录更改',
+      filesWithChanges: '{{count}}个文件有更改',
+      workingDirectoryClean: '工作目录干净',
+      noUncommittedChanges: '无未提交的更改',
+      cannotPush: '无法推送',
+      cannotPull: '无法拉取',
+      notGitRepoOrBranch: '不是git仓库或无当前分支',
+      noRemoteRepositories: '未配置远程仓库',
+      nothingToPush: '无内容可推送',
+      noCommitsAhead: '没有领先远程的提交。请先提交您的更改。',
+      pushSuccessful: '推送成功',
+      pushFailed: '推送失败',
+      pullSuccessful: '拉取成功',
+      pullFailed: '拉取失败',
+
+      // AI Settings
+      aiSettingsDescriptionLong: '通过添加您的API密钥来配置AI提供商。设置会自动保存并存储在您的浏览器本地。',
+      configuredProviders: '已配置的提供商',
+      addProvider: '添加提供商',
+      getApiKey: '获取API密钥',
+      getToken: '获取令牌',
+      enterApiKey: '输入您的API密钥',
+      enterToken: '输入您的令牌',
+      enterCashuToken: '输入Cashu令牌',
+      addCustomProvider: '添加自定义提供商',
+      providerName: '提供商名称',
+      baseUrl: '基础URL',
+      apiKey: 'API密钥',
+      authentication: '身份验证',
+      addCustomProviderButton: '添加自定义提供商',
+      providerExists: '此名称的提供商已存在',
+      custom: '自定义',
+      connecting: '连接中...',
+      connectToGitHub: '连接到GitHub',
+
+      // Git Settings
+      gitSettingsDescriptionLong: '配置HTTP身份验证的Git凭据。设置会自动保存并存储在您的浏览器本地。',
+      configuredCredentials: '已配置的凭据',
+      origin: '源',
+      username: '用户名',
+      password: '密码',
+      enterPassword: '输入您的密码/令牌',
+      credentialsExist: '此源的凭据已存在',
+      corsProxy: 'CORS代理',
+      corsProxyDescription: '用于所有与远程仓库的Git操作的CORS代理服务器。浏览器基于的Git操作必需。',
+
+      // Data Settings
+      dataSettingsDescriptionLong: '导出文件和管理本地数据。',
+      exportFiles: '导出文件',
+      exportFilesDescription: '将您的所有项目和文件下载为ZIP存档。这包括所有项目文件、设置和本地存储的数据。',
+      exportAllFiles: '导出所有文件',
+      exporting: '导出中...',
+      clearAllData: '清除所有数据',
+      clearAllDataDescription: '永久删除所有本地数据，包括项目、设置和缓存信息。此操作无法撤销。',
+      clearing: '清除中...',
+      areYouSure: '您确定吗？',
+      clearDataWarning: '此操作将永久删除此浏览器的所有本地数据，包括：',
+      allProjects: '所有项目及其文件',
+      aiSettingsAndKeys: 'AI设置和API密钥',
+      gitCredentialsSettings: 'Git凭据和设置',
+      userPreferences: '用户偏好和主题',
+      cachedData: '缓存数据和会话信息',
+      actionCannotBeUndone: '此操作无法撤销。请考虑先导出您的文件。',
+      yesClearAllData: '是的，清除所有数据',
+      used: '已使用',
+      available: '可用',
+      usagePercentage: '已使用{{percentage}}%',
+      usageUnavailable: '使用百分比不可用',
+      loadingStorageInfo: '加载存储信息...',
+      filesExportedSuccessfully: '文件导出成功',
+      filesExportedDescription: '您的项目文件已下载为zip文件。',
+      failedToExportFiles: '导出文件失败',
+      dataClearedSuccessfully: '数据清除成功',
+      dataClearedDescription: '所有本地数据已删除。正在重定向到主页...',
+      failedToClearData: '清除数据失败',
+
+      // 404 Page
+      pageNotFound: '哎呀！页面未找到',
+      returnToHome: '返回首页',
+
+      // Model Selector
+      selectOrEnterModel: '选择或输入模型...',
+      searchModels: '搜索模型...',
+      enterCustomModel: '输入自定义模型...',
+      manageProviders: '管理提供商...',
+      noModelsFound: '未找到模型。',
+      tryCustomModel: '尝试使用自定义模型。',
+      recentlyUsed: '最近使用',
+      errorLoadingModels: '加载模型时出错',
+
+      // Context and Cost
+      contextUsage: '上下文使用：{{tokens}} / {{total}} 令牌 ({{percentage}}%)',
+      totalCostSession: '此聊天会话的总费用',
+
+      // File Status
+      added: '已添加',
+      deleted: '已删除',
+      modified: '已修改',
+      staged: '已暂存',
+      untracked: '未跟踪',
+
+      // Settings Layout
+      toggleSidebar: '切换侧边栏',
+      openSidebar: '打开侧边栏',
+
+      // Nostr Settings
+      nostrSettingsDescriptionLong: '配置您的Nostr连接设置和中继偏好。',
+      nostrAccounts: 'Nostr账户',
+      noAccountsLoggedIn: '没有账户登录。添加账户开始使用。',
+      createAccount: '创建账户',
+      addExistingAccount: '添加现有账户',
+      addAccount: '添加账户',
+      relayConfiguration: '中继配置',
+      selectedRelay: '选定的中继',
     }
   }
 };

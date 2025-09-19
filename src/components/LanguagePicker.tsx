@@ -35,6 +35,12 @@ export function LanguagePicker({ className }: LanguagePickerProps) {
             {t('portuguese')}
           </div>
         </SelectItem>
+        <SelectItem value="zh">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">🇨🇳</span>
+            {t('chinese')}
+          </div>
+        </SelectItem>
       </SelectContent>
     </Select>
   );

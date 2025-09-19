@@ -11,7 +11,8 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAISettings } from '@/hooks/useAISettings';
 import { useIsMobile } from '@/hooks/useIsMobile';
-import { useNavigate } from 'react-router-dom';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useNavigate, Link } from 'react-router-dom';
 import type { AIConnection } from '@/contexts/AISettingsContext';
 
 interface PresetProvider {
@@ -84,6 +85,7 @@ export function AISettings() {
   const { settings, addProvider, removeProvider, updateProvider } = useAISettings();
   const isMobile = useIsMobile();
   const navigate = useNavigate();
+  const { user } = useCurrentUser();
   const [customProviderName, setCustomProviderName] = useState('');
   const [customBaseURL, setCustomBaseURL] = useState('');
   const [customApiKey, setCustomApiKey] = useState('');
@@ -272,47 +274,70 @@ export function AISettings() {
           <div className="space-y-3">
             <h4 className="text-sm font-medium">{t('addProvider')}</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {availablePresets.map((preset) => (
-                <div key={preset.id} className="border rounded-lg p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h5 className="font-medium">{preset.name}</h5>
-                    {(preset.apiKeysURL && preset.id !== "routstr") && (
-                      <button
-                        type="button"
-                        className="text-xs text-muted-foreground underline hover:text-foreground"
-                        onClick={() => window.open(preset.apiKeysURL, '_blank')}
-                      >
-                        {t('getApiKey')}
-                      </button>
+              {availablePresets.map((preset) => {
+                const isNostrPreset = preset.nostr;
+                const isLoggedIntoNostr = !!user;
+                const showNostrLoginRequired = isNostrPreset && !isLoggedIntoNostr;
+
+                return (
+                  <div key={preset.id} className="border rounded-lg p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h5 className="font-medium">{preset.name}</h5>
+                      {(preset.apiKeysURL && preset.id !== "routstr") && (
+                        <button
+                          type="button"
+                          className="text-xs text-muted-foreground underline hover:text-foreground"
+                          onClick={() => window.open(preset.apiKeysURL, '_blank')}
+                        >
+                          {t('getApiKey')}
+                        </button>
+                      )}
+                    </div>
+
+                    {showNostrLoginRequired ? (
+                      <div className="space-y-2">
+                        <p className="text-sm text-muted-foreground">
+                          {t('loginToNostrRequired')}
+                        </p>
+                        <Button
+                          asChild
+                          className="w-full"
+                        >
+                          <Link to="/settings/nostr">
+                            {t('goToNostrSettings')}
+                          </Link>
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex gap-2">
+                        {!preset.nostr && (
+                          <PasswordInput
+                            placeholder={preset.id === "routstr" ? t('enterCashuToken') : t('enterApiKey')}
+                            className="flex-1"
+                            value={presetApiKeys[preset.id] || ''}
+                            onChange={(e) => setPresetApiKeys(prev => ({
+                              ...prev,
+                              [preset.id]: e.target.value,
+                            }))}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && presetApiKeys[preset.id]?.trim()) {
+                                handleAddPresetProvider(preset);
+                              }
+                            }}
+                          />
+                        )}
+                        <Button
+                          onClick={() => handleAddPresetProvider(preset)}
+                          disabled={!!preset.apiKeysURL && !presetApiKeys[preset.id]?.trim()}
+                          className={preset.nostr ? "w-full" : "h-10 px-4 ml-auto"}
+                        >
+                          {t('add')}
+                        </Button>
+                      </div>
                     )}
                   </div>
-                  <div className="flex gap-2">
-                    {!preset.nostr && (
-                      <PasswordInput
-                        placeholder={preset.id === "routstr" ? t('enterCashuToken') : t('enterApiKey')}
-                        className="flex-1"
-                        value={presetApiKeys[preset.id] || ''}
-                        onChange={(e) => setPresetApiKeys(prev => ({
-                          ...prev,
-                          [preset.id]: e.target.value,
-                        }))}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && presetApiKeys[preset.id]?.trim()) {
-                            handleAddPresetProvider(preset);
-                          }
-                        }}
-                      />
-                    )}
-                    <Button
-                      onClick={() => handleAddPresetProvider(preset)}
-                      disabled={!!preset.apiKeysURL && !presetApiKeys[preset.id]?.trim()}
-                      className="h-10 px-4 ml-auto"
-                    >
-                      {t('add')}
-                    </Button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}

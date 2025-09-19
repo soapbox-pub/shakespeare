@@ -185,6 +185,8 @@ const resources = {
       custom: 'Custom',
       connecting: 'Connecting...',
       connectToGitHub: 'Connect to GitHub',
+      loginToNostrRequired: 'Log in to Nostr to use this provider',
+      goToNostrSettings: 'Go to Nostr Settings',
 
       // Git Settings
       gitSettingsDescriptionLong: 'Configure Git credentials for HTTP authentication. Settings are automatically saved and stored locally in your browser.',
@@ -466,6 +468,8 @@ const resources = {
       custom: 'Personalizado',
       connecting: 'Conectando...',
       connectToGitHub: 'Conectar ao GitHub',
+      loginToNostrRequired: 'Faça login no Nostr para usar este provedor',
+      goToNostrSettings: 'Ir para Configurações do Nostr',
 
       // Git Settings
       gitSettingsDescriptionLong: 'Configure credenciais do Git para autenticação HTTP. As configurações são salvas automaticamente e armazenadas localmente em seu navegador.',
@@ -747,6 +751,8 @@ const resources = {
       custom: '自定义',
       connecting: '连接中...',
       connectToGitHub: '连接到GitHub',
+      loginToNostrRequired: '登录Nostr以使用此提供商',
+      goToNostrSettings: '前往Nostr设置',
 
       // Git Settings
       gitSettingsDescriptionLong: '配置HTTP身份验证的Git凭据。设置会自动保存并存储在您的浏览器本地。',

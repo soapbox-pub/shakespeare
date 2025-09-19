@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Folder, GitBranch, Loader2, ChevronDown, Star, Columns2, X, Settings, HelpCircle } from 'lucide-react';
+import { Plus, Folder, GitBranch, Loader2, ChevronDown, Star, Columns2, X, Settings, HelpCircle, Sun, Moon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -8,10 +8,10 @@ import { useProjects } from '@/hooks/useProjects';
 import { useProjectSessionStatus } from '@/hooks/useProjectSessionStatus';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useIsMobile } from '@/hooks/useIsMobile';
+import { useTheme } from '@/hooks/useTheme';
 import type { Project } from '@/lib/ProjectsManager';
 import { cn } from '@/lib/utils';
 import { useQueryClient } from '@tanstack/react-query';
-import { ThemeToggle } from '@/components/ThemeToggle';
 
 interface ProjectItemProps {
   project: Project;
@@ -92,6 +92,7 @@ export function ProjectSidebar({
   const { data: projects = [], isLoading, error } = useProjects();
   const [favorites] = useLocalStorage<string[]>('project-favorites', []);
   const isMobile = useIsMobile();
+  const { theme, setTheme } = useTheme();
 
   const navigate = useNavigate();
 
@@ -230,21 +231,30 @@ export function ProjectSidebar({
           <Button
             variant="ghost"
             size="sm"
-            className="flex-1 h-9 justify-start gap-2 hover:bg-primary/10 text-sidebar-foreground"
+            className="flex-1 h-9 justify-start gap-2 text-sidebar-foreground dark:hover:text-sidebar-primary hover:bg-sidebar-accent/50 dark:hover:bg-sidebar-accent/30 transition-all duration-200"
             onClick={() => navigateAndClose('/settings')}
           >
-            <Settings className="h-4 w-4" />
+            <Settings className="h-4 w-4 transition-colors duration-200" />
             Settings
           </Button>
-          <ThemeToggle />
           <Button
             variant="ghost"
             size="sm"
-            className="h-9 w-9 p-0 hover:bg-primary/10 text-sidebar-foreground"
+            onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+            className="h-9 w-9 p-0 text-sidebar-foreground dark:hover:text-sidebar-primary hover:bg-sidebar-accent/50 dark:hover:bg-sidebar-accent/30 transition-all duration-200"
+            aria-label="Toggle theme"
+          >
+            <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+            <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-9 w-9 p-0 text-sidebar-foreground dark:hover:text-sidebar-primary hover:bg-sidebar-accent/50 dark:hover:bg-sidebar-accent/30 transition-all duration-200"
             onClick={() => window.open('https://soapbox.pub/shakespeare-resources/', '_blank')}
             aria-label="Help"
           >
-            <HelpCircle className="h-4 w-4" />
+            <HelpCircle className="h-4 w-4 transition-colors duration-200" />
           </Button>
         </div>
       </div>

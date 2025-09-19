@@ -1,21 +1,19 @@
-import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { useAICredits } from '@/hooks/useAICredits';
-import { CreditsDialog } from '@/components/CreditsDialog';
 import type { AIConnection } from '@/contexts/AISettingsContext';
 
 interface CreditsBadgeProps {
   providerId: string;
   connection: AIConnection;
   className?: string;
+  onOpenDialog?: () => void;
 }
 
 /**
  * Displays a clickable credits badge showing the remaining credits for an AI provider
  */
-export function CreditsBadge({ providerId, connection, className }: CreditsBadgeProps) {
+export function CreditsBadge({ providerId, connection, className, onOpenDialog }: CreditsBadgeProps) {
   const { data: credits, isLoading, error } = useAICredits(providerId, connection);
-  const [dialogOpen, setDialogOpen] = useState(false);
 
   // Don't render anything if there's an error (provider doesn't support credits endpoint)
   if (error || isLoading) {
@@ -36,24 +34,15 @@ export function CreditsBadge({ providerId, connection, className }: CreditsBadge
   }).format(credits.amount);
 
   return (
-    <>
-      <Badge
-        variant="secondary"
-        className={`cursor-pointer hover:bg-secondary/80 transition-colors ${className}`}
-        onClick={(e) => {
-          e.stopPropagation();
-          setDialogOpen(true);
-        }}
-      >
-        {formattedAmount}
-      </Badge>
-
-      <CreditsDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        providerId={providerId}
-        connection={connection}
-      />
-    </>
+    <Badge
+      variant="secondary"
+      className={`cursor-pointer hover:bg-secondary/80 transition-colors ${className}`}
+      onClick={(e) => {
+        e.stopPropagation();
+        onOpenDialog?.();
+      }}
+    >
+      {formattedAmount}
+    </Badge>
   );
 }

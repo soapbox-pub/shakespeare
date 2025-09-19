@@ -94,4 +94,32 @@ describe('CreditsDialog', () => {
 
     expect(screen.getByText('Please log in to purchase credits')).toBeInTheDocument();
   });
+
+  it('calls onDialogStateChange callback when dialog state changes', () => {
+    const mockCallback = vi.fn();
+    const { rerender } = render(
+      <TestApp>
+        <CreditsDialog
+          open={false}
+          onOpenChange={mockCallback}
+          providerId="test-provider"
+          connection={mockConnection}
+        />
+      </TestApp>
+    );
+
+    // Simulate opening the dialog
+    rerender(
+      <TestApp>
+        <CreditsDialog
+          open={true}
+          onOpenChange={mockCallback}
+          providerId="test-provider"
+          connection={mockConnection}
+        />
+      </TestApp>
+    );
+
+    expect(screen.getByText('Credits - test-provider')).toBeInTheDocument();
+  });
 });

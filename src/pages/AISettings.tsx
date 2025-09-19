@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { CreditsBadge } from '@/components/CreditsBadge';
+import { CreditsDialog } from '@/components/CreditsDialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAISettings } from '@/hooks/useAISettings';
 import { useIsMobile } from '@/hooks/useIsMobile';
@@ -91,6 +92,7 @@ export function AISettings() {
   const [customApiKey, setCustomApiKey] = useState('');
   const [customAuthMethod, setCustomAuthMethod] = useState<'api-key' | 'nostr'>('api-key');
   const [presetApiKeys, setPresetApiKeys] = useState<Record<string, string>>({});
+  const [activeCreditsDialog, setActiveCreditsDialog] = useState<string | null>(null);
 
   const handleAddPresetProvider = (preset: PresetProvider) => {
     const apiKey = presetApiKeys[preset.id] as string | undefined;
@@ -142,6 +144,14 @@ export function AISettings() {
   const handleUpdateProvider = (name: string, connection: Partial<AIConnection>) => {
     // Auto-save: Update provider immediately in persistent storage
     updateProvider(name, connection);
+  };
+
+  const handleOpenCreditsDialog = (providerId: string) => {
+    setActiveCreditsDialog(providerId);
+  };
+
+  const handleCloseCreditsDialog = () => {
+    setActiveCreditsDialog(null);
   };
 
   const configuredProviderIds = Object.keys(settings.providers);
@@ -204,7 +214,11 @@ export function AISettings() {
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <CreditsBadge providerId={providerId} connection={provider} />
+                          <CreditsBadge
+                            providerId={providerId}
+                            connection={provider}
+                            onOpenDialog={() => handleOpenCreditsDialog(providerId)}
+                          />
                           <Button
                             variant="ghost"
                             size="sm"
@@ -426,6 +440,20 @@ export function AISettings() {
           </Accordion>
         </div>
       </div>
+
+      {/* Render credits dialog outside of accordion structure */}
+      {activeCreditsDialog && (
+        <CreditsDialog
+          open={true}
+          onOpenChange={(open) => {
+            if (!open) {
+              handleCloseCreditsDialog();
+            }
+          }}
+          providerId={activeCreditsDialog}
+          connection={settings.providers[activeCreditsDialog]}
+        />
+      )}
     </div>
   );
 }

@@ -62,6 +62,7 @@ function LightningPayment({ invoice, amount, onClose }: LightningPaymentProps) {
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const [isWebLNAvailable, setIsWebLNAvailable] = useState(false);
   const [isPayingWithWebLN, setIsPayingWithWebLN] = useState(false);
+  const [showCopiedTooltip, setShowCopiedTooltip] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -109,10 +110,8 @@ function LightningPayment({ invoice, amount, onClose }: LightningPaymentProps) {
 
   const handleCopyInvoice = () => {
     navigator.clipboard.writeText(invoice);
-    toast({
-      title: 'Invoice copied',
-      description: 'Lightning invoice copied to clipboard',
-    });
+    setShowCopiedTooltip(true);
+    setTimeout(() => setShowCopiedTooltip(false), 2000);
   };
 
   const formatCurrency = (amount: number) => {
@@ -161,15 +160,23 @@ function LightningPayment({ invoice, amount, onClose }: LightningPaymentProps) {
           </Button>
         )}
 
-        <Button
-          variant="outline"
-          onClick={handleCopyInvoice}
-          className="w-full"
-          size="lg"
-        >
-          <Copy className="h-4 w-4 mr-2" />
-          Copy Invoice
-        </Button>
+        <div className="relative">
+          <Button
+            variant="outline"
+            onClick={handleCopyInvoice}
+            className="w-full"
+            size="lg"
+          >
+            <Copy className="h-4 w-4 mr-2" />
+            Copy Invoice
+          </Button>
+          {showCopiedTooltip && (
+            <div className="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-foreground text-background text-xs px-2 py-1 rounded shadow-lg z-10 animate-in fade-in-0 duration-200">
+              Copied!
+              <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-foreground"></div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Invoice Text (for manual copying) */}

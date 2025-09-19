@@ -171,7 +171,7 @@ describe('useAIProjectId', () => {
     );
   });
 
-  it('should retry with new names when project exists', async () => {
+  it('should fallback to untitled when project exists', async () => {
     mockUseAISettings.mockReturnValue({
       settings: {
         providers: {
@@ -187,25 +187,20 @@ describe('useAIProjectId', () => {
       addRecentlyUsedModel: vi.fn(),
     });
 
-    // Mock multiple responses - first one exists, second one is unique
-    const mockCompletion1 = {
+    // Mock AI response - returns a project name that already exists
+    const mockCompletion = {
       choices: [{ message: { content: 'existing-project' } }]
-    };
-    const mockCompletion2 = {
-      choices: [{ message: { content: 'unique-project' } }]
     };
     const mockOpenAI = {
       chat: {
         completions: {
-          create: vi.fn()
-            .mockResolvedValueOnce(mockCompletion1)
-            .mockResolvedValueOnce(mockCompletion2)
+          create: vi.fn().mockResolvedValueOnce(mockCompletion)
         }
       }
     } as unknown as ReturnType<typeof createAIClient>;
     mockCreateAIClient.mockReturnValue(mockOpenAI);
 
-    // Mock getProject - first call returns project (exists), second returns null (unique)
+    // Mock getProject - first call returns project (exists), second returns null (untitled is available)
     const mockGetProject = vi.fn()
       .mockResolvedValueOnce({ id: 'existing-project', name: 'Existing Project', path: '/projects/existing-project', lastModified: new Date() })
       .mockResolvedValueOnce(null);
@@ -219,22 +214,16 @@ describe('useAIProjectId', () => {
 
     const projectId = await result.current.generateProjectId('openai/gpt-4', 'A social media app for developers');
 
-    expect(projectId).toBe('unique-project');
+    expect(projectId).toBe('untitled');
     expect(mockGetProject).toHaveBeenCalledTimes(2);
     expect(mockGetProject).toHaveBeenNthCalledWith(1, 'existing-project');
-    expect(mockGetProject).toHaveBeenNthCalledWith(2, 'unique-project');
+    expect(mockGetProject).toHaveBeenNthCalledWith(2, 'untitled');
 
-    // Should have called AI twice - once for initial name, once for retry
-    expect(mockOpenAI.chat.completions.create).toHaveBeenCalledTimes(2);
-
-    // Second call should include the "already taken" message
-    const mockCreate = mockOpenAI.chat.completions.create as ReturnType<typeof vi.fn>;
-    const secondCallArgs = mockCreate.mock.calls[1][0];
-    expect(secondCallArgs.messages).toHaveLength(3);
-    expect(secondCallArgs.messages[2].content).toContain('already taken');
+    // Should have called AI only once
+    expect(mockOpenAI.chat.completions.create).toHaveBeenCalledTimes(1);
   });
 
-  it('should throw error after maximum iterations', async () => {
+  it('should fallback to untitled-1 when untitled exists', async () => {
     mockUseAISettings.mockReturnValue({
       settings: {
         providers: {
@@ -250,7 +239,7 @@ describe('useAIProjectId', () => {
       addRecentlyUsedModel: vi.fn(),
     });
 
-    // Mock AI to always return the same name
+    // Mock AI to return a project name that already exists
     const mockCompletion = {
       choices: [{ message: { content: 'taken-project' } }]
     };
@@ -263,13 +252,11 @@ describe('useAIProjectId', () => {
     } as unknown as ReturnType<typeof createAIClient>;
     mockCreateAIClient.mockReturnValue(mockOpenAI);
 
-    // Mock getProject to always return a project (project always exists)
-    const mockGetProject = vi.fn().mockResolvedValue({
-      id: 'taken-project',
-      name: 'Taken Project',
-      path: '/projects/taken-project',
-      lastModified: new Date()
-    });
+    // Mock getProject - taken-project exists, untitled exists, untitled-1 is available
+    const mockGetProject = vi.fn()
+      .mockResolvedValueOnce({ id: 'taken-project', name: 'Taken Project', path: '/projects/taken-project', lastModified: new Date() })
+      .mockResolvedValueOnce({ id: 'untitled', name: 'Untitled', path: '/projects/untitled', lastModified: new Date() })
+      .mockResolvedValueOnce(null);
 
     const mockProjectsManager = {
       getProject: mockGetProject,
@@ -278,11 +265,170 @@ describe('useAIProjectId', () => {
 
     const { result } = renderHook(() => useAIProjectId());
 
-    await expect(result.current.generateProjectId('openai/gpt-4', 'A social media app for developers'))
-      .rejects.toThrow('Failed to generate a unique project name after 3 attempts');
+    const projectId = await result.current.generateProjectId('openai/gpt-4', 'A social media app for developers');
 
+    expect(projectId).toBe('untitled-1');
     expect(mockGetProject).toHaveBeenCalledTimes(3);
-    expect(mockOpenAI.chat.completions.create).toHaveBeenCalledTimes(3);
+    expect(mockGetProject).toHaveBeenNthCalledWith(1, 'taken-project');
+    expect(mockGetProject).toHaveBeenNthCalledWith(2, 'untitled');
+    expect(mockGetProject).toHaveBeenNthCalledWith(3, 'untitled-1');
+
+    // Should have called AI only once
+    expect(mockOpenAI.chat.completions.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('should fallback to untitled when AI generates too long name', async () => {
+    mockUseAISettings.mockReturnValue({
+      settings: {
+        providers: {
+          openai: { apiKey: 'test-key', baseURL: 'https://api.openai.com/v1' }
+        },
+        recentlyUsedModels: []
+      },
+      isConfigured: true,
+      updateSettings: vi.fn(),
+      addProvider: vi.fn(),
+      removeProvider: vi.fn(),
+      updateProvider: vi.fn(),
+      addRecentlyUsedModel: vi.fn(),
+    });
+
+    // Mock AI to return a very long project name (over 50 characters)
+    const mockCompletion = {
+      choices: [{ message: { content: 'this-is-a-very-long-project-name-that-exceeds-the-maximum-allowed-length-limit' } }]
+    };
+    const mockOpenAI = {
+      chat: {
+        completions: {
+          create: vi.fn().mockResolvedValue(mockCompletion)
+        }
+      }
+    } as unknown as ReturnType<typeof createAIClient>;
+    mockCreateAIClient.mockReturnValue(mockOpenAI);
+
+    // Mock getProject - untitled is available
+    const mockGetProject = vi.fn().mockResolvedValue(null);
+
+    const mockProjectsManager = {
+      getProject: mockGetProject,
+    } as unknown as ProjectsManager;
+    mockUseProjectsManager.mockReturnValue(mockProjectsManager);
+
+    const { result } = renderHook(() => useAIProjectId());
+
+    const projectId = await result.current.generateProjectId('openai/gpt-4', 'A social media app for developers');
+
+    expect(projectId).toBe('untitled');
+    expect(mockGetProject).toHaveBeenCalledTimes(1);
+    expect(mockGetProject).toHaveBeenNthCalledWith(1, 'untitled');
+
+    // Should have called AI only once
+    expect(mockOpenAI.chat.completions.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('should fallback to untitled when AI generates invalid name', async () => {
+    mockUseAISettings.mockReturnValue({
+      settings: {
+        providers: {
+          openai: { apiKey: 'test-key', baseURL: 'https://api.openai.com/v1' }
+        },
+        recentlyUsedModels: []
+      },
+      isConfigured: true,
+      updateSettings: vi.fn(),
+      addProvider: vi.fn(),
+      removeProvider: vi.fn(),
+      updateProvider: vi.fn(),
+      addRecentlyUsedModel: vi.fn(),
+    });
+
+    // Mock AI to return an invalid project name (doesn't match regex)
+    const mockCompletion = {
+      choices: [{ message: { content: 'Invalid Project Name!' } }]
+    };
+    const mockOpenAI = {
+      chat: {
+        completions: {
+          create: vi.fn().mockResolvedValue(mockCompletion)
+        }
+      }
+    } as unknown as ReturnType<typeof createAIClient>;
+    mockCreateAIClient.mockReturnValue(mockOpenAI);
+
+    // Mock getProject - untitled is available
+    const mockGetProject = vi.fn().mockResolvedValue(null);
+
+    const mockProjectsManager = {
+      getProject: mockGetProject,
+    } as unknown as ProjectsManager;
+    mockUseProjectsManager.mockReturnValue(mockProjectsManager);
+
+    const { result } = renderHook(() => useAIProjectId());
+
+    const projectId = await result.current.generateProjectId('openai/gpt-4', 'A social media app for developers');
+
+    expect(projectId).toBe('untitled');
+    expect(mockGetProject).toHaveBeenCalledTimes(1);
+    expect(mockGetProject).toHaveBeenNthCalledWith(1, 'untitled');
+
+    // Should have called AI only once
+    expect(mockOpenAI.chat.completions.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('should fallback to untitled-2 when untitled and untitled-1 exist', async () => {
+    mockUseAISettings.mockReturnValue({
+      settings: {
+        providers: {
+          openai: { apiKey: 'test-key', baseURL: 'https://api.openai.com/v1' }
+        },
+        recentlyUsedModels: []
+      },
+      isConfigured: true,
+      updateSettings: vi.fn(),
+      addProvider: vi.fn(),
+      removeProvider: vi.fn(),
+      updateProvider: vi.fn(),
+      addRecentlyUsedModel: vi.fn(),
+    });
+
+    // Mock AI to return a project name that already exists
+    const mockCompletion = {
+      choices: [{ message: { content: 'taken-project' } }]
+    };
+    const mockOpenAI = {
+      chat: {
+        completions: {
+          create: vi.fn().mockResolvedValue(mockCompletion)
+        }
+      }
+    } as unknown as ReturnType<typeof createAIClient>;
+    mockCreateAIClient.mockReturnValue(mockOpenAI);
+
+    // Mock getProject - taken-project exists, untitled exists, untitled-1 exists, untitled-2 is available
+    const mockGetProject = vi.fn()
+      .mockResolvedValueOnce({ id: 'taken-project', name: 'Taken Project', path: '/projects/taken-project', lastModified: new Date() })
+      .mockResolvedValueOnce({ id: 'untitled', name: 'Untitled', path: '/projects/untitled', lastModified: new Date() })
+      .mockResolvedValueOnce({ id: 'untitled-1', name: 'Untitled 1', path: '/projects/untitled-1', lastModified: new Date() })
+      .mockResolvedValueOnce(null);
+
+    const mockProjectsManager = {
+      getProject: mockGetProject,
+    } as unknown as ProjectsManager;
+    mockUseProjectsManager.mockReturnValue(mockProjectsManager);
+
+    const { result } = renderHook(() => useAIProjectId());
+
+    const projectId = await result.current.generateProjectId('openai/gpt-4', 'A social media app for developers');
+
+    expect(projectId).toBe('untitled-2');
+    expect(mockGetProject).toHaveBeenCalledTimes(4);
+    expect(mockGetProject).toHaveBeenNthCalledWith(1, 'taken-project');
+    expect(mockGetProject).toHaveBeenNthCalledWith(2, 'untitled');
+    expect(mockGetProject).toHaveBeenNthCalledWith(3, 'untitled-1');
+    expect(mockGetProject).toHaveBeenNthCalledWith(4, 'untitled-2');
+
+    // Should have called AI only once
+    expect(mockOpenAI.chat.completions.create).toHaveBeenCalledTimes(1);
   });
 
   it('should handle loading state correctly', async () => {

@@ -38,58 +38,45 @@ export function useAIProjectId({ onError }: UseAIProjectIdOptions = {}) {
         { role: 'user' as const, content: prompt }
       ];
 
-      let iterations = 0;
-      const maxIterations = 3;
+      // Try once to generate a project name
+      const completion = await openai.chat.completions.create({
+        model,
+        messages,
+        temperature: 1,
+      });
 
-      while (iterations < maxIterations) {
-        iterations++;
-
-        const completion = await openai.chat.completions.create({
-          model,
-          messages,
-          temperature: 1,
-        });
-
-        const projectName = completion.choices[0]?.message?.content?.trim();
-        if (!projectName) {
-          throw new Error('Failed to generate project name');
-        }
-
-        // Convert the name into kebab-case
-        const projectId = projectName
-          .toLowerCase()
-          .replace(/\s+/g, '-') // Replace spaces with hyphens
-          .replace(/[^a-z0-9-]/g, '') // Remove invalid characters
-          .replace(/-+/g, '-') // Replace multiple hyphens with a single hyphen
-          .replace(/^-+|-+$/g, ''); // Trim hyphens from start and end
-
-        if (!projectId) {
-          throw new Error('Generated project ID is empty after formatting');
-        }
-
-        // Validate the generated ID
-        const validIdRegex = /^[a-z0-9]+(-[a-z0-9]+)*$/;
-        if (!validIdRegex.test(projectId)) {
-          throw new Error('Generated project ID is invalid');
-        }
-
-        // Check if project exists
-        const existingProject = await projectsManager.getProject(projectId);
-        if (existingProject !== null) {
-          // Add user message indicating the name is already taken
-          messages.push({
-            role: 'user',
-            content: `The name "${projectName}" (project ID: ${projectId}) is already taken. Please generate another unique name.`
-          });
-          continue; // Try again with updated conversation
-        }
-
-        // If we reach here, the project ID is valid and unique
-        return projectId;
+      const projectId = completion.choices[0]?.message?.content?.trim();
+      if (!projectId) {
+        throw new Error('Failed to generate project name');
       }
 
-      // If we've exceeded max iterations, throw an error
-      throw new Error(`Failed to generate a unique project name after ${maxIterations} attempts`);
+      // Validate the generated ID directly (no conversion)
+      const validIdRegex = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+      if (projectId.length <= 50 && validIdRegex.test(projectId)) {
+        // Check if project exists
+        const existingProject = await projectsManager.getProject(projectId);
+        if (existingProject === null) {
+          // Valid and unique project ID
+          return projectId;
+        }
+      }
+
+      // If we reach here, either the regex failed or the project already exists
+      // Fall back to "untitled" with number suffixes
+      let fallbackId = 'untitled';
+      let counter = 1;
+
+      // Check if base "untitled" exists
+      let existingProject = await projectsManager.getProject(fallbackId);
+
+      // Keep incrementing until we find an available name
+      while (existingProject !== null) {
+        fallbackId = `untitled-${counter}`;
+        existingProject = await projectsManager.getProject(fallbackId);
+        counter++;
+      }
+
+      return fallbackId;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to generate project ID';
       onError?.(errorMessage);

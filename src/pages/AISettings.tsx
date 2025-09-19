@@ -6,8 +6,8 @@ import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { CreditsBadge } from '@/components/CreditsBadge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAISettings } from '@/hooks/useAISettings';
 import { useIsMobile } from '@/hooks/useIsMobile';
@@ -193,7 +193,6 @@ export function AISettings() {
               {configuredProviderIds.map((providerId) => {
                 const preset = PRESET_PROVIDERS.find(p => p.id === providerId);
                 const provider = settings.providers[providerId];
-                const isCustom = !preset;
 
                 return (
                   <AccordionItem key={providerId} value={providerId} className="border rounded-lg">
@@ -203,19 +202,21 @@ export function AISettings() {
                           <span className="font-medium">
                             {preset?.name || providerId}
                           </span>
-                          {isCustom && <Badge variant="outline">{t('custom')}</Badge>}
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRemoveProvider(providerId);
-                          }}
-                          className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-transparent"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <div className="flex items-center gap-2">
+                          <CreditsBadge providerId={providerId} connection={provider} />
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRemoveProvider(providerId);
+                            }}
+                            className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-transparent"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
                     </AccordionTrigger>
                     <AccordionContent className="px-4 pb-4">

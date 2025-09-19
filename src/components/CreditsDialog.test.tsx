@@ -25,9 +25,9 @@ describe('CreditsDialog', () => {
       </TestApp>
     );
 
-    expect(screen.getByText('Credits - test-provider')).toBeInTheDocument();
-    expect(screen.getByText('Add Credits')).toBeInTheDocument();
-    expect(screen.getByText('Transaction History')).toBeInTheDocument();
+    expect(screen.getByText('Credits')).toBeInTheDocument();
+    expect(screen.getByText('Amount (USD)')).toBeInTheDocument();
+    expect(screen.getByText('Recent Transactions')).toBeInTheDocument();
   });
 
   it('does not render when closed', () => {
@@ -42,7 +42,7 @@ describe('CreditsDialog', () => {
       </TestApp>
     );
 
-    expect(screen.queryByText('Credits - test-provider')).not.toBeInTheDocument();
+    expect(screen.queryByText('Credits')).not.toBeInTheDocument();
   });
 
   it('shows payment method options', () => {
@@ -120,6 +120,6 @@ describe('CreditsDialog', () => {
       </TestApp>
     );
 
-    expect(screen.getByText('Credits - test-provider')).toBeInTheDocument();
+    expect(screen.getByText('Credits')).toBeInTheDocument();
   });
 });

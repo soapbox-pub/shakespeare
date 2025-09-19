@@ -127,10 +127,10 @@ export function CreditsDialog({ open, onOpenChange, providerId, connection }: Cr
       return;
     }
 
-    if (amount < 5) {
+    if (amount <= 0) {
       toast({
-        title: 'Minimum amount',
-        description: 'Minimum credit amount is $5.00',
+        title: 'Invalid amount',
+        description: 'Please enter a valid amount.',
         variant: 'destructive',
       });
       return;
@@ -158,13 +158,27 @@ export function CreditsDialog({ open, onOpenChange, providerId, connection }: Cr
   };
 
   const formatDate = (timestamp: number) => {
-    return new Intl.DateTimeFormat('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    }).format(new Date(timestamp * 1000));
+    const date = new Date(timestamp * 1000);
+    const now = new Date();
+    const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) {
+      return new Intl.DateTimeFormat('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+      }).format(date);
+    } else if (diffDays === 1) {
+      return 'Yesterday';
+    } else if (diffDays < 7) {
+      return new Intl.DateTimeFormat('en-US', {
+        weekday: 'short',
+      }).format(date);
+    } else {
+      return new Intl.DateTimeFormat('en-US', {
+        month: 'short',
+        day: 'numeric',
+      }).format(date);
+    }
   };
 
   const getStatusIcon = (status: Payment['status']) => {
@@ -197,154 +211,141 @@ export function CreditsDialog({ open, onOpenChange, providerId, connection }: Cr
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+      <DialogContent className="max-w-lg w-full mx-4 max-h-[95vh] overflow-hidden flex flex-col">
+        <DialogHeader className="flex-shrink-0">
+          <DialogTitle className="flex items-center gap-2 text-lg">
             <CreditCard className="h-5 w-5" />
-            Credits - {providerId}
+            Credits
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div className="flex-1 overflow-y-auto space-y-6 px-1 -mx-1">
           {/* Add Credits Form */}
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Add Credits</h3>
-
-            <div className="grid gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="amount">Amount (USD)</Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="amount"
-                    type="number"
-                    min="5"
-                    step="1"
-                    value={amount}
-                    onChange={(e) => setAmount(Number(e.target.value))}
-                    placeholder="Enter amount"
-                    className="flex-1"
-                  />
-                  <div className="flex gap-1">
-                    {PRESET_AMOUNTS.map((preset) => (
-                      <Button
-                        key={preset}
-                        variant={amount === preset ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setAmount(preset)}
-                        className="px-3"
-                      >
-                        ${preset}
-                      </Button>
-                    ))}
-                  </div>
+            <div className="space-y-3">
+              <Label htmlFor="amount" className="text-sm font-medium">Amount (USD)</Label>
+              <div className="space-y-3">
+                <Input
+                  id="amount"
+                  type="number"
+                  step="0.01"
+                  value={amount}
+                  onChange={(e) => setAmount(Number(e.target.value))}
+                  placeholder="Enter amount"
+                  className="text-center text-lg font-medium"
+                />
+                <div className="grid grid-cols-5 gap-2">
+                  {PRESET_AMOUNTS.map((preset) => (
+                    <Button
+                      key={preset}
+                      variant={amount === preset ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setAmount(preset)}
+                      className="text-xs"
+                    >
+                      ${preset}
+                    </Button>
+                  ))}
                 </div>
-                {amount > 0 && amount < 5 && (
-                  <p className="text-sm text-destructive">Minimum amount is $5.00</p>
-                )}
+
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="payment-method">Payment Method</Label>
-                <Select value={paymentMethod} onValueChange={(value: 'stripe' | 'lightning') => setPaymentMethod(value)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="stripe">
-                      <div className="flex items-center gap-2">
-                        <CreditCard className="h-4 w-4" />
-                        Credit Card (Stripe)
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="lightning">
-                      <div className="flex items-center gap-2">
-                        <Zap className="h-4 w-4" />
-                        Lightning Network
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <Button
-                onClick={handleAddCredits}
-                disabled={!user || amount < 5 || addCreditsMutation.isPending}
-                className="w-full"
-              >
-                {addCreditsMutation.isPending && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
-                {paymentMethod === 'stripe' ? 'Pay with Credit Card' : 'Generate Lightning Invoice'}
-                {amount >= 5 && ` - ${formatCurrency(amount)}`}
-              </Button>
-
-              {!user && (
-                <p className="text-sm text-muted-foreground text-center">
-                  Please log in to purchase credits
-                </p>
-              )}
             </div>
+
+            <div className="space-y-3">
+              <Label htmlFor="payment-method" className="text-sm font-medium">Payment Method</Label>
+              <Select value={paymentMethod} onValueChange={(value: 'stripe' | 'lightning') => setPaymentMethod(value)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="stripe">
+                    <div className="flex items-center gap-2">
+                      <CreditCard className="h-4 w-4" />
+                      Credit Card
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="lightning">
+                    <div className="flex items-center gap-2">
+                      <Zap className="h-4 w-4" />
+                      Lightning
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <Button
+              onClick={handleAddCredits}
+              disabled={!user || amount <= 0 || addCreditsMutation.isPending}
+              className="w-full h-12 text-base font-medium"
+              size="lg"
+            >
+              {addCreditsMutation.isPending && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
+              {paymentMethod === 'stripe' ? 'Pay with Card' : 'Generate Invoice'}
+              {amount > 0 && ` - ${formatCurrency(amount)}`}
+            </Button>
+
+            {!user && (
+              <p className="text-sm text-muted-foreground text-center px-4">
+                Please log in to purchase credits
+              </p>
+            )}
           </div>
 
           <Separator />
 
           {/* Transaction History */}
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Transaction History</h3>
+            <h3 className="text-base font-semibold">Recent Transactions</h3>
 
             {isLoadingPayments ? (
               <div className="space-y-3">
                 {Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="flex items-center gap-3">
+                  <div key={i} className="p-3 border rounded-lg space-y-2">
+                    <div className="flex items-center gap-2">
                       <Skeleton className="h-4 w-4 rounded" />
-                      <div className="space-y-1">
-                        <Skeleton className="h-4 w-32" />
-                        <Skeleton className="h-3 w-24" />
-                      </div>
+                      <Skeleton className="h-4 w-24" />
+                      <Skeleton className="h-4 w-16 ml-auto" />
                     </div>
-                    <div className="text-right space-y-1">
-                      <Skeleton className="h-4 w-16" />
-                      <Skeleton className="h-3 w-12" />
-                    </div>
+                    <Skeleton className="h-3 w-32" />
                   </div>
                 ))}
               </div>
             ) : !payments || payments.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                <CreditCard className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No transactions yet</p>
-                <p className="text-sm">Your payment history will appear here</p>
+                <CreditCard className="h-10 w-10 mx-auto mb-3 opacity-50" />
+                <p className="text-sm">No transactions yet</p>
+                <p className="text-xs">Your payment history will appear here</p>
               </div>
             ) : (
-              <div className="space-y-2 max-h-64 overflow-y-auto">
-                {payments.map((payment) => (
+              <div className="space-y-2">
+                {payments.slice(0, 5).map((payment) => (
                   <div
                     key={payment.id}
-                    className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                    className="p-3 border rounded-lg space-y-2 hover:bg-muted/30 transition-colors"
                   >
-                    <div className="flex items-center gap-3">
-                      {getStatusIcon(payment.status)}
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">{payment.description}</span>
-                          <Badge variant={getStatusVariant(payment.status)} className="text-xs">
-                            {payment.status}
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          {formatDate(payment.created_at)}
-                          {payment.completed_at && payment.completed_at !== payment.created_at && (
-                            <span> • Completed {formatDate(payment.completed_at)}</span>
-                          )}
-                        </p>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        {getStatusIcon(payment.status)}
+                        <span className="text-sm font-medium truncate">
+                          {payment.method === 'stripe' ? 'Credit Card' : 'Lightning'}
+                        </span>
+                        <Badge variant={getStatusVariant(payment.status)} className="text-xs flex-shrink-0">
+                          {payment.status}
+                        </Badge>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <p className="text-sm font-medium">{formatCurrency(payment.amount)}</p>
+                        {payment.fee > 0 && (
+                          <p className="text-xs text-muted-foreground">
+                            +{formatCurrency(payment.fee)}
+                          </p>
+                        )}
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="font-medium">{formatCurrency(payment.amount)}</p>
-                      {payment.fee > 0 && (
-                        <p className="text-sm text-muted-foreground">
-                          +{formatCurrency(payment.fee)} fee
-                        </p>
-                      )}
+
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>{formatDate(payment.created_at)}</span>
                       {payment.status === 'pending' && payment.url && (
                         <Button
                           variant="ghost"
@@ -360,7 +361,7 @@ export function CreditsDialog({ open, onOpenChange, providerId, connection }: Cr
                               window.open(payment.url, '_blank');
                             }
                           }}
-                          className="h-6 px-2 mt-1"
+                          className="h-6 px-2 text-xs"
                         >
                           <ExternalLink className="h-3 w-3 mr-1" />
                           {payment.method === 'lightning' ? 'Copy' : 'Pay'}
@@ -369,6 +370,12 @@ export function CreditsDialog({ open, onOpenChange, providerId, connection }: Cr
                     </div>
                   </div>
                 ))}
+
+                {payments.length > 5 && (
+                  <p className="text-xs text-muted-foreground text-center pt-2">
+                    Showing recent 5 transactions
+                  </p>
+                )}
               </div>
             )}
           </div>

@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { CreditCard, Zap, ExternalLink, RefreshCw, Check, X, Clock, AlertCircle } from 'lucide-react';
+import QRCode from 'qrcode';
+import { CreditCard, Zap, ExternalLink, RefreshCw, Check, X, Clock, AlertCircle, Copy } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -51,6 +52,143 @@ interface AddCreditsRequest {
 
 const PRESET_AMOUNTS = [5, 10, 25, 50, 100];
 
+interface LightningPaymentProps {
+  invoice: string;
+  amount: number;
+  onClose: () => void;
+}
+
+function LightningPayment({ invoice, amount, onClose }: LightningPaymentProps) {
+  const [qrDataUrl, setQrDataUrl] = useState<string>('');
+  const [isWebLNAvailable, setIsWebLNAvailable] = useState(false);
+  const [isPayingWithWebLN, setIsPayingWithWebLN] = useState(false);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    // Generate QR code
+    QRCode.toDataURL(invoice, {
+      width: 256,
+      margin: 2,
+      color: {
+        dark: '#000000',
+        light: '#ffffff',
+      },
+    })
+      .then(setQrDataUrl)
+      .catch(console.error);
+
+    // Check for WebLN availability
+    setIsWebLNAvailable(typeof window !== 'undefined' && 'webln' in window);
+  }, [invoice]);
+
+  const handleWebLNPay = async () => {
+    if (!window.webln) return;
+
+    try {
+      setIsPayingWithWebLN(true);
+      await window.webln.enable();
+      await window.webln.sendPayment(invoice);
+
+      toast({
+        title: 'Payment sent!',
+        description: 'Your Lightning payment has been sent successfully.',
+      });
+
+      onClose();
+    } catch (error) {
+      console.error('WebLN payment failed:', error);
+      toast({
+        title: 'Payment failed',
+        description: error instanceof Error ? error.message : 'Failed to send Lightning payment',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsPayingWithWebLN(false);
+    }
+  };
+
+  const handleCopyInvoice = () => {
+    navigator.clipboard.writeText(invoice);
+    toast({
+      title: 'Invoice copied',
+      description: 'Lightning invoice copied to clipboard',
+    });
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="text-center">
+        <h3 className="text-lg font-semibold mb-2">Lightning Payment</h3>
+        <p className="text-sm text-muted-foreground">
+          Pay {formatCurrency(amount)} with Lightning Network
+        </p>
+      </div>
+
+      {/* QR Code */}
+      <div className="flex justify-center">
+        {qrDataUrl ? (
+          <div className="p-4 bg-white rounded-lg border">
+            <img src={qrDataUrl} alt="Lightning Invoice QR Code" className="w-48 h-48" />
+          </div>
+        ) : (
+          <div className="w-48 h-48 bg-muted rounded-lg flex items-center justify-center">
+            <RefreshCw className="h-6 w-6 animate-spin" />
+          </div>
+        )}
+      </div>
+
+      {/* Payment Buttons */}
+      <div className="space-y-2">
+        {isWebLNAvailable && (
+          <Button
+            onClick={handleWebLNPay}
+            disabled={isPayingWithWebLN}
+            className="w-full"
+            size="lg"
+          >
+            {isPayingWithWebLN && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
+            <Zap className="h-4 w-4 mr-2" />
+            Pay with WebLN
+          </Button>
+        )}
+
+        <Button
+          variant="outline"
+          onClick={handleCopyInvoice}
+          className="w-full"
+          size="lg"
+        >
+          <Copy className="h-4 w-4 mr-2" />
+          Copy Invoice
+        </Button>
+      </div>
+
+      {/* Invoice Text (for manual copying) */}
+      <div className="space-y-2">
+        <Label className="text-xs text-muted-foreground">Lightning Invoice:</Label>
+        <div className="p-2 bg-muted rounded text-xs font-mono break-all max-h-20 overflow-y-auto">
+          {invoice}
+        </div>
+      </div>
+
+      <div className="flex gap-2">
+        <Button variant="outline" onClick={onClose} className="flex-1">
+          Close
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export function CreditsDialog({ open, onOpenChange, providerId, connection }: CreditsDialogProps) {
   const { user } = useCurrentUser();
   const { toast } = useToast();
@@ -58,6 +196,7 @@ export function CreditsDialog({ open, onOpenChange, providerId, connection }: Cr
 
   const [amount, setAmount] = useState<number>(10);
   const [paymentMethod, setPaymentMethod] = useState<'stripe' | 'lightning'>('stripe');
+  const [lightningInvoice, setLightningInvoice] = useState<string | null>(null);
 
   // Query for payment history
   const { data: payments, isLoading: isLoadingPayments } = useQuery({
@@ -89,12 +228,8 @@ export function CreditsDialog({ open, onOpenChange, providerId, connection }: Cr
           description: 'Stripe checkout opened in a new window.',
         });
       } else if (payment.method === 'lightning') {
-        // Copy Lightning invoice to clipboard
-        navigator.clipboard.writeText(payment.url);
-        toast({
-          title: 'Lightning invoice copied',
-          description: 'The Lightning invoice has been copied to your clipboard.',
-        });
+        // Show Lightning payment interface
+        setLightningInvoice(payment.url);
       }
 
       // Refresh payments list
@@ -220,8 +355,20 @@ export function CreditsDialog({ open, onOpenChange, providerId, connection }: Cr
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto space-y-6 px-1 -mx-1">
-          {/* Add Credits Form */}
-          <div className="space-y-4">
+          {/* Lightning Payment Interface */}
+          {lightningInvoice ? (
+            <LightningPayment
+              invoice={lightningInvoice}
+              amount={amount}
+              onClose={() => {
+                setLightningInvoice(null);
+                onOpenChange(false);
+              }}
+            />
+          ) : (
+            <>
+              {/* Add Credits Form */}
+              <div className="space-y-4">
             <div className="space-y-3">
               <Label htmlFor="amount" className="text-sm font-medium">Amount (USD)</Label>
               <div className="space-y-3">
@@ -352,11 +499,7 @@ export function CreditsDialog({ open, onOpenChange, providerId, connection }: Cr
                           size="sm"
                           onClick={() => {
                             if (payment.method === 'lightning') {
-                              navigator.clipboard.writeText(payment.url);
-                              toast({
-                                title: 'Invoice copied',
-                                description: 'Lightning invoice copied to clipboard',
-                              });
+                              setLightningInvoice(payment.url);
                             } else {
                               window.open(payment.url, '_blank');
                             }
@@ -364,7 +507,7 @@ export function CreditsDialog({ open, onOpenChange, providerId, connection }: Cr
                           className="h-6 px-2 text-xs"
                         >
                           <ExternalLink className="h-3 w-3 mr-1" />
-                          {payment.method === 'lightning' ? 'Copy' : 'Pay'}
+                          {payment.method === 'lightning' ? 'Pay' : 'Pay'}
                         </Button>
                       )}
                     </div>
@@ -379,6 +522,8 @@ export function CreditsDialog({ open, onOpenChange, providerId, connection }: Cr
               </div>
             )}
           </div>
+            </>
+          )}
         </div>
       </DialogContent>
     </Dialog>

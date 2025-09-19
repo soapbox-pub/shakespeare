@@ -5,6 +5,7 @@ import type { AIMessage } from '@/lib/SessionManager';
 import { cn } from '@/lib/utils';
 import { UserMessage } from '@/components/UserMessage';
 import OpenAI from 'openai';
+import { useTheme } from '@/hooks/useTheme';
 
 interface AIMessageItemProps {
   message: AIMessage;
@@ -18,6 +19,7 @@ export const AIMessageItem = memo(({
   toolCall
 }: AIMessageItemProps) => {
   const [isToolExpanded, setIsToolExpanded] = useState(false);
+  const { displayTheme } = useTheme();
 
   // Get content to display
   const getContent = () => {
@@ -232,6 +234,7 @@ export const AIMessageItem = memo(({
             <Streamdown
               className='size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0'
               parseIncompleteMarkdown={isCurrentlyLoading}
+              shikiTheme={displayTheme === 'dark' ? 'github-dark' : 'github-light'}
             >
               {getContent()}
             </Streamdown>

@@ -247,6 +247,10 @@
     max-height: 100dvh;
   }
 
+  pre.shiki {
+    background-color: transparent !important;
+  }
+
   /* Fallback for browsers that don't support dvh */
   @supports not (height: 100dvh) {
     .h-dvh {

@@ -279,6 +279,47 @@ The AI assistant's behavior and knowledge is defined by the AGENTS.md file, whic
 1. Edit AGENTS.md directly
 2. The changes take effect in the next session
 
+## Translations
+
+Shakespeare includes internationalization (i18n) support using react-i18next. The translation system allows the interface to be displayed in multiple languages.
+
+### Key Files
+
+- **`src/lib/i18n.ts`**: Main translation configuration file containing all translation resources for supported languages
+- **`src/components/LanguagePicker.tsx`**: Language selection component used in preferences, must be updated when adding new languages
+
+### Usage in Components
+
+Use the `useTranslation` hook to access translations in React components:
+
+```tsx
+import { useTranslation } from 'react-i18next';
+
+function MyComponent() {
+  const { t } = useTranslation();
+
+  return <h1>{t('settings')}</h1>; // Returns "Settings", "Configurações", etc.
+}
+```
+
+### Translation Key Organization
+
+Translation keys are organized by functionality:
+- **Navigation and Layout**: `preferences`, `settings`, `help`, etc.
+- **Authentication**: `logIn`, `signUp`
+- **UI Elements**: `save`, `cancel`, `loading`, etc.
+- **Feature-specific sections**: AI Settings, Git Settings, Nostr Settings, etc.
+
+### Adding New Languages
+
+1. Add the new language code and translation object to the `resources` object in `src/lib/i18n.ts`
+2. Add all required key-value pairs for the new language, following existing patterns
+3. Update `src/components/LanguagePicker.tsx` to include the new language option in the dropdown
+4. Add the language name translations (e.g., `spanish: 'Spanish'`) to all existing language objects
+5. Use descriptive, hierarchical key names (avoid duplicates)
+6. Keep translations concise and consistent with existing patterns
+7. Test the new language thoroughly to ensure proper display across all components
+
 ## "Vibed with MKStack"
 
 When building the site for the first time, include "Vibed with MKStack" somewhere in the UI, linked to this URL: https://soapbox.pub/mkstack

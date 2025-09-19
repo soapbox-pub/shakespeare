@@ -1,10 +1,9 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Folder, GitBranch, Loader2, ChevronDown, Star, Columns2, X } from 'lucide-react';
+import { Plus, Folder, GitBranch, Loader2, ChevronDown, Star, Columns2, X, Settings, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { LoginArea } from '@/components/auth/LoginArea';
 import { useProjects } from '@/hooks/useProjects';
 import { useProjectSessionStatus } from '@/hooks/useProjectSessionStatus';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
@@ -224,9 +223,28 @@ export function ProjectSidebar({
         </div>
       </div>
 
-      {/* Account Selector at Bottom */}
-      <div className="p-4 border-t border-sidebar-border bg-gradient-to-r from-primary/5 to-accent/5 mt-auto">
-        <LoginArea className="w-full" />
+      {/* Settings and Help at Bottom */}
+      <div className="p-2 border-t border-sidebar-border bg-gradient-to-r from-primary/5 to-accent/5 mt-auto">
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="flex-1 h-9 justify-start gap-2 hover:bg-primary/10 text-sidebar-foreground"
+            onClick={() => navigateAndClose('/settings')}
+          >
+            <Settings className="h-4 w-4" />
+            Settings
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-9 w-9 p-0 hover:bg-primary/10 text-sidebar-foreground"
+            onClick={() => window.open('https://soapbox.pub/shakespeare-resources/', '_blank')}
+            aria-label="Help"
+          >
+            <HelpCircle className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
     </div>
   );

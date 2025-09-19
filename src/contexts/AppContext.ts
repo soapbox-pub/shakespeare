@@ -1,7 +1,6 @@
 import { createContext } from "react";
 
 export type Theme = "dark" | "light" | "system";
-export type Language = "en" | "pt" | "zh";
 
 export interface AppConfig {
   /** Current theme */
@@ -11,7 +10,7 @@ export interface AppConfig {
   /** Deploy server domain (e.g., "shakespeare.wtf") */
   deployServer: string;
   /** Selected language */
-  language: Language;
+  language?: string;
 }
 
 export interface AppContextType {

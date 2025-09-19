@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
+import { Languages } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAppContext } from '@/hooks/useAppContext';
-import type { Language } from '@/contexts/AppContext';
 
 interface LanguagePickerProps {
   className?: string;
@@ -11,18 +11,24 @@ export function LanguagePicker({ className }: LanguagePickerProps) {
   const { t } = useTranslation();
   const { config, updateConfig } = useAppContext();
 
-  const handleLanguageChange = (language: Language) => {
-    updateConfig((prev) => ({ ...prev, language }));
+  const handleLanguageChange = (language: string) => {
+    updateConfig((prev) => ({ ...prev, language: language === 'system' ? undefined : language }));
   };
 
   return (
-    <Select value={config.language} onValueChange={handleLanguageChange}>
+    <Select value={config.language ?? 'system'} onValueChange={handleLanguageChange}>
       <SelectTrigger className={className}>
         <div className="flex items-center gap-2">
           <SelectValue />
         </div>
       </SelectTrigger>
       <SelectContent>
+        <SelectItem value="system">
+          <div className="flex items-center gap-2">
+            <Languages className="h-4 w-4" />
+            {t('systemLanguage')}
+          </div>
+        </SelectItem>
         <SelectItem value="en">
           <div className="flex items-center gap-2">
             <span className="text-lg">🇺🇸</span>

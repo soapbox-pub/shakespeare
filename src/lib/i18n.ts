@@ -33,6 +33,7 @@ const resources = {
       english: 'English',
       portuguese: 'Portuguese',
       chinese: 'Chinese',
+      systemLanguage: 'System',
 
       // Theme Options
       light: 'Light',
@@ -283,6 +284,7 @@ const resources = {
       english: 'Inglês',
       portuguese: 'Português',
       chinese: 'Chinês',
+      systemLanguage: 'Sistema',
 
       // Theme Options
       light: 'Claro',
@@ -533,6 +535,7 @@ const resources = {
       english: 'English',
       portuguese: 'Português',
       chinese: '中文',
+      systemLanguage: '系统',
 
       // Theme Options
       light: '浅色',
@@ -760,7 +763,6 @@ i18n
   .use(initReactI18next)
   .init({
     resources,
-    lng: 'en', // Default language
     fallbackLng: 'en',
     interpolation: {
       escapeValue: false, // React already escapes values

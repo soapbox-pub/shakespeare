@@ -27,6 +27,7 @@ describe('LanguagePicker', () => {
     fireEvent.click(trigger);
 
     // Should show all language options (using getAllByText since there might be duplicates)
+    expect(screen.getAllByText('System').length).toBeGreaterThan(0);
     expect(screen.getAllByText('English').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Portuguese').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Chinese').length).toBeGreaterThan(0);

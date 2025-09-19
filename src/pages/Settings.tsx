@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Bot, GitBranch, Database, Wifi } from 'lucide-react';
+import { Bot, GitBranch, Database, Wifi, Settings2 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/useIsMobile';
 
 interface SettingsItem {
@@ -11,6 +11,13 @@ interface SettingsItem {
 }
 
 const settingsItems: SettingsItem[] = [
+  {
+    id: 'preferences',
+    title: 'Preferences',
+    description: 'General application preferences and appearance',
+    icon: Settings2,
+    href: '/settings/preferences',
+  },
   {
     id: 'ai',
     title: 'AI Settings',

@@ -90,8 +90,8 @@ export function ProjectSidebar({
   const queryClient = useQueryClient();
   const { data: projects = [], isLoading, error } = useProjects();
   const [favorites] = useLocalStorage<string[]>('project-favorites', []);
-  const isMobile = useIsMobile();
 
+  const isMobile = useIsMobile();
   const navigate = useNavigate();
 
   // Custom navigate function that closes sidebar on mobile
@@ -229,20 +229,20 @@ export function ProjectSidebar({
           <Button
             variant="ghost"
             size="sm"
-            className="flex-1 h-9 justify-start gap-2 hover:bg-primary/10 text-sidebar-foreground"
+            className="flex-1 h-9 justify-start gap-2 text-sidebar-foreground dark:hover:text-sidebar-primary hover:bg-sidebar-accent/50 dark:hover:bg-sidebar-accent/30 transition-all duration-200"
             onClick={() => navigateAndClose('/settings')}
           >
-            <Settings className="h-4 w-4" />
+            <Settings className="h-4 w-4 transition-colors duration-200" />
             Settings
           </Button>
           <Button
             variant="ghost"
             size="sm"
-            className="h-9 w-9 p-0 hover:bg-primary/10 text-sidebar-foreground"
+            className="h-9 w-9 p-0 text-sidebar-foreground dark:hover:text-sidebar-primary hover:bg-sidebar-accent/50 dark:hover:bg-sidebar-accent/30 transition-all duration-200"
             onClick={() => window.open('https://soapbox.pub/shakespeare-resources/', '_blank')}
             aria-label="Help"
           >
-            <HelpCircle className="h-4 w-4" />
+            <HelpCircle className="h-4 w-4 transition-colors duration-200" />
           </Button>
         </div>
       </div>

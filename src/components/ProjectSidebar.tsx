@@ -229,7 +229,7 @@ export function ProjectSidebar({
           <Button
             variant="ghost"
             size="sm"
-            className="flex-1 h-9 justify-start gap-2 text-sidebar-foreground dark:hover:text-sidebar-primary hover:bg-sidebar-accent/50 dark:hover:bg-sidebar-accent/30 transition-all duration-200"
+            className="flex-1 h-9 justify-start gap-2 text-sidebar-foreground dark:hover:text-sidebar-primary hover:bg-primary/10 dark:hover:bg-sidebar-accent/30 transition-all duration-200"
             onClick={() => navigateAndClose('/settings')}
           >
             <Settings className="h-4 w-4 transition-colors duration-200" />
@@ -238,7 +238,7 @@ export function ProjectSidebar({
           <Button
             variant="ghost"
             size="sm"
-            className="h-9 w-9 p-0 text-sidebar-foreground dark:hover:text-sidebar-primary hover:bg-sidebar-accent/50 dark:hover:bg-sidebar-accent/30 transition-all duration-200"
+            className="h-9 w-9 p-0 text-sidebar-foreground dark:hover:text-sidebar-primary hover:bg-primary/10 dark:hover:bg-sidebar-accent/30 transition-all duration-200"
             onClick={() => window.open('https://soapbox.pub/shakespeare-resources/', '_blank')}
             aria-label="Help"
           >

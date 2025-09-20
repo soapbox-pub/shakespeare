@@ -82,16 +82,11 @@ class ConsoleInterceptor {
   }
 
   init() {
-    // Store original methods
-    this.methods.forEach(method => {
+    // Store original methods and override in single pass
+    this.methods.forEach((method) => {
       if (typeof console[method] === 'function') {
         this.originalConsole[method] = console[method];
-      }
-    });
 
-    // Override console methods
-    this.methods.forEach(method => {
-      if (typeof console[method] === 'function') {
         console[method] = (...args) => {
           // Call original method
           try {
@@ -108,7 +103,7 @@ class ConsoleInterceptor {
   }
 
   sendConsoleMessage(level, ...args) {
-    const message = args.map(arg => {
+    const message = args.map((arg) => {
       if (arg === undefined) return 'undefined';
       if (arg === null) return 'null';
       if (typeof arg === 'object') {
@@ -203,7 +198,7 @@ class FetchClient {
   }
 
   blockFutureRegistrations() {
-    navigator.serviceWorker.register = function () {
+    navigator.serviceWorker.register = () => {
       console.log("Blocked ServiceWorker registration attempt");
       return Promise.resolve({
         scope: "/",
@@ -307,7 +302,7 @@ class FetchClient {
 }
 
 // Global error handlers
-function setupGlobalErrorHandlers() {
+const setupGlobalErrorHandlers = () => {
   window.addEventListener('error', (event) => {
     try {
       window.parent.postMessage({
@@ -343,7 +338,7 @@ function setupGlobalErrorHandlers() {
       // Ignore postMessage errors
     }
   });
-}
+};
 
 // Initialize
 setupGlobalErrorHandlers();

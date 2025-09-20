@@ -54,30 +54,31 @@ blocked.
 
 ```
 /
-├── index.html              # Main iframe client page
-├── _iframe-client.js       # Main coordination script
-├── _iframe-client.css      # Styles for the iframe client
-├── sw.js                   # ServiceWorker
-├── MESSAGING_PROTOCOL.md   # Communication protocol docs
-├── example-parent.html     # Example parent implementation
-└── README.md               # This file
+├── index.html                    # Main iframe client page
+├── _iframe-client/
+│   ├── main.js                   # Main coordination script
+│   └── client.css                # Styles for the iframe client
+├── sw.js                         # ServiceWorker
+├── MESSAGING_PROTOCOL.md         # Communication protocol docs
+└── README.md                     # This file
 ```
 
 ## Simplified JSON-RPC Protocol
 
-The system now uses a drastically simplified JSON-RPC 2.0 protocol with only one
-method:
+The system now uses a simplified JSON-RPC 2.0 protocol with two methods:
 
 - **`fetch(request)`** - Handle HTTP requests with serialized fetch
   request/response
+- **`console(level, message)`** - Forward console messages from
+  iframe to parent for display
 
 **Request:**
 
 ```javascript
 {
     "jsonrpc": "2.0",
-    "method": "fetch", 
-    "params": { 
+    "method": "fetch",
+    "params": {
         "request": {
             "url": "https://app123.example.com/assets/main.js",
             "method": "GET",
@@ -103,6 +104,19 @@ method:
         "body": "console.log('hello');"
     },
     "id": 123
+}
+```
+
+**Console Message:**
+
+```javascript
+{
+    "jsonrpc": "2.0",
+    "method": "console",
+    "params": {
+        "level": "error",
+        "message": "Failed to load module"
+    }
 }
 ```
 
@@ -136,8 +150,9 @@ Deploy these files to your iframe client subdomain:
 ```
 https://*.example.com/
 ├── index.html
-├── _iframe-client.js
-├── _iframe-client.css
+├── _iframe-client/
+│   ├── main.js
+│   └── client.css
 └── sw.js
 ```
 
@@ -158,8 +173,7 @@ Include the iframe client in your parent page:
 </iframe>
 ```
 
-Implement the JSON-RPC protocol (see `example-parent.html` for a complete
-example):
+Implement the JSON-RPC protocol:
 
 ```javascript
 class FetchClientParent {
@@ -270,9 +284,9 @@ function handleRequest(fetchRequest) {
 
 ## Testing
 
-1. Open `example-parent.html` in a browser
-2. Click "Load Sample Site"
-3. The iframe client should load and display the sample app
+1. Create a parent page implementing the JSON-RPC protocol (see example in MESSAGING_PROTOCOL.md)
+2. Load the iframe client in an iframe pointing to your deployed client domain
+3. The iframe client should load and display the served content
 4. Test navigation and functionality within the iframe client
 
 ## Browser Support
@@ -312,10 +326,10 @@ function handleRequest(fetchRequest) {
 
 To modify the system:
 
-1. **iframe Client:** Edit `index.html`, `_iframe-client.js`,
-   `_iframe-client.css`, `sw.js`
+1. **iframe Client:** Edit `index.html`, `_iframe-client/main.js`,
+   `_iframe-client/client.css`, `sw.js`
 2. **Protocol:** Update `MESSAGING_PROTOCOL.md` for any changes
-3. **Testing:** Use `example-parent.html` for testing changes
+3. **Testing:** Create a parent page implementing the JSON-RPC protocol for testing changes
 
 ## License
 

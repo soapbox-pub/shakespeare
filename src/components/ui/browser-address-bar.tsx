@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ReactNode } from 'react';
 
 interface BrowserAddressBarProps {
   currentPath?: string;
@@ -13,6 +14,7 @@ interface BrowserAddressBarProps {
   canGoBack?: boolean;
   canGoForward?: boolean;
   className?: string;
+  extraContent?: ReactNode;
 }
 
 export function BrowserAddressBar({
@@ -24,18 +26,19 @@ export function BrowserAddressBar({
   canGoBack = false,
   canGoForward = false,
   className,
+  extraContent,
 }: BrowserAddressBarProps) {
   const [inputValue, setInputValue] = useState(currentPath);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     let path = inputValue.trim();
-    
+
     // Ensure path starts with /
     if (!path.startsWith('/')) {
       path = '/' + path;
     }
-    
+
     onNavigate?.(path);
   };
 
@@ -45,7 +48,7 @@ export function BrowserAddressBar({
 
   return (
     <div className={cn(
-      "flex items-center gap-1 p-2 border-b bg-background",
+      "flex items-center gap-1 p-2 border-b bg-background w-full",
       className
     )}>
       {/* Navigation buttons */}
@@ -91,6 +94,9 @@ export function BrowserAddressBar({
           className="h-8 bg-muted/50 border-muted-foreground/20 focus:bg-background"
         />
       </form>
+
+      {/* Extra content */}
+      {extraContent}
     </div>
   );
 }

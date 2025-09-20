@@ -161,30 +161,6 @@ export function ModelSelector({
         <Command>
           {isConfigured && <CommandInput placeholder={t('searchModels')} className="h-9" />}
           <CommandList className="max-h-[300px]">
-            {/* Custom model option and manage providers */}
-            <CommandGroup>
-              {isConfigured && (
-                <CommandItem
-                  value="__custom_model_option__"
-                  onSelect={() => handleSelect('__custom__')}
-                  className="cursor-pointer"
-                >
-                  <Edit3 className="mr-2 h-4 w-4" />
-                  {t('enterCustomModel')}
-                </CommandItem>
-              )}
-              <CommandItem
-                value="__manage_providers_option__"
-                onSelect={() => handleSelect('__manage_providers__')}
-                className="cursor-pointer"
-              >
-                <Settings className="mr-2 h-4 w-4" />
-                {t('manageProviders')}
-              </CommandItem>
-            </CommandGroup>
-
-            <CommandSeparator />
-
             <CommandEmpty>
               <div className="py-6 text-center text-sm text-muted-foreground">
                 <p>{t('noModelsFound')}</p>
@@ -275,6 +251,29 @@ export function ModelSelector({
                 </CommandGroup>
               </div>
             ))}
+
+            {/* Custom model option and manage providers - moved to bottom */}
+            <CommandSeparator />
+            <CommandGroup>
+              {isConfigured && (
+                <CommandItem
+                  value="__custom_model_option__"
+                  onSelect={() => handleSelect('__custom__')}
+                  className="cursor-pointer"
+                >
+                  <Edit3 className="mr-2 h-4 w-4" />
+                  {t('enterCustomModel')}
+                </CommandItem>
+              )}
+              <CommandItem
+                value="__manage_providers_option__"
+                onSelect={() => handleSelect('__manage_providers__')}
+                className="cursor-pointer"
+              >
+                <Settings className="mr-2 h-4 w-4" />
+                {t('manageProviders')}
+              </CommandItem>
+            </CommandGroup>
           </CommandList>
         </Command>
       </PopoverContent>

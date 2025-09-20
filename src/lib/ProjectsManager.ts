@@ -38,8 +38,8 @@ export class ProjectsManager {
     }
   }
 
-  async createProject(name: string): Promise<Project> {
-    const project = await this.cloneProject(name, GIT_TEMPLATE_URL, { depth: 1 });
+  async createProject(name: string, customId?: string): Promise<Project> {
+    const project = await this.cloneProject(name, GIT_TEMPLATE_URL, customId, { depth: 1 });
 
     try {
       await this.fs.mkdir(this.dir + `/${project.id}/.ai/history`, { recursive: true });
@@ -92,24 +92,21 @@ export class ProjectsManager {
     return project;
   }
 
-  async importProjectFromZip(zipFile: File, overwrite = false): Promise<Project> {
-    // Generate a project ID based on the zip file name
+  async importProjectFromZip(zipFile: File, customId?: string, overwrite = false): Promise<Project> {
+    // Generate a project ID based on the zip file name or use custom ID
     const baseName = zipFile.name.replace(/\.zip$/i, '');
     const generatedId = baseName
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '');
 
-    // Check if a project with the generated ID already exists
-    const existingProjectExists = await this.projectExists(generatedId);
-
     // Determine the project ID to use
     let id: string;
-    if (overwrite && existingProjectExists) {
-      // Use the existing project ID for overwrite
-      id = generatedId;
+    if (customId) {
+      // Use the provided custom ID (for overwrite scenarios)
+      id = customId;
     } else {
-      // Generate a unique ID for new projects
+      // If no custom ID, generate a unique ID (for new projects)
       id = await this.generateUniqueProjectId(generatedId);
     }
 
@@ -272,8 +269,13 @@ export class ProjectsManager {
     }
   }
 
-  async cloneProject(name: string, repoUrl: string, options?: { depth?: number }): Promise<Project> {
-    const id = await this.generateUniqueProjectId(name);
+  async cloneProject(name: string, repoUrl: string, customId?: string, options?: { depth?: number }): Promise<Project> {
+    const id = customId || await this.generateUniqueProjectId(name);
+
+    // Check if project with this ID already exists when using custom ID
+    if (customId && await this.projectExists(id)) {
+      throw new Error(`Project with ID "${id}" already exists`);
+    }
 
     const projectPath = `${this.dir}/${id}`;
 

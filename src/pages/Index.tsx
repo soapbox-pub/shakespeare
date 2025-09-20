@@ -26,7 +26,7 @@ export default function Index() {
   const navigate = useNavigate();
   const projectsManager = useProjectsManager();
   const { fs } = useFS();
-  const { isLoading: isGeneratingId, isConfigured: isAIConfigured } = useAIProjectId();
+  const { generateProjectId, isLoading: isGeneratingId, isConfigured: isAIConfigured } = useAIProjectId();
   const { settings, addRecentlyUsedModel } = useAISettings();
   const { toast } = useToast();
   const [providerModel, setProviderModel] = useState(() => {
@@ -91,11 +91,14 @@ export default function Index() {
 
     setIsCreating(true);
     try {
+      // Use AI to generate project ID
+      const projectId = await generateProjectId(providerModel, prompt.trim());
+
       // Add model to recently used when creating project with AI
       addRecentlyUsedModel(providerModel.trim());
 
-      // Create project
-      const project = await projectsManager.createProject(prompt.trim());
+      // Create project with AI-generated ID
+      const project = await projectsManager.createProject(prompt.trim(), projectId);
 
       // Store the initial message in chat history using DotAI
       const dotAI = new DotAI(fs, `/projects/${project.id}`);

@@ -211,8 +211,8 @@ describe('ProjectsManager', () => {
       // Replace git instance
       Object.assign(projectsManager, { git: mockGit });
 
-      // Create a mock ZIP file with same name to trigger overwrite
-      const zipFile = new File(['test content'], 'my-project.zip', { type: 'application/zip' });
+      // Create a mock ZIP file with different name
+      const zipFile = new File(['test content'], 'different-name.zip', { type: 'application/zip' });
 
       // Mock arrayBuffer method
       Object.defineProperty(zipFile, 'arrayBuffer', {
@@ -221,7 +221,7 @@ describe('ProjectsManager', () => {
       });
 
       // Import with overwrite
-      const project = await projectsManager.importProjectFromZip(zipFile, true);
+      const project = await projectsManager.importProjectFromZip(zipFile, 'my-project', true);
 
       // Should preserve original project name
       expect(project.name).toBe('my-project');
@@ -254,7 +254,7 @@ describe('ProjectsManager', () => {
       });
 
       // Import without overwrite
-      const project = await projectsManager.importProjectFromZip(zipFile, false);
+      const project = await projectsManager.importProjectFromZip(zipFile, undefined, false);
 
       // Should use formatted name from ID
       expect(project.name).toBe('new-project');

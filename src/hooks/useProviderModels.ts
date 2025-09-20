@@ -7,7 +7,7 @@ import { createAIClient } from '@/lib/ai-client';
 
 interface ProviderModel {
   id: string;
-  name: string;
+  name?: string;
   provider: string;
   fullId: string; // provider/model format
   description?: string;
@@ -58,10 +58,13 @@ export function useProviderModels(): ModelFetchResult {
             const providerModels = response.data.map((model) => {
               const providerModel: ProviderModel = {
                 id: model.id,
-                name: model.id,
                 provider: providerKey,
                 fullId: `${providerKey}/${model.id}`,
               };
+
+              if ('name' in model && typeof model.name === 'string') {
+                providerModel.name = model.name;
+              }
 
               if ('description' in model && typeof model.description === 'string') {
                 providerModel.description = model.description;

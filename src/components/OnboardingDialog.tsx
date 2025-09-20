@@ -1,3 +1,4 @@
+import { Decimal } from 'decimal.js';
 import { useState, useEffect } from 'react';
 import { generateSecretKey } from 'nostr-tools';
 import { nip19 } from 'nostr-tools';
@@ -98,10 +99,12 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
     onOpenChange(false);
   };
 
-  const formatPrice = (price: { equals: (n: number) => boolean; toFixed: (n: number) => string } | undefined) => {
-    if (!price) return 'Free';
+  const formatPrice = (price: Decimal | undefined) => {
+    if (!price) return 'unknown';
     if (price.equals(0)) return 'Free';
-    return `${price.toFixed(6)}/1K tokens`;
+    // Convert from per-token to per-1M tokens and format with $ prefix
+    const pricePerMillion = price.times(1_000_000);
+    return '$' + pricePerMillion.toFixed(2).toString().replace(/\.00$/, '') + '/M tokens';
   };
 
   // Reset state when dialog opens/closes
@@ -198,7 +201,7 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
                 </div>
 
                 <ScrollArea className="h-96">
-                  <div className="space-y-3 pr-4">
+                  <div className="space-y-3 p-1">
                     {isLoadingModels ? (
                       <>
                         {Array.from({ length: 3 }).map((_, i) => (
@@ -229,9 +232,7 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
                     ) : (
                       shakespeareModels.map((model) => {
                         const isSelected = selectedModel === model.fullId;
-                        const isFree = !model.pricing || (
-                          model.pricing.prompt.equals(0) && model.pricing.completion.equals(0)
-                        );
+                        const isFree = model.pricing?.prompt.equals(0) && model.pricing?.completion.equals(0);
 
                         return (
                           <Card
@@ -244,7 +245,7 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
                             <CardHeader className="pb-3">
                               <div className="flex items-center justify-between">
                                 <CardTitle className="text-base font-semibold">
-                                  {model.name}
+                                  {model.name ?? model.id}
                                 </CardTitle>
                                 <div className="flex items-center gap-2">
                                   {isFree && (

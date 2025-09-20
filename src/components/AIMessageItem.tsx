@@ -1,6 +1,6 @@
 import { memo, useState } from 'react';
 import { Streamdown } from 'streamdown';
-import { Wrench, Eye, FileText, Edit, Package, PackageMinus, GitCommit, BookOpen, Download, Hash, Tag, Network, List, Plus, Terminal, Globe, CheckCircle, Brain } from 'lucide-react';
+import { Wrench, Eye, FileText, Edit, Package, PackageMinus, GitCommit, BookOpen, Download, Hash, Tag, Network, List, Plus, Terminal, Globe, CheckCircle, Lightbulb, Loader2 } from 'lucide-react';
 import type { AIMessage } from '@/lib/SessionManager';
 import { cn } from '@/lib/utils';
 import { UserMessage } from '@/components/UserMessage';
@@ -240,7 +240,8 @@ export const AIMessageItem = memo(({
         <div className="text-sm">
           {/* Reasoning content display */}
           {((reasoningContent && reasoningContent.trim()) ||
-            (hasReasoningContent(message) && message.reasoning_content.trim())) && (
+            (hasReasoningContent(message) && message.reasoning_content.trim()) ||
+            (reasoningContent !== undefined && !getContent().trim() && isCurrentlyLoading)) && (
             <div className="mb-3">
               <button
                 onClick={() => setIsReasoningExpanded(!isReasoningExpanded)}
@@ -249,13 +250,17 @@ export const AIMessageItem = memo(({
                   "hover:bg-muted/30 rounded transition-colors duration-200"
                 )}
               >
-                <Brain className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                {reasoningContent !== undefined && !getContent().trim() && isCurrentlyLoading ? (
+                  <Loader2 className="h-3 w-3 text-muted-foreground flex-shrink-0 animate-spin" />
+                ) : (
+                  <Lightbulb className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                )}
                 <span className="text-muted-foreground font-medium flex-1 text-left">
                   Thinking
                 </span>
               </button>
 
-              {isReasoningExpanded && (
+              {isReasoningExpanded && (reasoningContent?.trim() || (hasReasoningContent(message) && message.reasoning_content.trim())) && (
                 <div className="mt-1 p-3 bg-muted/30 rounded border text-xs">
                   <div className="whitespace-pre-wrap break-words">
                     <Streamdown

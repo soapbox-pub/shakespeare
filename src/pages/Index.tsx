@@ -247,6 +247,7 @@ export default function Index() {
               <div className="absolute bottom-3 left-3 right-3 flex items-center justify-end gap-2 overflow-hidden">
                 {/* File Attachment */}
                 <FileAttachment
+                  className="mr-auto"
                   onFileSelect={handleFileSelect}
                   onFileRemove={handleFileRemove}
                   selectedFiles={attachedFiles}

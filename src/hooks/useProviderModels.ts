@@ -10,6 +10,7 @@ interface ProviderModel {
   name: string;
   provider: string;
   fullId: string; // provider/model format
+  description?: string;
   /** Maximum size of context window, if available */
   contextLength?: number;
   /** Pricing information, if available */
@@ -61,6 +62,10 @@ export function useProviderModels(): ModelFetchResult {
                 provider: providerKey,
                 fullId: `${providerKey}/${model.id}`,
               };
+
+              if ('description' in model && typeof model.description === 'string') {
+                providerModel.description = model.description;
+              }
 
               if ('context_length' in model && typeof model.context_length === 'number') {
                 providerModel.contextLength = model.context_length;

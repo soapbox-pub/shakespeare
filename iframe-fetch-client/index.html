@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Site Preview</title>
-    <link rel="stylesheet" href="/_iframe-client.css">
-    <!-- Early console interception setup -->
-    <script src="/_iframe-console-intercept.js"></script>
+    <link rel="stylesheet" href="/core/client.css">
   </head>
   <body>
     <div class="loading">
@@ -14,6 +12,6 @@
       <p>Loading preview...</p>
       <p><small>Waiting for ServiceWorker and parent communication</small></p>
     </div>
-    <script src="/_iframe-client.js"></script>
+    <script type="module" src="/core/main.js"></script>
   </body>
 </html>

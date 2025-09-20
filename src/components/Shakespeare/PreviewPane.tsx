@@ -6,7 +6,7 @@ import { useFS } from '@/hooks/useFS';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { FolderOpen, ArrowLeft, X, Bug } from 'lucide-react';
+import { FolderOpen, ArrowLeft, X, Bug, Copy, Check } from 'lucide-react';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { GitStatusIndicator } from '@/components/GitStatusIndicator';
 import { BrowserAddressBar } from '@/components/ui/browser-address-bar';
@@ -48,7 +48,7 @@ interface JSONRPCResponse {
     statusText: string;
     headers: Record<string, string>;
     body: string | null;
-  };
+  }
   error?: {
     code: number;
     message: string;
@@ -77,6 +77,7 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
   const [navigationHistory, setNavigationHistory] = useState<string[]>(['/']);
   const [historyIndex, setHistoryIndex] = useState(0);
   const [consoleMessages, setConsoleMessages] = useState<ConsoleMessage[]>([]);
+  const [copiedMessageId, setCopiedMessageId] = useState<number | null>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const { fs } = useFS();
   const projectsManager = useProjectsManager();
@@ -436,6 +437,27 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
     setConsoleMessages([]);
   };
 
+
+
+  const copyMessageToClipboard = async (msg: ConsoleMessage) => {
+    try {
+      // Create a formatted string with all message details
+      const formattedMessage = `[${formatTimestamp(msg.timestamp)}] [${msg.level.toUpperCase()}] ${msg.message}${
+        msg.args.length > 0 ? `\nArgs: ${JSON.stringify(msg.args, null, 2)}` : ''
+      }`;
+
+      await navigator.clipboard.writeText(formattedMessage);
+      setCopiedMessageId(msg.id);
+
+      // Reset the copied state after 2 seconds
+      setTimeout(() => {
+        setCopiedMessageId(null);
+      }, 2000);
+    } catch (error) {
+      console.error('Failed to copy message to clipboard:', error);
+    }
+  };
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -446,15 +468,15 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-96 max-h-96">
+      <DropdownMenuContent align="end" className="w-96 max-w-96 max-h-96 overflow-x-hidden">
         <div className="flex items-center justify-between p-2 border-b">
           <span className="font-medium text-sm">Console Output ({consoleMessages.length})</span>
           <Button variant="ghost" size="sm" onClick={clearConsole}>
             <X className="h-3 w-3" />
           </Button>
         </div>
-        <ScrollArea className="h-80">
-          <div className="space-y-1 p-2">
+        <ScrollArea className="h-80 w-full max-w-full overflow-x-hidden">
+          <div className="space-y-1 p-2 w-full max-w-full overflow-x-hidden">
             {consoleMessages.length === 0 ? (
               <div className="text-center text-muted-foreground text-sm py-4">
                 No console messages
@@ -463,15 +485,29 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
               consoleMessages.map((msg) => (
                 <div
                   key={msg.id}
-                  className={`text-xs font-mono p-2 rounded ${getLevelColor(msg.level)} bg-muted/50`}
+                  className={`text-xs font-mono p-2 rounded ${getLevelColor(msg.level)} bg-muted/50 group relative w-full overflow-hidden`}
                 >
-                  <div className="flex items-center gap-2 mb-1">
-                    <span>{getLevelIcon(msg.level)}</span>
-                    <span className="opacity-60">{formatTimestamp(msg.timestamp)}</span>
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-2">
+                      <span>{getLevelIcon(msg.level)}</span>
+                      <span className="opacity-60">{formatTimestamp(msg.timestamp)}</span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => copyMessageToClipboard(msg)}
+                      className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                    >
+                      {copiedMessageId === msg.id ? (
+                        <Check className="h-3 w-3 text-green-500" />
+                      ) : (
+                        <Copy className="h-3 w-3" />
+                      )}
+                    </Button>
                   </div>
-                  <div className="whitespace-pre-wrap break-all">{msg.message}</div>
+                  <div className="whitespace-pre-wrap break-all pr-8 overflow-x-hidden">{msg.message}</div>
                   {msg.args.length > 0 && (
-                    <div className="mt-1 opacity-70">
+                    <div className="mt-1 opacity-70 break-all overflow-x-hidden">
                       Args: {JSON.stringify(msg.args)}
                     </div>
                   )}

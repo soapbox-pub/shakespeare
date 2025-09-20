@@ -1,13 +1,118 @@
 /**
- * iframe Fetch Client Main Script
- * JSON-RPC based communication with parent page
+ * iframe Fetch Client Combined Entry Point
+ * Combines console interception and client initialization
  */
 
-import { overrideConsoleMethods, setupGlobalErrorHandlers, CONSOLE_METHODS } from './console-utils.js';
+// Import console interception utilities
+import { storeOriginalConsole, overrideConsoleMethods, setupGlobalErrorHandlers, CONSOLE_METHODS } from './console-utils.js';
 
+// Early Console Interception - runs immediately
+class EarlyConsoleInterceptor {
+  constructor() {
+    this.originalConsole = {};
+    this.earlyErrors = [];
+    this.consoleMethods = CONSOLE_METHODS;
+
+    this.init();
+  }
+
+  init() {
+    this.storeOriginalConsole();
+    this.overrideConsoleMethods();
+    this.setupGlobalErrorHandlers();
+    this.exposeToWindow();
+  }
+
+  storeOriginalConsole() {
+    this.consoleMethods.forEach(method => {
+      if (typeof console[method] === 'function') {
+        this.originalConsole[method] = console[method];
+      }
+    });
+  }
+
+  overrideConsoleMethods() {
+    this.consoleMethods.forEach(method => {
+      if (typeof console[method] === 'function') {
+        console[method] = (...args) => {
+          this.handleConsoleCall(method, args);
+        };
+      }
+    });
+  }
+
+  handleConsoleCall(method, args) {
+    // Try to call the original method
+    try {
+      this.originalConsole[method](...args);
+    } catch (e) {
+      // Original method failed, continue
+    }
+
+    // Store error for later processing
+    if (method === 'error' || method === 'exception') {
+      this.earlyErrors.push({
+        level: method,
+        message: this.serializeArgs(args),
+        timestamp: Date.now(),
+        args: args
+      });
+    }
+  }
+
+  serializeArgs(args) {
+    return args.map(arg => {
+      if (typeof arg === 'object') {
+        try {
+          return JSON.stringify(arg);
+        } catch {
+          return String(arg);
+        }
+      }
+      return String(arg);
+    }).join(' ');
+  }
+
+  setupGlobalErrorHandlers() {
+    // Handle window errors
+    window.addEventListener('error', (event) => {
+      this.earlyErrors.push({
+        level: 'error',
+        message: `Global Error: ${event.message}`,
+        timestamp: Date.now(),
+        args: [{
+          filename: event.filename,
+          lineno: event.lineno,
+          colno: event.colno,
+          error: event.error ? event.error.message : 'No error object'
+        }]
+      });
+    });
+
+    // Handle unhandled promise rejections
+    window.addEventListener('unhandledrejection', (event) => {
+      this.earlyErrors.push({
+        level: 'error',
+        message: 'Unhandled Promise Rejection',
+        timestamp: Date.now(),
+        args: [event.reason]
+      });
+    });
+  }
+
+  exposeToWindow() {
+    // Store early errors for the main script to process
+    window._earlyConsoleErrors = this.earlyErrors;
+
+    // Store original console reference for the main script
+    window._originalConsole = this.originalConsole;
+  }
+}
+
+// Console Interceptor - handles ongoing console interception
 class ConsoleInterceptor {
   constructor() {
-    // Use the original console stored by the inject script
+    // Use the original console stored by the early interceptor
     this.originalConsole = window._originalConsole || console;
     overrideConsoleMethods(this.originalConsole, this.sendConsoleMessage.bind(this));
     setupGlobalErrorHandlers(this.sendConsoleMessage.bind(this));
@@ -120,6 +225,7 @@ class ConsoleInterceptor {
   }
 }
 
+// JSON-RPC Client for communication with parent
 class JSONRPCClient {
   constructor() {
     this.requestId = 0;
@@ -189,6 +295,7 @@ class JSONRPCClient {
   }
 }
 
+// Main Fetch Client
 class FetchClient {
   constructor() {
     this.rpcClient = new JSONRPCClient();
@@ -393,6 +500,9 @@ class FetchClient {
         `;
   }
 }
+
+// Initialize early console interception immediately
+new EarlyConsoleInterceptor();
 
 // Initialize when DOM is ready
 if (document.readyState === "loading") {

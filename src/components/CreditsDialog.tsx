@@ -200,7 +200,7 @@ export function CreditsDialog({ open, onOpenChange, providerId, connection }: Cr
       const data = await ai.get('/credits/payments?limit=50') as PaymentsResponse;
       return data.data;
     },
-    enabled: open && !!user,
+    enabled: open,
     retry: false,
     refetchOnWindowFocus: false,
   });
@@ -316,15 +316,6 @@ export function CreditsDialog({ open, onOpenChange, providerId, connection }: Cr
   });
 
   const handleAddCredits = () => {
-    if (!user) {
-      toast({
-        title: 'Authentication required',
-        description: 'Please log in to purchase credits.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
     if (amount <= 0) {
       toast({
         title: 'Invalid amount',
@@ -498,7 +489,7 @@ export function CreditsDialog({ open, onOpenChange, providerId, connection }: Cr
 
             <Button
               onClick={handleAddCredits}
-              disabled={!user || amount <= 0 || addCreditsMutation.isPending}
+              disabled={amount <= 0 || addCreditsMutation.isPending}
               className="w-full h-12 text-base font-medium"
               size="lg"
             >
@@ -506,12 +497,6 @@ export function CreditsDialog({ open, onOpenChange, providerId, connection }: Cr
               {paymentMethod === 'stripe' ? 'Pay with Card' : 'Generate Invoice'}
               {amount > 0 && ` - ${formatCurrency(amount)}`}
             </Button>
-
-            {!user && (
-              <p className="text-sm text-muted-foreground text-center px-4">
-                Please log in to purchase credits
-              </p>
-            )}
             </div>
 
             <div className="flex-shrink-0 px-1 -mx-1 py-4">

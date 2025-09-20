@@ -80,20 +80,7 @@ describe('CreditsDialog', () => {
     expect(screen.getByText('$100')).toBeInTheDocument();
   });
 
-  it('shows login requirement when user is not logged in', () => {
-    render(
-      <TestApp>
-        <CreditsDialog
-          open={true}
-          onOpenChange={() => {}}
-          providerId="test-provider"
-          connection={mockConnection}
-        />
-      </TestApp>
-    );
 
-    expect(screen.getByText('Please log in to purchase credits')).toBeInTheDocument();
-  });
 
   it('calls onDialogStateChange callback when dialog state changes', () => {
     const mockCallback = vi.fn();

@@ -14,11 +14,12 @@ class JSONRPCClient {
   setupMessageListener() {
     window.addEventListener("message", (event) => {
       const message = event.data;
+      // Check if this is a response to our own request or a ServiceWorker request
       if (message.jsonrpc === "2.0" && message.id !== undefined) {
         if (this.pendingRequests.has(message.id)) {
           this.handleResponse(message);
         } else {
-          // Response for ServiceWorker - relay it
+          // This is a response to a ServiceWorker request, relay it back
           this.relayToServiceWorker(message);
         }
       }
@@ -26,6 +27,7 @@ class JSONRPCClient {
   }
 
   relayToServiceWorker(response) {
+    // Forward the JSON-RPC response to ServiceWorker
     if (navigator.serviceWorker.controller) {
       navigator.serviceWorker.controller.postMessage(response);
     }
@@ -37,6 +39,7 @@ class JSONRPCClient {
     return new Promise((resolve, reject) => {
       this.pendingRequests.set(id, { resolve, reject });
 
+      // Send JSON-RPC request to parent
       window.parent.postMessage({
         jsonrpc: "2.0",
         method: "fetch",
@@ -44,6 +47,7 @@ class JSONRPCClient {
         id,
       }, "*");
 
+      // Timeout after 10 seconds
       setTimeout(() => {
         if (this.pendingRequests.has(id)) {
           this.pendingRequests.delete(id);
@@ -185,7 +189,7 @@ class FetchClient {
 
     await navigator.serviceWorker.ready;
     this.setupServiceWorkerCommunication();
-    this.blockFutureRegistrations();
+    this.blockFutureRegistrations(); // Block future registrations to prevent site from registering its own SW
   }
 
   setupServiceWorkerCommunication() {
@@ -237,6 +241,7 @@ class FetchClient {
   }
 
   replaceDocument(htmlContent) {
+    // Create a new document from the HTML content
     const parser = new DOMParser();
     const newDoc = parser.parseFromString(htmlContent, "text/html");
 

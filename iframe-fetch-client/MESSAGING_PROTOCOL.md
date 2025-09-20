@@ -7,7 +7,8 @@ between the parent page and the iframe fetch client.
 
 The iframe fetch client uses JSON-RPC 2.0 over `postMessage` for communication.
 The ServiceWorker makes JSON-RPC calls directly, with the main thread acting as
-a relay between the ServiceWorker and parent page.
+a relay between the ServiceWorker and parent page. The only required method is
+`fetch` for handling HTTP requests.
 
 ## Architecture
 
@@ -124,6 +125,17 @@ full request body support
 - `-32001`: Invalid request format
 - `-32002`: Request processing error
 - `-32003`: Invalid URL
+
+**Request Body Support:** The system fully supports request bodies, enabling:
+
+- POST/PUT requests with JSON data
+- Form submissions
+- API calls with payloads
+- File uploads (as base64 strings)
+- Any HTTP method with body content
+
+Request bodies must be base64-encoded strings when not null. This ensures
+consistent handling of both text and binary data across the messaging protocol.
 
 ### `console`
 

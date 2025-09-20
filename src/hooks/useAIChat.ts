@@ -18,6 +18,7 @@ interface UseAIChatSessionOptions {
 interface StreamingMessage {
   role: 'assistant';
   content: string;
+  reasoning_content?: string;
   tool_calls?: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[];
 }
 
@@ -68,16 +69,18 @@ export function useAIChat({
         setStreamingMessage({
           role: 'assistant',
           content: '',
+          reasoning_content: '',
         });
       }
     }
   }, [projectId]);
 
-  useSessionSubscription('streamingUpdate', (updatedProjectId: string, content: string, toolCalls?: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[]) => {
+  useSessionSubscription('streamingUpdate', (updatedProjectId: string, content: string, reasoningContent?: string, toolCalls?: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[]) => {
     if (updatedProjectId === projectId) {
       setStreamingMessage({
         role: 'assistant',
         content,
+        reasoning_content: reasoningContent,
         tool_calls: toolCalls
       });
     }

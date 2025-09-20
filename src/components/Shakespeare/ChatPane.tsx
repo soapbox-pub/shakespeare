@@ -491,11 +491,12 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
             );
           })}
           {streamingMessage && (
-            streamingMessage.content ? (
+            streamingMessage.content || streamingMessage.reasoning_content ? (
               <AIMessageItem
                 key="streaming-message"
                 message={streamingMessage}
                 isCurrentlyLoading={isLoading}
+                reasoningContent={streamingMessage.reasoning_content}
               />
             ) : (
               !(streamingMessage?.tool_calls?.[0]?.type === 'function') && (

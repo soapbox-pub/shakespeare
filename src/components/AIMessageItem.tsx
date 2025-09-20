@@ -1,24 +1,32 @@
 import { memo, useState } from 'react';
 import { Streamdown } from 'streamdown';
-import { Wrench, Eye, FileText, Edit, Package, PackageMinus, GitCommit, BookOpen, Download, Hash, Tag, Network, List, Plus, Terminal, Globe, CheckCircle } from 'lucide-react';
+import { Wrench, Eye, FileText, Edit, Package, PackageMinus, GitCommit, BookOpen, Download, Hash, Tag, Network, List, Plus, Terminal, Globe, CheckCircle, Brain } from 'lucide-react';
 import type { AIMessage } from '@/lib/SessionManager';
 import { cn } from '@/lib/utils';
 import { UserMessage } from '@/components/UserMessage';
 import OpenAI from 'openai';
 import { useTheme } from '@/hooks/useTheme';
 
+// Type guard to check if message has reasoning content
+function hasReasoningContent(message: AIMessage): message is AIMessage & { reasoning_content: string } {
+  return message.role === 'assistant' && 'reasoning_content' in message && typeof (message as { reasoning_content?: unknown }).reasoning_content === 'string';
+}
+
 interface AIMessageItemProps {
   message: AIMessage;
   isCurrentlyLoading?: boolean;
   toolCall?: OpenAI.Chat.Completions.ChatCompletionMessageToolCall | undefined; // Tool call data passed from the assistant message
+  reasoningContent?: string; // Reasoning content for streaming messages
 }
 
 export const AIMessageItem = memo(({
   message,
   isCurrentlyLoading = false,
-  toolCall
+  toolCall,
+  reasoningContent
 }: AIMessageItemProps) => {
   const [isToolExpanded, setIsToolExpanded] = useState(false);
+  const [isReasoningExpanded, setIsReasoningExpanded] = useState(false);
   const { displayTheme } = useTheme();
 
   // Get content to display
@@ -230,6 +238,39 @@ export const AIMessageItem = memo(({
     <div className="flex">
       <div className="flex-1 min-w-0">
         <div className="text-sm">
+          {/* Reasoning content display */}
+          {((reasoningContent && reasoningContent.trim()) ||
+            (hasReasoningContent(message) && message.reasoning_content.trim())) && (
+            <div className="mb-3">
+              <button
+                onClick={() => setIsReasoningExpanded(!isReasoningExpanded)}
+                className={cn(
+                  "w-full flex items-center gap-2 px-2 py-1 text-xs",
+                  "hover:bg-muted/30 rounded transition-colors duration-200"
+                )}
+              >
+                <Brain className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                <span className="text-muted-foreground font-medium flex-1 text-left">
+                  Thinking
+                </span>
+              </button>
+
+              {isReasoningExpanded && (
+                <div className="mt-1 p-3 bg-muted/30 rounded border text-xs">
+                  <div className="whitespace-pre-wrap break-words">
+                    <Streamdown
+                      className='size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0'
+                      parseIncompleteMarkdown={isCurrentlyLoading}
+                      shikiTheme={displayTheme === 'dark' ? 'github-dark' : 'github-light'}
+                    >
+                      {reasoningContent || (hasReasoningContent(message) ? message.reasoning_content : '') || ''}
+                    </Streamdown>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="break-words">
             <Streamdown
               className='size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0'

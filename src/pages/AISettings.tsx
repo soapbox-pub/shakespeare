@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { CreditsBadge } from '@/components/CreditsBadge';
 import { CreditsDialog } from '@/components/CreditsDialog';
@@ -282,8 +281,6 @@ export function AISettings() {
           </div>
         )}
 
-        {configuredProviderIds.length > 0 && availablePresets.length > 0 && <Separator />}
-
         {/* Available Preset Providers */}
         {availablePresets.length > 0 && (
           <div className="space-y-3">
@@ -356,8 +353,6 @@ export function AISettings() {
             </div>
           </div>
         )}
-
-        {availablePresets.length > 0 && <Separator />}
 
         {/* Custom Provider */}
         <div className="space-y-3">

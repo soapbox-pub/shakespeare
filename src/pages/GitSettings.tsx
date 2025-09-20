@@ -4,7 +4,6 @@ import { Check, GitBranch, ArrowLeft, Github, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useGitSettings } from '@/hooks/useGitSettings';
@@ -209,8 +208,6 @@ export function GitSettings() {
           </div>
         )}
 
-        {configuredOrigins.length > 0 && availablePresets.length > 0 && <Separator />}
-
         {/* Available Preset Providers */}
         {availablePresets.length > 0 && (
           <div className="space-y-3">
@@ -319,8 +316,6 @@ export function GitSettings() {
             </div>
           </div>
         )}
-
-        <Separator />
 
         {/* Custom Provider */}
         <div className="space-y-3">

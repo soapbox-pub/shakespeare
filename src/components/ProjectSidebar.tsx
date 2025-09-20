@@ -123,10 +123,10 @@ export function ProjectSidebar({
     }
   };
 
-  const handleImportZip = async (file: File, customId?: string, overwrite = false) => {
+  const handleImportZip = async (file: File, overwrite = false, projectId?: string) => {
     try {
       // Import project from zip file
-      const project = await projectsManager.importProjectFromZip(file, customId, overwrite);
+      const project = await projectsManager.importProjectFromZip(file, projectId, overwrite);
 
       // Show success toast
       toast({

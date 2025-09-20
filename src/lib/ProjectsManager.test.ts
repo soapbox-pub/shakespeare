@@ -1,5 +1,26 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ProjectsManager } from './ProjectsManager';
+
+// Mock JSZip
+vi.mock('jszip', () => ({
+  default: class MockJSZip {
+    files: Record<string, { dir: boolean; async: () => Uint8Array }> = {};
+
+    static async loadAsync(buffer: ArrayBuffer) {
+      const instance = new MockJSZip();
+      // Add a mock file entry
+      instance.files['package.json'] = {
+        dir: false,
+        async: () => new Uint8Array(buffer)
+      };
+      return instance;
+    }
+
+    async file(name: string) {
+      return this.files[name];
+    }
+  }
+}));
 
 // Mock filesystem for testing
 class MockFS {
@@ -165,6 +186,79 @@ describe('ProjectsManager', () => {
 
       const project = await projectsManager.getProject('non-existent');
       expect(project).toBeNull();
+    });
+  });
+
+  describe('importProjectFromZip', () => {
+    it('should preserve original project name when overwriting', async () => {
+      await projectsManager.init();
+
+      // Create an existing project with a specific name
+      await fs.mkdir('/projects/my-project');
+      await fs.mkdir('/projects/my-project/.git');
+      await fs.writeFile('/projects/my-project/package.json', '{"name": "original-name"}');
+
+      // Mock the git methods to simulate existing project
+      const mockGit = {
+        init: vi.fn(),
+        clone: vi.fn(),
+        add: vi.fn(),
+        commit: vi.fn(),
+        getConfig: vi.fn(),
+        getAllFiles: vi.fn().mockResolvedValue(['package.json']),
+      } as Partial<import('./git').Git>;
+
+      // Replace git instance
+      Object.assign(projectsManager, { git: mockGit });
+
+      // Create a mock ZIP file with different name
+      const zipFile = new File(['test content'], 'different-name.zip', { type: 'application/zip' });
+
+      // Mock arrayBuffer method
+      Object.defineProperty(zipFile, 'arrayBuffer', {
+        value: () => Promise.resolve(new TextEncoder().encode('test content').buffer),
+        writable: false
+      });
+
+      // Import with overwrite
+      const project = await projectsManager.importProjectFromZip(zipFile, 'my-project', true);
+
+      // Should preserve original project name
+      expect(project.name).toBe('my-project');
+      expect(project.id).toBe('my-project');
+    });
+
+    it('should use new project name when not overwriting', async () => {
+      await projectsManager.init();
+
+      // Mock the git methods
+      const mockGit = {
+        init: vi.fn(),
+        clone: vi.fn(),
+        add: vi.fn(),
+        commit: vi.fn(),
+        getConfig: vi.fn(),
+        getAllFiles: vi.fn().mockResolvedValue(['package.json']),
+      } as Partial<import('./git').Git>;
+
+      // Replace git instance
+      Object.assign(projectsManager, { git: mockGit });
+
+      // Create a mock ZIP file
+      const zipFile = new File(['test content'], 'new-project.zip', { type: 'application/zip' });
+
+      // Mock arrayBuffer method
+      Object.defineProperty(zipFile, 'arrayBuffer', {
+        value: () => Promise.resolve(new TextEncoder().encode('test content').buffer),
+        writable: false
+      });
+
+      // Import without overwrite
+      const project = await projectsManager.importProjectFromZip(zipFile, undefined, false);
+
+      // Should use formatted name from ID
+      expect(project.name).toBe('new-project');
+      expect(project.id).toBe('new-project');
     });
   });
 });

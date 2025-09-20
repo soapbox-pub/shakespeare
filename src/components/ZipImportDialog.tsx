@@ -8,7 +8,7 @@ import { useProjects } from '@/hooks/useProjects';
 import { cn } from '@/lib/utils';
 
 interface ZipImportDialogProps {
-  onImport: (file: File, customId?: string, overwrite?: boolean) => Promise<void>;
+  onImport: (file: File, overwrite?: boolean, projectId?: string) => Promise<void>;
   disabled?: boolean;
   className?: string;
   open?: boolean;
@@ -21,7 +21,7 @@ export function ZipImportDialog({ onImport, disabled = false, className, open, o
   const isOpen = open !== undefined ? open : internalIsOpen;
   const setIsOpen = onOpenChange || setInternalIsOpen;
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [customId, setCustomId] = useState('');
+  const [generatedId, setGeneratedId] = useState('');
   const [isImporting, setIsImporting] = useState(false);
   const [importProgress, setImportProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -41,24 +41,24 @@ export function ZipImportDialog({ onImport, disabled = false, className, open, o
     setSelectedFile(file);
     setError(null);
 
-    // Auto-generate custom ID from file name
+    // Auto-generate ID from file name
     const baseName = file.name.replace(/\.zip$/i, '');
-    const generatedId = baseName
+    const id = baseName
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '');
-    setCustomId(generatedId);
+    setGeneratedId(id);
   };
 
-  // Check for existing project when custom ID changes
+  // Check for existing project when generated ID changes
   useEffect(() => {
-    if (customId && projects.length > 0) {
-      const existing = projects.find(project => project.id === customId);
+    if (generatedId && projects.length > 0) {
+      const existing = projects.find(project => project.id === generatedId);
       setExistingProject(existing || null);
     } else {
       setExistingProject(null);
     }
-  }, [customId, projects]);
+  }, [generatedId, projects]);
 
   // Drag and drop handlers
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -110,7 +110,7 @@ export function ZipImportDialog({ onImport, disabled = false, className, open, o
 
   const handleFileRemove = () => {
     setSelectedFile(null);
-    setCustomId('');
+    setGeneratedId('');
     setError(null);
   };
 
@@ -127,7 +127,7 @@ export function ZipImportDialog({ onImport, disabled = false, className, open, o
         setImportProgress(prev => Math.min(prev + 10, 90));
       }, 200);
 
-      await onImport(selectedFile, customId || undefined, overwrite);
+      await onImport(selectedFile, overwrite, generatedId);
 
       clearInterval(progressInterval);
       setImportProgress(100);
@@ -136,7 +136,7 @@ export function ZipImportDialog({ onImport, disabled = false, className, open, o
       setTimeout(() => {
         setIsOpen(false);
         setSelectedFile(null);
-        setCustomId('');
+        setGeneratedId('');
         setImportProgress(0);
         setExistingProject(null);
       }, 1000);
@@ -149,7 +149,7 @@ export function ZipImportDialog({ onImport, disabled = false, className, open, o
   };
 
   const handleImportWithOverwriteCheck = async () => {
-    if (!selectedFile || !customId) return;
+    if (!selectedFile || !generatedId) return;
 
     // Check if project with this ID already exists
     try {
@@ -175,7 +175,7 @@ export function ZipImportDialog({ onImport, disabled = false, className, open, o
     if (!isImporting) {
       setIsOpen(false);
       setSelectedFile(null);
-      setCustomId('');
+      setGeneratedId('');
       setError(null);
       setImportProgress(0);
     }
@@ -290,30 +290,13 @@ export function ZipImportDialog({ onImport, disabled = false, className, open, o
                   </div>
                 )}
 
-                {/* Custom Project ID */}
-                <div className="space-y-2">
-                  <label htmlFor="custom-id" className="text-sm font-medium">
-                    Project ID
-                  </label>
-                  <input
-                    id="custom-id"
-                    type="text"
-                    value={customId}
-                    onChange={(e) => setCustomId(e.target.value)}
-                    placeholder="project-name"
-                    className="w-full px-3 py-2 text-sm border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                    disabled={isImporting}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Auto-generated from filename. Only use lowercase letters, numbers, and hyphens.
-                  </p>
-                  {existingProject && (
-                    <div className="flex items-center gap-2 text-xs text-amber-600 bg-amber-50 dark:bg-amber-950/20 p-2 rounded">
-                      <AlertCircle className="h-3 w-3" />
-                      A project with this ID already exists. You can choose to overwrite it.
-                    </div>
-                  )}
-                </div>
+                {/* Overwrite Warning */}
+                {existingProject && (
+                  <div className="flex items-center gap-2 text-xs text-amber-600 bg-amber-50 dark:bg-amber-950/20 p-2 rounded">
+                    <AlertCircle className="h-3 w-3" />
+                    A project with this ID already exists. You can choose to overwrite it.
+                  </div>
+                )}
 
                 {/* Import Button */}
                 <div className="flex justify-end gap-2 pt-4">
@@ -322,7 +305,7 @@ export function ZipImportDialog({ onImport, disabled = false, className, open, o
                   </Button>
                   <Button
                     onClick={handleImportWithOverwriteCheck}
-                    disabled={!selectedFile || !customId || isImporting}
+                    disabled={!selectedFile || !generatedId || isImporting}
                     className={existingProject ? "bg-amber-600 hover:bg-amber-700" : ""}
                   >
                     {existingProject ? (
@@ -378,7 +361,7 @@ export function ZipImportDialog({ onImport, disabled = false, className, open, o
             </AlertDialogTitle>
             <AlertDialogDescription className="space-y-2">
               <p>
-                A project with the ID "<strong>{customId}</strong>" already exists.
+                A project with the ID "<strong>{generatedId}</strong>" already exists.
                 Overwriting it will:
               </p>
               <ul className="list-disc list-inside text-sm space-y-1 ml-2">

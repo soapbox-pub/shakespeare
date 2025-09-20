@@ -7,6 +7,7 @@ import { useFS } from '@/hooks/useFS';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { useAISettings } from '@/hooks/useAISettings';
+import { useToast } from '@/hooks/useToast';
 import { AppLayout } from '@/components/AppLayout';
 import { DotAI } from '@/lib/DotAI';
 import type { AIMessage } from '@/lib/SessionManager';
@@ -27,6 +28,7 @@ export default function Index() {
   const { fs } = useFS();
   const { generateProjectId, isLoading: isGeneratingId, isConfigured: isAIConfigured } = useAIProjectId();
   const { settings, addRecentlyUsedModel } = useAISettings();
+  const { toast } = useToast();
   const [providerModel, setProviderModel] = useState(() => {
     // Initialize with first recently used model if available, otherwise empty
     return settings.recentlyUsedModels?.[0] || '';

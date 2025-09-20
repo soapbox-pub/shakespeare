@@ -95,7 +95,20 @@ export class ProjectsManager {
   async importProjectFromZip(zipFile: File, customId?: string, overwrite = false): Promise<Project> {
     // Generate a project ID based on the zip file name or use custom ID
     const baseName = zipFile.name.replace(/\.zip$/i, '');
-    const id = customId || await this.generateUniqueProjectId(baseName);
+    const generatedId = baseName
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+
+    // Determine the project ID to use
+    let id: string;
+    if (customId) {
+      // Use the provided custom ID (for overwrite scenarios)
+      id = customId;
+    } else {
+      // If no custom ID, generate a unique ID (for new projects)
+      id = await this.generateUniqueProjectId(generatedId);
+    }
 
     const projectPath = `${this.dir}/${id}`;
     const projectExists = await this.projectExists(id);
@@ -103,6 +116,15 @@ export class ProjectsManager {
     // Check if project with this ID already exists when not overwriting
     if (projectExists && !overwrite) {
       throw new Error(`Project with ID "${id}" already exists`);
+    }
+
+    // Get original project name if overwriting, otherwise use formatted name
+    let projectName: string;
+    if (overwrite && projectExists) {
+      const existingProject = await this.getProject(id);
+      projectName = existingProject?.name || this.formatProjectName(id);
+    } else {
+      projectName = this.formatProjectName(id);
     }
 
     try {
@@ -230,7 +252,7 @@ export class ProjectsManager {
 
       return {
         id,
-        name: this.formatProjectName(id),
+        name: projectName,
         path: projectPath,
         lastModified: timestamp,
       };

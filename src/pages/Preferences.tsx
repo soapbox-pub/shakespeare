@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Button } from "@/components/ui/button";
 import { ThemePicker } from "@/components/ThemePicker";
 import { LanguagePicker } from "@/components/LanguagePicker";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+
 import { Label } from "@/components/ui/label";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useNavigate } from "react-router-dom";
@@ -50,35 +50,27 @@ export function Preferences() {
         </div>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('appearance')}</CardTitle>
-          <CardDescription>
-            {t('appearanceDescription')}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="space-y-2">
-            <Label htmlFor="theme-picker">{t('theme')}</Label>
-            <div className="w-full max-w-xs">
-              <ThemePicker />
-            </div>
-            <p className="text-sm text-muted-foreground">
-              {t('themeDescription')}
-            </p>
+      <div className="space-y-6">
+        <div className="space-y-2">
+          <Label htmlFor="theme-picker">{t('theme')}</Label>
+          <div className="w-full max-w-xs">
+            <ThemePicker />
           </div>
+          <p className="text-sm text-muted-foreground">
+            {t('themeDescription')}
+          </p>
+        </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="language-picker">{t('language')}</Label>
-            <div className="w-full max-w-xs">
-              <LanguagePicker />
-            </div>
-            <p className="text-sm text-muted-foreground">
-              {t('languageDescription')}
-            </p>
+        <div className="space-y-2">
+          <Label htmlFor="language-picker">{t('language')}</Label>
+          <div className="w-full max-w-xs">
+            <LanguagePicker />
           </div>
-        </CardContent>
-      </Card>
+          <p className="text-sm text-muted-foreground">
+            {t('languageDescription')}
+          </p>
+        </div>
+      </div>
     </div>
   );
 }

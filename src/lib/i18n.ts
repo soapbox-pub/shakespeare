@@ -19,9 +19,7 @@ const resources = {
       // Preferences Page
       preferencesDescription: 'Manage your general application preferences and appearance settings.',
 
-      // Appearance Section
-      appearance: 'Appearance',
-      appearanceDescription: 'Customize how the application looks and feels.',
+      // Theme Section
       theme: 'Theme',
       themeDescription: 'Choose between light, dark, or system theme preference.',
 
@@ -314,9 +312,7 @@ const resources = {
       // Preferences Page
       preferencesDescription: 'Gerencie suas preferências gerais da aplicação e configurações de aparência.',
 
-      // Appearance Section
-      appearance: 'Aparência',
-      appearanceDescription: 'Personalize como a aplicação se parece e funciona.',
+      // Theme Section
       theme: 'Tema',
       themeDescription: 'Escolha entre preferência de tema claro, escuro ou do sistema.',
 
@@ -609,9 +605,7 @@ const resources = {
       // Preferences Page
       preferencesDescription: '管理您的应用程序偏好设置和外观设置。',
 
-      // Appearance Section
-      appearance: '外观',
-      appearanceDescription: '自定义应用程序的外观和感觉。',
+      // Theme Section
       theme: '主题',
       themeDescription: '选择浅色、深色或系统主题偏好。',
 

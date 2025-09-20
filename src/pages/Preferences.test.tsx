@@ -13,14 +13,11 @@ describe('Preferences', () => {
 
     // Should show the preferences title
     expect(screen.getByText('Preferences')).toBeInTheDocument();
-    
-    // Should show appearance section
-    expect(screen.getByText('Appearance')).toBeInTheDocument();
-    
-    // Should show theme and language labels
+
+    // Should show theme and language labels at top level
     expect(screen.getByText('Theme')).toBeInTheDocument();
     expect(screen.getByText('Language')).toBeInTheDocument();
-    
+
     // Should show language picker
     expect(screen.getByRole('combobox')).toBeInTheDocument();
   });
@@ -34,7 +31,6 @@ describe('Preferences', () => {
 
     // Check for key translated strings
     expect(screen.getByText('Manage your general application preferences and appearance settings.')).toBeInTheDocument();
-    expect(screen.getByText('Customize how the application looks and feels.')).toBeInTheDocument();
     expect(screen.getByText('Select your preferred language for the interface.')).toBeInTheDocument();
   });
 });

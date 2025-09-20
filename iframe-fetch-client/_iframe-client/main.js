@@ -221,8 +221,8 @@ class FetchClient {
 
     const response = await this.rpcClient.fetch(serializedRequest);
 
-    if (response.status !== 200) {
-      throw new Error(`Failed to fetch site index: ${response.status} ${response.statusText}`);
+    if (response?.status !== 200) {
+      throw new Error(`Failed to fetch site index: ${response?.status || 'Invalid response from site: ' + response} ${response?.statusText || ''}`);
     }
 
     if (response.headers["Content-Type"] !== "text/html") {

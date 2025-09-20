@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ProjectSidebar } from './ProjectSidebar';
 import { useProjects } from '@/hooks/useProjects';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { TestApp } from '@/test/TestApp';
 
 // Mock the hooks
 vi.mock('@/hooks/useProjects');
@@ -10,21 +11,30 @@ vi.mock('@/hooks/useLocalStorage');
 vi.mock('@/hooks/useProjectSessionStatus', () => ({
   useProjectSessionStatus: () => ({ hasRunningSessions: false })
 }));
-vi.mock('react-router-dom', () => ({
-  useNavigate: () => vi.fn()
-}));
-vi.mock('@tanstack/react-query', () => ({
-  useQueryClient: () => ({
-    invalidateQueries: vi.fn()
-  })
-}));
+vi.mock('react-router-dom', async (importOriginal) => {
+  const actual = await importOriginal() as Record<string, unknown>;
+  return {
+    ...actual,
+    useNavigate: () => vi.fn()
+  };
+});
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal() as Record<string, unknown>;
+  return {
+    ...actual,
+    useQueryClient: () => ({
+      invalidateQueries: vi.fn(),
+      resetQueries: vi.fn()
+    })
+  };
+});
 
-// Mock the LoginArea component
-vi.mock('@/components/auth/LoginArea', () => ({
-  LoginArea: ({ className }: { className?: string }) => (
-    <div data-testid="login-area" className={className}>Login Area</div>
-  )
-}));
+// Mock window.open for help button test
+const mockWindowOpen = vi.fn();
+Object.defineProperty(window, 'open', {
+  value: mockWindowOpen,
+  writable: true
+});
 
 const mockUseProjects = vi.mocked(useProjects);
 const mockUseLocalStorage = vi.mocked(useLocalStorage);
@@ -42,10 +52,12 @@ describe('ProjectSidebar', () => {
 
   it('renders sidebar header with logo', () => {
     render(
-      <ProjectSidebar
-        selectedProject={null}
-        onSelectProject={vi.fn()}
-      />
+      <TestApp>
+        <ProjectSidebar
+          selectedProject={null}
+          onSelectProject={vi.fn()}
+        />
+      </TestApp>
     );
 
     expect(screen.getByText('🎭')).toBeInTheDocument();
@@ -56,11 +68,13 @@ describe('ProjectSidebar', () => {
     const mockToggle = vi.fn();
 
     render(
-      <ProjectSidebar
-        selectedProject={null}
-        onSelectProject={vi.fn()}
-        onToggleSidebar={mockToggle}
-      />
+      <TestApp>
+        <ProjectSidebar
+          selectedProject={null}
+          onSelectProject={vi.fn()}
+          onToggleSidebar={mockToggle}
+        />
+      </TestApp>
     );
 
     const collapseButton = screen.getByLabelText('Collapse sidebar');
@@ -72,34 +86,60 @@ describe('ProjectSidebar', () => {
 
   it('does not show collapse button when onToggleSidebar is not provided', () => {
     render(
-      <ProjectSidebar
-        selectedProject={null}
-        onSelectProject={vi.fn()}
-      />
+      <TestApp>
+        <ProjectSidebar
+          selectedProject={null}
+          onSelectProject={vi.fn()}
+        />
+      </TestApp>
     );
 
     expect(screen.queryByLabelText('Collapse sidebar')).not.toBeInTheDocument();
   });
 
-  it('renders login area at the bottom', () => {
+  it('renders settings and help buttons at the bottom', () => {
     render(
-      <ProjectSidebar
-        selectedProject={null}
-        onSelectProject={vi.fn()}
-      />
+      <TestApp>
+        <ProjectSidebar
+          selectedProject={null}
+          onSelectProject={vi.fn()}
+        />
+      </TestApp>
     );
 
-    expect(screen.getByTestId('login-area')).toBeInTheDocument();
+    expect(screen.getByText('Settings')).toBeInTheDocument();
+    expect(screen.getByLabelText('Help')).toBeInTheDocument();
   });
 
   it('shows new project button', () => {
     render(
-      <ProjectSidebar
-        selectedProject={null}
-        onSelectProject={vi.fn()}
-      />
+      <TestApp>
+        <ProjectSidebar
+          selectedProject={null}
+          onSelectProject={vi.fn()}
+        />
+      </TestApp>
     );
 
     expect(screen.getByText('New Project')).toBeInTheDocument();
+  });
+
+  it('opens help documentation when help button is clicked', () => {
+    render(
+      <TestApp>
+        <ProjectSidebar
+          selectedProject={null}
+          onSelectProject={vi.fn()}
+        />
+      </TestApp>
+    );
+
+    const helpButton = screen.getByLabelText('Help');
+    fireEvent.click(helpButton);
+
+    expect(mockWindowOpen).toHaveBeenCalledWith(
+      'https://soapbox.pub/shakespeare-resources/',
+      '_blank'
+    );
   });
 });

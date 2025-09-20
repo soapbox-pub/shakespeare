@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Check, ChevronDown, Edit3, RefreshCw, AlertCircle, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,14 +24,17 @@ export function ModelSelector({
   onChange,
   className,
   disabled = false,
-  placeholder = "Select or enter a model...",
+  placeholder,
 }: ModelSelectorProps) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [isCustomInput, setIsCustomInput] = useState(false);
   const [customValue, setCustomValue] = useState('');
   const { settings, addRecentlyUsedModel, isConfigured } = useAISettings();
   const { models, isLoading, error, refetch } = useProviderModels();
   const navigate = useNavigate();
+
+  const defaultPlaceholder = t('selectOrEnterModel');
 
   const recentlyUsedModels = useMemo(() => settings.recentlyUsedModels || [], [settings.recentlyUsedModels]);
 
@@ -45,6 +49,29 @@ export function ModelSelector({
     }
     return groups;
   }, [models]);
+
+  // Determine if we should show the "Recently Used" section
+  const shouldShowRecentlyUsed = useMemo(() => {
+    // If no recently used models, don't show the section
+    if (recentlyUsedModels.length === 0) {
+      return false;
+    }
+
+    // If there are 5 or more total provider models, always show recently used
+    if (models.length >= 5) {
+      return true;
+    }
+
+    // If less than 5 total provider models, check if all recently used models
+    // are contained within the available provider models
+    const availableModelIds = new Set(models.map(model => model.fullId));
+    const allRecentlyUsedAreAvailable = recentlyUsedModels.every(model =>
+      availableModelIds.has(model)
+    );
+
+    // Hide recently used section if all recently used models are already available
+    return !allRecentlyUsedAreAvailable;
+  }, [recentlyUsedModels, models]);
 
   // Don't auto-initialize with recently used models
   // Let the parent component handle initialization
@@ -125,48 +152,24 @@ export function ModelSelector({
             disabled={disabled}
           >
             <span className="w-full truncate">
-              {value || placeholder}
+              {value || placeholder || defaultPlaceholder}
             </span>
             <ChevronDown className="size-3 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
       <PopoverContent className="w-96 p-0" align="end">
         <Command>
-          {isConfigured && <CommandInput placeholder="Search models..." className="h-9" />}
+          {isConfigured && <CommandInput placeholder={t('searchModels')} className="h-9" />}
           <CommandList className="max-h-[300px]">
-            {/* Custom model option and manage providers */}
-            <CommandGroup>
-              {isConfigured && (
-                <CommandItem
-                  value="__custom_model_option__"
-                  onSelect={() => handleSelect('__custom__')}
-                  className="cursor-pointer"
-                >
-                  <Edit3 className="mr-2 h-4 w-4" />
-                  Enter custom model...
-                </CommandItem>
-              )}
-              <CommandItem
-                value="__manage_providers_option__"
-                onSelect={() => handleSelect('__manage_providers__')}
-                className="cursor-pointer"
-              >
-                <Settings className="mr-2 h-4 w-4" />
-                Manage providers...
-              </CommandItem>
-            </CommandGroup>
-
-            <CommandSeparator />
-
             <CommandEmpty>
               <div className="py-6 text-center text-sm text-muted-foreground">
-                <p>No models found.</p>
-                <p className="mt-2 text-xs">Try using a custom model instead.</p>
+                <p>{t('noModelsFound')}</p>
+                <p className="mt-2 text-xs">{t('tryCustomModel')}</p>
               </div>
             </CommandEmpty>
 
-            {recentlyUsedModels.length > 0 && (
-              <CommandGroup heading="Recently Used">
+            {shouldShowRecentlyUsed && (
+              <CommandGroup heading={t('recentlyUsed')}>
                 {recentlyUsedModels.map((model) => (
                   <CommandItem
                     key={model}
@@ -186,11 +189,11 @@ export function ModelSelector({
               </CommandGroup>
             )}
 
-            {recentlyUsedModels.length > 0 && <CommandSeparator />}
+            {shouldShowRecentlyUsed && <CommandSeparator />}
 
             {/* Loading state */}
             {isLoading && (
-              <CommandGroup heading="Loading Models...">
+              <CommandGroup heading={t('loading')}>
                 <div className="px-2 py-1.5">
                   <div className="space-y-2">
                     <Skeleton className="h-4 w-full" />
@@ -203,7 +206,7 @@ export function ModelSelector({
 
             {/* Error state */}
             {error && !isLoading && (
-              <CommandGroup heading="Error Loading Models">
+              <CommandGroup heading={t('errorLoadingModels')}>
                 <div className="px-2 py-1.5 text-sm text-muted-foreground">
                   <div className="flex items-start gap-2">
                     <AlertCircle className="h-4 w-4 text-destructive flex-shrink-0 mt-0.5" />
@@ -216,7 +219,7 @@ export function ModelSelector({
                         className="h-7 text-xs"
                       >
                         <RefreshCw className="h-3 w-3 mr-1" />
-                        Retry
+                        {t('retry')}
                       </Button>
                     </div>
                   </div>
@@ -248,6 +251,29 @@ export function ModelSelector({
                 </CommandGroup>
               </div>
             ))}
+
+            {/* Custom model option and manage providers - moved to bottom */}
+            <CommandSeparator />
+            <CommandGroup>
+              {isConfigured && (
+                <CommandItem
+                  value="__custom_model_option__"
+                  onSelect={() => handleSelect('__custom__')}
+                  className="cursor-pointer"
+                >
+                  <Edit3 className="mr-2 h-4 w-4" />
+                  {t('enterCustomModel')}
+                </CommandItem>
+              )}
+              <CommandItem
+                value="__manage_providers_option__"
+                onSelect={() => handleSelect('__manage_providers__')}
+                className="cursor-pointer"
+              >
+                <Settings className="mr-2 h-4 w-4" />
+                {t('manageProviders')}
+              </CommandItem>
+            </CommandGroup>
           </CommandList>
         </Command>
       </PopoverContent>

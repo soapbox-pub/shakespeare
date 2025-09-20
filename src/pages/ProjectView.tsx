@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { type Project } from '@/lib/ProjectsManager';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { ChatPane, type ChatPaneRef } from '@/components/Shakespeare/ChatPane';
@@ -27,6 +28,7 @@ import { useToast } from "@/hooks/useToast";
 
 export function ProjectView() {
   const { projectId } = useParams<{ projectId: string }>();
+  const { t } = useTranslation();
   const [project, setProject] = useState<Project | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'preview' | 'code'>('preview');
@@ -318,7 +320,7 @@ export function ProjectView() {
               disabled={!project}
             >
               <MessageSquare className="h-4 w-4 mr-1" />
-              Chat
+              {t('chat')}
             </Button>
             <Button
               variant={mobileView === 'preview' ? 'default' : 'ghost'}
@@ -328,7 +330,7 @@ export function ProjectView() {
               disabled={!project}
             >
               <Eye className="h-4 w-4 mr-1" />
-              Preview
+              {t('preview')}
             </Button>
             <Button
               variant={mobileView === 'code' ? 'default' : 'ghost'}
@@ -338,7 +340,7 @@ export function ProjectView() {
               disabled={!project}
             >
               <Code className="h-4 w-4 mr-1" />
-              Code
+              {t('code')}
               {mobileView !== 'code' && project && (
                 <GitStatusIndicator projectId={project.id} className="ml-1" />
               )}
@@ -388,7 +390,7 @@ export function ProjectView() {
                 <div className="h-12 px-4 border-b flex-shrink-0">
                   <div className="flex items-center justify-between h-12">
                     {/* Left side - Sidebar toggle (when collapsed) */}
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 overflow-hidden">
                       {!isSidebarVisible && (
                         <Button
                           variant="ghost"
@@ -492,7 +494,7 @@ export function ProjectView() {
                         onClick={() => setActiveTab('preview')}
                         disabled={!project}
                       >
-                        Preview
+                        {t('preview')}
                       </Button>
                       <Button
                         variant={activeTab === 'code' ? 'default' : 'ghost'}
@@ -501,7 +503,7 @@ export function ProjectView() {
                         className="gap-2"
                         disabled={!project}
                       >
-                        Code
+                        {t('code')}
                         {activeTab !== 'code' && project && (
                           <GitStatusIndicator projectId={project.id} />
                         )}

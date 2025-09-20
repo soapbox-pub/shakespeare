@@ -1,16 +1,18 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Check, Bot, ArrowLeft, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
-import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { CreditsBadge } from '@/components/CreditsBadge';
+import { CreditsDialog } from '@/components/CreditsDialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAISettings } from '@/hooks/useAISettings';
 import { useIsMobile } from '@/hooks/useIsMobile';
-import { useNavigate } from 'react-router-dom';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useNavigate, Link } from 'react-router-dom';
 import type { AIConnection } from '@/contexts/AISettingsContext';
 
 interface PresetProvider {
@@ -23,9 +25,9 @@ interface PresetProvider {
 
 const PRESET_PROVIDERS: PresetProvider[] = [
   {
-    id: "lemon",
-    name: "Lemon",
-    baseURL: "https://internal-lucienne-nublar-6932a6f0.koyeb.app/v1",
+    id: "shakespeare",
+    name: "Shakespeare AI",
+    baseURL: "https://ai.shakespeare.diy/v1",
     nostr: true,
   },
   {
@@ -79,14 +81,17 @@ const PRESET_PROVIDERS: PresetProvider[] = [
 ];
 
 export function AISettings() {
+  const { t } = useTranslation();
   const { settings, addProvider, removeProvider, updateProvider } = useAISettings();
   const isMobile = useIsMobile();
   const navigate = useNavigate();
+  const { user } = useCurrentUser();
   const [customProviderName, setCustomProviderName] = useState('');
   const [customBaseURL, setCustomBaseURL] = useState('');
   const [customApiKey, setCustomApiKey] = useState('');
   const [customAuthMethod, setCustomAuthMethod] = useState<'api-key' | 'nostr'>('api-key');
   const [presetApiKeys, setPresetApiKeys] = useState<Record<string, string>>({});
+  const [activeCreditsDialog, setActiveCreditsDialog] = useState<string | null>(null);
 
   const handleAddPresetProvider = (preset: PresetProvider) => {
     const apiKey = presetApiKeys[preset.id] as string | undefined;
@@ -140,6 +145,14 @@ export function AISettings() {
     updateProvider(name, connection);
   };
 
+  const handleOpenCreditsDialog = (providerId: string) => {
+    setActiveCreditsDialog(providerId);
+  };
+
+  const handleCloseCreditsDialog = () => {
+    setActiveCreditsDialog(null);
+  };
+
   const configuredProviderIds = Object.keys(settings.providers);
   const availablePresets = PRESET_PROVIDERS.filter(preset => !configuredProviderIds.includes(preset.id));
 
@@ -154,15 +167,15 @@ export function AISettings() {
             className="h-8 w-auto px-2 -ml-2"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Settings
+            {t('backToSettings')}
           </Button>
           <div className="space-y-2">
             <h1 className="text-2xl font-bold flex items-center gap-3">
               <Bot className="h-6 w-6 text-primary" />
-              AI Settings
+              {t('aiSettings')}
             </h1>
             <p className="text-muted-foreground">
-              Configure AI providers by adding your API keys. Settings are automatically saved and stored locally in your browser.
+              {t('aiSettingsDescriptionLong')}
             </p>
           </div>
         </div>
@@ -172,10 +185,10 @@ export function AISettings() {
         <div className="space-y-2">
           <h1 className="text-2xl font-bold flex items-center gap-3">
             <Bot className="h-6 w-6 text-primary" />
-            AI Settings
+            {t('aiSettings')}
           </h1>
           <p className="text-muted-foreground">
-            Configure AI providers by adding your API keys. Settings are automatically saved and stored locally in your browser.
+            {t('aiSettingsDescriptionLong')}
           </p>
         </div>
       )}
@@ -184,12 +197,11 @@ export function AISettings() {
         {/* Configured Providers */}
         {configuredProviderIds.length > 0 && (
           <div className="space-y-3">
-            <h4 className="text-sm font-medium">Configured Providers</h4>
+            <h4 className="text-sm font-medium">{t('configuredProviders')}</h4>
             <Accordion type="multiple" className="w-full space-y-2">
               {configuredProviderIds.map((providerId) => {
                 const preset = PRESET_PROVIDERS.find(p => p.id === providerId);
                 const provider = settings.providers[providerId];
-                const isCustom = !preset;
 
                 return (
                   <AccordionItem key={providerId} value={providerId} className="border rounded-lg">
@@ -199,25 +211,31 @@ export function AISettings() {
                           <span className="font-medium">
                             {preset?.name || providerId}
                           </span>
-                          {isCustom && <Badge variant="outline">Custom</Badge>}
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRemoveProvider(providerId);
-                          }}
-                          className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-transparent"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <div className="flex items-center gap-2">
+                          <CreditsBadge
+                            providerId={providerId}
+                            connection={provider}
+                            onOpenDialog={() => handleOpenCreditsDialog(providerId)}
+                          />
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRemoveProvider(providerId);
+                            }}
+                            className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-transparent"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
                     </AccordionTrigger>
                     <AccordionContent className="px-4 pb-4">
                       <div className="space-y-3">
                         <div className="grid gap-2">
-                          <Label htmlFor={`${providerId}-baseURL`}>Base URL</Label>
+                          <Label htmlFor={`${providerId}-baseURL`}>{t('baseUrl')}</Label>
                           <Input
                             id={`${providerId}-baseURL`}
                             placeholder="https://api.example.com/v1"
@@ -226,7 +244,7 @@ export function AISettings() {
                           />
                         </div>
                         <div className="grid gap-2">
-                          <Label htmlFor={`${providerId}-auth`}>Authentication</Label>
+                          <Label htmlFor={`${providerId}-auth`}>{t('authentication')}</Label>
                           <Select
                             value={provider?.nostr ? 'nostr' : 'api-key'}
                             onValueChange={(value: 'api-key' | 'nostr') => handleUpdateProvider(providerId, {
@@ -238,17 +256,17 @@ export function AISettings() {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="api-key">API Key</SelectItem>
+                              <SelectItem value="api-key">{t('apiKey')}</SelectItem>
                               <SelectItem value="nostr">Nostr</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
                         {!provider?.nostr && (
                           <div className="grid gap-2">
-                            <Label htmlFor={`${providerId}-apiKey`}>API Key</Label>
+                            <Label htmlFor={`${providerId}-apiKey`}>{t('apiKey')}</Label>
                             <PasswordInput
                               id={`${providerId}-apiKey`}
-                              placeholder="Enter your API key"
+                              placeholder={t('enterApiKey')}
                               value={provider?.apiKey || ''}
                               onChange={(e) => handleUpdateProvider(providerId, { apiKey: e.target.value })}
                             />
@@ -263,71 +281,90 @@ export function AISettings() {
           </div>
         )}
 
-        {configuredProviderIds.length > 0 && availablePresets.length > 0 && <Separator />}
-
         {/* Available Preset Providers */}
         {availablePresets.length > 0 && (
           <div className="space-y-3">
-            <h4 className="text-sm font-medium">Add Provider</h4>
+            <h4 className="text-sm font-medium">{t('addProvider')}</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {availablePresets.map((preset) => (
-                <div key={preset.id} className="border rounded-lg p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h5 className="font-medium">{preset.name}</h5>
-                    {(preset.apiKeysURL && preset.id !== "routstr") && (
-                      <button
-                        type="button"
-                        className="text-xs text-muted-foreground underline hover:text-foreground"
-                        onClick={() => window.open(preset.apiKeysURL, '_blank')}
-                      >
-                        Get API key
-                      </button>
+              {availablePresets.map((preset) => {
+                const isNostrPreset = preset.nostr;
+                const isLoggedIntoNostr = !!user;
+                const showNostrLoginRequired = isNostrPreset && !isLoggedIntoNostr;
+
+                return (
+                  <div key={preset.id} className="border rounded-lg p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h5 className="font-medium">{preset.name}</h5>
+                      {(preset.apiKeysURL && preset.id !== "routstr") && (
+                        <button
+                          type="button"
+                          className="text-xs text-muted-foreground underline hover:text-foreground"
+                          onClick={() => window.open(preset.apiKeysURL, '_blank')}
+                        >
+                          {t('getApiKey')}
+                        </button>
+                      )}
+                    </div>
+
+                    {showNostrLoginRequired ? (
+                      <div className="space-y-2">
+                        <p className="text-sm text-muted-foreground">
+                          {t('loginToNostrRequired')}
+                        </p>
+                        <Button
+                          asChild
+                          className="w-full"
+                        >
+                          <Link to="/settings/nostr">
+                            {t('goToNostrSettings')}
+                          </Link>
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex gap-2">
+                        {!preset.nostr && (
+                          <PasswordInput
+                            placeholder={preset.id === "routstr" ? t('enterCashuToken') : t('enterApiKey')}
+                            className="flex-1"
+                            value={presetApiKeys[preset.id] || ''}
+                            onChange={(e) => setPresetApiKeys(prev => ({
+                              ...prev,
+                              [preset.id]: e.target.value,
+                            }))}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && presetApiKeys[preset.id]?.trim()) {
+                                handleAddPresetProvider(preset);
+                              }
+                            }}
+                          />
+                        )}
+                        <Button
+                          onClick={() => handleAddPresetProvider(preset)}
+                          disabled={!!preset.apiKeysURL && !presetApiKeys[preset.id]?.trim()}
+                          className={preset.nostr ? "w-full" : "h-10 px-4 ml-auto"}
+                        >
+                          {t('add')}
+                        </Button>
+                      </div>
                     )}
                   </div>
-                  <div className="flex gap-2">
-                    {!preset.nostr && (
-                      <PasswordInput
-                        placeholder={preset.id === "routstr" ? "Enter a Cashu token" : "Enter your API key"}
-                        className="flex-1"
-                        value={presetApiKeys[preset.id] || ''}
-                        onChange={(e) => setPresetApiKeys(prev => ({
-                          ...prev,
-                          [preset.id]: e.target.value,
-                        }))}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && presetApiKeys[preset.id]?.trim()) {
-                            handleAddPresetProvider(preset);
-                          }
-                        }}
-                      />
-                    )}
-                    <Button
-                      onClick={() => handleAddPresetProvider(preset)}
-                      disabled={!!preset.apiKeysURL && !presetApiKeys[preset.id]?.trim()}
-                      size="sm"
-                    >
-                      Add
-                    </Button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
-
-        {availablePresets.length > 0 && <Separator />}
 
         {/* Custom Provider */}
         <div className="space-y-3">
           <Accordion type="single" collapsible className="w-full">
             <AccordionItem value="custom-provider" className="border rounded-lg">
               <AccordionTrigger className="px-4 py-3 hover:no-underline">
-                <h4 className="text-sm font-medium">Add Custom Provider</h4>
+                <h4 className="text-sm font-medium">{t('addCustomProvider')}</h4>
               </AccordionTrigger>
               <AccordionContent className="px-4 pb-4">
                 <div className="space-y-3">
                   <div className="grid gap-2">
-                    <Label htmlFor="custom-name">Provider Name</Label>
+                    <Label htmlFor="custom-name">{t('providerName')}</Label>
                     <Input
                       id="custom-name"
                       placeholder="e.g., my-custom-api"
@@ -336,7 +373,7 @@ export function AISettings() {
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="custom-baseurl">Base URL</Label>
+                    <Label htmlFor="custom-baseurl">{t('baseUrl')}</Label>
                     <Input
                       id="custom-baseurl"
                       placeholder="https://api.example.com/v1"
@@ -345,7 +382,7 @@ export function AISettings() {
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="custom-auth">Authentication</Label>
+                    <Label htmlFor="custom-auth">{t('authentication')}</Label>
                     <Select
                       value={customAuthMethod}
                       onValueChange={(value: 'api-key' | 'nostr') => {
@@ -359,17 +396,17 @@ export function AISettings() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="api-key">API Key</SelectItem>
+                        <SelectItem value="api-key">{t('apiKey')}</SelectItem>
                         <SelectItem value="nostr">Nostr</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   {customAuthMethod === 'api-key' && (
                     <div className="grid gap-2">
-                      <Label htmlFor="custom-apikey">API Key</Label>
+                      <Label htmlFor="custom-apikey">{t('apiKey')}</Label>
                       <PasswordInput
                         id="custom-apikey"
-                        placeholder="Enter your API key (optional)"
+                        placeholder={t('enterApiKey') + ' (optional)'}
                         value={customApiKey}
                         onChange={(e) => setCustomApiKey(e.target.value)}
                       />
@@ -382,15 +419,14 @@ export function AISettings() {
                       !customBaseURL.trim() ||
                       customProviderName.trim() in settings.providers
                     }
-                    size="sm"
-                    className="gap-2"
+                    className="gap-2 ml-auto"
                   >
                     <Check className="h-4 w-4" />
-                    Add Custom Provider
+                    {t('addCustomProviderButton')}
                   </Button>
                   {customProviderName.trim() in settings.providers && (
                     <p className="text-sm text-destructive">
-                      Provider with this name already exists
+                      {t('providerExists')}
                     </p>
                   )}
                 </div>
@@ -399,6 +435,20 @@ export function AISettings() {
           </Accordion>
         </div>
       </div>
+
+      {/* Render credits dialog outside of accordion structure */}
+      {activeCreditsDialog && (
+        <CreditsDialog
+          open={true}
+          onOpenChange={(open) => {
+            if (!open) {
+              handleCloseCreditsDialog();
+            }
+          }}
+          providerId={activeCreditsDialog}
+          connection={settings.providers[activeCreditsDialog]}
+        />
+      )}
     </div>
   );
 }

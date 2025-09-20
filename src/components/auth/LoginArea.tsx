@@ -2,6 +2,7 @@
 // It is important that all functionality in this file is preserved, and should only be modified if explicitly requested.
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { User, UserPlus, ChevronDown, Settings, HelpCircle } from 'lucide-react';
 import {
   DropdownMenu,
@@ -23,6 +24,7 @@ export interface LoginAreaProps {
 }
 
 export function LoginArea({ className }: LoginAreaProps) {
+  const { t } = useTranslation();
   const { currentUser } = useLoggedInAccounts();
   const navigate = useNavigate();
   const [loginDialogOpen, setLoginDialogOpen] = useState(false);
@@ -47,7 +49,7 @@ export function LoginArea({ className }: LoginAreaProps) {
                 </AvatarFallback>
               </Avatar>
               <div className='flex-1 text-left truncate'>
-                <p className='font-medium text-sm truncate'>Anonymous</p>
+                <p className='font-medium text-sm truncate'>{t('anonymous')}</p>
               </div>
               <ChevronDown className='w-4 h-4 text-muted-foreground' />
             </button>
@@ -58,14 +60,14 @@ export function LoginArea({ className }: LoginAreaProps) {
               className='flex items-center gap-2 cursor-pointer p-2 rounded-md'
             >
               <Settings className='w-4 h-4' />
-              <span>Settings</span>
+              <span>{t('settings')}</span>
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => window.open('https://soapbox.pub/shakespeare-resources/', '_blank')}
               className='flex items-center gap-2 cursor-pointer p-2 rounded-md'
             >
               <HelpCircle className='w-4 h-4' />
-              <span>Help</span>
+              <span>{t('help')}</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
@@ -73,14 +75,14 @@ export function LoginArea({ className }: LoginAreaProps) {
               className='flex items-center gap-2 cursor-pointer p-2 rounded-md'
             >
               <User className='w-4 h-4' />
-              <span>Log in</span>
+              <span>{t('logIn')}</span>
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => setSignupDialogOpen(true)}
               className='flex items-center gap-2 cursor-pointer p-2 rounded-md'
             >
               <UserPlus className='w-4 h-4' />
-              <span>Sign up</span>
+              <span>{t('signUp')}</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

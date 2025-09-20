@@ -35,6 +35,9 @@ Object.defineProperty(window, 'scrollTo', {
   value: vi.fn(),
 });
 
+// Mock Element.scrollIntoView
+Element.prototype.scrollIntoView = vi.fn();
+
 // Mock IntersectionObserver
 global.IntersectionObserver = vi.fn().mockImplementation((_callback) => ({
   observe: vi.fn(),

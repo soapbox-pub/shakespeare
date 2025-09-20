@@ -1,17 +1,26 @@
 import { encodeBase64 } from '@std/encoding/base64';
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { useFS } from '@/hooks/useFS';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { FolderOpen, ArrowLeft } from 'lucide-react';
+import { FolderOpen, ArrowLeft, X, Bug, Copy, Check } from 'lucide-react';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { GitStatusIndicator } from '@/components/GitStatusIndicator';
 import { BrowserAddressBar } from '@/components/ui/browser-address-bar';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 import { FileTree } from './FileTree';
 import { FileEditor } from './FileEditor';
+
+// Get iframe domain from environment variable
+const IFRAME_DOMAIN = import.meta.env.VITE_IFRAME_DOMAIN || 'local-shakespeare.dev';
 
 interface PreviewPaneProps {
   projectId: string;
@@ -39,7 +48,7 @@ interface JSONRPCResponse {
     statusText: string;
     headers: Record<string, string>;
     body: string | null;
-  };
+  }
   error?: {
     code: number;
     message: string;
@@ -48,7 +57,14 @@ interface JSONRPCResponse {
   id: number;
 }
 
+interface ConsoleMessage {
+  id: number;
+  level: 'log' | 'warn' | 'error' | 'info' | 'debug';
+  message: string;
+}
+
 export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
+  const { t } = useTranslation();
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [fileContent, setFileContent] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
@@ -58,6 +74,8 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
   const [currentPath, setCurrentPath] = useState('/');
   const [navigationHistory, setNavigationHistory] = useState<string[]>(['/']);
   const [historyIndex, setHistoryIndex] = useState(0);
+  const [consoleMessages, setConsoleMessages] = useState<ConsoleMessage[]>([]);
+  const [copiedMessageId, setCopiedMessageId] = useState<number | null>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const { fs } = useFS();
   const projectsManager = useProjectsManager();
@@ -127,7 +145,7 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
 
   const navigateToPath = useCallback((path: string) => {
     if (iframeRef.current) {
-      const baseUrl = `https://${projectId}.local-shakespeare.dev`;
+      const baseUrl = `https://${projectId}.${IFRAME_DOMAIN}`;
       const newUrl = `${baseUrl}${path}`;
       iframeRef.current.src = newUrl;
       setCurrentPath(path);
@@ -148,7 +166,7 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
       setCurrentPath(path);
 
       if (iframeRef.current) {
-        const baseUrl = `https://${projectId}.local-shakespeare.dev`;
+        const baseUrl = `https://${projectId}.${IFRAME_DOMAIN}`;
         const newUrl = `${baseUrl}${path}`;
         iframeRef.current.src = newUrl;
       }
@@ -163,7 +181,7 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
       setCurrentPath(path);
 
       if (iframeRef.current) {
-        const baseUrl = `https://${projectId}.local-shakespeare.dev`;
+        const baseUrl = `https://${projectId}.${IFRAME_DOMAIN}`;
         const newUrl = `${baseUrl}${path}`;
         iframeRef.current.src = newUrl;
       }
@@ -173,17 +191,45 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
   const sendResponse = useCallback((message: JSONRPCResponse) => {
     if (iframeRef.current?.contentWindow) {
       console.log(`Sending response to iframe:`, message);
-      const targetOrigin = `https://${projectId}.local-shakespeare.dev`;
+      const targetOrigin = `https://${projectId}.${IFRAME_DOMAIN}`;
       iframeRef.current.contentWindow.postMessage(message, targetOrigin);
     }
   }, [projectId]);
 
   const sendError = useCallback((message: JSONRPCResponse) => {
     if (iframeRef.current?.contentWindow) {
-      const targetOrigin = `https://${projectId}.local-shakespeare.dev`;
+      const targetOrigin = `https://${projectId}.${IFRAME_DOMAIN}`;
       iframeRef.current.contentWindow.postMessage(message, targetOrigin);
     }
   }, [projectId]);
+
+  const handleConsoleMessage = useCallback((message: {
+    jsonrpc: '2.0';
+    method: 'console';
+    params: {
+      level: 'log' | 'warn' | 'error' | 'info' | 'debug';
+      message: string;
+    };
+  }) => {
+    const { params } = message;
+
+    // Normalize level to ensure it's one of our supported types
+    let normalizedLevel: ConsoleMessage['level'] = 'log';
+    if (['log', 'warn', 'error', 'info', 'debug'].includes(params.level)) {
+      normalizedLevel = params.level as ConsoleMessage['level'];
+    }
+
+    const newConsoleMessage: ConsoleMessage = {
+      id: Date.now(),
+      level: normalizedLevel,
+      message: params.message,
+    };
+
+    setConsoleMessages(prev => [...prev, newConsoleMessage]);
+
+    // Log to parent console for debugging with appropriate level
+    console[normalizedLevel](`[IFRAME ${params.level.toUpperCase()}] ${params.message}`);
+  }, []);
 
   const handleFetch = useCallback(async (request: JSONRPCRequest) => {
     const { params, id } = request;
@@ -194,7 +240,7 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
     try {
       // Parse the URL and validate origin
       const url = new URL(fetchRequest.url);
-      const expectedOrigin = `https://${projectId}.local-shakespeare.dev`;
+      const expectedOrigin = `https://${projectId}.${IFRAME_DOMAIN}`;
 
       if (url.origin !== expectedOrigin) {
         console.log(`Invalid origin: ${url.origin}, expected: ${expectedOrigin}`);
@@ -290,7 +336,7 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       // Verify origin for security
-      const expectedOrigin = `https://${projectId}.local-shakespeare.dev`;
+      const expectedOrigin = `https://${projectId}.${IFRAME_DOMAIN}`;
       if (event.origin !== expectedOrigin) {
         console.log(`Ignoring message from unexpected origin: ${event.origin}, expected: ${expectedOrigin}`);
         return;
@@ -300,12 +346,14 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
       console.log('Received message from iframe:', message);
       if (message.jsonrpc === '2.0' && message.method === 'fetch') {
         handleFetch(message);
+      } else if (message.jsonrpc === '2.0' && message.method === 'console') {
+        handleConsoleMessage(message);
       }
     };
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [handleFetch, projectId]);
+  }, [handleFetch, handleConsoleMessage, projectId]);
 
   useEffect(() => {
     if (selectedFile) {
@@ -350,24 +398,123 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
     }
   };
 
+  const ConsoleDropdown = () => {
+  const getLevelColor = (level: ConsoleMessage['level']) => {
+    switch (level) {
+      case 'error': return 'text-red-500';
+      case 'warn': return 'text-yellow-500';
+      case 'info': return 'text-blue-500';
+      case 'debug': return 'text-gray-500';
+      default: return 'text-gray-400';
+    }
+  };
+
+  const getLevelIcon = (level: ConsoleMessage['level']) => {
+    switch (level) {
+      case 'error': return '!';
+      case 'warn': return '⚠';
+      case 'info': return 'ℹ';
+      case 'debug': return '🔍';
+      default: return '•';
+    }
+  };
+
+  const clearConsole = () => {
+    setConsoleMessages([]);
+  };
+
+  const copyMessageToClipboard = async (msg: ConsoleMessage) => {
+    try {
+      // Create a formatted string with all message details
+      const formattedMessage = `[${msg.level.toUpperCase()}] ${msg.message}`;
+
+      await navigator.clipboard.writeText(formattedMessage);
+      setCopiedMessageId(msg.id);
+
+      // Reset the copied state after 2 seconds
+      setTimeout(() => {
+        setCopiedMessageId(null);
+      }, 2000);
+    } catch (error) {
+      console.error('Failed to copy message to clipboard:', error);
+    }
+  };
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 relative">
+          <Bug className="h-4 w-4" />
+          {consoleMessages.some(msg => msg.level === 'error') && (
+            <span className="absolute bottom-0 left-0 h-2 w-2 bg-red-500 rounded-full"></span>
+          )}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-96 max-w-96 max-h-96 overflow-x-hidden">
+        <div className="flex items-center justify-between p-2 border-b">
+          <span className="font-medium text-sm">Console Output ({consoleMessages.length})</span>
+          <Button variant="ghost" size="sm" onClick={clearConsole}>
+            <X className="h-3 w-3" />
+          </Button>
+        </div>
+        <ScrollArea className="h-80 w-full max-w-full overflow-x-hidden">
+          <div className="space-y-1 p-2 w-full max-w-full overflow-x-hidden">
+            {consoleMessages.length === 0 ? (
+              <div className="text-center text-muted-foreground text-sm py-4">
+                No console messages
+              </div>
+            ) : (
+              consoleMessages.map((msg) => (
+                <div
+                  key={msg.id}
+                  className={`text-xs font-mono p-2 rounded ${getLevelColor(msg.level)} bg-muted/50 group relative w-full overflow-hidden`}
+                >
+                  <div className="flex items-start justify-between w-full">
+                    <div className="whitespace-pre-wrap break-all flex-1 pr-2 overflow-x-hidden">{getLevelIcon(msg.level)} {msg.message}</div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => copyMessageToClipboard(msg)}
+                      className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex-shrink-0"
+                    >
+                      {copiedMessageId === msg.id ? (
+                        <Check className="h-3 w-3 text-green-500" />
+                      ) : (
+                        <Copy className="h-3 w-3" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </ScrollArea>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+};
+
   return (
     <div className="h-full">
       <Tabs value={activeTab} className="h-full">
         <TabsContent value="preview" className="h-full mt-0">
           {hasBuiltProject ? (
             <div className="h-full w-full flex flex-col">
-              <BrowserAddressBar
-                currentPath={currentPath}
-                onNavigate={navigateToPath}
-                onRefresh={refreshIframe}
-                onBack={goBack}
-                onForward={goForward}
-                canGoBack={historyIndex > 0}
-                canGoForward={historyIndex < navigationHistory.length - 1}
-              />
+              <div className="flex items-center border-b w-full">
+                <BrowserAddressBar
+                  currentPath={currentPath}
+                  onNavigate={navigateToPath}
+                  onRefresh={refreshIframe}
+                  onBack={goBack}
+                  onForward={goForward}
+                  canGoBack={historyIndex > 0}
+                  canGoForward={historyIndex < navigationHistory.length - 1}
+                  extraContent={<ConsoleDropdown />}
+                />
+              </div>
               <iframe
                 ref={iframeRef}
-                src={`https://${projectId}.local-shakespeare.dev${currentPath}`}
+                src={`https://${projectId}.${IFRAME_DOMAIN}${currentPath}`}
                 className="w-full flex-1 border-0"
                 title="Project Preview"
                 sandbox="allow-scripts allow-same-origin"
@@ -376,9 +523,9 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
           ) : (
             <div className="h-full flex items-center justify-center bg-muted">
               <div className="text-center">
-                <h3 className="text-lg font-semibold mb-2">Project Preview</h3>
+                <h3 className="text-lg font-semibold mb-2">{t('projectPreview')}</h3>
                 <p className="text-muted-foreground mb-4">
-                  Build your project to see the preview here
+                  {t('buildProjectToSeePreview')}
                 </p>
               </div>
             </div>
@@ -392,7 +539,7 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
                 <>
                   <div className="p-3 border-b bg-gradient-to-r from-primary/5 to-accent/5">
                     <div className="flex items-center justify-between">
-                      <h3 className="font-semibold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">File Explorer</h3>
+                      <h3 className="font-semibold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">{t('fileExplorer')}</h3>
                       <GitStatusIndicator projectId={projectId} />
                     </div>
                   </div>
@@ -419,7 +566,7 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
                       <ArrowLeft className="h-4 w-4" />
                     </Button>
                     <h3 className="font-semibold flex-1 truncate bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                      {selectedFile ? selectedFile.split('/').pop() : 'File Editor'}
+                      {selectedFile ? selectedFile.split('/').pop() : t('fileEditor')}
                     </h3>
                     <GitStatusIndicator projectId={projectId} />
                   </div>
@@ -437,7 +584,7 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
                         <div className="text-center">
                           <FolderOpen className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                           <p className="text-muted-foreground">
-                            Select a file from the explorer to edit
+                            {t('selectFileFromExplorer')}
                           </p>
                           <Button
                             variant="outline"
@@ -445,7 +592,7 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
                             onClick={() => setMobileCodeView('explorer')}
                             className="mt-4"
                           >
-                            Open File Explorer
+                            {t('openFileExplorer')}
                           </Button>
                         </div>
                       </div>
@@ -459,7 +606,7 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
               <div className="w-1/3 border-r">
                 <div className="p-4 border-b bg-gradient-to-r from-primary/5 to-accent/5">
                   <div className="flex items-center justify-between">
-                    <h3 className="font-semibold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">File Explorer</h3>
+                    <h3 className="font-semibold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">{t('fileExplorer')}</h3>
                     <GitStatusIndicator projectId={projectId} />
                   </div>
                 </div>
@@ -488,7 +635,7 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
                   <div className="h-full flex items-center justify-center">
                     <div className="text-center">
                       <p className="text-muted-foreground">
-                        Select a file from the explorer to edit
+                        {t('selectFileFromExplorer')}
                       </p>
                     </div>
                   </div>

@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
-import { Bot, GitBranch, Database, Wifi } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { Bot, GitBranch, Database, Wifi, Settings2, Info } from 'lucide-react';
 import { useIsMobile } from '@/hooks/useIsMobile';
 
 interface SettingsItem {
@@ -10,48 +11,66 @@ interface SettingsItem {
   href: string;
 }
 
-const settingsItems: SettingsItem[] = [
+// Define settings items as a function to get fresh translations
+const getSettingsItems = (t: (key: string) => string): SettingsItem[] => [
+  {
+    id: 'preferences',
+    title: t('preferences'),
+    description: t('preferencesDescription'),
+    icon: Settings2,
+    href: '/settings/preferences',
+  },
   {
     id: 'ai',
-    title: 'AI Settings',
-    description: 'Configure AI providers and API keys',
+    title: t('aiSettings'),
+    description: t('aiSettingsDescription'),
     icon: Bot,
     href: '/settings/ai',
   },
   {
     id: 'git',
-    title: 'Git Settings',
-    description: 'Configure Git credentials for HTTP authentication',
+    title: t('gitSettings'),
+    description: t('gitSettingsDescription'),
     icon: GitBranch,
     href: '/settings/git',
   },
   {
     id: 'nostr',
-    title: 'Nostr Settings',
-    description: 'Configure relay connections and Nostr preferences',
+    title: t('nostrSettings'),
+    description: t('nostrSettingsDescription'),
     icon: Wifi,
     href: '/settings/nostr',
   },
   {
     id: 'data',
-    title: 'Data',
-    description: 'Export files and manage local data',
+    title: t('dataSettings'),
+    description: t('dataSettingsDescription'),
     icon: Database,
     href: '/settings/data',
+  },
+  {
+    id: 'about',
+    title: t('aboutShakespeare'),
+    description: t('aboutShakespeareDescription'),
+    icon: Info,
+    href: '/settings/about',
   },
 ];
 
 export function Settings() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+
+  const settingsItems = getSettingsItems(t);
 
   if (isMobile) {
     return (
       <div className="p-6 space-y-4">
         <div className="space-y-2">
-          <h2 className="text-xl font-bold">Settings</h2>
+          <h2 className="text-xl font-bold">{t('settings')}</h2>
           <p className="text-muted-foreground">
-            Manage your application settings and preferences.
+            {t('settingsDescription')}
           </p>
         </div>
         <div className="space-y-3">

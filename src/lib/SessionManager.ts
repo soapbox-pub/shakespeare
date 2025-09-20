@@ -6,7 +6,12 @@ import { createAIClient } from './ai-client';
 import type { Tool } from './tools/Tool';
 import type { NUser } from '@nostrify/react/login';
 
-export type AIMessage = OpenAI.Chat.Completions.ChatCompletionMessageParam;
+export type AIMessage = OpenAI.Chat.Completions.ChatCompletionMessageParam | {
+  role: 'assistant';
+  content: string;
+  reasoning_content?: string;
+  tool_calls?: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[];
+};
 
 export interface SessionState {
   projectId: string;
@@ -18,6 +23,7 @@ export interface SessionState {
   streamingMessage?: {
     role: 'assistant';
     content: string;
+    reasoning_content?: string;
     tool_calls?: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[];
   };
   isLoading: boolean;
@@ -32,7 +38,7 @@ export interface SessionManagerEvents {
   sessionCreated: (projectId: string) => void;
   sessionDeleted: (projectId: string) => void;
   messageAdded: (projectId: string, message: AIMessage) => void;
-  streamingUpdate: (projectId: string, content: string, toolCalls?: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[]) => void;
+  streamingUpdate: (projectId: string, content: string, reasoningContent?: string, toolCalls?: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[]) => void;
   loadingChanged: (projectId: string, isLoading: boolean) => void;
   costUpdated: (projectId: string, totalCost: number) => void;
   contextUsageUpdated: (projectId: string, inputTokens: number) => void;
@@ -219,6 +225,7 @@ export class SessionManager {
         session.streamingMessage = {
           role: 'assistant',
           content: '',
+          reasoning_content: '',
           tool_calls: undefined
         };
 
@@ -245,6 +252,7 @@ export class SessionManager {
         });
 
         let accumulatedContent = '';
+        let accumulatedReasoningContent = '';
         const accumulatedToolCalls: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[] = [];
         let finishReason: string | null = null;
 
@@ -260,7 +268,17 @@ export class SessionManager {
             accumulatedContent += delta.content;
             if (session.streamingMessage) {
               session.streamingMessage.content += delta.content;
-              this.emit('streamingUpdate', projectId, session.streamingMessage.content, session.streamingMessage.tool_calls);
+              this.emit('streamingUpdate', projectId, session.streamingMessage.content, session.streamingMessage.reasoning_content, session.streamingMessage.tool_calls);
+            }
+          }
+
+          // Handle reasoning content if present (some providers may include this)
+          const deltaWithReasoning = delta as { reasoning_content?: string };
+          if (deltaWithReasoning?.reasoning_content) {
+            accumulatedReasoningContent += deltaWithReasoning.reasoning_content;
+            if (session.streamingMessage) {
+              session.streamingMessage.reasoning_content += deltaWithReasoning.reasoning_content;
+              this.emit('streamingUpdate', projectId, session.streamingMessage.content, session.streamingMessage.reasoning_content, session.streamingMessage.tool_calls);
             }
           }
 
@@ -283,7 +301,7 @@ export class SessionManager {
 
             if (session.streamingMessage) {
               session.streamingMessage.tool_calls = accumulatedToolCalls.length > 0 ? accumulatedToolCalls : undefined;
-              this.emit('streamingUpdate', projectId, session.streamingMessage.content, session.streamingMessage.tool_calls);
+              this.emit('streamingUpdate', projectId, session.streamingMessage.content, session.streamingMessage.reasoning_content, session.streamingMessage.tool_calls);
             }
           }
 
@@ -304,6 +322,7 @@ export class SessionManager {
         const assistantMessage: AIMessage = {
           role: 'assistant',
           content: accumulatedContent,
+          ...(accumulatedReasoningContent && { reasoning_content: accumulatedReasoningContent }),
           ...(accumulatedToolCalls.length > 0 && { tool_calls: accumulatedToolCalls })
         };
 

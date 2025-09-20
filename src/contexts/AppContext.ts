@@ -9,6 +9,8 @@ export interface AppConfig {
   relayUrl: string;
   /** Deploy server domain (e.g., "shakespeare.wtf") */
   deployServer: string;
+  /** Selected language */
+  language?: string;
 }
 
 export interface AppContextType {

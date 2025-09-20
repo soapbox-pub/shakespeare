@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Download, Trash2, AlertTriangle, Loader2, Database, Info } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { Download, Trash2, AlertTriangle, Loader2, Database, Info, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/useToast';
 import { useFS } from '@/hooks/useFS';
+import { useIsMobile } from '@/hooks/useIsMobile';
 import JSZip from 'jszip';
 
 interface StorageUsageDetails {
@@ -23,6 +25,7 @@ interface StorageInfo {
 }
 
 export function DataSettings() {
+  const { t } = useTranslation();
   const [isExporting, setIsExporting] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
   const [storageInfo, setStorageInfo] = useState<StorageInfo | null>(null);
@@ -30,6 +33,7 @@ export function DataSettings() {
   const { toast } = useToast();
   const { fs } = useFS();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
 
   // Format bytes to human readable format
   const formatBytes = (bytes: number): string => {
@@ -130,14 +134,14 @@ export function DataSettings() {
       await exportFilesAsZip();
 
       toast({
-        title: "Files exported successfully",
-        description: "Your project files have been downloaded as a zip file.",
+        title: t('filesExportedSuccessfully'),
+        description: t('filesExportedDescription'),
       });
     } catch (error) {
       console.error('Failed to export files:', error);
       toast({
-        title: "Failed to export files",
-        description: error instanceof Error ? error.message : "An unexpected error occurred",
+        title: t('failedToExportFiles'),
+        description: error instanceof Error ? error.message : t('error'),
         variant: "destructive",
       });
     } finally {
@@ -172,8 +176,8 @@ export function DataSettings() {
       await Promise.all(deletePromises);
 
       toast({
-        title: "Data cleared successfully",
-        description: "All local data has been removed. Redirecting to homepage...",
+        title: t('dataClearedSuccessfully'),
+        description: t('dataClearedDescription'),
       });
 
       // Small delay to show the toast, then redirect
@@ -183,8 +187,8 @@ export function DataSettings() {
     } catch (error) {
       console.error('Failed to clear data:', error);
       toast({
-        title: "Failed to clear data",
-        description: error instanceof Error ? error.message : "An unexpected error occurred",
+        title: t('failedToClearData'),
+        description: error instanceof Error ? error.message : t('error'),
         variant: "destructive",
       });
     } finally {
@@ -194,15 +198,40 @@ export function DataSettings() {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="space-y-2">
-        <h1 className="text-2xl font-bold flex items-center gap-3">
-          <Database className="h-6 w-6 text-primary" />
-          Data
-        </h1>
-        <p className="text-muted-foreground">
-          Export files and manage local data.
-        </p>
-      </div>
+      {isMobile && (
+        <div className="space-y-3">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate('/settings')}
+            className="h-8 w-auto px-2 -ml-2"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            {t('backToSettings')}
+          </Button>
+          <div className="space-y-2">
+            <h1 className="text-2xl font-bold flex items-center gap-3">
+              <Database className="h-6 w-6 text-primary" />
+              {t('dataSettings')}
+            </h1>
+            <p className="text-muted-foreground">
+              {t('dataSettingsDescriptionLong')}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {!isMobile && (
+        <div className="space-y-2">
+          <h1 className="text-2xl font-bold flex items-center gap-3">
+            <Database className="h-6 w-6 text-primary" />
+            {t('dataSettings')}
+          </h1>
+          <p className="text-muted-foreground">
+            {t('dataSettingsDescriptionLong')}
+          </p>
+        </div>
+      )}
 
       <div className="space-y-4">
         {/* Storage Information */}
@@ -216,8 +245,8 @@ export function DataSettings() {
             {/* Usage Progress */}
             <div className="space-y-2">
               <div className="flex justify-between items-center text-sm">
-                <span>Used: {formatBytes(storageInfo.usage)}</span>
-                <span>Available: {formatBytes(storageInfo.quota)}</span>
+                <span>{t('used')}: {formatBytes(storageInfo.usage)}</span>
+                <span>{t('available')}: {formatBytes(storageInfo.quota)}</span>
               </div>
               <Progress
                 value={storageInfo.quota > 0 ? (storageInfo.usage / storageInfo.quota) * 100 : 0}
@@ -225,8 +254,8 @@ export function DataSettings() {
               />
               <div className="text-xs text-muted-foreground text-center">
                 {storageInfo.quota > 0
-                  ? `${((storageInfo.usage / storageInfo.quota) * 100).toFixed(1)}% used`
-                  : 'Usage percentage unavailable'
+                  ? t('usagePercentage', { percentage: ((storageInfo.usage / storageInfo.quota) * 100).toFixed(1) })
+                  : t('usageUnavailable')
                 }
               </div>
             </div>
@@ -235,7 +264,7 @@ export function DataSettings() {
         ) : (
           <div className="flex items-center gap-2 text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
-            <span className="text-sm">Loading storage information...</span>
+            <span className="text-sm">{t('loadingStorageInfo')}</span>
           </div>
         )}
 
@@ -244,10 +273,10 @@ export function DataSettings() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Download className="h-5 w-5" />
-              Export Files
+              {t('exportFiles')}
             </CardTitle>
             <CardDescription>
-              Download all your projects and files as a ZIP archive. This includes all project files, settings, and data stored locally.
+              {t('exportFilesDescription')}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -259,12 +288,12 @@ export function DataSettings() {
               {isExporting ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Exporting...
+                  {t('exporting')}
                 </>
               ) : (
                 <>
                   <Download className="h-4 w-4 mr-2" />
-                  Export All Files
+                  {t('exportAllFiles')}
                 </>
               )}
             </Button>
@@ -276,10 +305,10 @@ export function DataSettings() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-destructive">
               <Trash2 className="h-5 w-5" />
-              Clear All Data
+              {t('clearAllData')}
             </CardTitle>
             <CardDescription>
-              Permanently delete all local data including projects, settings, and cached information. This action cannot be undone.
+              {t('clearAllDataDescription')}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -293,12 +322,12 @@ export function DataSettings() {
                   {isClearing ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Clearing...
+                      {t('clearing')}
                     </>
                   ) : (
                     <>
                       <Trash2 className="h-4 w-4 mr-2" />
-                      Clear All Data
+                      {t('clearAllData')}
                     </>
                   )}
                 </Button>
@@ -307,31 +336,31 @@ export function DataSettings() {
                 <AlertDialogHeader>
                   <AlertDialogTitle className="flex items-center gap-2">
                     <AlertTriangle className="h-5 w-5 text-destructive" />
-                    Are you absolutely sure?
+                    {t('areYouSure')}
                   </AlertDialogTitle>
                   <AlertDialogDescription className="space-y-2">
                     <p>
-                      This action will permanently delete all local data from this browser, including:
+                      {t('clearDataWarning')}
                     </p>
                     <ul className="list-disc list-inside space-y-1 text-sm">
-                      <li>All projects and their files</li>
-                      <li>AI settings and API keys</li>
-                      <li>Git credentials and settings</li>
-                      <li>User preferences and themes</li>
-                      <li>Cached data and session information</li>
+                      <li>{t('allProjects')}</li>
+                      <li>{t('aiSettingsAndKeys')}</li>
+                      <li>{t('gitCredentialsSettings')}</li>
+                      <li>{t('userPreferences')}</li>
+                      <li>{t('cachedData')}</li>
                     </ul>
                     <p className="font-medium text-destructive">
-                      This action cannot be undone. Consider exporting your files first.
+                      {t('actionCannotBeUndone')}
                     </p>
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
                   <AlertDialogAction
                     onClick={handleClearAllData}
                     className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                   >
-                    Yes, clear all data
+                    {t('yesClearAllData')}
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>

@@ -1,4 +1,4 @@
-import { join } from "@std/path";
+import { join } from "path-browserify";
 import type OpenAI from "openai";
 import type { JSRuntimeFS } from "./JSRuntime";
 

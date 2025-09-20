@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, forwardRef, useImperativeHandle, useMemo, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -67,6 +68,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   isBuildLoading: externalIsBuildLoading,
   isDeployLoading: externalIsDeployLoading
 }, ref) => {
+  const { t } = useTranslation();
   const [input, setInput] = useState('');
   const [systemPrompt, setSystemPrompt] = useState('');
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
@@ -461,12 +463,12 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
           <div className="text-center space-y-4 max-w-md mx-auto p-6">
             <div className="text-4xl mb-4">🤖</div>
             <div>
-              <h3 className="text-lg font-semibold mb-2 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">AI Assistant Not Configured</h3>
+              <h3 className="text-lg font-semibold mb-2 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">{t('aiNotConfigured')}</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                Please configure your AI settings to start building with AI assistance.
+                {t('configureAI')}
               </p>
               <p className="text-sm text-muted-foreground">
-                Use the menu in the top bar to access AI Settings.
+                {t('useMenuForAI')}
               </p>
             </div>
           </div>
@@ -489,16 +491,16 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
                 <div className="text-6xl mb-6">🎭</div>
                 <div>
                   <h3 className="text-xl font-semibold mb-2 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                    Welcome to Shakespeare
+                    {t('welcomeToShakespeare')}
                   </h3>
                   <p className="text-muted-foreground mb-6 leading-relaxed">
-                    Your AI-powered development assistant is ready to help you build, edit, and enhance your project.
+                    {t('aiAssistantReady')}
                   </p>
                   <div className="space-y-2 text-sm text-muted-foreground">
-                    <p>💡 Ask me to add new features</p>
-                    <p>📝 Request file edits and improvements</p>
-                    <p>🔧 Get help with debugging and optimization</p>
-                    <p>🚀 Build and deploy your project</p>
+                    <p>{t('askMeFeatures')}</p>
+                    <p>{t('requestEdits')}</p>
+                    <p>{t('getHelp')}</p>
+                    <p>{t('buildDeploy')}</p>
                   </div>
                 </div>
               </div>
@@ -533,11 +535,12 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
             );
           })}
           {streamingMessage && (
-            streamingMessage.content ? (
+            streamingMessage.content || streamingMessage.reasoning_content ? (
               <AIMessageItem
                 key="streaming-message"
                 message={streamingMessage}
                 isCurrentlyLoading={isLoading}
+                reasoningContent={streamingMessage.reasoning_content}
               />
             ) : (
               !(streamingMessage?.tool_calls?.[0]?.type === 'function') && (
@@ -556,7 +559,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
               <div className="flex items-center gap-2 px-2 py-1 text-xs text-muted-foreground">
                 <Loader2 className="h-3 w-3 animate-spin flex-shrink-0" />
                 <span className="font-medium">
-                  Running {streamingMessage.tool_calls?.[0]?.function?.name || 'tool'}...
+                  {t('running')} {streamingMessage.tool_calls?.[0]?.function?.name || 'tool'}...
                 </span>
               </div>
             </div>
@@ -595,7 +598,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
             onFocus={handleFirstInteraction}
-            placeholder={providerModel.trim() ? "Ask me to add features, edit files, or build your project..." : "Please select a model to start chatting..."}
+            placeholder={providerModel.trim() ? t('askToAddFeatures') : t('selectModelFirst')}
             className="flex-1 resize-none border-0 bg-transparent px-4 py-3 text-sm focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground"
             disabled={isLoading || !providerModel.trim()}
             rows={1}
@@ -636,7 +639,11 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
                     </div>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>Context usage: {lastInputTokens.toLocaleString()} / {currentModel.contextLength.toLocaleString()} tokens ({contextUsagePercentage.toFixed(1)}%)</p>
+                    <p>{t('contextUsage', {
+                      tokens: lastInputTokens.toLocaleString(),
+                      total: currentModel.contextLength.toLocaleString(),
+                      percentage: contextUsagePercentage.toFixed(1)
+                    })}</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -652,7 +659,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
                     </div>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>Total cost for this chat session</p>
+                    <p>{t('totalCostSession')}</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -665,7 +672,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
                 onChange={setProviderModel}
                 className="w-full"
                 disabled={isLoading}
-                placeholder="Choose a model..."
+                placeholder={t('chooseModel')}
               />
             </div>
 

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { useFS } from '@/hooks/useFS';
 import { useGitStatus } from '@/hooks/useGitStatus';
@@ -22,6 +23,7 @@ interface FileNode {
 }
 
 export function FileTree({ projectId, onFileSelect, selectedFile }: FileTreeProps) {
+  const { t } = useTranslation();
   const [tree, setTree] = useState<FileNode[]>([]);
   const [filteredTree, setFilteredTree] = useState<FileNode[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -179,7 +181,7 @@ export function FileTree({ projectId, onFileSelect, selectedFile }: FileTreeProp
     for (const node of nodes) {
       if (node.type === 'file') {
         const fileNameMatch = node.name.toLowerCase().includes(searchTermLower);
-        
+
         if (fileNameMatch) {
           results.push(node);
         }
@@ -296,7 +298,7 @@ export function FileTree({ projectId, onFileSelect, selectedFile }: FileTreeProp
         <div className="relative">
           <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search files..."
+            placeholder={t('searchFiles')}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-8"
@@ -313,7 +315,7 @@ export function FileTree({ projectId, onFileSelect, selectedFile }: FileTreeProp
         </div>
       ) : filteredTree.length === 0 ? (
         <div className="text-center text-sm text-muted-foreground py-4">
-          {searchTerm ? 'No files found matching your search' : 'No files found'}
+          {searchTerm ? t('noFilesFoundSearch') : t('noFilesFound')}
         </div>
       ) : (
         filteredTree.map(node => renderNode(node))

@@ -160,6 +160,80 @@ This project is a Nostr client application built with React 18.x, TailwindCSS 3.
 - **TanStack Query**: For data fetching, caching, and state management
 - **TypeScript**: For type-safe JavaScript development
 
+## Project Import
+
+Shakespeare supports importing existing projects from ZIP files through the main interface:
+
+### ZIP Import Feature
+
+- **Location**: Available in the sidebar under the "New Project" expand menu, below "Import Repository"
+- **Function**: Upload ZIP files containing project source code with drag & drop support
+- **Auto-setup**: Automatically extracts files, sets up Git repository, and creates project structure
+- **Drag & Drop**: Intuitive drag and drop interface with click-to-browse fallback
+- **Custom IDs**: Option to specify custom project ID or auto-generate from filename
+- **Project Overwrite**: Allows overwriting existing projects with clear warnings and confirmation
+- **Error Handling**: Validates ZIP files and provides clear error messages
+- **Progress Tracking**: Shows import progress with visual feedback
+
+### ZIP Import Process
+
+1. Click the "New Project" button in the sidebar
+2. Click the dropdown arrow (▼) to expand the menu
+3. Select "Import ZIP File" from the dropdown options
+4. **Upload Methods**:
+   - **Drag & Drop**: Drag your ZIP file directly onto the drop zone
+   - **Click to Browse**: Click the drop zone to open file selector
+5. Review the selected file (name and size displayed)
+6. Optionally specify a custom project ID (auto-generated from filename if empty)
+7. **Overwrite Detection**: If project ID already exists, warning appears with option to overwrite
+8. **Overwrite Confirmation**: Detailed confirmation dialog explains what will be preserved/deleted
+9. Click "Import Project" or "Overwrite Project" to begin the import process
+10. Wait for the import to complete (progress bar shows extraction and setup)
+11. The imported project will be automatically available in the project list
+
+### ZIP File Requirements
+
+- Must be a valid ZIP archive
+- Can contain any project structure (React, Node.js, static sites, etc.)
+- Directory structure is preserved during import
+- Maximum recommended file size: 50MB
+- Existing `.git` directories are preserved if present
+- New Git repository is initialized if no `.git` directory exists
+- `.ai/` directory is automatically created for Shakespeare functionality
+
+### Project Overwrite Feature
+
+When importing a project with an ID that already exists:
+
+**What Gets Preserved:**
+- **Git History**: All existing commits and repository history are maintained
+- **AI Chat History**: All chat sessions and conversation data are preserved
+- **Project Settings**: Configuration and metadata remain intact
+
+**What Gets Replaced:**
+- **All Project Files**: Every file in the project directory is replaced with ZIP contents
+- **Directory Structure**: New directory structure from ZIP replaces existing structure
+- **Git Commit**: New commit is created documenting the overwrite action
+
+**Confirmation Process:**
+1. Clear warning appears when duplicate project ID is detected
+2. Detailed confirmation dialog lists exactly what will happen
+3. User must explicitly confirm the overwrite action
+4. Process cannot be undone once confirmed
+
+**Use Cases:**
+- **Project Updates**: Import newer version of existing project
+- **Template Refresh**: Update project with latest template changes
+- **Migration**: Move project from different development environment
+
+### Integration with Existing Features
+
+- **Project Management**: Imported projects appear alongside AI-created projects
+- **Git Integration**: Preserves existing Git history or initializes new repository
+- **AI Chat**: Full AI assistance available for imported projects
+- **File Operations**: All file operations work normally with imported projects
+- **Build System**: Projects can be built and deployed normally
+
 ## Project Structure
 
 - `/src/components/`: UI components including NostrProvider for Nostr integration
@@ -168,6 +242,8 @@ This project is a Nostr client application built with React 18.x, TailwindCSS 3.
   - `/src/components/ai/`: AI-related components (GitCommit, GitHistoryDialog)
   - `/src/components/comments/`: Comment system components (Comment, CommentForm, CommentsSection)
   - `/src/components/Shakespeare/`: Core Shakespeare editor components (ChatPane, FileEditor, FileTree, PreviewPane)
+  - `/src/components/ProjectSidebar.tsx`: Sidebar component containing project list and import options
+  - `/src/components/ZipImportDialog.tsx`: Dialog component for importing projects from ZIP files
   - Zap components: `ZapButton`, `ZapDialog`, `WalletModal` for Lightning payments
 - `/src/hooks/`: Custom hooks including:
   - `useNostr`: Core Nostr protocol integration
@@ -182,7 +258,7 @@ This project is a Nostr client application built with React 18.x, TailwindCSS 3.
   - `useSessionManager`: Access session management for AI chat sessions
   - `useGitStatus`: Real-time Git repository status monitoring
   - `useProjects`: Project management and CRUD operations
-  - `useProjectsManager`: Advanced project operations (creation, cloning, building)
+  - `useProjectsManager`: Advanced project operations (creation, cloning, building, ZIP import)
   - `useTheme`: Theme management
   - `useToast`: Toast notifications
   - `useLocalStorage`: Persistent local storage

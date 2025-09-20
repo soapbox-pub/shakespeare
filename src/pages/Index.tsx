@@ -115,10 +115,17 @@ export default function Index() {
       navigate(`/project/${project.id}?${searchParams.toString()}`);
     } catch (error) {
       console.error('Failed to create project:', error);
+      toast({
+        title: "Project Creation Failed",
+        description: error instanceof Error ? error.message : "An unexpected error occurred",
+        variant: "destructive",
+      });
     } finally {
       setIsCreating(false);
     }
   };
+
+
 
   const headerContent = null;
 

@@ -8,6 +8,7 @@ import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { useAISettings } from '@/hooks/useAISettings';
 import { AppLayout } from '@/components/AppLayout';
+import { OnboardingDialog } from '@/components/OnboardingDialog';
 import { DotAI } from '@/lib/DotAI';
 import type { AIMessage } from '@/lib/SessionManager';
 
@@ -22,16 +23,20 @@ export default function Index() {
   const [prompt, setPrompt] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [storedPrompt, setStoredPrompt] = useLocalStorage('shakespeare-draft-prompt', '');
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const navigate = useNavigate();
   const projectsManager = useProjectsManager();
   const { fs } = useFS();
-  const { generateProjectId, isLoading: isGeneratingId, isConfigured: isAIConfigured } = useAIProjectId();
+  const { generateProjectId, isLoading: isGeneratingId } = useAIProjectId();
   const { settings, addRecentlyUsedModel } = useAISettings();
   const [providerModel, setProviderModel] = useState(() => {
     // Initialize with first recently used model if available, otherwise empty
     return settings.recentlyUsedModels?.[0] || '';
   });
   const isMobile = useIsMobile();
+
+  // Check if any providers are configured
+  const hasProvidersConfigured = Object.keys(settings.providers).length > 0;
 
   useEffect(() => {
     if (!providerModel && settings.recentlyUsedModels?.length) {
@@ -78,6 +83,13 @@ export default function Index() {
         handleCreateProject();
       }
       // If prompt contains newlines or no model selected, allow Enter to create new line (default behavior)
+    }
+  };
+
+  // Handle textarea click - show onboarding if no providers configured
+  const handleTextareaClick = () => {
+    if (!hasProvidersConfigured) {
+      setShowOnboarding(true);
     }
   };
 
@@ -141,15 +153,18 @@ export default function Index() {
             <div className="relative rounded-2xl border border-input bg-background shadow-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 transition-all">
               <Textarea
                 placeholder={
-                  !providerModel.trim()
+                  !hasProvidersConfigured
+                    ? t('examplePrompt')
+                    : !providerModel.trim()
                     ? t('selectModelToDescribe')
                     : t('examplePrompt')
                 }
                 value={prompt}
                 onChange={handlePromptChange}
                 onKeyDown={handleKeyDown}
+                onClick={handleTextareaClick}
                 className="min-h-[120px] max-h-64 resize-none border-0 bg-transparent px-4 py-3 pb-16 text-sm focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground"
-                disabled={isCreating || isGeneratingId || !providerModel.trim()}
+                disabled={isCreating || isGeneratingId || (hasProvidersConfigured && !providerModel.trim())}
                 rows={4}
                 style={{
                   height: 'auto',
@@ -182,7 +197,7 @@ export default function Index() {
                     !prompt.trim() ||
                     isCreating ||
                     isGeneratingId ||
-                    (isAIConfigured && !providerModel.trim())
+                    (hasProvidersConfigured && !providerModel.trim())
                   }
                   size="sm"
                   className="h-8 rounded-lg"
@@ -204,6 +219,12 @@ export default function Index() {
           </div>
         </div>
       </AppLayout>
+
+      {/* Onboarding Dialog */}
+      <OnboardingDialog
+        open={showOnboarding}
+        onOpenChange={setShowOnboarding}
+      />
     </>
   );
 }

@@ -2,7 +2,7 @@
  * Security utilities for path validation and access control
  */
 
-import { normalize } from "@std/path";
+import { normalize } from "path-browserify";
 
 /**
  * Check if the given path is an absolute path

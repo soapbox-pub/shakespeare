@@ -1,4 +1,4 @@
-import { join } from "@std/path";
+import { join } from "path-browserify";
 import type { JSRuntimeFS } from "../../JSRuntime";
 import type { ShellCommandResult } from "../ShellCommand";
 import { createSuccessResult, createErrorResult } from "../ShellCommand";

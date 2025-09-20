@@ -1,4 +1,4 @@
-import { join } from "@std/path";
+import { join } from "path-browserify";
 import ignore from "ignore";
 import { z } from "zod";
 

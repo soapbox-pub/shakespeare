@@ -1,4 +1,4 @@
-import { join } from "@std/path";
+import { join } from "path-browserify";
 import { z } from "zod";
 
 import type { Tool } from "./Tool";

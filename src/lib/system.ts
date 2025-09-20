@@ -1,6 +1,6 @@
 import { NUser } from "@nostrify/react/login";
 import { NostrMetadata } from "@nostrify/nostrify";
-import { join } from "@std/path";
+import { join } from "path-browserify";
 import OpenAI from "openai";
 import { nip19 } from "nostr-tools";
 import { JSRuntimeFS } from "./JSRuntime";

@@ -61,8 +61,6 @@ interface ConsoleMessage {
   id: number;
   level: 'log' | 'warn' | 'error' | 'info' | 'debug';
   message: string;
-  timestamp: number;
-  args: unknown[];
 }
 
 export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
@@ -207,38 +205,30 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
 
   const handleConsoleMessage = useCallback((message: {
     jsonrpc: '2.0';
-    method: string;
+    method: 'console';
     params: {
-      level: 'log' | 'warn' | 'error' | 'info' | 'debug' | 'exception' | 'assert' | 'clear' | 'count' | 'countReset' | 'dir' | 'dirxml' | 'group' | 'groupCollapsed' | 'groupEnd' | 'table' | 'time' | 'timeEnd' | 'timeLog' | 'trace';
+      level: 'log' | 'warn' | 'error' | 'info' | 'debug';
       message: string;
-      timestamp: number;
-      args: unknown[];
     };
   }) => {
     const { params } = message;
 
     // Normalize level to ensure it's one of our supported types
     let normalizedLevel: ConsoleMessage['level'] = 'log';
-    if (['log', 'warn', 'error', 'info', 'debug'].includes(params.level as ConsoleMessage['level'])) {
+    if (['log', 'warn', 'error', 'info', 'debug'].includes(params.level)) {
       normalizedLevel = params.level as ConsoleMessage['level'];
-    } else if (['exception', 'assert'].includes(params.level)) {
-      normalizedLevel = 'error';
-    } else if (['clear', 'count', 'countReset', 'dir', 'dirxml', 'group', 'groupCollapsed', 'groupEnd', 'table', 'time', 'timeEnd', 'timeLog', 'trace'].includes(params.level)) {
-      normalizedLevel = 'info';
     }
 
     const newConsoleMessage: ConsoleMessage = {
       id: Date.now(),
       level: normalizedLevel,
       message: params.message,
-      timestamp: params.timestamp,
-      args: params.args,
     };
 
     setConsoleMessages(prev => [...prev, newConsoleMessage]);
 
     // Log to parent console for debugging with appropriate level
-    console[normalizedLevel](`[IFRAME ${params.level.toUpperCase()}] ${params.message}`, ...params.args);
+    console[normalizedLevel](`[IFRAME ${params.level.toUpperCase()}] ${params.message}`);
   }, []);
 
   const handleFetch = useCallback(async (request: JSONRPCRequest) => {
@@ -356,7 +346,7 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
       console.log('Received message from iframe:', message);
       if (message.jsonrpc === '2.0' && message.method === 'fetch') {
         handleFetch(message);
-      } else if (message.jsonrpc === '2.0' && message.method && message.method.startsWith('console.')) {
+      } else if (message.jsonrpc === '2.0' && message.method === 'console') {
         handleConsoleMessage(message);
       }
     };
@@ -429,22 +419,14 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
     }
   };
 
-  const formatTimestamp = (timestamp: number) => {
-    return new Date(timestamp).toLocaleTimeString();
-  };
-
   const clearConsole = () => {
     setConsoleMessages([]);
   };
 
-
-
   const copyMessageToClipboard = async (msg: ConsoleMessage) => {
     try {
       // Create a formatted string with all message details
-      const formattedMessage = `[${formatTimestamp(msg.timestamp)}] [${msg.level.toUpperCase()}] ${msg.message}${
-        msg.args.length > 0 ? `\nArgs: ${JSON.stringify(msg.args, null, 2)}` : ''
-      }`;
+      const formattedMessage = `[${msg.level.toUpperCase()}] ${msg.message}`;
 
       await navigator.clipboard.writeText(formattedMessage);
       setCopiedMessageId(msg.id);
@@ -487,16 +469,13 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
                   key={msg.id}
                   className={`text-xs font-mono p-2 rounded ${getLevelColor(msg.level)} bg-muted/50 group relative w-full overflow-hidden`}
                 >
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="flex items-center gap-2">
-                      <span>{getLevelIcon(msg.level)}</span>
-                      <span className="opacity-60">{formatTimestamp(msg.timestamp)}</span>
-                    </div>
+                  <div className="flex items-start justify-between w-full">
+                    <div className="whitespace-pre-wrap break-all flex-1 pr-2 overflow-x-hidden">{getLevelIcon(msg.level)} {msg.message}</div>
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => copyMessageToClipboard(msg)}
-                      className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                      className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex-shrink-0"
                     >
                       {copiedMessageId === msg.id ? (
                         <Check className="h-3 w-3 text-green-500" />
@@ -505,12 +484,6 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
                       )}
                     </Button>
                   </div>
-                  <div className="whitespace-pre-wrap break-all pr-8 overflow-x-hidden">{msg.message}</div>
-                  {msg.args.length > 0 && (
-                    <div className="mt-1 opacity-70 break-all overflow-x-hidden">
-                      Args: {JSON.stringify(msg.args)}
-                    </div>
-                  )}
                 </div>
               ))
             )}

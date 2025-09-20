@@ -7,8 +7,7 @@ between the parent page and the iframe fetch client.
 
 The iframe fetch client uses JSON-RPC 2.0 over `postMessage` for communication.
 The ServiceWorker makes JSON-RPC calls directly, with the main thread acting as
-a relay between the ServiceWorker and parent page. The only required method is
-`fetch` for handling HTTP requests.
+a relay between the ServiceWorker and parent page.
 
 ## Architecture
 
@@ -126,81 +125,16 @@ full request body support
 - `-32002`: Request processing error
 - `-32003`: Invalid URL
 
-### `console.log`
+### `console`
 
-**Purpose:** Forward console log messages from iframe to parent for display
-
-**Parameters:**
-
-- `level` (string): Log level - "log", "warn", "error", "info", "debug"
-- `message` (string): The log message
-- `timestamp` (number): Unix timestamp when the log was created
-- `args` (array): Additional arguments passed to the console method (optional)
-
-**Result:** None (notification only, no response expected)
-
-### `console.warn`
-
-**Purpose:** Forward console warn messages from iframe to parent for display
+**Purpose:** Forward console messages from iframe to parent for display
 
 **Parameters:**
 
 - `level` (string): Log level - "log", "warn", "error", "info", "debug"
 - `message` (string): The log message
-- `timestamp` (number): Unix timestamp when the log was created
-- `args` (array): Additional arguments passed to the console method (optional)
 
 **Result:** None (notification only, no response expected)
-
-### `console.error`
-
-**Purpose:** Forward console error messages from iframe to parent for display
-
-**Parameters:**
-
-- `level` (string): Log level - "log", "warn", "error", "info", "debug"
-- `timestamp` (number): Unix timestamp when the log was created
-- `message` (string): The log message
-- `args` (array): Additional arguments passed to the console method (optional)
-
-**Result:** None (notification only, no response expected)
-
-### `console.info`
-
-**Purpose:** Forward console info messages from iframe to parent for display
-
-**Parameters:**
-
-- `level` (string): Log level - "log", "warn", "error", "info", "debug"
-- `message` (string): The log message
-- `timestamp` (number): Unix timestamp when the log was created
-- `args` (array): Additional arguments passed to the console method (optional)
-
-**Result:** None (notification only, no response expected)
-
-### `console.debug`
-
-**Purpose:** Forward console debug messages from iframe to parent for display
-
-**Parameters:**
-
-- `level` (string): Log level - "log", "warn", "error", "info", "debug"
-- `message` (string): The log message
-- `timestamp` (number): Unix timestamp when the log was created
-- `args` (array): Additional arguments passed to the console method (optional)
-
-**Result:** None (notification only, no response expected)
-
-**Request Body Support:** The system fully supports request bodies, enabling:
-
-- POST/PUT requests with JSON data
-- Form submissions
-- API calls with payloads
-- File uploads (as base64 strings)
-- Any HTTP method with body content
-
-Request bodies must be base64-encoded strings when not null. This ensures
-consistent handling of both text and binary data across the messaging protocol.
 
 ## Implementation
 
@@ -212,6 +146,7 @@ In this example, the parent page acts as a static file server.
 class FetchClientParent {
   constructor(files) {
     this.files = files; // Map of path -> {content, contentType}
+    this.consoleLogs = []; // Store console messages
     this.setupMessageListener();
   }
 
@@ -221,10 +156,42 @@ class FetchClientParent {
       if (event.origin !== "https://app123.example.com") return;
 
       const message = event.data;
+
+      // Handle fetch requests
       if (message.jsonrpc === "2.0" && message.method === "fetch") {
         this.handleFetch(message);
       }
+
+      // Handle console messages
+      if (message.jsonrpc === "2.0" && message.method === "console") {
+        this.handleConsoleMessage(message);
+      }
     });
+  }
+
+  handleConsoleMessage(message) {
+    const { params } = message;
+    const { level, message: logMessage } = params;
+
+    // Store the log message
+    this.consoleLogs.push({
+      level,
+      message: logMessage,
+      timestamp: Date.now(), // Parent adds timestamp when received
+      id: Date.now() // Unique ID for UI purposes
+    });
+
+    // Update UI to show new logs
+    this.updateConsoleUI();
+
+    // Also log to parent's console for debugging
+    console[level](`[IFRAME] ${logMessage}`);
+  }
+
+  updateConsoleUI() {
+    // This would update the parent page UI to show console logs
+    // Implementation depends on your UI framework
+    console.log(`Total console logs: ${this.consoleLogs.length}`);
   }
 
   handleFetch(request) {
@@ -412,22 +379,21 @@ const decodedBody = atob(encodedBody);
         }
 
         // Handle console messages
-        if (message.jsonrpc === "2.0" && message.method && message.method.startsWith("console.")) {
+        if (message.jsonrpc === "2.0" && message.method === "console") {
           this.handleConsoleMessage(message);
         }
       });
     }
 
     handleConsoleMessage(message) {
-      const { method, params } = message;
-      const { level, message: logMessage, timestamp, args = [] } = params;
+      const { params } = message;
+      const { level, message: logMessage } = params;
 
       // Store the log message
       this.consoleLogs.push({
         level,
         message: logMessage,
-        timestamp,
-        args,
+        timestamp: Date.now(), // Parent adds timestamp when received
         id: Date.now() // Unique ID for UI purposes
       });
 
@@ -435,7 +401,7 @@ const decodedBody = atob(encodedBody);
       this.updateConsoleUI();
 
       // Also log to parent's console for debugging
-      console[level](`[IFRAME] ${logMessage}`, ...args);
+      console[level](`[IFRAME] ${logMessage}`);
     }
 
     updateConsoleUI() {
@@ -551,21 +517,10 @@ class ConsoleInterceptor {
 
     window.parent.postMessage({
       jsonrpc: "2.0",
-      method: `console.${level}`,
+      method: "console",
       params: {
         level,
-        message,
-        timestamp: Date.now(),
-        args: args.map(arg => {
-          if (typeof arg === 'object') {
-            try {
-              return JSON.parse(JSON.stringify(arg));
-            } catch {
-              return String(arg);
-            }
-          }
-          return arg;
-        })
+        message
       }
     }, "*");
   }

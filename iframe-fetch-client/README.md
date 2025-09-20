@@ -65,19 +65,20 @@ blocked.
 
 ## Simplified JSON-RPC Protocol
 
-The system now uses a drastically simplified JSON-RPC 2.0 protocol with only one
-method:
+The system now uses a simplified JSON-RPC 2.0 protocol with two methods:
 
 - **`fetch(request)`** - Handle HTTP requests with serialized fetch
   request/response
+- **`console(level, message)`** - Forward console messages from
+  iframe to parent for display
 
 **Request:**
 
 ```javascript
 {
     "jsonrpc": "2.0",
-    "method": "fetch", 
-    "params": { 
+    "method": "fetch",
+    "params": {
         "request": {
             "url": "https://app123.example.com/assets/main.js",
             "method": "GET",
@@ -103,6 +104,19 @@ method:
         "body": "console.log('hello');"
     },
     "id": 123
+}
+```
+
+**Console Message:**
+
+```javascript
+{
+    "jsonrpc": "2.0",
+    "method": "console",
+    "params": {
+        "level": "error",
+        "message": "Failed to load module"
+    }
 }
 ```
 

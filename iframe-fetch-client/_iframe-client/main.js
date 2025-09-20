@@ -130,9 +130,7 @@ class EarlyConsoleInterceptor {
     if (method === 'error' || method === 'exception') {
       this.earlyErrors.push({
         level: method,
-        message: this.serializeArgs(args),
-        timestamp: Date.now(),
-        args: args
+        message: this.serializeArgs(args)
       });
     }
   }
@@ -155,14 +153,7 @@ class EarlyConsoleInterceptor {
     window.addEventListener('error', (event) => {
       this.earlyErrors.push({
         level: 'error',
-        message: `Global Error: ${event.message}`,
-        timestamp: Date.now(),
-        args: [{
-          filename: event.filename,
-          lineno: event.lineno,
-          colno: event.colno,
-          error: event.error ? event.error.message : 'No error object'
-        }]
+        message: `Global Error: ${event.message} (${event.filename}:${event.lineno}:${event.colno})`
       });
     });
 
@@ -170,9 +161,7 @@ class EarlyConsoleInterceptor {
     window.addEventListener('unhandledrejection', (event) => {
       this.earlyErrors.push({
         level: 'error',
-        message: 'Unhandled Promise Rejection',
-        timestamp: Date.now(),
-        args: [event.reason]
+        message: `Unhandled Promise Rejection: ${event.reason}`
       });
     });
   }
@@ -235,32 +224,10 @@ class ConsoleInterceptor {
       try {
         window.parent.postMessage({
           jsonrpc: "2.0",
-          method: `console.${level}`,
+          method: "console",
           params: {
             level,
-            message,
-            timestamp: Date.now(),
-            args: args.map(arg => {
-              if (arg === undefined) return undefined;
-              if (arg === null) return null;
-              if (typeof arg === 'object') {
-                try {
-                  return JSON.parse(JSON.stringify(arg, (key, value) => {
-                    if (value instanceof Error) {
-                      return {
-                        name: value.name,
-                        message: value.message,
-                        stack: value.stack
-                      };
-                    }
-                    return value;
-                  }));
-                } catch {
-                  return String(arg);
-                }
-              }
-              return arg;
-            })
+            message
           }
         }, "*");
       } catch (postMessageError) {
@@ -269,12 +236,10 @@ class ConsoleInterceptor {
           try {
             window.parent.postMessage({
               jsonrpc: "2.0",
-              method: `console.${level}`,
+              method: "console",
               params: {
-                level,
-                message: `[DELAYED] ${message}`,
-                timestamp: Date.now(),
-                args: []
+                level: "error",
+                message: `[DELAYED] ${message}`
               }
             }, "*");
           } catch {
@@ -287,12 +252,10 @@ class ConsoleInterceptor {
       try {
         window.parent.postMessage({
           jsonrpc: "2.0",
-          method: "console.error",
+          method: "console",
           params: {
             level: "error",
-            message: `Console interceptor error: ${error.message}`,
-            timestamp: Date.now(),
-            args: []
+            message: `Console interceptor error: ${error.message}`
           }
         }, "*");
       } catch {
@@ -389,7 +352,7 @@ class FetchClient {
     // Check for early errors captured before main script loaded
     if (window._earlyConsoleErrors && Array.isArray(window._earlyConsoleErrors)) {
       window._earlyConsoleErrors.forEach(error => {
-        console.log(`[EARLY ${error.level.toUpperCase()}] ${error.message}`, ...error.args);
+        console.log(`[EARLY ${error.level.toUpperCase()}] ${error.message}`);
       });
       // Clear the early errors
       window._earlyConsoleErrors = [];

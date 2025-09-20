@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import QRCode from 'qrcode';
-import { CreditCard, Zap, ExternalLink, RefreshCw, Check, X, Clock, AlertCircle, Copy, RotateCcw } from 'lucide-react';
+import { CreditCard, Zap, ExternalLink, RefreshCw, Check, X, Clock, AlertCircle, Copy, RotateCcw, ArrowLeft } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -177,20 +177,6 @@ function LightningPayment({ invoice, amount, onClose }: LightningPaymentProps) {
             </div>
           )}
         </div>
-      </div>
-
-      {/* Invoice Text (for manual copying) */}
-      <div className="space-y-2">
-        <Label className="text-xs text-muted-foreground">Lightning Invoice:</Label>
-        <div className="p-2 bg-muted rounded text-xs font-mono break-all max-h-20 overflow-y-auto">
-          {invoice}
-        </div>
-      </div>
-
-      <div className="flex gap-2">
-        <Button variant="outline" onClick={onClose} className="flex-1">
-          Close
-        </Button>
       </div>
     </div>
   );
@@ -426,8 +412,22 @@ export function CreditsDialog({ open, onOpenChange, providerId, connection }: Cr
       <DialogContent className="max-w-lg w-full mx-4 max-h-[95vh] overflow-hidden flex flex-col">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2 text-lg">
-            <CreditCard className="h-5 w-5" />
-            Credits
+            {lightningInvoice ? (
+              <>
+                <button
+                  onClick={() => setLightningInvoice(null)}
+                  className="flex items-center gap-2 hover:opacity-70 transition-opacity"
+                >
+                  <ArrowLeft className="h-5 w-5" />
+                  Back
+                </button>
+              </>
+            ) : (
+              <>
+                <CreditCard className="h-5 w-5" />
+                Credits
+              </>
+            )}
           </DialogTitle>
         </DialogHeader>
 
@@ -437,10 +437,7 @@ export function CreditsDialog({ open, onOpenChange, providerId, connection }: Cr
             <LightningPayment
               invoice={lightningInvoice}
               amount={amount}
-              onClose={() => {
-                setLightningInvoice(null);
-                onOpenChange(false);
-              }}
+              onClose={() => setLightningInvoice(null)}
             />
           ) : (
             <>

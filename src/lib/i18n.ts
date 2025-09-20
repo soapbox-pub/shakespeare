@@ -78,6 +78,8 @@ const resources = {
       nostrSettingsDescription: 'Configure relay connections and Nostr preferences',
       dataSettings: 'Data',
       dataSettingsDescription: 'Export files and manage local data',
+      aboutShakespeareSettings: 'About Shakespeare',
+      aboutShakespeareSettingsDescription: 'Information about Shakespeare',
 
       // Project Sidebar
       newProject: 'New Project',
@@ -198,6 +200,16 @@ const resources = {
       credentialsExist: 'Credentials for this origin already exist',
       corsProxy: 'CORS Proxy',
       corsProxyDescription: 'CORS proxy server used for all Git operations with remote repositories. Required for browser-based Git operations.',
+
+      // About Settings
+      aboutShakespeare: 'About Shakespeare',
+      aboutShakespeareDescription: 'Information about Shakespeare',
+      sourceCode: 'Source Code',
+      viewOnGitLab: 'View on GitLab',
+      description: 'Description',
+      license: 'License',
+      loadingLicense: 'Loading license...',
+      failedToLoadLicense: 'Failed to load license',
 
       // Data Settings
       dataSettingsDescriptionLong: 'Export files and manage local data.',
@@ -361,6 +373,8 @@ const resources = {
       nostrSettingsDescription: 'Configure conexões de relay e preferências do Nostr',
       dataSettings: 'Dados',
       dataSettingsDescription: 'Exporte arquivos e gerencie dados locais',
+      aboutShakespeareSettings: 'Sobre o Shakespeare',
+      aboutShakespeareSettingsDescription: 'Informações sobre o Shakespeare',
 
       // Project Sidebar
       newProject: 'Novo Projeto',
@@ -512,6 +526,16 @@ const resources = {
       dataClearedDescription: 'Todos os dados locais foram removidos. Redirecionando para a página inicial...',
       failedToClearData: 'Falha ao limpar dados',
 
+      // About Settings
+      aboutShakespeare: 'Sobre o Shakespeare',
+      aboutShakespeareDescription: 'Informações sobre o Shakespeare.',
+      sourceCode: 'Código-fonte',
+      viewOnGitLab: 'Ver no GitLab',
+      description: 'Descrição',
+      license: 'Licença',
+      loadingLicense: 'Carregando licença...',
+      failedToLoadLicense: 'Falha ao carregar licença',
+
       // 404 Page
       pageNotFound: 'Ops! Página não encontrada',
       returnToHome: 'Voltar ao Início',
@@ -644,6 +668,8 @@ const resources = {
       nostrSettingsDescription: '配置中继连接和Nostr偏好',
       dataSettings: '数据',
       dataSettingsDescription: '导出文件和管理本地数据',
+      aboutShakespeareSettings: '关于Shakespeare',
+      aboutShakespeareSettingsDescription: '关于Shakespeare的信息',
 
       // Project Sidebar
       newProject: '新项目',
@@ -794,6 +820,16 @@ const resources = {
       dataClearedSuccessfully: '数据清除成功',
       dataClearedDescription: '所有本地数据已删除。正在重定向到主页...',
       failedToClearData: '清除数据失败',
+
+      // About Settings
+      aboutShakespeare: '关于Shakespeare',
+      aboutShakespeareDescription: '关于Shakespeare的信息。',
+      sourceCode: '源代码',
+      viewOnGitLab: '在GitLab上查看',
+      description: '描述',
+      license: '许可证',
+      loadingLicense: '加载许可证中...',
+      failedToLoadLicense: '加载许可证失败',
 
       // 404 Page
       pageNotFound: '哎呀！页面未找到',

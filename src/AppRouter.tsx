@@ -10,6 +10,7 @@ import NostrSettings from "./pages/NostrSettings";
 import AISettings from "./pages/AISettings";
 import GitSettings from "./pages/GitSettings";
 import DataSettings from "./pages/DataSettings";
+import AboutSettings from "./pages/AboutSettings";
 import GitHubOAuth from "./pages/GitHubOAuth";
 import { NIP19Page } from "./pages/NIP19Page";
 import NotFound from "./pages/NotFound";
@@ -32,6 +33,7 @@ export function AppRouter() {
           <Route path="ai" element={<AISettings />} />
           <Route path="git" element={<GitSettings />} />
           <Route path="data" element={<DataSettings />} />
+          <Route path="about" element={<AboutSettings />} />
         </Route>
         <Route path="/project/:projectId" element={<ProjectView />} />
         {/* NIP-19 route for npub1, note1, naddr1, nevent1, nprofile1 */}

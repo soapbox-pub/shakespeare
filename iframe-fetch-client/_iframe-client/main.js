@@ -3,13 +3,8 @@
  * Combines console interception and client initialization
  */
 
-// Console interception utilities (merged from console-utils.js)
-const CONSOLE_METHODS = [
-  'log', 'warn', 'error', 'info', 'debug',
-  'exception', 'assert', 'clear', 'count', 'countReset',
-  'dir', 'dirxml', 'group', 'groupCollapsed', 'groupEnd',
-  'table', 'time', 'timeEnd', 'timeLog', 'trace'
-];
+// Console interception utilities
+const CONSOLE_METHODS = ['log', 'warn', 'error', 'info', 'debug'];
 
 // Store original console methods
 function storeOriginalConsole() {

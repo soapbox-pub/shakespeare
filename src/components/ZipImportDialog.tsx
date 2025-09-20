@@ -181,19 +181,25 @@ export function ZipImportDialog({ onImport, disabled = false, className, open, o
     }
   };
 
+  // Only render DialogTrigger if this component is being used in uncontrolled mode
+  // (no open/onOpenChange props provided)
+  const isControlled = open !== undefined && onOpenChange !== undefined;
+
   return (
     <>
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogTrigger asChild>
-          <Button
-            variant="outline"
-            disabled={disabled}
-            className={cn("gap-2", className)}
-          >
-            <FileArchive className="h-4 w-4" />
-            Import ZIP
-          </Button>
-        </DialogTrigger>
+        {!isControlled && (
+          <DialogTrigger asChild>
+            <Button
+              variant="outline"
+              disabled={disabled}
+              className={cn("gap-2", className)}
+            >
+              <FileArchive className="h-4 w-4" />
+              Import ZIP
+            </Button>
+          </DialogTrigger>
+        )}
 
         <DialogContent
           className="sm:max-w-md"

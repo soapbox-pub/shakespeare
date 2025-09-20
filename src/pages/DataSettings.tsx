@@ -1,14 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Download, Trash2, AlertTriangle, Loader2, Database, Info, ArrowLeft } from 'lucide-react';
+import { Download, Trash2, AlertTriangle, Loader2, Database, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/useToast';
 import { useFS } from '@/hooks/useFS';
-import { useIsMobile } from '@/hooks/useIsMobile';
 import JSZip from 'jszip';
 
 interface StorageUsageDetails {
@@ -33,7 +32,6 @@ export function DataSettings() {
   const { toast } = useToast();
   const { fs } = useFS();
   const navigate = useNavigate();
-  const isMobile = useIsMobile();
 
   // Format bytes to human readable format
   const formatBytes = (bytes: number): string => {
@@ -198,40 +196,15 @@ export function DataSettings() {
 
   return (
     <div className="p-6 space-y-6">
-      {isMobile && (
-        <div className="space-y-3">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate('/settings')}
-            className="h-8 w-auto px-2 -ml-2"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            {t('backToSettings')}
-          </Button>
-          <div className="space-y-2">
-            <h1 className="text-2xl font-bold flex items-center gap-3">
-              <Database className="h-6 w-6 text-primary" />
-              {t('dataSettings')}
-            </h1>
-            <p className="text-muted-foreground">
-              {t('dataSettingsDescriptionLong')}
-            </p>
-          </div>
-        </div>
-      )}
-
-      {!isMobile && (
-        <div className="space-y-2">
-          <h1 className="text-2xl font-bold flex items-center gap-3">
-            <Database className="h-6 w-6 text-primary" />
-            {t('dataSettings')}
-          </h1>
-          <p className="text-muted-foreground">
-            {t('dataSettingsDescriptionLong')}
-          </p>
-        </div>
-      )}
+      <div className="space-y-2">
+        <h1 className="text-2xl font-bold flex items-center gap-3">
+          <Database className="h-6 w-6 text-primary" />
+          {t('dataSettings')}
+        </h1>
+        <p className="text-muted-foreground">
+          {t('dataSettingsDescriptionLong')}
+        </p>
+      </div>
 
       <div className="space-y-4">
         {/* Storage Information */}

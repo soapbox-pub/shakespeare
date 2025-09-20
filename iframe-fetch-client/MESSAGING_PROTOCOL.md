@@ -64,7 +64,7 @@ All messages follow JSON-RPC 2.0 specification:
             "headers": {
                 "Content-Type": "application/json"
             },
-            "body": "eyJuYW1lIjoiSm9obiIsImFnZSI6MzB9"  // base64 of: {"name":"John","age":30}
+            "body": "eyJuYW1lIjoiSm9obiIsImFnZSI6MzB9"  // base64 encoded: {"name":"John","age":30}
         }
     },
     "id": 124
@@ -80,7 +80,7 @@ All messages follow JSON-RPC 2.0 specification:
             "Content-Type": "application/javascript",
             "Cache-Control": "no-cache"
         },
-        "body": "Y29uc29sZS5sb2coJ2hlbGxvJyk7"
+        "body": "Y29uc29sZS5sb2coJ2hlbGxvJyk7"  // base64 encoded: console.log('hello');
     },
     "id": 123
 }
@@ -140,7 +140,7 @@ full request body support
 
 ### Parent Page
 
-In this example, the parent page acts as a static file server.
+The parent page acts as a static file server and console log collector:
 
 ```javascript
 class FetchClientParent {
@@ -177,8 +177,8 @@ class FetchClientParent {
     this.consoleLogs.push({
       level,
       message: logMessage,
-      timestamp: Date.now(), // Parent adds timestamp when received
-      id: Date.now() // Unique ID for UI purposes
+      timestamp: Date.now(),
+      id: Date.now()
     });
 
     // Update UI to show new logs
@@ -189,7 +189,6 @@ class FetchClientParent {
   }
 
   updateConsoleUI() {
-    // This would update the parent page UI to show console logs
     // Implementation depends on your UI framework
     console.log(`Total console logs: ${this.consoleLogs.length}`);
   }
@@ -201,9 +200,6 @@ class FetchClientParent {
     // Extract path from URL
     const url = new URL(fetchRequest.url);
     const path = url.pathname;
-
-    // Decode request body if present
-    const requestBody = fetchRequest.body ? atob(fetchRequest.body) : null;
 
     const file = this.files.get(path);
 
@@ -218,11 +214,10 @@ class FetchClientParent {
             "Content-Type": file.contentType,
             "Cache-Control": "no-cache",
           },
-          body: btoa(file.content), // base64 encode the response body
+          body: btoa(file.content),
         },
       });
     } else {
-      // Return 404 response (not a JSON-RPC error)
       this.sendResponse({
         id,
         jsonrpc: "2.0",
@@ -232,7 +227,7 @@ class FetchClientParent {
           headers: {
             "Content-Type": "text/plain",
           },
-          body: btoa(`File not found: ${path}`), // base64 encode the error message
+          body: btoa(`File not found: ${path}`),
         },
       });
     }
@@ -242,22 +237,15 @@ class FetchClientParent {
     const iframe = document.getElementById("preview-iframe");
     iframe.contentWindow.postMessage(message, "https://app123.example.com");
   }
-
-  sendError(message) {
-    const iframe = document.getElementById("preview-iframe");
-    iframe.contentWindow.postMessage(message, "https://app123.example.com");
-  }
 }
 ```
 
-### Preview Page
+### iframe Client Communication
 
-Below is a simplified RPC client that could be used inside the iframe's main
-thread to test functionality of the parent. In practice, requests originate from
-the ServiceWorker and the main thread acts as a relay, so multiple steps of
-communication are involved.
+The iframe client uses a simplified JSON-RPC client for communication. In the actual implementation, the ServiceWorker makes requests and the main thread acts as a relay:
 
 ```javascript
+// Simplified JSON-RPC client (actual implementation in _iframe-client/main.js)
 class JSONRPCClient {
   constructor() {
     this.requestId = 0;
@@ -268,7 +256,7 @@ class JSONRPCClient {
   setupMessageListener() {
     window.addEventListener("message", (event) => {
       const message = event.data;
-      if (message.jsonrpc === "2.0" && message.id) {
+      if (message.jsonrpc === "2.0" && message.id !== undefined) {
         this.handleResponse(message);
       }
     });
@@ -280,7 +268,6 @@ class JSONRPCClient {
     return new Promise((resolve, reject) => {
       this.pendingRequests.set(id, { resolve, reject });
 
-      // Send request to parent
       window.parent.postMessage({
         jsonrpc: "2.0",
         method: "fetch",
@@ -288,7 +275,6 @@ class JSONRPCClient {
         id,
       }, "*");
 
-      // Timeout after 10 seconds
       setTimeout(() => {
         if (this.pendingRequests.has(id)) {
           this.pendingRequests.delete(id);
@@ -307,9 +293,8 @@ class JSONRPCClient {
     this.pendingRequests.delete(id);
 
     if (error) {
-      pending.reject(new Error(error.message));
+      pending.reject(new Error(`${error.message} (code: ${error.code})`));
     } else {
-      // Result is a serialized response
       pending.resolve(result);
     }
   }
@@ -318,7 +303,7 @@ class JSONRPCClient {
 
 ## Base64 Encoding
 
-All request and response bodies must be base64 encoded when not null. This ensures:
+All request and response bodies are base64 encoded when not null to ensure proper transmission through JSON-RPC:
 
 - **Consistent Data Handling:** Both text and binary data are handled uniformly
 - **JSON Compatibility:** Avoids issues with special characters in JSON messages
@@ -326,11 +311,16 @@ All request and response bodies must be base64 encoded when not null. This ensur
 
 **Encoding/Decoding:**
 ```javascript
-// Encoding (before sending)
-const encodedBody = btoa(originalBody);
+// Encoding text content (parent side)
+const encodedBody = btoa(textContent);
 
-// Decoding (after receiving)
-const decodedBody = atob(encodedBody);
+// Encoding binary content (ServiceWorker side)
+const bytes = new Uint8Array(arrayBuffer);
+const encodedBody = btoa(String.fromCharCode(...bytes));
+
+// Decoding (receiver side)
+const decodedText = atob(encodedBody);
+const decodedBytes = new Uint8Array(atob(encodedBody).split('').map(c => c.charCodeAt(0)));
 ```
 
 ## Security
@@ -356,158 +346,71 @@ const decodedBody = atob(encodedBody);
       content: "<!DOCTYPE html><html><body>Hello world!</body></html>",
       contentType: "text/html",
     }],
+    ["/app.js", {
+      content: "console.log('App loaded');",
+      contentType: "application/javascript",
+    }],
   ]);
 
-  // Example static file server with console logging
-  class FetchClientParent {
-    constructor(files) {
-      this.files = files; // Map of path -> {content, contentType}
-      this.consoleLogs = []; // Store console messages
-      this.setupMessageListener();
-    }
-
-    setupMessageListener() {
-      window.addEventListener("message", (event) => {
-        // Verify origin for security
-        if (event.origin !== "https://app123.example.com") return;
-
-        const message = event.data;
-
-        // Handle fetch requests
-        if (message.jsonrpc === "2.0" && message.method === "fetch") {
-          this.handleFetch(message);
-        }
-
-        // Handle console messages
-        if (message.jsonrpc === "2.0" && message.method === "console") {
-          this.handleConsoleMessage(message);
-        }
-      });
-    }
-
-    handleConsoleMessage(message) {
-      const { params } = message;
-      const { level, message: logMessage } = params;
-
-      // Store the log message
-      this.consoleLogs.push({
-        level,
-        message: logMessage,
-        timestamp: Date.now(), // Parent adds timestamp when received
-        id: Date.now() // Unique ID for UI purposes
-      });
-
-      // Update UI to show new logs
-      this.updateConsoleUI();
-
-      // Also log to parent's console for debugging
-      console[level](`[IFRAME] ${logMessage}`);
-    }
-
-    updateConsoleUI() {
-      // This would update the parent page UI to show console logs
-      // Implementation depends on your UI framework
-      console.log(`Total console logs: ${this.consoleLogs.length}`);
-    }
-
-    handleFetch(request) {
-      const { params, id } = request;
-      const { request: fetchRequest } = params;
-
-      // Extract path from URL
-      const url = new URL(fetchRequest.url);
-      const path = url.pathname;
-
-      // Decode request body if present
-      const requestBody = fetchRequest.body ? atob(fetchRequest.body) : null;
-
-      const file = this.files.get(path);
-
-      if (file) {
-        this.sendResponse({
-          id,
-          jsonrpc: "2.0",
-          result: {
-            status: 200,
-            statusText: "OK",
-            headers: {
-              "Content-Type": file.contentType,
-              "Cache-Control": "no-cache",
-            },
-            body: btoa(file.content), // base64 encode the response body
-          },
-        });
-      } else {
-        // Return 404 response (not a JSON-RPC error)
-        this.sendResponse({
-          id,
-          jsonrpc: "2.0",
-          result: {
-            status: 404,
-            statusText: "Not Found",
-            headers: {
-              "Content-Type": "text/plain",
-            },
-            body: btoa(`File not found: ${path}`), // base64 encode the error message
-          },
-        });
-      }
-    }
-
-    sendResponse(message) {
-      const iframe = document.getElementById("preview-iframe");
-      iframe.contentWindow.postMessage(message, "https://app123.example.com");
-    }
-
-    sendError(message) {
-      const iframe = document.getElementById("preview-iframe");
-      iframe.contentWindow.postMessage(message, "https://app123.example.com");
-    }
-  }
-
-  // Example static file server
+  // Initialize the fetch client parent
   new FetchClientParent(files);
 </script>
 ```
 
 ## Console Logging Implementation
 
-To enable console logging from the iframe to the parent page, the iframe's bootstrap script should override the console methods:
+The iframe client automatically intercepts console messages and forwards them to the parent. The implementation (in `_iframe-client/main.js`) overrides console methods:
 
 ```javascript
-// In the iframe's bootstrap script
 class ConsoleInterceptor {
   constructor() {
-    this.originalConsole = {
-      log: console.log,
-      warn: console.warn,
-      error: console.error,
-      info: console.info,
-      debug: console.debug
-    };
-
-    this.overrideConsoleMethods();
+    this.originalConsole = {};
+    this.methods = ['log', 'warn', 'error', 'info', 'debug'];
+    this.init();
   }
 
-  overrideConsoleMethods() {
-    const methods = ['log', 'warn', 'error', 'info', 'debug'];
+  init() {
+    // Store original methods
+    this.methods.forEach(method => {
+      if (typeof console[method] === 'function') {
+        this.originalConsole[method] = console[method];
+      }
+    });
 
-    methods.forEach(method => {
-      console[method] = (...args) => {
-        // Call original method first
-        this.originalConsole[method](...args);
+    // Override console methods
+    this.methods.forEach(method => {
+      if (typeof console[method] === 'function') {
+        console[method] = (...args) => {
+          // Call original method
+          try {
+            this.originalConsole[method](...args);
+          } catch (e) {
+            // Continue if original fails
+          }
 
-        // Send to parent via JSON-RPC
-        this.sendConsoleMessage(method, ...args);
-      };
+          // Send to parent
+          this.sendConsoleMessage(method, ...args);
+        };
+      }
     });
   }
 
   sendConsoleMessage(level, ...args) {
     const message = args.map(arg => {
+      if (arg === undefined) return 'undefined';
+      if (arg === null) return 'null';
       if (typeof arg === 'object') {
         try {
-          return JSON.stringify(arg);
+          return JSON.stringify(arg, (key, value) => {
+            if (value instanceof Error) {
+              return {
+                name: value.name,
+                message: value.message,
+                stack: value.stack
+              };
+            }
+            return value;
+          });
         } catch {
           return String(arg);
         }
@@ -515,17 +418,26 @@ class ConsoleInterceptor {
       return String(arg);
     }).join(' ');
 
-    window.parent.postMessage({
-      jsonrpc: "2.0",
-      method: "console",
-      params: {
-        level,
-        message
-      }
-    }, "*");
+    try {
+      window.parent.postMessage({
+        jsonrpc: "2.0",
+        method: "console",
+        params: { level, message }
+      }, "*");
+    } catch (error) {
+      // Retry once after delay if postMessage fails
+      setTimeout(() => {
+        try {
+          window.parent.postMessage({
+            jsonrpc: "2.0",
+            method: "console",
+            params: { level: "error", message: `[DELAYED] ${message}` }
+          }, "*");
+        } catch {
+          // Give up if retry fails
+        }
+      }, 100);
+    }
   }
 }
-
-// Initialize console interception
-new ConsoleInterceptor();
 ```

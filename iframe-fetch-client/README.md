@@ -54,13 +54,13 @@ blocked.
 
 ```
 /
-├── index.html              # Main iframe client page
-├── _iframe-client.js       # Main coordination script
-├── _iframe-client.css      # Styles for the iframe client
-├── sw.js                   # ServiceWorker
-├── MESSAGING_PROTOCOL.md   # Communication protocol docs
-├── example-parent.html     # Example parent implementation
-└── README.md               # This file
+├── index.html                    # Main iframe client page
+├── _iframe-client/
+│   ├── main.js                   # Main coordination script
+│   └── client.css                # Styles for the iframe client
+├── sw.js                         # ServiceWorker
+├── MESSAGING_PROTOCOL.md         # Communication protocol docs
+└── README.md                     # This file
 ```
 
 ## Simplified JSON-RPC Protocol
@@ -150,8 +150,9 @@ Deploy these files to your iframe client subdomain:
 ```
 https://*.example.com/
 ├── index.html
-├── _iframe-client.js
-├── _iframe-client.css
+├── _iframe-client/
+│   ├── main.js
+│   └── client.css
 └── sw.js
 ```
 
@@ -172,8 +173,7 @@ Include the iframe client in your parent page:
 </iframe>
 ```
 
-Implement the JSON-RPC protocol (see `example-parent.html` for a complete
-example):
+Implement the JSON-RPC protocol:
 
 ```javascript
 class FetchClientParent {
@@ -284,9 +284,9 @@ function handleRequest(fetchRequest) {
 
 ## Testing
 
-1. Open `example-parent.html` in a browser
-2. Click "Load Sample Site"
-3. The iframe client should load and display the sample app
+1. Create a parent page implementing the JSON-RPC protocol (see example in MESSAGING_PROTOCOL.md)
+2. Load the iframe client in an iframe pointing to your deployed client domain
+3. The iframe client should load and display the served content
 4. Test navigation and functionality within the iframe client
 
 ## Browser Support
@@ -326,10 +326,10 @@ function handleRequest(fetchRequest) {
 
 To modify the system:
 
-1. **iframe Client:** Edit `index.html`, `_iframe-client.js`,
-   `_iframe-client.css`, `sw.js`
+1. **iframe Client:** Edit `index.html`, `_iframe-client/main.js`,
+   `_iframe-client/client.css`, `sw.js`
 2. **Protocol:** Update `MESSAGING_PROTOCOL.md` for any changes
-3. **Testing:** Use `example-parent.html` for testing changes
+3. **Testing:** Create a parent page implementing the JSON-RPC protocol for testing changes
 
 ## License
 

@@ -50,6 +50,29 @@ export function ModelSelector({
     return groups;
   }, [models]);
 
+  // Determine if we should show the "Recently Used" section
+  const shouldShowRecentlyUsed = useMemo(() => {
+    // If no recently used models, don't show the section
+    if (recentlyUsedModels.length === 0) {
+      return false;
+    }
+
+    // If there are 5 or more total provider models, always show recently used
+    if (models.length >= 5) {
+      return true;
+    }
+
+    // If less than 5 total provider models, check if all recently used models
+    // are contained within the available provider models
+    const availableModelIds = new Set(models.map(model => model.fullId));
+    const allRecentlyUsedAreAvailable = recentlyUsedModels.every(model =>
+      availableModelIds.has(model)
+    );
+
+    // Hide recently used section if all recently used models are already available
+    return !allRecentlyUsedAreAvailable;
+  }, [recentlyUsedModels, models]);
+
   // Don't auto-initialize with recently used models
   // Let the parent component handle initialization
 
@@ -169,7 +192,7 @@ export function ModelSelector({
               </div>
             </CommandEmpty>
 
-            {recentlyUsedModels.length > 0 && (
+            {shouldShowRecentlyUsed && (
               <CommandGroup heading={t('recentlyUsed')}>
                 {recentlyUsedModels.map((model) => (
                   <CommandItem
@@ -190,7 +213,7 @@ export function ModelSelector({
               </CommandGroup>
             )}
 
-            {recentlyUsedModels.length > 0 && <CommandSeparator />}
+            {shouldShowRecentlyUsed && <CommandSeparator />}
 
             {/* Loading state */}
             {isLoading && (

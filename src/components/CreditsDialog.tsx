@@ -409,7 +409,7 @@ export function CreditsDialog({ open, onOpenChange, providerId, connection }: Cr
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg w-full mx-4 max-h-[95vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-lg w-full max-h-[75vh] overflow-hidden flex flex-col sm:max-w-lg sm:max-h-[75vh] max-sm:w-full max-sm:h-full max-sm:max-w-none max-sm:max-h-none max-sm:m-0 max-sm:rounded-none">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2 text-lg">
             {lightningInvoice ? (
@@ -431,18 +431,19 @@ export function CreditsDialog({ open, onOpenChange, providerId, connection }: Cr
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto space-y-6 px-1 -mx-1">
-          {/* Lightning Payment Interface */}
-          {lightningInvoice ? (
+        {/* Lightning Payment Interface */}
+        {lightningInvoice ? (
+          <div className="flex-1 overflow-y-auto px-1 -mx-1">
             <LightningPayment
               invoice={lightningInvoice}
               amount={amount}
               onClose={() => setLightningInvoice(null)}
             />
-          ) : (
-            <>
-              {/* Add Credits Form */}
-              <div className="space-y-4">
+          </div>
+        ) : (
+          <div className="flex-1 flex flex-col min-h-0">
+            {/* Add Credits Form - Fixed size section */}
+            <div className="flex-shrink-0 space-y-4 px-1 -mx-1">
             <div className="space-y-3">
               <Label htmlFor="amount" className="text-sm font-medium">Amount (USD)</Label>
               <div className="space-y-3">
@@ -511,52 +512,42 @@ export function CreditsDialog({ open, onOpenChange, providerId, connection }: Cr
                 Please log in to purchase credits
               </p>
             )}
-          </div>
-
-          <Separator />
-
-          {/* Transaction History */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-base font-semibold">Recent Transactions</h3>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  queryClient.invalidateQueries({
-                    queryKey: ['ai-payments', connection.nostr ? user?.pubkey ?? '' : '', providerId],
-                  });
-                }}
-                disabled={isLoadingPayments}
-                className="h-8 px-2"
-                title="Refresh transaction list"
-              >
-                <RefreshCw className={`h-4 w-4 ${isLoadingPayments ? 'animate-spin' : ''}`} />
-              </Button>
             </div>
 
-            {isLoadingPayments ? (
-              <div className="space-y-3">
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} className="p-3 border rounded-lg space-y-2">
-                    <div className="flex items-center gap-2">
-                      <Skeleton className="h-4 w-4 rounded" />
-                      <Skeleton className="h-4 w-24" />
-                      <Skeleton className="h-4 w-16 ml-auto" />
-                    </div>
-                    <Skeleton className="h-3 w-32" />
+            <div className="flex-shrink-0 px-1 -mx-1 py-4">
+              <Separator />
+            </div>
+
+            {/* Transaction History - Flexible section */}
+            <div className="flex-1 min-h-0 flex flex-col px-1 -mx-1">
+              <div className="flex-shrink-0 mb-4">
+                <h3 className="text-base font-semibold">Recent Transactions</h3>
+              </div>
+              <div className="flex-1 min-h-0 overflow-y-auto">
+                {isLoadingPayments ? (
+                  <div className="space-y-3">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <div key={i} className="p-3 border rounded-lg space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Skeleton className="h-4 w-4 rounded" />
+                          <Skeleton className="h-4 w-24" />
+                          <Skeleton className="h-4 w-16 ml-auto" />
+                        </div>
+                        <Skeleton className="h-3 w-32" />
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            ) : !payments || payments.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <CreditCard className="h-10 w-10 mx-auto mb-3 opacity-50" />
-                <p className="text-sm">No transactions yet</p>
-                <p className="text-xs">Your payment history will appear here</p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {payments.slice(0, 5).map((payment) => (
+                ) : !payments || payments.length === 0 ? (
+                  <div className="flex-1 flex items-center justify-center">
+                    <div className="text-center text-muted-foreground">
+                      <CreditCard className="h-10 w-10 mx-auto mb-3 opacity-50" />
+                      <p className="text-sm">No transactions yet</p>
+                      <p className="text-xs">Your payment history will appear here</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2 pb-2">
+                    {payments.map((payment) => (
                   <div
                     key={payment.id}
                     className="p-3 border rounded-lg space-y-2 hover:bg-muted/30 transition-colors"
@@ -616,19 +607,13 @@ export function CreditsDialog({ open, onOpenChange, providerId, connection }: Cr
                       )}
                     </div>
                   </div>
-                ))}
-
-                {payments.length > 5 && (
-                  <p className="text-xs text-muted-foreground text-center pt-2">
-                    Showing recent 5 transactions
-                  </p>
+                    ))}
+                  </div>
                 )}
               </div>
-            )}
+            </div>
           </div>
-            </>
-          )}
-        </div>
+        )}
       </DialogContent>
     </Dialog>
   );

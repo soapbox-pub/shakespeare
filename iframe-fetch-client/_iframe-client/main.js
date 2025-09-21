@@ -13,6 +13,11 @@ class JSONRPCClient {
 
   setupMessageListener() {
     window.addEventListener("message", (event) => {
+      // Only accept messages from parent window for security
+      if (event.source !== window.parent) {
+        return;
+      }
+
       const message = event.data;
       // Check if this is a response to our own request or a ServiceWorker request
       if (message.jsonrpc === "2.0" && message.id !== undefined) {
@@ -153,15 +158,38 @@ class NavigationHandler {
   constructor() {
     this.historyIndex = 0; // Track current position in history
     this.historyLength = 1; // Track total history length
-    this.currentSemanticPath = '/'; // Always start with root path for SPAs
+
+    // Check for initial path set by loadSiteIndex
+    if (window.__IFRAME_INITIAL_PATH__) {
+      this.currentSemanticPath = window.__IFRAME_INITIAL_PATH__;
+      console.log('NavigationHandler initialized with path:', this.currentSemanticPath);
+    } else {
+      this.currentSemanticPath = '/'; // Default to root path
+    }
+
     this.setupMessageListener();
     this.setupHistoryListeners();
     this.overrideHistoryMethods();
     this.updateNavigationState();
   }
 
+  // Helper method to update semantic path and ensure it's properly tracked
+  updateSemanticPath(path) {
+    if (typeof path === 'string') {
+      this.currentSemanticPath = path;
+    } else {
+      // Fallback to current location if path is invalid
+      this.currentSemanticPath = window.location.pathname + window.location.search + window.location.hash;
+    }
+  }
+
   setupMessageListener() {
     window.addEventListener("message", (event) => {
+      // Only accept messages from parent window for security
+      if (event.source !== window.parent) {
+        return;
+      }
+
       const message = event.data;
       if (message.jsonrpc === "2.0") {
         switch (message.method) {
@@ -188,13 +216,15 @@ class NavigationHandler {
       // When user navigates (back or forward), we need to update our tracking
       // The state object can help us determine our position
       // Update current semantic path based on actual URL
-      this.currentSemanticPath = window.location.pathname + window.location.search + window.location.hash;
+      const newPath = window.location.pathname + window.location.search + window.location.hash;
+      this.updateSemanticPath(newPath);
       this.updateNavigationState();
     });
 
     // Listen for hash changes
     window.addEventListener('hashchange', () => {
-      this.currentSemanticPath = window.location.pathname + window.location.search + window.location.hash;
+      const newPath = window.location.pathname + window.location.search + window.location.hash;
+      this.updateSemanticPath(newPath);
       this.updateNavigationState();
     });
   }
@@ -223,7 +253,7 @@ class NavigationHandler {
       }
 
       // pushState was called, update semantic path
-      this.currentSemanticPath = semanticPath;
+      this.updateSemanticPath(semanticPath);
       this.updateNavigationState();
       return result;
     };
@@ -245,7 +275,7 @@ class NavigationHandler {
       }
 
       // replaceState was called, update semantic path
-      this.currentSemanticPath = semanticPath;
+      this.updateSemanticPath(semanticPath);
       this.updateNavigationState();
       return result;
     };
@@ -263,22 +293,17 @@ class NavigationHandler {
       // Extract the semantic path (pathname + search + hash)
       const semanticPath = targetUrl.pathname + targetUrl.search + targetUrl.hash;
 
-      // Use browser's history API to trigger SPA navigation
-      // This triggers SPA router navigation the semantic path to the parent for display
-      // The SPA's router will handle the navigation internally
-
-      // Use history.pushState to trigger SPA navigation
-      this.currentSemanticPath = semanticPath;
+      // Update our tracked semantic path using helper
+      this.updateSemanticPath(semanticPath);
       this.updateNavigationState();
 
-      // Use browser's history.pushState to trigger SPA navigation the SPA of the navigation intent
+      // Use browser's history.pushState to trigger SPA navigation
       // This is what most SPAs (React Router, Vue Router, etc.) listen for
       window.history.pushState({}, '', semanticPath);
-      
-      // URL change - Many SPAs listen for popstate events
+
+      // Dispatch popstate event to trigger SPA router navigation
+      // Many SPAs listen for popstate events to handle navigation
       window.dispatchEvent(new PopStateEvent('popstate', { state: {} }));
-      
-      // Update navigation state to parent
 
     } catch (error) {
       console.error('Invalid navigation URL:', url, error);
@@ -286,9 +311,19 @@ class NavigationHandler {
   }
 
   handleRefresh() {
-    // Reload the iframe by going back to base URL and then reloading
-    // This prevents trying to fetch non-existent SPA routes
-    window.location.replace('/');
+    // Store current semantic path for reload
+    const currentPath = this.currentSemanticPath || '/';
+
+    // Save the current path to sessionStorage so it persists across reload
+    try {
+      sessionStorage.setItem('iframe_initial_path', currentPath);
+    } catch (error) {
+      console.warn('Failed to store initial path in sessionStorage:', error);
+    }
+
+    // Actually reload the iframe to get a fresh SPA instance
+    // This will trigger loadSiteIndex again, which will read the stored path
+    window.location.reload();
   }
 
   handleGoBack() {
@@ -306,7 +341,13 @@ class NavigationHandler {
   updateNavigationState() {
     // Use tracked semantic path instead of window.location
     // This allows iframe to stay on base URL while showing semantic paths
-    const semanticPath = this.currentSemanticPath || (window.location.pathname + window.location.search + window.location.hash);
+    let semanticPath = this.currentSemanticPath;
+
+    // Fallback to current location if semantic path is not set
+    if (!semanticPath || semanticPath === '') {
+      semanticPath = window.location.pathname + window.location.search + window.location.hash;
+      this.updateSemanticPath(semanticPath);
+    }
 
     const state = {
       currentUrl: semanticPath,
@@ -330,17 +371,68 @@ class NavigationHandler {
 // Main Fetch Client
 class FetchClient {
   constructor() {
+    console.log("FetchClient: Initializing...");
     this.rpcClient = new JSONRPCClient();
     this.consoleInterceptor = new ConsoleInterceptor();
     this.navigationHandler = new NavigationHandler();
     this.init();
   }
 
+  // Ensure SPA navigates to initial path after document is loaded
+  ensureInitialNavigation() {
+    console.log('ensureInitialNavigation: Starting...');
+
+    // Wait for the SPA to initialize, then navigate to the initial path
+    setTimeout(() => {
+      // Check multiple sources for the initial path
+      let initialPath = window.__IFRAME_INITIAL_PATH__;
+
+      // Try sessionStorage backup
+      if (!initialPath) {
+        try {
+          initialPath = sessionStorage.getItem('iframe_initial_path_backup');
+          sessionStorage.removeItem('iframe_initial_path_backup');
+          if (initialPath) {
+            window.__IFRAME_INITIAL_PATH__ = initialPath;
+            console.log('ensureInitialNavigation: Restored path from sessionStorage:', initialPath);
+          }
+        } catch (e) {
+          console.warn('ensureInitialNavigation: Failed to read sessionStorage backup:', e);
+        }
+      }
+
+      if (initialPath && initialPath !== '/') {
+        const currentPath = window.location.pathname + window.location.search + window.location.hash;
+
+        console.log('ensureInitialNavigation: Current path:', currentPath, 'Target path:', initialPath);
+
+        // If we're not already at the initial path, navigate there
+        if (currentPath !== initialPath) {
+          console.log('ensureInitialNavigation: Navigating to initial path:', initialPath);
+
+          // Use a small delay to ensure the SPA is fully initialized
+          setTimeout(() => {
+            console.log('ensureInitialNavigation: Executing navigation...');
+            this.navigationHandler.handleNavigate(initialPath);
+          }, 50);
+        } else {
+          console.log('ensureInitialNavigation: Already at target path, no navigation needed');
+        }
+      } else {
+        console.log('ensureInitialNavigation: No initial path or path is root, skipping navigation');
+      }
+    }, 150); // Give SPA more time to initialize
+  }
+
   async init() {
     try {
+      console.log("FetchClient: Setting up ServiceWorker...");
       await this.setupServiceWorker();
+      console.log("FetchClient: Loading site index...");
       await this.loadSiteIndex();
+      console.log("FetchClient: Initialization complete");
     } catch (error) {
+      console.error("FetchClient: Initialization failed:", error);
       this.showError("Failed to initialize fetch client", error);
     }
   }
@@ -392,6 +484,32 @@ class FetchClient {
   }
 
   async loadSiteIndex() {
+    console.log("loadSiteIndex: Starting...");
+
+    // Check if we have a stored initial path from a refresh
+    let initialPath = '/';
+    try {
+      const storedPath = sessionStorage.getItem('iframe_initial_path');
+      if (storedPath) {
+        initialPath = storedPath;
+        // Clear the stored path after using it
+        sessionStorage.removeItem('iframe_initial_path');
+        console.log('loadSiteIndex: Loading SPA with initial path:', initialPath);
+      }
+    } catch (error) {
+      console.warn('loadSiteIndex: Failed to read initial path from sessionStorage:', error);
+    }
+
+    // Store the initial path in sessionStorage for the new document to access
+    if (initialPath && initialPath !== '/') {
+      try {
+        sessionStorage.setItem('spa_initial_path', initialPath);
+        console.log('loadSiteIndex: Stored initial path for new document:', initialPath);
+      } catch (error) {
+        console.warn('loadSiteIndex: Failed to store initial path for new document:', error);
+      }
+    }
+
     const serializedRequest = {
       url: `${location.origin}/`,
       method: "GET",
@@ -410,12 +528,72 @@ class FetchClient {
     }
 
     const bytes = new Uint8Array(atob(response.body).split('').map(c => c.charCodeAt(0)));
-    const text = new TextDecoder().decode(bytes);
+    let text = new TextDecoder().decode(bytes);
+
+    // Inject a script to set the initial path before the SPA loads
+    const initialPathScript = `
+      <script>
+        // Set initial path for SPA navigation before app initialization
+        (function() {
+          // Store the initial path in multiple places for persistence
+          const initialPath = ${JSON.stringify(initialPath)};
+          window.__IFRAME_INITIAL_PATH__ = initialPath;
+          try {
+            sessionStorage.setItem('iframe_initial_path_backup', initialPath);
+          } catch (e) {}
+
+          console.log('[IFRAME] Initial path set:', initialPath);
+
+          // Simple approach: force navigation after a short delay
+          setTimeout(function() {
+            const currentPath = window.location.pathname + window.location.search + window.location.hash;
+            if (currentPath !== initialPath && initialPath !== '/') {
+              console.log('[IFRAME] Forcing navigation to:', initialPath);
+              window.history.pushState({}, '', initialPath);
+              window.dispatchEvent(new PopStateEvent('popstate', { state: {} }));
+            }
+          }, 100);
+
+          // Also try to intercept history methods
+          const originalPushState = window.history.pushState;
+          window.history.pushState = function(state, title, url) {
+            if (!window.__IFRAME_INITIAL_NAVIGATION_CAPTURED__) {
+              window.__IFRAME_INITIAL_NAVIGATION_CAPTURED__ = true;
+              if (url === '/' || url === '/index.html') {
+                console.log('[IFRAME] Redirecting initial navigation to:', initialPath);
+                url = initialPath;
+              }
+            }
+            return originalPushState.apply(this, arguments);
+          };
+        })();
+      </script>
+    `;
+
+    // Inject the script at the beginning of the head to ensure it runs before the SPA
+    text = text.replace('<head>', `<head>${initialPathScript}`);
 
     this.replaceDocument(text);
   }
 
   replaceDocument(htmlContent) {
+    console.log("replaceDocument: Starting...");
+
+    // Restore the initial path from sessionStorage before replacing document
+    let initialPath = '/';
+    try {
+      const storedPath = sessionStorage.getItem('spa_initial_path');
+      if (storedPath) {
+        initialPath = storedPath;
+        sessionStorage.removeItem('spa_initial_path');
+        console.log('replaceDocument: Restored initial path:', initialPath);
+        // Set it on window for the new document
+        window.__IFRAME_INITIAL_PATH__ = initialPath;
+      }
+    } catch (error) {
+      console.warn('replaceDocument: Failed to restore initial path:', error);
+    }
+
     // Create a new document from the HTML content
     const parser = new DOMParser();
     const newDoc = parser.parseFromString(htmlContent, "text/html");
@@ -447,6 +625,9 @@ class FetchClient {
     });
 
     console.log("Document replaced with site content");
+
+    // Ensure initial navigation after document is loaded
+    this.ensureInitialNavigation();
   }
 
   showError(message, error) {

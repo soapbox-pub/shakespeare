@@ -68,23 +68,37 @@ async function requestViaJSONRPC(request) {
   return new Promise(async (resolve, reject) => {
     const id = ++requestIdCounter;
 
-    // Serialize the fetch request
-    let body = null;
-    if (request.body) {
-      try {
-        // Convert body to Uint8Array then base64 encode
-        const bytes = await request.bytes();
-        body = btoa(String.fromCharCode(...bytes));
-      } catch (error) {
-        reject(new Error(`Failed to serialize request body: ${error.message}`));
-        return;
+    // Check if request is a plain object or Request object
+    let url, method, headers, body;
+
+    if (request instanceof Request) {
+      // Handle Request object
+      url = request.url;
+      method = request.method;
+      headers = Object.fromEntries(request.headers.entries());
+
+      if (request.body) {
+        try {
+          // Convert body to Uint8Array then base64 encode
+          const bytes = await request.bytes();
+          body = btoa(String.fromCharCode(...bytes));
+        } catch (error) {
+          reject(new Error(`Failed to serialize request body: ${error.message}`));
+          return;
+        }
       }
+    } else {
+      // Handle plain request object
+      url = request.url;
+      method = request.method || 'GET';
+      headers = request.headers || {};
+      body = request.body || null;
     }
 
     const serializedRequest = {
-      url: request.url,
-      method: request.method,
-      headers: Object.fromEntries(request.headers.entries()),
+      url: url,
+      method: method,
+      headers: headers,
       body: body,
     };
 
@@ -109,7 +123,7 @@ async function requestViaJSONRPC(request) {
     setTimeout(() => {
       if (pendingRequests.has(id)) {
         pendingRequests.delete(id);
-        reject(new Error(`Timeout requesting: ${request.url}`));
+        reject(new Error(`Timeout requesting: ${url}`));
       }
     }, 10000);
   });
@@ -119,37 +133,60 @@ async function requestViaJSONRPC(request) {
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
 
+  // Debug logging for fetch interception
+  console.log("ServiceWorker fetch:", url.pathname);
+
   // Ignore requests to other origins
   if (url.origin !== location.origin) {
+    console.log("Ignoring different origin:", url.origin);
     return;
   }
 
   // Let iframe client system files be handled normally
   if (url.pathname.startsWith("/_") || url.pathname === "/sw.js") {
+    console.log("Serving iframe client system file:", url.pathname);
     return;
   }
 
   // Let root path be handled normally (loads the iframe client page)
   if (url.pathname === "/") {
+    console.log("Serving root path (iframe client)");
     return;
   }
 
+  // Let iframe client assets be handled normally (anything in _iframe-client directory and common assets)
+  if (url.pathname.startsWith("/_iframe-client/") ||
+      url.pathname === "/favicon.ico" ||
+      url.pathname === "/manifest.webmanifest") {
+    console.log("Serving iframe client asset:", url.pathname);
+    return;
+  }
+
+  console.log("Intercepting request for project:", url.pathname);
+
   // For SPA routes, check if this is a navigation request (HTML page request)
-  // If it's a navigation request for an SPA route, serve the site's index.html via JSON-RPC
+  // But first check if we need to load the iframe client (this happens during refresh)
   if (event.request.mode === "navigate" &&
       (event.request.headers.get("accept") || "").includes("text/html")) {
-    // This is an SPA route navigation request, serve the site's index.html
-    // Create a new request for the root path to get the site's index.html
-    const rootRequest = new Request("/", {
-      method: "GET",
-      headers: event.request.headers,
-      mode: event.request.mode,
-      credentials: event.request.credentials,
-      cache: event.request.cache,
-      redirect: event.request.redirect,
-      referrer: event.request.referrer,
-      referrerPolicy: event.request.referrerPolicy,
-    });
+
+    // Check if this is a request for the iframe client itself
+    // We need to serve the iframe client HTML first, which will then load the SPA
+    if (url.pathname !== "/") {
+      console.log("Navigation request to non-root path, redirecting to iframe client first");
+
+      // Redirect to root to load the iframe client, which will then navigate to the target path
+      const response = Response.redirect(new URL("/", event.request.url).href, 302);
+      event.respondWith(response);
+      return;
+    }
+
+    // This is a request for the root path, serve the site's index.html via JSON-RPC
+    const rootRequest = {
+      url: new URL("/", event.request.url).href,
+      method: event.request.method,
+      headers: Object.fromEntries(event.request.headers.entries()),
+      body: event.request.body
+    };
     event.respondWith(handleRequest(rootRequest));
     return;
   }

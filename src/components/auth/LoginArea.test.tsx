@@ -35,12 +35,12 @@ vi.mock('@/components/RelaySelector', () => ({
   )
 }));
 
-vi.mock('./LoginDialog', () => ({
+vi.mock('./SimpleLoginDialog', () => ({
   default: ({ isOpen }: { isOpen: boolean; onClose: () => void }) =>
     isOpen ? <div data-testid="login-dialog">Login Dialog</div> : null
 }));
 
-vi.mock('./SignupDialog', () => ({
+vi.mock('./SimpleSignupDialog', () => ({
   default: ({ isOpen }: { isOpen: boolean; onClose: () => void }) =>
     isOpen ? <div data-testid="signup-dialog">Signup Dialog</div> : null
 }));

@@ -12,8 +12,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu.tsx';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar.tsx';
-import LoginDialog from './LoginDialog';
-import SignupDialog from './SignupDialog';
+import SimpleLoginDialog from './SimpleLoginDialog';
+import SimpleSignupDialog from './SimpleSignupDialog';
 import { useLoggedInAccounts } from '@/hooks/useLoggedInAccounts';
 import { AccountSwitcher } from './AccountSwitcher';
 import { cn } from '@/lib/utils';
@@ -88,14 +88,14 @@ export function LoginArea({ className }: LoginAreaProps) {
         </DropdownMenu>
       )}
 
-      <LoginDialog
+      <SimpleLoginDialog
         isOpen={loginDialogOpen}
         onClose={() => setLoginDialogOpen(false)}
         onLogin={handleLogin}
         onSignup={() => setSignupDialogOpen(true)}
       />
 
-      <SignupDialog
+      <SimpleSignupDialog
         isOpen={signupDialogOpen}
         onClose={() => setSignupDialogOpen(false)}
       />

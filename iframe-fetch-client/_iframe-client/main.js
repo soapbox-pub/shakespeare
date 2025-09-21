@@ -414,8 +414,6 @@ class FetchClient {
       console.warn('loadSiteIndex: Failed to read initial path from sessionStorage:', error);
     }
 
-
-
     const serializedRequest = {
       url: `${location.origin}/`,
       method: "GET",
@@ -492,8 +490,6 @@ class FetchClient {
       if (script.defer) newScript.defer = true;
       document.body.appendChild(newScript);
     });
-
-
 
     // Ensure initial navigation after document is loaded
     this.ensureInitialNavigation();

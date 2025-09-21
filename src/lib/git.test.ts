@@ -11,6 +11,7 @@ vi.mock('isomorphic-git/http/web');
 vi.mock('nostr-tools', () => ({
   nip19: {
     decode: vi.fn(),
+    naddrEncode: vi.fn(),
   },
 }));
 vi.mock('@nostrify/nostrify', () => ({

@@ -2,7 +2,7 @@ import git from 'isomorphic-git';
 import http from 'isomorphic-git/http/web';
 import { NIP05 } from '@nostrify/nostrify';
 import { nip19 } from 'nostr-tools';
-import type { NPool } from '@nostrify/nostrify';
+import type { NostrEvent, NPool } from '@nostrify/nostrify';
 import type { JSRuntimeFS } from './JSRuntime';
 
 export interface GitOptions {
@@ -45,16 +45,12 @@ export class Git {
   async clone(options: Omit<Parameters<typeof git.clone>[0], 'fs' | 'http' | 'corsProxy'>) {
     // Check if the URL is a Nostr URI
     if (options.url.startsWith('nostr://')) {
-      const nostrUri = await this.parseNostrCloneURI(options.url);
-      if (!nostrUri) {
+      const nostrURI = await this.parseNostrCloneURI(options.url);
+      if (!nostrURI) {
         throw new Error('Invalid Nostr clone URI format');
       }
-
-      // Fetch clone URLs from Nostr
-      const cloneUrls = await this.fetchNostrRepository(nostrUri);
-
-      // Try cloning from each URL in order
-      return this.tryCloneUrls(cloneUrls, options);
+      // Try cloning from Nostr
+      return this.nostrClone(nostrURI, options);
     }
 
     // Regular Git URL
@@ -585,12 +581,13 @@ export class Git {
     }
   }
 
-  private async fetchNostrRepository(nostrURI: NostrCloneURI): Promise<string[]> {
-    const signal = AbortSignal.timeout(10000); // 10 second timeout
-
+  private async fetchNostrRepo(
+    nostrURI: NostrCloneURI,
+    signal?: AbortSignal,
+  ): Promise<{ repo?: NostrEvent; state?: NostrEvent }> {
     // Build the filter for the NIP-34 repository announcement
     const filter = {
-      kinds: [30617],
+      kinds: [30617, 30618],
       authors: [nostrURI.pubkey],
       '#d': [nostrURI.d],
       limit: 1,
@@ -599,7 +596,11 @@ export class Git {
     // Use a specific relay if provided
     const client = nostrURI.relay
       ? this.nostr.relay(nostrURI.relay)
-      : this.nostr.group(['wss://relay.ngit.dev/', 'wss://gitnostr.com/']);
+      : this.nostr.group([
+          'wss://git.shakespeare.diy/',
+          'wss://relay.ngit.dev/',
+          'wss://gitnostr.com/',
+        ]);
 
     // Query for the repository announcement event
     const events = await client.query([filter], { signal });
@@ -608,24 +609,35 @@ export class Git {
       throw new Error('Repository not found on Nostr network');
     }
 
-    const repoEvent = events[0];
+    const repo = events.find((e) => e.kind === 30617);
+    const state = events.find((e) => e.kind === 30618);
 
-    // Extract clone URLs from the event tags
-    const cloneUrls: string[] = [];
-    for (const tag of repoEvent.tags) {
-      if (tag[0] === 'clone' && tag[1]) {
-        cloneUrls.push(tag[1]);
+    return { repo, state };
+  }
+
+  private async nostrClone(nostrURI: NostrCloneURI, options: Omit<Parameters<typeof git.clone>[0], 'fs' | 'http' | 'corsProxy'>): Promise<void> {
+    // Fetch events from Nostr
+    const { repo } = await this.fetchNostrRepo(nostrURI);
+
+    if (!repo) {
+      throw new Error('Repository not found');
+    }
+
+    // Collect valid clone URLs from the repo event tags
+    const cloneUrls = new Set<string>();
+    for (const [name, value] of repo.tags) {
+      if (name === 'clone') {
+        try {
+          const url = new URL(value);
+          if (url.protocol === 'http:' || url.protocol === 'https:') {
+            cloneUrls.add(url.href);
+          }
+        } catch {
+          // Ignore invalid URLs
+        }
       }
     }
 
-    if (cloneUrls.length === 0) {
-      throw new Error('No clone URLs found in repository announcement');
-    }
-
-    return cloneUrls;
-  }
-
-  private async tryCloneUrls(cloneUrls: string[], originalOptions: Omit<Parameters<typeof git.clone>[0], 'fs' | 'http' | 'corsProxy'>): Promise<void> {
     let lastError: Error | null = null;
 
     for (const cloneUrl of cloneUrls) {
@@ -638,7 +650,7 @@ export class Git {
             fs: this.fs,
             http,
             corsProxy: this.corsProxy,
-            ...originalOptions,
+            ...options,
             url: cloneUrl, // Override the URL with the actual Git URL
           }),
           new Promise<never>((_, reject) =>
@@ -648,9 +660,20 @@ export class Git {
 
         // After successful clone, update the origin remote to point to the Nostr URI
         await this.setRemoteURL({
-          dir: originalOptions.dir,
           remote: 'origin',
-          url: originalOptions.url,
+          dir: options.dir,
+          url: options.url,
+        });
+
+        // Set the nostr.repo config to the naddr
+        await this.setConfig({
+          dir: options.dir,
+          path: 'nostr.repo',
+          value: nip19.naddrEncode({
+            kind: 30617,
+            pubkey: nostrURI.pubkey,
+            identifier: nostrURI.d,
+          })
         });
 
         return; // Success!

@@ -523,6 +523,108 @@ export class Git {
   }
 
   // Nostr-specific helper methods
+
+  /**
+   * Extract repository state information from a NIP-34 repository state event
+   */
+  private extractRepositoryState(stateEvent: NostrEvent): {
+    HEAD?: string;
+    headCommit?: string;
+    headBranch?: string;
+    refs: Record<string, string>;
+  } {
+    const refs: Record<string, string> = {};
+    let HEAD: string | undefined;
+    let headCommit: string | undefined;
+    let headBranch: string | undefined;
+
+    for (const [name, value] of stateEvent.tags) {
+      if (name === 'HEAD' && value) {
+        HEAD = value;
+
+        // Parse HEAD reference to extract branch name
+        if (value.startsWith('ref: refs/heads/')) {
+          headBranch = value.slice(16); // Remove "ref: refs/heads/" prefix
+        }
+      } else if (name.startsWith('refs/') && value) {
+        refs[name] = value;
+
+        // If this ref matches the HEAD, store the commit
+        if (HEAD === `ref: ${name}`) {
+          headCommit = value;
+        }
+      }
+    }
+
+    return { HEAD, headCommit, headBranch, refs };
+  }
+
+  /**
+   * Validate that a cloned repository matches the expected repository state
+   */
+  private async validateRepositoryState(
+    dir: string,
+    expectedCommit?: string,
+    expectedBranch?: string,
+    expectedRefs?: Record<string, string>
+  ): Promise<{ valid: boolean; warnings: string[] }> {
+    const warnings: string[] = [];
+    let valid = true;
+
+    try {
+      // Check if expected commit exists
+      if (expectedCommit) {
+        try {
+          await git.readCommit({
+            fs: this.fs,
+            dir,
+            oid: expectedCommit,
+          });
+          console.log(`✓ Expected commit ${expectedCommit} found in repository`);
+        } catch {
+          warnings.push(`Expected commit ${expectedCommit} not found in cloned repository`);
+          valid = false;
+        }
+      }
+
+      // Check if expected branch exists and is current
+      if (expectedBranch) {
+        try {
+          const currentBranch = await git.currentBranch({ fs: this.fs, dir });
+          if (currentBranch !== expectedBranch) {
+            warnings.push(`Expected branch '${expectedBranch}' but currently on '${currentBranch || 'detached HEAD'}'`);
+          } else {
+            console.log(`✓ On expected branch: ${expectedBranch}`);
+          }
+        } catch (error) {
+          warnings.push(`Could not determine current branch: ${error}`);
+        }
+      }
+
+      // Validate key refs if provided
+      if (expectedRefs && Object.keys(expectedRefs).length > 0) {
+        try {
+          const localRefs = await git.listRefs({ fs: this.fs, dir });
+          const missingRefs = Object.keys(expectedRefs).filter(ref => !localRefs.includes(ref));
+
+          if (missingRefs.length > 0) {
+            warnings.push(`Missing expected refs: ${missingRefs.join(', ')}`);
+          } else {
+            console.log(`✓ All expected refs found in repository`);
+          }
+        } catch (error) {
+          warnings.push(`Could not validate refs: ${error}`);
+        }
+      }
+
+    } catch (error) {
+      warnings.push(`Repository validation failed: ${error}`);
+      valid = false;
+    }
+
+    return { valid, warnings };
+  }
+
   private async parseNostrCloneURI(uri: string): Promise<NostrCloneURI | null> {
     try {
       if (!uri.startsWith('nostr://')) {
@@ -585,42 +687,73 @@ export class Git {
     nostrURI: NostrCloneURI,
     signal?: AbortSignal,
   ): Promise<{ repo?: NostrEvent; state?: NostrEvent }> {
-    // Build the filter for the NIP-34 repository announcement
+    // Build the filter for both NIP-34 repository announcement and state events
     const filter = {
       kinds: [30617, 30618],
       authors: [nostrURI.pubkey],
       '#d': [nostrURI.d],
-      limit: 1,
+      limit: 2, // We want both repo and state events if they exist
     };
 
-    // Use a specific relay if provided
+    // Use a specific relay if provided, otherwise try git-focused relays
     const client = nostrURI.relay
       ? this.nostr.relay(nostrURI.relay)
       : this.nostr.group([
           'wss://git.shakespeare.diy/',
           'wss://relay.ngit.dev/',
           'wss://gitnostr.com/',
+          'wss://relay.nostr.band/', // Fallback to general relay
         ]);
 
-    // Query for the repository announcement event
-    const events = await client.query([filter], { signal });
+    try {
+      // Query for both repository announcement and state events
+      const events = await client.query([filter], {
+        signal: signal || AbortSignal.timeout(5000)
+      });
 
-    if (events.length === 0) {
-      throw new Error('Repository not found on Nostr network');
+      const repo = events.find((e) => e.kind === 30617);
+      const state = events.find((e) => e.kind === 30618);
+
+      if (!repo) {
+        throw new Error('Repository announcement not found on Nostr network');
+      }
+
+      if (state) {
+        console.log(`Found repository state event with ${state.tags.length} tags`);
+      } else {
+        console.log('No repository state event found, proceeding with basic clone');
+      }
+
+      return { repo, state };
+    } catch (error) {
+      if (error instanceof Error) {
+        throw new Error(`Failed to fetch repository from Nostr: ${error.message}`);
+      }
+      throw new Error('Failed to fetch repository from Nostr network');
     }
-
-    const repo = events.find((e) => e.kind === 30617);
-    const state = events.find((e) => e.kind === 30618);
-
-    return { repo, state };
   }
 
   private async nostrClone(nostrURI: NostrCloneURI, options: Omit<Parameters<typeof git.clone>[0], 'fs' | 'http' | 'corsProxy'>): Promise<void> {
     // Fetch events from Nostr
-    const { repo } = await this.fetchNostrRepo(nostrURI);
+    const { repo, state } = await this.fetchNostrRepo(nostrURI, AbortSignal.timeout(10000));
 
     if (!repo) {
       throw new Error('Repository not found');
+    }
+
+    // Extract repository state information if available
+    let expectedCommit: string | undefined;
+    let expectedBranch: string | undefined;
+    let repositoryRefs: Record<string, string> = {};
+
+    if (state) {
+      const stateInfo = this.extractRepositoryState(state);
+      expectedCommit = stateInfo.headCommit;
+      expectedBranch = stateInfo.headBranch;
+      repositoryRefs = stateInfo.refs;
+
+      console.log(`Repository state: HEAD=${stateInfo.HEAD}, commit=${expectedCommit}, branch=${expectedBranch}`);
+      console.log(`Available refs:`, Object.keys(repositoryRefs));
     }
 
     // Collect valid clone URLs from the repo event tags
@@ -638,54 +771,161 @@ export class Git {
       }
     }
 
+    if (cloneUrls.size === 0) {
+      throw new Error('No valid clone URLs found in repository announcement');
+    }
+
     let lastError: Error | null = null;
+    let cloneSuccessful = false;
 
-    for (const cloneUrl of cloneUrls) {
-      try {
-        console.log(`Attempting to clone from: ${cloneUrl}`);
+    // If we have state information, try to find a clone URL that contains the expected commit
+    if (expectedCommit) {
+      console.log(`Looking for repository with commit: ${expectedCommit}`);
 
-        // Try cloning with a timeout
-        await Promise.race([
-          git.clone({
-            fs: this.fs,
-            http,
-            corsProxy: this.corsProxy,
-            ...options,
-            url: cloneUrl, // Override the URL with the actual Git URL
-          }),
-          new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error('Clone timeout')), 30000)
-          )
-        ]);
+      for (const cloneUrl of cloneUrls) {
+        try {
+          console.log(`Checking remote info for: ${cloneUrl}`);
 
-        // After successful clone, update the origin remote to point to the Nostr URI
-        await this.setRemoteURL({
-          remote: 'origin',
-          dir: options.dir,
-          url: options.url,
-        });
+          // Get remote repository information to check if it has the expected commit
+          const remoteInfo = await Promise.race([
+            git.getRemoteInfo({
+              http,
+              corsProxy: this.corsProxy,
+              url: cloneUrl,
+            }),
+            new Promise<never>((_, reject) =>
+              setTimeout(() => reject(new Error('Remote info timeout')), 10000)
+            )
+          ]);
 
-        // Set the nostr.repo config to the naddr
-        await this.setConfig({
-          dir: options.dir,
-          path: 'nostr.repo',
-          value: nip19.naddrEncode({
-            kind: 30617,
-            pubkey: nostrURI.pubkey,
-            identifier: nostrURI.d,
-          })
-        });
+          // Check if the expected commit exists in any of the remote refs
+          const hasExpectedCommit = Object.values(remoteInfo.refs).includes(expectedCommit);
 
-        return; // Success!
-      } catch (error) {
-        console.warn(`Failed to clone from ${cloneUrl}:`, error);
-        lastError = error instanceof Error ? error : new Error('Unknown error');
-        continue; // Try the next URL
+          if (hasExpectedCommit) {
+            console.log(`Found expected commit ${expectedCommit} in ${cloneUrl}`);
+
+            // Clone from this URL since it has the expected commit
+            await Promise.race([
+              git.clone({
+                fs: this.fs,
+                http,
+                corsProxy: this.corsProxy,
+                ...options,
+                url: cloneUrl,
+              }),
+              new Promise<never>((_, reject) =>
+                setTimeout(() => reject(new Error('Clone timeout')), 30000)
+              )
+            ]);
+
+            // Verify the cloned repository has the expected commit
+            try {
+              await git.readCommit({
+                fs: this.fs,
+                dir: options.dir,
+                oid: expectedCommit,
+              });
+
+              // If we have an expected branch, check out to it
+              if (expectedBranch) {
+                try {
+                  await git.checkout({
+                    fs: this.fs,
+                    dir: options.dir,
+                    ref: expectedBranch,
+                  });
+                } catch (checkoutError) {
+                  console.warn(`Failed to checkout branch ${expectedBranch}:`, checkoutError);
+                  // Continue anyway, the clone was successful
+                }
+              }
+
+              cloneSuccessful = true;
+              break;
+            } catch (commitError) {
+              console.warn(`Cloned repository doesn't contain expected commit ${expectedCommit}:`, commitError);
+              // Continue to try other URLs
+            }
+          }
+        } catch (error) {
+          console.warn(`Failed to check/clone from ${cloneUrl}:`, error);
+          lastError = error instanceof Error ? error : new Error('Unknown error');
+          continue;
+        }
       }
     }
 
-    // If we get here, all clone attempts failed
-    throw lastError || new Error('All clone attempts failed');
+    // If we couldn't find the specific commit or don't have state info, try regular cloning
+    if (!cloneSuccessful) {
+      console.log('Falling back to regular clone from available URLs');
+
+      for (const cloneUrl of cloneUrls) {
+        try {
+          console.log(`Attempting to clone from: ${cloneUrl}`);
+
+          await Promise.race([
+            git.clone({
+              fs: this.fs,
+              http,
+              corsProxy: this.corsProxy,
+              ...options,
+              url: cloneUrl,
+            }),
+            new Promise<never>((_, reject) =>
+              setTimeout(() => reject(new Error('Clone timeout')), 30000)
+            )
+          ]);
+
+          cloneSuccessful = true;
+          break;
+        } catch (error) {
+          console.warn(`Failed to clone from ${cloneUrl}:`, error);
+          lastError = error instanceof Error ? error : new Error('Unknown error');
+          continue;
+        }
+      }
+    }
+
+    if (!cloneSuccessful) {
+      throw lastError || new Error('All clone attempts failed');
+    }
+
+    // After successful clone, update the origin remote to point to the Nostr URI
+    await this.setRemoteURL({
+      remote: 'origin',
+      dir: options.dir,
+      url: options.url,
+    });
+
+    // Set the nostr.repo config to the naddr
+    await this.setConfig({
+      dir: options.dir,
+      path: 'nostr.repo',
+      value: nip19.naddrEncode({
+        kind: 30617,
+        pubkey: nostrURI.pubkey,
+        identifier: nostrURI.d,
+      })
+    });
+
+    // Validate the cloned repository against the expected state
+    if (state && cloneSuccessful) {
+      const validation = await this.validateRepositoryState(
+        options.dir,
+        expectedCommit,
+        expectedBranch,
+        repositoryRefs
+      );
+
+      if (validation.valid) {
+        console.log('✓ Repository successfully cloned and validated against Nostr state');
+      } else {
+        console.warn('⚠ Repository cloned but validation warnings:');
+        validation.warnings.forEach(warning => console.warn(`  - ${warning}`));
+      }
+    } else if (cloneSuccessful) {
+      console.log('✓ Repository cloned successfully (no state validation available)');
+    }
   }
 
   async setRemoteURL(options: { dir: string; remote: string; url: string }): Promise<void> {

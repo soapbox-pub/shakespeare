@@ -53,7 +53,9 @@ export async function generateUniqueFilename(
  */
 export async function saveFileToTmp(fs: JSRuntimeFS, file: File): Promise<string> {
   const tmpDir = '/tmp';
-  const uniqueFilename = await generateUniqueFilename(fs, tmpDir, file.name);
+  // Convert spaces to underscores in the filename
+  const sanitizedFilename = file.name.replace(/\s+/g, '_');
+  const uniqueFilename = await generateUniqueFilename(fs, tmpDir, sanitizedFilename);
   const fullPath = `${tmpDir}/${uniqueFilename}`;
 
   // Read file content as array buffer and convert to Uint8Array

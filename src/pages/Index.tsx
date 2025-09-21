@@ -15,6 +15,7 @@ import type { AIMessage } from '@/lib/SessionManager';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ModelSelector } from '@/components/ModelSelector';
+import { FileAttachment } from '@/components/ui/file-attachment';
 import { Plus } from 'lucide-react';
 import { useSeoMeta } from '@unhead/react';
 
@@ -34,6 +35,8 @@ export default function Index() {
     return settings.recentlyUsedModels?.[0] || '';
   });
   const isMobile = useIsMobile();
+  const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
+  const [isDragOver, setIsDragOver] = useState(false);
 
   // Check if any providers are configured
   const hasProvidersConfigured = Object.keys(settings.providers).length > 0;
@@ -61,6 +64,57 @@ export default function Index() {
     const newPrompt = e.target.value;
     setPrompt(newPrompt);
     setStoredPrompt(newPrompt);
+  };
+
+  const handleFileSelect = (file: File) => {
+    setAttachedFiles(prev => [...prev, file]);
+  };
+
+  const handleFileRemove = (fileToRemove: File) => {
+    setAttachedFiles(prev => prev.filter(file => file !== fileToRemove));
+  };
+
+  // Drag and drop handlers
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isDragOver) {
+      setIsDragOver(true);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Only reset drag state if we're actually leaving the container
+    // This prevents flickering when dragging over child elements
+    const container = e.currentTarget;
+    const relatedTarget = e.relatedTarget as Node;
+
+    if (!container.contains(relatedTarget)) {
+      setIsDragOver(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+
+    if (isCreating || isGeneratingId || !providerModel.trim()) return;
+
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length === 0) return;
+
+    // Add all files without validation
+    setAttachedFiles(prev => [...prev, ...files]);
   };
 
   // Handle keyboard shortcuts (physical keyboards only)
@@ -113,11 +167,15 @@ export default function Index() {
       // Store the initial message in chat history using DotAI
       const dotAI = new DotAI(fs, `/projects/${project.id}`);
       const sessionName = DotAI.generateSessionName();
+      // Create initial message with content parts
       const initialMessage: AIMessage = {
         role: 'user',
         content: prompt.trim()
       };
       await dotAI.setHistory(sessionName, [initialMessage]);
+
+      // Clear attached files after successful creation
+      setAttachedFiles([]);
 
       // Navigate to the project with autostart parameter and model
       const searchParams = new URLSearchParams({
@@ -150,7 +208,15 @@ export default function Index() {
 
           <div className="mb-8 md:mb-12">
             {/* Chat Input Container - matching the ChatPane style */}
-            <div className="relative rounded-2xl border border-input bg-background shadow-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 transition-all">
+            <div
+              className={`relative rounded-2xl border border-input bg-background shadow-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 transition-all ${
+                isDragOver ? 'border-primary bg-primary/5 ring-2 ring-primary/20' : ''
+              }`}
+              onDragEnter={handleDragEnter}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+            >
               <Textarea
                 placeholder={
                   !hasProvidersConfigured
@@ -179,6 +245,16 @@ export default function Index() {
 
               {/* Bottom Controls Row */}
               <div className="absolute bottom-3 left-3 right-3 flex items-center justify-end gap-2 overflow-hidden">
+                {/* File Attachment */}
+                <FileAttachment
+                  className="mr-auto"
+                  onFileSelect={handleFileSelect}
+                  onFileRemove={handleFileRemove}
+                  selectedFiles={attachedFiles}
+                  disabled={isCreating || isGeneratingId}
+                  multiple={true}
+                />
+
                 {/* Model Selector - always show to allow configuration */}
                 <div className="overflow-hidden">
                   <ModelSelector

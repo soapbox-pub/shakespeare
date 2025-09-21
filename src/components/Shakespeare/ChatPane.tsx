@@ -73,6 +73,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   const [systemPrompt, setSystemPrompt] = useState('');
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
+  const [isDragOver, setIsDragOver] = useState(false);
   const [scrolledProjects] = useState(() => new Set<string>());
 
   // Use external state if provided, otherwise default to false
@@ -303,6 +304,49 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
 
   const handleFileRemove = (fileToRemove: File) => {
     setAttachedFiles(prev => prev.filter(file => file !== fileToRemove));
+  };
+
+  // Drag and drop handlers
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isDragOver) {
+      setIsDragOver(true);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Only reset drag state if we're actually leaving the container
+    // This prevents flickering when dragging over child elements
+    const container = e.currentTarget;
+    const relatedTarget = e.relatedTarget as Node;
+
+    if (!container.contains(relatedTarget)) {
+      setIsDragOver(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+
+    if (isLoading || !providerModel.trim()) return;
+
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length === 0) return;
+
+    // Add all files without validation
+    setAttachedFiles(prev => [...prev, ...files]);
   };
 
   const handleSend = async () => {
@@ -539,7 +583,15 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
 
       <div className="border-t p-4">
         {/* Chat Input Container */}
-        <div className="flex flex-col rounded-2xl border border-input bg-background shadow-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 transition-all">
+        <div
+          className={`flex flex-col rounded-2xl border border-input bg-background shadow-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 transition-all ${
+            isDragOver ? 'border-primary bg-primary/5 ring-2 ring-primary/20' : ''
+          }`}
+          onDragEnter={handleDragEnter}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
           <Textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -550,6 +602,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
             className="flex-1 resize-none border-0 bg-transparent px-4 py-3 text-sm focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground"
             disabled={isLoading || !providerModel.trim()}
             rows={1}
+            aria-label="Chat message input"
             style={{
               height: 'auto',
               minHeight: '96px'

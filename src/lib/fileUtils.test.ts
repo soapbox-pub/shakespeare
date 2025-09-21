@@ -153,5 +153,43 @@ describe('fileUtils', () => {
       const savedContent = await mockFS.readFile('/tmp/test_1.txt', 'utf8');
       expect(savedContent).toBe(fileContent);
     });
+
+    it('should convert spaces to underscores in filename', async () => {
+      const fileContent = 'Hello, world!';
+      const arrayBuffer = new TextEncoder().encode(fileContent).buffer;
+
+      // Create a mock File object with spaces in the name
+      const file = {
+        name: 'my file with spaces.txt',
+        arrayBuffer: async () => arrayBuffer
+      } as File;
+
+      const savedPath = await saveFileToTmp(mockFS, file);
+
+      expect(savedPath).toBe('/tmp/my_file_with_spaces.txt');
+
+      // Verify file was actually saved with sanitized name
+      const savedContent = await mockFS.readFile('/tmp/my_file_with_spaces.txt', 'utf8');
+      expect(savedContent).toBe(fileContent);
+    });
+
+    it('should convert multiple consecutive spaces to single underscore', async () => {
+      const fileContent = 'test content';
+      const arrayBuffer = new TextEncoder().encode(fileContent).buffer;
+
+      // Create a mock File object with multiple spaces
+      const file = {
+        name: 'file   with    multiple spaces.txt',
+        arrayBuffer: async () => arrayBuffer
+      } as File;
+
+      const savedPath = await saveFileToTmp(mockFS, file);
+
+      expect(savedPath).toBe('/tmp/file_with_multiple_spaces.txt');
+
+      // Verify file was actually saved
+      const savedContent = await mockFS.readFile('/tmp/file_with_multiple_spaces.txt', 'utf8');
+      expect(savedContent).toBe(fileContent);
+    });
   });
 });

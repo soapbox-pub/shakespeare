@@ -39,7 +39,7 @@ export default function Index() {
   const [isDragOver, setIsDragOver] = useState(false);
 
   // Check if any providers are configured
-  const hasProvidersConfigured = Object.keys(settings.providers).length > 0;
+  const hasProvidersConfigured = settings.providers.length > 0;
 
   useEffect(() => {
     if (!providerModel && settings.recentlyUsedModels?.length) {

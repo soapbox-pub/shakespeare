@@ -1,10 +1,13 @@
 import { Badge } from '@/components/ui/badge';
 import { useAICredits } from '@/hooks/useAICredits';
-import type { AIConnection } from '@/contexts/AISettingsContext';
 
 interface CreditsBadgeProps {
   providerId: string;
-  connection: AIConnection;
+  connection: {
+    baseURL: string;
+    apiKey?: string;
+    nostr?: boolean;
+  };
   className?: string;
   onOpenDialog?: () => void;
 }

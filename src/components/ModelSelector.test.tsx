@@ -34,13 +34,14 @@ describe('ModelSelector', () => {
     vi.clearAllMocks();
 
     mockUseAISettings.mockReturnValue({
-      settings: { providers: {}, recentlyUsedModels: [] },
+      settings: { providers: [], recentlyUsedModels: [] },
       addRecentlyUsedModel: mockAddRecentlyUsedModel,
       isConfigured: true,
       updateSettings: vi.fn(),
       removeProvider: vi.fn(),
-      addProvider: vi.fn(),
-      updateProvider: vi.fn(),
+      setProvider: vi.fn(),
+      setProviders: vi.fn(),
+      
     });
 
     mockUseProviderModels.mockReturnValue({
@@ -69,13 +70,14 @@ describe('ModelSelector', () => {
     });
 
     mockUseAISettings.mockReturnValue({
-      settings: { providers: {}, recentlyUsedModels },
+      settings: { providers: [], recentlyUsedModels },
       addRecentlyUsedModel: mockAddRecentlyUsedModel,
       isConfigured: true,
       updateSettings: vi.fn(),
       removeProvider: vi.fn(),
-      addProvider: vi.fn(),
-      updateProvider: vi.fn(),
+      setProvider: vi.fn(),
+      setProviders: vi.fn(),
+      
     });
 
     render(
@@ -115,13 +117,14 @@ describe('ModelSelector', () => {
     });
 
     mockUseAISettings.mockReturnValue({
-      settings: { providers: {}, recentlyUsedModels },
+      settings: { providers: [], recentlyUsedModels },
       addRecentlyUsedModel: mockAddRecentlyUsedModel,
       isConfigured: true,
       updateSettings: vi.fn(),
       removeProvider: vi.fn(),
-      addProvider: vi.fn(),
-      updateProvider: vi.fn(),
+      setProvider: vi.fn(),
+      setProviders: vi.fn(),
+      
     });
 
     render(
@@ -163,13 +166,14 @@ describe('ModelSelector', () => {
     });
 
     mockUseAISettings.mockReturnValue({
-      settings: { providers: {}, recentlyUsedModels },
+      settings: { providers: [], recentlyUsedModels },
       addRecentlyUsedModel: mockAddRecentlyUsedModel,
       isConfigured: true,
       updateSettings: vi.fn(),
       removeProvider: vi.fn(),
-      addProvider: vi.fn(),
-      updateProvider: vi.fn(),
+      setProvider: vi.fn(),
+      setProviders: vi.fn(),
+      
     });
 
     render(
@@ -205,13 +209,14 @@ describe('ModelSelector', () => {
     });
 
     mockUseAISettings.mockReturnValue({
-      settings: { providers: {}, recentlyUsedModels: [] }, // No recently used models
+      settings: { providers: [], recentlyUsedModels: [] }, // No recently used models
       addRecentlyUsedModel: mockAddRecentlyUsedModel,
       isConfigured: true,
       updateSettings: vi.fn(),
       removeProvider: vi.fn(),
-      addProvider: vi.fn(),
-      updateProvider: vi.fn(),
+      setProvider: vi.fn(),
+      setProviders: vi.fn(),
+      
     });
 
     render(

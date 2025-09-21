@@ -1,9 +1,13 @@
-import type { AIConnection } from '@/contexts/AISettingsContext';
+import type { AIProvider } from '@/contexts/AISettingsContext';
 
 export interface ParsedProviderModel {
   provider: string;
   model: string;
-  connection: AIConnection;
+  connection: {
+    baseURL: string;
+    apiKey?: string;
+    nostr?: boolean;
+  };
 }
 
 /**
@@ -13,29 +17,33 @@ export interface ParsedProviderModel {
  */
 export function parseProviderModel(
   providerModelString: string,
-  providers: Record<string, AIConnection>
+  providers: AIProvider[]
 ): ParsedProviderModel {
   const firstSlashIndex = providerModelString.indexOf('/');
-  
+
   if (firstSlashIndex === -1) {
     throw new Error('Invalid format. Use provider/model (e.g., "openai/gpt-4o")');
   }
-  
+
   const provider = providerModelString.substring(0, firstSlashIndex);
   const model = providerModelString.substring(firstSlashIndex + 1);
-  
+
   if (!provider || !model) {
     throw new Error('Invalid format. Both provider and model must be specified');
   }
-  
-  const connection = providers[provider];
-  if (!connection) {
-    throw new Error(`Provider "${provider}" not found. Available providers: ${Object.keys(providers).join(', ')}`);
+
+  const providerObj = providers.find(p => p.id === provider);
+  if (!providerObj) {
+    throw new Error(`Provider "${provider}" not found. Available providers: ${providers.map(p => p.id).join(', ')}`);
   }
-  
+
   return {
     provider,
     model,
-    connection,
+    connection: {
+      baseURL: providerObj.baseURL,
+      apiKey: providerObj.apiKey,
+      nostr: providerObj.nostr,
+    },
   };
 }

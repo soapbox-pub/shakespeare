@@ -1,33 +1,41 @@
 import { describe, it, expect } from 'vitest';
 import { parseProviderModel } from './parseProviderModel';
-import type { AIConnection } from '@/contexts/AISettingsContext';
+import type { AIProvider } from '@/contexts/AISettingsContext';
 
 describe('parseProviderModel', () => {
-  const mockProviders: Record<string, AIConnection> = {
-    openai: {
+  const mockProviders: AIProvider[] = [
+    {
+      id: 'openai',
       baseURL: 'https://api.openai.com/v1',
       apiKey: 'sk-test-key',
     },
-    openrouter: {
+    {
+      id: 'openrouter',
       baseURL: 'https://openrouter.ai/api/v1',
       apiKey: 'sk-or-test-key',
     },
-    anthropic: {
+    {
+      id: 'anthropic',
       baseURL: 'https://api.anthropic.com',
       apiKey: 'sk-ant-test-key',
     },
-    unconfigured: {
+    {
+      id: 'unconfigured',
       baseURL: 'https://example.com/v1',
       apiKey: '',
     },
-  };
+  ];
 
   it('should parse simple provider/model format', () => {
     const result = parseProviderModel('openai/gpt-4o', mockProviders);
 
     expect(result.provider).toBe('openai');
     expect(result.model).toBe('gpt-4o');
-    expect(result.connection).toEqual(mockProviders.openai);
+    expect(result.connection).toEqual({
+      baseURL: mockProviders[0].baseURL,
+      apiKey: mockProviders[0].apiKey,
+      nostr: mockProviders[0].nostr,
+    });
   });
 
   it('should parse complex model names with slashes', () => {
@@ -35,7 +43,11 @@ describe('parseProviderModel', () => {
 
     expect(result.provider).toBe('openrouter');
     expect(result.model).toBe('anthropic/claude-sonnet-4');
-    expect(result.connection).toEqual(mockProviders.openrouter);
+    expect(result.connection).toEqual({
+      baseURL: mockProviders[1].baseURL,
+      apiKey: mockProviders[1].apiKey,
+      nostr: mockProviders[1].nostr,
+    });
   });
 
   it('should handle model names with multiple slashes', () => {
@@ -43,7 +55,11 @@ describe('parseProviderModel', () => {
 
     expect(result.provider).toBe('openrouter');
     expect(result.model).toBe('meta/llama-3.1-405b-instruct');
-    expect(result.connection).toEqual(mockProviders.openrouter);
+    expect(result.connection).toEqual({
+      baseURL: mockProviders[1].baseURL,
+      apiKey: mockProviders[1].apiKey,
+      nostr: mockProviders[1].nostr,
+    });
   });
 
   it('should throw error for invalid format without slash', () => {

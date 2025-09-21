@@ -17,8 +17,6 @@ export class Git {
     this.corsProxy = corsProxy;
   }
 
-
-
   // Repository initialization and configuration
   async init(options: Omit<Parameters<typeof git.init>[0], 'fs'>) {
     return git.init({

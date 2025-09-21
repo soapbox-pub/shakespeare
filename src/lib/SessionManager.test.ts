@@ -25,12 +25,13 @@ const mockFS: JSRuntimeFS = {
 describe('SessionManager', () => {
   let sessionManager: SessionManager;
   const mockAISettings = {
-    providers: {
-      'test-provider': {
+    providers: [
+      {
+        id: 'test-provider',
         baseURL: 'https://api.test.com',
         apiKey: 'test-key'
       }
-    }
+    ]
   };
 
   beforeEach(() => {

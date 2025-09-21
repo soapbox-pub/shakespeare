@@ -39,12 +39,13 @@ export function useProviderModels(): ModelFetchResult {
     isLoading,
     refetch,
   } = useQuery({
-    queryKey: ['provider-models'],
+    queryKey: ['provider-models', settings.providers],
     queryFn: async () => {
       const errors: string[] = [];
 
       // Fetch models from each configured provider in parallel
-      const providerPromises = Object.entries(settings.providers).map(async ([providerKey, connection]) => {
+      const providerPromises = settings.providers.map(async (provider) => {
+        const { id: providerKey, ...connection } = provider;
         try {
           const openai = createAIClient(connection, user);
 
@@ -126,7 +127,7 @@ export function useProviderModels(): ModelFetchResult {
 
       return allModels;
     },
-    enabled: Object.keys(settings.providers).length > 0,
+    enabled: settings.providers.length > 0,
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
     retry: false, // Don't retry on failure
   });

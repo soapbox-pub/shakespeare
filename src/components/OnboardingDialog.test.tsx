@@ -6,9 +6,14 @@ import { TestApp } from '@/test/TestApp';
 // Mock the hooks
 vi.mock('@/hooks/useAISettings', () => ({
   useAISettings: () => ({
-    settings: { providers: {}, recentlyUsedModels: [] },
-    addProvider: vi.fn(),
+    settings: { providers: [], recentlyUsedModels: [] },
+    setProvider: vi.fn(),
+    removeProvider: vi.fn(),
+    setProviders: vi.fn(),
+    
     addRecentlyUsedModel: vi.fn(),
+    updateSettings: vi.fn(),
+    isConfigured: false,
   }),
 }));
 

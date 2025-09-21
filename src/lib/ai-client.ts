@@ -1,6 +1,5 @@
 import OpenAI from 'openai';
 import { NIP98Client } from '@nostrify/nostrify';
-import type { AIConnection } from '@/contexts/AISettingsContext';
 import type { NUser } from '@nostrify/react/login';
 
 /**
@@ -8,7 +7,11 @@ import type { NUser } from '@nostrify/react/login';
  * If the connection requires Nostr authentication (NIP-98), it will use
  * the NIP98Client for authenticated requests.
  */
-export function createAIClient(connection: AIConnection, user?: NUser): OpenAI {
+export function createAIClient(connection: {
+  baseURL: string;
+  apiKey?: string;
+  nostr?: boolean;
+}, user?: NUser): OpenAI {
   const baseConfig: ConstructorParameters<typeof OpenAI>[0] = {
     baseURL: connection.baseURL,
     apiKey: connection.apiKey ?? '',

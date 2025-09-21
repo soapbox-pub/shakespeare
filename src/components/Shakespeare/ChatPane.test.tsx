@@ -8,10 +8,15 @@ vi.mock('@/hooks/useAISettings', () => ({
   useAISettings: () => ({
     isConfigured: true,
     settings: {
-      providers: {},
+      providers: [],
       recentlyUsedModels: ['gpt-4'],
     },
+    setProvider: vi.fn(),
+    removeProvider: vi.fn(),
+    setProviders: vi.fn(),
+    
     addRecentlyUsedModel: vi.fn(),
+    updateSettings: vi.fn(),
   }),
 }));
 

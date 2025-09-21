@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { ReactNode, useState, useEffect } from 'react';
-import { AISettingsContext, type AISettings, type AIConnection, type AISettingsContextType } from '@/contexts/AISettingsContext';
+import { AISettingsContext, type AISettings, type AIProvider, type AISettingsContextType } from '@/contexts/AISettingsContext';
 import { useFS } from '@/hooks/useFS';
 import { readAISettings, writeAISettings } from '@/lib/configUtils';
 
@@ -9,7 +9,7 @@ interface AISettingsProviderProps {
 }
 
 const DEFAULT_SETTINGS: AISettings = {
-  providers: {},
+  providers: [],
   recentlyUsedModels: [],
 };
 
@@ -60,38 +60,40 @@ export function AISettingsProvider({ children }: AISettingsProviderProps) {
     }
   };
 
-  const addProvider = (name: string, connection: AIConnection) => {
-    setSettings(prev => ({
-      ...prev,
-      providers: {
-        ...prev.providers,
-        [name]: connection,
-      },
-    }));
-    queryClient.invalidateQueries({ queryKey: ['provider-models'] });
-  };
-
-  const removeProvider = (name: string) => {
+  const setProvider = (provider: AIProvider) => {
     setSettings(prev => {
-      const { [name]: removed, ...rest } = prev.providers;
-      return {
-        ...prev,
-        providers: rest,
-      };
+      const existingIndex = prev.providers.findIndex(p => p.id === provider.id);
+      if (existingIndex >= 0) {
+        // Update existing provider
+        return {
+          ...prev,
+          providers: prev.providers.map(p =>
+            p.id === provider.id ? provider : p
+          ),
+        };
+      } else {
+        // Add new provider
+        return {
+          ...prev,
+          providers: [...prev.providers, provider],
+        };
+      }
     });
     queryClient.invalidateQueries({ queryKey: ['provider-models'] });
   };
 
-  const updateProvider = (name: string, connection: Partial<AIConnection>) => {
+  const removeProvider = (id: string) => {
     setSettings(prev => ({
       ...prev,
-      providers: {
-        ...prev.providers,
-        [name]: {
-          ...prev.providers[name],
-          ...connection,
-        },
-      },
+      providers: prev.providers.filter(provider => provider.id !== id),
+    }));
+    queryClient.invalidateQueries({ queryKey: ['provider-models'] });
+  };
+
+  const setProviders = (providers: AIProvider[]) => {
+    setSettings(prev => ({
+      ...prev,
+      providers,
     }));
     queryClient.invalidateQueries({ queryKey: ['provider-models'] });
   };
@@ -120,14 +122,14 @@ export function AISettingsProvider({ children }: AISettingsProviderProps) {
     });
   };
 
-  const isConfigured = Object.entries(settings.providers).length > 0;
+  const isConfigured = settings.providers.length > 0;
 
   const contextValue: AISettingsContextType = {
     settings,
     updateSettings,
-    addProvider,
+    setProvider,
     removeProvider,
-    updateProvider,
+    setProviders,
     addRecentlyUsedModel,
     isConfigured,
   };

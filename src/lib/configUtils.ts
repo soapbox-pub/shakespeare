@@ -1,5 +1,5 @@
 import type { JSRuntimeFS } from '@/lib/JSRuntime';
-import type { AISettings } from '@/contexts/AISettingsContext';
+import type { AISettings, AIProvider } from '@/contexts/AISettingsContext';
 import type { GitSettings } from '@/contexts/GitSettingsContext';
 
 const CONFIG_DIR = '/config';
@@ -27,8 +27,22 @@ async function migrateAISettingsFromLocalStorage(fs: JSRuntimeFS): Promise<AISet
     try {
       const parsed = JSON.parse(stored);
       if (parsed && typeof parsed === 'object' && 'providers' in parsed) {
+        // Handle migration from old map format to new array format
+        let providers;
+        if (Array.isArray(parsed.providers)) {
+          providers = parsed.providers;
+        } else if (parsed.providers && typeof parsed.providers === 'object') {
+          // Convert map to array
+          providers = Object.entries(parsed.providers).map(([id, connection]) => ({
+            id,
+            ...(connection as Omit<AIProvider, 'id'>),
+          }));
+        } else {
+          providers = [];
+        }
+
         const settings: AISettings = {
-          providers: parsed.providers || {},
+          providers,
           recentlyUsedModels: parsed.recentlyUsedModels || [],
         };
 
@@ -51,7 +65,7 @@ async function migrateAISettingsFromLocalStorage(fs: JSRuntimeFS): Promise<AISet
  */
 export async function readAISettings(fs: JSRuntimeFS): Promise<AISettings> {
   const defaultSettings: AISettings = {
-    providers: {},
+    providers: [],
     recentlyUsedModels: [],
   };
 
@@ -61,8 +75,30 @@ export async function readAISettings(fs: JSRuntimeFS): Promise<AISettings> {
     const parsed = JSON.parse(content);
 
     if (parsed && typeof parsed === 'object' && 'providers' in parsed) {
+      // Handle migration from old map format to new array format
+      let providers;
+      if (Array.isArray(parsed.providers)) {
+        providers = parsed.providers;
+      } else if (parsed.providers && typeof parsed.providers === 'object') {
+        // Convert map to array
+        providers = Object.entries(parsed.providers).map(([id, connection]) => ({
+          id,
+          ...(connection as Omit<AIProvider, 'id'>),
+        }));
+
+        // Write back the migrated format
+        const migratedSettings: AISettings = {
+          providers,
+          recentlyUsedModels: parsed.recentlyUsedModels || [],
+        };
+        await writeAISettings(fs, migratedSettings);
+        return migratedSettings;
+      } else {
+        providers = [];
+      }
+
       return {
-        providers: parsed.providers || {},
+        providers,
         recentlyUsedModels: parsed.recentlyUsedModels || [],
       };
     }

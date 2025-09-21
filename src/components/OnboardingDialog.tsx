@@ -14,8 +14,6 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useLoginActions } from '@/hooks/useLoginActions';
 import { useProviderModels } from '@/hooks/useProviderModels';
 import { CreditsDialog } from '@/components/CreditsDialog';
-import type { AIConnection } from '@/contexts/AISettingsContext';
-
 interface OnboardingDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -23,7 +21,8 @@ interface OnboardingDialogProps {
 
 type OnboardingStep = 'welcome' | 'model-selection' | 'conclusion';
 
-const SHAKESPEARE_PROVIDER: AIConnection = {
+const SHAKESPEARE_PROVIDER = {
+  id: "shakespeare",
   baseURL: "https://ai.shakespeare.diy/v1",
   nostr: true,
 };
@@ -34,7 +33,7 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
   const [isSettingUp, setIsSettingUp] = useState(false);
   const [showCreditsDialog, setShowCreditsDialog] = useState(false);
 
-  const { addProvider, addRecentlyUsedModel } = useAISettings();
+  const { setProvider, addRecentlyUsedModel } = useAISettings();
   const { user } = useCurrentUser();
   const login = useLoginActions();
   const { models, isLoading: isLoadingModels } = useProviderModels();
@@ -54,7 +53,7 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
       }
 
       // Add Shakespeare provider to their config
-      addProvider('shakespeare', SHAKESPEARE_PROVIDER);
+      setProvider(SHAKESPEARE_PROVIDER);
 
       // Move to model selection
       setStep('model-selection');

@@ -2,12 +2,12 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { TestApp } from '@/test/TestApp';
 import { CreditsDialog } from './CreditsDialog';
-import type { AIConnection } from '@/contexts/AISettingsContext';
+
 
 // Mock the fetch function
 global.fetch = vi.fn();
 
-const mockConnection: AIConnection = {
+const mockConnection = {
   baseURL: 'https://api.test.com/v1',
   apiKey: 'test-key',
 };

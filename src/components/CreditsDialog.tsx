@@ -13,13 +13,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/useToast';
 import { createAIClient } from '@/lib/ai-client';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
-import type { AIConnection } from '@/contexts/AISettingsContext';
-
 interface CreditsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   providerId: string;
-  connection: AIConnection;
+  connection: {
+    baseURL: string;
+    apiKey?: string;
+    nostr?: boolean;
+  };
 }
 
 interface Payment {

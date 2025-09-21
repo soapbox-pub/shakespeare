@@ -2,7 +2,6 @@ import { useQuery } from '@tanstack/react-query';
 import { z } from 'zod';
 import { createAIClient } from '@/lib/ai-client';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
-import type { AIConnection } from '@/contexts/AISettingsContext';
 
 // Zod schemas for the two possible response formats
 const creditsResponseV1Schema = z.object({
@@ -32,7 +31,11 @@ export interface CreditsResponse {
  * @param connection - The AI connection configuration
  * @returns Query result with credits information
  */
-export function useAICredits(providerId: string, connection: AIConnection) {
+export function useAICredits(providerId: string, connection: {
+  baseURL: string;
+  apiKey?: string;
+  nostr?: boolean;
+}) {
   const { user } = useCurrentUser();
 
   return useQuery({

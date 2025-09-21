@@ -31,7 +31,7 @@ describe('AISettingsProvider', () => {
     // Mock the read function to return default settings
     const { readAISettings } = await import('@/lib/configUtils');
     vi.mocked(readAISettings).mockResolvedValue({
-      providers: {},
+      providers: [],
       recentlyUsedModels: [],
     });
   });
@@ -122,12 +122,13 @@ describe('AISettingsProvider', () => {
 
   it('should migrate old settings without recentlyUsedModels', async () => {
     const oldSettings = {
-      providers: {
-        openrouter: {
+      providers: [
+        {
+          id: 'openrouter',
           baseURL: 'https://openrouter.ai/api/v1',
           apiKey: 'test-key'
         }
-      },
+      ],
       recentlyUsedModels: []
     };
 
@@ -169,12 +170,13 @@ describe('AISettingsProvider', () => {
 
     act(() => {
       result.current.updateSettings({
-        providers: {
-          'test-provider': {
+        providers: [
+          {
+            id: 'test-provider',
             baseURL: 'https://api.test.com/v1',
             apiKey: 'test-key'
           }
-        }
+        ]
       });
     });
 

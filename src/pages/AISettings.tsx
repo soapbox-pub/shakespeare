@@ -1,6 +1,25 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Check, Bot, ArrowLeft, Trash2 } from 'lucide-react';
+import { Check, Bot, ArrowLeft, Trash2, GripVertical } from 'lucide-react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import {
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
@@ -13,7 +32,7 @@ import { useAISettings } from '@/hooks/useAISettings';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useNavigate, Link } from 'react-router-dom';
-import type { AIConnection } from '@/contexts/AISettingsContext';
+import type { AIProvider } from '@/contexts/AISettingsContext';
 
 interface PresetProvider {
   id: string;
@@ -80,9 +99,125 @@ const PRESET_PROVIDERS: PresetProvider[] = [
   },
 ];
 
+interface SortableProviderItemProps {
+  provider: AIProvider;
+  preset?: PresetProvider;
+  onRemove: (id: string) => void;
+  onSetProvider: (provider: AIProvider) => void;
+  onOpenCreditsDialog: (providerId: string) => void;
+  showDragHandle: boolean;
+}
+
+function SortableProviderItem({ provider, preset, onRemove, onSetProvider, onOpenCreditsDialog, showDragHandle }: SortableProviderItemProps) {
+  const { t } = useTranslation();
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: provider.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <AccordionItem
+      ref={setNodeRef}
+      style={style}
+      value={provider.id}
+      className="border rounded-lg"
+    >
+      <AccordionTrigger className="px-4 py-3 hover:no-underline">
+        <div className="flex items-center justify-between w-full mr-3">
+          <div className="flex items-center gap-2">
+            {showDragHandle && (
+              <div
+                {...attributes}
+                {...listeners}
+                className="cursor-grab active:cursor-grabbing p-1 -ml-1 text-muted-foreground hover:text-foreground"
+              >
+                <GripVertical className="h-4 w-4" />
+              </div>
+            )}
+            <span className="font-medium">
+              {preset?.name || provider.id}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <CreditsBadge
+              providerId={provider.id}
+              connection={{ baseURL: provider.baseURL, apiKey: provider.apiKey, nostr: provider.nostr }}
+              onOpenDialog={() => onOpenCreditsDialog(provider.id)}
+            />
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                onRemove(provider.id);
+              }}
+              className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-transparent"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </AccordionTrigger>
+      <AccordionContent className="px-4 pb-4">
+        <div className="space-y-3">
+          <div className="grid gap-2">
+            <Label htmlFor={`${provider.id}-baseURL`}>{t('baseUrl')}</Label>
+            <Input
+              id={`${provider.id}-baseURL`}
+              placeholder="https://api.example.com/v1"
+              value={provider.baseURL || ''}
+              onChange={(e) => onSetProvider({ ...provider, baseURL: e.target.value })}
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor={`${provider.id}-auth`}>{t('authentication')}</Label>
+            <Select
+              value={provider.nostr ? 'nostr' : 'api-key'}
+              onValueChange={(value: 'api-key' | 'nostr') => onSetProvider({
+                ...provider,
+                nostr: value === 'nostr' || undefined,
+                apiKey: value === 'nostr' ? undefined : provider.apiKey
+              })}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="api-key">{t('apiKey')}</SelectItem>
+                <SelectItem value="nostr">Nostr</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {!provider.nostr && (
+            <div className="grid gap-2">
+              <Label htmlFor={`${provider.id}-apiKey`}>{t('apiKey')}</Label>
+              <PasswordInput
+                id={`${provider.id}-apiKey`}
+                placeholder={t('enterApiKey')}
+                value={provider.apiKey || ''}
+                onChange={(e) => onSetProvider({ ...provider, apiKey: e.target.value })}
+              />
+            </div>
+          )}
+        </div>
+      </AccordionContent>
+    </AccordionItem>
+  );
+}
+
 export function AISettings() {
   const { t } = useTranslation();
-  const { settings, addProvider, removeProvider, updateProvider } = useAISettings();
+  const { settings, setProvider, removeProvider, setProviders } = useAISettings();
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const { user } = useCurrentUser();
@@ -93,10 +228,18 @@ export function AISettings() {
   const [presetApiKeys, setPresetApiKeys] = useState<Record<string, string>>({});
   const [activeCreditsDialog, setActiveCreditsDialog] = useState<string | null>(null);
 
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
   const handleAddPresetProvider = (preset: PresetProvider) => {
     const apiKey = presetApiKeys[preset.id] as string | undefined;
 
-    const newProvider: AIConnection = {
+    const newProvider: AIProvider = {
+      id: preset.id,
       baseURL: preset.baseURL,
     };
 
@@ -108,7 +251,7 @@ export function AISettings() {
     }
 
     // Auto-save: Add provider immediately to persistent storage
-    addProvider(preset.id, newProvider);
+    setProvider(newProvider);
 
     // Clear the API key input for this preset
     setPresetApiKeys(prev => ({
@@ -120,14 +263,15 @@ export function AISettings() {
   const handleAddCustomProvider = () => {
     if (!customProviderName.trim() || !customBaseURL.trim()) return;
 
-    const newProvider: AIConnection = {
+    const newProvider: AIProvider = {
+      id: customProviderName.trim(),
       baseURL: customBaseURL.trim(),
       apiKey: customAuthMethod === 'nostr' ? undefined : customApiKey.trim(),
       nostr: customAuthMethod === 'nostr' || undefined,
     };
 
     // Auto-save: Add provider immediately to persistent storage
-    addProvider(customProviderName.trim(), newProvider);
+    setProvider(newProvider);
 
     setCustomProviderName('');
     setCustomBaseURL('');
@@ -135,14 +279,14 @@ export function AISettings() {
     setCustomAuthMethod('api-key');
   };
 
-  const handleRemoveProvider = (name: string) => {
+  const handleRemoveProvider = (id: string) => {
     // Auto-save: Remove provider immediately from persistent storage
-    removeProvider(name);
+    removeProvider(id);
   };
 
-  const handleUpdateProvider = (name: string, connection: Partial<AIConnection>) => {
+  const handleSetProvider = (provider: AIProvider) => {
     // Auto-save: Update provider immediately in persistent storage
-    updateProvider(name, connection);
+    setProvider(provider);
   };
 
   const handleOpenCreditsDialog = (providerId: string) => {
@@ -153,7 +297,21 @@ export function AISettings() {
     setActiveCreditsDialog(null);
   };
 
-  const configuredProviderIds = Object.keys(settings.providers);
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (active.id !== over?.id) {
+      const oldIndex = settings.providers.findIndex(provider => provider.id === active.id);
+      const newIndex = settings.providers.findIndex(provider => provider.id === over?.id);
+
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const newProviders = arrayMove(settings.providers, oldIndex, newIndex);
+        setProviders(newProviders);
+      }
+    }
+  };
+
+  const configuredProviderIds = settings.providers.map(p => p.id);
   const availablePresets = PRESET_PROVIDERS.filter(preset => !configuredProviderIds.includes(preset.id));
 
   return (
@@ -195,89 +353,37 @@ export function AISettings() {
 
       <div className="space-y-6">
         {/* Configured Providers */}
-        {configuredProviderIds.length > 0 && (
+        {settings.providers.length > 0 && (
           <div className="space-y-3">
             <h4 className="text-sm font-medium">{t('configuredProviders')}</h4>
-            <Accordion type="multiple" className="w-full space-y-2">
-              {configuredProviderIds.map((providerId) => {
-                const preset = PRESET_PROVIDERS.find(p => p.id === providerId);
-                const provider = settings.providers[providerId];
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={settings.providers.map(p => p.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                <Accordion type="multiple" className="w-full space-y-2">
+                  {settings.providers.map((provider) => {
+                    const preset = PRESET_PROVIDERS.find(p => p.id === provider.id);
 
-                return (
-                  <AccordionItem key={providerId} value={providerId} className="border rounded-lg">
-                    <AccordionTrigger className="px-4 py-3 hover:no-underline">
-                      <div className="flex items-center justify-between w-full mr-3">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">
-                            {preset?.name || providerId}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <CreditsBadge
-                            providerId={providerId}
-                            connection={provider}
-                            onOpenDialog={() => handleOpenCreditsDialog(providerId)}
-                          />
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleRemoveProvider(providerId);
-                            }}
-                            className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-transparent"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </AccordionTrigger>
-                    <AccordionContent className="px-4 pb-4">
-                      <div className="space-y-3">
-                        <div className="grid gap-2">
-                          <Label htmlFor={`${providerId}-baseURL`}>{t('baseUrl')}</Label>
-                          <Input
-                            id={`${providerId}-baseURL`}
-                            placeholder="https://api.example.com/v1"
-                            value={provider?.baseURL || ''}
-                            onChange={(e) => handleUpdateProvider(providerId, { baseURL: e.target.value })}
-                          />
-                        </div>
-                        <div className="grid gap-2">
-                          <Label htmlFor={`${providerId}-auth`}>{t('authentication')}</Label>
-                          <Select
-                            value={provider?.nostr ? 'nostr' : 'api-key'}
-                            onValueChange={(value: 'api-key' | 'nostr') => handleUpdateProvider(providerId, {
-                              nostr: value === 'nostr' || undefined,
-                              apiKey: value === 'nostr' ? undefined : provider?.apiKey
-                            })}
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="api-key">{t('apiKey')}</SelectItem>
-                              <SelectItem value="nostr">Nostr</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        {!provider?.nostr && (
-                          <div className="grid gap-2">
-                            <Label htmlFor={`${providerId}-apiKey`}>{t('apiKey')}</Label>
-                            <PasswordInput
-                              id={`${providerId}-apiKey`}
-                              placeholder={t('enterApiKey')}
-                              value={provider?.apiKey || ''}
-                              onChange={(e) => handleUpdateProvider(providerId, { apiKey: e.target.value })}
-                            />
-                          </div>
-                        )}
-                      </div>
-                    </AccordionContent>
-                  </AccordionItem>
-                );
-              })}
-            </Accordion>
+                    return (
+                      <SortableProviderItem
+                        key={provider.id}
+                        provider={provider}
+                        preset={preset}
+                        onRemove={handleRemoveProvider}
+                        onSetProvider={handleSetProvider}
+                        onOpenCreditsDialog={handleOpenCreditsDialog}
+                        showDragHandle={settings.providers.length > 1}
+                      />
+                    );
+                  })}
+                </Accordion>
+              </SortableContext>
+            </DndContext>
           </div>
         )}
 
@@ -417,14 +523,14 @@ export function AISettings() {
                     disabled={
                       !customProviderName.trim() ||
                       !customBaseURL.trim() ||
-                      customProviderName.trim() in settings.providers
+                      settings.providers.some(p => p.id === customProviderName.trim())
                     }
                     className="gap-2 ml-auto"
                   >
                     <Check className="h-4 w-4" />
                     {t('addCustomProviderButton')}
                   </Button>
-                  {customProviderName.trim() in settings.providers && (
+                  {settings.providers.some(p => p.id === customProviderName.trim()) && (
                     <p className="text-sm text-destructive">
                       {t('providerExists')}
                     </p>
@@ -437,18 +543,21 @@ export function AISettings() {
       </div>
 
       {/* Render credits dialog outside of accordion structure */}
-      {activeCreditsDialog && (
-        <CreditsDialog
-          open={true}
-          onOpenChange={(open) => {
-            if (!open) {
-              handleCloseCreditsDialog();
-            }
-          }}
-          providerId={activeCreditsDialog}
-          connection={settings.providers[activeCreditsDialog]}
-        />
-      )}
+      {activeCreditsDialog && (() => {
+        const provider = settings.providers.find(p => p.id === activeCreditsDialog);
+        return provider && (
+          <CreditsDialog
+            open={true}
+            onOpenChange={(open) => {
+              if (!open) {
+                handleCloseCreditsDialog();
+              }
+            }}
+            providerId={activeCreditsDialog}
+            connection={{ baseURL: provider.baseURL, apiKey: provider.apiKey, nostr: provider.nostr }}
+          />
+        );
+      })()}
     </div>
   );
 }

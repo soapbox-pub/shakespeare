@@ -63,15 +63,6 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
 
   const projectPath = `/projects/${projectId}`;
 
-  // Get credentials for the current repository
-  const getCredentialsForCurrentRepo = () => {
-    if (!gitStatus?.remotes.length) return null;
-    const remoteUrl = gitStatus.remotes[0].url; // Use first remote (usually 'origin')
-    return findCredentialsForRepo(remoteUrl, settings.credentials);
-  };
-
-  const currentCredentials = getCredentialsForCurrentRepo();
-
   const handlePush = async () => {
     if (!gitStatus?.isGitRepo || !gitStatus.currentBranch) {
       toast({
@@ -106,19 +97,11 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
     try {
       const remote = gitStatus.remotes[0]; // Use first remote (usually 'origin')
 
-      // Prepare authentication if credentials are available
-      const authOptions = currentCredentials ? {
-        onAuth: () => ({
-          username: currentCredentials.username,
-          password: currentCredentials.password
-        }),
-      } : {};
-
       await git.push({
         dir: projectPath,
         remote: remote.name,
         ref: gitStatus.currentBranch,
-        ...authOptions,
+        onAuth: (url) => findCredentialsForRepo(url, settings.credentials),
       });
 
       setPushResult(`✅ Successfully pushed ${gitStatus.ahead} commit${gitStatus.ahead !== 1 ? 's' : ''} to ${remote.name}/${gitStatus.currentBranch}`);
@@ -167,14 +150,6 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
     try {
       const remote = gitStatus.remotes[0]; // Use first remote (usually 'origin')
 
-      // Prepare authentication if credentials are available
-      const authOptions = currentCredentials ? {
-        onAuth: () => ({
-          username: currentCredentials.username,
-          password: currentCredentials.password
-        }),
-      } : {};
-
       await git.pull({
         dir: projectPath,
         ref: gitStatus.currentBranch,
@@ -183,7 +158,7 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
           name: 'shakespeare.diy',
           email: 'assistant@shakespeare.diy',
         },
-        ...authOptions,
+        onAuth: (url) => findCredentialsForRepo(url, settings.credentials),
       });
 
       setPullResult(`✅ Successfully pulled from ${remote.name}/${gitStatus.currentBranch}`);

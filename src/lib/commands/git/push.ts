@@ -65,15 +65,6 @@ export class GitPushCommand implements GitSubcommand {
       }
 
       const settings = await readGitSettings(this.fs);
-      const currentCredentials = findCredentialsForRepo(remoteUrl, settings.credentials);
-
-      // Prepare authentication if credentials are available
-      const authOptions = currentCredentials ? {
-        onAuth: () => ({
-          username: currentCredentials.username,
-          password: currentCredentials.password,
-        }),
-      } : {};
 
       try {
         await this.git.push({
@@ -81,7 +72,7 @@ export class GitPushCommand implements GitSubcommand {
           remote: remote,
           ref: targetBranch,
           remoteRef: targetBranch,
-          ...authOptions,
+          onAuth: (url) => findCredentialsForRepo(url, settings.credentials),
         });
 
         return createSuccessResult(`To ${remoteUrl}\n   ${targetBranch} -> ${targetBranch}\n`);

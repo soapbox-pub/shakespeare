@@ -1,7 +1,6 @@
 import { Buffer } from 'buffer';
-import { Git } from '@/lib/git';
+import type { Git } from '@/lib/git';
 import type { JSRuntimeFS } from '@/lib/JSRuntime';
-
 
 // Polyfill Buffer for browser
 if (typeof window !== 'undefined') {
@@ -18,14 +17,19 @@ export interface Project {
   lastModified: Date;
 }
 
+export interface ProjectsManagerOptions {
+  fs: JSRuntimeFS;
+  git: Git;
+}
+
 export class ProjectsManager {
   fs: JSRuntimeFS;
   git: Git;
   dir: string;
 
-  constructor(fs: JSRuntimeFS) {
-    this.fs = fs;
-    this.git = new Git(fs, 'https://cors.isomorphic-git.org');
+  constructor(options: ProjectsManagerOptions) {
+    this.fs = options.fs;
+    this.git = options.git;
     this.dir = '/projects';
   }
 

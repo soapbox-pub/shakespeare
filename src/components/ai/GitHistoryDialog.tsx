@@ -43,8 +43,8 @@ export function GitHistoryDialog({ projectId, open: controlledOpen, onOpenChange
   const setIsOpen = onOpenChange || setInternalOpen;
   const [isRollingBack, setIsRollingBack] = useState<string | null>(null);
   const [expandedCommits, setExpandedCommits] = useState<Set<string>>(new Set());
-  const git = useGit();
   const { fs } = useFS();
+  const { git } = useGit();
   const { toast } = useToast();
 
   const loadGitHistory = useCallback(async () => {

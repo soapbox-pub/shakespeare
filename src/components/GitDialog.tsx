@@ -58,7 +58,7 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
 
   const { data: gitStatus, refetch: refetchGitStatus } = useGitStatus(projectId);
   const { settings } = useGitSettings();
-  const git = useGit();
+  const { git } = useGit();
   const { toast } = useToast();
 
   const projectPath = `/projects/${projectId}`;

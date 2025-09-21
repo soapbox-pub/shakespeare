@@ -1,11 +1,27 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ProjectsManager } from './ProjectsManager';
+import { JSRuntimeFS } from './JSRuntime';
+import { Git } from './git';
+import type { NPool } from '@nostrify/nostrify';
+
+const createMockNostr = (): NPool => ({
+  req: vi.fn(),
+  query: vi.fn(),
+  event: vi.fn(),
+  group: vi.fn(),
+  relay: vi.fn(),
+  relays: new Map(),
+  close: vi.fn(),
+}) as unknown as NPool;
 
 // Mock filesystem for testing
-class MockFS {
+class MockFS implements JSRuntimeFS {
   private files: Map<string, string | Uint8Array> = new Map();
   private dirs: Set<string> = new Set();
 
+  async readFile(path: string): Promise<Uint8Array>;
+  async readFile(path: string, encoding: "utf8"): Promise<string>;
+  async readFile(path: string, encoding: string): Promise<string | Uint8Array>;
   async readFile(path: string, encoding?: string): Promise<string | Uint8Array> {
     const content = this.files.get(path);
     if (content === undefined) {
@@ -13,10 +29,18 @@ class MockFS {
       error.code = 'ENOENT';
       throw error;
     }
-    if (encoding === 'utf8' && typeof content === 'string') {
-      return content;
+    if (encoding === 'utf8') {
+      if (typeof content === 'string') {
+        return content;
+      }
+      // Convert Uint8Array to string
+      return new TextDecoder('utf-8').decode(content as Uint8Array);
     }
-    return content;
+    if (typeof content === 'string') {
+      // Convert string to Uint8Array
+      return new TextEncoder().encode(content);
+    }
+    return content as Uint8Array;
   }
 
   async writeFile(path: string, data: string | Uint8Array): Promise<void> {
@@ -28,13 +52,14 @@ class MockFS {
     }
   }
 
-  async readdir(path: string): Promise<string[]> {
+  // @ts-expect-error I don't know how to type this properly
+  async readdir(path: string, options?: { withFileTypes?: boolean }): Promise<string[] | DirectoryEntry[]> {
     if (!this.dirs.has(path)) {
       const error = new Error(`ENOENT: no such file or directory, scandir '${path}'`) as NodeJS.ErrnoException;
       error.code = 'ENOENT';
       throw error;
     }
-
+    
     const entries: string[] = [];
 
     // Find subdirectories
@@ -51,7 +76,22 @@ class MockFS {
       }
     }
 
-    return [...new Set(entries)];
+    const uniqueEntries = [...new Set(entries)];
+
+    if (options && options.withFileTypes) {
+      // Provide a minimal DirectoryEntry mock
+      return uniqueEntries.map(name => {
+        const fullPath = path.endsWith('/') ? path + name : path + '/' + name;
+        const isDir = this.dirs.has(fullPath);
+        return {
+          name,
+          isDirectory: () => isDir,
+          isFile: () => !isDir,
+        } as unknown as DirectoryEntry;
+      });
+    }
+
+    return uniqueEntries;
   }
 
   async mkdir(path: string): Promise<void> {
@@ -88,12 +128,16 @@ class MockFS {
 }
 
 describe('ProjectsManager', () => {
-  let fs: MockFS;
+  let fs: JSRuntimeFS;
+  let git: Git;
+  let nostr: NPool;
   let projectsManager: ProjectsManager;
 
   beforeEach(() => {
-    fs = new MockFS();
-    projectsManager = new ProjectsManager(fs as unknown as import('./JSRuntime').JSRuntimeFS);
+    fs = new MockFS() as unknown as JSRuntimeFS;
+    nostr = createMockNostr();
+    git = new Git({ fs, nostr });
+    projectsManager = new ProjectsManager({ fs, git });
   });
 
   describe('getProjects', () => {

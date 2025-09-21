@@ -1,6 +1,13 @@
 import git from 'isomorphic-git';
 import http from 'isomorphic-git/http/web';
+import type { NPool } from '@nostrify/nostrify';
 import type { JSRuntimeFS } from './JSRuntime';
+
+export interface GitOptions {
+  fs: JSRuntimeFS;
+  nostr: NPool;
+  corsProxy?: string;
+}
 
 /**
  * Git class that wraps isomorphic-git and provides a cleaner interface.
@@ -10,11 +17,13 @@ import type { JSRuntimeFS } from './JSRuntime';
  */
 export class Git {
   private fs: JSRuntimeFS;
+  private nostr: NPool;
   private corsProxy?: string;
 
-  constructor(fs: JSRuntimeFS, corsProxy?: string) {
-    this.fs = fs;
-    this.corsProxy = corsProxy;
+  constructor(options: GitOptions) {
+    this.fs = options.fs;
+    this.nostr = options.nostr;
+    this.corsProxy = options.corsProxy;
   }
 
   // Repository initialization and configuration

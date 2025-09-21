@@ -33,13 +33,13 @@ import { NostrReadNipsIndexTool } from '@/lib/tools/NostrReadNipsIndexTool';
 import { NostrGenerateKindTool } from '@/lib/tools/NostrGenerateKindTool';
 import { ShellTool } from '@/lib/tools/ShellTool';
 import { TypecheckTool } from '@/lib/tools/TypecheckTool';
-import { Git } from '@/lib/git';
 import { toolToOpenAI } from '@/lib/tools/openai-adapter';
 import { Tool } from '@/lib/tools/Tool';
 import OpenAI from 'openai';
 import { makeSystemPrompt } from '@/lib/system';
 import { assistantContentEmpty } from '@/lib/ai-messages';
 import { saveFileToTmp } from '@/lib/fileUtils';
+import { useGit } from '@/hooks/useGit';
 
 interface ChatPaneProps {
   projectId: string;
@@ -94,13 +94,13 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
 
   const [searchParams, setSearchParams] = useSearchParams();
   const { fs } = useFS();
+  const { git } = useGit();
   const { user, metadata } = useCurrentUser();
   const { models } = useProviderModels();
 
   // Initialize AI chat with tools
   const cwd = `/projects/${projectId}`;
   const customTools = useMemo(() => {
-    const git = new Git(fs);
     const baseTools = {
       git_commit: new GitCommitTool(fs, cwd, git),
       text_editor_view: new TextEditorViewTool(fs, cwd),
@@ -129,7 +129,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     }
 
     return baseTools;
-  }, [fs, cwd, user, projectId]);
+  }, [fs, git, cwd, user, projectId]);
 
   // Convert tools to OpenAI format
   const tools = useMemo(() => {

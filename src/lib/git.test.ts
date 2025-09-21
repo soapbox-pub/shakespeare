@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Git } from './git';
 import git from 'isomorphic-git';
+import type { NPool } from '@nostrify/nostrify';
 import type { JSRuntimeFS } from './JSRuntime';
 
 // Mock isomorphic-git
@@ -9,18 +10,30 @@ vi.mock('isomorphic-git/http/web');
 
 const mockGit = vi.mocked(git);
 
+const createMockNostr = (): NPool => ({
+  req: vi.fn(),
+  query: vi.fn(),
+  event: vi.fn(),
+  group: vi.fn(),
+  relay: vi.fn(),
+  relays: new Map(),
+  close: vi.fn(),
+}) as unknown as NPool;
+
 describe('Git', () => {
-  const mockFS = {} as JSRuntimeFS;
+  const fs = {} as JSRuntimeFS;
+  const nostr = createMockNostr();
+  const corsProxy = 'https://cors.example.com';
   let gitInstance: Git;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    gitInstance = new Git(mockFS, 'https://cors.example.com');
+    gitInstance = new Git({ fs, nostr, corsProxy });
   });
 
   describe('constructor', () => {
     it('creates instance with default regex when none provided', () => {
-      const git = new Git(mockFS, 'https://cors.example.com');
+      const git = new Git({ fs, nostr, corsProxy });
       expect(git).toBeInstanceOf(Git);
     });
 
@@ -39,7 +52,7 @@ describe('Git', () => {
       });
 
       expect(mockGit.clone).toHaveBeenCalledWith({
-        fs: mockFS,
+        fs,
         http: expect.any(Object),
         corsProxy: 'https://cors.example.com',
         dir: '/test',
@@ -54,7 +67,7 @@ describe('Git', () => {
       });
 
       expect(mockGit.clone).toHaveBeenCalledWith({
-        fs: mockFS,
+        fs,
         http: expect.any(Object),
         corsProxy: 'https://cors.example.com',
         dir: '/test',
@@ -69,7 +82,7 @@ describe('Git', () => {
       });
 
       expect(mockGit.clone).toHaveBeenCalledWith({
-        fs: mockFS,
+        fs,
         http: expect.any(Object),
         corsProxy: 'https://cors.example.com',
         dir: '/test',
@@ -84,7 +97,7 @@ describe('Git', () => {
       });
 
       expect(mockGit.clone).toHaveBeenCalledWith({
-        fs: mockFS,
+        fs,
         http: expect.any(Object),
         corsProxy: 'https://cors.example.com',
         dir: '/test',
@@ -138,7 +151,7 @@ describe('Git', () => {
       });
 
       expect(mockGit.fetch).toHaveBeenCalledWith({
-        fs: mockFS,
+        fs,
         http: expect.any(Object),
         corsProxy: 'https://cors.example.com',
         dir: '/test',
@@ -153,7 +166,7 @@ describe('Git', () => {
       });
 
       expect(mockGit.fetch).toHaveBeenCalledWith({
-        fs: mockFS,
+        fs,
         http: expect.any(Object),
         corsProxy: 'https://cors.example.com',
         dir: '/test',

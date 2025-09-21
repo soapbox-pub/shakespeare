@@ -75,8 +75,8 @@ export function ActionsMenu({
   const navigate = useNavigate();
   const projectsManager = useProjectsManager();
   const { toast } = useToast();
-  const git = useGit();
   const { fs } = useFS();
+  const { git } = useGit();
 
   const isAnyLoading = isLoading || isBuildLoading || isDeployLoading || isDeleting || isExporting;
 

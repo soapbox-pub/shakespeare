@@ -74,12 +74,6 @@ const PRESET_PROVIDERS: PresetProvider[] = [
     apiKeysURL: "https://z.ai/manage-apikey/apikey-list",
   },
   {
-    id: "moonshot",
-    name: "Moonshot",
-    baseURL: "https://api.moonshot.ai/v1",
-    apiKeysURL: "https://platform.moonshot.ai/console/api-keys",
-  },
-  {
     id: "openai",
     name: "OpenAI",
     baseURL: "https://api.openai.com/v1",

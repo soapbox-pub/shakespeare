@@ -2,7 +2,7 @@ import git from 'isomorphic-git';
 import http from 'isomorphic-git/http/web';
 import { NIP05 } from '@nostrify/nostrify';
 import { nip19 } from 'nostr-tools';
-import type { NostrEvent, NPool } from '@nostrify/nostrify';
+import type { NostrEvent, NostrSigner, NPool } from '@nostrify/nostrify';
 import type { JSRuntimeFS } from './JSRuntime';
 
 export interface GitOptions {
@@ -217,7 +217,19 @@ export class Git {
     });
   }
 
-  async push(options: Omit<Parameters<typeof git.push>[0], 'fs' | 'http' | 'corsProxy'>) {
+  async push(options: Omit<Parameters<typeof git.push>[0], 'fs' | 'http' | 'corsProxy'> & { signer?: NostrSigner }) {
+    // Check if this is a Nostr repository by looking at the remote URL
+    const remote = options.remote || 'origin';
+    const dir = options.dir || '.';
+    const remoteUrl = await this.getRemoteURL(dir, remote);
+
+    if (remoteUrl && remoteUrl.startsWith('nostr://')) {
+      if (!options.signer) {
+        throw new Error('Nostr signer is required for pushing to Nostr repositories');
+      }
+      return this.nostrPush(remoteUrl, { ...options, remote, dir: dir, signer: options.signer });
+    }
+
     return git.push({
       fs: this.fs,
       http,
@@ -543,6 +555,71 @@ export class Git {
   }
 
   // Nostr-specific helper methods
+
+  /**
+   * Get current repository state for creating a NIP-34 repository state event
+   */
+  private async getCurrentRepositoryState(dir: string): Promise<{
+    refTags: string[][];
+    headRef?: string;
+  }> {
+    const refTags: string[][] = [];
+    let headRef: string | undefined;
+
+    try {
+      // Get all refs in the repository
+      const refs = await git.listRefs({ fs: this.fs, dir });
+
+      // Process each ref to create tags
+      for (const ref of refs) {
+        try {
+          const commitId = await git.resolveRef({
+            fs: this.fs,
+            dir,
+            ref,
+          });
+
+          // Only include heads and tags refs in the state event
+          if (ref.startsWith('refs/heads/') || ref.startsWith('refs/tags/')) {
+            refTags.push([ref, commitId]);
+          }
+        } catch (error) {
+          console.warn(`Failed to resolve ref ${ref}:`, error);
+        }
+      }
+
+      // Get HEAD reference
+      try {
+        const headValue = await git.resolveRef({
+          fs: this.fs,
+          dir,
+          ref: 'HEAD',
+          depth: 1, // Don't resolve symbolic refs
+        });
+
+        // Check if HEAD is symbolic (points to a branch)
+        try {
+          const currentBranch = await git.currentBranch({ fs: this.fs, dir });
+          if (currentBranch) {
+            headRef = `ref: refs/heads/${currentBranch}`;
+          }
+        } catch {
+          // HEAD is detached, use the commit ID directly
+          if (headValue) {
+            headRef = headValue;
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to resolve HEAD:', error);
+      }
+
+      console.log(`Repository state: ${refTags.length} refs, HEAD=${headRef}`);
+      return { refTags, headRef };
+    } catch (error) {
+      console.error('Failed to get repository state:', error);
+      throw new Error(`Failed to get repository state: ${error}`);
+    }
+  }
 
   /**
    * Extract repository state information from a NIP-34 repository state event
@@ -1144,6 +1221,156 @@ export class Git {
         console.log(`Merged ${upstreamCommit} into ${currentBranch}`);
       }
     }
+  }
+
+  private async nostrPush(nostrUrl: string, options: Omit<Parameters<typeof git.push>[0], 'fs' | 'http' | 'corsProxy'> & { signer: NostrSigner }) {
+    const { signer, ...gitPushOptions } = options;
+    const dir = options.dir || '.';
+
+    // Parse the Nostr URI
+    const nostrURI = await this.parseNostrCloneURI(nostrUrl);
+    if (!nostrURI) {
+      throw new Error('Invalid Nostr URI format');
+    }
+
+    console.log(`Pushing to Nostr repository: ${nostrUrl}`);
+
+    // Fetch the repository announcement to get relay information and clone URLs
+    const { repo } = await this.fetchNostrRepo(nostrURI, AbortSignal.timeout(10000));
+    if (!repo) {
+      throw new Error('Repository announcement not found on Nostr network');
+    }
+
+    // Extract relay URLs from the repository announcement
+    const relayUrls: string[] = [];
+    const cloneUrls: string[] = [];
+
+    for (const [name, value] of repo.tags) {
+      if (name === 'relays' && value) {
+        relayUrls.push(value);
+      } else if (name === 'clone' && value) {
+        try {
+          const url = new URL(value);
+          if (url.protocol === 'http:' || url.protocol === 'https:') {
+            cloneUrls.push(url.href);
+          }
+        } catch {
+          // Ignore invalid URLs
+        }
+      }
+    }
+
+    // If no relays specified in announcement, use default git-focused relays
+    if (relayUrls.length === 0) {
+      relayUrls.push(
+        'wss://git.shakespeare.diy/',
+        'wss://relay.ngit.dev/',
+        'wss://gitnostr.com/',
+        'wss://relay.nostr.band/'
+      );
+    }
+
+    // Get current repository state
+    const repoState = await this.getCurrentRepositoryState(dir);
+
+    // Create repository state event (kind 30618)
+    const stateEvent: Omit<NostrEvent, 'id' | 'sig'> = {
+      kind: 30618,
+      created_at: Math.floor(Date.now() / 1000),
+      pubkey: '', // Will be set by signer
+      content: '',
+      tags: [
+        ['d', nostrURI.d], // Repository identifier
+        ...repoState.refTags,
+        ...(repoState.headRef ? [['HEAD', repoState.headRef]] : []),
+      ],
+    };
+
+    // Sign the event
+    const signedStateEvent = await signer.signEvent(stateEvent);
+
+    // Publish the state event to Nostr relays
+    console.log(`Publishing repository state to ${relayUrls.length} relays`);
+
+    try {
+      await this.nostr.group(relayUrls).event(signedStateEvent);
+      console.log('✓ Repository state published to Nostr successfully');
+    } catch (error) {
+      console.warn('Failed to publish repository state to some relays:', error);
+      // Continue with Git push even if Nostr publishing partially fails
+    }
+
+    // Push to each clone URL
+    if (cloneUrls.length === 0) {
+      console.warn('No Git clone URLs found in repository announcement');
+      return;
+    }
+
+    let pushSuccessful = false;
+    let lastError: Error | null = null;
+
+    for (const cloneUrl of cloneUrls) {
+      try {
+        console.log(`Pushing to Git remote: ${cloneUrl}`);
+
+        // Add a temporary remote for this clone URL
+        const tempRemoteName = `temp-push-${Date.now()}`;
+        await git.addRemote({
+          fs: this.fs,
+          dir,
+          remote: tempRemoteName,
+          url: cloneUrl,
+        });
+
+        try {
+          // Push to the temporary remote
+          await git.push({
+            fs: this.fs,
+            http,
+            corsProxy: this.corsProxy,
+            dir,
+            remote: tempRemoteName,
+            ...gitPushOptions,
+          });
+
+          pushSuccessful = true;
+          console.log(`✓ Successfully pushed to ${cloneUrl}`);
+
+          // Remove the temporary remote
+          await git.deleteRemote({
+            fs: this.fs,
+            dir,
+            remote: tempRemoteName,
+          });
+
+          // If one push succeeds, we can break (unless we want to push to all remotes)
+          break;
+        } catch (pushError) {
+          console.warn(`Failed to push to ${cloneUrl}:`, pushError);
+          lastError = pushError instanceof Error ? pushError : new Error('Unknown push error');
+
+          // Clean up the temporary remote
+          try {
+            await git.deleteRemote({
+              fs: this.fs,
+              dir,
+              remote: tempRemoteName,
+            });
+          } catch {
+            // Ignore cleanup errors
+          }
+        }
+      } catch (error) {
+        console.warn(`Failed to set up remote for ${cloneUrl}:`, error);
+        lastError = error instanceof Error ? error : new Error('Unknown error');
+      }
+    }
+
+    if (!pushSuccessful) {
+      throw lastError || new Error('All push attempts failed');
+    }
+
+    console.log('✓ Nostr push completed successfully');
   }
 
   private async fetchMissingCommitsFromGitRemotes(repo: NostrEvent, dir: string, refs: Record<string, string>): Promise<void> {

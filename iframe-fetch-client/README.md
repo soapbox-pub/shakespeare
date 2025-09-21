@@ -136,7 +136,27 @@ The system now uses a simplified JSON-RPC 2.0 protocol with two methods:
    - Parent responds with serialized HTTP responses
    - ServiceWorker creates Response objects and returns them to the client app
 
-3. **Content Replacement:**
+3. **SPA Routing Support:**
+   - ServiceWorker detects navigation requests (HTML page requests with `mode: "navigate"`)
+   - For SPA routes like `/about`, `/contact`, etc., the ServiceWorker serves the site's `index.html`
+   - This allows the SPA's client-side router to handle the route properly
+   - All other requests (assets, API calls, etc.) are handled normally via JSON-RPC
+
+4. **Semantic Path Navigation:**
+   - **Key Concept**: iframe stays on base URL (`/`) while communicating semantic paths to parent
+   - When user navigates to `/about` in address bar, iframe doesn't actually change URL
+   - Instead, NavigationHandler tracks semantic path (`/about`) and communicates it to parent
+   - Parent displays semantic path while iframe remains on base URL
+   - SPA's client-side router handles navigation internally without page reloads
+   - This prevents 404 errors from literal path navigation
+
+5. **SPA Navigation Tracking:**
+   - NavigationHandler overrides `history.pushState()` and `history.replaceState()` to detect SPA navigation
+   - When SPAs change URLs via history methods, NavigationHandler detects the change and sends navigation state to parent
+   - Navigation state includes semantic path, back/forward capability, and history tracking
+   - Parent can display current semantic path and enable proper back/forward navigation controls
+
+6. **Content Replacement:**
    - Main thread requests `/` from parent via JSON-RPC fetch
    - Replaces its own content with the site index
    - Site runs normally, with all requests handled by SW via JSON-RPC
@@ -321,6 +341,13 @@ function handleRequest(fetchRequest) {
 - Verify iframe src points to correct preview domain
 - Check that JSON-RPC messages are properly formatted
 - Ensure iframe has appropriate sandbox permissions
+
+### SPA routes don't work
+
+- Ensure the parent page serves the correct `index.html` for the root path `/`
+- Check that the SPA's client-side router is properly configured
+- Verify that navigation requests are being detected correctly by the ServiceWorker
+- Make sure the parent page returns the same `index.html` content for SPA routes as it does for the root path
 
 ## Development
 

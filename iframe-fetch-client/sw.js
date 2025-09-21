@@ -134,6 +134,26 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  // For SPA routes, check if this is a navigation request (HTML page request)
+  // If it's a navigation request for an SPA route, serve the site's index.html via JSON-RPC
+  if (event.request.mode === "navigate" &&
+      (event.request.headers.get("accept") || "").includes("text/html")) {
+    // This is an SPA route navigation request, serve the site's index.html
+    // Create a new request for the root path to get the site's index.html
+    const rootRequest = new Request("/", {
+      method: "GET",
+      headers: event.request.headers,
+      mode: event.request.mode,
+      credentials: event.request.credentials,
+      cache: event.request.cache,
+      redirect: event.request.redirect,
+      referrer: event.request.referrer,
+      referrerPolicy: event.request.referrerPolicy,
+    });
+    event.respondWith(handleRequest(rootRequest));
+    return;
+  }
+
   // Handle all other requests through JSON-RPC communication
   event.respondWith(handleRequest(event.request));
 });

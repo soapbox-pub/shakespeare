@@ -148,11 +148,194 @@ class ConsoleInterceptor {
   }
 }
 
+// Navigation Handler - manages iframe navigation and history
+class NavigationHandler {
+  constructor() {
+    this.historyIndex = 0; // Track current position in history
+    this.historyLength = 1; // Track total history length
+    this.currentSemanticPath = '/'; // Always start with root path for SPAs
+    this.setupMessageListener();
+    this.setupHistoryListeners();
+    this.overrideHistoryMethods();
+    this.updateNavigationState();
+  }
+
+  setupMessageListener() {
+    window.addEventListener("message", (event) => {
+      const message = event.data;
+      if (message.jsonrpc === "2.0") {
+        switch (message.method) {
+          case "navigate":
+            this.handleNavigate(message.params.url);
+            break;
+          case "refresh":
+            this.handleRefresh();
+            break;
+          case "goBack":
+            this.handleGoBack();
+            break;
+          case "goForward":
+            this.handleGoForward();
+            break;
+        }
+      }
+    });
+  }
+
+  setupHistoryListeners() {
+    // Listen for popstate events (back/forward navigation)
+    window.addEventListener('popstate', (event) => {
+      // When user goes back, we need to update our tracking
+      // The state object can help us determine our position
+      if (event.state !== null) {
+        // If there's state, we assume we're navigating within our app
+        this.historyIndex = Math.max(0, this.historyIndex - 1);
+      } else {
+        // If no state, we might be going back to the initial page
+        this.historyIndex = 0;
+      }
+      this.updateNavigationState();
+    });
+
+    // Listen for hash changes
+    window.addEventListener('hashchange', () => {
+      this.updateNavigationState();
+    });
+  }
+
+  overrideHistoryMethods() {
+    // Override history.pushState and history.replaceState to detect SPA navigation
+    this.originalPushState = window.history.pushState;
+    this.originalReplaceState = window.history.replaceState;
+
+    window.history.pushState = (...args) => {
+      const result = this.originalPushState.apply(window.history, args);
+
+      // Extract semantic path from the URL argument or current location
+      let semanticPath;
+      if (args[2] && typeof args[2] === 'string') {
+        // If URL is provided as third argument, use it
+        try {
+          const url = new URL(args[2], window.location.origin);
+          semanticPath = url.pathname + url.search + url.hash;
+        } catch {
+          semanticPath = window.location.pathname + window.location.search + window.location.hash;
+        }
+      } else {
+        // Otherwise use current location
+        semanticPath = window.location.pathname + window.location.search + window.location.hash;
+      }
+
+      // When pushState is called, we're adding a new history entry
+      this.historyIndex++;
+      this.historyLength = this.historyIndex + 1;
+      this.currentSemanticPath = semanticPath;
+      this.updateNavigationState();
+      return result;
+    };
+
+    window.history.replaceState = (...args) => {
+      const result = this.originalReplaceState.apply(window.history, args);
+
+      // Extract semantic path for replaceState as well
+      let semanticPath;
+      if (args[2] && typeof args[2] === 'string') {
+        try {
+          const url = new URL(args[2], window.location.origin);
+          semanticPath = url.pathname + url.search + url.hash;
+        } catch {
+          semanticPath = window.location.pathname + window.location.search + window.location.hash;
+        }
+      } else {
+        semanticPath = window.location.pathname + window.location.search + window.location.hash;
+      }
+
+      // replaceState doesn't change history length, just updates current entry
+      this.currentSemanticPath = semanticPath;
+      this.updateNavigationState();
+      return result;
+    };
+  }
+
+  handleNavigate(url) {
+    try {
+      // Validate URL - must be same origin
+      const targetUrl = new URL(url, window.location.origin);
+      if (targetUrl.origin !== window.location.origin) {
+        console.error('Navigation to different origin not allowed:', url);
+        return;
+      }
+
+      // Extract the semantic path (pathname + search + hash)
+      const semanticPath = targetUrl.pathname + targetUrl.search + targetUrl.hash;
+
+      // IMPORTANT: Don't change the iframe's actual URL - keep it on the base path
+      // Only communicate the semantic path to the parent for display
+      // The SPA's router will handle the navigation internally
+
+      // Update our navigation state to reflect the semantic path
+      this.currentSemanticPath = semanticPath;
+
+      // Immediately send navigation state update to parent
+      this.updateNavigationState();
+
+      // Dispatch a custom event to notify the SPA of the navigation intent
+      // SPAs can listen for this event and trigger their own navigation
+      window.dispatchEvent(new CustomEvent('spa-navigate', {
+        detail: { path: semanticPath }
+      }));
+
+    } catch (error) {
+      console.error('Invalid navigation URL:', url, error);
+    }
+  }
+
+  handleRefresh() {
+    window.location.reload();
+  }
+
+  handleGoBack() {
+    if (this.historyIndex > 0) {
+      window.history.back();
+    }
+  }
+
+  handleGoForward() {
+    if (this.historyIndex < this.historyLength - 1) {
+      window.history.forward();
+    }
+  }
+
+  updateNavigationState() {
+    // Use tracked semantic path instead of window.location
+    // This allows iframe to stay on base URL while showing semantic paths
+    const semanticPath = this.currentSemanticPath || (window.location.pathname + window.location.search + window.location.hash);
+
+    const state = {
+      currentUrl: semanticPath,
+      canGoBack: this.historyIndex > 0,
+      canGoForward: this.historyIndex < this.historyLength - 1
+    };
+
+    // Send navigation state to parent
+    try {
+      window.parent.postMessage({
+        jsonrpc: "2.0",
+        method: "updateNavigationState",
+        params: state
+      }, "*");
+    } catch (error) {
+      console.error('Failed to send navigation state:', error);
+    }
+  }
+}
+
 // Main Fetch Client
 class FetchClient {
   constructor() {
     this.rpcClient = new JSONRPCClient();
     this.consoleInterceptor = new ConsoleInterceptor();
+    this.navigationHandler = new NavigationHandler();
     this.init();
   }
 

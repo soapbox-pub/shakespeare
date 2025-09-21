@@ -129,7 +129,8 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
     }
   }, [projectId, projectsManager]);
 
-  const refreshIframe = useCallback(() => {
+  // Legacy refresh function for build completion events
+  const refreshIframeLegacy = useCallback(() => {
     if (iframeRef.current) {
       // Force reload the iframe by updating its src
       const currentSrc = iframeRef.current.src;
@@ -142,51 +143,6 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
       }, 10);
     }
   }, []);
-
-  const navigateToPath = useCallback((path: string) => {
-    if (iframeRef.current) {
-      const baseUrl = `https://${projectId}.${IFRAME_DOMAIN}`;
-      const newUrl = `${baseUrl}${path}`;
-      iframeRef.current.src = newUrl;
-      setCurrentPath(path);
-
-      // Update navigation history
-      const newHistory = navigationHistory.slice(0, historyIndex + 1);
-      newHistory.push(path);
-      setNavigationHistory(newHistory);
-      setHistoryIndex(newHistory.length - 1);
-    }
-  }, [projectId, navigationHistory, historyIndex]);
-
-  const goBack = useCallback(() => {
-    if (historyIndex > 0) {
-      const newIndex = historyIndex - 1;
-      const path = navigationHistory[newIndex];
-      setHistoryIndex(newIndex);
-      setCurrentPath(path);
-
-      if (iframeRef.current) {
-        const baseUrl = `https://${projectId}.${IFRAME_DOMAIN}`;
-        const newUrl = `${baseUrl}${path}`;
-        iframeRef.current.src = newUrl;
-      }
-    }
-  }, [historyIndex, navigationHistory, projectId]);
-
-  const goForward = useCallback(() => {
-    if (historyIndex < navigationHistory.length - 1) {
-      const newIndex = historyIndex + 1;
-      const path = navigationHistory[newIndex];
-      setHistoryIndex(newIndex);
-      setCurrentPath(path);
-
-      if (iframeRef.current) {
-        const baseUrl = `https://${projectId}.${IFRAME_DOMAIN}`;
-        const newUrl = `${baseUrl}${path}`;
-        iframeRef.current.src = newUrl;
-      }
-    }
-  }, [historyIndex, navigationHistory, projectId]);
 
   const sendResponse = useCallback((message: JSONRPCResponse) => {
     if (iframeRef.current?.contentWindow) {
@@ -230,6 +186,66 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
     // Log to parent console for debugging with appropriate level
     console[normalizedLevel](`[IFRAME ${params.level.toUpperCase()}] ${params.message}`);
   }, []);
+
+  const handleUpdateNavigationState = useCallback((message: {
+    jsonrpc: '2.0';
+    method: 'updateNavigationState';
+    params: {
+      currentUrl: string;
+      canGoBack: boolean;
+      canGoForward: boolean;
+    };
+  }) => {
+    const { params } = message;
+
+    try {
+      const url = new URL(params.currentUrl);
+      const path = url.pathname + url.search + url.hash;
+
+      setCurrentPath(path);
+
+      // Update navigation history if this is a new navigation
+      if (path !== navigationHistory[historyIndex]) {
+        const newHistory = navigationHistory.slice(0, historyIndex + 1);
+        newHistory.push(path);
+        setNavigationHistory(newHistory);
+        setHistoryIndex(newHistory.length - 1);
+      }
+    } catch (error) {
+      console.error('Failed to parse navigation URL:', params.currentUrl, error);
+    }
+  }, [historyIndex, navigationHistory]);
+
+  const sendNavigationCommand = useCallback((method: string, params?: Record<string, unknown>) => {
+    if (iframeRef.current?.contentWindow) {
+      const message = {
+        jsonrpc: '2.0',
+        method,
+        params: params || {},
+        id: Date.now()
+      };
+      const targetOrigin = `https://${projectId}.${IFRAME_DOMAIN}`;
+      iframeRef.current.contentWindow.postMessage(message, targetOrigin);
+    }
+  }, [projectId]);
+
+  const navigateIframe = useCallback((url: string) => {
+    // Convert path to full URL
+    const fullUrl = `https://${projectId}.${IFRAME_DOMAIN}${url}`;
+    sendNavigationCommand('navigate', { url: fullUrl });
+  }, [projectId, sendNavigationCommand]);
+
+  const refreshIframe = useCallback(() => {
+    sendNavigationCommand('refresh');
+  }, [sendNavigationCommand]);
+
+  const goBackIframe = useCallback(() => {
+    sendNavigationCommand('goBack');
+  }, [sendNavigationCommand]);
+
+  const goForwardIframe = useCallback(() => {
+    sendNavigationCommand('goForward');
+  }, [sendNavigationCommand]);
 
   const handleFetch = useCallback(async (request: JSONRPCRequest) => {
     const { params, id } = request;
@@ -348,12 +364,14 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
         handleFetch(message);
       } else if (message.jsonrpc === '2.0' && message.method === 'console') {
         handleConsoleMessage(message);
+      } else if (message.jsonrpc === '2.0' && message.method === 'updateNavigationState') {
+        handleUpdateNavigationState(message);
       }
     };
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [handleFetch, handleConsoleMessage, projectId]);
+  }, [handleFetch, handleConsoleMessage, handleUpdateNavigationState, projectId]);
 
   useEffect(() => {
     if (selectedFile) {
@@ -372,13 +390,13 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
         console.log('Build completed for project, refreshing preview');
         // Check for built project and refresh iframe
         checkForBuiltProject();
-        refreshIframe();
+        refreshIframeLegacy();
       }
     };
 
     window.addEventListener('buildComplete', handleBuildComplete as EventListener);
     return () => window.removeEventListener('buildComplete', handleBuildComplete as EventListener);
-  }, [projectId, checkForBuiltProject, refreshIframe]);
+  }, [projectId, checkForBuiltProject, refreshIframeLegacy]);
 
   const handleFileSelect = (filePath: string) => {
     setSelectedFile(filePath);
@@ -503,10 +521,10 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
               <div className="flex items-center border-b w-full">
                 <BrowserAddressBar
                   currentPath={currentPath}
-                  onNavigate={navigateToPath}
+                  onNavigate={navigateIframe}
                   onRefresh={refreshIframe}
-                  onBack={goBack}
-                  onForward={goForward}
+                  onBack={goBackIframe}
+                  onForward={goForwardIframe}
                   canGoBack={historyIndex > 0}
                   canGoForward={historyIndex < navigationHistory.length - 1}
                   extraContent={<ConsoleDropdown />}
@@ -517,7 +535,7 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
                 src={`https://${projectId}.${IFRAME_DOMAIN}${currentPath}`}
                 className="w-full flex-1 border-0"
                 title="Project Preview"
-                sandbox="allow-scripts allow-same-origin"
+                sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-top-navigation"
               />
             </div>
           ) : (

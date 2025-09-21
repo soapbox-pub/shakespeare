@@ -146,7 +146,7 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
 
   const sendResponse = useCallback((message: JSONRPCResponse) => {
     if (iframeRef.current?.contentWindow) {
-      console.log(`Sending response to iframe:`, message);
+
       const targetOrigin = `https://${projectId}.${IFRAME_DOMAIN}`;
       iframeRef.current.contentWindow.postMessage(message, targetOrigin);
     }
@@ -272,7 +272,7 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
     const { params, id } = request;
     const { request: fetchRequest } = params;
 
-    console.log(`Preview iframe requesting: ${fetchRequest.url}`);
+
 
     try {
       // Parse the URL and validate origin
@@ -318,12 +318,11 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
           id
         });
         return;
-      } catch (error) {
-        console.log(`File not found: ${filePath}, error: ${error.message}`);
+      } catch {
 
         // For static assets, return 404 immediately
         if (isStaticAsset) {
-          console.log(`Static asset not found: ${filePath}, returning 404`);
+
           sendResponse({
             jsonrpc: '2.0',
             result: {
@@ -340,7 +339,7 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
         }
 
         // For non-static assets, try SPA fallback to index.html
-        console.log(`Trying SPA fallback to index.html for: ${path}`);
+
       }
 
       // SPA fallback: serve index.html for non-file requests (SPA routing)
@@ -363,7 +362,7 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
         });
       } catch {
         // Even index.html doesn't exist
-        console.log(`No index.html found, returning 404 for: ${path}`);
+
 
         sendResponse({
           jsonrpc: '2.0',

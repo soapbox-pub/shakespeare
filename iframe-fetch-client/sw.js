@@ -133,24 +133,18 @@ async function requestViaJSONRPC(request) {
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
 
-  // Debug logging for fetch interception
-  console.log("ServiceWorker fetch:", url.pathname);
-
   // Ignore requests to other origins
   if (url.origin !== location.origin) {
-    console.log("Ignoring different origin:", url.origin);
     return;
   }
 
   // Let iframe client system files be handled normally
   if (url.pathname.startsWith("/_") || url.pathname === "/sw.js") {
-    console.log("Serving iframe client system file:", url.pathname);
     return;
   }
 
   // Let root path be handled normally (loads the iframe client page)
   if (url.pathname === "/") {
-    console.log("Serving root path (iframe client)");
     return;
   }
 
@@ -158,11 +152,8 @@ self.addEventListener("fetch", (event) => {
   if (url.pathname.startsWith("/_iframe-client/") ||
       url.pathname === "/favicon.ico" ||
       url.pathname === "/manifest.webmanifest") {
-    console.log("Serving iframe client asset:", url.pathname);
     return;
   }
-
-  console.log("Intercepting request for project:", url.pathname);
 
   // For SPA routes, check if this is a navigation request (HTML page request)
   // But first check if we need to load the iframe client (this happens during refresh)
@@ -172,8 +163,6 @@ self.addEventListener("fetch", (event) => {
     // Check if this is a request for the iframe client itself
     // We need to serve the iframe client HTML first, which will then load the SPA
     if (url.pathname !== "/") {
-      console.log("Navigation request to non-root path, redirecting to iframe client first");
-
       // Redirect to root to load the iframe client, which will then navigate to the target path
       const response = Response.redirect(new URL("/", event.request.url).href, 302);
       event.respondWith(response);

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
@@ -29,6 +29,11 @@ export function BrowserAddressBar({
   extraContent,
 }: BrowserAddressBarProps) {
   const [inputValue, setInputValue] = useState(currentPath);
+
+  // Update input value when currentPath changes (e.g., when iframe navigates)
+  useEffect(() => {
+    setInputValue(currentPath);
+  }, [currentPath]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

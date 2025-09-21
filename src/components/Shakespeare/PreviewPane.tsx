@@ -199,12 +199,13 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
     const { params } = message;
 
     try {
-      const url = new URL(params.currentUrl);
-      const path = url.pathname + url.search + url.hash;
+      // params.currentUrl is now just a semantic path (e.g., "/about", "/contact?param=value#section")
+      const path = params.currentUrl;
 
       setCurrentPath(path);
 
       // Update navigation history if this is a new navigation
+      // But only if it's different from current path (avoid duplicates)
       if (path !== navigationHistory[historyIndex]) {
         const newHistory = navigationHistory.slice(0, historyIndex + 1);
         newHistory.push(path);
@@ -212,7 +213,7 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
         setHistoryIndex(newHistory.length - 1);
       }
     } catch (error) {
-      console.error('Failed to parse navigation URL:', params.currentUrl, error);
+      console.error('Failed to handle navigation state:', params.currentUrl, error);
     }
   }, [historyIndex, navigationHistory]);
 
@@ -230,22 +231,42 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
   }, [projectId]);
 
   const navigateIframe = useCallback((url: string) => {
-    // Convert path to full URL
-    const fullUrl = `https://${projectId}.${IFRAME_DOMAIN}${url}`;
-    sendNavigationCommand('navigate', { url: fullUrl });
-  }, [projectId, sendNavigationCommand]);
+    // Send semantic path directly (e.g., "/about", "/contact")
+    // The iframe's NavigationHandler will handle this as semantic navigation
+    sendNavigationCommand('navigate', { url });
+  }, [sendNavigationCommand]);
 
   const refreshIframe = useCallback(() => {
     sendNavigationCommand('refresh');
   }, [sendNavigationCommand]);
 
   const goBackIframe = useCallback(() => {
-    sendNavigationCommand('goBack');
-  }, [sendNavigationCommand]);
+    if (historyIndex > 0) {
+      // Move back in history
+      const newIndex = historyIndex - 1;
+      const targetPath = navigationHistory[newIndex];
+
+      setHistoryIndex(newIndex);
+      setCurrentPath(targetPath);
+
+      // Tell iframe to navigate to this path
+      sendNavigationCommand('navigate', { url: targetPath });
+    }
+  }, [historyIndex, navigationHistory, sendNavigationCommand]);
 
   const goForwardIframe = useCallback(() => {
-    sendNavigationCommand('goForward');
-  }, [sendNavigationCommand]);
+    if (historyIndex < navigationHistory.length - 1) {
+      // Move forward in history
+      const newIndex = historyIndex + 1;
+      const targetPath = navigationHistory[newIndex];
+
+      setHistoryIndex(newIndex);
+      setCurrentPath(targetPath);
+
+      // Tell iframe to navigate to this path
+      sendNavigationCommand('navigate', { url: targetPath });
+    }
+  }, [historyIndex, navigationHistory, sendNavigationCommand]);
 
   const handleFetch = useCallback(async (request: JSONRPCRequest) => {
     const { params, id } = request;
@@ -275,6 +296,9 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
       const path = url.pathname;
       const filePath = path;
 
+      // Skip SPA fallback for static assets (files with extensions)
+      const isStaticAsset = /\.[a-zA-Z0-9]+$/.test(path);
+
       // SPA routing: try to serve the exact file first
       try {
         const bytes = await projectsManager.readFileBytes(projectId, 'dist' + filePath);
@@ -294,12 +318,32 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
           id
         });
         return;
-      } catch {
-        // File not found, try SPA fallback to index.html
-        console.log(`File not found: ${filePath}, trying index.html fallback`);
+      } catch (error) {
+        console.log(`File not found: ${filePath}, error: ${error.message}`);
+
+        // For static assets, return 404 immediately
+        if (isStaticAsset) {
+          console.log(`Static asset not found: ${filePath}, returning 404`);
+          sendResponse({
+            jsonrpc: '2.0',
+            result: {
+              status: 404,
+              statusText: 'Not Found',
+              headers: {
+                'Content-Type': 'text/plain',
+              },
+              body: encodeBase64(`Static asset not found: ${path}`),
+            },
+            id
+          });
+          return;
+        }
+
+        // For non-static assets, try SPA fallback to index.html
+        console.log(`Trying SPA fallback to index.html for: ${path}`);
       }
 
-      // SPA fallback: serve index.html for non-file requests
+      // SPA fallback: serve index.html for non-file requests (SPA routing)
       try {
         const bytes = await projectsManager.readFileBytes(projectId, 'dist/index.html');
         console.log(`Serving index.html fallback for: ${path}`);
@@ -319,7 +363,7 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
         });
       } catch {
         // Even index.html doesn't exist
-        console.log(`No files found, returning 404 for: ${path}`);
+        console.log(`No index.html found, returning 404 for: ${path}`);
 
         sendResponse({
           jsonrpc: '2.0',
@@ -532,7 +576,7 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
               </div>
               <iframe
                 ref={iframeRef}
-                src={`https://${projectId}.${IFRAME_DOMAIN}${currentPath}`}
+                src={`https://${projectId}.${IFRAME_DOMAIN}/`}
                 className="w-full flex-1 border-0"
                 title="Project Preview"
                 sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-top-navigation"

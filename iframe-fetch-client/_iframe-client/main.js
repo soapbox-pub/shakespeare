@@ -185,20 +185,16 @@ class NavigationHandler {
   setupHistoryListeners() {
     // Listen for popstate events (back/forward navigation)
     window.addEventListener('popstate', (event) => {
-      // When user goes back, we need to update our tracking
+      // When user navigates (back or forward), we need to update our tracking
       // The state object can help us determine our position
-      if (event.state !== null) {
-        // If there's state, we assume we're navigating within our app
-        this.historyIndex = Math.max(0, this.historyIndex - 1);
-      } else {
-        // If no state, we might be going back to the initial page
-        this.historyIndex = 0;
-      }
+      // Update current semantic path based on actual URL
+      this.currentSemanticPath = window.location.pathname + window.location.search + window.location.hash;
       this.updateNavigationState();
     });
 
     // Listen for hash changes
     window.addEventListener('hashchange', () => {
+      this.currentSemanticPath = window.location.pathname + window.location.search + window.location.hash;
       this.updateNavigationState();
     });
   }
@@ -226,9 +222,7 @@ class NavigationHandler {
         semanticPath = window.location.pathname + window.location.search + window.location.hash;
       }
 
-      // When pushState is called, we're adding a new history entry
-      this.historyIndex++;
-      this.historyLength = this.historyIndex + 1;
+      // pushState was called, update semantic path
       this.currentSemanticPath = semanticPath;
       this.updateNavigationState();
       return result;
@@ -250,7 +244,7 @@ class NavigationHandler {
         semanticPath = window.location.pathname + window.location.search + window.location.hash;
       }
 
-      // replaceState doesn't change history length, just updates current entry
+      // replaceState was called, update semantic path
       this.currentSemanticPath = semanticPath;
       this.updateNavigationState();
       return result;
@@ -269,21 +263,22 @@ class NavigationHandler {
       // Extract the semantic path (pathname + search + hash)
       const semanticPath = targetUrl.pathname + targetUrl.search + targetUrl.hash;
 
-      // IMPORTANT: Don't change the iframe's actual URL - keep it on the base path
-      // Only communicate the semantic path to the parent for display
+      // Use browser's history API to trigger SPA navigation
+      // This triggers SPA router navigation the semantic path to the parent for display
       // The SPA's router will handle the navigation internally
 
-      // Update our navigation state to reflect the semantic path
+      // Use history.pushState to trigger SPA navigation
       this.currentSemanticPath = semanticPath;
-
-      // Immediately send navigation state update to parent
       this.updateNavigationState();
 
-      // Dispatch a custom event to notify the SPA of the navigation intent
-      // SPAs can listen for this event and trigger their own navigation
-      window.dispatchEvent(new CustomEvent('spa-navigate', {
-        detail: { path: semanticPath }
-      }));
+      // Use browser's history.pushState to trigger SPA navigation the SPA of the navigation intent
+      // This is what most SPAs (React Router, Vue Router, etc.) listen for
+      window.history.pushState({}, '', semanticPath);
+      
+      // URL change - Many SPAs listen for popstate events
+      window.dispatchEvent(new PopStateEvent('popstate', { state: {} }));
+      
+      // Update navigation state to parent
 
     } catch (error) {
       console.error('Invalid navigation URL:', url, error);
@@ -291,7 +286,9 @@ class NavigationHandler {
   }
 
   handleRefresh() {
-    window.location.reload();
+    // Reload the iframe by going back to base URL and then reloading
+    // This prevents trying to fetch non-existent SPA routes
+    window.location.replace('/');
   }
 
   handleGoBack() {
@@ -313,8 +310,8 @@ class NavigationHandler {
 
     const state = {
       currentUrl: semanticPath,
-      canGoBack: this.historyIndex > 0,
-      canGoForward: this.historyIndex < this.historyLength - 1
+      canGoBack: false, // Let parent handle history tracking
+      canGoForward: false // Let parent handle history tracking
     };
 
     // Send navigation state to parent

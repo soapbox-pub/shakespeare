@@ -646,6 +646,13 @@ export class Git {
           )
         ]);
 
+        // After successful clone, update the origin remote to point to the Nostr URI
+        await this.setRemoteURL({
+          dir: originalOptions.dir,
+          remote: 'origin',
+          url: originalOptions.url,
+        });
+
         return; // Success!
       } catch (error) {
         console.warn(`Failed to clone from ${cloneUrl}:`, error);
@@ -656,5 +663,22 @@ export class Git {
 
     // If we get here, all clone attempts failed
     throw lastError || new Error('All clone attempts failed');
+  }
+
+  async setRemoteURL(options: { dir: string; remote: string; url: string }): Promise<void> {
+    // Remove the existing remote
+    await git.deleteRemote({
+      fs: this.fs,
+      dir: options.dir,
+      remote: options.remote,
+    });
+
+    // Add the remote with the new URL
+    await git.addRemote({
+      fs: this.fs,
+      dir: options.dir,
+      remote: options.remote,
+      url: options.url,
+    });
   }
 }

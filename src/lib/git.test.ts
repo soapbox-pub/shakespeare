@@ -3,10 +3,21 @@ import { Git } from './git';
 import git from 'isomorphic-git';
 import type { NPool } from '@nostrify/nostrify';
 import type { JSRuntimeFS } from './JSRuntime';
+import { nip19 } from 'nostr-tools';
 
 // Mock isomorphic-git
 vi.mock('isomorphic-git');
 vi.mock('isomorphic-git/http/web');
+vi.mock('nostr-tools', () => ({
+  nip19: {
+    decode: vi.fn(),
+  },
+}));
+vi.mock('@nostrify/nostrify', () => ({
+  NIP05: {
+    lookup: vi.fn(),
+  },
+}));
 
 const mockGit = vi.mocked(git);
 
@@ -171,6 +182,122 @@ describe('Git', () => {
         corsProxy: 'https://cors.example.com',
         dir: '/test',
         url: 'https://gitlab.com/user/repo.git',
+      });
+    });
+  });
+
+  describe('Nostr URI cloning', () => {
+    beforeEach(() => {
+      mockGit.clone = vi.fn().mockResolvedValue(undefined);
+      mockGit.deleteRemote = vi.fn().mockResolvedValue(undefined);
+      mockGit.addRemote = vi.fn().mockResolvedValue(undefined);
+
+      // Mock nip19 decode
+      vi.mocked(nip19.decode).mockReturnValue({
+        type: 'npub',
+        data: 'abcd1234567890abcdef1234567890abcdef1234567890abcdef1234567890ab'
+      });
+
+      // Mock Nostr query to return a repository event
+      const mockRelay = {
+        query: vi.fn().mockResolvedValue([{
+          id: 'event123',
+          pubkey: 'abcd1234567890abcdef1234567890abcdef1234567890abcdef1234567890ab',
+          kind: 30617,
+          content: '',
+          tags: [
+            ['d', 'my-repo'],
+            ['clone', 'https://github.com/user/repo.git'],
+            ['clone', 'https://gitlab.com/user/repo.git']
+          ],
+          created_at: Date.now(),
+          sig: 'signature'
+        }])
+      };
+
+      nostr.group = vi.fn().mockReturnValue(mockRelay);
+      nostr.relay = vi.fn().mockReturnValue(mockRelay);
+    });
+
+    it('successfully clones from Nostr URI and updates origin remote', async () => {
+      const nostrUrl = 'nostr://npub1abc123/my-repo';
+
+      await gitInstance.clone({
+        dir: '/test',
+        url: nostrUrl,
+      });
+
+      // Should attempt to clone from the first URL
+      expect(mockGit.clone).toHaveBeenCalledWith({
+        fs,
+        http: expect.any(Object),
+        corsProxy: 'https://cors.example.com',
+        dir: '/test',
+        url: 'https://github.com/user/repo.git',
+      });
+
+      // Should delete the existing origin remote
+      expect(mockGit.deleteRemote).toHaveBeenCalledWith({
+        fs,
+        dir: '/test',
+        remote: 'origin',
+      });
+
+      // Should add the Nostr URI as the new origin
+      expect(mockGit.addRemote).toHaveBeenCalledWith({
+        fs,
+        dir: '/test',
+        remote: 'origin',
+        url: nostrUrl,
+      });
+    });
+  });
+
+  describe('setRemoteURL', () => {
+    beforeEach(() => {
+      mockGit.deleteRemote = vi.fn().mockResolvedValue(undefined);
+      mockGit.addRemote = vi.fn().mockResolvedValue(undefined);
+    });
+
+    it('updates remote URL by deleting and re-adding remote', async () => {
+      await gitInstance.setRemoteURL({
+        dir: '/test',
+        remote: 'origin',
+        url: 'https://new-repo.com/user/repo.git',
+      });
+
+      expect(mockGit.deleteRemote).toHaveBeenCalledWith({
+        fs,
+        dir: '/test',
+        remote: 'origin',
+      });
+
+      expect(mockGit.addRemote).toHaveBeenCalledWith({
+        fs,
+        dir: '/test',
+        remote: 'origin',
+        url: 'https://new-repo.com/user/repo.git',
+      });
+    });
+
+    it('works with any remote name', async () => {
+      await gitInstance.setRemoteURL({
+        dir: '/test',
+        remote: 'upstream',
+        url: 'nostr://npub1abc123/my-repo',
+      });
+
+      expect(mockGit.deleteRemote).toHaveBeenCalledWith({
+        fs,
+        dir: '/test',
+        remote: 'upstream',
+      });
+
+      expect(mockGit.addRemote).toHaveBeenCalledWith({
+        fs,
+        dir: '/test',
+        remote: 'upstream',
+        url: 'nostr://npub1abc123/my-repo',
       });
     });
   });

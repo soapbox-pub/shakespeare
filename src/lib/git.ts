@@ -172,6 +172,11 @@ export class Git {
   }
 
   async getRemoteInfo(options: Omit<Parameters<typeof git.getRemoteInfo>[0], 'http' | 'corsProxy'>) {
+    // Check if the URL is a Nostr URI
+    if (options.url.startsWith('nostr://')) {
+      return this.getNostrRemoteInfo(options.url);
+    }
+
     return git.getRemoteInfo({
       http,
       corsProxy: this.corsProxy,
@@ -555,6 +560,102 @@ export class Git {
   }
 
   // Nostr-specific helper methods
+
+  /**
+   * Get remote info for a Nostr repository URI
+   */
+  private async getNostrRemoteInfo(nostrUrl: string): Promise<{
+    capabilities: string[];
+    refs: Record<string, string>;
+    HEAD?: string;
+  }> {
+    // Parse the Nostr URI
+    const nostrURI = await this.parseNostrCloneURI(nostrUrl);
+    if (!nostrURI) {
+      throw new Error('Invalid Nostr URI format');
+    }
+
+    console.log(`Getting remote info for Nostr repository: ${nostrUrl}`);
+
+    // Fetch the repository announcement and state from Nostr
+    const { repo, state } = await this.fetchNostrRepo(nostrURI, AbortSignal.timeout(10000));
+
+    if (!repo) {
+      throw new Error('Repository announcement not found on Nostr network');
+    }
+
+    // Extract refs from the state event if available
+    const refs: Record<string, string> = {};
+    let HEAD: string | undefined;
+
+    if (state) {
+      const stateInfo = this.extractRepositoryState(state);
+
+      // Add all refs from the state
+      Object.assign(refs, stateInfo.refs);
+
+      // Set HEAD
+      if (stateInfo.HEAD) {
+        HEAD = stateInfo.HEAD;
+      }
+    } else {
+      // No state event, try to get info from the first available clone URL
+      const cloneUrls: string[] = [];
+      for (const [name, value] of repo.tags) {
+        if (name === 'clone') {
+          try {
+            const url = new URL(value);
+            if (url.protocol === 'http:' || url.protocol === 'https:') {
+              cloneUrls.push(url.href);
+            }
+          } catch {
+            // Ignore invalid URLs
+          }
+        }
+      }
+
+      if (cloneUrls.length > 0) {
+        // Try to get remote info from the first clone URL
+        try {
+          const gitRemoteInfo = await git.getRemoteInfo({
+            http,
+            corsProxy: this.corsProxy,
+            url: cloneUrls[0],
+          });
+
+          Object.assign(refs, gitRemoteInfo.refs);
+          HEAD = gitRemoteInfo.HEAD;
+        } catch (error) {
+          console.warn(`Failed to get remote info from ${cloneUrls[0]}:`, error);
+          // Continue with empty refs if we can't get git remote info
+        }
+      }
+    }
+
+    // Nostr repositories support the same capabilities as regular Git repos
+    const capabilities = [
+      'multi_ack',
+      'thin-pack',
+      'side-band',
+      'side-band-64k',
+      'ofs-delta',
+      'shallow',
+      'deepen-since',
+      'deepen-not',
+      'deepen-relative',
+      'no-progress',
+      'include-tag',
+      'multi_ack_detailed',
+      'allow-tip-sha1-in-want',
+      'allow-reachable-sha1-in-want',
+    ];
+
+    return {
+      capabilities,
+      refs,
+      HEAD,
+    };
+  }
 
   /**
    * Get current repository state for creating a NIP-34 repository state event

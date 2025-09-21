@@ -107,7 +107,7 @@ export class ProjectsManager {
 
     await this.fs.mkdir(projectPath);
 
-    // Clone the repository
+    // Clone the repository (Git class now handles Nostr URIs automatically)
     await this.git.clone({
       dir: projectPath,
       url: repoUrl,

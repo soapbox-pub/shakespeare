@@ -31,45 +31,7 @@ export class DotAI {
     return filename;
   }
 
-  /** Check if AI history should be enabled based on the new criteria */
-  async isEnabled(): Promise<boolean> {
-    // Check if .ai directory exists
-    try {
-      const stat = await this.fs.stat(join(this.workingDir, ".ai"));
-      if (stat.isDirectory()) {
-        return true;
-      }
-    } catch {
-      // Continue to next check
-    }
 
-    // Check if .ai/ or .ai is gitignored
-    try {
-      const gitignorePath = join(this.workingDir, ".gitignore");
-      const gitignoreContent = await this.fs.readFile(gitignorePath, "utf8");
-      const lines = gitignoreContent.split("\n").map((line) => line.trim());
-
-      // Check for .ai/ or .ai patterns (ignore comments and empty lines)
-      for (const line of lines) {
-        if (line.startsWith("#") || line === "") {
-          continue;
-        }
-
-        // Check for various .ai patterns
-        if (
-          line === ".ai" || line === ".ai/" || line === "/.ai" ||
-          line === "/.ai/" ||
-          line === ".ai/*" || line === "/.ai/*"
-        ) {
-          return true;
-        }
-      }
-    } catch {
-      // .gitignore doesn't exist or can't be read
-    }
-
-    return false;
-  }
 
   /** Check if the history directory exists */
   async historyDirExists(): Promise<boolean> {
@@ -89,11 +51,7 @@ export class DotAI {
     // Validate messages before saving
     this.validateMessages(messages);
 
-    // Only save if history should be enabled based on the new criteria
-    if (!(await this.isEnabled())) {
-      return;
-    }
-
+    // Always create the .ai directory and write session history
     // Create the history directory if it doesn't exist
     if (!(await this.historyDirExists())) {
       await this.setupAiHistoryDir();
@@ -205,6 +163,9 @@ export class DotAI {
       // Ensure .ai directory exists
       await this.fs.mkdir(aiDir, { recursive: true });
 
+      // Ensure .ai/ is gitignored
+      await this.ensureAiGitignored();
+
       // Write the model
       await this.fs.writeFile(modelPath, model.trim() + "\n");
     } catch (error) {
@@ -245,19 +206,15 @@ export class DotAI {
    * Write parameters to .ai/PARAMETERS file
    */
   async writeAiParameters(parameters: Record<string, string>): Promise<void> {
-    // Check if we should create the .ai directory based on the same logic as MODEL
-    const shouldCreate = await this.isEnabled();
-
-    if (!shouldCreate) {
-      return;
-    }
-
     const aiDir = join(this.workingDir, ".ai");
     const parametersPath = join(aiDir, "PARAMETERS");
 
     try {
       // Ensure .ai directory exists
       await this.fs.mkdir(aiDir, { recursive: true });
+
+      // Ensure .ai/ is gitignored
+      await this.ensureAiGitignored();
 
       // Format parameters as key=value pairs
       const lines = Object.entries(parameters).map(([key, value]) =>
@@ -290,8 +247,8 @@ export class DotAI {
     sessionName: string;
   } | null> {
     try {
-      // Check if AI history is enabled for this project
-      if (!(await this.isEnabled()) || !(await this.historyDirExists())) {
+      // Check if history directory exists
+      if (!(await this.historyDirExists())) {
         return null;
       }
 

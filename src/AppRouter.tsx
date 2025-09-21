@@ -24,7 +24,6 @@ export function AppRouter() {
       <SessionMonitor />
       <Routes>
         <Route path="/" element={<Index />} />
-        <Route path="/about" element={<AboutSettings />} />
         <Route path="/clone" element={<Clone />} />
         <Route path="/oauth/github" element={<GitHubOAuth />} />
         <Route path="/settings" element={<SettingsLayout />}>

@@ -348,6 +348,7 @@ function handleRequest(fetchRequest) {
 - Check that the SPA's client-side router is properly configured
 - Verify that navigation requests are being detected correctly by the ServiceWorker
 - Make sure the parent page returns the same `index.html` content for SPA routes as it does for the root path
+- **Important**: iframe should stay on base URL (`/`) while semantic paths are communicated to parent. If you see literal path navigation (iframe URL changing to `/about`), this indicates a configuration issue.
 
 ## Development
 

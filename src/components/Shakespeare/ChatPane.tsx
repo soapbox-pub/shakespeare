@@ -41,33 +41,14 @@ import { assistantContentEmpty } from '@/lib/ai-messages';
 import { saveFileToTmp } from '@/lib/fileUtils';
 import { useGit } from '@/hooks/useGit';
 import { useConsoleErrorAlert, useAIModelErrorAlert } from '@/hooks/useErrorDetection';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { QuillySVG } from '@/components/ui/QuillySVG';
 
-const ALERT_TYPE = {
-  WARN: 'warn',
-  ERROR: 'error',
-  CONSOLE_ERROR: 'console_error'
-} as const;
-
-type AlertType = typeof ALERT_TYPE[keyof typeof ALERT_TYPE];
-
-interface ChatAlert {
-  type: AlertType;
-  message: string;
-  action?: {
-    label: string;
-    onClick: () => void;
-  };
-}
 
 function ChatIntervention({
-  type,
   message,
   onDismiss,
   action
 }: {
-  type: string;
   message: string;
   onDismiss: () => void;
   action?: { label: string; onClick: () => void };
@@ -281,11 +262,11 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   }, [internalIsLoading, onLoadingChange]);
 
   // Function to scroll to bottom
-  const scrollToBottom = () => {
+  const scrollToBottom = useCallback(() => {
     if (scrollAreaRef.current) {
       scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
     }
-  };
+  }, []);
 
   // Function to open model selector dropdown
   const openModelSelector = useCallback(() => {
@@ -388,7 +369,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
 
       return () => clearTimeout(timer);
     }
-  }, [projectId, scrolledProjects]);
+  }, [projectId, scrolledProjects, scrollToBottom]);
 
   const handleFileSelect = (file: File) => {
     setAttachedFiles(prev => [...prev, file]);
@@ -660,7 +641,6 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
           {/* AI Model Alert */}
           {aiModelAlert.hasError && (
             <ChatIntervention
-              type={aiModelAlert.errorType || 'error'}
               message={aiModelAlert.errorMessage || ''}
               onDismiss={aiModelAlert.dismiss}
               action={aiModelAlert.action}
@@ -670,7 +650,6 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
           {/* Console Error Alert */}
           {consoleAlert.hasError && (
             <ChatIntervention
-              type="error"
               message={`Console ${consoleAlert.errorCount === 1 ? 'error' : 'errors'} detected in your app. Would you like me to help fix ${consoleAlert.errorCount === 1 ? 'it' : 'them'}?`}
               onDismiss={consoleAlert.dismiss}
               action={{

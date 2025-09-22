@@ -9,7 +9,7 @@ export interface ConsoleMessage {
 
 // Global state for console messages
 let globalConsoleMessages: ConsoleMessage[] = [];
-let listeners: Set<(messages: ConsoleMessage[]) => void> = new Set();
+const listeners: Set<(messages: ConsoleMessage[]) => void> = new Set();
 
 const notifyListeners = () => {
 	listeners.forEach(listener => listener([...globalConsoleMessages]));

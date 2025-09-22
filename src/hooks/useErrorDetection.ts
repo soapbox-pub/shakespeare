@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo } from 'react';
+import OpenAI from 'openai';
 import { useConsoleMessages } from './useConsoleMessages';
 
 export interface ConsoleErrorAlert {
@@ -52,7 +53,7 @@ export interface AIModelErrorAlert {
 }
 
 export const useAIModelErrorAlert = (
-	messages: any[],
+	messages: OpenAI.Chat.Completions.ChatCompletionMessage[],
 	onNewChat?: () => void,
 	onChangeModel?: () => void
 ): AIModelErrorAlert => {

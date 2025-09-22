@@ -7,7 +7,7 @@ import { useBuildProject } from '@/hooks/useBuildProject';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { FolderOpen, ArrowLeft, X, Bug, Copy, Check, Play, Loader2, MenuIcon } from 'lucide-react';
+import { FolderOpen, ArrowLeft, X, Bug, Copy, Check, Play, Loader2, MenuIcon, Code } from 'lucide-react';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { GitStatusIndicator } from '@/components/GitStatusIndicator';
 import { BrowserAddressBar } from '@/components/ui/browser-address-bar';
@@ -27,6 +27,7 @@ const IFRAME_DOMAIN = import.meta.env.VITE_IFRAME_DOMAIN || 'local-shakespeare.d
 interface PreviewPaneProps {
   projectId: string;
   activeTab: 'preview' | 'code';
+  onToggleView?: () => void;
 }
 
 interface JSONRPCRequest {
@@ -65,7 +66,7 @@ interface ConsoleMessage {
   message: string;
 }
 
-export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
+export function PreviewPane({ projectId, activeTab, onToggleView }: PreviewPaneProps) {
   const { t } = useTranslation();
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [fileContent, setFileContent] = useState<string>('');
@@ -518,6 +519,15 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48">
+          {(!isMobile && onToggleView) && (
+            <DropdownMenuItem
+              onClick={onToggleView}
+              className="gap-2"
+            >
+              <Code className="h-4 w-4" />
+              View Code
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem
             onClick={handleBuildProject}
             disabled={isBuildLoading}
@@ -541,7 +551,7 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
         <TabsContent value="preview" className="h-full mt-0">
           {hasBuiltProject ? (
             <div className="h-full w-full flex flex-col relative">
-              <div className="flex items-center border-b w-full">
+              <div className="h-12 flex items-center w-full">
                 <BrowserAddressBar
                   currentPath={currentPath}
                   onNavigate={navigateToPath}
@@ -666,38 +676,57 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
               )}
             </div>
           ) : (
-            <div className="h-full flex">
-              <div className="w-1/3 border-r">
-                <ScrollArea className="h-[calc(100%-60px)]">
-                  <ScrollBar orientation="horizontal" />
-                  <div className="min-w-max">
-                    <FileTree
-                      projectId={projectId}
-                      onFileSelect={handleFileSelect}
-                      selectedFile={selectedFile}
-                    />
-                  </div>
-                </ScrollArea>
-              </div>
+            <div className="h-full flex flex-col">
+              {/* Code view header with back button */}
+              {!isMobile && onToggleView && (
+                <div className="h-12 px-4 border-b flex items-center bg-gradient-to-r from-muted/20 to-background">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={onToggleView}
+                    className="gap-2 text-muted-foreground hover:text-foreground"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                    {t('backToPreview')}
+                  </Button>
+                  <div className="flex-1" />
+                  <GitStatusIndicator projectId={projectId} />
+                </div>
+              )}
 
-              <div className="flex-1">
-                {selectedFile ? (
-                  <FileEditor
-                    filePath={selectedFile}
-                    content={fileContent}
-                    onSave={handleFileSave}
-                    isLoading={isLoading}
-                    projectId={projectId}
-                  />
-                ) : (
-                  <div className="h-full flex items-center justify-center">
-                    <div className="text-center">
-                      <p className="text-muted-foreground">
-                        {t('selectFileFromExplorer')}
-                      </p>
+              <div className="flex-1 flex min-h-0">
+                <div className="w-1/3 border-r flex flex-col">
+                  <ScrollArea className="flex-1">
+                    <ScrollBar orientation="horizontal" />
+                    <div className="min-w-max">
+                      <FileTree
+                        projectId={projectId}
+                        onFileSelect={handleFileSelect}
+                        selectedFile={selectedFile}
+                      />
                     </div>
-                  </div>
-                )}
+                  </ScrollArea>
+                </div>
+
+                <div className="flex-1">
+                  {selectedFile ? (
+                    <FileEditor
+                      filePath={selectedFile}
+                      content={fileContent}
+                      onSave={handleFileSave}
+                      isLoading={isLoading}
+                      projectId={projectId}
+                    />
+                  ) : (
+                    <div className="h-full flex items-center justify-center">
+                      <div className="text-center">
+                        <p className="text-muted-foreground">
+                          {t('selectFileFromExplorer')}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}

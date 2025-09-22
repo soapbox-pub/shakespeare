@@ -107,6 +107,7 @@ const resources = {
       chat: 'Chat',
       preview: 'Preview',
       code: 'Code',
+      backToPreview: 'Back to Preview',
 
       // Preview Pane
       projectPreview: 'Project Preview',
@@ -399,6 +400,7 @@ const resources = {
       chat: 'Chat',
       preview: 'Visualização',
       code: 'Código',
+      backToPreview: 'Voltar à Visualização',
 
       // Preview Pane
       projectPreview: 'Visualização do Projeto',
@@ -691,6 +693,7 @@ const resources = {
       chat: '聊天',
       preview: '预览',
       code: '代码',
+      backToPreview: '返回预览',
 
       // Preview Pane
       projectPreview: '项目预览',

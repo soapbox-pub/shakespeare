@@ -83,8 +83,6 @@ export function ProjectView() {
     });
   };
 
-
-
   const handleNewChat = () => {
     // Reset to chat view on mobile when starting new chat
     if (isMobile) {
@@ -411,70 +409,19 @@ export function ProjectView() {
 
             {/* Preview/Code Panel */}
             <ResizablePanel defaultSize={60} minSize={30}>
-              <div className="h-full flex flex-col">
-                {/* Preview Header */}
-                <div className="h-12 px-4 border-b flex-shrink-0 bg-gradient-to-r from-background via-muted/20 to-background">
-                  <div className="flex items-center justify-between h-12">
-                    <div className="flex">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setActiveTab('preview')}
-                        disabled={!project}
-                        className={`
-                          relative px-4 py-2 rounded-none border-b-2 transition-all duration-200 ease-in-out
-                          ${activeTab === 'preview'
-                            ? 'border-primary bg-primary/5 text-primary font-medium shadow-sm'
-                            : 'border-transparent hover:border-muted-foreground/20 hover:bg-muted/50 text-muted-foreground hover:text-foreground'
-                          }
-                        `}
-                      >
-                        <Eye className="h-4 w-4 mr-2" />
-                        {t('preview')}
-                        {activeTab === 'preview' && (
-                          <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-primary/50 via-primary to-primary/50 rounded-full" />
-                        )}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setActiveTab('code')}
-                        disabled={!project}
-                        className={`
-                          relative px-4 py-2 rounded-none border-b-2 transition-all duration-200 ease-in-out
-                          ${activeTab === 'code'
-                            ? 'border-primary bg-primary/5 text-primary font-medium shadow-sm'
-                            : 'border-transparent hover:border-muted-foreground/20 hover:bg-muted/50 text-muted-foreground hover:text-foreground'
-                          }
-                        `}
-                      >
-                        <Code className="h-4 w-4 mr-2" />
-                        {t('code')}
-                        {activeTab !== 'code' && project && (
-                          <GitStatusIndicator projectId={project.id} className="ml-1" />
-                        )}
-                        {activeTab === 'code' && (
-                          <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-primary/50 via-primary to-primary/50 rounded-full" />
-                        )}
-                      </Button>
-                    </div>
+              <div className="h-full">
+                {project ? (
+                  <PreviewPane
+                    projectId={project.id}
+                    activeTab={activeTab}
+                    onToggleView={() => setActiveTab(activeTab === 'preview' ? 'code' : 'preview')}
+                  />
+                ) : (
+                  <div className="h-full p-4 space-y-4">
+                    <Skeleton className="h-8 w-32" />
+                    <Skeleton className="h-full w-full" />
                   </div>
-                </div>
-
-                {/* Preview Content */}
-                <div className="flex-1 overflow-hidden">
-                  {project ? (
-                    <PreviewPane
-                      projectId={project.id}
-                      activeTab={activeTab}
-                    />
-                  ) : (
-                    <div className="h-full p-4 space-y-4">
-                      <Skeleton className="h-8 w-32" />
-                      <Skeleton className="h-full w-full" />
-                    </div>
-                  )}
-                </div>
+                )}
               </div>
             </ResizablePanel>
           </ResizablePanelGroup>

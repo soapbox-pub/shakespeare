@@ -111,7 +111,6 @@ const resources = {
       // Preview Pane
       projectPreview: 'Project Preview',
       buildProjectToSeePreview: 'Build your project to see the preview here',
-      fileExplorer: 'File Explorer',
       fileEditor: 'File Editor',
       selectFileFromExplorer: 'Select a file from the explorer to edit',
       openFileExplorer: 'Open File Explorer',
@@ -404,7 +403,6 @@ const resources = {
       // Preview Pane
       projectPreview: 'Visualização do Projeto',
       buildProjectToSeePreview: 'Construa seu projeto para ver a visualização aqui',
-      fileExplorer: 'Explorador de Arquivos',
       fileEditor: 'Editor de Arquivos',
       selectFileFromExplorer: 'Selecione um arquivo do explorador para editar',
       openFileExplorer: 'Abrir Explorador de Arquivos',
@@ -697,7 +695,6 @@ const resources = {
       // Preview Pane
       projectPreview: '项目预览',
       buildProjectToSeePreview: '构建您的项目以在此处查看预览',
-      fileExplorer: '文件浏览器',
       fileEditor: '文件编辑器',
       selectFileFromExplorer: '从浏览器中选择一个文件进行编辑',
       openFileExplorer: '打开文件浏览器',

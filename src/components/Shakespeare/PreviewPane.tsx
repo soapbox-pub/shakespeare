@@ -536,24 +536,16 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
           {isMobile ? (
             <div className="h-full flex flex-col">
               {mobileCodeView === 'explorer' ? (
-                <>
-                  <div className="p-3 border-b bg-gradient-to-r from-primary/5 to-accent/5">
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-semibold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">{t('fileExplorer')}</h3>
-                      <GitStatusIndicator projectId={projectId} />
-                    </div>
+                <ScrollArea className="flex-1">
+                  <ScrollBar orientation="horizontal" />
+                  <div className="min-w-max">
+                    <FileTree
+                      projectId={projectId}
+                      onFileSelect={handleFileSelect}
+                      selectedFile={selectedFile}
+                    />
                   </div>
-                  <ScrollArea className="flex-1">
-                    <ScrollBar orientation="horizontal" />
-                    <div className="min-w-max">
-                      <FileTree
-                        projectId={projectId}
-                        onFileSelect={handleFileSelect}
-                        selectedFile={selectedFile}
-                      />
-                    </div>
-                  </ScrollArea>
-                </>
+                </ScrollArea>
               ) : (
                 <>
                   <div className="p-3 border-b bg-gradient-to-r from-primary/5 to-accent/5 flex items-center gap-2">
@@ -604,12 +596,6 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
           ) : (
             <div className="h-full flex">
               <div className="w-1/3 border-r">
-                <div className="p-4 border-b bg-gradient-to-r from-primary/5 to-accent/5">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-semibold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">{t('fileExplorer')}</h3>
-                    <GitStatusIndicator projectId={projectId} />
-                  </div>
-                </div>
                 <ScrollArea className="h-[calc(100%-60px)]">
                   <ScrollBar orientation="horizontal" />
                   <div className="min-w-max">

@@ -276,7 +276,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   // Function to suggest error fix
   // Clean alert hooks with proper interfaces
   const aiModelAlert = useAIModelErrorAlert(messages, _onNewChat, openModelSelector);
-  const consoleAlert = useConsoleErrorAlert();
+  const consoleAlert = useConsoleErrorAlert(messages, isBuildLoading, internalIsLoading);
 
   // Scroll to bottom when alerts appear
   useEffect(() => {

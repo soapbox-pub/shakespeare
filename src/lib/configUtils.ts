@@ -135,7 +135,7 @@ async function migrateGitSettingsFromLocalStorage(fs: JSRuntimeFS): Promise<GitS
       if (parsed && typeof parsed === 'object' && 'credentials' in parsed) {
         const settings: GitSettings = {
           credentials: parsed.credentials || {},
-          corsProxy: parsed.corsProxy || 'https://cors.isomorphic-git.org',
+          corsProxy: parsed.corsProxy || 'https://proxy.shakespeare.diy/?url={href}',
         };
 
         // Write to VFS and remove from localStorage
@@ -158,7 +158,7 @@ async function migrateGitSettingsFromLocalStorage(fs: JSRuntimeFS): Promise<GitS
 export async function readGitSettings(fs: JSRuntimeFS): Promise<GitSettings> {
   const defaultSettings: GitSettings = {
     credentials: {},
-    corsProxy: 'https://cors.isomorphic-git.org',
+    corsProxy: 'https://proxy.shakespeare.diy/?url={href}',
   };
 
   // Try to read from VFS first
@@ -169,7 +169,7 @@ export async function readGitSettings(fs: JSRuntimeFS): Promise<GitSettings> {
     if (parsed && typeof parsed === 'object' && 'credentials' in parsed) {
       return {
         credentials: parsed.credentials || {},
-        corsProxy: parsed.corsProxy || 'https://cors.isomorphic-git.org',
+        corsProxy: parsed.corsProxy || 'https://proxy.shakespeare.diy/?url={href}',
       };
     }
   } catch {

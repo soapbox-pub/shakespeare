@@ -185,7 +185,7 @@ describe('configUtils', () => {
 
         expect(result).toEqual({
           credentials: {},
-          corsProxy: 'https://cors.isomorphic-git.org',
+          corsProxy: 'https://proxy.shakespeare.diy/?url={href}',
         });
       });
 

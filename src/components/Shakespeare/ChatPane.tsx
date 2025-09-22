@@ -302,6 +302,15 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   const aiModelAlert = useAIModelErrorAlert(messages);
   const consoleAlert = useConsoleErrorAlert();
 
+  // Scroll to bottom when alerts appear
+  useEffect(() => {
+    if (aiModelAlert.hasError || consoleAlert.hasError) {
+      setTimeout(() => {
+        scrollToBottom();
+      }, 50);
+    }
+  }, [aiModelAlert.hasError, consoleAlert.hasError, scrollToBottom]);
+
   const suggestErrorFix = useCallback((errorMessage: string, errorCount: number) => {
     const errorText = errorCount === 1 ? 'this error' : 'these errors';
     setInput(`The user gets ${errorText} in the app now: ${errorMessage}\n\nCan you identify the problem and create a concise fix.`);

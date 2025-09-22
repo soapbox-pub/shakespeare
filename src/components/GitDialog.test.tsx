@@ -64,7 +64,7 @@ describe('GitDialog', () => {
     });
   });
 
-  it('renders git repository information', () => {
+  it('renders git dialog without repository information section', () => {
     render(
       <TestApp>
         <GitDialog projectId="test-project" open={true} onOpenChange={() => {}}>
@@ -74,10 +74,8 @@ describe('GitDialog', () => {
     );
 
     expect(screen.getByText('Git Repository Status')).toBeInTheDocument();
-    expect(screen.getByText('Repository Information')).toBeInTheDocument();
-    expect(screen.getByText('main')).toBeInTheDocument();
-    expect(screen.getByText('5')).toBeInTheDocument();
-    expect(screen.getAllByText('origin')).toHaveLength(2); // Appears in remotes and credentials sections
+    expect(screen.queryByText('Repository Information')).not.toBeInTheDocument();
+    expect(screen.getByText('origin')).toBeInTheDocument(); // Appears in credentials section
   });
 
   it('shows sync status', () => {

@@ -31,7 +31,6 @@ import {
   Plus,
   Minus,
   Edit,
-  RefreshCw,
   Settings,
   AlertTriangle,
   Zap,
@@ -399,11 +398,7 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
     }
   };
 
-  const handleRefresh = async () => {
-    await refetchGitStatus();
-    setPushResult(null);
-    setPullResult(null);
-  };
+
 
   const getFileStatusIcon = (status: string) => {
     switch (status) {
@@ -486,76 +481,6 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
 
         <ScrollArea className="max-h-[60vh]">
           <div className="space-y-4">
-            {/* Repository Info */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm flex items-center justify-between">
-                  Repository Information
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleRefresh}
-                    className="h-7 w-7 p-0"
-                  >
-                    <RefreshCw className="h-3 w-3" />
-                  </Button>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {gitStatus?.isGitRepo ? (
-                  <>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Current Branch:</span>
-                      <Badge variant="outline" className="font-mono">
-                        {gitStatus.currentBranch || 'unknown'}
-                      </Badge>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Total Commits:</span>
-                      <Badge variant="secondary">{gitStatus.totalCommits}</Badge>
-                    </div>
-
-                    {gitStatus.latestCommit && (
-                      <div className="space-y-2">
-                        <span className="text-sm text-muted-foreground">Latest Commit:</span>
-                        <div className="bg-muted/50 rounded-md p-2 space-y-1">
-                          <div className="font-mono text-xs text-muted-foreground">
-                            {gitStatus.latestCommit.oid.substring(0, 7)}
-                          </div>
-                          <div className="text-sm">{gitStatus.latestCommit.message}</div>
-                          <div className="text-xs text-muted-foreground flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            {new Date(gitStatus.latestCommit.author.timestamp * 1000).toLocaleString()}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {gitStatus.remotes.length > 0 && (
-                      <div className="space-y-2">
-                        <span className="text-sm text-muted-foreground">Remotes:</span>
-                        {gitStatus.remotes.map((remote) => (
-                          <div key={remote.name} className="bg-muted/50 rounded-md p-2">
-                            <div className="flex items-center justify-between">
-                              <Badge variant="outline">{remote.name}</Badge>
-                              <span className="font-mono text-xs text-muted-foreground truncate ml-2">
-                                {remote.url}
-                              </span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <div className="text-center py-4 text-muted-foreground">
-                    <AlertCircle className="h-8 w-8 mx-auto mb-2" />
-                    <p>Not a Git repository</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
 
             {/* Credentials Status */}
             {gitStatus?.isGitRepo && gitStatus.remotes.length > 0 && (

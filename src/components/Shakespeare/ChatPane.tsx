@@ -40,6 +40,111 @@ import { makeSystemPrompt } from '@/lib/system';
 import { assistantContentEmpty } from '@/lib/ai-messages';
 import { saveFileToTmp } from '@/lib/fileUtils';
 import { useGit } from '@/hooks/useGit';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AlertTriangle, AlertCircle } from 'lucide-react';
+
+const ALERT_TYPE = {
+  WARN: 'warn',
+  ERROR: 'error'
+} as const;
+
+type AlertType = typeof ALERT_TYPE[keyof typeof ALERT_TYPE];
+
+interface ChatAlert {
+  type: AlertType;
+  message: string;
+}
+
+function ChatIntervention({ alert, onDismiss }: { alert: ChatAlert; onDismiss: () => void }) {
+  const isError = alert.type === ALERT_TYPE.ERROR;
+
+  return (
+    <Alert variant={isError ? "destructive" : "default"}>
+      {isError ? <AlertTriangle className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
+      <AlertDescription className="flex items-center justify-between">
+        <span>{alert.message}</span>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onDismiss}
+          className="h-6 w-6 p-0 hover:bg-muted"
+        >
+          ×
+        </Button>
+      </AlertDescription>
+    </Alert>
+  );
+}
+
+interface ErrorPattern {
+  test: (content: string) => boolean;
+  type: AlertType;
+  message: string;
+}
+
+const ERROR_PATTERNS: ErrorPattern[] = [
+  {
+    test: (content) => /AI service error: 422/.test(content) || /Provider returned error/.test(content),
+    type: ALERT_TYPE.ERROR,
+    message: 'The AI model encountered an issue. Try switching to a different model or starting a new chat.'
+  },
+  {
+    test: (content) => /maximum context length is \d+ tokens/.test(content) || /context length/.test(content),
+    type: ALERT_TYPE.WARN,
+    message: 'Your conversation is too long for this model. Try starting a new chat or switching to a model with a larger context window.'
+  },
+  {
+    test: (content) => /rate limit/i.test(content) || /too many requests/i.test(content),
+    type: ALERT_TYPE.WARN,
+    message: 'You\'re sending requests too quickly. Please wait a moment before trying again.'
+  }
+];
+
+function useChatAlert(messages: AIMessage[], scrollToBottom: () => void): { alert: ChatAlert | null; dismiss: () => void } {
+  const [dismissedAlert, setDismissedAlert] = useState<string | null>(null);
+  const [prevAlert, setPrevAlert] = useState<ChatAlert | null>(null);
+
+  const alert = useMemo(() => {
+    const lastMessage = messages[messages.length - 1];
+    if (!lastMessage || lastMessage.role !== 'assistant') return null;
+
+    const content = typeof lastMessage.content === 'string' ? lastMessage.content : '';
+
+    for (const pattern of ERROR_PATTERNS) {
+      if (pattern.test(content)) {
+        const alert = {
+          type: pattern.type,
+          message: pattern.message
+        };
+
+        // Only show if not dismissed
+        return dismissedAlert !== alert.message ? alert : null;
+      }
+    }
+
+    return null;
+  }, [messages, dismissedAlert]);
+
+  // Handle alert changes - scroll when alert appears/disappears
+  useEffect(() => {
+    const alertChanged = prevAlert !== alert;
+    if (alertChanged && alert) {
+      // Small delay to ensure alert is rendered
+      setTimeout(() => {
+        scrollToBottom();
+      }, 50);
+    }
+    setPrevAlert(alert);
+  }, [alert, prevAlert, scrollToBottom]);
+
+  const dismiss = useCallback(() => {
+    if (alert) {
+      setDismissedAlert(alert.message);
+    }
+  }, [alert]);
+
+  return { alert, dismiss };
+}
 
 interface ChatPaneProps {
   projectId: string;
@@ -211,6 +316,16 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     }
   }, [internalIsLoading, onLoadingChange]);
 
+  // Function to scroll to bottom
+  const scrollToBottom = () => {
+    if (scrollAreaRef.current) {
+      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+    }
+  };
+
+  // Check for chat alerts based on messages
+  const { alert: chatAlert, dismiss: dismissAlert } = useChatAlert(messages, scrollToBottom);
+
   // Check for autostart parameter and trigger AI generation
   useEffect(() => {
     const autostart = searchParams.get('autostart');
@@ -238,14 +353,6 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
       }
     }
   }, [addRecentlyUsedModel, isConfigured, providerModel, searchParams, setSearchParams, startGeneration]);
-
-
-  // Function to scroll to bottom
-  const scrollToBottom = () => {
-    if (scrollAreaRef.current) {
-      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
-    }
-  };
 
   // Simple scroll event listener
   useEffect(() => {
@@ -281,7 +388,6 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
       if (isNearBottom) {
         container.scrollTop = container.scrollHeight;
       }
-
     }
   }, [messages, streamingMessage, isLoading]);
 
@@ -400,7 +506,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
       await sendMessage(messageContent, modelToUse);
     } catch (error) {
       console.error('AI chat error:', error);
-      // Error handling is done in the useAIChat hook
+      // Error handling is done in the useAIChat hook and SessionManager
     }
   };
 
@@ -564,6 +670,17 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
               </div>
             </div>
           )}
+
+          {/* Chat Alert */}
+          {chatAlert && (
+            <div className="px-4 pb-4">
+              <ChatIntervention
+                alert={chatAlert}
+                onDismiss={dismissAlert}
+              />
+            </div>
+          )}
+
         </div>
       </div>
 
@@ -584,9 +701,8 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
       <div className="border-t p-4">
         {/* Chat Input Container */}
         <div
-          className={`flex flex-col rounded-2xl border border-input bg-background shadow-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 transition-all ${
-            isDragOver ? 'border-primary bg-primary/5 ring-2 ring-primary/20' : ''
-          }`}
+          className={`flex flex-col rounded-2xl border border-input bg-background shadow-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 transition-all ${isDragOver ? 'border-primary bg-primary/5 ring-2 ring-primary/20' : ''
+            }`}
           onDragEnter={handleDragEnter}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}

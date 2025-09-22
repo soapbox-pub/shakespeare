@@ -35,6 +35,15 @@ describe('deployProject', () => {
     mockFS = {
       readFile: vi.fn().mockResolvedValue('mock file content'),
       readdir: vi.fn().mockResolvedValue([]),
+      writeFile: vi.fn().mockResolvedValue(undefined),
+      mkdir: vi.fn().mockResolvedValue(undefined),
+      stat: vi.fn().mockResolvedValue({ isDirectory: () => false, isFile: () => true }),
+      lstat: vi.fn().mockResolvedValue({ isDirectory: () => false, isFile: () => true }),
+      unlink: vi.fn().mockResolvedValue(undefined),
+      rmdir: vi.fn().mockResolvedValue(undefined),
+      rename: vi.fn().mockResolvedValue(undefined),
+      readlink: vi.fn().mockResolvedValue(''),
+      symlink: vi.fn().mockResolvedValue(undefined),
     } as JSRuntimeFS;
 
     mockSigner = {} as NostrSigner;

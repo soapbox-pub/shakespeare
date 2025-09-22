@@ -31,6 +31,9 @@ const resources = {
       english: 'English',
       portuguese: 'Portuguese',
       chinese: 'Chinese',
+      hausa: 'Hausa',
+      yoruba: 'Yoruba',
+      igbo: 'Igbo',
       systemLanguage: 'System',
 
       // Theme Options
@@ -324,6 +327,9 @@ const resources = {
       english: 'Inglês',
       portuguese: 'Português',
       chinese: 'Chinês',
+      hausa: 'Hausa',
+      yoruba: 'Yoruba',
+      igbo: 'Igbo',
       systemLanguage: 'Sistema',
 
       // Theme Options
@@ -617,6 +623,9 @@ const resources = {
       english: 'English',
       portuguese: 'Português',
       chinese: '中文',
+      hausa: 'Hausa',
+      yoruba: 'Yoruba',
+      igbo: 'Igbo',
       systemLanguage: '系统',
 
       // Theme Options
@@ -880,6 +889,894 @@ const resources = {
       repositoryNotFound: '未找到仓库。请检查URL并重试。',
       accessDenied: '访问被拒绝。仓库可能是私有的或需要身份验证。',
       networkError: '网络错误。请检查您的连接并重试。',
+    }
+  },
+  ha: {
+    translation: {
+      // Navigation and Layout
+      preferences: 'Zaɓuɓɓuka',
+      settings: 'Saitunan',
+      backToSettings: 'Koma zuwa Saitunan',
+      help: 'Taimako',
+      anonymous: 'Maras Suna',
+
+      // Authentication
+      logIn: 'Shiga',
+      signUp: 'Yi Rajista',
+
+      // Preferences Page
+      preferencesDescription: 'Sarrafa zaɓuɓɓukan aikace-aikacenku da saitunan bayyanar.',
+
+      // Theme Section
+      theme: 'Jigogi',
+      themeDescription: 'Zaɓi tsakanin haske, duhu, ko zaɓin jigogi na tsarin.',
+
+      // Language Section
+      language: 'Harshe',
+      languageDescription: 'Zaɓi harshen da kuke so don dubawa.',
+
+      // Language Options
+      english: 'Turanci',
+      portuguese: 'Fotigis',
+      chinese: 'Sinanci',
+      hausa: 'Hausa',
+      yoruba: 'Yoruba',
+      igbo: 'Igbo',
+      systemLanguage: 'Tsarin',
+
+      // Theme Options
+      light: 'Haske',
+      dark: 'Duhu',
+      system: 'Tsarin',
+
+      // Common UI Elements
+      save: 'Ajiye',
+      cancel: 'Soke',
+      close: 'Rufe',
+      open: 'Buɗe',
+      edit: 'Gyara',
+      delete: 'Share',
+      create: 'Ƙirƙira',
+      update: 'Sabunta',
+      loading: 'Ana lodin...',
+      error: 'Kuskure',
+      success: 'Nasara',
+      warning: 'Gargaɗi',
+      info: 'Bayani',
+      add: 'Ƙara',
+      remove: 'Cire',
+      retry: 'Sake gwadawa',
+
+      // Shakespeare Main Page
+      buildNostrApps: 'Gina aikace-aikacen Nostr da AI',
+      whatToBuild: 'Me kuke son ginawa?',
+      createProject: 'Ƙirƙiri Aikin',
+      generating: 'Ana samarwa...',
+      creating: 'Ana ƙirƙirawa...',
+      chooseModel: 'Zaɓi samfuri...',
+      selectModelToDescribe: "Da fatan za a zaɓi samfuri a ƙasa, sannan a bayyana abin da kuke son ginawa...",
+      examplePrompt: "misali, Ƙirƙiri kasuwar kayan aikin noma don manoma na yankin su sayi da sayar da taraktoci, kayan aiki, da kayayyaki...",
+
+      // Settings Page
+      settingsDescription: 'Sarrafa saitunan aikace-aikacenku da zaɓuɓɓuka.',
+      aiSettings: 'Saitunan AI',
+      aiSettingsDescription: 'Saita masu samar da AI da maɓallan API',
+      gitSettings: 'Saitunan Git',
+      gitSettingsDescription: 'Saita bayanan shaidar Git don tabbatar da HTTP',
+      nostrSettings: 'Saitunan Nostr',
+      nostrSettingsDescription: 'Saita haɗin relay da zaɓuɓɓukan Nostr',
+      dataSettings: 'Bayanai',
+      dataSettingsDescription: 'Fitar da fayiloli da sarrafa bayanan gida',
+      aboutShakespeareSettings: 'Game da Shakespeare',
+      aboutShakespeareSettingsDescription: 'Bayani game da Shakespeare',
+
+      // Project Sidebar
+      newProject: 'Sabon Aikin',
+      importRepository: 'Shigo da Repository',
+      noProjectsYet: 'Babu ayyuka har yanzu',
+      createFirstProject: 'Ƙirƙiri aikin farko don farawa',
+      closeSidebar: 'Rufe gefen mashigi',
+      collapseSidebar: 'Rufe gefen mashigi',
+
+      // Chat Interface
+      welcomeToShakespeare: 'Maraba da Shakespeare',
+      aiAssistantReady: 'Mataimakin ci gaban ku na AI ya shirya don taimaka muku gina, gyara, da haɓaka aikinku.',
+      askMeFeatures: '💡 Roƙe ni in ƙara sabbin fasaloli',
+      requestEdits: '📝 Nemi gyare-gyaren fayil da haɓakawa',
+      getHelp: '🔧 Sami taimako da gyara kuskure da haɓakawa',
+      buildDeploy: '🚀 Gina da tura aikinku',
+      aiNotConfigured: 'Mataimakin AI Ba a Saita ba',
+      configureAI: 'Da fatan za a saita saitunan AI don farawa ginawa da taimakon AI.',
+      useMenuForAI: 'Yi amfani da menu a saman mashigi don shiga Saitunan AI.',
+      askToAddFeatures: 'Roƙe ni in ƙara fasaloli, gyara fayiloli, ko gina aikinku...',
+      selectModelFirst: 'Da fatan za a zaɓi samfuri don farawa hira...',
+      sendMessage: 'Aika saƙo',
+      stopGeneration: 'Tsayar da samarwa',
+      running: 'Ana gudana',
+
+      // Project View Navigation
+      chat: 'Hira',
+      preview: 'Duba',
+      code: 'Lambar',
+      backToPreview: 'Koma zuwa Duba',
+
+      // Preview Pane
+      projectPreview: 'Duban Aikin',
+      buildProjectToSeePreview: 'Gina aikinku don ganin duba a nan',
+      fileEditor: 'Editan Fayil',
+      selectFileFromExplorer: 'Zaɓi fayil daga mai bincike don gyarawa',
+      openFileExplorer: 'Buɗe Mai Binciken Fayil',
+
+      // File Editor
+      unsavedChanges: 'Canje-canjen da ba a ajiye ba',
+      saving: 'Ana ajiyewa...',
+      languageLabel: 'Harshe',
+
+      // File Tree
+      searchFiles: 'Neman fayiloli...',
+      noFilesFound: 'Babu fayilolin da aka samu',
+      noFilesFoundSearch: 'Babu fayilolin da suka dace da bincikenku',
+
+      // Git Dialog
+      gitRepositoryStatus: 'Matsayin Repository na Git',
+      repositoryStatusDescription: 'Duba matsayin repository da haɗawa da repositories na nesa',
+      repositoryInformation: 'Bayanan Repository',
+      currentBranch: 'Reshen Yanzu',
+      totalCommits: 'Jimlar Commits',
+      latestCommit: 'Commit na Baya-bayan nan',
+      remotes: 'Na Nesa',
+      notGitRepository: 'Ba repository na Git ba',
+      gitAuthentication: 'Tabbatarwa',
+      credentialsDescription: 'Bayanan shaidar don ayyukan tura/ja',
+      configured: 'An saita',
+      noCredentials: 'Babu bayanan shaidar',
+      noCredentialsWarning: 'Babu bayanan shaidar da aka saita don {{provider}}. Ayyukan tura/ja na iya gazawa don repositories masu sirri.',
+      configureCredentials: 'Saita bayanan shaidar',
+      syncStatus: 'Matsayin Haɗawa',
+      pull: 'Ja',
+      push: 'Tura',
+      pulling: 'Ana ja...',
+      pushing: 'Ana turawa...',
+      upToDate: 'An sabunta',
+      commitsAhead: 'Commit {{count}} a gaba | Commits {{count}} a gaba',
+      commitsBehind: 'Commit {{count}} a baya | Commits {{count}} a baya',
+      uncommittedChanges: 'Canji {{count}} da ba a commit ba | Canje-canje {{count}} da ba a commit ba',
+      noRemoteConfigured: 'Babu na nesa da aka saita',
+      workingDirectoryChanges: 'Canje-canjen Directory na Aiki',
+      filesWithChanges: 'Fayil {{count}} da canje-canje | Fayiloli {{count}} da canje-canje',
+      workingDirectoryClean: 'Directory na aiki tsabta ne',
+      noUncommittedChanges: 'Babu canje-canjen da ba a commit ba',
+      cannotPush: 'Ba za a iya turawa ba',
+      cannotPull: 'Ba za a iya ja ba',
+      notGitRepoOrBranch: 'Ba repository na git ba ko babu reshen yanzu',
+      noRemoteRepositories: 'Babu repositories na nesa da aka saita',
+      nothingToPush: 'Babu abin da za a tura',
+      noCommitsAhead: 'Babu commits a gaban na nesa. Fara commit canje-canjenku.',
+      pushSuccessful: 'Turawa ta yi nasara',
+      pushFailed: 'Turawa ta gaza',
+      pullSuccessful: 'Ja ya yi nasara',
+      pullFailed: 'Ja ya gaza',
+
+      // AI Settings
+      aiSettingsDescriptionLong: 'Saita masu samar da AI ta hanyar ƙara maɓallan API. Saitunan ana ajiye su kai tsaye kuma ana adana su a cikin burauzar ku.',
+      configuredProviders: 'Masu Samarwa da aka Saita',
+      addProvider: 'Ƙara Mai Samarwa',
+      getApiKey: 'Sami maɓallin API',
+      getToken: 'Sami alamar',
+      enterApiKey: 'Shigar da maɓallin API',
+      enterToken: 'Shigar da alamar ku',
+      enterCashuToken: 'Shigar da alamar Cashu',
+      addCustomProvider: 'Ƙara Mai Samarwa na Musamman',
+      providerName: 'Sunan Mai Samarwa',
+      baseUrl: 'URL na Tushe',
+      apiKey: 'Maɓallin API',
+      authentication: 'Tabbatarwa',
+      addCustomProviderButton: 'Ƙara Mai Samarwa na Musamman',
+      providerExists: 'Mai samarwa da wannan suna ya riga ya wanzu',
+      custom: 'Na Musamman',
+      connecting: 'Ana haɗawa...',
+      connectToGitHub: 'Haɗu da GitHub',
+      loginToNostrRequired: 'Shiga Nostr don amfani da wannan mai samarwa',
+      goToNostrSettings: 'Tafi zuwa Saitunan Nostr',
+
+      // Git Settings
+      gitSettingsDescriptionLong: 'Saita bayanan shaidar Git don tabbatar da HTTP. Saitunan ana ajiye su kai tsaye kuma ana adana su a cikin burauzar ku.',
+      configuredCredentials: 'Bayanan Shaidar da aka Saita',
+      origin: 'Asali',
+      username: 'Sunan mai amfani',
+      password: 'Kalmar sirri',
+      enterPassword: 'Shigar da kalmar sirri/alamar ku',
+      credentialsExist: 'Bayanan shaidar wannan asali sun riga sun wanzu',
+      corsProxy: 'CORS Proxy',
+      corsProxyDescription: 'Sabar proxy na CORS da ake amfani da ita don duk ayyukan Git da repositories na nesa. Ana bukata don ayyukan Git na burauzar.',
+
+      // Data Settings
+      dataSettingsDescriptionLong: 'Fitar da fayiloli da sarrafa bayanan gida.',
+      exportFiles: 'Fitar da Fayiloli',
+      exportFilesDescription: 'Sauke duk ayyukanku da fayiloli azaman ajiyar ZIP. Wannan ya haɗa da duk fayilolin aikin, saitunan, da bayanan da aka adana a gida.',
+      exportAllFiles: 'Fitar da Duk Fayiloli',
+      exporting: 'Ana fitarwa...',
+      clearAllData: 'Share Duk Bayanai',
+      clearAllDataDescription: 'Share duk bayanan gida har abada ciki har da ayyuka, saitunan, da bayanan cache. Wannan aikin ba za a iya sokewa ba.',
+      clearing: 'Ana sharewa...',
+      areYouSure: 'Kun tabbata sosai?',
+      clearDataWarning: 'Wannan aikin zai share duk bayanan gida daga wannan burauzar har abada, ciki har da:',
+      allProjects: 'Duk ayyuka da fayilolinsu',
+      aiSettingsAndKeys: 'Saitunan AI da maɓallan API',
+      gitCredentialsSettings: 'Bayanan shaidar Git da saitunan',
+      userPreferences: 'Zaɓuɓɓukan mai amfani da jigogi',
+      cachedData: 'Bayanan cache da bayanan zama',
+      actionCannotBeUndone: 'Wannan aikin ba za a iya sokewa ba. Yi la\'akari da fitar da fayilolinku da farko.',
+      yesClearAllData: 'Eh, share duk bayanai',
+      used: 'An yi amfani',
+      available: 'Akwai',
+      usagePercentage: 'An yi amfani da {{percentage}}%',
+      usageUnavailable: 'Adadin amfani ba ya samuwa',
+      loadingStorageInfo: 'Ana lodin bayanan ajiya...',
+      filesExportedSuccessfully: 'An fitar da fayiloli cikin nasara',
+      filesExportedDescription: 'An sauke fayilolin aikinku azaman fayil zip.',
+      failedToExportFiles: 'Ya gaza fitar da fayiloli',
+      dataClearedSuccessfully: 'An share bayanai cikin nasara',
+      dataClearedDescription: 'An cire duk bayanan gida. Ana turawa zuwa shafin gida...',
+      failedToClearData: 'Ya gaza share bayanai',
+
+      // About Settings
+      aboutShakespeare: 'Game da Shakespeare',
+      aboutShakespeareDescription: 'Bayani game da Shakespeare.',
+      sourceCode: 'Lambar Tushe',
+      viewOnGitLab: 'Duba akan GitLab',
+      description: 'Bayanin',
+      license: 'Lasisi',
+      loadingLicense: 'Ana lodin lasisi...',
+      failedToLoadLicense: 'Ya gaza lodin lasisi',
+
+      // 404 Page
+      pageNotFound: 'Kai! Ba a sami shafin ba',
+      returnToHome: 'Koma Gida',
+
+      // Model Selector
+      selectOrEnterModel: 'Zaɓi ko shigar da samfuri...',
+      searchModels: 'Neman samfura...',
+      enterCustomModel: 'Shigar da samfuri na musamman...',
+      manageProviders: 'Sarrafa masu samarwa...',
+      noModelsFound: 'Ba a sami samfura ba.',
+      tryCustomModel: 'Gwada amfani da samfuri na musamman.',
+      recentlyUsed: 'An yi amfani da su kwanan nan',
+      errorLoadingModels: 'Kuskure wajen Lodin Samfura',
+
+      // Context and Cost
+      contextUsage: 'Amfanin mahallin: {{tokens}} / {{total}} alamomi ({{percentage}}%)',
+      totalCostSession: 'Jimlar farashi don wannan zaman hira',
+
+      // File Status
+      added: 'an ƙara',
+      deleted: 'an share',
+      modified: 'an gyara',
+      staged: 'an shirya',
+      untracked: 'ba a bi ba',
+
+      // Settings Layout
+      toggleSidebar: 'Juya gefen mashigi',
+      openSidebar: 'Buɗe gefen mashigi',
+
+      // Nostr Settings
+      nostrSettingsDescriptionLong: 'Saita saitunan haɗin Nostr da zaɓuɓɓukan relay.',
+      nostrAccounts: 'Asusun Nostr',
+      noAccountsLoggedIn: 'Babu asusun da aka shiga. Ƙara asusu don farawa.',
+      createAccount: 'Ƙirƙiri Asusu',
+      addExistingAccount: 'Ƙara Asusu da ya wanzu',
+      addAccount: 'Ƙara Asusu',
+      relayConfiguration: 'Saitunan Relay',
+      selectedRelay: 'Relay da aka zaɓa',
+
+      // Clone Page
+      cloneGitRepository: 'Clone repository na Git zuwa wurin aikin Shakespeare',
+      pleaseEnterRepositoryUrl: 'Da fatan za a shigar da URL na repository',
+      pleaseEnterValidGitUrl: 'Da fatan za a shigar da ingantaccen URL na repository na Git ko URI na clone na Nostr (misali: nostr://npub.../sunan-repo)',
+      cloningRepository: 'Ana Clone Repository...',
+      nostrRepositoryImportedSuccessfully: 'An shigo da repository na Nostr cikin nasara',
+      repositoryClonedFromNostr: 'An clone "{{repoName}}" daga Nostr kuma ya shirya don ci gaba.',
+      repositoryImportedSuccessfully: 'An shigo da repository cikin nasara',
+      repositoryClonedReady: 'An clone "{{repoName}}" kuma ya shirya don ci gaba.',
+      failedToImportRepository: 'Ya gaza shigo da repository',
+      repositoryNotFoundOnNostr: 'Ba a sami repository akan hanyar sadarwar Nostr ba. Da fatan za a duba URI kuma a sake gwadawa.',
+      noCloneUrlsFound: 'An sami sanarwar repository amma babu URLs na clone da ke samuwa.',
+      allCloneAttemptsFailed: 'An sami repository amma duk URLs na clone sun gaza. Repository na iya zama ba ya samuwa.',
+      repositoryNotFound: 'Ba a sami repository ba. Da fatan za a duba URL kuma a sake gwadawa.',
+      accessDenied: 'An hana shiga. Repository na iya zama na sirri ko yana buƙatar tabbatarwa.',
+      networkError: 'Kuskuren hanyar sadarwa. Da fatan za a duba haɗinku kuma a sake gwadawa.',
+    }
+  },
+  yo: {
+    translation: {
+      // Navigation and Layout
+      preferences: 'Awọn ayanfẹ',
+      settings: 'Awọn eto',
+      backToSettings: 'Pada si Awọn eto',
+      help: 'Iranlọwọ',
+      anonymous: 'Alainidamọ',
+
+      // Authentication
+      logIn: 'Wọle',
+      signUp: 'Forukọsilẹ',
+
+      // Preferences Page
+      preferencesDescription: 'Ṣakoso awọn ayanfẹ ohun elo rẹ ati awọn eto iwoye.',
+
+      // Theme Section
+      theme: 'Akori',
+      themeDescription: 'Yan laarin imọlẹ, okunkun, tabi ayanfẹ akori eto.',
+
+      // Language Section
+      language: 'Ede',
+      languageDescription: 'Yan ede ti o fẹran fun wiwo.',
+
+      // Language Options
+      english: 'Gẹẹsi',
+      portuguese: 'Potogisi',
+      chinese: 'Kannada',
+      hausa: 'Hausa',
+      yoruba: 'Yoruba',
+      igbo: 'Igbo',
+      systemLanguage: 'Eto',
+
+      // Theme Options
+      light: 'Imọlẹ',
+      dark: 'Okunkun',
+      system: 'Eto',
+
+      // Common UI Elements
+      save: 'Fi pamọ',
+      cancel: 'Fagilee',
+      close: 'Ti',
+      open: 'Ṣi',
+      edit: 'Ṣatunkọ',
+      delete: 'Paarẹ',
+      create: 'Ṣẹda',
+      update: 'Imudojuiwọn',
+      loading: 'N gbe...',
+      error: 'Aṣiṣe',
+      success: 'Aṣeyọri',
+      warning: 'Ikilọ',
+      info: 'Alaye',
+      add: 'Fi kun',
+      remove: 'Yọ kuro',
+      retry: 'Tun gbiyanju',
+
+      // Shakespeare Main Page
+      buildNostrApps: 'Kọ awọn ohun elo Nostr pẹlu AI',
+      whatToBuild: 'Kini o fẹ kọ?',
+      createProject: 'Ṣẹda Iṣẹ akanṣe',
+      generating: 'N ṣẹda...',
+      creating: 'N ṣẹda...',
+      chooseModel: 'Yan awoṣe...',
+      selectModelToDescribe: "Jọwọ yan awoṣe ni isalẹ, lẹhinna ṣapejuwe ohun ti o fẹ kọ...",
+      examplePrompt: "apeere, Ṣẹda ọja ẹrọ ogbin fun awọn agbe agbegbe lati ra ati ta awọn traktọ, awọn irinṣẹ, ati awọn ipese...",
+
+      // Settings Page
+      settingsDescription: 'Ṣakoso awọn eto ohun elo rẹ ati awọn ayanfẹ.',
+      aiSettings: 'Awọn eto AI',
+      aiSettingsDescription: 'Tunto awọn olupese AI ati awọn bọtini API',
+      gitSettings: 'Awọn eto Git',
+      gitSettingsDescription: 'Tunto awọn ẹri Git fun ijẹrisi HTTP',
+      nostrSettings: 'Awọn eto Nostr',
+      nostrSettingsDescription: 'Tunto awọn asopọ relay ati awọn ayanfẹ Nostr',
+      dataSettings: 'Data',
+      dataSettingsDescription: 'Gbe awọn faili jade ati ṣakoso data agbegbe',
+      aboutShakespeareSettings: 'Nipa Shakespeare',
+      aboutShakespeareSettingsDescription: 'Alaye nipa Shakespeare',
+
+      // Project Sidebar
+      newProject: 'Iṣẹ akanṣe Tuntun',
+      importRepository: 'Gbe Repository wọle',
+      noProjectsYet: 'Ko si awọn iṣẹ akanṣe sibẹsibẹ',
+      createFirstProject: 'Ṣẹda iṣẹ akanṣe akọkọ rẹ lati bẹrẹ',
+      closeSidebar: 'Ti ẹgbẹ sidebar',
+      collapseSidebar: 'Subu sidebar',
+
+      // Chat Interface
+      welcomeToShakespeare: 'Kaabo si Shakespeare',
+      aiAssistantReady: 'Oluranlọwọ idagbasoke AI rẹ ti ṣetan lati ran ọ lọwọ lati kọ, ṣatunkọ, ati mu iṣẹ akanṣe rẹ dara si.',
+      askMeFeatures: '💡 Beere mi lati fi awọn ẹya tuntun kun',
+      requestEdits: '📝 Beere awọn atunkọ faili ati awọn ilọsiwaju',
+      getHelp: '🔧 Gba iranlọwọ pẹlu atunṣe ati imudara',
+      buildDeploy: '🚀 Kọ ati gbe iṣẹ akanṣe rẹ lọ',
+      aiNotConfigured: 'Oluranlọwọ AI Ko Tunto',
+      configureAI: 'Jọwọ tunto awọn eto AI rẹ lati bẹrẹ kikọ pẹlu iranlọwọ AI.',
+      useMenuForAI: 'Lo akojọ aṣayan ni oke ọpa lati wọle si Awọn eto AI.',
+      askToAddFeatures: 'Beere mi lati fi awọn ẹya kun, ṣatunkọ awọn faili, tabi kọ iṣẹ akanṣe rẹ...',
+      selectModelFirst: 'Jọwọ yan awoṣe lati bẹrẹ ibaraẹnisọrọ...',
+      sendMessage: 'Fi ifiranṣẹ ranṣẹ',
+      stopGeneration: 'Duro ṣiṣẹda',
+      running: 'N ṣiṣẹ',
+
+      // Project View Navigation
+      chat: 'Ibaraẹnisọrọ',
+      preview: 'Aṣaju wiwo',
+      code: 'Koodu',
+      backToPreview: 'Pada si Aṣaju wiwo',
+
+      // Preview Pane
+      projectPreview: 'Aṣaju wiwo Iṣẹ akanṣe',
+      buildProjectToSeePreview: 'Kọ iṣẹ akanṣe rẹ lati ri aṣaju wiwo nibi',
+      fileEditor: 'Atunkọ Faili',
+      selectFileFromExplorer: 'Yan faili lati oluṣawari lati ṣatunkọ',
+      openFileExplorer: 'Ṣi Oluṣawari Faili',
+
+      // File Editor
+      unsavedChanges: 'Awọn iyipada ti a ko fi pamọ',
+      saving: 'N fi pamọ...',
+      languageLabel: 'Ede',
+
+      // File Tree
+      searchFiles: 'Wa awọn faili...',
+      noFilesFound: 'Ko si awọn faili ti a ri',
+      noFilesFoundSearch: 'Ko si awọn faili ti o baamu wiwa rẹ',
+
+      // Git Dialog
+      gitRepositoryStatus: 'Ipo Repository Git',
+      repositoryStatusDescription: 'Wo ipo repository ati muṣọpọ pẹlu awọn repository latọna jijin',
+      repositoryInformation: 'Alaye Repository',
+      currentBranch: 'Ẹka lọwọlọwọ',
+      totalCommits: 'Lapapọ Awọn commit',
+      latestCommit: 'Commit tuntun julọ',
+      remotes: 'Awọn latọna jijin',
+      notGitRepository: 'Kii ṣe repository Git',
+      gitAuthentication: 'Ijẹrisi',
+      credentialsDescription: 'Awọn ẹri fun awọn iṣẹ titari/fa',
+      configured: 'Ti tunto',
+      noCredentials: 'Ko si awọn ẹri',
+      noCredentialsWarning: 'Ko si awọn ẹri ti a tunto fun {{provider}}. Awọn iṣẹ titari/fa le kuna fun awọn repository ikọkọ.',
+      configureCredentials: 'Tunto awọn ẹri',
+      syncStatus: 'Ipo Muṣọpọ',
+      pull: 'Fa',
+      push: 'Titari',
+      pulling: 'N fa...',
+      pushing: 'N titari...',
+      upToDate: 'Ti imudojuiwọn',
+      commitsAhead: 'Commit {{count}} ni iwaju | Awọn commit {{count}} ni iwaju',
+      commitsBehind: 'Commit {{count}} ni ẹhin | Awọn commit {{count}} ni ẹhin',
+      uncommittedChanges: 'Iyipada {{count}} ti a ko commit | Awọn iyipada {{count}} ti a ko commit',
+      noRemoteConfigured: 'Ko si latọna jijin ti a tunto',
+      workingDirectoryChanges: 'Awọn iyipada Itọsọna Iṣẹ',
+      filesWithChanges: 'Faili {{count}} pẹlu awọn iyipada | Awọn faili {{count}} pẹlu awọn iyipada',
+      workingDirectoryClean: 'Itọsọna iṣẹ mọ',
+      noUncommittedChanges: 'Ko si awọn iyipada ti a ko commit',
+      cannotPush: 'Ko le titari',
+      cannotPull: 'Ko le fa',
+      notGitRepoOrBranch: 'Kii ṣe repository git tabi ko si ẹka lọwọlọwọ',
+      noRemoteRepositories: 'Ko si awọn repository latọna jijin ti a tunto',
+      nothingToPush: 'Ko si nkankan lati titari',
+      noCommitsAhead: 'Ko si awọn commit ni iwaju latọna jijin. Kọkọ commit awọn iyipada rẹ.',
+      pushSuccessful: 'Titari ni aṣeyọri',
+      pushFailed: 'Titari kuna',
+      pullSuccessful: 'Fifa ni aṣeyọri',
+      pullFailed: 'Fifa kuna',
+
+      // AI Settings
+      aiSettingsDescriptionLong: 'Tunto awọn olupese AI nipa fifi awọn bọtini API rẹ kun. Awọn eto ni a fi pamọ laifọwọyi ati pe a tọju wọn ni agbegbe ninu awọn aṣawakiri rẹ.',
+      configuredProviders: 'Awọn Olupese Ti a Tunto',
+      addProvider: 'Fi Olupese kun',
+      getApiKey: 'Gba bọtini API',
+      getToken: 'Gba token',
+      enterApiKey: 'Tẹ bọtini API rẹ sinu',
+      enterToken: 'Tẹ token rẹ sinu',
+      enterCashuToken: 'Tẹ token Cashu sinu',
+      addCustomProvider: 'Fi Olupese Aṣa kun',
+      providerName: 'Orukọ Olupese',
+      baseUrl: 'URL Ipilẹ',
+      apiKey: 'Bọtini API',
+      authentication: 'Ijẹrisi',
+      addCustomProviderButton: 'Fi Olupese Aṣa kun',
+      providerExists: 'Olupese pẹlu orukọ yii ti wa tẹlẹ',
+      custom: 'Aṣa',
+      connecting: 'N so...',
+      connectToGitHub: 'So si GitHub',
+      loginToNostrRequired: 'Wọle si Nostr lati lo olupese yii',
+      goToNostrSettings: 'Lọ si Awọn eto Nostr',
+
+      // Git Settings
+      gitSettingsDescriptionLong: 'Tunto awọn ẹri Git fun ijẹrisi HTTP. Awọn eto ni a fi pamọ laifọwọyi ati pe a tọju wọn ni agbegbe ninu awọn aṣawakiri rẹ.',
+      configuredCredentials: 'Awọn Ẹri Ti a Tunto',
+      origin: 'Ipilẹṣẹ',
+      username: 'Orukọ olumulo',
+      password: 'Ọrọ igbaniwọle',
+      enterPassword: 'Tẹ ọrọ igbaniwọle/token rẹ sinu',
+      credentialsExist: 'Awọn ẹri fun ipilẹṣẹ yii ti wa tẹlẹ',
+      corsProxy: 'CORS Proxy',
+      corsProxyDescription: 'Olupin proxy CORS ti a lo fun gbogbo awọn iṣẹ Git pẹlu awọn repository latọna jijin. Ti nilo fun awọn iṣẹ Git ti o da lori aṣawakiri.',
+
+      // Data Settings
+      dataSettingsDescriptionLong: 'Gbe awọn faili jade ati ṣakoso data agbegbe.',
+      exportFiles: 'Gbe Awọn faili jade',
+      exportFilesDescription: 'Gba gbogbo awọn iṣẹ akanṣe ati awọn faili rẹ gẹgẹbi apo ZIP. Eyi pẹlu gbogbo awọn faili iṣẹ akanṣe, awọn eto, ati data ti a tọju ni agbegbe.',
+      exportAllFiles: 'Gbe Gbogbo Awọn faili jade',
+      exporting: 'N gbe jade...',
+      clearAllData: 'Nu Gbogbo Data',
+      clearAllDataDescription: 'Pa gbogbo data agbegbe rẹ lailai pẹlu awọn iṣẹ akanṣe, awọn eto, ati alaye cache. Iṣẹ yii ko le ṣe atunṣe.',
+      clearing: 'N nu...',
+      areYouSure: 'Ṣe o daju pupọ?',
+      clearDataWarning: 'Iṣẹ yii yoo pa gbogbo data agbegbe lati aṣawakiri yii lailai, pẹlu:',
+      allProjects: 'Gbogbo awọn iṣẹ akanṣe ati awọn faili wọn',
+      aiSettingsAndKeys: 'Awọn eto AI ati awọn bọtini API',
+      gitCredentialsSettings: 'Awọn ẹri Git ati awọn eto',
+      userPreferences: 'Awọn ayanfẹ olumulo ati awọn akori',
+      cachedData: 'Data cache ati alaye igba',
+      actionCannotBeUndone: 'Iṣẹ yii ko le ṣe atunṣe. Ronu lati gbe awọn faili rẹ jade ni akọkọ.',
+      yesClearAllData: 'Bẹẹni, nu gbogbo data',
+      used: 'Ti lo',
+      available: 'Wa',
+      usagePercentage: '{{percentage}}% ti lo',
+      usageUnavailable: 'Ipin lilo ko wa',
+      loadingStorageInfo: 'N gbe alaye ibi ipamọ...',
+      filesExportedSuccessfully: 'Awọn faili ti gbe jade ni aṣeyọri',
+      filesExportedDescription: 'Awọn faili iṣẹ akanṣe rẹ ti gba gẹgẹbi faili zip.',
+      failedToExportFiles: 'O kuna lati gbe awọn faili jade',
+      dataClearedSuccessfully: 'Data ti nu ni aṣeyọri',
+      dataClearedDescription: 'Gbogbo data agbegbe ti yọ kuro. N ṣe atunṣe si oju-iwe ile...',
+      failedToClearData: 'O kuna lati nu data',
+
+      // About Settings
+      aboutShakespeare: 'Nipa Shakespeare',
+      aboutShakespeareDescription: 'Alaye nipa Shakespeare.',
+      sourceCode: 'Koodu Orisun',
+      viewOnGitLab: 'Wo lori GitLab',
+      description: 'Apejuwe',
+      license: 'Iwe-aṣẹ',
+      loadingLicense: 'N gbe iwe-aṣẹ...',
+      failedToLoadLicense: 'O kuna lati gbe iwe-aṣẹ',
+
+      // 404 Page
+      pageNotFound: 'Yee! Oju-iwe ko ri',
+      returnToHome: 'Pada si Ile',
+
+      // Model Selector
+      selectOrEnterModel: 'Yan tabi tẹ awoṣe sinu...',
+      searchModels: 'Wa awọn awoṣe...',
+      enterCustomModel: 'Tẹ awoṣe aṣa sinu...',
+      manageProviders: 'Ṣakoso awọn olupese...',
+      noModelsFound: 'Ko si awọn awoṣe ti a ri.',
+      tryCustomModel: 'Gbiyanju lilo awoṣe aṣa dipo.',
+      recentlyUsed: 'Ti a Lo Laipẹ',
+      errorLoadingModels: 'Aṣiṣe Gbigbe Awọn awoṣe',
+
+      // Context and Cost
+      contextUsage: 'Lilo aaye oro: {{tokens}} / {{total}} awọn token ({{percentage}}%)',
+      totalCostSession: 'Lapapọ iye owo fun igba ibaraẹnisọrọ yii',
+
+      // File Status
+      added: 'ti fi kun',
+      deleted: 'ti paarẹ',
+      modified: 'ti ṣatunkọ',
+      staged: 'ti ṣetan',
+      untracked: 'ti a ko tọpa',
+
+      // Settings Layout
+      toggleSidebar: 'Yipada sidebar',
+      openSidebar: 'Ṣi sidebar',
+
+      // Nostr Settings
+      nostrSettingsDescriptionLong: 'Tunto awọn eto asopọ Nostr rẹ ati awọn ayanfẹ relay.',
+      nostrAccounts: 'Awọn Akọọlẹ Nostr',
+      noAccountsLoggedIn: 'Ko si awọn akọọlẹ ti o wọle. Fi akọọlẹ kun lati bẹrẹ.',
+      createAccount: 'Ṣẹda Akọọlẹ',
+      addExistingAccount: 'Fi Akọọlẹ Ti o Wa Tẹlẹ kun',
+      addAccount: 'Fi Akọọlẹ kun',
+      relayConfiguration: 'Iṣeto Relay',
+      selectedRelay: 'Relay Ti a Yan',
+
+      // Clone Page
+      cloneGitRepository: 'Clone repository Git si aaye iṣẹ Shakespeare rẹ',
+      pleaseEnterRepositoryUrl: 'Jọwọ tẹ URL repository sinu',
+      pleaseEnterValidGitUrl: 'Jọwọ tẹ URL repository Git to tọ tabi URI clone Nostr sinu (apeere: nostr://npub.../orukọ-repo)',
+      cloningRepository: 'N Clone Repository...',
+      nostrRepositoryImportedSuccessfully: 'Repository Nostr ti gbe wọle ni aṣeyọri',
+      repositoryClonedFromNostr: '"{{repoName}}" ti clone lati Nostr ati pe o ti ṣetan fun idagbasoke.',
+      repositoryImportedSuccessfully: 'Repository ti gbe wọle ni aṣeyọri',
+      repositoryClonedReady: '"{{repoName}}" ti clone ati pe o ti ṣetan fun idagbasoke.',
+      failedToImportRepository: 'O kuna lati gbe repository wọle',
+      repositoryNotFoundOnNostr: 'Repository ko ri lori nẹtiwọọki Nostr. Jọwọ ṣayẹwo URI ati gbiyanju lẹẹkansi.',
+      noCloneUrlsFound: 'Ikede repository ri ṣugbọn ko si awọn URL clone to wa.',
+      allCloneAttemptsFailed: 'Repository ri ṣugbọn gbogbo awọn URL clone kuna. Repository le ma wa.',
+      repositoryNotFound: 'Repository ko ri. Jọwọ ṣayẹwo URL ati gbiyanju lẹẹkansi.',
+      accessDenied: 'Wiwọle ni idinamọ. Repository le jẹ ikọkọ tabi nilo ijẹrisi.',
+      networkError: 'Aṣiṣe nẹtiwọọki. Jọwọ ṣayẹwo asopọ rẹ ati gbiyanju lẹẹkansi.',
+    }
+  },
+  ig: {
+    translation: {
+      // Navigation and Layout
+      preferences: 'Nhọrọ',
+      settings: 'Ntọala',
+      backToSettings: 'Laghachi na Ntọala',
+      help: 'Enyemaka',
+      anonymous: 'Onye na-amaghị aha',
+
+      // Authentication
+      logIn: 'Banye',
+      signUp: 'Debanye aha',
+
+      // Preferences Page
+      preferencesDescription: 'Jikwaa nhọrọ ngwa gị na ntọala ngosipụta.',
+
+      // Theme Section
+      theme: 'Isiokwu',
+      themeDescription: 'Họrọ n\'etiti ìhè, ọchịchịrị, ma ọ bụ nhọrọ isiokwu sistemu.',
+
+      // Language Section
+      language: 'Asụsụ',
+      languageDescription: 'Họrọ asụsụ ị chọrọ maka interface.',
+
+      // Language Options
+      english: 'Bekee',
+      portuguese: 'Portuguese',
+      chinese: 'Chinese',
+      hausa: 'Hausa',
+      yoruba: 'Yoruba',
+      igbo: 'Igbo',
+      systemLanguage: 'Sistemu',
+
+      // Theme Options
+      light: 'Ìhè',
+      dark: 'Ọchịchịrị',
+      system: 'Sistemu',
+
+      // Common UI Elements
+      save: 'Chekwaa',
+      cancel: 'Kagbuo',
+      close: 'Mechie',
+      open: 'Meghee',
+      edit: 'Dezie',
+      delete: 'Hichapụ',
+      create: 'Mepụta',
+      update: 'Melite',
+      loading: 'Na-ebu...',
+      error: 'Njehie',
+      success: 'Ihe ịga nke ọma',
+      warning: 'Ịdọ aka ná ntị',
+      info: 'Ozi',
+      add: 'Tinye',
+      remove: 'Wepụ',
+      retry: 'Nwaa ọzọ',
+
+      // Shakespeare Main Page
+      buildNostrApps: 'Wuo ngwa Nostr na AI',
+      whatToBuild: 'Gịnị ka ị chọrọ iwu?',
+      createProject: 'Mepụta Ọrụ',
+      generating: 'Na-emepụta...',
+      creating: 'Na-emepụta...',
+      chooseModel: 'Họrọ ụdịdị...',
+      selectModelToDescribe: "Biko họrọ ụdịdị n'okpuru, wee kọwaa ihe ị chọrọ iwu...",
+      examplePrompt: "ọmụmaatụ, Mepụta ahịa ngwá ọrụ ugbo maka ndị ọrụ ugbo mpaghara ịzụta na ire traktọ, ngwá ọrụ, na ngwa...",
+
+      // Settings Page
+      settingsDescription: 'Jikwaa ntọala ngwa gị na nhọrọ.',
+      aiSettings: 'Ntọala AI',
+      aiSettingsDescription: 'Hazie ndị na-enye AI na igodo API',
+      gitSettings: 'Ntọala Git',
+      gitSettingsDescription: 'Hazie nzere Git maka nkwenye HTTP',
+      nostrSettings: 'Ntọala Nostr',
+      nostrSettingsDescription: 'Hazie njikọ relay na nhọrọ Nostr',
+      dataSettings: 'Data',
+      dataSettingsDescription: 'Bupụta faịlụ na jikwaa data mpaghara',
+      aboutShakespeareSettings: 'Gbasara Shakespeare',
+      aboutShakespeareSettingsDescription: 'Ozi gbasara Shakespeare',
+
+      // Project Sidebar
+      newProject: 'Ọrụ Ọhụrụ',
+      importRepository: 'Bubata Repository',
+      noProjectsYet: 'Enwebeghị ọrụ ọ bụla',
+      createFirstProject: 'Mepụta ọrụ mbụ gị iji malite',
+      closeSidebar: 'Mechie sidebar',
+      collapseSidebar: 'Gbakọọ sidebar',
+
+      // Chat Interface
+      welcomeToShakespeare: 'Nnọọ na Shakespeare',
+      aiAssistantReady: 'Onye enyemaka mmepe AI gị adịla njikere inyere gị aka iwu, dezie, ma melite ọrụ gị.',
+      askMeFeatures: '💡 Rịọ m ka m tinye atụmatụ ọhụrụ',
+      requestEdits: '📝 Rịọ maka mmezi faịlụ na nkwalite',
+      getHelp: '🔧 Nweta enyemaka na debugging na optimization',
+      buildDeploy: '🚀 Wuo ma bufee ọrụ gị',
+      aiNotConfigured: 'Onye Enyemaka AI Ahazighị',
+      configureAI: 'Biko hazie ntọala AI gị iji malite iwu na enyemaka AI.',
+      useMenuForAI: 'Jiri menu dị n\'elu okporo iji nweta Ntọala AI.',
+      askToAddFeatures: 'Rịọ m ka m tinye atụmatụ, dezie faịlụ, ma ọ bụ wuo ọrụ gị...',
+      selectModelFirst: 'Biko họrọ ụdịdị iji malite ikwu okwu...',
+      sendMessage: 'Ziga ozi',
+      stopGeneration: 'Kwụsị mmepụta',
+      running: 'Na-agba ọsọ',
+
+      // Project View Navigation
+      chat: 'Nkata',
+      preview: 'Nlele',
+      code: 'Koodu',
+      backToPreview: 'Laghachi na Nlele',
+
+      // Preview Pane
+      projectPreview: 'Nlele Ọrụ',
+      buildProjectToSeePreview: 'Wuo ọrụ gị iji hụ nlele ebe a',
+      fileEditor: 'Onye Ndezie Faịlụ',
+      selectFileFromExplorer: 'Họrọ faịlụ site na explorer iji dezie',
+      openFileExplorer: 'Meghee File Explorer',
+
+      // File Editor
+      unsavedChanges: 'Mgbanwe ndị na-echekwaghị',
+      saving: 'Na-echekwa...',
+      languageLabel: 'Asụsụ',
+
+      // File Tree
+      searchFiles: 'Chọọ faịlụ...',
+      noFilesFound: 'Ahụghị faịlụ ọ bụla',
+      noFilesFoundSearch: 'Ahụghị faịlụ ọ bụla dabara na nchọgharị gị',
+
+      // Git Dialog
+      gitRepositoryStatus: 'Ọnọdụ Repository Git',
+      repositoryStatusDescription: 'Lee ọnọdụ repository wee jikọọ na repositories dị anya',
+      repositoryInformation: 'Ozi Repository',
+      currentBranch: 'Alaka Ugbu a',
+      totalCommits: 'Mkpokọta Commits',
+      latestCommit: 'Commit kacha ọhụrụ',
+      remotes: 'Ndị dị anya',
+      notGitRepository: 'Ọ bụghị repository Git',
+      gitAuthentication: 'Nkwenye',
+      credentialsDescription: 'Nzere maka ọrụ push/pull',
+      configured: 'Ahaziri',
+      noCredentials: 'Enweghị nzere',
+      noCredentialsWarning: 'Enweghị nzere ahaziri maka {{provider}}. Ọrụ push/pull nwere ike daa maka repositories nzuzo.',
+      configureCredentials: 'Hazie nzere',
+      syncStatus: 'Ọnọdụ Mmekọrịta',
+      pull: 'Dọta',
+      push: 'Kwanye',
+      pulling: 'Na-adọta...',
+      pushing: 'Na-akwanye...',
+      upToDate: 'Emelitela',
+      commitsAhead: 'Commit {{count}} n\'ihu | Commits {{count}} n\'ihu',
+      commitsBehind: 'Commit {{count}} n\'azụ | Commits {{count}} n\'azụ',
+      uncommittedChanges: 'Mgbanwe {{count}} na-atinyeghị | Mgbanwe {{count}} na-atinyeghị',
+      noRemoteConfigured: 'Enweghị onye dị anya ahaziri',
+      workingDirectoryChanges: 'Mgbanwe Directory Ọrụ',
+      filesWithChanges: 'Faịlụ {{count}} nwere mgbanwe | Faịlụ {{count}} nwere mgbanwe',
+      workingDirectoryClean: 'Directory ọrụ dị ọcha',
+      noUncommittedChanges: 'Enweghị mgbanwe na-atinyeghị',
+      cannotPush: 'Enweghị ike ịkwanye',
+      cannotPull: 'Enweghị ike ịdọta',
+      notGitRepoOrBranch: 'Ọ bụghị repository git ma ọ bụ enweghị alaka ugbu a',
+      noRemoteRepositories: 'Enweghị repositories dị anya ahaziri',
+      nothingToPush: 'Enweghị ihe ọ bụla ịkwanye',
+      noCommitsAhead: 'Enweghị commits n\'ihu nke onye dị anya. Buru ụzọ tinye mgbanwe gị.',
+      pushSuccessful: 'Nkwanye gara nke ọma',
+      pushFailed: 'Nkwanye dara',
+      pullSuccessful: 'Ndọta gara nke ọma',
+      pullFailed: 'Ndọta dara',
+
+      // AI Settings
+      aiSettingsDescriptionLong: 'Hazie ndị na-enye AI site na ịtinye igodo API gị. Ntọala na-echekwa onwe ya ma chekwaa ya na mpaghara na browser gị.',
+      configuredProviders: 'Ndị Na-enye Ahaziri',
+      addProvider: 'Tinye Onye Na-enye',
+      getApiKey: 'Nweta igodo API',
+      getToken: 'Nweta token',
+      enterApiKey: 'Tinye igodo API gị',
+      enterToken: 'Tinye token gị',
+      enterCashuToken: 'Tinye token Cashu',
+      addCustomProvider: 'Tinye Onye Na-enye Omenala',
+      providerName: 'Aha Onye Na-enye',
+      baseUrl: 'URL Ntọala',
+      apiKey: 'Igodo API',
+      authentication: 'Nkwenye',
+      addCustomProviderButton: 'Tinye Onye Na-enye Omenala',
+      providerExists: 'Onye na-enye nwere aha a adịlarị',
+      custom: 'Omenala',
+      connecting: 'Na-ejikọ...',
+      connectToGitHub: 'Jikọọ na GitHub',
+      loginToNostrRequired: 'Banye na Nostr iji jiri onye na-enye a',
+      goToNostrSettings: 'Gaa na Ntọala Nostr',
+
+      // Git Settings
+      gitSettingsDescriptionLong: 'Hazie nzere Git maka nkwenye HTTP. Ntọala na-echekwa onwe ya ma chekwaa ya na mpaghara na browser gị.',
+      configuredCredentials: 'Nzere Ahaziri',
+      origin: 'Mmalite',
+      username: 'Aha onye ọrụ',
+      password: 'Okwuntughe',
+      enterPassword: 'Tinye okwuntughe/token gị',
+      credentialsExist: 'Nzere maka mmalite a adịlarị',
+      corsProxy: 'CORS Proxy',
+      corsProxyDescription: 'Sava proxy CORS ejiri maka ọrụ Git niile na repositories dị anya. Achọrọ maka ọrụ Git dabere na browser.',
+
+      // Data Settings
+      dataSettingsDescriptionLong: 'Bupụta faịlụ ma jikwaa data mpaghara.',
+      exportFiles: 'Bupụta Faịlụ',
+      exportFilesDescription: 'Budata ọrụ gị niile na faịlụ dị ka mkpokọta ZIP. Nke a gụnyere faịlụ ọrụ niile, ntọala, na data echekwara na mpaghara.',
+      exportAllFiles: 'Bupụta Faịlụ Niile',
+      exporting: 'Na-ebupụta...',
+      clearAllData: 'Hichapụ Data Niile',
+      clearAllDataDescription: 'Hichapụ data mpaghara niile kpamkpam gụnyere ọrụ, ntọala, na ozi cache. Omume a enweghị ike ịmegharị.',
+      clearing: 'Na-ehichapụ...',
+      areYouSure: 'Ị ji n\'ezie kwenye?',
+      clearDataWarning: 'Omume a ga-ehichapụ data mpaghara niile site na browser a kpamkpam, gụnyere:',
+      allProjects: 'Ọrụ niile na faịlụ ha',
+      aiSettingsAndKeys: 'Ntọala AI na igodo API',
+      gitCredentialsSettings: 'Nzere Git na ntọala',
+      userPreferences: 'Nhọrọ onye ọrụ na isiokwu',
+      cachedData: 'Data cache na ozi oge',
+      actionCannotBeUndone: 'Omume a enweghị ike ịmegharị. Tụlee ibupụ faịlụ gị mbụ.',
+      yesClearAllData: 'Ee, hichapụ data niile',
+      used: 'Ejiri',
+      available: 'Dị',
+      usagePercentage: '{{percentage}}% ejiri',
+      usageUnavailable: 'Pasent ojiji adịghị',
+      loadingStorageInfo: 'Na-ebu ozi nchekwa...',
+      filesExportedSuccessfully: 'Ebupụtara faịlụ nke ọma',
+      filesExportedDescription: 'Ebudata faịlụ ọrụ gị dị ka faịlụ zip.',
+      failedToExportFiles: 'O dara ibupụta faịlụ',
+      dataClearedSuccessfully: 'Ehichapụrụ data nke ọma',
+      dataClearedDescription: 'Ewepụrụ data mpaghara niile. Na-atụgharị gaa na ibe ụlọ...',
+      failedToClearData: 'O dara ihichapụ data',
+
+      // About Settings
+      aboutShakespeare: 'Gbasara Shakespeare',
+      aboutShakespeareDescription: 'Ozi gbasara Shakespeare.',
+      sourceCode: 'Koodu Isi',
+      viewOnGitLab: 'Lee na GitLab',
+      description: 'Nkọwa',
+      license: 'Ikike',
+      loadingLicense: 'Na-ebu ikike...',
+      failedToLoadLicense: 'O dara ibu ikike',
+
+      // 404 Page
+      pageNotFound: 'Ewoo! Ahụghị ibe',
+      returnToHome: 'Laghachi n\'Ụlọ',
+
+      // Model Selector
+      selectOrEnterModel: 'Họrọ ma ọ bụ tinye ụdịdị...',
+      searchModels: 'Chọọ ụdịdị...',
+      enterCustomModel: 'Tinye ụdịdị omenala...',
+      manageProviders: 'Jikwaa ndị na-enye...',
+      noModelsFound: 'Ahụghị ụdịdị ọ bụla.',
+      tryCustomModel: 'Gbalịa iji ụdịdị omenala kama.',
+      recentlyUsed: 'Ejiri Na Nso Nso A',
+      errorLoadingModels: 'Njehie Na-ebu Ụdịdị',
+
+      // Context and Cost
+      contextUsage: 'Ojiji ọnọdụ: {{tokens}} / {{total}} tokens ({{percentage}}%)',
+      totalCostSession: 'Mkpokọta ọnụ ahịa maka oge nkata a',
+
+      // File Status
+      added: 'tinyere',
+      deleted: 'hichapụrụ',
+      modified: 'gbanwere',
+      staged: 'kwadoro',
+      untracked: 'na-esoghị',
+
+      // Settings Layout
+      toggleSidebar: 'Gbanwee sidebar',
+      openSidebar: 'Meghee sidebar',
+
+      // Nostr Settings
+      nostrSettingsDescriptionLong: 'Hazie ntọala njikọ Nostr gị na nhọrọ relay.',
+      nostrAccounts: 'Akaụntụ Nostr',
+      noAccountsLoggedIn: 'Enweghị akaụntụ banyere. Tinye akaụntụ iji malite.',
+      createAccount: 'Mepụta Akaụntụ',
+      addExistingAccount: 'Tinye Akaụntụ Dị Adị',
+      addAccount: 'Tinye Akaụntụ',
+      relayConfiguration: 'Nhazi Relay',
+      selectedRelay: 'Relay Ahọrọ',
+
+      // Clone Page
+      cloneGitRepository: 'Clone repository Git n\'ogige ọrụ Shakespeare gị',
+      pleaseEnterRepositoryUrl: 'Biko tinye URL repository',
+      pleaseEnterValidGitUrl: 'Biko tinye URL repository Git ziri ezi ma ọ bụ URI clone Nostr (ọmụmaatụ: nostr://npub.../aha-repo)',
+      cloningRepository: 'Na-eclone Repository...',
+      nostrRepositoryImportedSuccessfully: 'Ebubatara repository Nostr nke ọma',
+      repositoryClonedFromNostr: 'Eclonere "{{repoName}}" site na Nostr ma dịkwa njikere maka mmepe.',
+      repositoryImportedSuccessfully: 'Ebubatara repository nke ọma',
+      repositoryClonedReady: 'Eclonere "{{repoName}}" ma dịkwa njikere maka mmepe.',
+      failedToImportRepository: 'O dara ibubata repository',
+      repositoryNotFoundOnNostr: 'Ahụghị repository na netwọk Nostr. Biko lelee URI wee nwaa ọzọ.',
+      noCloneUrlsFound: 'Ahụrụ mkpọsa repository mana enweghị URL clone dị.',
+      allCloneAttemptsFailed: 'Ahụrụ repository mana URL clone niile dara. Repository nwere ike ọ dịghị.',
+      repositoryNotFound: 'Ahụghị repository. Biko lelee URL wee nwaa ọzọ.',
+      accessDenied: 'Ajụrụ ohere. Repository nwere ike bụrụ nke nzuzo ma ọ bụ chọrọ nkwenye.',
+      networkError: 'Njehie netwọk. Biko lelee njikọ gị wee nwaa ọzọ.',
     }
   }
 };

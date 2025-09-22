@@ -37,7 +37,6 @@ import { toolToOpenAI } from '@/lib/tools/openai-adapter';
 import { Tool } from '@/lib/tools/Tool';
 import OpenAI from 'openai';
 import { makeSystemPrompt } from '@/lib/system';
-import { assistantContentEmpty } from '@/lib/ai-messages';
 import { saveFileToTmp } from '@/lib/fileUtils';
 import { useGit } from '@/hooks/useGit';
 
@@ -503,11 +502,6 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
           )}
 
           {messages.map((message, index) => {
-            // Skip assistant messages with no content
-            if (message.role === 'assistant' && assistantContentEmpty(message.content)) {
-              return null;
-            }
-
             // Find the corresponding tool call for tool messages
             let toolCall: OpenAI.Chat.Completions.ChatCompletionMessageToolCall | undefined = undefined;
             if (message.role === 'tool') {
@@ -535,7 +529,6 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
                 key="streaming-message"
                 message={streamingMessage}
                 isCurrentlyLoading={isLoading}
-                reasoningContent={streamingMessage.reasoning_content}
               />
             ) : (
               !(streamingMessage?.tool_calls?.[0]?.type === 'function') && (

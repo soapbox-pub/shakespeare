@@ -578,7 +578,7 @@ export class Git {
     console.log(`Getting remote info for Nostr repository: ${nostrUrl}`);
 
     // Fetch the repository announcement and state from Nostr
-    const { repo, state } = await this.fetchNostrRepo(nostrURI, AbortSignal.timeout(10000));
+    const { repo, state } = await this.fetchNostrRepo(nostrURI);
 
     if (!repo) {
       throw new Error('Repository announcement not found on Nostr network');
@@ -687,6 +687,33 @@ export class Git {
         } catch (error) {
           console.warn(`Failed to resolve ref ${ref}:`, error);
         }
+      }
+
+      // If no refs found, try to get the current branch directly
+      if (refTags.length === 0) {
+        try {
+          const currentBranch = await this.currentBranch({ dir });
+          if (currentBranch) {
+            const currentCommit = await this.resolveRef({ dir, ref: 'HEAD' });
+            refTags.push([`refs/heads/${currentBranch}`, currentCommit]);
+            console.log(`Added current branch: refs/heads/${currentBranch} -> ${currentCommit}`);
+          } else {
+            // Try to get HEAD directly even if no current branch
+            try {
+              const headCommit = await this.resolveRef({ dir, ref: 'HEAD' });
+              refTags.push(['refs/heads/main', headCommit]); // Assume main branch
+              console.log(`Added assumed main branch: refs/heads/main -> ${headCommit}`);
+            } catch (headError) {
+              console.warn('Failed to resolve HEAD directly:', headError);
+            }
+          }
+        } catch (error) {
+          console.warn('Failed to get current branch:', error);
+        }
+      }
+
+      if (refTags.length === 0) {
+        throw new Error('Could not determine repository state. The repository might not have any commits or branches.');
       }
 
       // Get HEAD reference
@@ -864,7 +891,7 @@ export class Git {
         // Format: nostr://npub/relay/d
         return {
           pubkey,
-          relay: parts[1],
+          relay: `wss://${parts[1]}/`,
           d: parts[2],
         };
       } else if (parts.length === 2) {
@@ -881,59 +908,61 @@ export class Git {
     }
   }
 
-  private async fetchNostrRepo(
-    nostrURI: NostrCloneURI,
-    signal?: AbortSignal,
-  ): Promise<{ repo?: NostrEvent; state?: NostrEvent }> {
+  private async fetchNostrRepo(nostrURI: NostrCloneURI): Promise<{ repo?: NostrEvent; state?: NostrEvent }> {
     // Build the filter for both NIP-34 repository announcement and state events
     const filter = {
       kinds: [30617, 30618],
       authors: [nostrURI.pubkey],
       '#d': [nostrURI.d],
-      limit: 2, // We want both repo and state events if they exist
     };
 
-    // Use a specific relay if provided, otherwise try git-focused relays
-    const client = nostrURI.relay
-      ? this.nostr.relay(nostrURI.relay)
-      : this.nostr.group([
-          'wss://git.shakespeare.diy/',
-          'wss://relay.ngit.dev/',
-          'wss://gitnostr.com/',
-          'wss://relay.nostr.band/', // Fallback to general relay
-        ]);
+    const gitRelays = new Set<string>([
+      'wss://git.shakespeare.diy/',
+      'wss://relay.ngit.dev/',
+      'wss://gitnostr.com/',
+      'wss://relay.nostr.band/', // General purpose relay as fallback
+    ]);
 
-    try {
-      // Query for both repository announcement and state events
-      const events = await client.query([filter], {
-        signal: signal || AbortSignal.timeout(5000)
-      });
+    let events: NostrEvent[] = [];
 
-      const repo = events.find((e) => e.kind === 30617);
-      const state = events.find((e) => e.kind === 30618);
-
-      if (!repo) {
-        throw new Error('Repository announcement not found on Nostr network');
+    // Try the specified relay first, then fall back to known Git relays
+    if (nostrURI.relay) {
+      try {
+        events = await this.nostr.relay(nostrURI.relay).query([filter], { signal: AbortSignal.timeout(1000) });
+      } catch (error) {
+        console.error(`Error querying relay ${nostrURI.relay}: ${error}`);
       }
-
-      if (state) {
-        console.log(`Found repository state event with ${state.tags.length} tags`);
-      } else {
-        console.log('No repository state event found, proceeding with basic clone');
-      }
-
-      return { repo, state };
-    } catch (error) {
-      if (error instanceof Error) {
-        throw new Error(`Failed to fetch repository from Nostr: ${error.message}`);
-      }
-      throw new Error('Failed to fetch repository from Nostr network');
     }
+    if (!events.length) {
+      try {
+        events = await this.nostr.group([...gitRelays]).query([filter], { signal: AbortSignal.timeout(5000) });
+      } catch (error) {
+        console.error(`Error querying group relays: ${error}`);
+      }
+    }
+    if (!events.length) {
+      throw new Error('No events found for the specified Nostr repository');
+    }
+
+    const repo = events.find((e) => e.kind === 30617);
+    const state = events.find((e) => e.kind === 30618);
+
+    if (!repo) {
+      throw new Error('Repository announcement not found on Nostr network');
+    }
+
+    if (state) {
+      console.log(`Found repository state event with ${state.tags.length} tags`);
+    } else {
+      console.log('No repository state event found, proceeding with basic clone');
+    }
+
+    return { repo, state };
   }
 
   private async nostrClone(nostrURI: NostrCloneURI, options: Omit<Parameters<typeof git.clone>[0], 'fs' | 'http' | 'corsProxy'>): Promise<void> {
     // Fetch events from Nostr
-    const { repo, state } = await this.fetchNostrRepo(nostrURI, AbortSignal.timeout(10000));
+    const { repo, state } = await this.fetchNostrRepo(nostrURI);
 
     if (!repo) {
       throw new Error('Repository not found');
@@ -1163,7 +1192,7 @@ export class Git {
     console.log(`Fetching updates from Nostr repository: ${nostrUrl}`);
 
     // Fetch the latest repository state from Nostr
-    const { repo, state } = await this.fetchNostrRepo(nostrURI, AbortSignal.timeout(10000));
+    const { repo, state } = await this.fetchNostrRepo(nostrURI);
 
     if (!repo) {
       throw new Error('Repository not found on Nostr network');
@@ -1337,7 +1366,7 @@ export class Git {
     console.log(`Pushing to Nostr repository: ${nostrUrl}`);
 
     // Fetch the repository announcement to get relay information and clone URLs
-    const { repo } = await this.fetchNostrRepo(nostrURI, AbortSignal.timeout(10000));
+    const { repo } = await this.fetchNostrRepo(nostrURI);
     if (!repo) {
       throw new Error('Repository announcement not found on Nostr network');
     }
@@ -1346,17 +1375,28 @@ export class Git {
     const relayUrls: string[] = [];
     const cloneUrls: string[] = [];
 
-    for (const [name, value] of repo.tags) {
-      if (name === 'relays' && value) {
-        relayUrls.push(value);
-      } else if (name === 'clone' && value) {
-        try {
-          const url = new URL(value);
-          if (url.protocol === 'http:' || url.protocol === 'https:') {
-            cloneUrls.push(url.href);
+    for (const [name, ...values] of repo.tags) {
+      if (name === 'relays' && values.length > 0) {
+        for (const value of values) {
+          try {
+            const url = new URL(value);
+            if (url.protocol === 'wss:') {
+              relayUrls.push(url.href);
+            }
+          } catch {
+            // Ignore invalid URLs
           }
-        } catch {
-          // Ignore invalid URLs
+        }
+      } else if (name === 'clone' && values.length > 0) {
+        for (const value of values) {
+          try {
+            const url = new URL(value);
+            if (url.protocol === 'https:') {
+              cloneUrls.push(url.href);
+            }
+          } catch {
+            // Ignore invalid URLs
+          }
         }
       }
     }
@@ -1375,26 +1415,22 @@ export class Git {
     const repoState = await this.getCurrentRepositoryState(dir);
 
     // Create repository state event (kind 30618)
-    const stateEvent: Omit<NostrEvent, 'id' | 'sig'> = {
+    const stateEvent = await signer.signEvent({
       kind: 30618,
       created_at: Math.floor(Date.now() / 1000),
-      pubkey: '', // Will be set by signer
       content: '',
       tags: [
         ['d', nostrURI.d], // Repository identifier
         ...repoState.refTags,
         ...(repoState.headRef ? [['HEAD', repoState.headRef]] : []),
       ],
-    };
-
-    // Sign the event
-    const signedStateEvent = await signer.signEvent(stateEvent);
+    });
 
     // Publish the state event to Nostr relays
     console.log(`Publishing repository state to ${relayUrls.length} relays`);
 
     try {
-      await this.nostr.group(relayUrls).event(signedStateEvent);
+      await this.nostr.group(relayUrls).event(stateEvent);
       console.log('✓ Repository state published to Nostr successfully');
     } catch (error) {
       console.warn('Failed to publish repository state to some relays:', error);
@@ -1407,63 +1443,34 @@ export class Git {
       return;
     }
 
+    // Wait 5 seconds for GRASP servers to update
+    await new Promise(resolve => setTimeout(resolve, 5000));
+
     let pushSuccessful = false;
     let lastError: Error | null = null;
 
     for (const cloneUrl of cloneUrls) {
-      try {
-        console.log(`Pushing to Git remote: ${cloneUrl}`);
+      console.log(`Pushing to Git remote: ${cloneUrl}`);
 
-        // Add a temporary remote for this clone URL
-        const tempRemoteName = `temp-push-${Date.now()}`;
-        await git.addRemote({
+      try {
+        // Push to the temporary remote
+        await git.push({
           fs: this.fs,
+          http,
+          corsProxy: this.corsProxy,
           dir,
-          remote: tempRemoteName,
           url: cloneUrl,
+          ...gitPushOptions,
         });
 
-        try {
-          // Push to the temporary remote
-          await git.push({
-            fs: this.fs,
-            http,
-            corsProxy: this.corsProxy,
-            dir,
-            remote: tempRemoteName,
-            ...gitPushOptions,
-          });
+        pushSuccessful = true;
+        console.log(`✓ Successfully pushed to ${cloneUrl}`);
 
-          pushSuccessful = true;
-          console.log(`✓ Successfully pushed to ${cloneUrl}`);
-
-          // Remove the temporary remote
-          await git.deleteRemote({
-            fs: this.fs,
-            dir,
-            remote: tempRemoteName,
-          });
-
-          // If one push succeeds, we can break (unless we want to push to all remotes)
-          break;
-        } catch (pushError) {
-          console.warn(`Failed to push to ${cloneUrl}:`, pushError);
-          lastError = pushError instanceof Error ? pushError : new Error('Unknown push error');
-
-          // Clean up the temporary remote
-          try {
-            await git.deleteRemote({
-              fs: this.fs,
-              dir,
-              remote: tempRemoteName,
-            });
-          } catch {
-            // Ignore cleanup errors
-          }
-        }
-      } catch (error) {
-        console.warn(`Failed to set up remote for ${cloneUrl}:`, error);
-        lastError = error instanceof Error ? error : new Error('Unknown error');
+        // If one push succeeds, we can break (unless we want to push to all remotes)
+        break;
+      } catch (pushError) {
+        console.warn(`Failed to push to ${cloneUrl}:`, pushError);
+        lastError = pushError instanceof Error ? pushError : new Error('Unknown push error');
       }
     }
 
@@ -1497,78 +1504,47 @@ export class Git {
 
     // Try to fetch missing commits from each Git remote
     for (const cloneUrl of cloneUrls) {
-      try {
-        console.log(`Fetching missing commits from: ${cloneUrl}`);
+      console.log(`Fetching missing commits from: ${cloneUrl}`);
 
-        // Add a temporary remote
-        const tempRemoteName = `temp-${Date.now()}`;
-        await git.addRemote({
+      try {
+        // Fetch from the clone URL
+        await git.fetch({
           fs: this.fs,
+          http,
+          corsProxy: this.corsProxy,
           dir,
-          remote: tempRemoteName,
           url: cloneUrl,
         });
 
-        try {
-          // Fetch from the temporary remote
-          await git.fetch({
-            fs: this.fs,
-            http,
-            corsProxy: this.corsProxy,
-            dir,
-            remote: tempRemoteName,
-          });
-
-          // Update our refs to match the Nostr state
-          for (const [refName, commitId] of Object.entries(refs)) {
-            try {
-              // Check if we now have this commit
-              await git.readCommit({
-                fs: this.fs,
-                dir,
-                oid: commitId,
-              });
-
-              // Update the ref
-              await git.writeRef({
-                fs: this.fs,
-                dir,
-                ref: refName,
-                value: commitId,
-              });
-
-              console.log(`✓ Updated ${refName} to ${commitId} after fetching`);
-            } catch {
-              // Still don't have this commit
-              console.warn(`Still missing commit ${commitId} for ${refName}`);
-            }
-          }
-
-          // Remove the temporary remote
-          await git.deleteRemote({
-            fs: this.fs,
-            dir,
-            remote: tempRemoteName,
-          });
-
-          // Successfully fetched from this remote
-          return;
-        } catch (fetchError) {
-          console.warn(`Failed to fetch from ${cloneUrl}:`, fetchError);
-
-          // Clean up the temporary remote
+        // Update our refs to match the Nostr state
+        for (const [refName, commitId] of Object.entries(refs)) {
           try {
-            await git.deleteRemote({
+            // Check if we now have this commit
+            await git.readCommit({
               fs: this.fs,
               dir,
-              remote: tempRemoteName,
+              oid: commitId,
             });
+
+            // Update the ref
+            await git.writeRef({
+              fs: this.fs,
+              dir,
+              ref: refName,
+              value: commitId,
+            });
+
+            console.log(`✓ Updated ${refName} to ${commitId} after fetching`);
           } catch {
-            // Ignore cleanup errors
+            // Still don't have this commit
+            console.warn(`Still missing commit ${commitId} for ${refName}`);
           }
         }
-      } catch (error) {
-        console.warn(`Failed to set up temporary remote for ${cloneUrl}:`, error);
+
+        // Successfully fetched from this remote
+        return;
+      } catch (fetchError) {
+        console.warn(`Failed to fetch from ${cloneUrl}:`, fetchError);
       }
     }
   }

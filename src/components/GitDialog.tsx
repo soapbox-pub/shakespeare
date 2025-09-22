@@ -34,13 +34,20 @@ import {
   RefreshCw,
   Settings,
   AlertTriangle,
+  Zap,
 } from 'lucide-react';
 import { useGitStatus } from '@/hooks/useGitStatus';
 import { useGitSettings } from '@/hooks/useGitSettings';
 import { useGit } from '@/hooks/useGit';
 import { useToast } from '@/hooks/useToast';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useNostr } from '@nostrify/react';
+import { useNostrPublish } from '@/hooks/useNostrPublish';
 import { cn } from '@/lib/utils';
 import { findCredentialsForRepo, getOriginDisplayName } from '@/lib/gitCredentials';
+import { nip19 } from 'nostr-tools';
+
+const GRASP_SERVERS = ["git.shakespeare.diy", "relay.ngit.dev", "gitnostr.com"];
 
 interface GitDialogProps {
   projectId: string;
@@ -52,6 +59,7 @@ interface GitDialogProps {
 export function GitDialog({ projectId, children, open, onOpenChange }: GitDialogProps) {
   const [isPushing, setIsPushing] = useState(false);
   const [isPulling, setIsPulling] = useState(false);
+  const [isPushingToNostr, setIsPushingToNostr] = useState(false);
   const [pushResult, setPushResult] = useState<string | null>(null);
   const [pullResult, setPullResult] = useState<string | null>(null);
   const navigate = useNavigate();
@@ -60,8 +68,216 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
   const { settings } = useGitSettings();
   const { git } = useGit();
   const { toast } = useToast();
+  const { user } = useCurrentUser();
+  const { nostr } = useNostr();
+  const { mutateAsync: publishEvent } = useNostrPublish();
 
   const projectPath = `/projects/${projectId}`;
+
+  const handlePushToNostr = async () => {
+    if (!user) {
+      toast({
+        title: "Cannot push to Nostr",
+        description: "You must be logged in to push to Nostr",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!gitStatus?.isGitRepo || !gitStatus.currentBranch) {
+      toast({
+        title: "Cannot push to Nostr",
+        description: "Not a git repository or no current branch",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsPushingToNostr(true);
+    setPushResult(null);
+
+    try {
+      // Check if repo announcement already exists
+      const existingRepoEvents = await nostr.query([{
+        kinds: [30617],
+        authors: [user.pubkey],
+        '#d': [projectId],
+        limit: 1,
+      }], { signal: AbortSignal.timeout(5000) });
+
+      if (existingRepoEvents.length > 0) {
+        throw new Error(`Repository announcement already exists for project "${projectId}". Cannot create duplicate.`);
+      }
+
+      // Create repo announcement event (NIP-34 kind 30617)
+      const cloneUrls = GRASP_SERVERS.map(server =>
+        `https://${server}/${nip19.npubEncode(user.pubkey)}/${projectId}.git`
+      );
+      const relayUrls = GRASP_SERVERS.map(server => `wss://${server}`);
+
+      await publishEvent({
+        kind: 30617,
+        content: "",
+        tags: [
+          ["d", projectId],
+          ["clone", ...cloneUrls],
+          ["relays", ...relayUrls],
+        ],
+      });
+
+      // Get current repository state
+      const refTags: string[][] = [];
+
+      // First check if we have any commits at all
+      try {
+        const log = await git.log({ dir: projectPath, depth: 1 });
+        if (log.length === 0) {
+          throw new Error('Repository has no commits. Please make at least one commit before publishing to Nostr.');
+        }
+        console.log(`Repository has ${log.length} commit(s), latest: ${log[0].oid}`);
+      } catch (error) {
+        if (error instanceof Error && error.message.includes('no commits')) {
+          throw error; // Re-throw our custom error
+        }
+        throw new Error('Repository has no commits. Please make at least one commit before publishing to Nostr.');
+      }
+
+      try {
+        // Get all refs using listRefs
+        const refs = await git.listRefs({ dir: projectPath });
+        console.log('Found refs:', refs);
+
+        for (const ref of refs) {
+          try {
+            const commitId = await git.resolveRef({
+              dir: projectPath,
+              ref,
+            });
+            if (ref.startsWith('refs/heads/') || ref.startsWith('refs/tags/')) {
+              refTags.push([ref, commitId]);
+            }
+          } catch (error) {
+            console.warn(`Failed to resolve ref ${ref}:`, error);
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to list refs, trying alternative approach:', error);
+      }
+
+      // If no refs found, try to get the current branch directly
+      if (refTags.length === 0) {
+        try {
+          const currentBranch = await git.currentBranch({ dir: projectPath });
+          if (currentBranch) {
+            const currentCommit = await git.resolveRef({
+              dir: projectPath,
+              ref: 'HEAD',
+            });
+            refTags.push([`refs/heads/${currentBranch}`, currentCommit]);
+            console.log(`Added current branch: refs/heads/${currentBranch} -> ${currentCommit}`);
+          } else {
+            // Try to get HEAD directly even if no current branch
+            try {
+              const headCommit = await git.resolveRef({
+                dir: projectPath,
+                ref: 'HEAD',
+              });
+              refTags.push(['refs/heads/main', headCommit]); // Assume main branch
+              console.log(`Added assumed main branch: refs/heads/main -> ${headCommit}`);
+            } catch (headError) {
+              console.warn('Failed to resolve HEAD directly:', headError);
+            }
+          }
+        } catch (error) {
+          console.warn('Failed to get current branch:', error);
+        }
+      }
+
+      if (refTags.length === 0) {
+        throw new Error('Could not determine repository state. The repository might not have any commits or branches.');
+      }
+
+      // Get HEAD reference
+      let headRef: string | undefined;
+      try {
+        const currentBranch = await git.currentBranch({ dir: projectPath });
+        if (currentBranch) {
+          headRef = `ref: refs/heads/${currentBranch}`;
+          console.log(`HEAD points to: ${headRef}`);
+        } else {
+          // HEAD is detached, use the commit ID directly
+          const headValue = await git.resolveRef({
+            dir: projectPath,
+            ref: 'HEAD',
+          });
+          if (headValue) {
+            headRef = headValue;
+            console.log(`HEAD is detached at: ${headRef}`);
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to resolve HEAD:', error);
+      }
+
+      // Create repo state event (NIP-34 kind 30618)
+      await publishEvent({
+        kind: 30618,
+        content: "",
+        tags: [
+          ["d", projectId],
+          ...refTags,
+          ...(headRef ? [["HEAD", headRef]] : []),
+        ],
+      });
+
+      // Set origin remote to Nostr URL
+      const nostrUrl = `nostr://${nip19.npubEncode(user.pubkey)}/git.shakespeare.diy/${projectId}`;
+
+      try {
+        // Remove existing origin if it exists
+        await git.deleteRemote({
+          dir: projectPath,
+          remote: 'origin',
+        });
+      } catch {
+        // Ignore if origin doesn't exist
+      }
+
+      await git.addRemote({
+        dir: projectPath,
+        remote: 'origin',
+        url: nostrUrl,
+      });
+
+      // Set nostr.repo config
+      await git.setConfig({
+        dir: projectPath,
+        path: 'nostr.repo',
+        value: nip19.naddrEncode({
+          kind: 30617,
+          pubkey: user.pubkey,
+          identifier: projectId,
+        }),
+      });
+
+      toast({
+        title: "Repository published to Nostr",
+        description: "Waiting for GRASP servers to update...",
+      });
+
+      setPushResult(`✅ Successfully published repository to Nostr`);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      setPushResult(`❌ Push to Nostr failed: ${errorMessage}`);
+      toast({
+        title: "Push to Nostr failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsPushingToNostr(false);
+    }
+  };
 
   const handlePush = async () => {
     if (!gitStatus?.isGitRepo || !gitStatus.currentBranch) {
@@ -102,6 +318,7 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
         remote: remote.name,
         ref: gitStatus.currentBranch,
         onAuth: (url) => findCredentialsForRepo(url, settings.credentials),
+        signer: user?.signer, // For signing if pushing to Nostr
       });
 
       setPushResult(`✅ Successfully pushed ${gitStatus.ahead} commit${gitStatus.ahead !== 1 ? 's' : ''} to ${remote.name}/${gitStatus.currentBranch}`);
@@ -427,7 +644,7 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
                     <div className="flex gap-2">
                       <Button
                         onClick={handlePull}
-                        disabled={isPulling || isPushing}
+                        disabled={isPulling || isPushing || isPushingToNostr}
                         variant="outline"
                         size="sm"
                         className="flex-1"
@@ -442,7 +659,7 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
 
                       <Button
                         onClick={handlePush}
-                        disabled={isPushing || isPulling || gitStatus.ahead === 0}
+                        disabled={isPushing || isPulling || isPushingToNostr || gitStatus.ahead === 0}
                         variant="outline"
                         size="sm"
                         className="flex-1"
@@ -453,6 +670,26 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
                           <Upload className="h-4 w-4 mr-2" />
                         )}
                         {isPushing ? 'Pushing...' : 'Push'}
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Push to Nostr button when no remote is configured and user is logged in */}
+                  {gitStatus.remotes.length === 0 && user && (
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={handlePushToNostr}
+                        disabled={isPushingToNostr || isPushing || isPulling}
+                        variant="outline"
+                        size="sm"
+                        className="flex-1"
+                      >
+                        {isPushingToNostr ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Zap className="h-4 w-4 mr-2" />
+                        )}
+                        {isPushingToNostr ? 'Publishing to Nostr...' : 'Push to Nostr'}
                       </Button>
                     </div>
                   )}

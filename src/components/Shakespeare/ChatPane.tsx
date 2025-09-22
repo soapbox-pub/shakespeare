@@ -40,12 +40,14 @@ import { makeSystemPrompt } from '@/lib/system';
 import { assistantContentEmpty } from '@/lib/ai-messages';
 import { saveFileToTmp } from '@/lib/fileUtils';
 import { useGit } from '@/hooks/useGit';
+import { useConsoleErrorAlert, useAIModelErrorAlert } from '@/hooks/useErrorDetection';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { QuillySVG } from '@/components/ui/QuillySVG';
 
 const ALERT_TYPE = {
   WARN: 'warn',
-  ERROR: 'error'
+  ERROR: 'error',
+  CONSOLE_ERROR: 'console_error'
 } as const;
 
 type AlertType = typeof ALERT_TYPE[keyof typeof ALERT_TYPE];
@@ -59,9 +61,17 @@ interface ChatAlert {
   };
 }
 
-function ChatIntervention({ alert, onDismiss }: { alert: ChatAlert; onDismiss: () => void }) {
-  const isError = alert.type === ALERT_TYPE.ERROR;
-
+function ChatIntervention({
+  type,
+  message,
+  onDismiss,
+  action
+}: {
+  type: string;
+  message: string;
+  onDismiss: () => void;
+  action?: { label: string; onClick: () => void };
+}) {
   return (
     <div className="py-2 px-3 bg-primary/5 border border-primary/20 rounded-lg">
       <div className="flex items-start gap-2">
@@ -70,23 +80,19 @@ function ChatIntervention({ alert, onDismiss }: { alert: ChatAlert; onDismiss: (
           <div className="space-y-1">
             <div className="space-y-1">
               <h4 className="font-semibold text-sm text-primary">
-                Pardon the Interruption
+                Pardon the interruption
               </h4>
-              <p className="text-sm text-muted-foreground">{alert.message}</p>
+              <p className="text-sm text-muted-foreground">{message}</p>
             </div>
-            {alert.action && (
+            {action && (
               <div className="flex justify-end pt-1">
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => {
-                    alert.action?.onClick();
-                    // Don't dismiss the alert when clicking the action button
-                    // Let the action itself decide whether to dismiss
-                  }}
+                  onClick={action.onClick}
                   className="text-xs h-6 px-2"
                 >
-                  {alert.action.label}
+                  {action.label}
                 </Button>
               </div>
             )}
@@ -105,96 +111,7 @@ function ChatIntervention({ alert, onDismiss }: { alert: ChatAlert; onDismiss: (
   );
 }
 
-interface ErrorPattern {
-  test: (content: string) => boolean;
-  type: AlertType;
-  message: string;
-  action?: {
-    label: string;
-    onClick: () => void;
-  };
-}
-
-
-function useChatAlert(
-  messages: AIMessage[],
-  scrollToBottom: () => void,
-  onNewChat?: () => void,
-  openModelSelector?: () => void
-): { alert: ChatAlert | null; dismiss: () => void } {
-  const [dismissedAlert, setDismissedAlert] = useState<string | null>(null);
-  const [prevAlert, setPrevAlert] = useState<ChatAlert | null>(null);
-
-
-  const alert = useMemo(() => {
-    const lastMessage = messages[messages.length - 1];
-    if (!lastMessage || lastMessage.role !== 'assistant') return null;
-
-    const content = typeof lastMessage.content === 'string' ? lastMessage.content : '';
-
-    // Define error patterns inside the useMemo
-    const errorPatterns: ErrorPattern[] = [
-      {
-        test: (content) => /AI service error: 422/.test(content) || /Provider returned error/.test(content),
-        type: ALERT_TYPE.ERROR,
-        message: 'The AI model encountered an issue. Try switching to a different model or starting a new chat.',
-        action: openModelSelector ? {
-          label: 'Change model',
-          onClick: openModelSelector
-        } : undefined
-      },
-      {
-        test: (content) => /maximum context length is \d+ tokens/.test(content) || /context length/.test(content),
-        type: ALERT_TYPE.WARN,
-        message: 'Your conversation is too long for this model. Try starting a new chat or switching to a model with a larger context window.',
-        action: onNewChat ? {
-          label: 'New chat',
-          onClick: onNewChat
-        } : undefined
-      },
-      {
-        test: (content) => /rate limit/i.test(content) || /too many requests/i.test(content),
-        type: ALERT_TYPE.WARN,
-        message: 'You\'re sending requests too quickly. Please wait a moment before trying again.'
-      }
-    ];
-
-    for (const pattern of errorPatterns) {
-      if (pattern.test(content)) {
-        const alert = {
-          type: pattern.type,
-          message: pattern.message,
-          action: pattern.action
-        };
-
-        // Only show if not dismissed
-        return dismissedAlert !== alert.message ? alert : null;
-      }
-    }
-
-    return null;
-  }, [messages, dismissedAlert, onNewChat, openModelSelector]);
-
-  // Handle alert changes - scroll when alert appears/disappears
-  useEffect(() => {
-    const alertChanged = prevAlert !== alert;
-    if (alertChanged && alert) {
-      // Small delay to ensure alert is rendered
-      setTimeout(() => {
-        scrollToBottom();
-      }, 50);
-    }
-    setPrevAlert(alert);
-  }, [alert, prevAlert, scrollToBottom]);
-
-  const dismiss = useCallback(() => {
-    if (alert) {
-      setDismissedAlert(alert.message);
-    }
-  }, [alert]);
-
-  return { alert, dismiss };
-}
+// Clean interfaces now handled by proper hooks
 
 interface ChatPaneProps {
   projectId: string;
@@ -380,13 +297,30 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     setIsModelSelectorOpen(true);
   }, []);
 
-  // Check for chat alerts based on messages
-  const { alert: chatAlert, dismiss: dismissAlert } = useChatAlert(
-    messages,
-    scrollToBottom,
-    _onNewChat,
-    openModelSelector
-  );
+  // Function to suggest error fix
+  // Clean alert hooks with proper interfaces
+  const aiModelAlert = useAIModelErrorAlert(messages);
+  const consoleAlert = useConsoleErrorAlert();
+
+  const suggestErrorFix = useCallback((errorMessage: string, errorCount: number) => {
+    const errorText = errorCount === 1 ? 'this error' : 'these errors';
+    setInput(`The user gets ${errorText} in the app now: ${errorMessage}\n\nCan you identify the problem and create a concise fix.`);
+  }, []);
+
+  const getAIModelAction = useCallback((errorType: 'warn' | 'error' | null) => {
+    if (errorType === 'error') {
+      return {
+        label: 'Change model',
+        onClick: openModelSelector
+      };
+    } else if (errorType === 'warn') {
+      return {
+        label: 'New chat',
+        onClick: _onNewChat
+      };
+    }
+    return undefined;
+  }, [openModelSelector, _onNewChat]);
 
   // Check for autostart parameter and trigger AI generation
   useEffect(() => {
@@ -733,11 +667,26 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
             </div>
           )}
 
-          {/* Chat Alert */}
-          {chatAlert && (
+          {/* AI Model Alert */}
+          {aiModelAlert.hasError && (
             <ChatIntervention
-              alert={chatAlert}
-              onDismiss={dismissAlert}
+              type={aiModelAlert.errorType || 'error'}
+              message={aiModelAlert.errorMessage || ''}
+              onDismiss={aiModelAlert.dismiss}
+              action={getAIModelAction(aiModelAlert.errorType)}
+            />
+          )}
+
+          {/* Console Error Alert */}
+          {consoleAlert.hasError && (
+            <ChatIntervention
+              type="error"
+              message={`Console ${consoleAlert.errorCount === 1 ? 'error' : 'errors'} detected in your app. Would you like me to help fix ${consoleAlert.errorCount === 1 ? 'it' : 'them'}?`}
+              onDismiss={consoleAlert.dismiss}
+              action={{
+                label: `Fix ${consoleAlert.errorCount === 1 ? 'error' : 'errors'}`,
+                onClick: () => suggestErrorFix(consoleAlert.errorSummary || '', consoleAlert.errorCount)
+              }}
             />
           )}
 

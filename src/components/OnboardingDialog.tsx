@@ -243,9 +243,16 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
                           >
                             <CardHeader className="pb-3">
                               <div className="flex items-center justify-between">
-                                <CardTitle className="text-base font-semibold">
-                                  {model.name ?? model.id}
-                                </CardTitle>
+                                <div className="flex-1">
+                                  <CardTitle className="text-base font-semibold">
+                                    {model.description || model.name || model.id}
+                                  </CardTitle>
+                                  {model.description && (
+                                    <p className="text-sm text-muted-foreground mt-1">
+                                      {model.name || model.id}
+                                    </p>
+                                  )}
+                                </div>
                                 <div className="flex items-center gap-2">
                                   {isFree && (
                                     <Badge variant="secondary" className="text-xs">
@@ -261,11 +268,6 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
                               </div>
                             </CardHeader>
                             <CardContent className="pt-0">
-                              {model.description && (
-                                <p className="text-sm text-muted-foreground mb-3">
-                                  {model.description}
-                                </p>
-                              )}
                               <div className="flex items-center gap-4 text-xs text-muted-foreground">
                                 {model.pricing && (
                                   <>

@@ -42,60 +42,94 @@ export class ProjectsManager {
   }
 
   async createProject(name: string, customId?: string): Promise<Project> {
+    console.log(`Creating project: ${name}, customId: ${customId}`);
+
     const project = await this.cloneProject(name, GIT_TEMPLATE_URL, customId, { depth: 1 });
+    console.log(`Project cloned at path: ${project.path}`);
 
     try {
       await this.fs.mkdir(this.dir + `/${project.id}/.ai/history`, { recursive: true });
-    } catch {
+      console.log(`Created .ai/history directory for project ${project.id}`);
+    } catch (error) {
+      console.log(`Directory .ai/history might already exist for project ${project.id}:`, error);
       // Directory might already exist
     }
 
     // Delete README.md if it exists
     try {
       await this.fs.unlink(`${project.path}/README.md`);
-    } catch {
+      console.log(`Deleted README.md for project ${project.id}`);
+    } catch (error) {
+      console.log(`README.md might not exist for project ${project.id}:`, error);
       // README.md might not exist, ignore error
     }
 
     // Delete .git directory and reinitialize
     try {
       await this.deleteDirectory(`${project.path}/.git`);
-    } catch {
+      console.log(`Deleted .git directory for project ${project.id}`);
+    } catch (error) {
+      console.log(`.git directory might not exist for project ${project.id}:`, error);
       // .git directory might not exist, ignore error
     }
 
     // Initialize new git repository
-    await this.git.init({
-      dir: project.path,
-      defaultBranch: 'main',
-    });
+    try {
+      await this.git.init({
+        dir: project.path,
+        defaultBranch: 'main',
+      });
+      console.log(`Initialized git repository for project ${project.id}`);
+    } catch (error) {
+      console.error(`Failed to initialize git repository for project ${project.id}:`, error);
+      throw new Error(`Failed to initialize git repository: ${error}`);
+    }
 
     // Add all files to git
-    const files = await this.getAllFiles(project.path);
-    for (const file of files) {
-      // Skip .git directory and other hidden files we don't want to track
-      if (!file.startsWith('.git/') && !file.startsWith('.ai/')) {
-        await this.git.add({
-          dir: project.path,
-          filepath: file,
-        });
+    try {
+      const files = await this.getAllFiles(project.path);
+      console.log(`Found ${files.length} files to add to git for project ${project.id}`);
+
+      for (const file of files) {
+        // Skip .git directory and other hidden files we don't want to track
+        if (!file.startsWith('.git/') && !file.startsWith('.ai/')) {
+          try {
+            await this.git.add({
+              dir: project.path,
+              filepath: file,
+            });
+          } catch (error) {
+            console.warn(`Failed to add file ${file} to git:`, error);
+          }
+        }
       }
+    } catch (error) {
+      console.error(`Failed to get files for project ${project.id}:`, error);
+      // Continue with commit even if we can't get all files
     }
 
     // Make initial commit
-    await this.git.commit({
-      dir: project.path,
-      message: 'New project created with Shakespeare',
-      author: {
-        name: 'shakespeare.diy',
-        email: 'assistant@shakespeare.diy',
-      },
-    });
+    try {
+      await this.git.commit({
+        dir: project.path,
+        message: 'New project created with Shakespeare',
+        author: {
+          name: 'shakespeare.diy',
+          email: 'assistant@shakespeare.diy',
+        },
+      });
+      console.log(`Made initial commit for project ${project.id}`);
+    } catch (error) {
+      console.error(`Failed to make initial commit for project ${project.id}:`, error);
+      throw new Error(`Failed to make initial commit: ${error}`);
+    }
 
     return project;
   }
 
   async cloneProject(name: string, repoUrl: string, customId?: string, options?: { depth?: number }): Promise<Project> {
+    console.log(`Cloning project: ${name}, repo: ${repoUrl}, customId: ${customId}`);
+
     const id = customId || await this.generateUniqueProjectId(name);
 
     // Check if project with this ID already exists when using custom ID
@@ -104,28 +138,53 @@ export class ProjectsManager {
     }
 
     const projectPath = `${this.dir}/${id}`;
+    console.log(`Project will be created at: ${projectPath}`);
 
-    await this.fs.mkdir(projectPath);
+    try {
+      await this.fs.mkdir(projectPath);
+      console.log(`Created project directory: ${projectPath}`);
+    } catch (error) {
+      console.error(`Failed to create project directory ${projectPath}:`, error);
+      throw new Error(`Failed to create project directory: ${error}`);
+    }
 
     // Clone the repository (Git class now handles Nostr URIs automatically)
-    await this.git.clone({
-      dir: projectPath,
-      url: repoUrl,
-      singleBranch: true,
-      depth: options?.depth, // Use depth if provided, otherwise clone full history
-    });
+    try {
+      await this.git.clone({
+        dir: projectPath,
+        url: repoUrl,
+        singleBranch: true,
+        depth: options?.depth, // Use depth if provided, otherwise clone full history
+      });
+      console.log(`Successfully cloned repository to: ${projectPath}`);
+    } catch (error) {
+      console.error(`Failed to clone repository ${repoUrl} to ${projectPath}:`, error);
+      throw new Error(`Failed to clone repository: ${error}`);
+    }
 
     // Get filesystem stats for timestamps
-    const stats = await this.fs.stat(projectPath);
-    const timestamp = stats.mtimeMs ? new Date(stats.mtimeMs) : new Date();
+    try {
+      const stats = await this.fs.stat(projectPath);
+      const timestamp = stats.mtimeMs ? new Date(stats.mtimeMs) : new Date();
+      console.log(`Project stats retrieved, timestamp: ${timestamp}`);
 
-    // Return the full project object with dynamically generated properties
-    return {
-      id,
-      name: this.formatProjectName(id), // Use formatted directory name
-      path: projectPath,
-      lastModified: timestamp,
-    };
+      // Return the full project object with dynamically generated properties
+      return {
+        id,
+        name: this.formatProjectName(id), // Use formatted directory name
+        path: projectPath,
+        lastModified: timestamp,
+      };
+    } catch (error) {
+      console.error(`Failed to get stats for project path ${projectPath}:`, error);
+      // Return project with current timestamp if stats fail
+      return {
+        id,
+        name: this.formatProjectName(id),
+        path: projectPath,
+        lastModified: new Date(),
+      };
+    }
   }
 
   async getProjects(): Promise<Project[]> {
@@ -305,7 +364,8 @@ export class ProjectsManager {
       const projectPath = `${this.dir}/${id}`;
       await this.fs.stat(projectPath);
       return true;
-    } catch {
+    } catch (error) {
+      console.log(`Project ${id} does not exist or stat failed:`, error);
       return false;
     }
   }

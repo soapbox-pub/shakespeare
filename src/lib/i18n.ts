@@ -76,6 +76,13 @@ const resources = {
       nostrSettingsDescription: 'Configure relay connections and Nostr preferences',
       dataSettings: 'Data',
       dataSettingsDescription: 'Export files and manage local data',
+      filesystem: 'Filesystem',
+      filesystemType: 'Filesystem Type',
+      deployment: 'Deployment',
+      deployServer: 'Deploy Server',
+      deployServerDescription: 'Your projects will be deployed to subdomains of this server. Example: yourproject.{deployServer || "shakespeare.wtf"}',
+      saveSettings: 'Save Settings',
+
       aboutShakespeareSettings: 'About Shakespeare',
       aboutShakespeareSettingsDescription: 'Information about Shakespeare',
 
@@ -215,6 +222,8 @@ const resources = {
       exportFilesDescription: 'Download all your projects and files as a ZIP archive. This includes all project files, settings, and data stored locally.',
       exportAllFiles: 'Export All Files',
       exporting: 'Exporting...',
+
+      
       clearAllData: 'Clear All Data',
       clearAllDataDescription: 'Permanently delete all local data including projects, settings, and cached information. This action cannot be undone.',
       clearing: 'Clearing...',
@@ -369,6 +378,7 @@ const resources = {
       nostrSettingsDescription: 'Configure conexões de relay e preferências do Nostr',
       dataSettings: 'Dados',
       dataSettingsDescription: 'Exporte arquivos e gerencie dados locais',
+
       aboutShakespeareSettings: 'Sobre o Shakespeare',
       aboutShakespeareSettingsDescription: 'Informações sobre o Shakespeare',
 
@@ -498,6 +508,14 @@ const resources = {
       exportFilesDescription: 'Baixe todos os seus projetos e arquivos como um arquivo ZIP. Isso inclui todos os arquivos de projeto, configurações e dados armazenados localmente.',
       exportAllFiles: 'Exportar Todos os Arquivos',
       exporting: 'Exportando...',
+
+      // App Settings
+      filesystem: 'Sistema de Arquivos',
+      filesystemType: 'Tipo de Sistema de Arquivos',
+      deployment: 'Implantação',
+      deployServer: 'Servidor de Implantação',
+      deployServerDescription: 'Seus projetos serão implantados em subdomínios deste servidor. Exemplo: seuprojeto.{deployServer || "shakespeare.wtf"}',
+      saveSettings: 'Salvar Configurações',
       clearAllData: 'Limpar Todos os Dados',
       clearAllDataDescription: 'Exclua permanentemente todos os dados locais, incluindo projetos, configurações e informações em cache. Esta ação não pode ser desfeita.',
       clearing: 'Limpando...',
@@ -662,6 +680,7 @@ const resources = {
       nostrSettingsDescription: '配置中继连接和Nostr偏好',
       dataSettings: '数据',
       dataSettingsDescription: '导出文件和管理本地数据',
+
       aboutShakespeareSettings: '关于Shakespeare',
       aboutShakespeareSettingsDescription: '关于Shakespeare的信息',
 
@@ -791,6 +810,14 @@ const resources = {
       exportFilesDescription: '将您的所有项目和文件下载为ZIP存档。这包括所有项目文件、设置和本地存储的数据。',
       exportAllFiles: '导出所有文件',
       exporting: '导出中...',
+
+      // App Settings
+      filesystem: '文件系统',
+      filesystemType: '文件系统类型',
+      deployment: '部署',
+      deployServer: '部署服务器',
+      deployServerDescription: '您的项目将部署到此服务器的子域。例如：yourproject.{deployServer || "shakespeare.wtf"}',
+      saveSettings: '保存设置',
       clearAllData: '清除所有数据',
       clearAllDataDescription: '永久删除所有本地数据，包括项目、设置和缓存信息。此操作无法撤销。',
       clearing: '清除中...',

@@ -48,6 +48,7 @@ const getSettingsItems = (t: (key: string) => string): SettingsItem[] => [
     icon: Database,
     href: '/settings/data',
   },
+  
   {
     id: 'about',
     title: t('aboutShakespeare'),

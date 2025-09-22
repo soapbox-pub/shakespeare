@@ -1,6 +1,7 @@
 import { createContext } from "react";
 
 export type Theme = "dark" | "light" | "system";
+export type FilesystemType = "lightningfs" | "opfs";
 
 export interface AppConfig {
   /** Current theme */
@@ -11,6 +12,8 @@ export interface AppConfig {
   deployServer: string;
   /** Selected language */
   language?: string;
+  /** Filesystem type to use */
+  filesystemType: FilesystemType;
 }
 
 export interface AppContextType {

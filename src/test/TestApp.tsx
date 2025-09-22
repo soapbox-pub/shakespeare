@@ -32,6 +32,7 @@ export function TestApp({ children }: TestAppProps) {
     relayUrl: 'wss://relay.nostr.band',
     deployServer: 'shakespeare.wtf',
     language: 'en',
+    filesystemType: 'lightningfs',
   };
 
   // Initialize LightningFS for testing

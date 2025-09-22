@@ -20,6 +20,7 @@ const AppConfigSchema: z.ZodType<AppConfig, z.ZodTypeDef, unknown> = z.object({
   relayUrl: z.string().url(),
   deployServer: z.string().min(1),
   language: z.string().optional(),
+  filesystemType: z.enum(['lightningfs', 'opfs']),
 });
 
 export function AppProvider(props: AppProviderProps) {

@@ -11,37 +11,36 @@ import {
   MoreHorizontal,
   MessageSquarePlus,
   CloudUpload,
-  Loader2,
   History,
 } from 'lucide-react';
 import { GitHistoryDialog } from '@/components/ai/GitHistoryDialog';
 import { GitDialog } from '@/components/GitDialog';
+import { DeployDialog } from '@/components/DeployDialog';
 
 interface ActionsMenuProps {
   projectId: string;
+  projectName: string;
   onNewChat: () => void;
-  onDeploy: () => void;
   isLoading?: boolean;
   isBuildLoading?: boolean;
-  isDeployLoading?: boolean;
   disabled?: boolean;
   onFirstInteraction?: () => void;
 }
 
 export function ActionsMenu({
   projectId,
+  projectName,
   onNewChat,
-  onDeploy,
   isLoading = false,
   isBuildLoading = false,
-  isDeployLoading = false,
   disabled = false,
   onFirstInteraction,
 }: ActionsMenuProps) {
   const [gitHistoryOpen, setGitHistoryOpen] = useState(false);
   const [gitDialogOpen, setGitDialogOpen] = useState(false);
+  const [deployDialogOpen, setDeployDialogOpen] = useState(false);
 
-  const isAnyLoading = isLoading || isBuildLoading || isDeployLoading;
+  const isAnyLoading = isLoading || isBuildLoading;
 
 
 
@@ -88,19 +87,12 @@ export function ActionsMenu({
           </DropdownMenuItem>
 
           <DropdownMenuItem
-            onClick={() => {
-              if (onFirstInteraction) onFirstInteraction();
-              onDeploy();
-            }}
+            onClick={() => setDeployDialogOpen(true)}
             disabled={isAnyLoading}
             className="gap-2"
           >
-            {isDeployLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <CloudUpload className="h-4 w-4" />
-            )}
-            {isDeployLoading ? 'Deploying...' : 'Deploy'}
+            <CloudUpload className="h-4 w-4" />
+            Deploy
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -116,6 +108,14 @@ export function ActionsMenu({
         projectId={projectId}
         open={gitHistoryOpen}
         onOpenChange={setGitHistoryOpen}
+      />
+
+      <DeployDialog
+        projectId={projectId}
+        projectName={projectName}
+        open={deployDialogOpen}
+        onOpenChange={setDeployDialogOpen}
+        onFirstInteraction={onFirstInteraction}
       />
     </>
   );

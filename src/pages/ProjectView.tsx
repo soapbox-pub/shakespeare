@@ -17,10 +17,8 @@ import { useIsMobile } from '@/hooks/useIsMobile';
 import { useKeepAlive } from '@/hooks/useKeepAlive';
 import { GitStatusIndicator } from '@/components/GitStatusIndicator';
 import { StarButton } from '@/components/StarButton';
-import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { useToast } from "@/hooks/useToast";
+
 import { useBuildProject } from '@/hooks/useBuildProject';
-import { useDeployProject } from '@/hooks/useDeployProject';
 
 export function ProjectView() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -35,16 +33,14 @@ export function ProjectView() {
   const chatPaneRef = useRef<ChatPaneRef>(null);
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const { user } = useCurrentUser();
-  const { toast } = useToast();
+
   const [isSidebarVisible, setIsSidebarVisible] = useState(!isMobile);
 
   const build = useBuildProject(projectId!);
-  const deploy = useDeployProject(projectId!);
 
   // Keep-alive functionality to prevent tab throttling during AI processing
   const { updateMetadata } = useKeepAlive({
-    enabled: isAILoading || build.isPending || deploy.isPending,
+    enabled: isAILoading || build.isPending,
     title: 'Shakespeare',
     artist: project ? `Working on ${project.name}...` : 'Working...',
     artwork: [
@@ -87,41 +83,7 @@ export function ProjectView() {
     });
   };
 
-  const runDeploy = async () => {
-    if (deploy.isPending || !project) return;
 
-    // Check if user is logged in
-    if (!user || !user.signer) {
-      toast({
-        title: "Authentication required",
-        description: "Please log in to deploy your project.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    updateMetadata('Shakespeare', `Deploying ${project.name}...`);
-
-    await deploy.mutateAsync(undefined, {
-      onSuccess(result) {
-        console.log('Project deployed:', result.url);
-        toast({
-          title: "Deployment successful!",
-          description: `Your project is now live at ${result.hostname}`,
-        });
-        // Open the deployed site in a new tab
-        window.open(result.url, '_blank');
-      },
-      onError(error) {
-        console.error('Deploy failed:', error);
-        toast({
-          title: "Deployment failed",
-          description: error instanceof Error ? error.message : "An unexpected error occurred",
-          variant: "destructive",
-        });
-      },
-    });
-  };
 
   const handleNewChat = () => {
     // Reset to chat view on mobile when starting new chat
@@ -200,11 +162,10 @@ export function ProjectView() {
                 />
                 <ActionsMenu
                   projectId={project.id}
+                  projectName={project.name}
                   onNewChat={handleNewChat}
-                  onDeploy={runDeploy}
                   isLoading={isAILoading}
                   isBuildLoading={build.isPending}
-                  isDeployLoading={deploy.isPending}
                   onFirstInteraction={handleFirstInteraction}
                 />
               </>
@@ -253,12 +214,10 @@ export function ProjectView() {
                 projectId={project.id}
                 onNewChat={handleNewChat}
                 onBuild={runBuild}
-                onDeploy={runDeploy}
                 onFirstInteraction={handleFirstInteraction}
                 onLoadingChange={handleAILoadingChange}
                 isLoading={isAILoading}
                 isBuildLoading={build.isPending}
-                isDeployLoading={deploy.isPending}
               />
             ) : (
               <div className="h-full p-4 space-y-4">
@@ -405,11 +364,10 @@ export function ProjectView() {
                           />
                           <ActionsMenu
                             projectId={project.id}
+                            projectName={project.name}
                             onNewChat={handleNewChat}
-                            onDeploy={runDeploy}
                             isLoading={isAILoading}
                             isBuildLoading={build.isPending}
-                            isDeployLoading={deploy.isPending}
                             onFirstInteraction={handleFirstInteraction}
                           />
                         </>
@@ -431,12 +389,10 @@ export function ProjectView() {
                       projectId={project.id}
                       onNewChat={handleNewChat}
                       onBuild={runBuild}
-                      onDeploy={runDeploy}
                       onFirstInteraction={handleFirstInteraction}
                       onLoadingChange={handleAILoadingChange}
                       isLoading={isAILoading}
                       isBuildLoading={build.isPending}
-                      isDeployLoading={deploy.isPending}
                     />
                   ) : (
                     <div className="h-full p-4 space-y-4">

@@ -143,7 +143,7 @@ const SimpleSignupDialog: React.FC<SimpleSignupDialogProps> = ({
 
             <div className="w-32 h-32 flex items-center justify-center">
               <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center">
-                <span className="text-4xl">🔑</span>
+                <span className="text-8xl">🔑</span>
               </div>
             </div>
 
@@ -207,7 +207,7 @@ const SimpleSignupDialog: React.FC<SimpleSignupDialogProps> = ({
         <div className="flex flex-col items-center space-y-6 py-6">
           <div className="w-32 h-32 flex items-center justify-center">
             <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center">
-              <span className="text-4xl">🔑</span>
+              <span className="text-8xl">🔑</span>
             </div>
           </div>
 

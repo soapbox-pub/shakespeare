@@ -673,12 +673,10 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
 
           {/* Chat Alert */}
           {chatAlert && (
-            <div className="px-4 pb-4">
-              <ChatIntervention
-                alert={chatAlert}
-                onDismiss={dismissAlert}
-              />
-            </div>
+            <ChatIntervention
+              alert={chatAlert}
+              onDismiss={dismissAlert}
+            />
           )}
 
         </div>

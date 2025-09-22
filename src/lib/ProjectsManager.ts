@@ -150,15 +150,65 @@ export class ProjectsManager {
 
     // Clone the repository (Git class now handles Nostr URIs automatically)
     try {
-      await this.git.clone({
+      console.log(`Starting clone operation: ${repoUrl} -> ${projectPath}`);
+      console.log(`Clone options:`, { singleBranch: true, depth: options?.depth });
+
+      // Add a timeout to prevent hanging
+      const cloneTimeout = 60000; // 60 seconds
+      const clonePromise = this.git.clone({
         dir: projectPath,
         url: repoUrl,
         singleBranch: true,
         depth: options?.depth, // Use depth if provided, otherwise clone full history
       });
+
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => {
+          reject(new Error(`Clone operation timed out after ${cloneTimeout}ms`));
+        }, cloneTimeout);
+      });
+
+      await Promise.race([clonePromise, timeoutPromise]);
       console.log(`Successfully cloned repository to: ${projectPath}`);
     } catch (error) {
       console.error(`Failed to clone repository ${repoUrl} to ${projectPath}:`, error);
+
+      // Log additional debugging information
+      if (error instanceof Error) {
+        console.error(`Error name: ${error.name}`);
+        console.error(`Error message: ${error.message}`);
+        console.error(`Error stack:`, error.stack);
+
+        // Check if it's a filesystem-related error that suggests OPFS incompatibility
+        const isOPFSCompatibilityIssue =
+          error.message.includes('Cannot read properties of undefined') ||
+          error.message.includes('readObjectPacked') ||
+          error.message.includes('reading \'error\'') ||
+          error.message.includes('TypeError') && error.stack?.includes('isomorphic-git');
+
+        if (isOPFSCompatibilityIssue) {
+          console.error('🚨 DETECTED: Filesystem compatibility issue with isomorphic-git and OPFS');
+          console.error('📋 ISSUE: isomorphic-git expects Node.js-style filesystem behavior, but OPFS has subtle differences');
+          console.error('💡 SOLUTION: This project works best with LightningFS for Git operations');
+          console.error('⚙️  RECOMMENDATION: Change filesystem setting to "lightningfs" in preferences');
+
+          // Provide a more user-friendly error message
+          throw new Error(
+            'Git clone failed due to filesystem compatibility issues. ' +
+            'OPFS (Origin Private File System) has some compatibility limitations with Git operations. ' +
+            'Please switch to LightningFS in your preferences for better Git support.'
+          );
+        }
+      }
+
+      // Clean up the failed project directory
+      try {
+        await this.deleteDirectory(projectPath);
+        console.log(`Cleaned up failed project directory: ${projectPath}`);
+      } catch (cleanupError) {
+        console.warn(`Failed to clean up project directory after clone failure:`, cleanupError);
+      }
+
       throw new Error(`Failed to clone repository: ${error}`);
     }
 

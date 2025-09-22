@@ -71,29 +71,54 @@ function FilesystemProvider({ children }: { children: React.ReactNode }) {
           if (!('storage' in navigator) || typeof (navigator.storage as unknown as { getDirectory: () => Promise<FileSystemDirectoryHandle> }).getDirectory !== 'function') {
             throw new Error('OPFS is not supported in this browser');
           }
-          filesystem = new OPFSAdapterSimple();
+
+          console.log('Initializing OPFS filesystem...');
+          filesystem = new OPFSAdapterSimple({ debug: true });
+
+          // Test basic filesystem operations to ensure OPFS works correctly
+          try {
+            await filesystem.mkdir('/test-opfs', { recursive: true });
+            await filesystem.writeFile('/test-opfs/test.txt', 'test');
+            const testContent = await filesystem.readFile('/test-opfs/test.txt', 'utf8');
+            if (testContent !== 'test') {
+              throw new Error('OPFS test failed: content mismatch');
+            }
+            await filesystem.unlink('/test-opfs/test.txt');
+            await filesystem.rmdir('/test-opfs');
+            console.log('OPFS filesystem test passed');
+          } catch (testError) {
+            console.warn('OPFS filesystem test failed:', testError);
+            throw new Error(`OPFS filesystem test failed: ${testError}`);
+          }
         } else {
           // Default to LightningFS
+          console.log('Initializing LightningFS filesystem...');
           const lightningFS = new LightningFS('shakespeare-fs');
           filesystem = new LightningFSAdapter(lightningFS.promises);
         }
 
         setFS(filesystem);
         setError(null);
+        console.log(`Successfully initialized ${config.filesystemType === 'opfs' ? 'OPFS' : 'LightningFS'} filesystem`);
       } catch (err) {
         console.error('Failed to initialize filesystem:', err);
-        setError(err instanceof Error ? err.message : 'Failed to initialize filesystem');
+        const errorMessage = err instanceof Error ? err.message : 'Failed to initialize filesystem';
 
         // Fallback to LightningFS if OPFS fails
         if (config.filesystemType === 'opfs') {
+          console.warn('OPFS initialization failed, falling back to LightningFS...');
           try {
             const lightningFS = new LightningFS('shakespeare-fs');
             const fallbackFs = new LightningFSAdapter(lightningFS.promises);
             setFS(fallbackFs);
-            console.warn('Falling back to LightningFS due to OPFS initialization error');
+            setError(null);
+            console.log('Successfully fell back to LightningFS');
           } catch (fallbackErr) {
-            setError(`Failed to initialize both OPFS and LightningFS: ${fallbackErr}`);
+            console.error('LightningFS fallback also failed:', fallbackErr);
+            setError(`Failed to initialize both OPFS and LightningFS: ${errorMessage}; Fallback error: ${fallbackErr}`);
           }
+        } else {
+          setError(errorMessage);
         }
       }
     };

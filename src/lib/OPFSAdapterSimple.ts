@@ -6,8 +6,11 @@ import type { JSRuntimeFS, DirectoryEntry } from './JSRuntime';
  */
 export class OPFSAdapterSimple implements JSRuntimeFS {
   private root: Promise<FileSystemDirectoryHandle>;
+  private debugMode: boolean = false;
 
-  constructor() {
+  constructor(options?: { debug?: boolean }) {
+    this.debugMode = options?.debug || false;
+
     // Check if OPFS is available
     if (!('storage' in navigator) ||
         typeof (navigator.storage as unknown as { getDirectory: () => Promise<FileSystemDirectoryHandle> }).getDirectory !== 'function') {
@@ -16,6 +19,22 @@ export class OPFSAdapterSimple implements JSRuntimeFS {
 
     // Get the root directory handle for OPFS
     this.root = (navigator.storage as unknown as { getDirectory: () => Promise<FileSystemDirectoryHandle> }).getDirectory();
+
+    if (this.debugMode) {
+      console.log('OPFSAdapterSimple initialized with debug mode enabled');
+    }
+  }
+
+  private log(...args: unknown[]) {
+    if (this.debugMode) {
+      console.log('[OPFSAdapter]', ...args);
+    }
+  }
+
+  private logError(...args: unknown[]) {
+    if (this.debugMode) {
+      console.error('[OPFSAdapter]', ...args);
+    }
   }
 
   async readFile(path: string): Promise<Uint8Array>;
@@ -23,10 +42,14 @@ export class OPFSAdapterSimple implements JSRuntimeFS {
   async readFile(path: string, encoding: string): Promise<string>;
   async readFile(path: string, encoding?: string): Promise<string | Uint8Array>;
   async readFile(path: string, encoding?: string): Promise<string | Uint8Array> {
+    this.log(`readFile called: path="${path}", encoding="${encoding}", type: ${typeof encoding}`);
+
     try {
-      // Basic path validation
-      if (!path || typeof path !== 'string') {
-        const error = new Error('ENOENT: no such file or directory, open \'undefined\'') as NodeJS.ErrnoException;
+      // Basic path validation - handle isomorphic-git calling with undefined paths
+      // Note: isomorphic-git sometimes calls readFile with undefined paths to test filesystem capabilities
+      if (!path || typeof path !== 'string' || path === 'undefined') {
+        this.log(`Filesystem capability test with invalid path: ${path} (type: ${typeof path}) - this is normal`);
+        const error = new Error(`ENOENT: no such file or directory, open '${path || 'undefined'}'`) as NodeJS.ErrnoException;
         error.code = 'ENOENT';
         error.errno = -2;
         error.syscall = 'open';
@@ -37,61 +60,187 @@ export class OPFSAdapterSimple implements JSRuntimeFS {
       const fileHandle = await this.getFileHandle(path);
       const file = await fileHandle.getFile();
 
+      this.log(`File found: size=${file.size}, type="${file.type}", lastModified=${file.lastModified}`);
+
+      // Additional validation for Git files
+      if (path.includes('.git/') && file.size === 0) {
+        this.logError(`Warning: Git file is empty: ${path}`);
+      }
+
       // Handle encoding parameter exactly like LightningFS
-      if (encoding === 'utf8') {
-        return await file.text();
-      } else if (encoding) {
-        // Any other encoding value, return as text
-        return await file.text();
+      // Key insight: isomorphic-git sometimes passes options objects as encoding parameter
+      // We need to distinguish between text files (config, refs, etc.) and binary files (pack, index, objects)
+
+      // Git binary files that should ALWAYS be returned as Uint8Array
+      const isGitBinaryFile = path.includes('.git/objects/pack/') ||
+                             (path.includes('.git/objects/') && !path.includes('.git/objects/info/')) ||
+                             path.endsWith('.pack') ||
+                             path.endsWith('.idx') ||
+                             path.includes('.git/index');
+
+      // Git text files that should be returned as text when no explicit binary encoding is requested
+      const isGitTextFile = path.includes('.git/config') ||
+                           path.includes('.git/HEAD') ||
+                           path.includes('.git/refs/') ||
+                           path.includes('.git/logs/') ||
+                           path.includes('.git/info/') ||
+                           path.includes('.git/hooks/') ||
+                           path.includes('.git/description');
+
+      // Determine if we should return text:
+      // 1. Explicit utf8 encoding request
+      // 2. Git text files (unless explicit binary encoding)
+      // 3. Non-Git files (unless explicit binary encoding)
+      const shouldReturnText = (encoding === 'utf8' && typeof encoding === 'string') ||
+                              (!isGitBinaryFile && (isGitTextFile || !path.includes('.git/'))) ||
+                              (isGitTextFile && typeof encoding !== 'string');
+
+      this.log(`File type analysis: isGitBinaryFile=${isGitBinaryFile}, isGitTextFile=${isGitTextFile}, shouldReturnText=${shouldReturnText}, encoding type=${typeof encoding}`);
+
+      if (shouldReturnText) {
+        const text = await file.text();
+        this.log(`Returning text content for encoding "${encoding}", length=${text.length}`);
+        return text;
       } else {
         // No encoding or undefined, return as Uint8Array (binary data)
-        const arrayBuffer = await file.arrayBuffer();
-        return new Uint8Array(arrayBuffer);
+        let arrayBuffer: ArrayBuffer;
+
+        try {
+          arrayBuffer = await file.arrayBuffer();
+          if (!arrayBuffer) {
+            throw new Error('ArrayBuffer is null or undefined');
+          }
+        } catch (bufferError) {
+          this.logError(`Failed to get ArrayBuffer for ${path}:`, bufferError);
+          throw new Error(`Failed to read binary data from file: ${path}`);
+        }
+
+        // Create a proper Uint8Array that behaves like Node.js Buffer/Uint8Array
+        // This is critical for isomorphic-git compatibility
+        let uint8Array: Uint8Array;
+
+        try {
+          uint8Array = new Uint8Array(arrayBuffer);
+
+          // For Git pack files and other binary Git objects, we need to be extra careful
+          // isomorphic-git expects very specific behavior from these arrays
+          if (path.includes('.git/')) {
+            // Create a fresh Uint8Array to avoid any browser-specific quirks
+            const gitCompatibleArray = new Uint8Array(uint8Array.length);
+            gitCompatibleArray.set(uint8Array);
+
+            // Ensure the array has proper prototype and methods
+            // Some isomorphic-git operations check for specific array methods
+            if (!gitCompatibleArray.slice || typeof gitCompatibleArray.slice !== 'function') {
+              this.logError(`Uint8Array missing slice method for Git file: ${path}`);
+            }
+            if (!gitCompatibleArray.subarray || typeof gitCompatibleArray.subarray !== 'function') {
+              this.logError(`Uint8Array missing subarray method for Git file: ${path}`);
+            }
+
+            uint8Array = gitCompatibleArray;
+          }
+
+          // Validate the array before returning
+          if (!uint8Array || uint8Array.length === undefined) {
+            throw new Error(`Invalid Uint8Array created for file: ${path}`);
+          }
+
+          this.log(`Returning binary content: ${uint8Array.length} bytes, constructor: ${uint8Array.constructor.name}, isGitFile: ${path.includes('.git/')}`);
+          return uint8Array;
+        } catch (arrayError) {
+          this.logError(`Failed to create Uint8Array for ${path}:`, arrayError);
+          throw new Error(`Failed to create binary array from file: ${path}`);
+        }
       }
     } catch (error) {
-      // Convert DOMException to Node.js style error for isomorphic-git compatibility
+      this.logError(`readFile failed for path="${path}":`, error);
+
+      // Enhanced error handling for isomorphic-git compatibility
+      let finalError: Error & NodeJS.ErrnoException;
+
       if (error instanceof Error && (error.message.includes('NotFound') || error.name === 'NotFoundError')) {
-        const nodeError = new Error(`ENOENT: no such file or directory, open '${path}'`) as NodeJS.ErrnoException;
-        nodeError.code = 'ENOENT';
-        nodeError.errno = -2;
-        nodeError.syscall = 'open';
-        nodeError.path = path;
-        throw nodeError;
+        finalError = new Error(`ENOENT: no such file or directory, open '${path}'`) as NodeJS.ErrnoException;
+        finalError.code = 'ENOENT';
+        finalError.errno = -2;
+        finalError.syscall = 'open';
+        finalError.path = path;
+      } else if (error instanceof Error) {
+        // Wrap any other error to ensure it has required properties
+        finalError = error as NodeJS.ErrnoException;
+        if (!finalError.code) finalError.code = 'EIO';
+        if (!finalError.errno) finalError.errno = -5;
+        if (!finalError.syscall) finalError.syscall = 'read';
+        if (!finalError.path) finalError.path = path;
+      } else {
+        // Convert non-Error objects to proper Error
+        finalError = new Error(String(error)) as NodeJS.ErrnoException;
+        finalError.code = 'EIO';
+        finalError.errno = -5;
+        finalError.syscall = 'read';
+        finalError.path = path;
       }
 
-      // For any other error, ensure it has the properties isomorphic-git expects
-      if (error instanceof Error) {
-        const nodeError = error as NodeJS.ErrnoException;
-        // If it doesn't have the expected properties, add them
-        if (!nodeError.code) {
-          nodeError.code = 'UNKNOWN';
-        }
-        if (!nodeError.errno) {
-          nodeError.errno = -1;
-        }
-        if (!nodeError.syscall) {
-          nodeError.syscall = 'read';
-        }
-        if (!nodeError.path) {
-          nodeError.path = path;
-        }
+      // Ensure the error has the original error information
+      if (error instanceof Error && error !== finalError) {
+        // finalError.cause = error; // Not available in older TypeScript
+        finalError.stack = error.stack;
       }
 
-      throw error;
+      throw finalError;
     }
   }
 
   async writeFile(path: string, data: string | Uint8Array, _encoding?: string): Promise<void> {
-    const fileHandle = await this.getFileHandle(path, { create: true });
-    const writable = await fileHandle.createWritable();
+    try {
+      const fileHandle = await this.getFileHandle(path, { create: true });
+      const writable = await fileHandle.createWritable();
 
-    if (typeof data === 'string') {
-      await writable.write(data);
-    } else {
-      await writable.write(data);
+      if (typeof data === 'string') {
+        await writable.write(data);
+      } else {
+        // For binary data, ensure we write it correctly
+        // Some browsers may have issues with Uint8Array variants
+        if (data instanceof Uint8Array) {
+          await writable.write(data);
+        } else {
+          // Convert ArrayBuffer or other array-like objects to Uint8Array
+          const uint8Array = new Uint8Array(data);
+          await writable.write(uint8Array);
+        }
+      }
+
+      await writable.close();
+    } catch (error) {
+      // Enhanced error handling for write operations
+      let finalError: Error & NodeJS.ErrnoException;
+
+      if (error instanceof Error && (error.message.includes('NotFound') || error.name === 'NotFoundError')) {
+        finalError = new Error(`ENOENT: no such file or directory, open '${path}'`) as NodeJS.ErrnoException;
+        finalError.code = 'ENOENT';
+        finalError.errno = -2;
+        finalError.syscall = 'open';
+        finalError.path = path;
+      } else if (error instanceof Error) {
+        finalError = error as NodeJS.ErrnoException;
+        if (!finalError.code) finalError.code = 'EIO';
+        if (!finalError.errno) finalError.errno = -5;
+        if (!finalError.syscall) finalError.syscall = 'write';
+        if (!finalError.path) finalError.path = path;
+      } else {
+        finalError = new Error(String(error)) as NodeJS.ErrnoException;
+        finalError.code = 'EIO';
+        finalError.errno = -5;
+        finalError.syscall = 'write';
+        finalError.path = path;
+      }
+
+      if (error instanceof Error && error !== finalError) {
+        finalError.stack = error.stack;
+      }
+
+      throw finalError;
     }
-
-    await writable.close();
   }
 
   async readdir(path: string): Promise<string[]>;
@@ -191,16 +340,37 @@ export class OPFSAdapterSimple implements JSRuntimeFS {
           // isSymbolicLink: () => false,
         };
       } catch (dirError) {
-        // Convert DOMException to Node.js style error for isomorphic-git compatibility
+        // Enhanced error handling for isomorphic-git compatibility
+        let finalError: Error & NodeJS.ErrnoException;
+
         if (dirError instanceof Error && (dirError.message.includes('NotFound') || dirError.name === 'NotFoundError')) {
-          const nodeError = new Error(`ENOENT: no such file or directory, stat '${path}'`) as NodeJS.ErrnoException;
-          nodeError.code = 'ENOENT';
-          nodeError.errno = -2;
-          nodeError.syscall = 'stat';
-          nodeError.path = path;
-          throw nodeError;
+          finalError = new Error(`ENOENT: no such file or directory, stat '${path}'`) as NodeJS.ErrnoException;
+          finalError.code = 'ENOENT';
+          finalError.errno = -2;
+          finalError.syscall = 'stat';
+          finalError.path = path;
+        } else if (dirError instanceof Error) {
+          // Wrap any other error to ensure it has required properties
+          finalError = dirError as NodeJS.ErrnoException;
+          if (!finalError.code) finalError.code = 'UNKNOWN';
+          if (!finalError.errno) finalError.errno = -1;
+          if (!finalError.syscall) finalError.syscall = 'stat';
+          if (!finalError.path) finalError.path = path;
+        } else {
+          // Convert non-Error objects to proper Error
+          finalError = new Error(String(dirError)) as NodeJS.ErrnoException;
+          finalError.code = 'UNKNOWN';
+          finalError.errno = -1;
+          finalError.syscall = 'stat';
+          finalError.path = path;
         }
-        throw dirError;
+
+        // Ensure error has original error information
+        if (dirError instanceof Error && dirError !== finalError) {
+          finalError.stack = dirError.stack;
+        }
+
+        throw finalError;
       }
     }
   }
@@ -253,34 +423,37 @@ export class OPFSAdapterSimple implements JSRuntimeFS {
       // Remove any trailing newlines and return the target
       return content.trim();
     } catch (error) {
-      // Convert DOMException to Node.js style error for isomorphic-git compatibility
+      // Enhanced error handling for isomorphic-git compatibility
+      let finalError: Error & NodeJS.ErrnoException;
+
       if (error instanceof Error && (error.message.includes('NotFound') || error.name === 'NotFoundError')) {
-        const nodeError = new Error(`ENOENT: no such file or directory, readlink '${path}'`) as NodeJS.ErrnoException;
-        nodeError.code = 'ENOENT';
-        nodeError.errno = -2;
-        nodeError.syscall = 'readlink';
-        nodeError.path = path;
-        throw nodeError;
+        finalError = new Error(`ENOENT: no such file or directory, readlink '${path}'`) as NodeJS.ErrnoException;
+        finalError.code = 'ENOENT';
+        finalError.errno = -2;
+        finalError.syscall = 'readlink';
+        finalError.path = path;
+      } else if (error instanceof Error) {
+        // Wrap any other error to ensure it has required properties
+        finalError = error as NodeJS.ErrnoException;
+        if (!finalError.code) finalError.code = 'UNKNOWN';
+        if (!finalError.errno) finalError.errno = -1;
+        if (!finalError.syscall) finalError.syscall = 'readlink';
+        if (!finalError.path) finalError.path = path;
+      } else {
+        // Convert non-Error objects to proper Error
+        finalError = new Error(String(error)) as NodeJS.ErrnoException;
+        finalError.code = 'UNKNOWN';
+        finalError.errno = -1;
+        finalError.syscall = 'readlink';
+        finalError.path = path;
       }
 
-      // For any other error, ensure it has properties isomorphic-git expects
-      if (error instanceof Error) {
-        const nodeError = error as NodeJS.ErrnoException;
-        if (!nodeError.code) {
-          nodeError.code = 'UNKNOWN';
-        }
-        if (!nodeError.errno) {
-          nodeError.errno = -1;
-        }
-        if (!nodeError.syscall) {
-          nodeError.syscall = 'readlink';
-        }
-        if (!nodeError.path) {
-          nodeError.path = path;
-        }
+      // Ensure error has original error information
+      if (error instanceof Error && error !== finalError) {
+        finalError.stack = error.stack;
       }
 
-      throw error;
+      throw finalError;
     }
   }
 
@@ -298,34 +471,37 @@ export class OPFSAdapterSimple implements JSRuntimeFS {
       await writable.write(target);
       await writable.close();
     } catch (error) {
-      // Convert DOMException to Node.js style error for isomorphic-git compatibility
+      // Enhanced error handling for isomorphic-git compatibility
+      let finalError: Error & NodeJS.ErrnoException;
+
       if (error instanceof Error && (error.message.includes('NotFound') || error.name === 'NotFoundError')) {
-        const nodeError = new Error(`ENOENT: no such file or directory, symlink '${path}'`) as NodeJS.ErrnoException;
-        nodeError.code = 'ENOENT';
-        nodeError.errno = -2;
-        nodeError.syscall = 'symlink';
-        nodeError.path = path;
-        throw nodeError;
+        finalError = new Error(`ENOENT: no such file or directory, symlink '${path}'`) as NodeJS.ErrnoException;
+        finalError.code = 'ENOENT';
+        finalError.errno = -2;
+        finalError.syscall = 'symlink';
+        finalError.path = path;
+      } else if (error instanceof Error) {
+        // Wrap any other error to ensure it has required properties
+        finalError = error as NodeJS.ErrnoException;
+        if (!finalError.code) finalError.code = 'UNKNOWN';
+        if (!finalError.errno) finalError.errno = -1;
+        if (!finalError.syscall) finalError.syscall = 'symlink';
+        if (!finalError.path) finalError.path = path;
+      } else {
+        // Convert non-Error objects to proper Error
+        finalError = new Error(String(error)) as NodeJS.ErrnoException;
+        finalError.code = 'UNKNOWN';
+        finalError.errno = -1;
+        finalError.syscall = 'symlink';
+        finalError.path = path;
       }
 
-      // For any other error, ensure it has properties isomorphic-git expects
-      if (error instanceof Error) {
-        const nodeError = error as NodeJS.ErrnoException;
-        if (!nodeError.code) {
-          nodeError.code = 'UNKNOWN';
-        }
-        if (!nodeError.errno) {
-          nodeError.errno = -1;
-        }
-        if (!nodeError.syscall) {
-          nodeError.syscall = 'symlink';
-        }
-        if (!nodeError.path) {
-          nodeError.path = path;
-        }
+      // Ensure error has original error information
+      if (error instanceof Error && error !== finalError) {
+        finalError.stack = error.stack;
       }
 
-      throw error;
+      throw finalError;
     }
   }
 
@@ -347,22 +523,47 @@ export class OPFSAdapterSimple implements JSRuntimeFS {
       try {
         currentHandle = await currentHandle.getDirectoryHandle(part, options);
       } catch (error) {
-        // Convert DOMException to Node.js style error for better compatibility
+        // Enhanced error handling for isomorphic-git compatibility
+        let finalError: Error & NodeJS.ErrnoException;
+
         if (error instanceof Error && (error.message.includes('NotFound') || error.name === 'NotFoundError')) {
           if (options?.create) {
             // If we're supposed to create, this shouldn't happen, but re-throw with better error
-            throw new Error(`Failed to create directory part '${part}' in path '${path}': ${error.message}`);
+            finalError = new Error(`Failed to create directory part '${part}' in path '${path}': ${error.message}`) as NodeJS.ErrnoException;
+            finalError.code = 'EIO';
+            finalError.errno = -5;
+            finalError.syscall = 'mkdir';
+            finalError.path = path;
           } else {
             // Directory doesn't exist and we're not creating it
-            const nodeError = new Error(`ENOENT: no such file or directory, stat '${path}'`) as NodeJS.ErrnoException;
-            nodeError.code = 'ENOENT';
-            nodeError.errno = -2;
-            nodeError.syscall = 'stat';
-            nodeError.path = path;
-            throw nodeError;
+            finalError = new Error(`ENOENT: no such file or directory, stat '${path}'`) as NodeJS.ErrnoException;
+            finalError.code = 'ENOENT';
+            finalError.errno = -2;
+            finalError.syscall = 'stat';
+            finalError.path = path;
           }
+        } else if (error instanceof Error) {
+          // Wrap any other error to ensure it has required properties
+          finalError = error as NodeJS.ErrnoException;
+          if (!finalError.code) finalError.code = 'UNKNOWN';
+          if (!finalError.errno) finalError.errno = -1;
+          if (!finalError.syscall) finalError.syscall = 'stat';
+          if (!finalError.path) finalError.path = path;
+        } else {
+          // Convert non-Error objects to proper Error
+          finalError = new Error(String(error)) as NodeJS.ErrnoException;
+          finalError.code = 'UNKNOWN';
+          finalError.errno = -1;
+          finalError.syscall = 'stat';
+          finalError.path = path;
         }
-        throw error;
+
+        // Ensure error has original error information
+        if (error instanceof Error && error !== finalError) {
+          finalError.stack = error.stack;
+        }
+
+        throw finalError;
       }
     }
 
@@ -372,13 +573,62 @@ export class OPFSAdapterSimple implements JSRuntimeFS {
   private async getFileHandle(path: string, options?: { create?: boolean }): Promise<FileSystemFileHandle> {
     // Basic path validation
     if (!path || typeof path !== 'string') {
-      throw new Error('ENOENT: no such file or directory');
+      const error = new Error('ENOENT: no such file or directory, open \'undefined\'') as NodeJS.ErrnoException;
+      error.code = 'ENOENT';
+      error.errno = -2;
+      error.syscall = 'open';
+      error.path = 'undefined';
+      throw error;
     }
 
-    const parentPath = this.getParentPath(path);
-    const fileName = this.getBaseName(path);
-    const parentHandle = await this.getDirectoryHandle(parentPath);
-    return parentHandle.getFileHandle(fileName, options);
+    try {
+      const parentPath = this.getParentPath(path);
+      const fileName = this.getBaseName(path);
+      const parentHandle = await this.getDirectoryHandle(parentPath);
+      return parentHandle.getFileHandle(fileName, options);
+    } catch (error) {
+      // Enhanced error handling for isomorphic-git compatibility
+      let finalError: Error & NodeJS.ErrnoException;
+
+      if (error instanceof Error && (error.message.includes('NotFound') || error.name === 'NotFoundError')) {
+        if (options?.create) {
+          // If we're supposed to create, this shouldn't happen
+          finalError = new Error(`ENOENT: no such file or directory, open '${path}'`) as NodeJS.ErrnoException;
+          finalError.code = 'ENOENT';
+          finalError.errno = -2;
+          finalError.syscall = 'open';
+          finalError.path = path;
+        } else {
+          // File doesn't exist and we're not creating it
+          finalError = new Error(`ENOENT: no such file or directory, open '${path}'`) as NodeJS.ErrnoException;
+          finalError.code = 'ENOENT';
+          finalError.errno = -2;
+          finalError.syscall = 'open';
+          finalError.path = path;
+        }
+      } else if (error instanceof Error) {
+        // Wrap any other error to ensure it has required properties
+        finalError = error as NodeJS.ErrnoException;
+        if (!finalError.code) finalError.code = 'UNKNOWN';
+        if (!finalError.errno) finalError.errno = -1;
+        if (!finalError.syscall) finalError.syscall = 'open';
+        if (!finalError.path) finalError.path = path;
+      } else {
+        // Convert non-Error objects to proper Error
+        finalError = new Error(String(error)) as NodeJS.ErrnoException;
+        finalError.code = 'UNKNOWN';
+        finalError.errno = -1;
+        finalError.syscall = 'open';
+        finalError.path = path;
+      }
+
+      // Ensure error has original error information
+      if (error instanceof Error && error !== finalError) {
+        finalError.stack = error.stack;
+      }
+
+      throw finalError;
+    }
   }
 
   private getParentPath(path: string): string {

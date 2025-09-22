@@ -377,7 +377,7 @@ export function DataSettings() {
                       </span>
                       <span className="text-sm text-muted-foreground">
                         {opfsAvailable
-                          ? "Modern browser API with better performance and larger storage limits."
+                          ? "Modern browser API with better performance and larger storage limits. Note: May have compatibility issues with Git operations."
                           : "Not available in this browser. Use Chrome, Edge, or Firefox 111+."
                         }
                       </span>
@@ -393,6 +393,15 @@ export function DataSettings() {
                 <span className="text-sm text-orange-800 dark:text-orange-200">
                   OPFS is not available in your browser. Please use LightningFS or upgrade to a modern browser.
                 </span>
+              </div>
+            )}
+
+            {opfsAvailable && filesystemType === 'opfs' && (
+              <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-md border border-blue-200 dark:border-blue-800">
+                <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                <div className="text-sm text-blue-800 dark:text-blue-200">
+                  <p><strong>Git Compatibility Note:</strong> OPFS may have compatibility issues with Git clone operations. If you experience problems creating projects, switch to LightningFS for better Git support.</p>
+                </div>
               </div>
             )}
 

@@ -151,8 +151,8 @@ const SimpleLoginDialog: React.FC<SimpleLoginDialogProps> = ({
             <p className="text-sm text-muted-foreground">Sign in to your existing account</p>
           </div>
 
-          <div className="w-32 h-32 flex items-center justify-center">
-            <div className="w-32 h-32 bg-primary/10 rounded-full flex items-center justify-center">
+          <div className="w-40 h-40 flex items-center justify-center">
+            <div className="w-40 h-40 bg-primary/10 rounded-full flex items-center justify-center">
               <span className="text-8xl">🔑</span>
             </div>
           </div>

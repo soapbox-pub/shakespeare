@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from 'react';
-import OpenAI from 'openai';
+import type { AIMessage } from '@/lib/SessionManager';
 import { useConsoleMessages } from './useConsoleMessages';
 
 export interface ConsoleErrorAlert {
@@ -53,7 +53,7 @@ export interface AIModelErrorAlert {
 }
 
 export const useAIModelErrorAlert = (
-	messages: OpenAI.Chat.Completions.ChatCompletionMessage[],
+	messages: AIMessage[],
 	onNewChat?: () => void,
 	onChangeModel?: () => void
 ): AIModelErrorAlert => {
@@ -90,7 +90,8 @@ export const useAIModelErrorAlert = (
 
 		for (const pattern of errorPatterns) {
 			if (pattern.test(content)) {
-				const alertKey = `${pattern.message}_${lastMessage.id || Date.now()}`;
+				const messageContent = typeof lastMessage.content === 'string' ? lastMessage.content : JSON.stringify(lastMessage.content);
+				const alertKey = `${pattern.message}_${messageContent.slice(0, 50)}_${Date.now()}`;
 
 				return {
 					hasError: dismissedAlertKey !== alertKey,
@@ -108,7 +109,8 @@ export const useAIModelErrorAlert = (
 	const dismiss = useCallback(() => {
 		const lastMessage = messages[messages.length - 1];
 		if (errorMessage && lastMessage) {
-			const alertKey = `${errorMessage}_${lastMessage.id || Date.now()}`;
+			const messageContent = typeof lastMessage.content === 'string' ? lastMessage.content : JSON.stringify(lastMessage.content);
+			const alertKey = `${errorMessage}_${messageContent.slice(0, 50)}_${Date.now()}`;
 			setDismissedAlertKey(alertKey);
 		}
 	}, [errorMessage, messages]);

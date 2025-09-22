@@ -1,4 +1,4 @@
-import { useState, useMemo, forwardRef, useImperativeHandle } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Check, ChevronDown, Edit3, RefreshCw, AlertCircle, Settings } from 'lucide-react';
@@ -21,7 +21,7 @@ interface ModelSelectorProps {
   onOpenChange?: (open: boolean) => void;
 }
 
-export const ModelSelector = forwardRef<{ open: () => void }, ModelSelectorProps>(({
+export function ModelSelector({
   value,
   onChange,
   className,
@@ -29,7 +29,7 @@ export const ModelSelector = forwardRef<{ open: () => void }, ModelSelectorProps
   placeholder,
   open: controlledOpen,
   onOpenChange: setControlledOpen,
-}, ref) => {
+}: ModelSelectorProps) {
   const { t } = useTranslation();
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
 
@@ -37,10 +37,6 @@ export const ModelSelector = forwardRef<{ open: () => void }, ModelSelectorProps
   const open = controlledOpen !== undefined ? controlledOpen : uncontrolledOpen;
   const setOpen = setControlledOpen || setUncontrolledOpen;
 
-  // Expose open method via ref
-  useImperativeHandle(ref, () => ({
-    open: () => setOpen(true)
-  }), [setOpen]);
   const [isCustomInput, setIsCustomInput] = useState(false);
   const [customValue, setCustomValue] = useState('');
   const { settings, addRecentlyUsedModel, isConfigured } = useAISettings();
@@ -292,4 +288,4 @@ export const ModelSelector = forwardRef<{ open: () => void }, ModelSelectorProps
       </PopoverContent>
     </Popover>
   );
-});
+}

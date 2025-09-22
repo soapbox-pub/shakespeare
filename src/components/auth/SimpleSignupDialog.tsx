@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Key, Download, UserPlus, Shield } from 'lucide-react';
+import { Key, Download, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -8,7 +8,7 @@ import { useLoginActions } from '@/hooks/useLoginActions';
 import { generateSecretKey, nip19 } from 'nostr-tools';
 import { cn } from '@/lib/utils';
 
-type Step = 'extension' | 'key' | 'keygen';
+type Step = 'key' | 'keygen';
 
 interface SimpleSignupDialogProps {
   isOpen: boolean;
@@ -16,15 +16,15 @@ interface SimpleSignupDialogProps {
   onComplete?: () => void;
 }
 
-const SimpleSignupDialog: React.FC<SimpleSignupDialogProps> = ({ 
-  isOpen, 
-  onClose, 
-  onComplete 
+const SimpleSignupDialog: React.FC<SimpleSignupDialogProps> = ({
+  isOpen,
+  onClose,
+  onComplete
 }) => {
   const [step, setStep] = useState<Step>('key');
   const [isLoading, setIsLoading] = useState(false);
   const [downloaded, setDownloaded] = useState(false);
-  
+
   const login = useLoginActions();
 
   // Generate key once and keep it stable
@@ -34,7 +34,8 @@ const SimpleSignupDialog: React.FC<SimpleSignupDialogProps> = ({
   // Reset state when dialog opens/closes
   useEffect(() => {
     if (isOpen) {
-      setStep(window.nostr ? 'extension' : 'key');
+      // Always start with key generation as the default experience
+      setStep('key');
       setIsLoading(false);
       setDownloaded(false);
     }
@@ -96,10 +97,10 @@ const SimpleSignupDialog: React.FC<SimpleSignupDialogProps> = ({
     setIsLoading(true);
     try {
       login.nsec(nsec);
-      
+
       // Mark signup completion time for fallback welcome modal
       localStorage.setItem('signup_completed', Date.now().toString());
-      
+
       onClose();
       if (onComplete) {
         setTimeout(() => {
@@ -124,66 +125,6 @@ const SimpleSignupDialog: React.FC<SimpleSignupDialogProps> = ({
     // we'll rely on the parent component to handle this
   };
 
-  if (step === 'extension') {
-    return (
-      <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="text-center">Sign up</DialogTitle>
-          </DialogHeader>
-          
-          <div className="flex flex-col items-center space-y-6 py-6">
-            <div className="text-center">
-              <h3 className="font-semibold mb-2">Welcome to Shakespeare</h3>
-            </div>
-
-            <div className="w-32 h-32 flex items-center justify-center">
-              <Shield className="w-16 h-16 text-primary" />
-            </div>
-
-            <div className="flex flex-col space-y-3 w-full">
-              <Button 
-                size="lg" 
-                onClick={handleExtensionSignup}
-                disabled={isLoading}
-                className="w-full"
-              >
-                {isLoading ? 'Signing up...' : 'Sign up with extension'}
-              </Button>
-
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t"></div>
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-background px-2 text-muted-foreground">or</span>
-                </div>
-              </div>
-
-              <Button 
-                variant="outline" 
-                onClick={() => setStep('key')}
-                className="w-full"
-              >
-                Don't have an extension?
-              </Button>
-
-              <div className="flex justify-center space-x-2 text-xs">
-                <span className="text-muted-foreground">New on Shakespeare?</span>
-                <button 
-                  onClick={handleLoginClick}
-                  className="text-blue-500 hover:underline"
-                >
-                  Sign Up
-                </button>
-              </div>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
-  }
-
   if (step === 'key') {
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
@@ -191,10 +132,11 @@ const SimpleSignupDialog: React.FC<SimpleSignupDialogProps> = ({
           <DialogHeader>
             <DialogTitle className="text-center">Sign up</DialogTitle>
           </DialogHeader>
-          
+
           <div className="flex flex-col items-center space-y-6 py-6">
             <div className="text-center">
-              <h3 className="font-semibold mb-2">You need a key to continue</h3>
+              <h3 className="font-semibold mb-2">Welcome to Shakespeare</h3>
+              <p className="text-sm text-muted-foreground">Create your account to get started</p>
             </div>
 
             <div className="w-32 h-32 flex items-center justify-center">
@@ -202,49 +144,49 @@ const SimpleSignupDialog: React.FC<SimpleSignupDialogProps> = ({
             </div>
 
             <div className="flex flex-col space-y-3 w-full">
-              <Button 
-                size="lg" 
+              <Button
+                size="lg"
                 onClick={() => setStep('keygen')}
                 className="w-full"
               >
                 <UserPlus className="w-4 h-4 mr-2" />
-                Generate key
+                Create New Account
               </Button>
 
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={handleLoginClick}
                 className="w-full"
               >
-                I already have a key
+                I already have an account
               </Button>
             </div>
 
-            <div className="relative w-full">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t"></div>
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">or</span>
-              </div>
-            </div>
+            {/* Extension indicator - only show if extension is detected */}
+            {window.nostr && (
+              <>
+                <div className="relative w-full">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t"></div>
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground">or</span>
+                  </div>
+                </div>
 
-            {/* Extension indicator */}
-            <div className="rounded-lg bg-muted p-3 w-full">
-              <p className="text-xs text-center">
-                {window.nostr ? (
-                  <button 
-                    onClick={handleExtensionSignup}
-                    className="text-blue-500 hover:underline"
-                    disabled={isLoading}
-                  >
-                    Sign up with browser extension
-                  </button>
-                ) : (
-                  'Browser extension not found.'
-                )}
-              </p>
-            </div>
+                <div className="rounded-lg bg-muted p-3 w-full">
+                  <p className="text-xs text-center">
+                    <button
+                      onClick={handleExtensionSignup}
+                      className="text-blue-500 hover:underline"
+                      disabled={isLoading}
+                    >
+                      Sign up with browser extension
+                    </button>
+                  </p>
+                </div>
+              </>
+            )}
           </div>
         </DialogContent>
       </Dialog>
@@ -257,7 +199,7 @@ const SimpleSignupDialog: React.FC<SimpleSignupDialogProps> = ({
         <DialogHeader>
           <DialogTitle className="text-center">Your new key</DialogTitle>
         </DialogHeader>
-        
+
         <div className="flex flex-col items-center space-y-6 py-6">
           <div className="w-32 h-32 flex items-center justify-center">
             <Key className="w-16 h-16 text-primary" />
@@ -276,15 +218,15 @@ const SimpleSignupDialog: React.FC<SimpleSignupDialogProps> = ({
 
             <div className="rounded-xl bg-muted p-4">
               <p className="text-xs text-justify">
-                Back up your secret key in a secure place. If lost, your account cannot be recovered. 
+                Back up your secret key in a secure place. If lost, your account cannot be recovered.
                 Never share your secret key with anyone.
               </p>
             </div>
 
             <div className="flex space-x-3 justify-center">
-              <Button 
+              <Button
                 variant="outline"
-                size="lg" 
+                size="lg"
                 onClick={handleDownload}
                 className="flex-1"
               >

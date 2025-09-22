@@ -71,18 +71,18 @@ export function LoginArea({ className }: LoginAreaProps) {
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              onClick={() => setLoginDialogOpen(true)}
-              className='flex items-center gap-2 cursor-pointer p-2 rounded-md'
-            >
-              <User className='w-4 h-4' />
-              <span>{t('logIn')}</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem
               onClick={() => setSignupDialogOpen(true)}
               className='flex items-center gap-2 cursor-pointer p-2 rounded-md'
             >
               <UserPlus className='w-4 h-4' />
               <span>{t('signUp')}</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => setLoginDialogOpen(true)}
+              className='flex items-center gap-2 cursor-pointer p-2 rounded-md'
+            >
+              <User className='w-4 h-4' />
+              <span>{t('logIn')}</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

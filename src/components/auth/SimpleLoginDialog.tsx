@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, Key, Cloud, AlertTriangle } from 'lucide-react';
+import { Key, Cloud } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Alert, AlertDescription } from '@/components/ui/alert';
+// Alert components removed as they're not used in the simplified design
 import { useLoginActions } from '@/hooks/useLoginActions';
 import { cn } from '@/lib/utils';
 
-type Step = 'extension' | 'key-add';
+// Only using key-add step now
 
 interface SimpleLoginDialogProps {
   isOpen: boolean;
@@ -24,13 +24,13 @@ const validateBunkerUri = (uri: string) => {
   return uri.startsWith('bunker://');
 };
 
-const SimpleLoginDialog: React.FC<SimpleLoginDialogProps> = ({ 
-  isOpen, 
-  onClose, 
-  onLogin, 
-  onSignup 
+const SimpleLoginDialog: React.FC<SimpleLoginDialogProps> = ({
+  isOpen,
+  onClose,
+  onLogin,
+  onSignup
 }) => {
-  const [step, setStep] = useState<Step>('extension');
+  // Removed step state - we only have one step now
   const [isLoading, setIsLoading] = useState(false);
   const [nsec, setNsec] = useState('');
   const [bunkerUri, setBunkerUri] = useState('');
@@ -40,13 +40,12 @@ const SimpleLoginDialog: React.FC<SimpleLoginDialogProps> = ({
     bunker?: string;
     extension?: string;
   }>({});
-  
+
   const login = useLoginActions();
 
   // Reset state when dialog opens/closes
   useEffect(() => {
     if (isOpen) {
-      setStep(window.nostr ? 'extension' : 'key-add');
       setIsLoading(false);
       setNsec('');
       setBunkerUri('');
@@ -139,82 +138,19 @@ const SimpleLoginDialog: React.FC<SimpleLoginDialogProps> = ({
     }
   };
 
-  if (step === 'extension') {
-    return (
-      <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="text-center">Log in</DialogTitle>
-          </DialogHeader>
-          
-          <div className="flex flex-col items-center space-y-6 py-6">
-            <div className="text-center">
-              <h3 className="font-semibold mb-2">Welcome to Shakespeare</h3>
-            </div>
-
-            <div className="w-32 h-32 flex items-center justify-center">
-              <Shield className="w-16 h-16 text-primary" />
-            </div>
-
-            {errors.extension && (
-              <Alert variant="destructive" className="w-full">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>{errors.extension}</AlertDescription>
-              </Alert>
-            )}
-
-            <div className="flex flex-col space-y-3 w-full">
-              <Button 
-                size="lg" 
-                onClick={handleExtensionLogin}
-                disabled={isLoading}
-                className="w-full"
-              >
-                {isLoading ? 'Logging in...' : 'Log in with extension'}
-              </Button>
-
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t"></div>
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-background px-2 text-muted-foreground">or</span>
-                </div>
-              </div>
-
-              <Button 
-                variant="outline" 
-                onClick={() => setStep('key-add')}
-                className="w-full"
-              >
-                <AlertTriangle className="w-4 h-4 mr-2" />
-                Log in with key
-              </Button>
-
-              <div className="flex justify-center space-x-2 text-xs">
-                <span className="text-muted-foreground">New on Shakespeare?</span>
-                <button 
-                  onClick={handleSignupClick}
-                  className="text-blue-500 hover:underline"
-                >
-                  Sign Up
-                </button>
-              </div>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
-  }
-
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle className="text-center">Import Key</DialogTitle>
+          <DialogTitle className="text-center">Log in</DialogTitle>
         </DialogHeader>
-        
+
         <div className="flex flex-col items-center space-y-6 py-6">
+          <div className="text-center">
+            <h3 className="font-semibold mb-2">Welcome back to Shakespeare</h3>
+            <p className="text-sm text-muted-foreground">Sign in to your existing account</p>
+          </div>
+
           <div className="w-32 h-32 flex items-center justify-center">
             <Key className="w-16 h-16 text-primary" />
           </div>
@@ -226,8 +162,8 @@ const SimpleLoginDialog: React.FC<SimpleLoginDialogProps> = ({
                 onClick={() => setActiveTab('nsec')}
                 className={cn(
                   "flex-1 px-3 py-2 text-sm font-medium rounded-md transition-colors",
-                  activeTab === 'nsec' 
-                    ? "bg-background text-foreground shadow-sm" 
+                  activeTab === 'nsec'
+                    ? "bg-background text-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground"
                 )}
               >
@@ -237,8 +173,8 @@ const SimpleLoginDialog: React.FC<SimpleLoginDialogProps> = ({
                 onClick={() => setActiveTab('bunker')}
                 className={cn(
                   "flex-1 px-3 py-2 text-sm font-medium rounded-md transition-colors",
-                  activeTab === 'bunker' 
-                    ? "bg-background text-foreground shadow-sm" 
+                  activeTab === 'bunker'
+                    ? "bg-background text-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground"
                 )}
               >
@@ -313,21 +249,29 @@ const SimpleLoginDialog: React.FC<SimpleLoginDialogProps> = ({
               </div>
             </div>
 
-            {/* Extension indicator */}
-            <div className="rounded-lg bg-muted p-3">
-              <p className="text-xs text-center">
-                {window.nostr ? (
-                  <button 
+            {/* Extension indicator - only show if extension is detected */}
+            {window.nostr && (
+              <div className="rounded-lg bg-muted p-3">
+                <p className="text-xs text-center">
+                  <button
                     onClick={handleExtensionLogin}
                     className="text-blue-500 hover:underline"
                     disabled={isLoading}
                   >
                     Sign in with browser extension
                   </button>
-                ) : (
-                  'Browser extension not found.'
-                )}
-              </p>
+                </p>
+              </div>
+            )}
+
+            <div className="flex justify-center space-x-2 text-xs">
+              <span className="text-muted-foreground">New to Shakespeare?</span>
+              <button
+                onClick={handleSignupClick}
+                className="text-blue-500 hover:underline"
+              >
+                Create Account
+              </button>
             </div>
           </div>
         </div>

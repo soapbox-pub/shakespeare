@@ -3,16 +3,18 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { useFS } from '@/hooks/useFS';
+import { useBuildProject } from '@/hooks/useBuildProject';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { FolderOpen, ArrowLeft, X, Bug, Copy, Check } from 'lucide-react';
+import { FolderOpen, ArrowLeft, X, Bug, Copy, Check, Play, Loader2, MenuIcon } from 'lucide-react';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { GitStatusIndicator } from '@/components/GitStatusIndicator';
 import { BrowserAddressBar } from '@/components/ui/browser-address-bar';
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
@@ -79,6 +81,15 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const { fs } = useFS();
   const projectsManager = useProjectsManager();
+  const { mutate: buildProject, isPending: isBuildLoading } = useBuildProject(projectId);
+
+  const handleBuildProject = () => {
+    buildProject(undefined, {
+      onError: (error) => {
+        console.error('Build failed:', error);
+      }
+    });
+  };
 
   const loadFileContent = useCallback(async (filePath: string) => {
     setIsLoading(true);
@@ -132,16 +143,15 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
   const refreshIframe = useCallback(() => {
     if (iframeRef.current) {
       // Force reload the iframe by updating its src
-      const currentSrc = iframeRef.current.src;
-      iframeRef.current.src = '';
+      iframeRef.current.src = '/';
       // Use a small timeout to ensure the src is cleared before setting it back
       setTimeout(() => {
         if (iframeRef.current) {
-          iframeRef.current.src = currentSrc;
+          iframeRef.current.src = `https://${projectId}.${IFRAME_DOMAIN}${currentPath}`;
         }
       }, 10);
     }
-  }, []);
+  }, [currentPath, projectId]);
 
   const navigateToPath = useCallback((path: string) => {
     if (iframeRef.current) {
@@ -399,100 +409,131 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
   };
 
   const ConsoleDropdown = () => {
-  const getLevelColor = (level: ConsoleMessage['level']) => {
-    switch (level) {
-      case 'error': return 'text-red-500';
-      case 'warn': return 'text-yellow-500';
-      case 'info': return 'text-blue-500';
-      case 'debug': return 'text-gray-500';
-      default: return 'text-gray-400';
-    }
-  };
+    const getLevelColor = (level: ConsoleMessage['level']) => {
+      switch (level) {
+        case 'error': return 'text-red-500';
+        case 'warn': return 'text-yellow-500';
+        case 'info': return 'text-blue-500';
+        case 'debug': return 'text-gray-500';
+        default: return 'text-gray-400';
+      }
+    };
 
-  const getLevelIcon = (level: ConsoleMessage['level']) => {
-    switch (level) {
-      case 'error': return '!';
-      case 'warn': return '⚠';
-      case 'info': return 'ℹ';
-      case 'debug': return '🔍';
-      default: return '•';
-    }
-  };
+    const getLevelIcon = (level: ConsoleMessage['level']) => {
+      switch (level) {
+        case 'error': return '!';
+        case 'warn': return '⚠';
+        case 'info': return 'ℹ';
+        case 'debug': return '🔍';
+        default: return '•';
+      }
+    };
 
-  const clearConsole = () => {
-    setConsoleMessages([]);
-  };
+    const clearConsole = () => {
+      setConsoleMessages([]);
+    };
 
-  const copyMessageToClipboard = async (msg: ConsoleMessage) => {
-    try {
-      // Create a formatted string with all message details
-      const formattedMessage = `[${msg.level.toUpperCase()}] ${msg.message}`;
+    const copyMessageToClipboard = async (msg: ConsoleMessage) => {
+      try {
+        // Create a formatted string with all message details
+        const formattedMessage = `[${msg.level.toUpperCase()}] ${msg.message}`;
 
-      await navigator.clipboard.writeText(formattedMessage);
-      setCopiedMessageId(msg.id);
+        await navigator.clipboard.writeText(formattedMessage);
+        setCopiedMessageId(msg.id);
 
-      // Reset the copied state after 2 seconds
-      setTimeout(() => {
-        setCopiedMessageId(null);
-      }, 2000);
-    } catch (error) {
-      console.error('Failed to copy message to clipboard:', error);
-    }
-  };
+        // Reset the copied state after 2 seconds
+        setTimeout(() => {
+          setCopiedMessageId(null);
+        }, 2000);
+      } catch (error) {
+        console.error('Failed to copy message to clipboard:', error);
+      }
+    };
 
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 relative">
-          <Bug className="h-4 w-4" />
-          {consoleMessages.some(msg => msg.level === 'error') && (
-            <span className="absolute bottom-0 left-0 h-2 w-2 bg-red-500 rounded-full"></span>
-          )}
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-96 max-w-96 max-h-96 overflow-x-hidden">
-        <div className="flex items-center justify-between p-2 border-b">
-          <span className="font-medium text-sm">Console Output ({consoleMessages.length})</span>
-          <Button variant="ghost" size="sm" onClick={clearConsole}>
-            <X className="h-3 w-3" />
-          </Button>
-        </div>
-        <ScrollArea className="h-80 w-full max-w-full overflow-x-hidden">
-          <div className="space-y-1 p-2 w-full max-w-full overflow-x-hidden">
-            {consoleMessages.length === 0 ? (
-              <div className="text-center text-muted-foreground text-sm py-4">
-                No console messages
-              </div>
-            ) : (
-              consoleMessages.map((msg) => (
-                <div
-                  key={msg.id}
-                  className={`text-xs font-mono p-2 rounded ${getLevelColor(msg.level)} bg-muted/50 group relative w-full overflow-hidden`}
-                >
-                  <div className="flex items-start justify-between w-full">
-                    <div className="whitespace-pre-wrap break-all flex-1 pr-2 overflow-x-hidden">{getLevelIcon(msg.level)} {msg.message}</div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => copyMessageToClipboard(msg)}
-                      className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex-shrink-0"
-                    >
-                      {copiedMessageId === msg.id ? (
-                        <Check className="h-3 w-3 text-green-500" />
-                      ) : (
-                        <Copy className="h-3 w-3" />
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              ))
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 relative">
+            <Bug className="h-4 w-4" />
+            {consoleMessages.some(msg => msg.level === 'error') && (
+              <span className="absolute bottom-0 left-0 h-2 w-2 bg-red-500 rounded-full"></span>
             )}
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-96 max-w-96 max-h-96 overflow-x-hidden">
+          <div className="flex items-center justify-between p-2 border-b">
+            <span className="font-medium text-sm">Console Output ({consoleMessages.length})</span>
+            <Button variant="ghost" size="sm" onClick={clearConsole}>
+              <X className="h-3 w-3" />
+            </Button>
           </div>
-        </ScrollArea>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-};
+          <ScrollArea className="h-80 w-full max-w-full overflow-x-hidden">
+            <div className="space-y-1 p-2 w-full max-w-full overflow-x-hidden">
+              {consoleMessages.length === 0 ? (
+                <div className="text-center text-muted-foreground text-sm py-4">
+                  No console messages
+                </div>
+              ) : (
+                consoleMessages.map((msg) => (
+                  <div
+                    key={msg.id}
+                    className={`text-xs font-mono p-2 rounded ${getLevelColor(msg.level)} bg-muted/50 group relative w-full overflow-hidden`}
+                  >
+                    <div className="flex items-start justify-between w-full">
+                      <div className="whitespace-pre-wrap break-all flex-1 pr-2 overflow-x-hidden">{getLevelIcon(msg.level)} {msg.message}</div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => copyMessageToClipboard(msg)}
+                        className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex-shrink-0"
+                      >
+                        {copiedMessageId === msg.id ? (
+                          <Check className="h-3 w-3 text-green-500" />
+                        ) : (
+                          <Copy className="h-3 w-3" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </ScrollArea>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  };
+
+  const Menu = () => {
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0"
+          >
+            <MenuIcon className="h-4 w-4" />
+            <span className="sr-only">Open menu</span>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuItem
+            onClick={handleBuildProject}
+            disabled={isBuildLoading}
+            className="gap-2"
+          >
+            {isBuildLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Play className="h-4 w-4" />
+            )}
+            {isBuildLoading ? 'Building...' : 'Build'}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  };
 
   return (
     <div className="h-full">
@@ -509,7 +550,12 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
                   onForward={goForward}
                   canGoBack={historyIndex > 0}
                   canGoForward={historyIndex < navigationHistory.length - 1}
-                  extraContent={<ConsoleDropdown />}
+                  extraContent={(
+                    <div className="flex items-center">
+                      <ConsoleDropdown />
+                      <Menu />
+                    </div>
+                  )}
                 />
               </div>
               <iframe
@@ -527,6 +573,24 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
                 <p className="text-muted-foreground mb-4">
                   {t('buildProjectToSeePreview')}
                 </p>
+                <Button
+                  onClick={handleBuildProject}
+                  disabled={isBuildLoading}
+                  variant="outline"
+                  className="gap-2"
+                >
+                  {isBuildLoading ? (
+                    <>
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      Building...
+                    </>
+                  ) : (
+                    <>
+                      <Play className="h-5 w-5" />
+                      Build Project
+                    </>
+                  )}
+                </Button>
               </div>
             </div>
           )}

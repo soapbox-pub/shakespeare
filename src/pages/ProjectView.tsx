@@ -202,7 +202,6 @@ export function ProjectView() {
                   projectId={project.id}
                   projectName={project.name}
                   onNewChat={handleNewChat}
-                  onBuild={runBuild}
                   onDeploy={runDeploy}
                   isLoading={isAILoading}
                   isBuildLoading={build.isPending}
@@ -409,7 +408,6 @@ export function ProjectView() {
                             projectId={project.id}
                             projectName={project.name}
                             onNewChat={handleNewChat}
-                            onBuild={runBuild}
                             onDeploy={runDeploy}
                             isLoading={isAILoading}
                             isBuildLoading={build.isPending}

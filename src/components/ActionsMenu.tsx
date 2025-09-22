@@ -22,7 +22,6 @@ import {
   GitBranch,
   MoreHorizontal,
   MessageSquarePlus,
-  Play,
   CloudUpload,
   Loader2,
   History,
@@ -38,7 +37,6 @@ interface ActionsMenuProps {
   projectId: string;
   projectName: string;
   onNewChat: () => void;
-  onBuild: () => void;
   onDeploy: () => void;
   isLoading?: boolean;
   isBuildLoading?: boolean;
@@ -52,7 +50,6 @@ export function ActionsMenu({
   projectId,
   projectName,
   onNewChat,
-  onBuild,
   onDeploy,
   isLoading = false,
   isBuildLoading = false,
@@ -137,22 +134,6 @@ export function ActionsMenu({
           >
             <History className="h-4 w-4" />
             Rollback
-          </DropdownMenuItem>
-
-          <DropdownMenuItem
-            onClick={() => {
-              if (onFirstInteraction) onFirstInteraction();
-              onBuild();
-            }}
-            disabled={isAnyLoading}
-            className="gap-2"
-          >
-            {isBuildLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Play className="h-4 w-4" />
-            )}
-            {isBuildLoading ? 'Building...' : 'Build'}
           </DropdownMenuItem>
 
           <DropdownMenuItem

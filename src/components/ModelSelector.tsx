@@ -17,6 +17,8 @@ interface ModelSelectorProps {
   className?: string;
   disabled?: boolean;
   placeholder?: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 export function ModelSelector({
@@ -25,9 +27,15 @@ export function ModelSelector({
   className,
   disabled = false,
   placeholder,
+  open: controlledOpen,
+  onOpenChange: setControlledOpen,
 }: ModelSelectorProps) {
   const { t } = useTranslation();
-  const [open, setOpen] = useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+
+  // Use controlled state if provided, otherwise use local state
+  const open = controlledOpen !== undefined ? controlledOpen : uncontrolledOpen;
+  const setOpen = setControlledOpen || setUncontrolledOpen;
   const [isCustomInput, setIsCustomInput] = useState(false);
   const [customValue, setCustomValue] = useState('');
   const { settings, addRecentlyUsedModel, isConfigured } = useAISettings();
@@ -140,23 +148,23 @@ export function ModelSelector({
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            variant="ghost"
-            role="combobox"
-            aria-expanded={open}
-            className={cn(
-              "h-8 p-0 gap-0.5 justify-between text-xs border-0 bg-transparent hover:bg-transparent hover:text-foreground focus-visible:ring-0 focus-visible:ring-offset-0 text-muted-foreground text-right",
-              className
-            )}
-            disabled={disabled}
-          >
-            <span className="w-full truncate">
-              {value || placeholder || defaultPlaceholder}
-            </span>
-            <ChevronDown className="size-3 shrink-0 opacity-50" />
-          </Button>
-        </PopoverTrigger>
+      <PopoverTrigger asChild>
+        <Button
+          variant="ghost"
+          role="combobox"
+          aria-expanded={open}
+          className={cn(
+            "h-8 p-0 gap-0.5 justify-between text-xs border-0 bg-transparent hover:bg-transparent hover:text-foreground focus-visible:ring-0 focus-visible:ring-offset-0 text-muted-foreground text-right",
+            className
+          )}
+          disabled={disabled}
+        >
+          <span className="w-full truncate">
+            {value || placeholder || defaultPlaceholder}
+          </span>
+          <ChevronDown className="size-3 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
       <PopoverContent className="w-96 p-0" align="end">
         <Command>
           {isConfigured && <CommandInput placeholder={t('searchModels')} className="h-9" />}

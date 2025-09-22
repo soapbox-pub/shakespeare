@@ -1,7 +1,7 @@
 import git, { GitHttpRequest, GitHttpResponse, HttpClient } from 'isomorphic-git';
 import { NIP05 } from '@nostrify/nostrify';
 import { nip19 } from 'nostr-tools';
-import UriTemplate from 'uri-templates';
+import { proxyUrl } from './proxyUrl';
 import type { NostrEvent, NostrSigner, NPool } from '@nostrify/nostrify';
 import type { JSRuntimeFS } from './JSRuntime';
 
@@ -1626,19 +1626,7 @@ class GitHttp implements HttpClient {
     const url = new URL(request.url);
 
     const target = this.proxy
-      ? UriTemplate(this.proxy).fill({
-          href: url.href,
-          origin: url.origin,
-          protocol: url.protocol,
-          username: url.username,
-          password: url.password,
-          host: url.host,
-          hostname: url.hostname,
-          port: url.port,
-          pathname: url.pathname,
-          hash: url.hash,
-          search: url.search,
-        })
+      ? proxyUrl(this.proxy, url)
       : url.href;
 
     const init: RequestInit = {

@@ -62,7 +62,7 @@ export class CurlCommand implements ShellCommand {
 
       // Proxy the URL through CorsProxy
       const originalUrl = url.toString();
-      const proxiedUrl = `https://corsproxy.io/?url=${encodeURIComponent(originalUrl)}`;
+      const proxiedUrl = `https://proxy.shakespeare.diy/?url=${encodeURIComponent(originalUrl)}`;
 
       // Prepare request
       const requestInit: RequestInit = {

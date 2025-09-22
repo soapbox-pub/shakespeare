@@ -11,6 +11,7 @@ import { useGitHubOAuth } from '@/hooks/useGitHubOAuth';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { useNavigate } from 'react-router-dom';
 import type { GitCredential } from '@/contexts/GitSettingsContext';
+import { PasswordInput } from '@/components/ui/password-input';
 
 interface PresetProvider {
   id: string;
@@ -191,9 +192,8 @@ export function GitSettings() {
                         </div>
                         <div className="grid gap-2">
                           <Label htmlFor={`${origin}-password`}>{t('password')}</Label>
-                          <Input
+                          <PasswordInput
                             id={`${origin}-password`}
-                            type="password"
                             placeholder={t('enterPassword')}
                             value={credential?.password || ''}
                             onChange={(e) => handleUpdateCredential(origin, { password: e.target.value })}
@@ -260,9 +260,8 @@ export function GitSettings() {
                       </div>
                     ) : (
                       <div className="flex gap-2">
-                        <Input
+                        <PasswordInput
                           placeholder={t('enterToken')}
-                          type="password"
                           className="flex-1"
                           value={presetTokens[preset.id] || ''}
                           onChange={(e) => setPresetTokens(prev => ({
@@ -287,9 +286,8 @@ export function GitSettings() {
                   ) : (
                     // Standard rendering for other providers
                     <div className="flex gap-2">
-                      <Input
+                      <PasswordInput
                         placeholder={t('enterToken')}
-                        type="password"
                         className="flex-1"
                         value={presetTokens[preset.id] || ''}
                         onChange={(e) => setPresetTokens(prev => ({
@@ -346,9 +344,8 @@ export function GitSettings() {
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor="custom-password">{t('password')}</Label>
-                    <Input
+                    <PasswordInput
                       id="custom-password"
-                      type="password"
                       placeholder={t('enterPassword')}
                       value={customPassword}
                       onChange={(e) => setCustomPassword(e.target.value)}

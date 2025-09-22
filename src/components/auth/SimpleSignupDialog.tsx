@@ -14,12 +14,14 @@ interface SimpleSignupDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onComplete?: () => void;
+  onLogin?: () => void;
 }
 
 const SimpleSignupDialog: React.FC<SimpleSignupDialogProps> = ({
   isOpen,
   onClose,
-  onComplete
+  onComplete,
+  onLogin
 }) => {
   const [step, setStep] = useState<Step>('key');
   const [isLoading, setIsLoading] = useState(false);
@@ -120,9 +122,9 @@ const SimpleSignupDialog: React.FC<SimpleSignupDialogProps> = ({
 
   const handleLoginClick = () => {
     onClose();
-    // This would typically open the login modal
-    // Since we don't have direct access to the login modal state here,
-    // we'll rely on the parent component to handle this
+    if (onLogin) {
+      onLogin();
+    }
   };
 
   if (step === 'key') {

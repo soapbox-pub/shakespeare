@@ -222,6 +222,10 @@ export function NostrSettings() {
         isOpen={showSignupDialog}
         onClose={() => setShowSignupDialog(false)}
         onComplete={handleSignupComplete}
+        onLogin={() => {
+          setShowSignupDialog(false);
+          setShowLoginDialog(true);
+        }}
       />
     </div>
   );

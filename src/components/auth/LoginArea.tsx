@@ -98,6 +98,10 @@ export function LoginArea({ className }: LoginAreaProps) {
       <SimpleSignupDialog
         isOpen={signupDialogOpen}
         onClose={() => setSignupDialogOpen(false)}
+        onLogin={() => {
+          setSignupDialogOpen(false);
+          setLoginDialogOpen(true);
+        }}
       />
     </div>
   );

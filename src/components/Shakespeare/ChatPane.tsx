@@ -63,16 +63,16 @@ function ChatIntervention({ alert, onDismiss }: { alert: ChatAlert; onDismiss: (
   const isError = alert.type === ALERT_TYPE.ERROR;
 
   return (
-    <Alert variant={isError ? "destructive" : "default"} className="py-2 px-3">
+    <div className="py-2 px-3 bg-primary/5 border border-primary/20 rounded-lg">
       <div className="flex items-start gap-2">
-        <QuillySVG className="h-14 w-14 flex-shrink-0" />
+        <QuillySVG className="h-14 w-14 flex-shrink-0" fillColor="hsl(var(--primary))" />
         <div className="flex-1 min-w-0">
-          <AlertDescription className="space-y-1">
+          <div className="space-y-1">
             <div className="space-y-1">
-              <h4 className="font-semibold text-sm">
+              <h4 className="font-semibold text-sm text-primary">
                 Pardon the Interruption
               </h4>
-              <p className="text-sm">{alert.message}</p>
+              <p className="text-sm text-muted-foreground">{alert.message}</p>
             </div>
             {alert.action && (
               <div className="flex justify-end pt-1">
@@ -90,7 +90,7 @@ function ChatIntervention({ alert, onDismiss }: { alert: ChatAlert; onDismiss: (
                 </Button>
               </div>
             )}
-          </AlertDescription>
+          </div>
         </div>
         <Button
           variant="ghost"
@@ -101,7 +101,7 @@ function ChatIntervention({ alert, onDismiss }: { alert: ChatAlert; onDismiss: (
           ×
         </Button>
       </div>
-    </Alert>
+    </div>
   );
 }
 

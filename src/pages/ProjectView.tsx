@@ -13,18 +13,14 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowLeft, MessageSquare, Eye, Code, Menu } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { ActionsMenu } from '@/components/ActionsMenu';
-
 import { useIsMobile } from '@/hooks/useIsMobile';
-import { useFS } from '@/hooks/useFS';
 import { useKeepAlive } from '@/hooks/useKeepAlive';
 import { GitStatusIndicator } from '@/components/GitStatusIndicator';
 import { StarButton } from '@/components/StarButton';
-
-import { buildProject } from "@/lib/build";
-import { deployProject } from "@/lib/deploy";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { useAppContext } from "@/hooks/useAppContext";
 import { useToast } from "@/hooks/useToast";
+import { useBuildProject } from '@/hooks/useBuildProject';
+import { useDeployProject } from '@/hooks/useDeployProject';
 
 export function ProjectView() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -33,23 +29,22 @@ export function ProjectView() {
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'preview' | 'code'>('preview');
   const [mobileView, setMobileView] = useState<'chat' | 'preview' | 'code'>('chat');
-  const [isBuildLoading, setIsBuildLoading] = useState(false);
-  const [isDeployLoading, setIsDeployLoading] = useState(false);
   const [isAILoading, setIsAILoading] = useState(false);
   const [isProjectInfoOpen, setIsProjectInfoOpen] = useState(false);
   const projectsManager = useProjectsManager();
   const chatPaneRef = useRef<ChatPaneRef>(null);
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const { fs } = useFS();
   const { user } = useCurrentUser();
-  const { config } = useAppContext();
   const { toast } = useToast();
   const [isSidebarVisible, setIsSidebarVisible] = useState(!isMobile);
 
+  const build = useBuildProject(projectId!);
+  const deploy = useDeployProject(projectId!);
+
   // Keep-alive functionality to prevent tab throttling during AI processing
   const { updateMetadata } = useKeepAlive({
-    enabled: isAILoading || isBuildLoading || isDeployLoading,
+    enabled: isAILoading || build.isPending || deploy.isPending,
     title: 'Shakespeare',
     artist: project ? `Working on ${project.name}...` : 'Working...',
     artwork: [
@@ -79,28 +74,21 @@ export function ProjectView() {
   }, [loadProject]);
 
   const runBuild = async () => {
-    if (isBuildLoading || !project) return;
-
-    setIsBuildLoading(true);
+    if (build.isPending || !project) return;
     updateMetadata('Shakespeare', `Building ${project.name}...`);
 
-    try {
-      const result = await buildProject({
-        fs,
-        projectPath: `/projects/${project.id}`,
-        domParser: new DOMParser(),
-      });
-
-      console.log('Build completed:', result);
-    } catch (error) {
-      console.error('Build failed:', error);
-    } finally {
-      setIsBuildLoading(false);
-    }
+    await build.mutateAsync(undefined, {
+      onSuccess(result) {
+        console.log('Project built:', result);
+      },
+      onError(error) {
+        console.error('Build failed:', error);
+      },
+    });
   };
 
   const runDeploy = async () => {
-    if (isDeployLoading || !project) return;
+    if (deploy.isPending || !project) return;
 
     // Check if user is logged in
     if (!user || !user.signer) {
@@ -112,38 +100,27 @@ export function ProjectView() {
       return;
     }
 
-    setIsDeployLoading(true);
     updateMetadata('Shakespeare', `Deploying ${project.name}...`);
 
-    try {
-      const result = await deployProject({
-        projectId: project.id,
-        deployServer: config.deployServer,
-        fs,
-        projectPath: `/projects/${project.id}`,
-        signer: user.signer,
-      });
-
-      console.log('Project deployed:', result.url);
-
-      toast({
-        title: "Deployment successful!",
-        description: `Your project is now live at ${result.hostname}`,
-      });
-
-      // Open the deployed site in a new tab
-      window.open(result.url, '_blank');
-    } catch (error) {
-      console.error('Deploy failed:', error);
-
-      toast({
-        title: "Deployment failed",
-        description: error instanceof Error ? error.message : "An unexpected error occurred",
-        variant: "destructive",
-      });
-    } finally {
-      setIsDeployLoading(false);
-    }
+    await deploy.mutateAsync(undefined, {
+      onSuccess(result) {
+        console.log('Project deployed:', result.url);
+        toast({
+          title: "Deployment successful!",
+          description: `Your project is now live at ${result.hostname}`,
+        });
+        // Open the deployed site in a new tab
+        window.open(result.url, '_blank');
+      },
+      onError(error) {
+        console.error('Deploy failed:', error);
+        toast({
+          title: "Deployment failed",
+          description: error instanceof Error ? error.message : "An unexpected error occurred",
+          variant: "destructive",
+        });
+      },
+    });
   };
 
   const handleNewChat = () => {
@@ -228,8 +205,8 @@ export function ProjectView() {
                   onBuild={runBuild}
                   onDeploy={runDeploy}
                   isLoading={isAILoading}
-                  isBuildLoading={isBuildLoading}
-                  isDeployLoading={isDeployLoading}
+                  isBuildLoading={build.isPending}
+                  isDeployLoading={deploy.isPending}
                   onFirstInteraction={handleFirstInteraction}
                   onProjectDeleted={handleProjectDeleted}
                 />
@@ -283,8 +260,8 @@ export function ProjectView() {
                 onFirstInteraction={handleFirstInteraction}
                 onLoadingChange={handleAILoadingChange}
                 isLoading={isAILoading}
-                isBuildLoading={isBuildLoading}
-                isDeployLoading={isDeployLoading}
+                isBuildLoading={build.isPending}
+                isDeployLoading={deploy.isPending}
               />
             ) : (
               <div className="h-full p-4 space-y-4">
@@ -435,8 +412,8 @@ export function ProjectView() {
                             onBuild={runBuild}
                             onDeploy={runDeploy}
                             isLoading={isAILoading}
-                            isBuildLoading={isBuildLoading}
-                            isDeployLoading={isDeployLoading}
+                            isBuildLoading={build.isPending}
+                            isDeployLoading={deploy.isPending}
                             onFirstInteraction={handleFirstInteraction}
                             onProjectDeleted={handleProjectDeleted}
                           />
@@ -463,8 +440,8 @@ export function ProjectView() {
                       onFirstInteraction={handleFirstInteraction}
                       onLoadingChange={handleAILoadingChange}
                       isLoading={isAILoading}
-                      isBuildLoading={isBuildLoading}
-                      isDeployLoading={isDeployLoading}
+                      isBuildLoading={build.isPending}
+                      isDeployLoading={deploy.isPending}
                     />
                   ) : (
                     <div className="h-full p-4 space-y-4">

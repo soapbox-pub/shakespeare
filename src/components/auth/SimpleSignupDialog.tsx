@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Key, Download, UserPlus } from 'lucide-react';
+import { Download, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -142,7 +142,9 @@ const SimpleSignupDialog: React.FC<SimpleSignupDialogProps> = ({
             </div>
 
             <div className="w-32 h-32 flex items-center justify-center">
-              <Key className="w-16 h-16 text-primary" />
+              <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center">
+                <span className="text-4xl">🔑</span>
+              </div>
             </div>
 
             <div className="flex flex-col space-y-3 w-full">
@@ -204,7 +206,9 @@ const SimpleSignupDialog: React.FC<SimpleSignupDialogProps> = ({
 
         <div className="flex flex-col items-center space-y-6 py-6">
           <div className="w-32 h-32 flex items-center justify-center">
-            <Key className="w-16 h-16 text-primary" />
+            <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center">
+              <span className="text-4xl">🔑</span>
+            </div>
           </div>
 
           <div className="w-full space-y-4">

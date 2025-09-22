@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Key, Cloud } from 'lucide-react';
+import { Cloud } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -152,7 +152,9 @@ const SimpleLoginDialog: React.FC<SimpleLoginDialogProps> = ({
           </div>
 
           <div className="w-32 h-32 flex items-center justify-center">
-            <Key className="w-16 h-16 text-primary" />
+            <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center">
+              <span className="text-4xl">🔑</span>
+            </div>
           </div>
 
           <div className="w-full space-y-4">

@@ -7,7 +7,7 @@ import { useBuildProject } from '@/hooks/useBuildProject';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { FolderOpen, ArrowLeft, X, Bug, Copy, Check, Play, Loader2, MenuIcon, Code } from 'lucide-react';
+import { FolderOpen, ArrowLeft, X, Bug, Copy, Check, Play, Loader2, MenuIcon, Code, CloudUpload } from 'lucide-react';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { GitStatusIndicator } from '@/components/GitStatusIndicator';
 import { BrowserAddressBar } from '@/components/ui/browser-address-bar';
@@ -20,6 +20,7 @@ import {
 
 import { FileTree } from './FileTree';
 import { FileEditor } from './FileEditor';
+import { DeployDialog } from '@/components/DeployDialog';
 
 // Get iframe domain from environment variable
 const IFRAME_DOMAIN = import.meta.env.VITE_IFRAME_DOMAIN || 'local-shakespeare.dev';
@@ -28,6 +29,8 @@ interface PreviewPaneProps {
   projectId: string;
   activeTab: 'preview' | 'code';
   onToggleView?: () => void;
+  projectName?: string;
+  onFirstInteraction?: () => void;
 }
 
 interface JSONRPCRequest {
@@ -66,7 +69,7 @@ interface ConsoleMessage {
   message: string;
 }
 
-export function PreviewPane({ projectId, activeTab, onToggleView }: PreviewPaneProps) {
+export function PreviewPane({ projectId, activeTab, onToggleView, projectName, onFirstInteraction }: PreviewPaneProps) {
   const { t } = useTranslation();
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [fileContent, setFileContent] = useState<string>('');
@@ -79,6 +82,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView }: PreviewPaneP
   const [historyIndex, setHistoryIndex] = useState(0);
   const [consoleMessages, setConsoleMessages] = useState<ConsoleMessage[]>([]);
   const [copiedMessageId, setCopiedMessageId] = useState<number | null>(null);
+  const [deployDialogOpen, setDeployDialogOpen] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const { fs } = useFS();
   const projectsManager = useProjectsManager();
@@ -506,6 +510,8 @@ export function PreviewPane({ projectId, activeTab, onToggleView }: PreviewPaneP
   };
 
   const Menu = () => {
+    const isAnyLoading = isBuildLoading;
+
     return (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -519,15 +525,6 @@ export function PreviewPane({ projectId, activeTab, onToggleView }: PreviewPaneP
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48">
-          {(!isMobile && onToggleView) && (
-            <DropdownMenuItem
-              onClick={onToggleView}
-              className="gap-2"
-            >
-              <Code className="h-4 w-4" />
-              View Code
-            </DropdownMenuItem>
-          )}
           <DropdownMenuItem
             onClick={handleBuildProject}
             disabled={isBuildLoading}
@@ -539,6 +536,14 @@ export function PreviewPane({ projectId, activeTab, onToggleView }: PreviewPaneP
               <Play className="h-4 w-4" />
             )}
             {isBuildLoading ? 'Building...' : 'Build'}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => setDeployDialogOpen(true)}
+            disabled={isAnyLoading}
+            className="gap-2"
+          >
+            <CloudUpload className="h-4 w-4" />
+            Deploy
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -562,6 +567,16 @@ export function PreviewPane({ projectId, activeTab, onToggleView }: PreviewPaneP
                 canGoForward={hasBuiltProject && historyIndex < navigationHistory.length - 1}
                 extraContent={(
                   <div className="flex items-center">
+                    {(!isMobile && onToggleView) && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={onToggleView}
+                        className="h-8 gap-2"
+                      >
+                        <Code className="h-4 w-4" />
+                      </Button>
+                    )}
                     <ConsoleDropdown />
                     <Menu />
                   </div>
@@ -739,6 +754,17 @@ export function PreviewPane({ projectId, activeTab, onToggleView }: PreviewPaneP
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Deploy Dialog */}
+      {projectName && (
+        <DeployDialog
+          projectId={projectId}
+          projectName={projectName}
+          open={deployDialogOpen}
+          onOpenChange={setDeployDialogOpen}
+          onFirstInteraction={onFirstInteraction}
+        />
+      )}
     </div>
   );
 }

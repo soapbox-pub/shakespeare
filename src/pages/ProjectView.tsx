@@ -231,6 +231,8 @@ export function ProjectView() {
               <PreviewPane
                 projectId={project.id}
                 activeTab={mobileView}
+                projectName={project.name}
+                onFirstInteraction={handleFirstInteraction}
               />
             ) : (
               <div className="h-full p-4 space-y-4">
@@ -415,6 +417,8 @@ export function ProjectView() {
                     projectId={project.id}
                     activeTab={activeTab}
                     onToggleView={() => setActiveTab(activeTab === 'preview' ? 'code' : 'preview')}
+                    projectName={project.name}
+                    onFirstInteraction={handleFirstInteraction}
                   />
                 ) : (
                   <div className="h-full p-4 space-y-4">

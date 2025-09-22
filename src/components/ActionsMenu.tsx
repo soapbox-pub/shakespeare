@@ -10,12 +10,10 @@ import {
   GitBranch,
   MoreHorizontal,
   MessageSquarePlus,
-  CloudUpload,
   History,
 } from 'lucide-react';
 import { GitHistoryDialog } from '@/components/ai/GitHistoryDialog';
 import { GitDialog } from '@/components/GitDialog';
-import { DeployDialog } from '@/components/DeployDialog';
 
 interface ActionsMenuProps {
   projectId: string;
@@ -29,16 +27,15 @@ interface ActionsMenuProps {
 
 export function ActionsMenu({
   projectId,
-  projectName,
+  projectName: _projectName,
   onNewChat,
   isLoading = false,
   isBuildLoading = false,
   disabled = false,
-  onFirstInteraction,
+  onFirstInteraction: _onFirstInteraction,
 }: ActionsMenuProps) {
   const [gitHistoryOpen, setGitHistoryOpen] = useState(false);
   const [gitDialogOpen, setGitDialogOpen] = useState(false);
-  const [deployDialogOpen, setDeployDialogOpen] = useState(false);
 
   const isAnyLoading = isLoading || isBuildLoading;
 
@@ -86,14 +83,7 @@ export function ActionsMenu({
             Rollback
           </DropdownMenuItem>
 
-          <DropdownMenuItem
-            onClick={() => setDeployDialogOpen(true)}
-            disabled={isAnyLoading}
-            className="gap-2"
-          >
-            <CloudUpload className="h-4 w-4" />
-            Deploy
-          </DropdownMenuItem>
+
         </DropdownMenuContent>
       </DropdownMenu>
 
@@ -110,13 +100,7 @@ export function ActionsMenu({
         onOpenChange={setGitHistoryOpen}
       />
 
-      <DeployDialog
-        projectId={projectId}
-        projectName={projectName}
-        open={deployDialogOpen}
-        onOpenChange={setDeployDialogOpen}
-        onFirstInteraction={onFirstInteraction}
-      />
+
     </>
   );
 }

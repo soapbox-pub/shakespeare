@@ -1,10 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -19,6 +18,8 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   GitBranch,
   Upload,
@@ -31,9 +32,9 @@ import {
   Plus,
   Minus,
   Edit,
-  Settings,
   AlertTriangle,
   Zap,
+  Save,
 } from 'lucide-react';
 import { useGitStatus } from '@/hooks/useGitStatus';
 import { useGitSettings } from '@/hooks/useGitSettings';
@@ -43,7 +44,7 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useNostr } from '@nostrify/react';
 import { useNostrPublish } from '@/hooks/useNostrPublish';
 import { cn } from '@/lib/utils';
-import { findCredentialsForRepo, getOriginDisplayName } from '@/lib/gitCredentials';
+import { findCredentialsForRepo } from '@/lib/gitCredentials';
 import { nip19 } from 'nostr-tools';
 
 const GRASP_SERVERS = ["git.shakespeare.diy", "relay.ngit.dev", "gitnostr.com"];
@@ -59,8 +60,8 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
   const [isPushing, setIsPushing] = useState(false);
   const [isPulling, setIsPulling] = useState(false);
   const [isPushingToNostr, setIsPushingToNostr] = useState(false);
-  const [pushResult, setPushResult] = useState<string | null>(null);
-  const [pullResult, setPullResult] = useState<string | null>(null);
+  const [originUrl, setOriginUrl] = useState('');
+  const [isSavingOrigin, setIsSavingOrigin] = useState(false);
   const navigate = useNavigate();
 
   const { data: gitStatus, refetch: refetchGitStatus } = useGitStatus(projectId);
@@ -72,6 +73,70 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
   const { mutateAsync: publishEvent } = useNostrPublish();
 
   const projectPath = `/projects/${projectId}`;
+
+  // Initialize origin URL from git status
+  useEffect(() => {
+    if (gitStatus?.remotes) {
+      const originRemote = gitStatus.remotes.find(remote => remote.name === 'origin');
+      setOriginUrl(originRemote?.url || '');
+    }
+  }, [gitStatus?.remotes]);
+
+  const handleSaveOrigin = async () => {
+    if (!gitStatus?.isGitRepo) {
+      toast({
+        title: "Cannot configure origin",
+        description: "Not a git repository",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSavingOrigin(true);
+
+    try {
+      // Remove existing origin if it exists
+      try {
+        await git.deleteRemote({
+          dir: projectPath,
+          remote: 'origin',
+        });
+      } catch {
+        // Ignore if origin doesn't exist
+      }
+
+      // Add new origin if URL is provided
+      if (originUrl.trim()) {
+        await git.addRemote({
+          dir: projectPath,
+          remote: 'origin',
+          url: originUrl.trim(),
+        });
+
+        toast({
+          title: "Origin configured",
+          description: `Origin remote set to ${originUrl.trim()}`,
+        });
+      } else {
+        toast({
+          title: "Origin removed",
+          description: "Origin remote has been removed",
+        });
+      }
+
+      // Refresh git status after changing origin
+      await refetchGitStatus();
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      toast({
+        title: "Failed to configure origin",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingOrigin(false);
+    }
+  };
 
   const handlePushToNostr = async () => {
     if (!user) {
@@ -93,7 +158,6 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
     }
 
     setIsPushingToNostr(true);
-    setPushResult(null);
 
     try {
       // Check if repo announcement already exists
@@ -264,10 +328,8 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
         description: "Waiting for GRASP servers to update...",
       });
 
-      setPushResult(`✅ Successfully published repository to Nostr`);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      setPushResult(`❌ Push to Nostr failed: ${errorMessage}`);
       toast({
         title: "Push to Nostr failed",
         description: errorMessage,
@@ -307,7 +369,6 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
     }
 
     setIsPushing(true);
-    setPushResult(null);
 
     try {
       const remote = gitStatus.remotes[0]; // Use first remote (usually 'origin')
@@ -320,7 +381,7 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
         signer: user?.signer, // For signing if pushing to Nostr
       });
 
-      setPushResult(`✅ Successfully pushed ${gitStatus.ahead} commit${gitStatus.ahead !== 1 ? 's' : ''} to ${remote.name}/${gitStatus.currentBranch}`);
+
       toast({
         title: "Push successful",
         description: `${gitStatus.ahead} commit${gitStatus.ahead !== 1 ? 's' : ''} pushed to ${remote.name}/${gitStatus.currentBranch}`,
@@ -330,7 +391,6 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
       await refetchGitStatus();
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      setPushResult(`❌ Push failed: ${errorMessage}`);
       toast({
         title: "Push failed",
         description: errorMessage,
@@ -361,7 +421,6 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
     }
 
     setIsPulling(true);
-    setPullResult(null);
 
     try {
       const remote = gitStatus.remotes[0]; // Use first remote (usually 'origin')
@@ -377,7 +436,7 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
         onAuth: (url) => findCredentialsForRepo(url, settings.credentials),
       });
 
-      setPullResult(`✅ Successfully pulled from ${remote.name}/${gitStatus.currentBranch}`);
+
       toast({
         title: "Pull successful",
         description: `Latest changes pulled from ${remote.name}/${gitStatus.currentBranch}`,
@@ -387,7 +446,6 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
       await refetchGitStatus();
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      setPullResult(`❌ Pull failed: ${errorMessage}`);
       toast({
         title: "Pull failed",
         description: errorMessage,
@@ -472,84 +530,127 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <GitBranch className="h-5 w-5" />
-            Git Repository Status
+            Repository
           </DialogTitle>
-          <DialogDescription>
-            View repository status and sync with remote repositories
-          </DialogDescription>
         </DialogHeader>
+
+        {/* URL Configuration */}
+        {gitStatus?.isGitRepo && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm">Git URL</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <Label htmlFor="origin-url" className="sr-only">
+                    URL
+                  </Label>
+                  <Input
+                    id="origin-url"
+                    placeholder="https://github.com/username/repository.git"
+                    value={originUrl}
+                    onChange={(e) => setOriginUrl(e.target.value)}
+                    disabled={isSavingOrigin}
+                  />
+                </div>
+                <Button
+                  onClick={handleSaveOrigin}
+                  disabled={isSavingOrigin}
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0"
+                >
+                  {isSavingOrigin ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Save className="h-4 w-4 mr-2" />
+                  )}
+                  {isSavingOrigin ? 'Saving...' : 'Save'}
+                </Button>
+              </div>
+
+              {/* Credentials Warning */}
+              {gitStatus.remotes.length > 0 && (
+                (() => {
+                  const remoteWithoutCredentials = gitStatus.remotes.find((remote) => !findCredentialsForRepo(remote.url, settings.credentials));
+                  if (!remoteWithoutCredentials) return null;
+
+                  let protocol = '';
+                  let hostname = 'the remote host';
+                  try {
+                    const url = new URL(remoteWithoutCredentials.url);
+                    protocol = url.protocol;
+                    hostname = url.hostname;
+                  } catch {
+                    // Invalid URL
+                    return (
+                      <Alert className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/50">
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertDescription className="text-sm">
+                          Invalid URL format. Enter an https URL.
+                        </AlertDescription>
+                      </Alert>
+                    );
+                  }
+
+                  // Check for unsupported protocols
+                  if (protocol !== 'https:' && protocol !== 'nostr:') {
+                    return (
+                      <Alert className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/50">
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertDescription className="text-sm">
+                          The {protocol.replace(':', '')} URL type is not supported. Enter an https URL.
+                        </AlertDescription>
+                      </Alert>
+                    );
+                  }
+
+                  // For nostr protocol, only show warning if user is not logged in
+                  if (protocol === 'nostr:' && !user) {
+                    return (
+                      <Alert className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/50">
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertDescription className="text-sm">
+                          You are not logged into Nostr. Push & pull might not work unless you{' '}
+                          <button
+                            onClick={() => navigate('/settings/nostr')}
+                            className="underline hover:no-underline font-medium text-amber-700 dark:text-amber-300"
+                          >
+                            log in
+                          </button>.
+                        </AlertDescription>
+                      </Alert>
+                    );
+                  }
+
+                  // For https protocol, show warning if no credentials
+                  if (protocol === 'https:') {
+                    return (
+                      <Alert className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/50">
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertDescription className="text-sm">
+                          You are not logged into {hostname}. Push & pull might not work unless you{' '}
+                          <button
+                            onClick={() => navigate('/settings/git')}
+                            className="underline hover:no-underline font-medium text-amber-700 dark:text-amber-300"
+                          >
+                            log in
+                          </button>.
+                        </AlertDescription>
+                      </Alert>
+                    );
+                  }
+
+                  return null;
+                })()
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         <ScrollArea className="max-h-[60vh]">
           <div className="space-y-4">
-
-            {/* Credentials Status */}
-            {gitStatus?.isGitRepo && gitStatus.remotes.length > 0 && (
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm flex items-center justify-between">
-                    Authentication
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => navigate('/settings/git')}
-                      className="h-7 gap-1 text-xs"
-                    >
-                      <Settings className="h-3 w-3" />
-                      Settings
-                    </Button>
-                  </CardTitle>
-                  <CardDescription>
-                    Credentials for push/pull operations
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {gitStatus.remotes.map((remote) => {
-                    const credentials = findCredentialsForRepo(remote.url, settings.credentials);
-                    const originDisplayName = getOriginDisplayName(remote.url);
-
-                    return (
-                      <div key={remote.name} className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline">{remote.name}</Badge>
-                            <span className="text-sm text-muted-foreground">
-                              {originDisplayName}
-                            </span>
-                          </div>
-                          {credentials ? (
-                            <div className="flex items-center gap-1 text-green-600">
-                              <CheckCircle className="h-3 w-3" />
-                              <span className="text-xs">Configured</span>
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-1 text-amber-600">
-                              <AlertTriangle className="h-3 w-3" />
-                              <span className="text-xs">No credentials</span>
-                            </div>
-                          )}
-                        </div>
-
-                        {!credentials && (
-                          <Alert className="border-amber-200 bg-amber-50">
-                            <AlertTriangle className="h-4 w-4" />
-                            <AlertDescription className="text-sm">
-                              No credentials configured for {originDisplayName}.
-                              Push/pull operations may fail for private repositories.{' '}
-                              <button
-                                onClick={() => navigate('/settings/git')}
-                                className="underline hover:no-underline font-medium"
-                              >
-                                Configure credentials
-                              </button>
-                            </AlertDescription>
-                          </Alert>
-                        )}
-                      </div>
-                    );
-                  })}
-                </CardContent>
-              </Card>
-            )}
 
             {/* Sync Status */}
             {gitStatus?.isGitRepo && (
@@ -619,21 +720,7 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
                     </div>
                   )}
 
-                  {/* Operation Results */}
-                  {(pushResult || pullResult) && (
-                    <div className="mt-3 space-y-2">
-                      {pushResult && (
-                        <div className="text-xs font-mono bg-muted/50 rounded p-2">
-                          {pushResult}
-                        </div>
-                      )}
-                      {pullResult && (
-                        <div className="text-xs font-mono bg-muted/50 rounded p-2">
-                          {pullResult}
-                        </div>
-                      )}
-                    </div>
-                  )}
+
                 </CardContent>
               </Card>
             )}

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, forwardRef, useImperativeHandle } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Check, ChevronDown, Edit3, RefreshCw, AlertCircle, Settings } from 'lucide-react';
@@ -21,7 +21,7 @@ interface ModelSelectorProps {
   onOpenChange?: (open: boolean) => void;
 }
 
-export function ModelSelector({
+export const ModelSelector = forwardRef<{ open: () => void }, ModelSelectorProps>(({
   value,
   onChange,
   className,
@@ -29,13 +29,18 @@ export function ModelSelector({
   placeholder,
   open: controlledOpen,
   onOpenChange: setControlledOpen,
-}: ModelSelectorProps) {
+}, ref) => {
   const { t } = useTranslation();
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
 
   // Use controlled state if provided, otherwise use local state
   const open = controlledOpen !== undefined ? controlledOpen : uncontrolledOpen;
   const setOpen = setControlledOpen || setUncontrolledOpen;
+
+  // Expose open method via ref
+  useImperativeHandle(ref, () => ({
+    open: () => setOpen(true)
+  }), [setOpen]);
   const [isCustomInput, setIsCustomInput] = useState(false);
   const [customValue, setCustomValue] = useState('');
   const { settings, addRecentlyUsedModel, isConfigured } = useAISettings();
@@ -287,4 +292,4 @@ export function ModelSelector({
       </PopoverContent>
     </Popover>
   );
-}
+});

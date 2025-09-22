@@ -299,7 +299,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
 
   // Function to suggest error fix
   // Clean alert hooks with proper interfaces
-  const aiModelAlert = useAIModelErrorAlert(messages);
+  const aiModelAlert = useAIModelErrorAlert(messages, _onNewChat, openModelSelector);
   const consoleAlert = useConsoleErrorAlert();
 
   // Scroll to bottom when alerts appear
@@ -316,20 +316,6 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     setInput(`The user gets ${errorText} in the app now: ${errorMessage}\n\nCan you identify the problem and create a concise fix.`);
   }, []);
 
-  const getAIModelAction = useCallback((errorType: 'warn' | 'error' | null) => {
-    if (errorType === 'error') {
-      return {
-        label: 'Change model',
-        onClick: openModelSelector
-      };
-    } else if (errorType === 'warn') {
-      return {
-        label: 'New chat',
-        onClick: _onNewChat
-      };
-    }
-    return undefined;
-  }, [openModelSelector, _onNewChat]);
 
   // Check for autostart parameter and trigger AI generation
   useEffect(() => {
@@ -682,7 +668,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
               type={aiModelAlert.errorType || 'error'}
               message={aiModelAlert.errorMessage || ''}
               onDismiss={aiModelAlert.dismiss}
-              action={getAIModelAction(aiModelAlert.errorType)}
+              action={aiModelAlert.action}
             />
           )}
 

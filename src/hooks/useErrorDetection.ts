@@ -47,31 +47,38 @@ export interface AIModelErrorAlert {
 	hasError: boolean;
 	errorMessage: string | null;
 	errorType: 'warn' | 'error' | null;
+	action?: { label: string; onClick: () => void };
 	dismiss: () => void;
 }
 
-export const useAIModelErrorAlert = (messages: any[]): AIModelErrorAlert => {
+export const useAIModelErrorAlert = (
+	messages: any[],
+	onNewChat?: () => void,
+	onChangeModel?: () => void
+): AIModelErrorAlert => {
 	const [dismissedAlertKey, setDismissedAlertKey] = useState<string>('');
 
-	const { hasError, errorMessage, errorType } = useMemo(() => {
+	const { hasError, errorMessage, errorType, action } = useMemo(() => {
 		const lastMessage = messages[messages.length - 1];
 		if (!lastMessage || lastMessage.role !== 'assistant') {
-			return { hasError: false, errorMessage: null, errorType: null };
+			return { hasError: false, errorMessage: null, errorType: null, action: undefined };
 		}
 
 		const content = typeof lastMessage.content === 'string' ? lastMessage.content : '';
 
-		// Define error patterns
+		// Define error patterns with actions
 		const errorPatterns = [
 			{
 				test: (content: string) => /AI service error: 422/.test(content) || /Provider returned error/.test(content),
 				type: 'error' as const,
-				message: 'The AI model encountered an issue. Try switching to a different model or starting a new chat.'
+				message: 'The AI model encountered an issue. Try switching to a different model or starting a new chat.',
+				action: onChangeModel ? { label: 'Change model', onClick: onChangeModel } : undefined
 			},
 			{
 				test: (content: string) => /maximum context length is \d+ tokens/.test(content) || /context length/.test(content),
 				type: 'warn' as const,
-				message: 'Your conversation is too long for this model. Try starting a new chat or switching to a model with a larger context window.'
+				message: 'Your conversation is too long for this model. Try starting a new chat or switching to a model with a larger context window.',
+				action: onNewChat ? { label: 'New chat', onClick: onNewChat } : undefined
 			},
 			{
 				test: (content: string) => /rate limit/i.test(content) || /too many requests/i.test(content),
@@ -88,13 +95,14 @@ export const useAIModelErrorAlert = (messages: any[]): AIModelErrorAlert => {
 					hasError: dismissedAlertKey !== alertKey,
 					errorMessage: pattern.message,
 					errorType: pattern.type,
+					action: pattern.action,
 					alertKey
 				};
 			}
 		}
 
-		return { hasError: false, errorMessage: null, errorType: null };
-	}, [messages, dismissedAlertKey]);
+		return { hasError: false, errorMessage: null, errorType: null, action: undefined };
+	}, [messages, dismissedAlertKey, onNewChat, onChangeModel]);
 
 	const dismiss = useCallback(() => {
 		const lastMessage = messages[messages.length - 1];
@@ -108,6 +116,7 @@ export const useAIModelErrorAlert = (messages: any[]): AIModelErrorAlert => {
 		hasError,
 		errorMessage,
 		errorType,
+		action,
 		dismiss
 	};
 };

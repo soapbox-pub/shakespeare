@@ -66,7 +66,6 @@ describe('Git', () => {
       expect(mockGit.clone).toHaveBeenCalledWith({
         fs,
         http: expect.any(Object),
-        corsProxy: 'https://cors.example.com',
         dir: '/test',
         url: 'https://github.com/user/repo.git',
       });
@@ -81,7 +80,6 @@ describe('Git', () => {
       expect(mockGit.clone).toHaveBeenCalledWith({
         fs,
         http: expect.any(Object),
-        corsProxy: 'https://cors.example.com',
         dir: '/test',
         url: 'https://gitlab.com/user/repo.git',
       });
@@ -96,7 +94,6 @@ describe('Git', () => {
       expect(mockGit.clone).toHaveBeenCalledWith({
         fs,
         http: expect.any(Object),
-        corsProxy: 'https://cors.example.com',
         dir: '/test',
         url: 'https://custom.example.com/user/repo.git',
       });
@@ -111,7 +108,6 @@ describe('Git', () => {
       expect(mockGit.clone).toHaveBeenCalledWith({
         fs,
         http: expect.any(Object),
-        corsProxy: 'https://cors.example.com',
         dir: '/test',
         url: 'http://github.com/user/repo.git',
       });
@@ -130,7 +126,6 @@ describe('Git', () => {
 
       expect(mockGit.getRemoteInfo).toHaveBeenCalledWith({
         http: expect.any(Object),
-        corsProxy: 'https://cors.example.com',
         url: 'https://github.com/user/repo.git',
       });
     });
@@ -142,7 +137,6 @@ describe('Git', () => {
 
       expect(mockGit.getRemoteInfo).toHaveBeenCalledWith({
         http: expect.any(Object),
-        corsProxy: 'https://cors.example.com',
         url: 'https://custom.example.com/user/repo.git',
       });
     });
@@ -165,7 +159,6 @@ describe('Git', () => {
       expect(mockGit.fetch).toHaveBeenCalledWith({
         fs,
         http: expect.any(Object),
-        corsProxy: 'https://cors.example.com',
         dir: '/test',
         remote: 'origin',
       });
@@ -180,7 +173,6 @@ describe('Git', () => {
       expect(mockGit.fetch).toHaveBeenCalledWith({
         fs,
         http: expect.any(Object),
-        corsProxy: 'https://cors.example.com',
         dir: '/test',
         url: 'https://gitlab.com/user/repo.git',
       });
@@ -232,7 +224,6 @@ describe('Git', () => {
       expect(mockGit.clone).toHaveBeenCalledWith({
         fs,
         http: expect.any(Object),
-        corsProxy: 'https://cors.example.com',
         dir: '/test',
         url: 'https://github.com/user/repo.git',
       });

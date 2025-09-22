@@ -4,16 +4,18 @@ import { useTranslation } from 'react-i18next';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { useFS } from '@/hooks/useFS';
 import { useConsoleMessages, addConsoleMessage, clearConsoleMessages, type ConsoleMessage } from '@/hooks/useConsoleMessages';
+import { useBuildProject } from '@/hooks/useBuildProject';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { FolderOpen, ArrowLeft, X, Bug, Copy, Check } from 'lucide-react';
+import { FolderOpen, ArrowLeft, X, Bug, Copy, Check, Play, Loader2, MenuIcon, Code } from 'lucide-react';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { GitStatusIndicator } from '@/components/GitStatusIndicator';
 import { BrowserAddressBar } from '@/components/ui/browser-address-bar';
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
@@ -26,6 +28,7 @@ const IFRAME_DOMAIN = import.meta.env.VITE_IFRAME_DOMAIN || 'local-shakespeare.d
 interface PreviewPaneProps {
   projectId: string;
   activeTab: 'preview' | 'code';
+  onToggleView?: () => void;
 }
 
 interface JSONRPCRequest {
@@ -59,7 +62,7 @@ interface JSONRPCResponse {
 }
 
 
-export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
+export function PreviewPane({ projectId, activeTab, onToggleView }: PreviewPaneProps) {
   const { t } = useTranslation();
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [fileContent, setFileContent] = useState<string>('');
@@ -75,6 +78,15 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
   const { fs } = useFS();
   const projectsManager = useProjectsManager();
   const { messages: consoleMessages } = useConsoleMessages();
+  const { mutate: buildProject, isPending: isBuildLoading } = useBuildProject(projectId);
+
+  const handleBuildProject = () => {
+    buildProject(undefined, {
+      onError: (error) => {
+        console.error('Build failed:', error);
+      }
+    });
+  };
 
   const loadFileContent = useCallback(async (filePath: string) => {
     setIsLoading(true);
@@ -128,16 +140,15 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
   const refreshIframe = useCallback(() => {
     if (iframeRef.current) {
       // Force reload the iframe by updating its src
-      const currentSrc = iframeRef.current.src;
-      iframeRef.current.src = '';
+      iframeRef.current.src = '/';
       // Use a small timeout to ensure the src is cleared before setting it back
       setTimeout(() => {
         if (iframeRef.current) {
-          iframeRef.current.src = currentSrc;
+          iframeRef.current.src = `https://${projectId}.${IFRAME_DOMAIN}${currentPath}`;
         }
       }, 10);
     }
-  }, []);
+  }, [currentPath, projectId]);
 
   const navigateToPath = useCallback((path: string) => {
     if (iframeRef.current) {
@@ -485,66 +496,136 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
     );
   };
 
+  const Menu = () => {
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0"
+          >
+            <MenuIcon className="h-4 w-4" />
+            <span className="sr-only">Open menu</span>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-48">
+          {(!isMobile && onToggleView) && (
+            <DropdownMenuItem
+              onClick={onToggleView}
+              className="gap-2"
+            >
+              <Code className="h-4 w-4" />
+              View Code
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuItem
+            onClick={handleBuildProject}
+            disabled={isBuildLoading}
+            className="gap-2"
+          >
+            {isBuildLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Play className="h-4 w-4" />
+            )}
+            {isBuildLoading ? 'Building...' : 'Build'}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  };
+
   return (
     <div className="h-full">
       <Tabs value={activeTab} className="h-full">
         <TabsContent value="preview" className="h-full mt-0">
-          {hasBuiltProject ? (
-            <div className="h-full w-full flex flex-col">
-              <div className="flex items-center border-b w-full">
-                <BrowserAddressBar
-                  currentPath={currentPath}
-                  onNavigate={navigateToPath}
-                  onRefresh={refreshIframe}
-                  onBack={goBack}
-                  onForward={goForward}
-                  canGoBack={historyIndex > 0}
-                  canGoForward={historyIndex < navigationHistory.length - 1}
-                  extraContent={<ConsoleDropdown />}
-                />
-              </div>
-              <iframe
-                ref={iframeRef}
-                src={`https://${projectId}.${IFRAME_DOMAIN}${currentPath}`}
-                className="w-full flex-1 border-0"
-                title="Project Preview"
-                sandbox="allow-scripts allow-same-origin"
+          <div className="h-full w-full flex flex-col relative">
+            {/* Always show browser address bar */}
+            <div className="h-12 flex items-center w-full">
+              <BrowserAddressBar
+                currentPath={currentPath}
+                onNavigate={hasBuiltProject ? navigateToPath : undefined}
+                onRefresh={hasBuiltProject ? refreshIframe : undefined}
+                onBack={hasBuiltProject ? goBack : undefined}
+                onForward={hasBuiltProject ? goForward : undefined}
+                canGoBack={hasBuiltProject && historyIndex > 0}
+                canGoForward={hasBuiltProject && historyIndex < navigationHistory.length - 1}
+                extraContent={(
+                  <div className="flex items-center">
+                    <ConsoleDropdown />
+                    <Menu />
+                  </div>
+                )}
               />
             </div>
-          ) : (
-            <div className="h-full flex items-center justify-center bg-muted">
-              <div className="text-center">
-                <h3 className="text-lg font-semibold mb-2">{t('projectPreview')}</h3>
-                <p className="text-muted-foreground mb-4">
-                  {t('buildProjectToSeePreview')}
-                </p>
-              </div>
+
+            {/* Content area */}
+            <div className="flex-1">
+              {hasBuiltProject ? (
+                <iframe
+                  ref={iframeRef}
+                  src={`https://${projectId}.${IFRAME_DOMAIN}${currentPath}`}
+                  className="w-full h-full border-0"
+                  title="Project Preview"
+                  sandbox="allow-scripts allow-same-origin"
+                />
+              ) : (
+                <div className="h-full flex items-center justify-center bg-muted">
+                  <div className="text-center">
+                    <h3 className="text-lg font-semibold mb-2">{t('projectPreview')}</h3>
+                    <p className="text-muted-foreground mb-4">
+                      {t('buildProjectToSeePreview')}
+                    </p>
+                    <Button
+                      onClick={handleBuildProject}
+                      disabled={isBuildLoading}
+                      variant="outline"
+                      className="gap-2"
+                    >
+                      {isBuildLoading ? (
+                        <>
+                          <Loader2 className="h-5 w-5 animate-spin" />
+                          Building...
+                        </>
+                      ) : (
+                        <>
+                          <Play className="h-5 w-5" />
+                          Build Project
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
-          )}
+
+            {/* Build loading overlay */}
+            {isBuildLoading && (
+              <div className="absolute inset-0 bg-background/50 backdrop-blur-sm flex items-center justify-center z-10">
+                <div className="bg-background/90 border rounded-lg p-4 shadow-lg flex items-center gap-3">
+                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                  <span className="text-sm font-medium">Building project...</span>
+                </div>
+              </div>
+            )}
+          </div>
         </TabsContent>
 
         <TabsContent value="code" className="h-full mt-0">
           {isMobile ? (
             <div className="h-full flex flex-col">
               {mobileCodeView === 'explorer' ? (
-                <>
-                  <div className="p-3 border-b bg-gradient-to-r from-primary/5 to-accent/5">
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-semibold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">{t('fileExplorer')}</h3>
-                      <GitStatusIndicator projectId={projectId} />
-                    </div>
+                <ScrollArea className="flex-1">
+                  <ScrollBar orientation="horizontal" />
+                  <div className="min-w-max">
+                    <FileTree
+                      projectId={projectId}
+                      onFileSelect={handleFileSelect}
+                      selectedFile={selectedFile}
+                    />
                   </div>
-                  <ScrollArea className="flex-1">
-                    <ScrollBar orientation="horizontal" />
-                    <div className="min-w-max">
-                      <FileTree
-                        projectId={projectId}
-                        onFileSelect={handleFileSelect}
-                        selectedFile={selectedFile}
-                      />
-                    </div>
-                  </ScrollArea>
-                </>
+                </ScrollArea>
               ) : (
                 <>
                   <div className="p-3 border-b bg-gradient-to-r from-primary/5 to-accent/5 flex items-center gap-2">
@@ -593,44 +674,57 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
               )}
             </div>
           ) : (
-            <div className="h-full flex">
-              <div className="w-1/3 border-r">
-                <div className="p-4 border-b bg-gradient-to-r from-primary/5 to-accent/5">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-semibold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">{t('fileExplorer')}</h3>
-                    <GitStatusIndicator projectId={projectId} />
-                  </div>
+            <div className="h-full flex flex-col">
+              {/* Code view header with back button */}
+              {!isMobile && onToggleView && (
+                <div className="h-12 px-4 border-b flex items-center bg-gradient-to-r from-muted/20 to-background">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={onToggleView}
+                    className="gap-2 text-muted-foreground hover:text-foreground"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                    {t('backToPreview')}
+                  </Button>
+                  <div className="flex-1" />
+                  <GitStatusIndicator projectId={projectId} />
                 </div>
-                <ScrollArea className="h-[calc(100%-60px)]">
-                  <ScrollBar orientation="horizontal" />
-                  <div className="min-w-max">
-                    <FileTree
-                      projectId={projectId}
-                      onFileSelect={handleFileSelect}
-                      selectedFile={selectedFile}
-                    />
-                  </div>
-                </ScrollArea>
-              </div>
+              )}
 
-              <div className="flex-1">
-                {selectedFile ? (
-                  <FileEditor
-                    filePath={selectedFile}
-                    content={fileContent}
-                    onSave={handleFileSave}
-                    isLoading={isLoading}
-                    projectId={projectId}
-                  />
-                ) : (
-                  <div className="h-full flex items-center justify-center">
-                    <div className="text-center">
-                      <p className="text-muted-foreground">
-                        {t('selectFileFromExplorer')}
-                      </p>
+              <div className="flex-1 flex min-h-0">
+                <div className="w-1/3 border-r flex flex-col">
+                  <ScrollArea className="flex-1">
+                    <ScrollBar orientation="horizontal" />
+                    <div className="min-w-max">
+                      <FileTree
+                        projectId={projectId}
+                        onFileSelect={handleFileSelect}
+                        selectedFile={selectedFile}
+                      />
                     </div>
-                  </div>
-                )}
+                  </ScrollArea>
+                </div>
+
+                <div className="flex-1">
+                  {selectedFile ? (
+                    <FileEditor
+                      filePath={selectedFile}
+                      content={fileContent}
+                      onSave={handleFileSave}
+                      isLoading={isLoading}
+                      projectId={projectId}
+                    />
+                  ) : (
+                    <div className="h-full flex items-center justify-center">
+                      <div className="text-center">
+                        <p className="text-muted-foreground">
+                          {t('selectFileFromExplorer')}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}

@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Badge } from '@/components/ui/badge';
+
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { History, GitCommit, RotateCcw, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
 import { useGit } from '@/hooks/useGit';
@@ -289,18 +288,18 @@ ${commitsToRevert.map(c => {
           </Button>
         </DialogTrigger>
       )}
-      <DialogContent className="max-w-4xl max-h-[80vh]">
+      <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <GitCommit className="h-5 w-5" />
-            Git History
+            <History className="h-5 w-5" />
+            Rollback
           </DialogTitle>
           <DialogDescription>
-            View the commit history for this project
+            Revert to an older commit
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 min-h-0">
+        <div className="flex-1 min-h-0 max-w-full overflow-hidden">
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
               <div className="flex items-center gap-2 text-muted-foreground">
@@ -329,7 +328,7 @@ ${commitsToRevert.map(c => {
               </div>
             </div>
           ) : (
-            <ScrollArea className="h-[60vh]">
+            <div className="h-[60vh] overflow-y-scroll">
               <div className="space-y-1 pr-4">
                 {commits.map((commit, index) => {
                   const { firstLine, hasMoreLines, fullMessage } = getCommitMessageLines(commit.commit.message);
@@ -340,7 +339,7 @@ ${commitsToRevert.map(c => {
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 min-w-0 space-y-1">
                           <div className="flex items-center gap-2 mb-1">
-                            <h3 className="font-medium text-sm text-foreground break-words">
+                            <h3 className="font-medium text-sm text-foreground truncate">
                               {firstLine}
                             </h3>
                             {hasMoreLines && (
@@ -372,7 +371,18 @@ ${commitsToRevert.map(c => {
                         </div>
 
                         <div className="flex items-center gap-2 shrink-0">
-                          {index > 0 && ( // Don't show rollback for the most recent commit
+                          {index === 0 ? (
+                            // Show "Current" for the most recent commit
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 px-2 text-xs gap-1 cursor-default"
+                              disabled
+                            >
+                              Current
+                            </Button>
+                          ) : (
+                            // Show rollback button for older commits
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
                                 <Button
@@ -430,17 +440,13 @@ ${commitsToRevert.map(c => {
                               </AlertDialogContent>
                             </AlertDialog>
                           )}
-
-                          <Badge variant="secondary" className="text-xs font-mono">
-                            {commit.oid.substring(0, 7)}
-                          </Badge>
                         </div>
                       </div>
                     </div>
                   );
                 })}
               </div>
-            </ScrollArea>
+            </div>
           )}
         </div>
       </DialogContent>

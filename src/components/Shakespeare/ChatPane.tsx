@@ -117,12 +117,10 @@ interface ChatPaneProps {
   projectId: string;
   onNewChat?: () => void;
   onBuild?: () => void;
-  onDeploy?: () => void;
   onFirstInteraction?: () => void;
   onLoadingChange?: (isLoading: boolean) => void;
   isLoading?: boolean;
   isBuildLoading?: boolean;
-  isDeployLoading?: boolean;
 }
 
 export interface ChatPaneRef {
@@ -133,12 +131,10 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   projectId,
   onNewChat: _onNewChat,
   onBuild: _onBuild,
-  onDeploy: _onDeploy,
   onFirstInteraction,
   onLoadingChange,
   isLoading: externalIsLoading,
   isBuildLoading: externalIsBuildLoading,
-  isDeployLoading: externalIsDeployLoading
 }, ref) => {
   const { t } = useTranslation();
   const [input, setInput] = useState('');
@@ -150,7 +146,6 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
 
   // Use external state if provided, otherwise default to false
   const isBuildLoading = externalIsBuildLoading || false;
-  const isDeployLoading = externalIsDeployLoading || false;
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const { isConfigured, settings, addRecentlyUsedModel } = useAISettings();
   const [providerModel, setProviderModel] = useState(() => {
@@ -216,7 +211,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
 
   // Keep-alive functionality to prevent tab throttling during AI processing
   const { updateMetadata } = useKeepAlive({
-    enabled: externalIsLoading || isBuildLoading || isDeployLoading,
+    enabled: externalIsLoading || isBuildLoading,
     title: 'Shakespeare',
     artist: `Working on ${projectId}...`,
     artwork: [

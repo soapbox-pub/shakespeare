@@ -179,7 +179,7 @@ describe('GitSettingsProvider', () => {
               password: 'test-token',
             }
           },
-          corsProxy: 'https://cors.isomorphic-git.org'
+          corsProxy: 'https://proxy.shakespeare.diy/?url={href}'
         })
       );
     });
@@ -220,7 +220,7 @@ describe('GitSettingsProvider', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId('cors-proxy')).toHaveTextContent('https://cors.isomorphic-git.org');
+      expect(screen.getByTestId('cors-proxy')).toHaveTextContent('https://proxy.shakespeare.diy/?url={href}');
     });
   });
 
@@ -232,7 +232,7 @@ describe('GitSettingsProvider', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId('cors-proxy')).toHaveTextContent('https://cors.isomorphic-git.org');
+      expect(screen.getByTestId('cors-proxy')).toHaveTextContent('https://proxy.shakespeare.diy/?url={href}');
     });
 
     fireEvent.click(screen.getByText('Update CORS Proxy'));

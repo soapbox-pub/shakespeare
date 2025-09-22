@@ -263,7 +263,7 @@ export class SessionManager {
           // Check if session was cancelled
           if (!session.isLoading) break;
 
-          const delta = chunk.choices[0]?.delta;
+          const delta = chunk.choices[0]?.delta as OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta | undefined;
 
           if (delta?.content) {
             accumulatedContent += delta.content;
@@ -274,11 +274,18 @@ export class SessionManager {
           }
 
           // Handle reasoning content if present (some providers may include this)
-          const deltaWithReasoning = delta as { reasoning_content?: string };
-          if (deltaWithReasoning?.reasoning_content) {
-            accumulatedReasoningContent += deltaWithReasoning.reasoning_content;
+          let reasoningContent: string | undefined;
+          // LiteLLM, Z.ai, etc. use 'reasoning_content'
+          if (delta && 'reasoning_content' in delta && typeof delta.reasoning_content === 'string') {
+            reasoningContent = delta.reasoning_content;
+          // ollama uses 'reasoning'
+          } else if (delta && 'reasoning' in delta && typeof delta.reasoning === 'string') {
+            reasoningContent = delta.reasoning;
+          }
+          if (reasoningContent) {
+            accumulatedReasoningContent += reasoningContent;
             if (session.streamingMessage) {
-              session.streamingMessage.reasoning_content += deltaWithReasoning.reasoning_content;
+              session.streamingMessage.reasoning_content += reasoningContent;
               this.emit('streamingUpdate', projectId, session.streamingMessage.content, session.streamingMessage.reasoning_content, session.streamingMessage.tool_calls);
             }
           }

@@ -1,7 +1,7 @@
-import git from 'isomorphic-git';
-import http from 'isomorphic-git/http/web';
+import git, { GitHttpRequest, GitHttpResponse, HttpClient } from 'isomorphic-git';
 import { NIP05 } from '@nostrify/nostrify';
 import { nip19 } from 'nostr-tools';
+import { proxyUrl } from './proxyUrl';
 import type { NostrEvent, NostrSigner, NPool } from '@nostrify/nostrify';
 import type { JSRuntimeFS } from './JSRuntime';
 
@@ -25,13 +25,13 @@ interface NostrCloneURI {
  */
 export class Git {
   private fs: JSRuntimeFS;
+  private http: HttpClient;
   private nostr: NPool;
-  private corsProxy?: string;
 
   constructor(options: GitOptions) {
     this.fs = options.fs;
+    this.http = new GitHttp(options.corsProxy);
     this.nostr = options.nostr;
-    this.corsProxy = options.corsProxy;
   }
 
   // Repository initialization and configuration
@@ -56,8 +56,7 @@ export class Git {
     // Regular Git URL
     return git.clone({
       fs: this.fs,
-      http,
-      corsProxy: this.corsProxy,
+      http: this.http,
       ...options,
     });
   }
@@ -178,8 +177,7 @@ export class Git {
     }
 
     return git.getRemoteInfo({
-      http,
-      corsProxy: this.corsProxy,
+      http: this.http,
       ...options,
     });
   }
@@ -197,8 +195,7 @@ export class Git {
     // Regular Git fetch
     return git.fetch({
       fs: this.fs,
-      http,
-      corsProxy: this.corsProxy,
+      http: this.http,
       ...options,
     });
   }
@@ -216,8 +213,7 @@ export class Git {
     // Regular Git pull
     return git.pull({
       fs: this.fs,
-      http,
-      corsProxy: this.corsProxy,
+      http: this.http,
       ...options,
     });
   }
@@ -237,8 +233,7 @@ export class Git {
 
     return git.push({
       fs: this.fs,
-      http,
-      corsProxy: this.corsProxy,
+      http: this.http,
       ...options,
     });
   }
@@ -387,8 +382,7 @@ export class Git {
 
   async getRemoteInfo2(options: Omit<Parameters<typeof git.getRemoteInfo2>[0], 'http' | 'corsProxy'>) {
     return git.getRemoteInfo2({
-      http,
-      corsProxy: this.corsProxy,
+      http: this.http,
       ...options,
     });
   }
@@ -513,8 +507,7 @@ export class Git {
 
   async listServerRefs(options: Omit<Parameters<typeof git.listServerRefs>[0], 'http' | 'corsProxy'>) {
     return git.listServerRefs({
-      http,
-      corsProxy: this.corsProxy,
+      http: this.http,
       ...options,
     });
   }
@@ -618,8 +611,7 @@ export class Git {
         // Try to get remote info from the first clone URL
         try {
           const gitRemoteInfo = await git.getRemoteInfo({
-            http,
-            corsProxy: this.corsProxy,
+            http: this.http,
             url: cloneUrls[0],
           });
 
@@ -1016,8 +1008,7 @@ export class Git {
           // Get remote repository information to check if it has the expected commit
           const remoteInfo = await Promise.race([
             git.getRemoteInfo({
-              http,
-              corsProxy: this.corsProxy,
+              http: this.http,
               url: cloneUrl,
             }),
             new Promise<never>((_, reject) =>
@@ -1035,8 +1026,7 @@ export class Git {
             await Promise.race([
               git.clone({
                 fs: this.fs,
-                http,
-                corsProxy: this.corsProxy,
+                http: this.http,
                 ...options,
                 url: cloneUrl,
               }),
@@ -1093,8 +1083,7 @@ export class Git {
           await Promise.race([
             git.clone({
               fs: this.fs,
-              http,
-              corsProxy: this.corsProxy,
+              http: this.http,
               ...options,
               url: cloneUrl,
             }),
@@ -1456,8 +1445,7 @@ export class Git {
         // Push to the temporary remote
         await git.push({
           fs: this.fs,
-          http,
-          corsProxy: this.corsProxy,
+          http: this.http,
           dir,
           url: cloneUrl,
           ...gitPushOptions,
@@ -1510,8 +1498,7 @@ export class Git {
         // Fetch from the clone URL
         await git.fetch({
           fs: this.fs,
-          http,
-          corsProxy: this.corsProxy,
+          http: this.http,
           dir,
           url: cloneUrl,
         });
@@ -1588,8 +1575,7 @@ export class Git {
           // Fetch from the temporary remote
           const fetchResult = await git.fetch({
             fs: this.fs,
-            http,
-            corsProxy: this.corsProxy,
+            http: this.http,
             dir,
             remote: tempRemoteName,
           });
@@ -1626,4 +1612,88 @@ export class Git {
 
     throw lastError || new Error('All fetch attempts failed');
   }
+}
+
+class GitHttp implements HttpClient {
+  private proxy?: string;
+
+  constructor(proxy?: string) {
+    this.proxy = proxy;
+  }
+
+  async request(request: GitHttpRequest): Promise<GitHttpResponse> {
+    const method = request.method ?? "GET";
+    const url = new URL(request.url);
+
+    const target = this.proxy
+      ? proxyUrl(this.proxy, url)
+      : url.href;
+
+    const init: RequestInit = {
+      method,
+      headers: request.headers,
+    };
+
+    if (request.body) {
+      const buffered = await collectToUint8Array(request.body);
+      init.body = new Blob([new Uint8Array(buffered)]);
+    }
+
+    const response = await fetch(target, init);
+    const headers = Object.fromEntries(response.headers.entries());
+    const body = response.body ? readableStreamToAsyncIterator(response.body) : undefined;
+
+    return {
+      url: response.url,
+      method,
+      statusCode: response.status,
+      statusMessage: response.statusText,
+      body,
+      headers,
+    };
+  }
+}
+
+// Drain an async iterable of Uint8Array into one Uint8Array
+async function collectToUint8Array(
+  src: AsyncIterable<Uint8Array> | AsyncIterableIterator<Uint8Array>
+): Promise<Uint8Array> {
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for await (const chunk of src) {
+    chunks.push(chunk);
+    total += chunk.byteLength;
+  }
+  const out = new Uint8Array(total);
+  let offset = 0;
+  for (const c of chunks) {
+    out.set(c, offset);
+    offset += c.byteLength;
+  }
+  return out;
+}
+
+// Portable async iterator over a ReadableStream (works even if
+// ReadableStream doesn't implement [Symbol.asyncIterator])
+function readableStreamToAsyncIterator(
+  stream: ReadableStream<Uint8Array>
+): AsyncIterableIterator<Uint8Array> {
+  const reader = stream.getReader();
+  return {
+    async next() {
+      const { value, done } = await reader.read();
+      return done ? { value: undefined, done: true } : { value, done: false };
+    },
+    async return() {
+      try {
+        await reader.cancel();
+      } catch {
+        // Ignore cancel errors
+      }
+      return { value: undefined, done: true };
+    },
+    [Symbol.asyncIterator]() {
+      return this;
+    },
+  };
 }

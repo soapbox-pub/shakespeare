@@ -19,6 +19,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import {
+  GitBranch,
   MoreHorizontal,
   MessageSquarePlus,
   Play,
@@ -27,7 +28,6 @@ import {
   History,
   Download,
   Trash2,
-  GitMerge,
 } from 'lucide-react';
 import { GitHistoryDialog } from '@/components/ai/GitHistoryDialog';
 import { GitDialog } from '@/components/GitDialog';
@@ -219,7 +219,7 @@ export function ActionsMenu({
             disabled={isAnyLoading}
             className="gap-2"
           >
-            <GitMerge className="h-4 w-4" />
+            <GitBranch className="h-4 w-4" />
             Repository
           </DropdownMenuItem>
 

@@ -526,7 +526,7 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       {children && <DialogTrigger asChild>{children}</DialogTrigger>}
-      <DialogContent className="max-w-2xl max-h-[80vh]">
+      <DialogContent className="max-w-2xl max-h-[80vh]" onOpenAutoFocus={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <GitBranch className="h-5 w-5" />
@@ -559,7 +559,7 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
                   disabled={isSavingOrigin}
                   variant="outline"
                   size="sm"
-                  className="shrink-0"
+                  className="h-10 shrink-0"
                 >
                   {isSavingOrigin ? (
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />

@@ -88,7 +88,7 @@ export function BrowserAddressBar({
       </div>
 
       {/* Address bar */}
-      <form onSubmit={handleSubmit} className="flex-1 mx-2">
+      <form onSubmit={handleSubmit} className="flex-1 mx-auto px-2 max-w-2xl">
         <Input
           type="text"
           value={inputValue}

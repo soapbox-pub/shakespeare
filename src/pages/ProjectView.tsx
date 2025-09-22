@@ -200,14 +200,12 @@ export function ProjectView() {
                 />
                 <ActionsMenu
                   projectId={project.id}
-                  projectName={project.name}
                   onNewChat={handleNewChat}
                   onDeploy={runDeploy}
                   isLoading={isAILoading}
                   isBuildLoading={build.isPending}
                   isDeployLoading={deploy.isPending}
                   onFirstInteraction={handleFirstInteraction}
-                  onProjectDeleted={handleProjectDeleted}
                 />
               </>
             ) : (
@@ -330,6 +328,7 @@ export function ProjectView() {
             project={project}
             open={isProjectInfoOpen}
             onOpenChange={setIsProjectInfoOpen}
+            onProjectDeleted={handleProjectDeleted}
           />
         )}
       </div>
@@ -406,14 +405,12 @@ export function ProjectView() {
                           />
                           <ActionsMenu
                             projectId={project.id}
-                            projectName={project.name}
                             onNewChat={handleNewChat}
                             onDeploy={runDeploy}
                             isLoading={isAILoading}
                             isBuildLoading={build.isPending}
                             isDeployLoading={deploy.isPending}
                             onFirstInteraction={handleFirstInteraction}
-                            onProjectDeleted={handleProjectDeleted}
                           />
                         </>
                       ) : (
@@ -513,6 +510,7 @@ export function ProjectView() {
           project={project}
           open={isProjectInfoOpen}
           onOpenChange={setIsProjectInfoOpen}
+          onProjectDeleted={handleProjectDeleted}
         />
       )}
     </div>

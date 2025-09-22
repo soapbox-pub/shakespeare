@@ -549,69 +549,76 @@ export function PreviewPane({ projectId, activeTab, onToggleView }: PreviewPaneP
     <div className="h-full">
       <Tabs value={activeTab} className="h-full">
         <TabsContent value="preview" className="h-full mt-0">
-          {hasBuiltProject ? (
-            <div className="h-full w-full flex flex-col relative">
-              <div className="h-12 flex items-center w-full">
-                <BrowserAddressBar
-                  currentPath={currentPath}
-                  onNavigate={navigateToPath}
-                  onRefresh={refreshIframe}
-                  onBack={goBack}
-                  onForward={goForward}
-                  canGoBack={historyIndex > 0}
-                  canGoForward={historyIndex < navigationHistory.length - 1}
-                  extraContent={(
-                    <div className="flex items-center">
-                      <ConsoleDropdown />
-                      <Menu />
-                    </div>
-                  )}
-                />
-              </div>
-              <iframe
-                ref={iframeRef}
-                src={`https://${projectId}.${IFRAME_DOMAIN}${currentPath}`}
-                className="w-full flex-1 border-0"
-                title="Project Preview"
-                sandbox="allow-scripts allow-same-origin"
+          <div className="h-full w-full flex flex-col relative">
+            {/* Always show browser address bar */}
+            <div className="h-12 flex items-center w-full">
+              <BrowserAddressBar
+                currentPath={currentPath}
+                onNavigate={hasBuiltProject ? navigateToPath : undefined}
+                onRefresh={hasBuiltProject ? refreshIframe : undefined}
+                onBack={hasBuiltProject ? goBack : undefined}
+                onForward={hasBuiltProject ? goForward : undefined}
+                canGoBack={hasBuiltProject && historyIndex > 0}
+                canGoForward={hasBuiltProject && historyIndex < navigationHistory.length - 1}
+                extraContent={(
+                  <div className="flex items-center">
+                    <ConsoleDropdown />
+                    <Menu />
+                  </div>
+                )}
               />
-              {isBuildLoading && (
-                <div className="absolute inset-0 bg-background/50 backdrop-blur-sm flex items-center justify-center z-10">
-                  <div className="bg-background/90 border rounded-lg p-4 shadow-lg flex items-center gap-3">
-                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                    <span className="text-sm font-medium">Building project...</span>
+            </div>
+
+            {/* Content area */}
+            <div className="flex-1">
+              {hasBuiltProject ? (
+                <iframe
+                  ref={iframeRef}
+                  src={`https://${projectId}.${IFRAME_DOMAIN}${currentPath}`}
+                  className="w-full h-full border-0"
+                  title="Project Preview"
+                  sandbox="allow-scripts allow-same-origin"
+                />
+              ) : (
+                <div className="h-full flex items-center justify-center bg-muted">
+                  <div className="text-center">
+                    <h3 className="text-lg font-semibold mb-2">{t('projectPreview')}</h3>
+                    <p className="text-muted-foreground mb-4">
+                      {t('buildProjectToSeePreview')}
+                    </p>
+                    <Button
+                      onClick={handleBuildProject}
+                      disabled={isBuildLoading}
+                      variant="outline"
+                      className="gap-2"
+                    >
+                      {isBuildLoading ? (
+                        <>
+                          <Loader2 className="h-5 w-5 animate-spin" />
+                          Building...
+                        </>
+                      ) : (
+                        <>
+                          <Play className="h-5 w-5" />
+                          Build Project
+                        </>
+                      )}
+                    </Button>
                   </div>
                 </div>
               )}
             </div>
-          ) : (
-            <div className="h-full flex items-center justify-center bg-muted">
-              <div className="text-center">
-                <h3 className="text-lg font-semibold mb-2">{t('projectPreview')}</h3>
-                <p className="text-muted-foreground mb-4">
-                  {t('buildProjectToSeePreview')}
-                </p>
-                <Button
-                  onClick={handleBuildProject}
-                  disabled={isBuildLoading}
-                  variant="outline"
-                  className="gap-2"
-                >
-                  {isBuildLoading ? (
-                    <>
-                      <Loader2 className="h-5 w-5 animate-spin" />
-                      Building...
-                    </>
-                  ) : (
-                    <>
-                      <Play className="h-5 w-5" />
-                      Build Project
-                    </>
-                  )}
-                </Button>
+
+            {/* Build loading overlay */}
+            {isBuildLoading && (
+              <div className="absolute inset-0 bg-background/50 backdrop-blur-sm flex items-center justify-center z-10">
+                <div className="bg-background/90 border rounded-lg p-4 shadow-lg flex items-center gap-3">
+                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                  <span className="text-sm font-medium">Building project...</span>
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </TabsContent>
 
         <TabsContent value="code" className="h-full mt-0">

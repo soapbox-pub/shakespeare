@@ -5,7 +5,7 @@ import { BrowserAddressBar } from './browser-address-bar';
 describe('BrowserAddressBar', () => {
   it('renders navigation buttons and address input', () => {
     render(<BrowserAddressBar />);
-    
+
     expect(screen.getByTitle('Go back')).toBeInTheDocument();
     expect(screen.getByTitle('Go forward')).toBeInTheDocument();
     expect(screen.getByTitle('Refresh')).toBeInTheDocument();
@@ -15,33 +15,56 @@ describe('BrowserAddressBar', () => {
   it('calls onNavigate with proper path when form is submitted', () => {
     const onNavigate = vi.fn();
     render(<BrowserAddressBar onNavigate={onNavigate} />);
-    
+
     const input = screen.getByPlaceholderText('Enter path (e.g., /, /about)');
     fireEvent.change(input, { target: { value: 'about' } });
     fireEvent.submit(input.closest('form')!);
-    
+
     expect(onNavigate).toHaveBeenCalledWith('/about');
   });
 
-  it('disables back/forward buttons based on canGoBack/canGoForward props', () => {
+  it('disables back/forward buttons based on canGoBack/canGoForward props and handlers', () => {
+    // Test with handlers provided
+    const onBack = vi.fn();
+    const onForward = vi.fn();
+
     render(
-      <BrowserAddressBar 
-        canGoBack={false} 
+      <BrowserAddressBar
+        onBack={onBack}
+        onForward={onForward}
+        canGoBack={false}
         canGoForward={true}
       />
     );
-    
+
+    expect(screen.getByTitle('Go back')).toBeDisabled(); // disabled because canGoBack=false
+    expect(screen.getByTitle('Go forward')).not.toBeDisabled(); // enabled because canGoForward=true and handler provided
+  });
+
+  it('disables buttons when no handlers are provided', () => {
+    render(
+      <BrowserAddressBar
+        canGoBack={true}
+        canGoForward={true}
+      />
+    );
+
+    // All buttons should be disabled when no handlers are provided
     expect(screen.getByTitle('Go back')).toBeDisabled();
-    expect(screen.getByTitle('Go forward')).not.toBeDisabled();
+    expect(screen.getByTitle('Go forward')).toBeDisabled();
+    expect(screen.getByTitle('Refresh')).toBeDisabled();
+
+    // Input should also be disabled when no onNavigate handler is provided
+    expect(screen.getByPlaceholderText('Enter path (e.g., /, /about)')).toBeDisabled();
   });
 
   it('calls navigation handlers when buttons are clicked', () => {
     const onBack = vi.fn();
     const onForward = vi.fn();
     const onRefresh = vi.fn();
-    
+
     render(
-      <BrowserAddressBar 
+      <BrowserAddressBar
         onBack={onBack}
         onForward={onForward}
         onRefresh={onRefresh}
@@ -49,11 +72,11 @@ describe('BrowserAddressBar', () => {
         canGoForward={true}
       />
     );
-    
+
     fireEvent.click(screen.getByTitle('Go back'));
     fireEvent.click(screen.getByTitle('Go forward'));
     fireEvent.click(screen.getByTitle('Refresh'));
-    
+
     expect(onBack).toHaveBeenCalled();
     expect(onForward).toHaveBeenCalled();
     expect(onRefresh).toHaveBeenCalled();

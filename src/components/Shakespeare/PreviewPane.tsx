@@ -540,7 +540,7 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
       <Tabs value={activeTab} className="h-full">
         <TabsContent value="preview" className="h-full mt-0">
           {hasBuiltProject ? (
-            <div className="h-full w-full flex flex-col">
+            <div className="h-full w-full flex flex-col relative">
               <div className="flex items-center border-b w-full">
                 <BrowserAddressBar
                   currentPath={currentPath}
@@ -565,6 +565,14 @@ export function PreviewPane({ projectId, activeTab }: PreviewPaneProps) {
                 title="Project Preview"
                 sandbox="allow-scripts allow-same-origin"
               />
+              {isBuildLoading && (
+                <div className="absolute inset-0 bg-background/50 backdrop-blur-sm flex items-center justify-center z-10">
+                  <div className="bg-background/90 border rounded-lg p-4 shadow-lg flex items-center gap-3">
+                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                    <span className="text-sm font-medium">Building project...</span>
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <div className="h-full flex items-center justify-center bg-muted">

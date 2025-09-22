@@ -41,7 +41,7 @@ import { assistantContentEmpty } from '@/lib/ai-messages';
 import { saveFileToTmp } from '@/lib/fileUtils';
 import { useGit } from '@/hooks/useGit';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertTriangle, AlertCircle } from 'lucide-react';
+import { QuillySVG } from '@/components/ui/QuillySVG';
 
 const ALERT_TYPE = {
   WARN: 'warn',
@@ -63,37 +63,44 @@ function ChatIntervention({ alert, onDismiss }: { alert: ChatAlert; onDismiss: (
   const isError = alert.type === ALERT_TYPE.ERROR;
 
   return (
-    <Alert variant={isError ? "destructive" : "default"}>
-      {isError ? <AlertTriangle className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
-      <AlertDescription className="flex flex-col gap-2">
-        <div className="flex items-center justify-between">
-          <span>{alert.message}</span>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onDismiss}
-            className="h-6 w-6 p-0 hover:bg-muted"
-          >
-            ×
-          </Button>
+    <Alert variant={isError ? "destructive" : "default"} className="py-2 px-3">
+      <div className="flex items-start gap-2">
+        <QuillySVG className="h-14 w-14 flex-shrink-0" />
+        <div className="flex-1 min-w-0">
+          <AlertDescription className="space-y-1">
+            <div className="space-y-1">
+              <h4 className="font-semibold text-sm">
+                Pardon the Interruption
+              </h4>
+              <p className="text-sm">{alert.message}</p>
+            </div>
+            {alert.action && (
+              <div className="flex justify-end pt-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    alert.action?.onClick();
+                    // Don't dismiss the alert when clicking the action button
+                    // Let the action itself decide whether to dismiss
+                  }}
+                  className="text-xs h-6 px-2"
+                >
+                  {alert.action.label}
+                </Button>
+              </div>
+            )}
+          </AlertDescription>
         </div>
-        {alert.action && (
-          <div className="flex justify-end">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                alert.action?.onClick();
-                // Don't dismiss the alert when clicking the action button
-                // Let the action itself decide whether to dismiss
-              }}
-              className="text-xs h-7 px-2"
-            >
-              {alert.action.label}
-            </Button>
-          </div>
-        )}
-      </AlertDescription>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onDismiss}
+          className="h-5 w-5 p-0 hover:bg-muted flex-shrink-0"
+        >
+          ×
+        </Button>
+      </div>
     </Alert>
   );
 }

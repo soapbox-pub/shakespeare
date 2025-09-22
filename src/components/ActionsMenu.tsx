@@ -24,15 +24,13 @@ import {
   Play,
   CloudUpload,
   Loader2,
-  GitBranch,
+  History,
   Download,
   Trash2,
-  Settings,
   GitMerge,
 } from 'lucide-react';
 import { GitHistoryDialog } from '@/components/ai/GitHistoryDialog';
 import { GitDialog } from '@/components/GitDialog';
-import { AppSettingsDialog } from '@/components/AppSettingsDialog';
 import { useNavigate } from 'react-router-dom';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { useToast } from '@/hooks/useToast';
@@ -222,7 +220,7 @@ export function ActionsMenu({
             className="gap-2"
           >
             <GitMerge className="h-4 w-4" />
-            Git Status
+            Repository
           </DropdownMenuItem>
 
           <DropdownMenuItem
@@ -230,20 +228,9 @@ export function ActionsMenu({
             disabled={isAnyLoading}
             className="gap-2"
           >
-            <GitBranch className="h-4 w-4" />
-            Git History
+            <History className="h-4 w-4" />
+            Rollback
           </DropdownMenuItem>
-
-          <AppSettingsDialog>
-            <DropdownMenuItem
-              disabled={isAnyLoading}
-              className="gap-2"
-              onSelect={(e) => e.preventDefault()}
-            >
-              <Settings className="h-4 w-4" />
-              Settings
-            </DropdownMenuItem>
-          </AppSettingsDialog>
 
           <DropdownMenuItem
             onClick={handleExportProject}

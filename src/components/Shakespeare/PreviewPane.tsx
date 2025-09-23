@@ -33,6 +33,8 @@ interface PreviewPaneProps {
   projectName?: string;
   onFirstInteraction?: () => void;
   isPreviewable?: boolean;
+  consoleMessages?: ConsoleMessage[];
+  setConsoleMessages?: React.Dispatch<React.SetStateAction<ConsoleMessage[]>>;
 }
 
 interface JSONRPCRequest {
@@ -65,13 +67,14 @@ interface JSONRPCResponse {
   id: number;
 }
 
-interface ConsoleMessage {
+// Console message type (now defined in ProjectView for sharing)
+export interface ConsoleMessage {
   id: number;
   level: 'log' | 'warn' | 'error' | 'info' | 'debug';
   message: string;
 }
 
-export function PreviewPane({ projectId, activeTab, onToggleView, projectName, onFirstInteraction, isPreviewable = true }: PreviewPaneProps) {
+export function PreviewPane({ projectId, activeTab, onToggleView, projectName, onFirstInteraction, isPreviewable = true, consoleMessages: externalConsoleMessages = [], setConsoleMessages: externalSetConsoleMessages }: PreviewPaneProps) {
   const { t } = useTranslation();
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [fileContent, setFileContent] = useState<string>('');
@@ -82,9 +85,14 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
   const [currentPath, setCurrentPath] = useState('/');
   const [navigationHistory, setNavigationHistory] = useState<string[]>(['/']);
   const [historyIndex, setHistoryIndex] = useState(0);
-  const [consoleMessages, setConsoleMessages] = useState<ConsoleMessage[]>([]);
   const [copiedMessageId, setCopiedMessageId] = useState<number | null>(null);
   const [deployDialogOpen, setDeployDialogOpen] = useState(false);
+
+  // Use external state if provided, otherwise use internal state
+  const [internalConsoleMessages, setInternalConsoleMessages] = useState<ConsoleMessage[]>([]);
+  const consoleMessages = externalConsoleMessages || internalConsoleMessages;
+  const setConsoleMessages = externalSetConsoleMessages || setInternalConsoleMessages;
+  const handleSetConsoleMessages = setConsoleMessages;
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const { fs } = useFS();
   const projectsManager = useProjectsManager();
@@ -242,11 +250,11 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
       message: params.message,
     };
 
-    setConsoleMessages(prev => [...prev, newConsoleMessage]);
+    handleSetConsoleMessages(prev => [...prev, newConsoleMessage]);
 
     // Log to parent console for debugging with appropriate level
     console[normalizedLevel](`[IFRAME ${params.level.toUpperCase()}] ${params.message}`);
-  }, []);
+  }, [handleSetConsoleMessages]);
 
   const handleFetch = useCallback(async (request: JSONRPCRequest) => {
     const { params, id } = request;
@@ -447,7 +455,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
     };
 
     const clearConsole = () => {
-      setConsoleMessages([]);
+      handleSetConsoleMessages([]);
     };
 
     const copyMessageToClipboard = async (msg: ConsoleMessage) => {

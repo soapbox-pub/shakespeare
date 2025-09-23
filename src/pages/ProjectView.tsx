@@ -21,6 +21,13 @@ import { StarButton } from '@/components/StarButton';
 import { useBuildProject } from '@/hooks/useBuildProject';
 import { useIsProjectPreviewable } from '@/hooks/useIsProjectPreviewable';
 
+// Console message type (copied from PreviewPane for minimal change)
+export interface ConsoleMessage {
+  id: number;
+  level: 'log' | 'warn' | 'error' | 'info' | 'debug';
+  message: string;
+}
+
 export function ProjectView() {
   const { projectId } = useParams<{ projectId: string }>();
   const { t } = useTranslation();
@@ -30,6 +37,7 @@ export function ProjectView() {
   const [mobileView, setMobileView] = useState<'chat' | 'preview' | 'code'>('chat');
   const [isAILoading, setIsAILoading] = useState(false);
   const [isProjectInfoOpen, setIsProjectInfoOpen] = useState(false);
+  const [consoleMessages, setConsoleMessages] = useState<ConsoleMessage[]>([]);
   const projectsManager = useProjectsManager();
   const chatPaneRef = useRef<ChatPaneRef>(null);
   const navigate = useNavigate();
@@ -245,6 +253,8 @@ export function ProjectView() {
                 activeTab={mobileView}
                 projectName={project.name}
                 onFirstInteraction={handleFirstInteraction}
+                consoleMessages={consoleMessages}
+                setConsoleMessages={setConsoleMessages}
               />
             ) : (
               <div className="h-full p-4 space-y-4">
@@ -407,6 +417,7 @@ export function ProjectView() {
                       onLoadingChange={handleAILoadingChange}
                       isLoading={isAILoading}
                       isBuildLoading={build.isPending}
+                      consoleMessages={consoleMessages}
                     />
                   ) : (
                     <div className="h-full p-4 space-y-4">
@@ -434,6 +445,8 @@ export function ProjectView() {
                     projectName={project.name}
                     onFirstInteraction={handleFirstInteraction}
                     isPreviewable={isPreviewable}
+                    consoleMessages={consoleMessages}
+                    setConsoleMessages={setConsoleMessages}
                   />
                 ) : (
                   <div className="h-full p-4 space-y-4">

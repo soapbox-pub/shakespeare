@@ -33,6 +33,7 @@ import { NostrReadNipsIndexTool } from '@/lib/tools/NostrReadNipsIndexTool';
 import { NostrGenerateKindTool } from '@/lib/tools/NostrGenerateKindTool';
 import { ShellTool } from '@/lib/tools/ShellTool';
 import { TypecheckTool } from '@/lib/tools/TypecheckTool';
+import { ReadConsoleMessagesTool } from '@/lib/tools/ReadConsoleMessagesTool';
 import { toolToOpenAI } from '@/lib/tools/openai-adapter';
 import { Tool } from '@/lib/tools/Tool';
 import OpenAI from 'openai';
@@ -48,6 +49,7 @@ interface ChatPaneProps {
   onLoadingChange?: (isLoading: boolean) => void;
   isLoading?: boolean;
   isBuildLoading?: boolean;
+  consoleMessages?: import('@/pages/ProjectView').ConsoleMessage[];
 }
 
 export interface ChatPaneRef {
@@ -62,6 +64,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   onLoadingChange,
   isLoading: externalIsLoading,
   isBuildLoading: externalIsBuildLoading,
+  consoleMessages,
 }, ref) => {
   const { t } = useTranslation();
   const [input, setInput] = useState('');
@@ -112,6 +115,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
       nostr_read_nips_index: new NostrReadNipsIndexTool(),
       nostr_generate_kind: new NostrGenerateKindTool(),
       shell: new ShellTool(fs, cwd, git),
+      read_console_messages: new ReadConsoleMessagesTool(consoleMessages || []),
     };
 
     // Add deploy tool only if user is logged in
@@ -123,7 +127,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     }
 
     return baseTools;
-  }, [fs, git, cwd, user, projectId]);
+  }, [fs, git, cwd, user, projectId, consoleMessages]);
 
   // Convert tools to OpenAI format
   const tools = useMemo(() => {

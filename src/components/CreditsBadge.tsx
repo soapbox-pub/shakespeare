@@ -1,13 +1,9 @@
 import { Badge } from '@/components/ui/badge';
+import { AIProvider } from '@/contexts/AISettingsContext';
 import { useAICredits } from '@/hooks/useAICredits';
 
 interface CreditsBadgeProps {
-  providerId: string;
-  connection: {
-    baseURL: string;
-    apiKey?: string;
-    nostr?: boolean;
-  };
+  provider: AIProvider;
   className?: string;
   onOpenDialog?: () => void;
 }
@@ -15,8 +11,8 @@ interface CreditsBadgeProps {
 /**
  * Displays a clickable credits badge showing the remaining credits for an AI provider
  */
-export function CreditsBadge({ providerId, connection, className, onOpenDialog }: CreditsBadgeProps) {
-  const { data: credits, isLoading, error } = useAICredits(providerId, connection);
+export function CreditsBadge({ provider, className, onOpenDialog }: CreditsBadgeProps) {
+  const { data: credits, isLoading, error } = useAICredits(provider);
 
   // Don't render anything if there's an error (provider doesn't support credits endpoint)
   if (error || isLoading) {

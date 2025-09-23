@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { TestApp } from '@/test/TestApp';
+import type { AIProvider } from '@/contexts/AISettingsContext';
 
 // Mock QRCode
 vi.mock('qrcode', () => ({
@@ -18,9 +19,11 @@ const mockWebLN = {
 // We need to import the component after mocking
 const { CreditsDialog } = await import('./CreditsDialog');
 
-const mockConnection = {
+const mockProvider: AIProvider = {
+  id: 'test-provider',
   baseURL: 'https://api.test.com/v1',
   apiKey: 'test-key',
+  nostr: false,
 };
 
 describe('Lightning Payment', () => {
@@ -39,8 +42,7 @@ describe('Lightning Payment', () => {
         <CreditsDialog
           open={true}
           onOpenChange={() => {}}
-          providerId="test-provider"
-          connection={mockConnection}
+          provider={mockProvider}
         />
       </TestApp>
     );
@@ -61,8 +63,7 @@ describe('Lightning Payment', () => {
         <CreditsDialog
           open={true}
           onOpenChange={() => {}}
-          providerId="test-provider"
-          connection={mockConnection}
+          provider={mockProvider}
         />
       </TestApp>
     );
@@ -77,8 +78,7 @@ describe('Lightning Payment', () => {
         <CreditsDialog
           open={true}
           onOpenChange={() => {}}
-          providerId="test-provider"
-          connection={mockConnection}
+          provider={mockProvider}
         />
       </TestApp>
     );

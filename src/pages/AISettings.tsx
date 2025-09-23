@@ -144,8 +144,7 @@ function SortableProviderItem({ provider, preset, onRemove, onSetProvider, onOpe
           </div>
           <div className="flex items-center gap-2">
             <CreditsBadge
-              providerId={provider.id}
-              connection={{ baseURL: provider.baseURL, apiKey: provider.apiKey, nostr: provider.nostr }}
+              provider={provider}
               onOpenDialog={() => onOpenCreditsDialog(provider.id)}
             />
             <Button
@@ -547,8 +546,7 @@ export function AISettings() {
                 handleCloseCreditsDialog();
               }
             }}
-            providerId={activeCreditsDialog}
-            connection={{ baseURL: provider.baseURL, apiKey: provider.apiKey, nostr: provider.nostr }}
+            provider={provider}
           />
         );
       })()}

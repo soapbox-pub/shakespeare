@@ -35,14 +35,15 @@ export function createAIClient(provider: AIProvider, user?: NUser): OpenAI {
     openai = new OpenAI(baseConfig);
   }
 
-  const createCompletion = openai.chat.completions.create;
+  const createCompletion: typeof openai.chat.completions.create
+    = openai.chat.completions.create.bind(openai.chat.completions);
 
   openai.chat.completions.create = ((...[body, options]: Parameters<typeof createCompletion>) => {
     // OpenRouter usage accounting
     // https://openrouter.ai/docs/use-cases/usage-accounting
-    // if (provider.features?.includes('openrouter.usage_accounting')) {
-    //   (body as { usage?: { include?: boolean } }).usage = { include: true };
-    // }
+    if (provider.id === 'openrouter') {
+      (body as { usage?: { include?: boolean } }).usage = { include: true };
+    }
 
     return createCompletion(body, options);
   }) as typeof createCompletion;

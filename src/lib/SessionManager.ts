@@ -258,7 +258,7 @@ export class SessionManager {
         let finishReason: string | null = null;
 
         // Process the stream
-        let usage: { prompt_tokens: number; completion_tokens: number } | undefined;
+        let usage: { prompt_tokens: number; completion_tokens: number; cost?: number } | undefined;
         for await (const chunk of stream) {
           // Check if session was cancelled
           if (!session.isLoading) break;
@@ -319,9 +319,14 @@ export class SessionManager {
 
           // Capture usage data if available (some providers include it in the final chunk)
           if (chunk.usage) {
+            const cost = 'cost' in chunk.usage && typeof chunk.usage.cost === 'number'
+              ? chunk.usage.cost
+              : undefined;
+
             usage = {
               prompt_tokens: chunk.usage.prompt_tokens || 0,
-              completion_tokens: chunk.usage.completion_tokens || 0
+              completion_tokens: chunk.usage.completion_tokens || 0,
+              cost,
             };
           }
         }
@@ -461,12 +466,20 @@ export class SessionManager {
   /**
    * Update session cost and context usage based on usage data
    */
-  private updateSessionCost(projectId: string, usage: { prompt_tokens: number; completion_tokens: number }, providerModel: string): void {
+  private updateSessionCost(projectId: string, usage: { prompt_tokens: number; completion_tokens: number; cost?: number }, providerModel: string): void {
     if (!this.getProviderModels) return;
 
     const session = this.sessions.get(projectId);
     if (!session) return;
 
+    // If provider gives direct cost, use it
+    if (typeof usage.cost === 'number') {
+      session.totalCost = (session.totalCost || 0) + usage.cost;
+      this.emit('costUpdated', projectId, session.totalCost);
+      return;
+    }
+
+    // Otherwise, get the cost from the models endpoint
     try {
       const parsed = parseProviderModel(providerModel, this.aiSettings.providers);
       const modelName = parsed.model;
@@ -491,7 +504,6 @@ export class SessionManager {
 
       // Update session total cost
       session.totalCost = (session.totalCost || 0) + requestCost;
-
       this.emit('costUpdated', projectId, session.totalCost);
     } catch (error) {
       console.warn('Failed to calculate session cost:', error);

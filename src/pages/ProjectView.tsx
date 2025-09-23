@@ -71,6 +71,16 @@ export function ProjectView() {
     loadProject();
   }, [loadProject]);
 
+  // Reset view state when projectId changes
+  useEffect(() => {
+    if (projectId) {
+      // Reset to preview tab if the new project is previewable, otherwise code
+      setActiveTab(isPreviewable ? 'preview' : 'code');
+      // Reset mobile view to chat when switching projects
+      setMobileView('chat');
+    }
+  }, [projectId, isPreviewable]);
+
   // Switch away from preview mode if project is not previewable
   useEffect(() => {
     if (mobileView === 'preview' && !isPreviewable) {

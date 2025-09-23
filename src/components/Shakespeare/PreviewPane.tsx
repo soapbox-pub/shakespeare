@@ -377,6 +377,13 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
     }
   }, [selectedFile, loadFileContent]);
 
+  // Reset selected file when projectId changes
+  useEffect(() => {
+    setSelectedFile(null);
+    setFileContent('');
+    setMobileCodeView('explorer');
+  }, [projectId]);
+
   useEffect(() => {
     checkForBuiltProject();
   }, [checkForBuiltProject]);

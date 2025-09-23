@@ -1,5 +1,5 @@
 import { Tool } from './Tool';
-import type { ConsoleMessage } from '@/pages/ProjectView';
+import type { ConsoleMessage } from '@/types/console';
 
 export interface ReadConsoleMessagesParams {
   filter?: 'error' | 'warn' | 'info' | 'debug' | 'log' | 'all';

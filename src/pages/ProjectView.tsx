@@ -20,13 +20,7 @@ import { StarButton } from '@/components/StarButton';
 
 import { useBuildProject } from '@/hooks/useBuildProject';
 import { useIsProjectPreviewable } from '@/hooks/useIsProjectPreviewable';
-
-// Console message type (copied from PreviewPane for minimal change)
-export interface ConsoleMessage {
-  id: number;
-  level: 'log' | 'warn' | 'error' | 'info' | 'debug';
-  message: string;
-}
+import { ConsoleMessage } from '@/types/console';
 
 export function ProjectView() {
   const { projectId } = useParams<{ projectId: string }>();

@@ -34,6 +34,7 @@ import { NostrGenerateKindTool } from '@/lib/tools/NostrGenerateKindTool';
 import { ShellTool } from '@/lib/tools/ShellTool';
 import { TypecheckTool } from '@/lib/tools/TypecheckTool';
 import { ReadConsoleMessagesTool } from '@/lib/tools/ReadConsoleMessagesTool';
+import { ConsoleMessage } from '@/types/console';
 import { toolToOpenAI } from '@/lib/tools/openai-adapter';
 import { Tool } from '@/lib/tools/Tool';
 import OpenAI from 'openai';
@@ -49,7 +50,7 @@ interface ChatPaneProps {
   onLoadingChange?: (isLoading: boolean) => void;
   isLoading?: boolean;
   isBuildLoading?: boolean;
-  consoleMessages?: import('@/pages/ProjectView').ConsoleMessage[];
+  consoleMessages?: ConsoleMessage[];
 }
 
 export interface ChatPaneRef {

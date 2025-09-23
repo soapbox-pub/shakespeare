@@ -18,6 +18,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
+import { ConsoleMessage } from '@/types/console';
 
 import { FileTree } from './FileTree';
 import { FileEditor } from './FileEditor';
@@ -67,12 +68,7 @@ interface JSONRPCResponse {
   id: number;
 }
 
-// Console message type (now defined in ProjectView for sharing)
-export interface ConsoleMessage {
-  id: number;
-  level: 'log' | 'warn' | 'error' | 'info' | 'debug';
-  message: string;
-}
+
 
 export function PreviewPane({ projectId, activeTab, onToggleView, projectName, onFirstInteraction, isPreviewable = true, consoleMessages: externalConsoleMessages = [], setConsoleMessages: externalSetConsoleMessages }: PreviewPaneProps) {
   const { t } = useTranslation();
@@ -92,7 +88,6 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
   const [internalConsoleMessages, setInternalConsoleMessages] = useState<ConsoleMessage[]>([]);
   const consoleMessages = externalConsoleMessages || internalConsoleMessages;
   const setConsoleMessages = externalSetConsoleMessages || setInternalConsoleMessages;
-  const handleSetConsoleMessages = setConsoleMessages;
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const { fs } = useFS();
   const projectsManager = useProjectsManager();
@@ -250,11 +245,11 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
       message: params.message,
     };
 
-    handleSetConsoleMessages(prev => [...prev, newConsoleMessage]);
+    setConsoleMessages(prev => [...prev, newConsoleMessage]);
 
     // Log to parent console for debugging with appropriate level
     console[normalizedLevel](`[IFRAME ${params.level.toUpperCase()}] ${params.message}`);
-  }, [handleSetConsoleMessages]);
+  }, [setConsoleMessages]);
 
   const handleFetch = useCallback(async (request: JSONRPCRequest) => {
     const { params, id } = request;
@@ -455,7 +450,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
     };
 
     const clearConsole = () => {
-      handleSetConsoleMessages([]);
+      setConsoleMessages([]);
     };
 
     const copyMessageToClipboard = async (msg: ConsoleMessage) => {

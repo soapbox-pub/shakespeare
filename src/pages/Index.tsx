@@ -7,15 +7,18 @@ import { useFS } from '@/hooks/useFS';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { useAISettings } from '@/hooks/useAISettings';
+import { useToast } from '@/hooks/useToast';
 import { AppLayout } from '@/components/AppLayout';
 import { OnboardingDialog } from '@/components/OnboardingDialog';
 import { DotAI } from '@/lib/DotAI';
+import { parseProviderModel } from '@/lib/parseProviderModel';
 import type { AIMessage } from '@/lib/SessionManager';
 
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ModelSelector } from '@/components/ModelSelector';
 import { FileAttachment } from '@/components/ui/file-attachment';
+import { ToastAction } from '@/components/ui/toast';
 import { Plus } from 'lucide-react';
 import { useSeoMeta } from '@unhead/react';
 
@@ -30,6 +33,7 @@ export default function Index() {
   const { fs } = useFS();
   const { generateProjectId, isLoading: isGeneratingId } = useAIProjectId();
   const { settings, addRecentlyUsedModel } = useAISettings();
+  const { toast } = useToast();
   const [providerModel, setProviderModel] = useState(() => {
     // Initialize with first recently used model if available, otherwise empty
     return settings.recentlyUsedModels?.[0] || '';
@@ -40,6 +44,48 @@ export default function Index() {
 
   // Check if any providers are configured
   const hasProvidersConfigured = settings.providers.length > 0;
+
+  // Check for API key failures and show appropriate toast
+  const checkForKeyFailure = (error: unknown): boolean => {
+    if (!(error instanceof Error)) return false;
+
+    const message = error.message.toLowerCase();
+    const isAuthError = (
+      message.includes('401') ||
+      message.includes('unauthorized') ||
+      message.includes('no auth credentials') ||
+      message.includes('invalid api key') ||
+      message.includes('authentication failed')
+    );
+
+    if (isAuthError) {
+      // Get provider name inline
+      let providerName = 'Provider';
+      try {
+        const { provider } = parseProviderModel(providerModel, settings.providers);
+        providerName = provider.charAt(0).toUpperCase() + provider.slice(1);
+      } catch {
+        // Keep default 'Provider'
+      }
+
+      toast({
+        title: t('apiAuthenticationFailed'),
+        description: t('invalidApiKey', { provider: providerName }),
+        variant: 'destructive',
+        action: (
+          <ToastAction
+            altText={t('checkApiKeySettings')}
+            onClick={() => navigate('/settings/ai')}
+          >
+            {t('checkApiKeySettings')}
+          </ToastAction>
+        ),
+      });
+    }
+
+    return isAuthError;
+  };
+
 
   useEffect(() => {
     if (!providerModel && settings.recentlyUsedModels?.length) {
@@ -185,6 +231,7 @@ export default function Index() {
       navigate(`/project/${project.id}?${searchParams.toString()}`);
     } catch (error) {
       console.error('Failed to create project:', error);
+      checkForKeyFailure(error);
     } finally {
       setIsCreating(false);
     }
@@ -209,9 +256,8 @@ export default function Index() {
           <div className="mb-8 md:mb-12">
             {/* Chat Input Container - matching the ChatPane style */}
             <div
-              className={`relative rounded-2xl border border-input bg-background shadow-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 transition-all ${
-                isDragOver ? 'border-primary bg-primary/5 ring-2 ring-primary/20' : ''
-              }`}
+              className={`relative rounded-2xl border border-input bg-background shadow-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 transition-all ${isDragOver ? 'border-primary bg-primary/5 ring-2 ring-primary/20' : ''
+                }`}
               onDragEnter={handleDragEnter}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
@@ -222,8 +268,8 @@ export default function Index() {
                   !hasProvidersConfigured
                     ? t('examplePrompt')
                     : !providerModel.trim()
-                    ? t('selectModelToDescribe')
-                    : t('examplePrompt')
+                      ? t('selectModelToDescribe')
+                      : t('examplePrompt')
                 }
                 value={prompt}
                 onChange={handlePromptChange}

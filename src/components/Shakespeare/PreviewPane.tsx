@@ -31,6 +31,7 @@ interface PreviewPaneProps {
   onToggleView?: () => void;
   projectName?: string;
   onFirstInteraction?: () => void;
+  isPreviewable?: boolean;
 }
 
 interface JSONRPCRequest {
@@ -69,7 +70,7 @@ interface ConsoleMessage {
   message: string;
 }
 
-export function PreviewPane({ projectId, activeTab, onToggleView, projectName, onFirstInteraction }: PreviewPaneProps) {
+export function PreviewPane({ projectId, activeTab, onToggleView, projectName, onFirstInteraction, isPreviewable = true }: PreviewPaneProps) {
   const { t } = useTranslation();
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [fileContent, setFileContent] = useState<string>('');
@@ -553,7 +554,8 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
   return (
     <div className="h-full">
       <Tabs value={activeTab} className="h-full">
-        <TabsContent value="preview" className="h-full mt-0">
+        {isPreviewable && (
+          <TabsContent value="preview" className="h-full mt-0">
           <div className="h-full w-full flex flex-col relative">
             {/* Always show browser address bar */}
             <div className="h-12 flex items-center w-full">
@@ -567,7 +569,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
                 canGoForward={hasBuiltProject && historyIndex < navigationHistory.length - 1}
                 extraContent={(
                   <div className="flex items-center">
-                    {(!isMobile && onToggleView) && (
+                    {(!isMobile && onToggleView && isPreviewable) && (
                       <Button
                         variant="ghost"
                         size="sm"
@@ -635,6 +637,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
             )}
           </div>
         </TabsContent>
+        )}
 
         <TabsContent value="code" className="h-full mt-0">
           {isMobile ? (
@@ -700,7 +703,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
           ) : (
             <div className="h-full flex flex-col">
               {/* Code view header with back button */}
-              {!isMobile && onToggleView && (
+              {!isMobile && onToggleView && isPreviewable && (
                 <div className="h-12 px-4 border-b flex items-center bg-gradient-to-r from-muted/20 to-background">
                   <Button
                     variant="ghost"
@@ -711,6 +714,13 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
                     <ArrowLeft className="h-4 w-4" />
                     {t('backToPreview')}
                   </Button>
+                  <div className="flex-1" />
+                  <GitStatusIndicator projectId={projectId} />
+                </div>
+              )}
+              {/* Code view header without back button for non-previewable projects */}
+              {!isMobile && !isPreviewable && (
+                <div className="h-12 px-4 border-b flex items-center bg-gradient-to-r from-muted/20 to-background">
                   <div className="flex-1" />
                   <GitStatusIndicator projectId={projectId} />
                 </div>

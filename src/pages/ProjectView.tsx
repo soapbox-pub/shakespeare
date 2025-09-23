@@ -19,6 +19,7 @@ import { GitStatusIndicator } from '@/components/GitStatusIndicator';
 import { StarButton } from '@/components/StarButton';
 
 import { useBuildProject } from '@/hooks/useBuildProject';
+import { useIsProjectPreviewable } from '@/hooks/useIsProjectPreviewable';
 
 export function ProjectView() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -37,6 +38,7 @@ export function ProjectView() {
   const [isSidebarVisible, setIsSidebarVisible] = useState(!isMobile);
 
   const build = useBuildProject(projectId!);
+  const { data: isPreviewable = false } = useIsProjectPreviewable(projectId!);
 
   // Keep-alive functionality to prevent tab throttling during AI processing
   const { updateMetadata } = useKeepAlive({
@@ -68,6 +70,16 @@ export function ProjectView() {
   useEffect(() => {
     loadProject();
   }, [loadProject]);
+
+  // Switch away from preview mode if project is not previewable
+  useEffect(() => {
+    if (mobileView === 'preview' && !isPreviewable) {
+      setMobileView('code');
+    }
+    if (activeTab === 'preview' && !isPreviewable) {
+      setActiveTab('code');
+    }
+  }, [isPreviewable, mobileView, activeTab]);
 
   const runBuild = async () => {
     if (build.isPending || !project) return;
@@ -255,16 +267,18 @@ export function ProjectView() {
               <MessageSquare className="h-4 w-4 mr-1" />
               {t('chat')}
             </Button>
-            <Button
-              variant={mobileView === 'preview' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setMobileView('preview')}
-              className="flex-1 rounded-none"
-              disabled={!project}
-            >
-              <Eye className="h-4 w-4 mr-1" />
-              {t('preview')}
-            </Button>
+            {isPreviewable && (
+              <Button
+                variant={mobileView === 'preview' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setMobileView('preview')}
+                className="flex-1 rounded-none"
+                disabled={!project}
+              >
+                <Eye className="h-4 w-4 mr-1" />
+                {t('preview')}
+              </Button>
+            )}
             <Button
               variant={mobileView === 'code' ? 'default' : 'ghost'}
               size="sm"
@@ -415,10 +429,11 @@ export function ProjectView() {
                 {project ? (
                   <PreviewPane
                     projectId={project.id}
-                    activeTab={activeTab}
-                    onToggleView={() => setActiveTab(activeTab === 'preview' ? 'code' : 'preview')}
+                    activeTab={isPreviewable ? activeTab : 'code'}
+                    onToggleView={isPreviewable ? () => setActiveTab(activeTab === 'preview' ? 'code' : 'preview') : undefined}
                     projectName={project.name}
                     onFirstInteraction={handleFirstInteraction}
+                    isPreviewable={isPreviewable}
                   />
                 ) : (
                   <div className="h-full p-4 space-y-4">

@@ -13,6 +13,7 @@ import { OnboardingDialog } from '@/components/OnboardingDialog';
 import { DotAI } from '@/lib/DotAI';
 import { parseProviderModel } from '@/lib/parseProviderModel';
 import type { AIMessage } from '@/lib/SessionManager';
+import { AuthenticationError } from 'openai';
 
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -47,16 +48,9 @@ export default function Index() {
 
   // Check for API key failures and show appropriate toast
   const checkForKeyFailure = (error: unknown): boolean => {
-    if (!(error instanceof Error)) return false;
-
-    const message = error.message.toLowerCase();
-    const isAuthError = (
-      message.includes('401') ||
-      message.includes('unauthorized') ||
-      message.includes('no auth credentials') ||
-      message.includes('invalid api key') ||
-      message.includes('authentication failed')
-    );
+    // Check for authentication errors
+    // Note: useAIProjectId re-throws OpenAI errors as generic Error objects
+    const isAuthError = error instanceof Error && error.message === '401 No auth credentials found';
 
     if (isAuthError) {
       // Get provider name inline

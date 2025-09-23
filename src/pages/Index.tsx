@@ -13,7 +13,6 @@ import { OnboardingDialog } from '@/components/OnboardingDialog';
 import { DotAI } from '@/lib/DotAI';
 import { parseProviderModel } from '@/lib/parseProviderModel';
 import type { AIMessage } from '@/lib/SessionManager';
-import { AuthenticationError } from 'openai';
 
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';

@@ -7,7 +7,7 @@ import { useBuildProject } from '@/hooks/useBuildProject';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { FolderOpen, ArrowLeft, X, Bug, Copy, Check, Play, Loader2, MenuIcon, Code, CloudUpload } from 'lucide-react';
+import { FolderOpen, ArrowLeft, X, Bug, Copy, Check, Play, Loader2, MenuIcon, Code, CloudUpload, AlertCircle, AlertTriangle, Info, Search } from 'lucide-react';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { GitStatusIndicator } from '@/components/GitStatusIndicator';
 import { BrowserAddressBar } from '@/components/ui/browser-address-bar';
@@ -17,6 +17,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { cn } from '@/lib/utils';
 
 import { FileTree } from './FileTree';
 import { FileEditor } from './FileEditor';
@@ -417,21 +418,31 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
   const ConsoleDropdown = () => {
     const getLevelColor = (level: ConsoleMessage['level']) => {
       switch (level) {
-        case 'error': return 'text-red-500';
-        case 'warn': return 'text-yellow-500';
-        case 'info': return 'text-blue-500';
-        case 'debug': return 'text-gray-500';
-        default: return 'text-gray-400';
+        case 'error': return 'text-red-600 dark:text-red-400';
+        case 'warn': return 'text-yellow-600 dark:text-yellow-400';
+        case 'info': return 'text-blue-600 dark:text-blue-400';
+        case 'debug': return 'text-gray-600 dark:text-gray-400';
+        default: return 'text-gray-600 dark:text-gray-400';
+      }
+    };
+
+    const getLevelBgColor = (level: ConsoleMessage['level']) => {
+      switch (level) {
+        case 'error': return 'bg-red-50 dark:bg-red-950/50 border-red-200 dark:border-red-800';
+        case 'warn': return 'bg-yellow-50 dark:bg-yellow-950/50 border-yellow-200 dark:border-yellow-800';
+        case 'info': return 'bg-blue-50 dark:bg-blue-950/50 border-blue-200 dark:border-blue-800';
+        case 'debug': return 'bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700';
+        default: return 'bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700';
       }
     };
 
     const getLevelIcon = (level: ConsoleMessage['level']) => {
       switch (level) {
-        case 'error': return '!';
-        case 'warn': return '⚠';
-        case 'info': return 'ℹ';
-        case 'debug': return '🔍';
-        default: return '•';
+        case 'error': return AlertCircle;
+        case 'warn': return AlertTriangle;
+        case 'info': return Info;
+        case 'debug': return Search;
+        default: return Bug;
       }
     };
 
@@ -456,55 +467,153 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
       }
     };
 
+    const hasErrors = consoleMessages.some(msg => msg.level === 'error');
+    const errorCount = consoleMessages.filter(m => m.level === 'error').length;
+    const warnCount = consoleMessages.filter(m => m.level === 'warn').length;
+    const infoCount = consoleMessages.filter(m => m.level === 'info').length;
+    const messageCount = consoleMessages.length;
+
     return (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 relative">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0 relative hover:bg-accent hover:text-accent-foreground transition-colors"
+          >
             <Bug className="h-4 w-4" />
-            {consoleMessages.some(msg => msg.level === 'error') && (
-              <span className="absolute bottom-0 left-0 h-2 w-2 bg-red-500 rounded-full"></span>
+            {hasErrors && (
+              <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full border-2 border-background bg-red-500" />
             )}
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-96 max-w-96 max-h-96 overflow-x-hidden">
-          <div className="flex items-center justify-between p-2 border-b">
-            <span className="font-medium text-sm">Console Output ({consoleMessages.length})</span>
-            <Button variant="ghost" size="sm" onClick={clearConsole}>
+        <DropdownMenuContent
+          align="end"
+          className="w-[480px] max-w-[480px] max-h-[512px] p-0 overflow-hidden shadow-lg border-border/50"
+          sideOffset={4}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between p-3 border-b bg-muted/30">
+            <div className="flex items-center gap-2">
+              <Bug className="h-4 w-4 text-muted-foreground" />
+              <div>
+                <span className="font-medium text-sm">Console Output</span>
+                <span className="text-xs text-muted-foreground ml-1">
+                  ({messageCount} {messageCount === 1 ? 'message' : 'messages'})
+                </span>
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clearConsole}
+              className="h-7 w-7 p-0 hover:bg-muted text-muted-foreground hover:text-foreground"
+              disabled={messageCount === 0}
+            >
               <X className="h-3 w-3" />
             </Button>
           </div>
-          <ScrollArea className="h-80 w-full max-w-full overflow-x-hidden">
-            <div className="space-y-1 p-2 w-full max-w-full overflow-x-hidden">
-              {consoleMessages.length === 0 ? (
-                <div className="text-center text-muted-foreground text-sm py-4">
-                  No console messages
+
+          {/* Messages */}
+          <ScrollArea className="h-[400px] w-full">
+            <div className="p-2 space-y-1.5">
+              {messageCount === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <Bug className="h-8 w-8 text-muted-foreground/30 mb-3" />
+                  <p className="text-sm text-muted-foreground font-medium">No console messages</p>
+                  <p className="text-xs text-muted-foreground mt-1">Messages from your project will appear here</p>
                 </div>
               ) : (
-                consoleMessages.map((msg) => (
-                  <div
-                    key={msg.id}
-                    className={`text-xs font-mono p-2 rounded ${getLevelColor(msg.level)} bg-muted/50 group relative w-full overflow-hidden`}
-                  >
-                    <div className="flex items-start justify-between w-full">
-                      <div className="whitespace-pre-wrap break-all flex-1 pr-2 overflow-x-hidden">{getLevelIcon(msg.level)} {msg.message}</div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => copyMessageToClipboard(msg)}
-                        className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex-shrink-0"
-                      >
-                        {copiedMessageId === msg.id ? (
-                          <Check className="h-3 w-3 text-green-500" />
-                        ) : (
-                          <Copy className="h-3 w-3" />
-                        )}
-                      </Button>
+                consoleMessages.map((msg) => {
+                  const IconComponent = getLevelIcon(msg.level);
+                  return (
+                    <div
+                      key={msg.id}
+                      className={cn(
+                        "group relative rounded-md border p-2.5 transition-all duration-200 hover:shadow-sm",
+                        getLevelBgColor(msg.level),
+                        copiedMessageId === msg.id && "ring-2 ring-primary/20"
+                      )}
+                    >
+                      <div className="flex items-start gap-2 w-full">
+                        {/* Level indicator */}
+                        <div className={cn(
+                          "flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center mt-0.5",
+                          msg.level === 'error' && "bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300",
+                          msg.level === 'warn' && "bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700 dark:text-yellow-300",
+                          msg.level === 'info' && "bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300",
+                          msg.level === 'debug' && "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
+                        )}>
+                          <IconComponent className="h-3 w-3" />
+                        </div>
+
+                        {/* Message content */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className={cn(
+                              "text-xs font-medium uppercase tracking-wide",
+                              getLevelColor(msg.level)
+                            )}>
+                              {msg.level}
+                            </span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => copyMessageToClipboard(msg)}
+                              className={cn(
+                                "h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-all duration-200",
+                                "hover:bg-muted-foreground/10 text-muted-foreground hover:text-foreground",
+                                copiedMessageId === msg.id && "opacity-100"
+                              )}
+                            >
+                              {copiedMessageId === msg.id ? (
+                                <Check className="h-3 w-3 text-green-600 dark:text-green-400" />
+                              ) : (
+                                <Copy className="h-3 w-3" />
+                              )}
+                            </Button>
+                          </div>
+                          <div className={cn(
+                            "text-xs font-mono leading-relaxed whitespace-pre-wrap break-words",
+                            msg.level === 'error' ? "text-red-700 dark:text-red-300" :
+                            msg.level === 'warn' ? "text-yellow-700 dark:text-yellow-300" :
+                            msg.level === 'info' ? "text-blue-700 dark:text-blue-300" :
+                            "text-foreground"
+                          )}>
+                            {msg.message}
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </ScrollArea>
+
+          {/* Footer */}
+          {messageCount > 0 && (
+            <div className="flex items-center gap-4 p-2 border-t bg-muted/20">
+              {errorCount > 0 && (
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                  <span>{errorCount} error{errorCount !== 1 ? 's' : ''}</span>
+                </div>
+              )}
+              {warnCount > 0 && (
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
+                  <span>{warnCount} warning{warnCount !== 1 ? 's' : ''}</span>
+                </div>
+              )}
+              {infoCount > 0 && (
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                  <span>{infoCount} info{infoCount !== 1 ? '' : ''}</span>
+                </div>
+              )}
+            </div>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
     );

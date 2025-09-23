@@ -45,9 +45,8 @@ export function useProviderModels(): ModelFetchResult {
 
       // Fetch models from each configured provider in parallel
       const providerPromises = settings.providers.map(async (provider) => {
-        const { id: providerKey, ...connection } = provider;
         try {
-          const openai = createAIClient(connection, user);
+          const openai = createAIClient(provider, user);
 
           // Fetch models with timeout
           try {
@@ -59,8 +58,8 @@ export function useProviderModels(): ModelFetchResult {
             const providerModels = response.data.map((model) => {
               const providerModel: ProviderModel = {
                 id: model.id,
-                provider: providerKey,
-                fullId: `${providerKey}/${model.id}`,
+                provider: provider.id,
+                fullId: `${provider.id}/${model.id}`,
               };
 
               if ('name' in model && typeof model.name === 'string') {
@@ -95,16 +94,16 @@ export function useProviderModels(): ModelFetchResult {
             return providerModels;
           } catch (fetchError) {
             if (fetchError instanceof Error && fetchError.name === 'AbortError') {
-              errors.push(`${providerKey}: Request timeout`);
+              errors.push(`${provider.id}: Request timeout`);
             } else {
               throw fetchError;
             }
             return [];
           }
         } catch (providerError) {
-          console.warn(`Failed to fetch models from ${providerKey}:`, providerError);
+          console.warn(`Failed to fetch models from ${provider.id}:`, providerError);
           errors.push(
-            `${providerKey}: ${
+            `${provider.id}: ${
               providerError instanceof Error ? providerError.message : 'Unknown error'
             }`
           );

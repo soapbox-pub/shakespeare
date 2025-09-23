@@ -16,6 +16,11 @@ export function createAIClient(connection: {
     baseURL: connection.baseURL,
     apiKey: connection.apiKey ?? '',
     dangerouslyAllowBrowser: true,
+    defaultHeaders: {
+      // https://openrouter.ai/docs/app-attribution
+      'HTTP-Referer': 'https://shakespeare.diy',
+      'X-Title': 'Shakespeare',
+    },
   };
 
   // If Nostr authentication is required and we have a user, use NIP-98

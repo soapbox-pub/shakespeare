@@ -247,10 +247,12 @@ export function ProjectView() {
               <PreviewPane
                 projectId={project.id}
                 activeTab={mobileView}
-                projectName={project.name}
-                onFirstInteraction={handleFirstInteraction}
-                consoleMessages={consoleMessages}
-                setConsoleMessages={setConsoleMessages}
+                config={{
+                  projectName: project.name,
+                  onFirstInteraction: handleFirstInteraction,
+                  consoleMessages,
+                  setConsoleMessages,
+                }}
               />
             ) : (
               <div className="h-full p-4 space-y-4">
@@ -437,12 +439,14 @@ export function ProjectView() {
                   <PreviewPane
                     projectId={project.id}
                     activeTab={isPreviewable ? activeTab : 'code'}
-                    onToggleView={isPreviewable ? () => setActiveTab(activeTab === 'preview' ? 'code' : 'preview') : undefined}
-                    projectName={project.name}
-                    onFirstInteraction={handleFirstInteraction}
-                    isPreviewable={isPreviewable}
-                    consoleMessages={consoleMessages}
-                    setConsoleMessages={setConsoleMessages}
+                    config={{
+                      onToggleView: isPreviewable ? () => setActiveTab(activeTab === 'preview' ? 'code' : 'preview') : undefined,
+                      projectName: project.name,
+                      onFirstInteraction: handleFirstInteraction,
+                      isPreviewable,
+                      consoleMessages,
+                      setConsoleMessages,
+                    }}
                   />
                 ) : (
                   <div className="h-full p-4 space-y-4">

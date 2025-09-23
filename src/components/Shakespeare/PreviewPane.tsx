@@ -30,12 +30,14 @@ const IFRAME_DOMAIN = import.meta.env.VITE_IFRAME_DOMAIN || 'local-shakespeare.d
 interface PreviewPaneProps {
   projectId: string;
   activeTab: 'preview' | 'code';
-  onToggleView?: () => void;
-  projectName?: string;
-  onFirstInteraction?: () => void;
-  isPreviewable?: boolean;
-  consoleMessages?: ConsoleMessage[];
-  setConsoleMessages?: React.Dispatch<React.SetStateAction<ConsoleMessage[]>>;
+  config?: {
+    onToggleView?: () => void;
+    projectName?: string;
+    onFirstInteraction?: () => void;
+    isPreviewable?: boolean;
+    consoleMessages?: ConsoleMessage[];
+    setConsoleMessages?: React.Dispatch<React.SetStateAction<ConsoleMessage[]>>;
+  };
 }
 
 interface JSONRPCRequest {
@@ -70,7 +72,15 @@ interface JSONRPCResponse {
 
 
 
-export function PreviewPane({ projectId, activeTab, onToggleView, projectName, onFirstInteraction, isPreviewable = true, consoleMessages: externalConsoleMessages = [], setConsoleMessages: externalSetConsoleMessages }: PreviewPaneProps) {
+export function PreviewPane({ projectId, activeTab, config = {} }: PreviewPaneProps) {
+  const {
+    onToggleView,
+    projectName,
+    onFirstInteraction,
+    isPreviewable = true,
+    consoleMessages: externalConsoleMessages = [],
+    setConsoleMessages: externalSetConsoleMessages,
+  } = config;
   const { t } = useTranslation();
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [fileContent, setFileContent] = useState<string>('');

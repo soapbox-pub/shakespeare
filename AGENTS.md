@@ -53,48 +53,6 @@ Shakespeare provides AI agents with specialized tools for project development (n
 - **NostrGenerateKindTool**: Generate unused Nostr event kind numbers
 - **ReadConsoleMessagesTool**: Read console messages from project preview with filtering capabilities
 
-#### Console Message Reading
-
-The `ReadConsoleMessagesTool` allows you to access console messages from the project preview iframe, enabling proactive error detection and debugging assistance.
-
-**Usage Examples:**
-
-```typescript
-// Read all console messages
-const allMessages = await read_console_messages({});
-
-// Read only error messages
-const errorMessages = await read_console_messages({ filter: 'error' });
-
-// Read last 10 messages of any type
-const recentMessages = await read_console_messages({ limit: 10 });
-
-// Read last 5 warning messages
-const recentWarnings = await read_console_messages({ filter: 'warn', limit: 5 });
-```
-
-**Parameters:**
-- `filter` (optional): `'error' | 'warn' | 'info' | 'debug' | 'log' | 'all'` - defaults to `'all'`
-- `limit` (optional): `number` - maximum number of messages to return, defaults to all messages
-
-**Use Cases:**
-- **Proactive Error Detection**: Automatically detect and fix console errors
-- **Debugging Assistance**: Correlate console errors with code changes
-- **Build Validation**: Check for runtime errors after building
-- **Performance Monitoring**: Identify performance-related warnings
-
-**Example Workflow:**
-```
-User: Fix the errors in my app
-AI: Let me check the console for errors first...
-read_console_messages({ filter: 'error' })
-// Returns: Found 2 errors (level: error):
-// [14:32:15] [ERROR] Failed to load module 'react'
-// [14:32:16] [ERROR] Network timeout at https://api.example.com/data
-
-AI: I can see there are 2 errors in the console. Let me fix the module loading issue first...
-```
-
 #### Shell Commands
 
 Shakespeare provides a comprehensive set of shell commands that are JavaScript reimplementations of common Unix commands. These commands operate on the virtual filesystem (VFS) and are accessible through the ShellTool. The shell commands are implemented in `src/lib/commands/` and provide familiar Unix-like functionality for file and directory operations.

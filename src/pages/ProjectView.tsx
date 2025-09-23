@@ -68,12 +68,14 @@ export function ProjectView() {
     try {
       const projectData = await projectsManager.getProject(projectId);
       setProject(projectData);
+      // Clear console messages when switching projects
+      setConsoleMessages([]);
     } catch (error) {
       console.error('Failed to load project:', error);
     } finally {
       setIsLoading(false);
     }
-  }, [projectId, projectsManager]);
+  }, [projectId, projectsManager, setConsoleMessages]);
 
   useEffect(() => {
     loadProject();

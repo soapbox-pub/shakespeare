@@ -203,12 +203,12 @@ export class SessionManager {
     try {
       // Parse provider and model
       const parsed = parseProviderModel(providerModel, this.aiSettings.providers);
-      const connectionConfig = parsed.connection;
-      const modelName = parsed.model;
+      const provider = parsed.provider;
+      const model = parsed.model;
 
       // Initialize OpenAI client
       const currentUser = this.getCurrentUser?.();
-      const openai = createAIClient(connectionConfig, currentUser);
+      const openai = createAIClient(provider, currentUser);
 
       let stepCount = 0;
       const maxSteps = session.maxSteps || 50;
@@ -237,7 +237,7 @@ export class SessionManager {
 
         // Prepare completion options
         const completionOptions: OpenAI.Chat.Completions.ChatCompletionCreateParams = {
-          model: modelName,
+          model,
           messages,
           tools: session.tools && Object.keys(session.tools).length > 0 ? Object.values(session.tools) : undefined,
           tool_choice: session.tools && Object.keys(session.tools).length > 0 ? 'auto' : undefined,
@@ -470,11 +470,11 @@ export class SessionManager {
     try {
       const parsed = parseProviderModel(providerModel, this.aiSettings.providers);
       const modelName = parsed.model;
-      const providerName = parsed.provider;
+      const provider = parsed.provider;
 
       // Find the model in provider models to get pricing and context length
       const models = this.getProviderModels();
-      const model = models.find(m => m.id === modelName && m.provider === providerName);
+      const model = models.find(m => m.id === modelName && m.provider === provider.id);
 
       // Update input tokens for context usage tracking
       session.lastInputTokens = usage.prompt_tokens;

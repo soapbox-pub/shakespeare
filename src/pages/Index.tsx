@@ -58,7 +58,7 @@ export default function Index() {
       let providerName = 'Provider';
       try {
         const { provider } = parseProviderModel(providerModel, settings.providers);
-        providerName = provider.charAt(0).toUpperCase() + provider.slice(1);
+        providerName = provider.id.charAt(0).toUpperCase() + provider.id.slice(1);
       } catch {
         // Keep default 'Provider'
       }

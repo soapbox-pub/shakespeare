@@ -28,8 +28,8 @@ export function useAIProjectId({ onError }: UseAIProjectIdOptions = {}) {
 
     try {
       // Initialize OpenAI client
-      const { model, connection } = parseProviderModel(providerModel, settings.providers);
-      const openai = createAIClient(connection, user);
+      const { model, provider } = parseProviderModel(providerModel, settings.providers);
+      const openai = createAIClient(provider, user);
 
       const systemPrompt = `You are a product expert. Given the user's project description, come up with a short, unique, and memorable name for their product or brand. Generate only the name without any additional text or punctuation. The name should be lowercase, use hyphens instead of spaces, and contain only alphanumeric characters and hyphens. Avoid using special characters or underscores.`;
 

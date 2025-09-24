@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { type Project } from '@/lib/ProjectsManager';
 import {
   Dialog,
@@ -18,6 +19,8 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/useToast';
 import { useFS } from '@/hooks/useFS';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
@@ -28,23 +31,34 @@ import {
   Download,
   Loader2,
   Trash2,
+  Save,
 } from 'lucide-react';
 import JSZip from 'jszip';
+import { Separator } from './ui/separator';
 
-interface ProjectInfoDialogProps {
+interface ProjectDetailsDialogProps {
   project: Project;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onProjectDeleted?: () => void;
 }
 
-export function ProjectInfoDialog({ project, open, onOpenChange, onProjectDeleted }: ProjectInfoDialogProps) {
+export function ProjectDetailsDialog({ project, open, onOpenChange, onProjectDeleted }: ProjectDetailsDialogProps) {
   const [isExporting, setIsExporting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [newProjectName, setNewProjectName] = useState(project.id);
   const { toast } = useToast();
   const { fs } = useFS();
   const projectsManager = useProjectsManager();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
+  // Reset state when project changes
+  useEffect(() => {
+    setNewProjectName(project.id);
+    setIsRenaming(false);
+  }, [project.id]);
 
   const formatDistanceToNow = (date: Date) => {
     const now = new Date();
@@ -58,10 +72,48 @@ export function ProjectInfoDialog({ project, open, onOpenChange, onProjectDelete
     return `${Math.floor(diffInSeconds / 31536000)} years ago`;
   };
 
+  const handleSaveProject = async () => {
+    if (!newProjectName.trim() || newProjectName === project.id) {
+      setNewProjectName(project.id);
+      return;
+    }
+
+    setIsRenaming(true);
+    try {
+      await projectsManager.renameProject(project.id, newProjectName);
+
+      // Invalidate the projects query to update the sidebar
+      await queryClient.invalidateQueries({ queryKey: ['projects'] });
+
+      toast({
+        title: "Project renamed",
+        description: `Project renamed from "${project.id}" to "${newProjectName}".`,
+      });
+
+      // Close the dialog first
+      onOpenChange(false);
+
+      // Navigate to the new URL
+      navigate(`/project/${newProjectName}`);
+    } catch (error) {
+      toast({
+        title: "Failed to rename project",
+        description: error instanceof Error ? error.message : "An unexpected error occurred",
+        variant: "destructive",
+      });
+      setNewProjectName(project.id); // Reset to original name
+    } finally {
+      setIsRenaming(false);
+    }
+  };
+
   const handleDeleteProject = async () => {
     setIsDeleting(true);
     try {
       await projectsManager.deleteProject(project.id);
+
+      // Invalidate the projects query to update the sidebar
+      await queryClient.invalidateQueries({ queryKey: ['projects'] });
 
       toast({
         title: "Project deleted",
@@ -172,10 +224,46 @@ export function ProjectInfoDialog({ project, open, onOpenChange, onProjectDelete
             <span>{formatDistanceToNow(project.lastModified)}</span>
           </div>
 
+          {/* Project Name */}
+          <div className="space-y-2">
+            <Label htmlFor="project-name">Project Name</Label>
+            <div className="flex items-center gap-2">
+              <Input
+                id="project-name"
+                value={newProjectName}
+                onChange={(e) => setNewProjectName(e.target.value)}
+                disabled={isRenaming}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleSaveProject();
+                  } else if (e.key === 'Escape') {
+                    setNewProjectName(project.id);
+                  }
+                }}
+                className="flex-1"
+                placeholder="Enter project name"
+              />
+              <Button
+                size="sm"
+                onClick={handleSaveProject}
+                disabled={isRenaming || !newProjectName.trim() || newProjectName === project.id}
+                className="h-10"
+              >
+                {isRenaming ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
+          </div>
+
+          <Separator />
+
           {/* Export Project Button */}
           <Button
             onClick={handleExportProject}
-            disabled={isExporting || isDeleting}
+            disabled={isExporting || isDeleting || isRenaming}
             className="w-full gap-2"
             variant="outline"
           >
@@ -193,7 +281,7 @@ export function ProjectInfoDialog({ project, open, onOpenChange, onProjectDelete
               <Button
                 variant="destructive"
                 className="w-full gap-2"
-                disabled={isExporting || isDeleting}
+                disabled={isExporting || isDeleting || isRenaming}
               >
                 <Trash2 className="h-4 w-4" />
                 Delete Project

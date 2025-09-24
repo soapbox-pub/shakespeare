@@ -72,7 +72,7 @@ export function useGitHubOAuth() {
       const params = new URLSearchParams({
         client_id: clientId,
         redirect_uri: window.location.origin + '/oauth/github',
-        scope: 'repo',
+        scope: 'repo workflow',
         state: state,
         code_challenge: codeChallenge,
         code_challenge_method: 'S256',

@@ -42,9 +42,8 @@ describe('useAIProjectId', () => {
 
     // Mock parseProviderModel
     mockParseProviderModel.mockReturnValue({
-      provider: 'openai',
+      provider: { id: 'openai', apiKey: 'test-key', baseURL: 'https://api.openai.com/v1' },
       model: 'gpt-4',
-      connection: { apiKey: 'test-key', baseURL: 'https://api.openai.com/v1' }
     });
 
     // Mock createAIClient
@@ -86,7 +85,7 @@ describe('useAIProjectId', () => {
       setProvider: vi.fn(),
       removeProvider: vi.fn(),
       setProviders: vi.fn(),
-      
+
       addRecentlyUsedModel: vi.fn(),
     });
 
@@ -110,7 +109,7 @@ describe('useAIProjectId', () => {
       setProvider: vi.fn(),
       removeProvider: vi.fn(),
       setProviders: vi.fn(),
-      
+
       addRecentlyUsedModel: vi.fn(),
     });
 
@@ -134,7 +133,7 @@ describe('useAIProjectId', () => {
       setProvider: vi.fn(),
       removeProvider: vi.fn(),
       setProviders: vi.fn(),
-      
+
       addRecentlyUsedModel: vi.fn(),
     });
 
@@ -157,7 +156,7 @@ describe('useAIProjectId', () => {
       setProvider: vi.fn(),
       removeProvider: vi.fn(),
       setProviders: vi.fn(),
-      
+
       addRecentlyUsedModel: vi.fn(),
     });
 
@@ -170,7 +169,7 @@ describe('useAIProjectId', () => {
       { id: 'openai', apiKey: 'test-key', baseURL: 'https://api.openai.com/v1' }
     ]);
     expect(mockCreateAIClient).toHaveBeenCalledWith(
-      { apiKey: 'test-key', baseURL: 'https://api.openai.com/v1' },
+      { id: 'openai', apiKey: 'test-key', baseURL: 'https://api.openai.com/v1' },
       undefined
     );
   });
@@ -188,7 +187,7 @@ describe('useAIProjectId', () => {
       setProvider: vi.fn(),
       removeProvider: vi.fn(),
       setProviders: vi.fn(),
-      
+
       addRecentlyUsedModel: vi.fn(),
     });
 
@@ -241,7 +240,7 @@ describe('useAIProjectId', () => {
       setProvider: vi.fn(),
       removeProvider: vi.fn(),
       setProviders: vi.fn(),
-      
+
       addRecentlyUsedModel: vi.fn(),
     });
 
@@ -296,7 +295,7 @@ describe('useAIProjectId', () => {
       setProvider: vi.fn(),
       removeProvider: vi.fn(),
       setProviders: vi.fn(),
-      
+
       addRecentlyUsedModel: vi.fn(),
     });
 
@@ -346,7 +345,7 @@ describe('useAIProjectId', () => {
       setProvider: vi.fn(),
       removeProvider: vi.fn(),
       setProviders: vi.fn(),
-      
+
       addRecentlyUsedModel: vi.fn(),
     });
 
@@ -396,7 +395,7 @@ describe('useAIProjectId', () => {
       setProvider: vi.fn(),
       removeProvider: vi.fn(),
       setProviders: vi.fn(),
-      
+
       addRecentlyUsedModel: vi.fn(),
     });
 
@@ -453,7 +452,7 @@ describe('useAIProjectId', () => {
       setProvider: vi.fn(),
       removeProvider: vi.fn(),
       setProviders: vi.fn(),
-      
+
       addRecentlyUsedModel: vi.fn(),
     });
 

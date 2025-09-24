@@ -10,7 +10,6 @@ interface UseAIChatSessionOptions {
   projectId: string;
   tools?: Record<string, OpenAI.Chat.Completions.ChatCompletionTool>;
   customTools?: Record<string, Tool<unknown>>;
-  systemPrompt?: string;
   maxSteps?: number;
   onUpdateMetadata?: (title: string, description: string) => void;
 }
@@ -30,7 +29,6 @@ export function useAIChat({
   projectId,
   tools = {},
   customTools = {},
-  systemPrompt,
   maxSteps = 50,
   onUpdateMetadata
 }: UseAIChatSessionOptions) {
@@ -46,14 +44,14 @@ export function useAIChat({
 
   const initSession = useCallback(async () => {
     // Load or update session
-    const session = await sessionManager.loadSession(projectId, tools, customTools, systemPrompt, maxSteps);
+    const session = await sessionManager.loadSession(projectId, tools, customTools, maxSteps);
     // Initialize individual state variables from existing session
     setMessages([...session.messages]);
     setStreamingMessage(session.streamingMessage ? { ...session.streamingMessage } : undefined);
     setIsLoading(session.isLoading);
     setTotalCost(session.totalCost || 0);
     setLastInputTokens(session.lastInputTokens || 0);
-  }, [sessionManager, projectId, tools, customTools, systemPrompt, maxSteps]);
+  }, [sessionManager, projectId, tools, customTools, maxSteps]);
 
   // Initialize session
   useEffect(() => {

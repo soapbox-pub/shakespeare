@@ -59,7 +59,7 @@ class MockFS implements JSRuntimeFS {
       error.code = 'ENOENT';
       throw error;
     }
-    
+
     const entries: string[] = [];
 
     // Find subdirectories
@@ -124,6 +124,63 @@ class MockFS implements JSRuntimeFS {
 
   async rmdir(path: string): Promise<void> {
     this.dirs.delete(path);
+  }
+
+  async rename(oldPath: string, newPath: string): Promise<void> {
+    // Handle both files and directories
+    if (this.files.has(oldPath)) {
+      const content = this.files.get(oldPath);
+      this.files.delete(oldPath);
+      this.files.set(newPath, content!);
+    }
+
+    if (this.dirs.has(oldPath)) {
+      this.dirs.delete(oldPath);
+      this.dirs.add(newPath);
+
+      // Also move all subdirectories and files
+      const itemsToMove: Array<{ oldPath: string; newPath: string; isDir: boolean }> = [];
+
+      // Collect directories to move
+      for (const dir of this.dirs) {
+        if (dir.startsWith(oldPath + '/')) {
+          const relativePath = dir.slice(oldPath.length);
+          itemsToMove.push({
+            oldPath: dir,
+            newPath: newPath + relativePath,
+            isDir: true
+          });
+        }
+      }
+
+      // Collect files to move
+      for (const file of this.files.keys()) {
+        if (file.startsWith(oldPath + '/')) {
+          const relativePath = file.slice(oldPath.length);
+          itemsToMove.push({
+            oldPath: file,
+            newPath: newPath + relativePath,
+            isDir: false
+          });
+        }
+      }
+
+      // Move all items
+      for (const item of itemsToMove) {
+        if (item.isDir) {
+          this.dirs.delete(item.oldPath);
+          this.dirs.add(item.newPath);
+        } else {
+          const content = this.files.get(item.oldPath);
+          this.files.delete(item.oldPath);
+          this.files.set(item.newPath, content!);
+        }
+      }
+    }
+  }
+
+  async lstat(path: string): Promise<{ isDirectory(): boolean; isFile(): boolean; mtimeMs?: number }> {
+    return this.stat(path);
   }
 }
 
@@ -209,6 +266,70 @@ describe('ProjectsManager', () => {
 
       const project = await projectsManager.getProject('non-existent');
       expect(project).toBeNull();
+    });
+  });
+
+  describe('renameProject', () => {
+    it('should rename a project directory', async () => {
+      await projectsManager.init();
+
+      // Create a project
+      await fs.mkdir('/projects/old-name');
+      await fs.writeFile('/projects/old-name/package.json', '{}');
+
+      // Verify the project exists
+      const originalProject = await projectsManager.getProject('old-name');
+      expect(originalProject).not.toBeNull();
+
+      // Rename the project
+      const renamedProject = await projectsManager.renameProject('old-name', 'new-name');
+
+      // Verify the renamed project
+      expect(renamedProject.id).toBe('new-name');
+      expect(renamedProject.name).toBe('new-name');
+      expect(renamedProject.path).toBe('/projects/new-name');
+
+      // Verify old project no longer exists
+      const oldProject = await projectsManager.getProject('old-name');
+      expect(oldProject).toBeNull();
+
+      // Verify new project exists
+      const newProject = await projectsManager.getProject('new-name');
+      expect(newProject).not.toBeNull();
+      expect(newProject?.id).toBe('new-name');
+    });
+
+    it('should throw error when old project does not exist', async () => {
+      await projectsManager.init();
+
+      await expect(projectsManager.renameProject('non-existent', 'new-name'))
+        .rejects.toThrow('Project with ID "non-existent" does not exist');
+    });
+
+    it('should throw error when new project name already exists', async () => {
+      await projectsManager.init();
+
+      // Create two projects
+      await fs.mkdir('/projects/project-1');
+      await fs.mkdir('/projects/project-2');
+
+      await expect(projectsManager.renameProject('project-1', 'project-2'))
+        .rejects.toThrow('Project with ID "project-2" already exists');
+    });
+
+    it('should validate and normalize project names', async () => {
+      await projectsManager.init();
+
+      // Create a project
+      await fs.mkdir('/projects/old-name');
+
+      // Try to rename with invalid characters
+      await expect(projectsManager.renameProject('old-name', 'New Name With Spaces'))
+        .rejects.toThrow('Project name must contain only lowercase letters, numbers, and hyphens');
+
+      // Try to rename with empty name
+      await expect(projectsManager.renameProject('old-name', ''))
+        .rejects.toThrow('Project name cannot be empty');
     });
   });
 });

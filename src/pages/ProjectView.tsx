@@ -6,7 +6,7 @@ import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { ChatPane, type ChatPaneRef } from '@/components/Shakespeare/ChatPane';
 import { PreviewPane } from '@/components/Shakespeare/PreviewPane';
 import { ProjectSidebar } from '@/components/ProjectSidebar';
-import { ProjectInfoDialog } from '@/components/ProjectInfoDialog';
+import { ProjectDetailsDialog } from '@/components/ProjectDetailsDialog';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -21,6 +21,7 @@ import { StarButton } from '@/components/StarButton';
 import { useBuildProject } from '@/hooks/useBuildProject';
 import { useIsProjectPreviewable } from '@/hooks/useIsProjectPreviewable';
 import { ConsoleMessage } from '@/types/console';
+import { useConsoleMessages, clearConsoleMessages } from '@/hooks/useConsoleMessages';
 
 export function ProjectView() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -30,7 +31,7 @@ export function ProjectView() {
   const [activeTab, setActiveTab] = useState<'preview' | 'code'>('preview');
   const [mobileView, setMobileView] = useState<'chat' | 'preview' | 'code'>('chat');
   const [isAILoading, setIsAILoading] = useState(false);
-  const [isProjectInfoOpen, setIsProjectInfoOpen] = useState(false);
+  const [isProjectDetailsOpen, setIsProjectDetailsOpen] = useState(false);
   const [consoleMessages, setConsoleMessages] = useState<ConsoleMessage[]>([]);
   const projectsManager = useProjectsManager();
   const chatPaneRef = useRef<ChatPaneRef>(null);
@@ -64,6 +65,8 @@ export function ProjectView() {
       setProject(projectData);
       // Clear console messages when switching projects
       setConsoleMessages([]);
+      // Also clear global console messages
+      clearConsoleMessages();
     } catch (error) {
       console.error('Failed to load project:', error);
     } finally {
@@ -74,6 +77,22 @@ export function ProjectView() {
   useEffect(() => {
     loadProject();
   }, [loadProject]);
+
+  // Sync console messages with global state
+  const { messages: globalMessages } = useConsoleMessages();
+  useEffect(() => {
+    setConsoleMessages(globalMessages);
+  }, [globalMessages]);
+
+  // Reset view state when projectId changes
+  useEffect(() => {
+    if (projectId) {
+      // Reset to preview tab if the new project is previewable, otherwise code
+      setActiveTab(isPreviewable ? 'preview' : 'code');
+      // Reset mobile view to chat when switching projects
+      setMobileView('chat');
+    }
+  }, [projectId, isPreviewable]);
 
   // Switch away from preview mode if project is not previewable
   useEffect(() => {
@@ -156,7 +175,7 @@ export function ProjectView() {
                 <Button
                   variant="ghost"
                   className="block p-0 h-auto text-sm font-semibold truncate hover:bg-transparent hover:text-primary"
-                  onClick={() => setIsProjectInfoOpen(true)}
+                  onClick={() => setIsProjectDetailsOpen(true)}
                 >
                   {project.name}
                 </Button>
@@ -178,6 +197,7 @@ export function ProjectView() {
                   projectId={project.id}
                   projectName={project.name}
                   onNewChat={handleNewChat}
+                  onProjectDetails={() => setIsProjectDetailsOpen(true)}
                   isLoading={isAILoading}
                   isBuildLoading={build.isPending}
                   onFirstInteraction={handleFirstInteraction}
@@ -303,12 +323,12 @@ export function ProjectView() {
           </div>
         </div>
 
-        {/* Project Info Dialog */}
+        {/* Project Details Dialog */}
         {project && (
-          <ProjectInfoDialog
+          <ProjectDetailsDialog
             project={project}
-            open={isProjectInfoOpen}
-            onOpenChange={setIsProjectInfoOpen}
+            open={isProjectDetailsOpen}
+            onOpenChange={setIsProjectDetailsOpen}
             onProjectDeleted={handleProjectDeleted}
           />
         )}
@@ -365,7 +385,7 @@ export function ProjectView() {
                           <Button
                             variant="ghost"
                             className="block p-0 h-auto font-semibold text-lg truncate hover:bg-transparent hover:text-primary"
-                            onClick={() => setIsProjectInfoOpen(true)}
+                            onClick={() => setIsProjectDetailsOpen(true)}
                           >
                             {project.name}
                           </Button>
@@ -388,6 +408,7 @@ export function ProjectView() {
                             projectId={project.id}
                             projectName={project.name}
                             onNewChat={handleNewChat}
+                            onProjectDetails={() => setIsProjectDetailsOpen(true)}
                             isLoading={isAILoading}
                             isBuildLoading={build.isPending}
                             onFirstInteraction={handleFirstInteraction}
@@ -460,12 +481,12 @@ export function ProjectView() {
         </div>
       </div>
 
-      {/* Project Info Dialog */}
+      {/* Project Details Dialog */}
       {project && (
-        <ProjectInfoDialog
+        <ProjectDetailsDialog
           project={project}
-          open={isProjectInfoOpen}
-          onOpenChange={setIsProjectInfoOpen}
+          open={isProjectDetailsOpen}
+          onOpenChange={setIsProjectDetailsOpen}
           onProjectDeleted={handleProjectDeleted}
         />
       )}

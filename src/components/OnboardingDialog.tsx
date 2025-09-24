@@ -334,8 +334,7 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
               handleCreditsDialogClose();
             }
           }}
-          providerId="shakespeare"
-          connection={SHAKESPEARE_PROVIDER}
+          provider={SHAKESPEARE_PROVIDER}
         />
       )}
     </>

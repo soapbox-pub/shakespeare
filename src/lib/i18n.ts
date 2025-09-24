@@ -98,8 +98,6 @@ const resources = {
       getHelp: '🔧 Get help with debugging and optimization',
       buildDeploy: '🚀 Build and deploy your project',
       aiNotConfigured: 'AI Assistant Not Configured',
-      configureAI: 'Please configure your AI settings to start building with AI assistance.',
-      useMenuForAI: 'Use the menu in the top bar to access AI Settings.',
       askToAddFeatures: 'Ask me to add features, edit files, or build your project...',
       selectModelFirst: 'Please select a model to start chatting...',
       sendMessage: 'Send message',
@@ -256,6 +254,11 @@ const resources = {
       recentlyUsed: 'Recently Used',
       errorLoadingModels: 'Error Loading Models',
 
+      // API Authentication Errors
+      apiAuthenticationFailed: 'API Authentication Failed',
+      invalidApiKey: 'Invalid API key for {{provider}}. Please check your API key in Settings.',
+      checkApiKeySettings: 'Check API Key Settings',
+
       // Context and Cost
       contextUsage: 'Context usage: {{tokens}} / {{total}} tokens ({{percentage}}%)',
       totalCostSession: 'Total cost for this chat session',
@@ -394,8 +397,6 @@ const resources = {
       getHelp: '🔧 Obtenha ajuda com depuração e otimização',
       buildDeploy: '🚀 Construa e implante seu projeto',
       aiNotConfigured: 'Assistente de IA Não Configurado',
-      configureAI: 'Configure suas configurações de IA para começar a construir com assistência de IA.',
-      useMenuForAI: 'Use o menu na barra superior para acessar as Configurações de IA.',
       askToAddFeatures: 'Peça para adicionar recursos, editar arquivos ou construir seu projeto...',
       selectModelFirst: 'Selecione um modelo para começar a conversar...',
       sendMessage: 'Enviar mensagem',
@@ -552,6 +553,11 @@ const resources = {
       recentlyUsed: 'Usados Recentemente',
       errorLoadingModels: 'Erro ao Carregar Modelos',
 
+      // API Authentication Errors
+      apiAuthenticationFailed: 'Falha na Autenticação da API',
+      invalidApiKey: 'Chave de API inválida para {{provider}}. Verifique sua chave de API nas Configurações.',
+      checkApiKeySettings: 'Verificar Configurações da Chave de API',
+
       // Context and Cost
       contextUsage: 'Uso de contexto: {{tokens}} / {{total}} tokens ({{percentage}}%)',
       totalCostSession: 'Custo total para esta sessão de chat',
@@ -690,8 +696,6 @@ const resources = {
       getHelp: '🔧 获得调试和优化帮助',
       buildDeploy: '🚀 构建和部署您的项目',
       aiNotConfigured: 'AI助手未配置',
-      configureAI: '请配置您的AI设置以开始使用AI助手构建。',
-      useMenuForAI: '使用顶部栏中的菜单访问AI设置。',
       askToAddFeatures: '请我添加功能、编辑文件或构建您的项目...',
       selectModelFirst: '请先选择一个模型开始聊天...',
       sendMessage: '发送消息',
@@ -848,6 +852,11 @@ const resources = {
       recentlyUsed: '最近使用',
       errorLoadingModels: '加载模型时出错',
 
+      // API Authentication Errors
+      apiAuthenticationFailed: 'API身份验证失败',
+      invalidApiKey: '{{provider}}的API密钥无效。请在设置中检查您的API密钥。',
+      checkApiKeySettings: '检查API密钥设置',
+
       // Context and Cost
       contextUsage: '上下文使用：{{tokens}} / {{total}} 令牌 ({{percentage}}%)',
       totalCostSession: '此聊天会话的总费用',
@@ -986,8 +995,6 @@ const resources = {
       getHelp: '🔧 Sami taimako da gyara kuskure da haɓakawa',
       buildDeploy: '🚀 Gina da tura aikinku',
       aiNotConfigured: 'Mataimakin AI Ba a Saita ba',
-      configureAI: 'Da fatan za a saita saitunan AI don farawa ginawa da taimakon AI.',
-      useMenuForAI: 'Yi amfani da menu a saman mashigi don shiga Saitunan AI.',
       askToAddFeatures: 'Roƙe ni in ƙara fasaloli, gyara fayiloli, ko gina aikinku...',
       selectModelFirst: 'Da fatan za a zaɓi samfuri don farawa hira...',
       sendMessage: 'Aika saƙo',
@@ -1144,6 +1151,11 @@ const resources = {
       recentlyUsed: 'An yi amfani da su kwanan nan',
       errorLoadingModels: 'Kuskure wajen Lodin Samfura',
 
+      // API Authentication Errors
+      apiAuthenticationFailed: 'Gazawar Tabbatarwar API',
+      invalidApiKey: 'Maɓallin API na {{provider}} ba daidai ba ne. Da fatan za a duba maɓallin API a cikin Saitunan.',
+      checkApiKeySettings: 'Duba Saitunan Maɓallin API',
+
       // Context and Cost
       contextUsage: 'Amfanin mahallin: {{tokens}} / {{total}} alamomi ({{percentage}}%)',
       totalCostSession: 'Jimlar farashi don wannan zaman hira',
@@ -1282,8 +1294,6 @@ const resources = {
       getHelp: '🔧 Gba iranlọwọ pẹlu atunṣe ati imudara',
       buildDeploy: '🚀 Kọ ati gbe iṣẹ akanṣe rẹ lọ',
       aiNotConfigured: 'Oluranlọwọ AI Ko Tunto',
-      configureAI: 'Jọwọ tunto awọn eto AI rẹ lati bẹrẹ kikọ pẹlu iranlọwọ AI.',
-      useMenuForAI: 'Lo akojọ aṣayan ni oke ọpa lati wọle si Awọn eto AI.',
       askToAddFeatures: 'Beere mi lati fi awọn ẹya kun, ṣatunkọ awọn faili, tabi kọ iṣẹ akanṣe rẹ...',
       selectModelFirst: 'Jọwọ yan awoṣe lati bẹrẹ ibaraẹnisọrọ...',
       sendMessage: 'Fi ifiranṣẹ ranṣẹ',
@@ -1578,8 +1588,6 @@ const resources = {
       getHelp: '🔧 Nweta enyemaka na debugging na optimization',
       buildDeploy: '🚀 Wuo ma bufee ọrụ gị',
       aiNotConfigured: 'Onye Enyemaka AI Ahazighị',
-      configureAI: 'Biko hazie ntọala AI gị iji malite iwu na enyemaka AI.',
-      useMenuForAI: 'Jiri menu dị n\'elu okporo iji nweta Ntọala AI.',
       askToAddFeatures: 'Rịọ m ka m tinye atụmatụ, dezie faịlụ, ma ọ bụ wuo ọrụ gị...',
       selectModelFirst: 'Biko họrọ ụdịdị iji malite ikwu okwu...',
       sendMessage: 'Ziga ozi',

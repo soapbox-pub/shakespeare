@@ -6,6 +6,8 @@ import { createAIClient } from './ai-client';
 import type { Tool } from './tools/Tool';
 import type { NUser } from '@nostrify/react/login';
 import type { AIProvider } from '@/contexts/AISettingsContext';
+import { makeSystemPrompt } from './system';
+import { NostrMetadata } from '@nostrify/nostrify';
 
 export type AIMessage = OpenAI.Chat.Completions.ChatCompletionMessageParam | {
   role: 'assistant';
@@ -18,7 +20,6 @@ export interface SessionState {
   projectId: string;
   tools: Record<string, OpenAI.Chat.Completions.ChatCompletionTool>;
   customTools: Record<string, Tool<unknown>>;
-  systemPrompt?: string;
   maxSteps?: number;
   messages: AIMessage[];
   streamingMessage?: {
@@ -55,13 +56,13 @@ export class SessionManager {
   private fs: JSRuntimeFS;
   private aiSettings: { providers: AIProvider[] };
   private getProviderModels?: () => Array<{ id: string; provider: string; contextLength?: number; pricing?: { prompt: import('decimal.js').Decimal; completion: import('decimal.js').Decimal } }>;
-  private getCurrentUser?: () => NUser | undefined;
+  private getCurrentUser?: () => { user?: NUser; metadata?: NostrMetadata };
 
   constructor(
     fs: JSRuntimeFS,
     aiSettings: { providers: AIProvider[] },
     getProviderModels?: () => Array<{ id: string; provider: string; contextLength?: number; pricing?: { prompt: import('decimal.js').Decimal; completion: import('decimal.js').Decimal } }>,
-    getCurrentUser?: () => NUser | undefined
+    getCurrentUser?: () => { user?: NUser; metadata?: NostrMetadata },
   ) {
     this.fs = fs;
     this.aiSettings = aiSettings;
@@ -76,7 +77,6 @@ export class SessionManager {
     projectId: string,
     tools: Record<string, OpenAI.Chat.Completions.ChatCompletionTool>,
     customTools: Record<string, Tool<unknown>>,
-    systemPrompt?: string,
     maxSteps?: number
   ): Promise<SessionState> {
     let messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [];
@@ -98,7 +98,6 @@ export class SessionManager {
       projectId,
       tools,
       customTools,
-      systemPrompt,
       maxSteps,
       isLoading: false,
       lastActivity: new Date(),
@@ -114,7 +113,6 @@ export class SessionManager {
     session.tools = tools;
 
     session.customTools = customTools;
-    session.systemPrompt = systemPrompt;
     session.maxSteps = maxSteps;
 
     this.sessions.set(projectId, session);
@@ -203,12 +201,12 @@ export class SessionManager {
     try {
       // Parse provider and model
       const parsed = parseProviderModel(providerModel, this.aiSettings.providers);
-      const connectionConfig = parsed.connection;
-      const modelName = parsed.model;
+      const provider = parsed.provider;
+      const model = parsed.model;
 
       // Initialize OpenAI client
-      const currentUser = this.getCurrentUser?.();
-      const openai = createAIClient(connectionConfig, currentUser);
+      const { user, metadata } = this.getCurrentUser?.() ?? {};
+      const openai = createAIClient(provider, user);
 
       let stepCount = 0;
       const maxSteps = session.maxSteps || 50;
@@ -230,14 +228,25 @@ export class SessionManager {
           tool_calls: undefined
         };
 
+        const systemPrompt = await makeSystemPrompt({
+          cwd: `/projects/${projectId}`,
+          fs: this.fs,
+          mode: "agent",
+          name: "Shakespeare",
+          profession: "software extraordinaire",
+          tools: Object.values(session.tools),
+          user,
+          metadata,
+        });
+
         // Prepare messages for AI
-        const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = session.systemPrompt
-          ? [{ role: 'system', content: session.systemPrompt }, ...session.messages]
+        const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = systemPrompt
+          ? [{ role: 'system', content: systemPrompt }, ...session.messages]
           : session.messages;
 
         // Prepare completion options
         const completionOptions: OpenAI.Chat.Completions.ChatCompletionCreateParams = {
-          model: modelName,
+          model,
           messages,
           tools: session.tools && Object.keys(session.tools).length > 0 ? Object.values(session.tools) : undefined,
           tool_choice: session.tools && Object.keys(session.tools).length > 0 ? 'auto' : undefined,
@@ -258,7 +267,7 @@ export class SessionManager {
         let finishReason: string | null = null;
 
         // Process the stream
-        let usage: { prompt_tokens: number; completion_tokens: number } | undefined;
+        let usage: { prompt_tokens: number; completion_tokens: number; cost?: number } | undefined;
         for await (const chunk of stream) {
           // Check if session was cancelled
           if (!session.isLoading) break;
@@ -319,10 +328,22 @@ export class SessionManager {
 
           // Capture usage data if available (some providers include it in the final chunk)
           if (chunk.usage) {
+            const cost = 'cost' in chunk.usage && typeof chunk.usage.cost === 'number'
+              ? chunk.usage.cost
+              : undefined;
+
             usage = {
               prompt_tokens: chunk.usage.prompt_tokens || 0,
-              completion_tokens: chunk.usage.completion_tokens || 0
+              completion_tokens: chunk.usage.completion_tokens || 0,
+              cost,
             };
+          }
+        }
+
+        // Fix tool calls with empty arguments
+        for (const toolCall of accumulatedToolCalls) {
+          if (toolCall.type === 'function') {
+            toolCall.function.arguments = toolCall.function.arguments || '{}';
           }
         }
 
@@ -461,20 +482,28 @@ export class SessionManager {
   /**
    * Update session cost and context usage based on usage data
    */
-  private updateSessionCost(projectId: string, usage: { prompt_tokens: number; completion_tokens: number }, providerModel: string): void {
+  private updateSessionCost(projectId: string, usage: { prompt_tokens: number; completion_tokens: number; cost?: number }, providerModel: string): void {
     if (!this.getProviderModels) return;
 
     const session = this.sessions.get(projectId);
     if (!session) return;
 
+    // If provider gives direct cost, use it
+    if (typeof usage.cost === 'number') {
+      session.totalCost = (session.totalCost || 0) + usage.cost;
+      this.emit('costUpdated', projectId, session.totalCost);
+      return;
+    }
+
+    // Otherwise, get the cost from the models endpoint
     try {
       const parsed = parseProviderModel(providerModel, this.aiSettings.providers);
       const modelName = parsed.model;
-      const providerName = parsed.provider;
+      const provider = parsed.provider;
 
       // Find the model in provider models to get pricing and context length
       const models = this.getProviderModels();
-      const model = models.find(m => m.id === modelName && m.provider === providerName);
+      const model = models.find(m => m.id === modelName && m.provider === provider.id);
 
       // Update input tokens for context usage tracking
       session.lastInputTokens = usage.prompt_tokens;
@@ -491,7 +520,6 @@ export class SessionManager {
 
       // Update session total cost
       session.totalCost = (session.totalCost || 0) + requestCost;
-
       this.emit('costUpdated', projectId, session.totalCost);
     } catch (error) {
       console.warn('Failed to calculate session cost:', error);

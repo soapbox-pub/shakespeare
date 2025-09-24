@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { useFS } from '@/hooks/useFS';
+import { useConsoleMessages, addConsoleMessage, clearConsoleMessages, type ConsoleMessage } from '@/hooks/useConsoleMessages';
 import { useBuildProject } from '@/hooks/useBuildProject';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
@@ -29,6 +30,7 @@ import { ConsoleMessage } from '@/types/console';
 import { FileTree } from './FileTree';
 import { FileEditor } from './FileEditor';
 import { DeployDialog } from '@/components/DeployDialog';
+import { useSearchParams } from 'react-router-dom';
 
 // Get iframe domain from environment variable
 const IFRAME_DOMAIN = import.meta.env.VITE_IFRAME_DOMAIN || 'local-shakespeare.dev';
@@ -97,7 +99,7 @@ export function PreviewPane({ projectId, activeTab, config = {} }: PreviewPanePr
   const [currentPath, setCurrentPath] = useState('/');
   const [navigationHistory, setNavigationHistory] = useState<string[]>(['/']);
   const [historyIndex, setHistoryIndex] = useState(0);
-
+const [copiedMessageId, setCopiedMessageId] = useState<number | null>(null);
   const [deployDialogOpen, setDeployDialogOpen] = useState(false);
 
   // Use external state if provided, otherwise use internal state
@@ -107,15 +109,39 @@ export function PreviewPane({ projectId, activeTab, config = {} }: PreviewPanePr
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const { fs } = useFS();
   const projectsManager = useProjectsManager();
+  const { messages: consoleMessages } = useConsoleMessages();
   const { mutate: buildProject, isPending: isBuildLoading } = useBuildProject(projectId);
 
-  const handleBuildProject = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [shouldBuild, setShouldBuild] = useState(false);
+
+  const handleBuildProject = useCallback(() => {
     buildProject(undefined, {
       onError: (error) => {
         console.error('Build failed:', error);
       }
     });
-  };
+  }, [buildProject]);
+
+  // Handle "build" URL parameter on initial load
+  useEffect(() => {
+    if (searchParams.has('build')) {
+      setShouldBuild(true);
+
+      // Remove the build parameter from URL
+      const newSearchParams = new URLSearchParams(searchParams);
+      newSearchParams.delete('build');
+      setSearchParams(newSearchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+
+  // Build automatically if "build" parameter was present
+  useEffect(() => {
+    if (shouldBuild && isPreviewable && !isBuildLoading) {
+      setShouldBuild(false);
+      handleBuildProject();
+    }
+  }, [isBuildLoading, isPreviewable, handleBuildProject, shouldBuild]);
 
   const loadFileContent = useCallback(async (filePath: string) => {
     setIsLoading(true);
@@ -255,17 +281,23 @@ export function PreviewPane({ projectId, activeTab, config = {} }: PreviewPanePr
       normalizedLevel = params.level as ConsoleMessage['level'];
     }
 
-    const newConsoleMessage: ConsoleMessage = {
-      id: Date.now(),
-      level: normalizedLevel,
-      message: params.message,
-    };
+    // Add to global console messages
+    addConsoleMessage(normalizedLevel, params.message);
 
-    setConsoleMessages(prev => [...prev, newConsoleMessage]);
+    // Also update local state if provided (for external systems)
+    if (setConsoleMessages !== setInternalConsoleMessages) {
+      const newMessage: ConsoleMessage = {
+        id: Date.now() + Math.random(),
+        level: normalizedLevel,
+        message: params.message,
+        timestamp: Date.now(),
+      };
+      setConsoleMessages(prev => [...prev, newMessage]);
+    }
 
     // Log to parent console for debugging with appropriate level
     console[normalizedLevel](`[IFRAME ${params.level.toUpperCase()}] ${params.message}`);
-  }, [setConsoleMessages]);
+  }, [setConsoleMessages, setInternalConsoleMessages]);
 
   const handleFetch = useCallback(async (request: JSONRPCRequest) => {
     const { params, id } = request;
@@ -397,6 +429,13 @@ export function PreviewPane({ projectId, activeTab, config = {} }: PreviewPanePr
     }
   }, [selectedFile, loadFileContent]);
 
+  // Reset selected file when projectId changes
+  useEffect(() => {
+    setSelectedFile(null);
+    setFileContent('');
+    setMobileCodeView('explorer');
+  }, [projectId]);
+
   useEffect(() => {
     checkForBuiltProject();
   }, [checkForBuiltProject]);
@@ -438,7 +477,30 @@ export function PreviewPane({ projectId, activeTab, config = {} }: PreviewPanePr
     const [isOpen, setIsOpen] = useState(false);
     const copiedMessageRef = useRef<number | null>(null);
     const [_, setCopyUpdate] = useState(0);
-    
+
+    const getLevelColor = (level: ConsoleMessage['level']) => {
+      switch (level) {
+        case 'error': return 'text-red-500';
+        case 'warn': return 'text-yellow-500';
+        case 'info': return 'text-blue-500';
+        case 'debug': return 'text-gray-500';
+        default: return 'text-gray-400';
+      }
+    };
+
+    const getLevelIcon = (level: ConsoleMessage['level']) => {
+      switch (level) {
+        case 'error': return '!';
+        case 'warn': return '⚠';
+        case 'info': return 'ℹ';
+        case 'debug': return '🔍';
+        default: return '•';
+      }
+    };
+
+    const clearConsole = () => {
+      clearConsoleMessages();
+    };
     const copyMessageToClipboard = async (msg: ConsoleMessage) => {
       try {
         await navigator.clipboard.writeText(msg.message);

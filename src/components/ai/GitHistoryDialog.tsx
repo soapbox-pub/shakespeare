@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 
@@ -7,6 +8,7 @@ import { History, GitCommit, RotateCcw, AlertTriangle, ChevronDown, ChevronUp } 
 import { useGit } from '@/hooks/useGit';
 import { useFS } from '@/hooks/useFS';
 import { useToast } from '@/hooks/useToast';
+import { useGitStatus } from '@/hooks/useGitStatus';
 
 interface GitCommit {
   oid: string;
@@ -45,6 +47,8 @@ export function GitHistoryDialog({ projectId, open: controlledOpen, onOpenChange
   const { fs } = useFS();
   const { git } = useGit();
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const { data: gitStatus } = useGitStatus(projectId);
 
   const loadGitHistory = useCallback(async () => {
     setIsLoading(true);
@@ -213,8 +217,9 @@ ${commitsToRevert.map(c => {
         description: `Reverted ${commitsToRevert.length} commit(s) back to ${targetCommit.oid.substring(0, 7)}`,
       });
 
-      // Reload the git history to show the new commit
-      await loadGitHistory();
+      // Close the dialog and navigate to project page with build query parameter
+      setIsOpen(false);
+      navigate(`/project/${projectId}?build`);
 
     } catch (err) {
       console.error('Failed to rollback:', err);
@@ -226,7 +231,106 @@ ${commitsToRevert.map(c => {
     } finally {
       setIsRollingBack(null);
     }
-  }, [git, fs, projectId, toast, loadGitHistory]);
+  }, [git, fs, projectId, toast, navigate, setIsOpen]);
+
+  const resetToHead = useCallback(async () => {
+    if (!fs) return;
+
+    setIsRollingBack('HEAD');
+
+    try {
+      const projectPath = `/projects/${projectId}`;
+
+      // Get the current HEAD commit
+      const headCommit = await git.resolveRef({
+        dir: projectPath,
+        ref: 'HEAD',
+      });
+
+      // Get all files from HEAD
+      const headFiles = await git.listFiles({
+        dir: projectPath,
+        ref: 'HEAD',
+      });
+
+      // Get current files in working directory
+      const currentFiles = await git.listFiles({
+        dir: projectPath,
+      });
+
+      // Remove files that don't exist in HEAD (equivalent to git clean -fd for tracked files)
+      for (const filepath of currentFiles) {
+        if (!headFiles.includes(filepath)) {
+          try {
+            await fs.unlink(`${projectPath}/${filepath}`);
+          } catch (err) {
+            console.warn(`Could not remove ${filepath}:`, err);
+          }
+        }
+      }
+
+      // Reset all files to HEAD state (equivalent to git reset --hard HEAD)
+      for (const filepath of headFiles) {
+        try {
+          const { blob } = await git.readBlob({
+            dir: projectPath,
+            oid: headCommit,
+            filepath,
+          });
+
+          // Ensure directory exists
+          const dirPath = filepath.split('/').slice(0, -1).join('/');
+          if (dirPath) {
+            await fs.mkdir(`${projectPath}/${dirPath}`, { recursive: true });
+          }
+
+          // Write the file
+          await fs.writeFile(`${projectPath}/${filepath}`, blob);
+        } catch (err) {
+          console.error(`Failed to reset ${filepath}:`, err);
+        }
+      }
+
+      // Remove untracked files and directories (equivalent to git clean -fd)
+      // Get git status to find untracked files
+      const status = await git.statusMatrix({
+        dir: projectPath,
+      });
+
+      const untrackedFiles = status
+        .filter(([, headStatus, workdirStatus, stageStatus]) =>
+          headStatus === 0 && workdirStatus === 1 && stageStatus === 0
+        )
+        .map(([filepath]) => filepath);
+
+      for (const filepath of untrackedFiles) {
+        try {
+          await fs.unlink(`${projectPath}/${filepath}`);
+        } catch (err) {
+          console.warn(`Could not remove untracked file ${filepath}:`, err);
+        }
+      }
+
+      toast({
+        title: "Reset successful",
+        description: "All changes have been discarded and working directory reset to HEAD",
+      });
+
+      // Close the dialog and navigate to project page with build query parameter
+      setIsOpen(false);
+      navigate(`/project/${projectId}?build`);
+
+    } catch (err) {
+      console.error('Failed to reset:', err);
+      toast({
+        title: "Reset failed",
+        description: err instanceof Error ? err.message : 'Failed to reset to HEAD',
+        variant: "destructive",
+      });
+    } finally {
+      setIsRollingBack(null);
+    }
+  }, [git, fs, projectId, toast, navigate, setIsOpen]);
 
   useEffect(() => {
     if (isOpen) {
@@ -372,15 +476,73 @@ ${commitsToRevert.map(c => {
 
                         <div className="flex items-center gap-2 shrink-0">
                           {index === 0 ? (
-                            // Show "Current" for the most recent commit
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-7 px-2 text-xs gap-1 cursor-default"
-                              disabled
-                            >
-                              Current
-                            </Button>
+                            // Show "Current" or "Rollback" for the most recent commit
+                            gitStatus?.hasUncommittedChanges ? (
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-7 px-2 text-xs gap-1 hover:bg-destructive/10 hover:border-destructive/20 hover:text-destructive"
+                                    disabled={isRollingBack !== null}
+                                  >
+                                    <RotateCcw className="h-3 w-3" />
+                                    Rollback
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle className="flex items-center gap-2">
+                                      <AlertTriangle className="h-5 w-5 text-destructive" />
+                                      Discard All Changes
+                                    </AlertDialogTitle>
+                                    <AlertDialogDescription className="space-y-2">
+                                      <p>
+                                        This will discard all unstaged changes and reset your working directory to the current commit:
+                                      </p>
+                                      <div className="bg-muted p-3 rounded-md text-sm">
+                                        <div className="font-medium break-words">{firstLine}</div>
+                                        <div className="text-muted-foreground text-xs mt-1">
+                                          {commit.oid.substring(0, 7)} • {formatRelativeTime(commit.commit.author.timestamp)}
+                                        </div>
+                                      </div>
+                                      <p className="text-sm">
+                                        This action cannot be undone.
+                                      </p>
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={resetToHead}
+                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                      disabled={isRollingBack !== null}
+                                    >
+                                      {isRollingBack === 'HEAD' ? (
+                                        <>
+                                          <div className="h-3 w-3 animate-spin rounded-full border border-current border-t-transparent mr-1" />
+                                          Discarding...
+                                        </>
+                                      ) : (
+                                        <>
+                                          <RotateCcw className="h-3 w-3 mr-1" />
+                                          Discard Changes
+                                        </>
+                                      )}
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            ) : (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 px-2 text-xs gap-1 cursor-default"
+                                disabled
+                              >
+                                Current
+                              </Button>
+                            )
                           ) : (
                             // Show rollback button for older commits
                             <AlertDialog>

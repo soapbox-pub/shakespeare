@@ -340,6 +340,13 @@ export class SessionManager {
           }
         }
 
+        // Fix tool calls with empty arguments
+        for (const toolCall of accumulatedToolCalls) {
+          if (toolCall.type === 'function') {
+            toolCall.function.arguments = toolCall.function.arguments || '{}';
+          }
+        }
+
         // Create final assistant message
         const assistantMessage: AIMessage = {
           role: 'assistant',

@@ -6,6 +6,8 @@ import { createAIClient } from './ai-client';
 import type { Tool } from './tools/Tool';
 import type { NUser } from '@nostrify/react/login';
 import type { AIProvider } from '@/contexts/AISettingsContext';
+import { makeSystemPrompt } from './system';
+import { NostrMetadata } from '@nostrify/nostrify';
 
 export type AIMessage = OpenAI.Chat.Completions.ChatCompletionMessageParam | {
   role: 'assistant';
@@ -18,7 +20,6 @@ export interface SessionState {
   projectId: string;
   tools: Record<string, OpenAI.Chat.Completions.ChatCompletionTool>;
   customTools: Record<string, Tool<unknown>>;
-  systemPrompt?: string;
   maxSteps?: number;
   messages: AIMessage[];
   streamingMessage?: {
@@ -55,13 +56,13 @@ export class SessionManager {
   private fs: JSRuntimeFS;
   private aiSettings: { providers: AIProvider[] };
   private getProviderModels?: () => Array<{ id: string; provider: string; contextLength?: number; pricing?: { prompt: import('decimal.js').Decimal; completion: import('decimal.js').Decimal } }>;
-  private getCurrentUser?: () => NUser | undefined;
+  private getCurrentUser?: () => { user?: NUser; metadata?: NostrMetadata };
 
   constructor(
     fs: JSRuntimeFS,
     aiSettings: { providers: AIProvider[] },
     getProviderModels?: () => Array<{ id: string; provider: string; contextLength?: number; pricing?: { prompt: import('decimal.js').Decimal; completion: import('decimal.js').Decimal } }>,
-    getCurrentUser?: () => NUser | undefined
+    getCurrentUser?: () => { user?: NUser; metadata?: NostrMetadata },
   ) {
     this.fs = fs;
     this.aiSettings = aiSettings;
@@ -76,7 +77,6 @@ export class SessionManager {
     projectId: string,
     tools: Record<string, OpenAI.Chat.Completions.ChatCompletionTool>,
     customTools: Record<string, Tool<unknown>>,
-    systemPrompt?: string,
     maxSteps?: number
   ): Promise<SessionState> {
     let messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [];
@@ -98,7 +98,6 @@ export class SessionManager {
       projectId,
       tools,
       customTools,
-      systemPrompt,
       maxSteps,
       isLoading: false,
       lastActivity: new Date(),
@@ -114,7 +113,6 @@ export class SessionManager {
     session.tools = tools;
 
     session.customTools = customTools;
-    session.systemPrompt = systemPrompt;
     session.maxSteps = maxSteps;
 
     this.sessions.set(projectId, session);
@@ -207,8 +205,8 @@ export class SessionManager {
       const model = parsed.model;
 
       // Initialize OpenAI client
-      const currentUser = this.getCurrentUser?.();
-      const openai = createAIClient(provider, currentUser);
+      const { user, metadata } = this.getCurrentUser?.() ?? {};
+      const openai = createAIClient(provider, user);
 
       let stepCount = 0;
       const maxSteps = session.maxSteps || 50;
@@ -230,9 +228,20 @@ export class SessionManager {
           tool_calls: undefined
         };
 
+        const systemPrompt = await makeSystemPrompt({
+          cwd: `/projects/${projectId}`,
+          fs: this.fs,
+          mode: "agent",
+          name: "Shakespeare",
+          profession: "software extraordinaire",
+          tools: Object.values(session.tools),
+          user,
+          metadata,
+        });
+
         // Prepare messages for AI
-        const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = session.systemPrompt
-          ? [{ role: 'system', content: session.systemPrompt }, ...session.messages]
+        const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = systemPrompt
+          ? [{ role: 'system', content: systemPrompt }, ...session.messages]
           : session.messages;
 
         // Prepare completion options

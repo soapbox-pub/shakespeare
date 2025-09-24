@@ -37,7 +37,6 @@ import { TypecheckTool } from '@/lib/tools/TypecheckTool';
 import { toolToOpenAI } from '@/lib/tools/openai-adapter';
 import { Tool } from '@/lib/tools/Tool';
 import OpenAI from 'openai';
-import { makeSystemPrompt } from '@/lib/system';
 import { saveFileToTmp } from '@/lib/fileUtils';
 import { useGit } from '@/hooks/useGit';
 import { useConsoleErrorAlert, useAIModelErrorAlert } from '@/hooks/useErrorDetection';
@@ -119,7 +118,6 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
 }, ref) => {
   const { t } = useTranslation();
   const [input, setInput] = useState('');
-  const [systemPrompt, setSystemPrompt] = useState('');
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -146,7 +144,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   const [searchParams, setSearchParams] = useSearchParams();
   const { fs } = useFS();
   const { git } = useGit();
-  const { user, metadata } = useCurrentUser();
+  const { user } = useCurrentUser();
   const { models } = useProviderModels();
 
   // Initialize AI chat with tools
@@ -210,19 +208,6 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     updateMetadata(title, description);
   }, [updateMetadata]);
 
-  useEffect(() => {
-    makeSystemPrompt({
-      cwd,
-      fs,
-      mode: "agent",
-      name: "Shakespeare",
-      profession: "software extraordinaire",
-      tools: Object.values(tools),
-      user,
-      metadata,
-    }).then(setSystemPrompt)
-  }, [fs, cwd, tools, user, metadata]);
-
   const {
     messages,
     streamingMessage,
@@ -237,7 +222,6 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     projectId,
     tools,
     customTools,
-    systemPrompt,
     onUpdateMetadata,
   });
 

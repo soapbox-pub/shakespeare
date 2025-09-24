@@ -21,6 +21,7 @@ import {
 import { FileTree } from './FileTree';
 import { FileEditor } from './FileEditor';
 import { DeployDialog } from '@/components/DeployDialog';
+import { useSearchParams } from 'react-router-dom';
 
 // Get iframe domain from environment variable
 const IFRAME_DOMAIN = import.meta.env.VITE_IFRAME_DOMAIN || 'local-shakespeare.dev';
@@ -89,13 +90,36 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
   const projectsManager = useProjectsManager();
   const { mutate: buildProject, isPending: isBuildLoading } = useBuildProject(projectId);
 
-  const handleBuildProject = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [shouldBuild, setShouldBuild] = useState(false);
+
+  const handleBuildProject = useCallback(() => {
     buildProject(undefined, {
       onError: (error) => {
         console.error('Build failed:', error);
       }
     });
-  };
+  }, [buildProject]);
+
+  // Handle "build" URL parameter on initial load
+  useEffect(() => {
+    if (searchParams.has('build')) {
+      setShouldBuild(true);
+
+      // Remove the build parameter from URL
+      const newSearchParams = new URLSearchParams(searchParams);
+      newSearchParams.delete('build');
+      setSearchParams(newSearchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+
+  // Build automatically if "build" parameter was present
+  useEffect(() => {
+    if (shouldBuild && isPreviewable && !isBuildLoading) {
+      setShouldBuild(false);
+      handleBuildProject();
+    }
+  }, [isBuildLoading, isPreviewable, handleBuildProject, shouldBuild]);
 
   const loadFileContent = useCallback(async (filePath: string) => {
     setIsLoading(true);

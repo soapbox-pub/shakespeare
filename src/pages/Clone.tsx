@@ -116,8 +116,8 @@ export default function Clone() {
         description: successDescription,
       });
 
-      // Navigate to the new project
-      navigate(`/project/${project.id}`);
+      // Navigate to the new project with build parameter
+      navigate(`/project/${project.id}?build`);
     } catch (error) {
       console.error('Failed to clone repository:', error);
 

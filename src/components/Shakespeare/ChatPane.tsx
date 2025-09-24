@@ -46,7 +46,7 @@ import { QuillySVG } from '@/components/ui/QuillySVG';
 function ChatIntervention({
   message,
   onDismiss,
-  action
+  action,
 }: {
   message: string;
   onDismiss: () => void;
@@ -58,24 +58,18 @@ function ChatIntervention({
         <QuillySVG className="h-20 px-2 flex-shrink-0" fillColor="hsl(var(--primary))" />
         <div className="flex-1 min-w-0">
           <div className="space-y-1">
-            <div className="space-y-1">
-              <h4 className="font-semibold text-primary">
-                Pardon the interruption
-              </h4>
-              <p className="text-sm text-muted-foreground">{message}</p>
-            </div>
-            {action && (
-              <div className="flex pt-1">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={action.onClick}
-                  className="text-xs h-6 px-2"
-                >
+            <h4 className="font-semibold text-primary">
+              Pardon the interruption
+            </h4>
+            <p className="text-sm text-muted-foreground">
+              {message}
+              {' '}
+              {action && (
+                <button className="text-primary underline" onClick={action.onClick}>
                   {action.label}
-                </Button>
-              </div>
-            )}
+                </button>
+              )}
+            </p>
           </div>
         </div>
         <Button

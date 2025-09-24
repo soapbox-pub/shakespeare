@@ -8,7 +8,7 @@ import { CircularProgress } from '@/components/ui/circular-progress';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { FileAttachment } from '@/components/ui/file-attachment';
 import { OnboardingDialog } from '@/components/OnboardingDialog';
-import { Square, Loader2, ChevronDown, ArrowUp } from 'lucide-react';
+import { Square, Loader2, ChevronDown, ArrowUp, X } from 'lucide-react';
 import { useAISettings } from '@/hooks/useAISettings';
 import { useFS } from '@/hooks/useFS';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
@@ -55,17 +55,17 @@ function ChatIntervention({
   return (
     <div className="py-2 px-3 bg-primary/5 border border-primary/20 rounded-lg">
       <div className="flex items-start gap-2">
-        <QuillySVG className="h-14 w-14 flex-shrink-0" fillColor="hsl(var(--primary))" />
+        <QuillySVG className="h-20 px-2 flex-shrink-0" fillColor="hsl(var(--primary))" />
         <div className="flex-1 min-w-0">
           <div className="space-y-1">
             <div className="space-y-1">
-              <h4 className="font-semibold text-sm text-primary">
+              <h4 className="font-semibold text-primary">
                 Pardon the interruption
               </h4>
               <p className="text-sm text-muted-foreground">{message}</p>
             </div>
             {action && (
-              <div className="flex justify-end pt-1">
+              <div className="flex pt-1">
                 <Button
                   variant="outline"
                   size="sm"
@@ -82,9 +82,9 @@ function ChatIntervention({
           variant="ghost"
           size="sm"
           onClick={onDismiss}
-          className="h-5 w-5 p-0 hover:bg-muted flex-shrink-0"
+          className="h-5 w-5 p-0 hover:text-foreground/70 hover:bg-transparent flex-shrink-0"
         >
-          ×
+          <X className="h-4 w-4" />
         </Button>
       </div>
     </div>

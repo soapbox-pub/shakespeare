@@ -9,7 +9,7 @@ export function QuillySVG({ className = "w-4 h-4", fillColor = "currentColor", .
 	return (
 		<svg
 			className={className}
-			viewBox="0 0 500 500"
+			viewBox="140 30 220 420"
 			xmlns="http://www.w3.org/2000/svg"
 			{...props}
 		>

@@ -117,6 +117,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   const [isDragOver, setIsDragOver] = useState(false);
   const [scrolledProjects] = useState(() => new Set<string>());
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [isStuck, setIsStuck] = useState(false);
 
   // Use external state if provided, otherwise default to false
   const isBuildLoading = externalIsBuildLoading || false;
@@ -239,6 +240,19 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
       onLoadingChange(internalIsLoading);
     }
   }, [internalIsLoading, onLoadingChange]);
+
+  // Timer to detect when AI appears stuck during tool generation
+  useEffect(() => {
+    // Start a 2-second timer
+    const timer = streamingMessage
+      ? setTimeout(() => setIsStuck(true), 2000)
+      : undefined;
+
+    return () => {
+      setIsStuck(false);
+      clearTimeout(timer);
+    };
+  }, [streamingMessage]);
 
   // Function to scroll to bottom
   const scrollToBottom = useCallback(() => {
@@ -581,11 +595,23 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
           })}
           {streamingMessage && (
             streamingMessage.content || streamingMessage.reasoning_content ? (
-              <AIMessageItem
-                key="streaming-message"
-                message={streamingMessage}
-                isCurrentlyLoading={isLoading}
-              />
+              <>
+                <AIMessageItem
+                  key="streaming-message"
+                  message={streamingMessage}
+                  isCurrentlyLoading={isLoading}
+                />
+                {/* Show loading skeleton if AI appears stuck generating tools */}
+                {isStuck && (
+                  <div key="stuck-loading-skeleton" className="flex">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm space-y-2">
+                        <Skeleton className="h-4 w-3/4" />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
             ) : (
               !(streamingMessage?.tool_calls?.[0]?.type === 'function') && (
                 <div key="streaming-loading" className="flex">

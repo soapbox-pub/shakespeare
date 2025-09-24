@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { AppLayout } from '@/components/AppLayout';
@@ -19,6 +19,7 @@ export default function Clone() {
   const [searchParams] = useSearchParams();
   const projectsManager = useProjectsManager();
   const { toast } = useToast();
+  const autoCloneInitiatedRef = useRef(false);
 
   useSeoMeta({
     title: `${t('importRepository')} - Shakespeare`,
@@ -160,9 +161,10 @@ export default function Clone() {
   // Initialize repoUrl from URL parameters and auto-import if URL is provided
   useEffect(() => {
     const urlParam = searchParams.get('url');
-    if (urlParam) {
+    if (urlParam && !autoCloneInitiatedRef.current) {
       const decodedUrl = decodeURIComponent(urlParam);
       setRepoUrl(decodedUrl);
+      autoCloneInitiatedRef.current = true;
 
       // Automatically start the clone process with the URL directly
       handleClone(decodedUrl);

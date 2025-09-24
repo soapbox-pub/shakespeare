@@ -37,12 +37,10 @@ const IFRAME_DOMAIN = import.meta.env.VITE_IFRAME_DOMAIN || 'local-shakespeare.d
 interface PreviewPaneProps {
   projectId: string;
   activeTab: 'preview' | 'code';
-  config?: {
-    onToggleView?: () => void;
-    projectName?: string;
-    onFirstInteraction?: () => void;
-    isPreviewable?: boolean;
-  };
+  onToggleView?: () => void;
+  projectName?: string;
+  onFirstInteraction?: () => void;
+  isPreviewable?: boolean;
 }
 
 interface JSONRPCRequest {
@@ -77,13 +75,7 @@ interface JSONRPCResponse {
 
 
 
-export function PreviewPane({ projectId, activeTab, config = {} }: PreviewPaneProps) {
-  const {
-    onToggleView,
-    projectName,
-    onFirstInteraction,
-    isPreviewable = true,
-  } = config;
+export function PreviewPane({ projectId, activeTab, onToggleView, projectName, onFirstInteraction, isPreviewable = true }: PreviewPaneProps) {
   const { t } = useTranslation();
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [fileContent, setFileContent] = useState<string>('');

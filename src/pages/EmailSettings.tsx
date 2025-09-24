@@ -150,10 +150,31 @@ export function EmailSettings() {
               <ArrowLeft className="h-4 w-4 mr-2" />
               {t('backToSettings')}
             </Button>
+            <div className="space-y-2">
+              <h1 className="text-2xl font-bold flex items-center gap-3">
+                <Mail className="h-6 w-6 text-primary" />
+                {t('emailUpdates')}
+              </h1>
+              <p className="text-muted-foreground">
+                {t('emailUpdatesDescriptionLong')}
+              </p>
+            </div>
           </div>
         )}
 
-        <div className="max-w-md mx-auto">
+        {!isMobile && (
+          <div className="space-y-2">
+            <h1 className="text-2xl font-bold flex items-center gap-3">
+              <Mail className="h-6 w-6 text-primary" />
+              {t('emailUpdates')}
+            </h1>
+            <p className="text-muted-foreground">
+              {t('emailUpdatesDescriptionLong')}
+            </p>
+          </div>
+        )}
+
+        <div className="max-w-md">
           <Card>
             <CardContent className="pt-6">
               <div className="text-center space-y-4">
@@ -230,7 +251,7 @@ export function EmailSettings() {
         </div>
       )}
 
-      <div className="max-w-md mx-auto">
+      <div className="max-w-md">
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">

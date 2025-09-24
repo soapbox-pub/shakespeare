@@ -20,8 +20,8 @@ import { StarButton } from '@/components/StarButton';
 
 import { useBuildProject } from '@/hooks/useBuildProject';
 import { useIsProjectPreviewable } from '@/hooks/useIsProjectPreviewable';
-import { ConsoleMessage } from '@/types/console';
-import { useConsoleMessages, clearConsoleMessages } from '@/hooks/useConsoleMessages';
+
+import { useProjectConsoleMessages } from '@/hooks/useProjectConsoleMessages';
 
 export function ProjectView() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -32,7 +32,7 @@ export function ProjectView() {
   const [mobileView, setMobileView] = useState<'chat' | 'preview' | 'code'>('chat');
   const [isAILoading, setIsAILoading] = useState(false);
   const [isProjectDetailsOpen, setIsProjectDetailsOpen] = useState(false);
-  const [consoleMessages, setConsoleMessages] = useState<ConsoleMessage[]>([]);
+  const { clearMessages } = useProjectConsoleMessages(projectId || null);
   const projectsManager = useProjectsManager();
   const chatPaneRef = useRef<ChatPaneRef>(null);
   const navigate = useNavigate();
@@ -64,25 +64,19 @@ export function ProjectView() {
       const projectData = await projectsManager.getProject(projectId);
       setProject(projectData);
       // Clear console messages when switching projects
-      setConsoleMessages([]);
-      // Also clear global console messages
-      clearConsoleMessages();
+      clearMessages();
     } catch (error) {
       console.error('Failed to load project:', error);
     } finally {
       setIsLoading(false);
     }
-  }, [projectId, projectsManager, setConsoleMessages]);
+  }, [projectId, projectsManager, clearMessages]);
 
   useEffect(() => {
     loadProject();
   }, [loadProject]);
 
-  // Sync console messages with global state
-  const { messages: globalMessages } = useConsoleMessages();
-  useEffect(() => {
-    setConsoleMessages(globalMessages);
-  }, [globalMessages]);
+
 
   // Reset view state when projectId changes
   useEffect(() => {
@@ -103,6 +97,15 @@ export function ProjectView() {
       setActiveTab('code');
     }
   }, [isPreviewable, mobileView, activeTab]);
+
+  // Clear console messages when projectId changes or component unmounts
+  useEffect(() => {
+    return () => {
+      if (projectId) {
+        clearMessages();
+      }
+    };
+  }, [projectId, clearMessages]);
 
   const runBuild = async () => {
     if (build.isPending || !project) return;
@@ -270,8 +273,6 @@ export function ProjectView() {
                 config={{
                   projectName: project.name,
                   onFirstInteraction: handleFirstInteraction,
-                  consoleMessages,
-                  setConsoleMessages,
                 }}
               />
             ) : (
@@ -436,7 +437,7 @@ export function ProjectView() {
                       onLoadingChange={handleAILoadingChange}
                       isLoading={isAILoading}
                       isBuildLoading={build.isPending}
-                      consoleMessages={consoleMessages}
+
                     />
                   ) : (
                     <div className="h-full p-4 space-y-4">
@@ -465,8 +466,6 @@ export function ProjectView() {
                       projectName: project.name,
                       onFirstInteraction: handleFirstInteraction,
                       isPreviewable,
-                      consoleMessages,
-                      setConsoleMessages,
                     }}
                   />
                 ) : (

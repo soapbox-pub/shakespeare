@@ -35,13 +35,15 @@ import { NostrGenerateKindTool } from '@/lib/tools/NostrGenerateKindTool';
 import { ShellTool } from '@/lib/tools/ShellTool';
 import { TypecheckTool } from '@/lib/tools/TypecheckTool';
 import { ReadConsoleMessagesTool } from '@/lib/tools/ReadConsoleMessagesTool';
-import { ConsoleMessage } from '@/types/console';
+
 import { toolToOpenAI } from '@/lib/tools/openai-adapter';
 import { Tool } from '@/lib/tools/Tool';
 import OpenAI from 'openai';
 import { saveFileToTmp } from '@/lib/fileUtils';
+
 import { useGit } from '@/hooks/useGit';
 import { useConsoleErrorAlert, useAIModelErrorAlert } from '@/hooks/useErrorDetection';
+import { useProjectConsoleMessages } from '@/hooks/useProjectConsoleMessages';
 import { QuillySVG } from '@/components/ui/QuillySVG';
 
 
@@ -97,7 +99,6 @@ interface ChatPaneProps {
   onLoadingChange?: (isLoading: boolean) => void;
   isLoading?: boolean;
   isBuildLoading?: boolean;
-  consoleMessages?: ConsoleMessage[];
 }
 
 export interface ChatPaneRef {
@@ -112,7 +113,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   onLoadingChange,
   isLoading: externalIsLoading,
   isBuildLoading: externalIsBuildLoading,
-  consoleMessages,
+
 }, ref) => {
   const { t } = useTranslation();
   const [input, setInput] = useState('');
@@ -144,6 +145,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   const { git } = useGit();
   const { user } = useCurrentUser();
   const { models } = useProviderModels();
+  const { messages: consoleMessages } = useProjectConsoleMessages(projectId);
 
   // Initialize AI chat with tools
   const cwd = `/projects/${projectId}`;
@@ -260,7 +262,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   // Function to suggest error fix
   // Clean alert hooks with proper interfaces
   const aiModelAlert = useAIModelErrorAlert(messages, _onNewChat, openModelSelector);
-  const consoleAlert = useConsoleErrorAlert(messages, isBuildLoading, internalIsLoading);
+  const consoleAlert = useConsoleErrorAlert(messages, projectId, isBuildLoading, internalIsLoading);
 
   // Scroll to bottom when alerts appear
   useEffect(() => {
@@ -400,6 +402,10 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     setAttachedFiles(prev => [...prev, ...files]);
   };
 
+  const handleSend = useCallback(async () => {
+    await sendMessage(input, providerModel);
+  }, [input, sendMessage, providerModel]);
+
   const send = useCallback(async (input: string, attachedFiles: File[]) => {
     if ((!input.trim() && attachedFiles.length === 0) || isLoading) return;
 
@@ -464,10 +470,6 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     }
   }, [addRecentlyUsedModel, fs, isConfigured, isLoading, providerModel, sendMessage]);
 
-  const handleSend = useCallback(async () => {
-    await send(input, attachedFiles);
-  }, [input, attachedFiles, send]);
-
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -530,9 +532,9 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     }
   }), [internalStartNewSession]);
 
-  const suggestErrorFix = useCallback(async (errorMessage: string) => {
-    await send(errorMessage, attachedFiles);
-  }, [send, attachedFiles]);
+  const suggestErrorFix = useCallback(async () => {
+      await send('Read the console messages and fix any errors.', []);
+  }, [send]);
 
   return (
     <div className="h-full flex flex-col relative">
@@ -630,7 +632,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
               onDismiss={consoleAlert.dismiss}
               action={{
                 label: `Fix ${consoleAlert.errorCount === 1 ? 'error' : 'errors'}`,
-                onClick: () => suggestErrorFix(consoleAlert.errorSummary || '')
+                onClick: () => suggestErrorFix()
               }}
             />
           )}

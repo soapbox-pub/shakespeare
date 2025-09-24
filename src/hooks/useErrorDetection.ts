@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo } from 'react';
 import type { AIMessage } from '@/lib/SessionManager';
-import { useConsoleMessages } from './useConsoleMessages';
+import { useProjectConsoleMessages } from './useProjectConsoleMessages';
 
 export interface ConsoleErrorAlert {
 	hasError: boolean;
@@ -11,10 +11,11 @@ export interface ConsoleErrorAlert {
 
 export const useConsoleErrorAlert = (
 	aiMessages: AIMessage[],
+	projectId?: string | null,
 	isBuilding?: boolean,
 	isLoading?: boolean
 ): ConsoleErrorAlert => {
-	const { messages } = useConsoleMessages();
+	const { messages } = useProjectConsoleMessages(projectId || null);
 	const [dismissedErrorSummary, setDismissedErrorSummary] = useState<string>('');
 
 	const { hasError, errorSummary, errorCount } = useMemo(() => {
@@ -38,7 +39,7 @@ export const useConsoleErrorAlert = (
 		const recentTimeThreshold = Date.now() - (10 * 1000); // 10 seconds ago
 		const recentErrors = messages.filter(msg =>
 			msg.level === 'error' &&
-			msg.timestamp > recentTimeThreshold
+			msg.timestamp && msg.timestamp > recentTimeThreshold
 		);
 
 		if (recentErrors.length === 0) {

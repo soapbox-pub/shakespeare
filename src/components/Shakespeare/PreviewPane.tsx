@@ -3,12 +3,12 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { useFS } from '@/hooks/useFS';
-import { useConsoleMessages, addConsoleMessage, clearConsoleMessages, type ConsoleMessage } from '@/hooks/useConsoleMessages';
+import { useProjectConsoleMessages, addProjectConsoleMessage } from '@/hooks/useProjectConsoleMessages';
 import { useBuildProject } from '@/hooks/useBuildProject';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { FolderOpen, ArrowLeft, Bug, Copy, Check, Play, Loader2, MenuIcon, Code, CloudUpload, Trash2, Download, X } from 'lucide-react';
+import { FolderOpen, ArrowLeft, Bug, Copy, Check, Play, Loader2, MenuIcon, Code, CloudUpload, X } from 'lucide-react';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { GitStatusIndicator } from '@/components/GitStatusIndicator';
 import { BrowserAddressBar } from '@/components/ui/browser-address-bar';
@@ -17,7 +17,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import {
   Popover,
@@ -25,7 +24,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { ConsoleMessage } from '@/types/console';
+import type { ConsoleMessage } from '@/types/console';
 
 import { FileTree } from './FileTree';
 import { FileEditor } from './FileEditor';
@@ -43,8 +42,6 @@ interface PreviewPaneProps {
     projectName?: string;
     onFirstInteraction?: () => void;
     isPreviewable?: boolean;
-    consoleMessages?: ConsoleMessage[];
-    setConsoleMessages?: React.Dispatch<React.SetStateAction<ConsoleMessage[]>>;
   };
 }
 
@@ -86,8 +83,6 @@ export function PreviewPane({ projectId, activeTab, config = {} }: PreviewPanePr
     projectName,
     onFirstInteraction,
     isPreviewable = true,
-    consoleMessages: externalConsoleMessages = [],
-    setConsoleMessages: externalSetConsoleMessages,
   } = config;
   const { t } = useTranslation();
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
@@ -99,17 +94,16 @@ export function PreviewPane({ projectId, activeTab, config = {} }: PreviewPanePr
   const [currentPath, setCurrentPath] = useState('/');
   const [navigationHistory, setNavigationHistory] = useState<string[]>(['/']);
   const [historyIndex, setHistoryIndex] = useState(0);
-const [copiedMessageId, setCopiedMessageId] = useState<number | null>(null);
+
   const [deployDialogOpen, setDeployDialogOpen] = useState(false);
 
-  // Use external state if provided, otherwise use internal state
-  const [internalConsoleMessages, setInternalConsoleMessages] = useState<ConsoleMessage[]>([]);
-  const consoleMessages = externalConsoleMessages || internalConsoleMessages;
-  const setConsoleMessages = externalSetConsoleMessages || setInternalConsoleMessages;
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const { fs } = useFS();
   const projectsManager = useProjectsManager();
-  const { messages: consoleMessages } = useConsoleMessages();
+
+
+  // Use project-specific console messages
+  const { messages: consoleMessages } = useProjectConsoleMessages(projectId);
   const { mutate: buildProject, isPending: isBuildLoading } = useBuildProject(projectId);
 
   const [searchParams, setSearchParams] = useSearchParams();
@@ -281,23 +275,12 @@ const [copiedMessageId, setCopiedMessageId] = useState<number | null>(null);
       normalizedLevel = params.level as ConsoleMessage['level'];
     }
 
-    // Add to global console messages
-    addConsoleMessage(normalizedLevel, params.message);
-
-    // Also update local state if provided (for external systems)
-    if (setConsoleMessages !== setInternalConsoleMessages) {
-      const newMessage: ConsoleMessage = {
-        id: Date.now() + Math.random(),
-        level: normalizedLevel,
-        message: params.message,
-        timestamp: Date.now(),
-      };
-      setConsoleMessages(prev => [...prev, newMessage]);
-    }
+    // Add to project-specific console messages
+    addProjectConsoleMessage(projectId, normalizedLevel, params.message);
 
     // Log to parent console for debugging with appropriate level
     console[normalizedLevel](`[IFRAME ${params.level.toUpperCase()}] ${params.message}`);
-  }, [setConsoleMessages, setInternalConsoleMessages]);
+  }, [projectId]);
 
   const handleFetch = useCallback(async (request: JSONRPCRequest) => {
     const { params, id } = request;
@@ -477,30 +460,6 @@ const [copiedMessageId, setCopiedMessageId] = useState<number | null>(null);
     const [isOpen, setIsOpen] = useState(false);
     const copiedMessageRef = useRef<number | null>(null);
     const [_, setCopyUpdate] = useState(0);
-
-    const getLevelColor = (level: ConsoleMessage['level']) => {
-      switch (level) {
-        case 'error': return 'text-red-500';
-        case 'warn': return 'text-yellow-500';
-        case 'info': return 'text-blue-500';
-        case 'debug': return 'text-gray-500';
-        default: return 'text-gray-400';
-      }
-    };
-
-    const getLevelIcon = (level: ConsoleMessage['level']) => {
-      switch (level) {
-        case 'error': return '!';
-        case 'warn': return '⚠';
-        case 'info': return 'ℹ';
-        case 'debug': return '🔍';
-        default: return '•';
-      }
-    };
-
-    const clearConsole = () => {
-      clearConsoleMessages();
-    };
     const copyMessageToClipboard = async (msg: ConsoleMessage) => {
       try {
         await navigator.clipboard.writeText(msg.message);

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 
@@ -45,6 +46,7 @@ export function GitHistoryDialog({ projectId, open: controlledOpen, onOpenChange
   const { fs } = useFS();
   const { git } = useGit();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const loadGitHistory = useCallback(async () => {
     setIsLoading(true);
@@ -213,8 +215,9 @@ ${commitsToRevert.map(c => {
         description: `Reverted ${commitsToRevert.length} commit(s) back to ${targetCommit.oid.substring(0, 7)}`,
       });
 
-      // Reload the git history to show the new commit
-      await loadGitHistory();
+      // Close the dialog and navigate to project page with build query parameter
+      setIsOpen(false);
+      navigate(`/project/${projectId}?build`);
 
     } catch (err) {
       console.error('Failed to rollback:', err);
@@ -226,7 +229,7 @@ ${commitsToRevert.map(c => {
     } finally {
       setIsRollingBack(null);
     }
-  }, [git, fs, projectId, toast, loadGitHistory]);
+  }, [git, fs, projectId, toast, navigate, setIsOpen]);
 
   useEffect(() => {
     if (isOpen) {

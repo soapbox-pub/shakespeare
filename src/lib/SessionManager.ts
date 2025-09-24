@@ -178,6 +178,7 @@ export class SessionManager {
    * Start AI generation for a session
    */
   async startGeneration(projectId: string, providerModel: string): Promise<void> {
+    console.log('Starting AI generation for project:', projectId, 'with model:', providerModel);
     let session = this.sessions.get(projectId);
 
     if (!session) {

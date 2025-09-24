@@ -129,6 +129,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   });
   // State to control model selector dropdown
   const [isModelSelectorOpen, setIsModelSelectorOpen] = useState(false);
+  const autostartedRef = useRef(false);
 
   useEffect(() => {
     if (!providerModel && settings.recentlyUsedModels?.length) {
@@ -282,6 +283,8 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
 
   // Check for autostart parameter and trigger AI generation
   useEffect(() => {
+    if (autostartedRef.current) return;
+
     const autostart = searchParams.get('autostart');
     const urlModel = searchParams.get('model');
 
@@ -304,6 +307,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
         // Start AI generation
         addRecentlyUsedModel(modelToUse);
         startGeneration(modelToUse);
+        autostartedRef.current = true;
       }
     }
   }, [addRecentlyUsedModel, isConfigured, providerModel, searchParams, setSearchParams, startGeneration]);

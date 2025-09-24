@@ -7,6 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { CircularProgress } from '@/components/ui/circular-progress';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { FileAttachment } from '@/components/ui/file-attachment';
+import { OnboardingDialog } from '@/components/OnboardingDialog';
 import { Square, Loader2, ChevronDown, ArrowUp } from 'lucide-react';
 import { useAISettings } from '@/hooks/useAISettings';
 import { useFS } from '@/hooks/useFS';
@@ -70,6 +71,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
   const [scrolledProjects] = useState(() => new Set<string>());
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   // Use external state if provided, otherwise default to false
   const isBuildLoading = externalIsBuildLoading || false;
@@ -344,7 +346,16 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   };
 
   const handleSend = async () => {
-    if ((!input.trim() && attachedFiles.length === 0) || isLoading || !providerModel.trim()) return;
+    if ((!input.trim() && attachedFiles.length === 0) || isLoading) return;
+
+    // If AI is not configured, show onboarding dialog
+    if (!isConfigured) {
+      setShowOnboarding(true);
+      return;
+    }
+
+    // If configured but no model selected, don't proceed
+    if (!providerModel.trim()) return;
 
     const modelToUse = providerModel.trim();
 
@@ -434,6 +445,16 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     }
   };
 
+  // Handle textarea focus - show onboarding if not configured
+  const handleTextareaFocus = () => {
+    if (!isConfigured) {
+      setShowOnboarding(true);
+    }
+    if (onFirstInteraction) {
+      onFirstInteraction();
+    }
+  };
+
   // Handle first user interaction to enable audio context
   const handleFirstInteraction = () => {
     // This will be handled automatically by the useKeepAlive hook
@@ -449,27 +470,6 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
       internalStartNewSession();
     }
   }), [internalStartNewSession]);
-
-  if (!isConfigured) {
-    return (
-      <div className="h-full flex flex-col">
-        <div className="flex-1 flex items-center justify-center bg-gradient-to-br from-primary/5 to-accent/5">
-          <div className="text-center space-y-4 max-w-md mx-auto p-6">
-            <div className="text-4xl mb-4">🤖</div>
-            <div>
-              <h3 className="text-lg font-semibold mb-2 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">{t('aiNotConfigured')}</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                {t('configureAI')}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {t('useMenuForAI')}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
 
 
@@ -585,10 +585,16 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
-            onFocus={handleFirstInteraction}
-            placeholder={providerModel.trim() ? t('askToAddFeatures') : t('selectModelFirst')}
+            onFocus={handleTextareaFocus}
+            placeholder={
+              !isConfigured
+                ? t('askToAddFeatures')
+                : providerModel.trim()
+                ? t('askToAddFeatures')
+                : t('selectModelFirst')
+            }
             className="flex-1 resize-none border-0 bg-transparent px-4 py-3 text-sm focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground"
-            disabled={isLoading || !providerModel.trim()}
+            disabled={isLoading || (isConfigured && !providerModel.trim())}
             rows={1}
             aria-label="Chat message input"
             style={{
@@ -679,7 +685,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
                 <Button
                   onClick={handleSend}
                   onMouseDown={handleFirstInteraction}
-                  disabled={(!input.trim() && attachedFiles.length === 0) || !providerModel.trim()}
+                  disabled={(!input.trim() && attachedFiles.length === 0) || (isConfigured && !providerModel.trim())}
                   size="sm"
                   className="size-8 [&_svg]:size-5 rounded-full p-0"
                 >
@@ -690,6 +696,12 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
           </div>
         </div>
       </div>
+
+      {/* Onboarding Dialog */}
+      <OnboardingDialog
+        open={showOnboarding}
+        onOpenChange={setShowOnboarding}
+      />
     </div>
   );
 });

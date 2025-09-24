@@ -17,10 +17,8 @@ import { useIsMobile } from '@/hooks/useIsMobile';
 import { useKeepAlive } from '@/hooks/useKeepAlive';
 import { GitStatusIndicator } from '@/components/GitStatusIndicator';
 import { StarButton } from '@/components/StarButton';
-
 import { useBuildProject } from '@/hooks/useBuildProject';
 import { useIsProjectPreviewable } from '@/hooks/useIsProjectPreviewable';
-
 import { useProjectConsoleMessages } from '@/hooks/useProjectConsoleMessages';
 
 export function ProjectView() {
@@ -75,8 +73,6 @@ export function ProjectView() {
   useEffect(() => {
     loadProject();
   }, [loadProject]);
-
-
 
   // Reset view state when projectId changes
   useEffect(() => {
@@ -437,7 +433,6 @@ export function ProjectView() {
                       onLoadingChange={handleAILoadingChange}
                       isLoading={isAILoading}
                       isBuildLoading={build.isPending}
-
                     />
                   ) : (
                     <div className="h-full p-4 space-y-4">

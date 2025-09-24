@@ -20,8 +20,6 @@ const notifyListeners = (projectId: string) => {
 export const useProjectConsoleMessages = (projectId: string | null) => {
   const [messages, setMessages] = useState<ConsoleMessage[]>([]);
 
-
-
   const clearMessages = useCallback(() => {
     if (!projectId) return;
 

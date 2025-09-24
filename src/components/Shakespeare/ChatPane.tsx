@@ -35,17 +35,14 @@ import { NostrGenerateKindTool } from '@/lib/tools/NostrGenerateKindTool';
 import { ShellTool } from '@/lib/tools/ShellTool';
 import { TypecheckTool } from '@/lib/tools/TypecheckTool';
 import { ReadConsoleMessagesTool } from '@/lib/tools/ReadConsoleMessagesTool';
-
 import { toolToOpenAI } from '@/lib/tools/openai-adapter';
 import { Tool } from '@/lib/tools/Tool';
 import OpenAI from 'openai';
 import { saveFileToTmp } from '@/lib/fileUtils';
-
 import { useGit } from '@/hooks/useGit';
 import { useConsoleErrorAlert, useAIModelErrorAlert } from '@/hooks/useErrorDetection';
 import { useProjectConsoleMessages } from '@/hooks/useProjectConsoleMessages';
 import { QuillySVG } from '@/components/ui/QuillySVG';
-
 
 function ChatIntervention({
   message,
@@ -113,7 +110,6 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   onLoadingChange,
   isLoading: externalIsLoading,
   isBuildLoading: externalIsBuildLoading,
-
 }, ref) => {
   const { t } = useTranslation();
   const [input, setInput] = useState('');
@@ -402,10 +398,6 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     setAttachedFiles(prev => [...prev, ...files]);
   };
 
-  const handleSend = useCallback(async () => {
-    await sendMessage(input, providerModel);
-  }, [input, sendMessage, providerModel]);
-
   const send = useCallback(async (input: string, attachedFiles: File[]) => {
     if ((!input.trim() && attachedFiles.length === 0) || isLoading) return;
 
@@ -469,6 +461,10 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
       // Error handling is done in the useAIChat hook and SessionManager
     }
   }, [addRecentlyUsedModel, fs, isConfigured, isLoading, providerModel, sendMessage]);
+
+  const handleSend = useCallback(async () => {
+    await send(input, attachedFiles);
+  }, [input, attachedFiles, send]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {

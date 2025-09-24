@@ -101,8 +101,6 @@ export function PreviewPane({ projectId, activeTab, config = {} }: PreviewPanePr
   const { fs } = useFS();
   const projectsManager = useProjectsManager();
 
-
-  // Use project-specific console messages
   const { messages: consoleMessages } = useProjectConsoleMessages(projectId);
   const { mutate: buildProject, isPending: isBuildLoading } = useBuildProject(projectId);
 

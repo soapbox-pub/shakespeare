@@ -184,6 +184,75 @@ export const AIMessageItem = memo(({
     const toolInfo = getToolInfo();
     const IconComponent = toolInfo.icon;
 
+    // Get tool call arguments for special rendering
+    let toolArgs: Record<string, unknown> = {};
+    let toolName = '';
+    if (toolCall?.type === 'function') {
+      toolName = toolCall.function.name;
+      try {
+        toolArgs = JSON.parse(toolCall.function.arguments);
+      } catch {
+        toolArgs = {};
+      }
+    }
+
+    // Special rendering for tools
+    const renderSpecialContent = () => {
+      if (toolName === 'text_editor_write' && toolArgs.file_text) {
+        return (
+          <div className="mt-1 p-3 bg-muted/30 rounded border text-xs">
+            <div className="whitespace-pre-wrap break-words font-mono">
+              {toolArgs.file_text as string}
+            </div>
+          </div>
+        );
+      }
+
+      if (toolName === 'text_editor_str_replace' && toolArgs.old_str && toolArgs.new_str) {
+        const oldLines = (toolArgs.old_str as string).split('\n');
+        const newLines = (toolArgs.new_str as string).split('\n');
+
+        return (
+          <div className="mt-1 p-3 bg-muted/30 rounded border text-xs font-mono">
+            <div className="space-y-1">
+              {/* Old content (removed) */}
+              <div className="space-y-0">
+                {oldLines.map((line, index) => (
+                  <div key={`old-${index}`} className="flex">
+                    <span className="text-red-500 select-none mr-2">-</span>
+                    <span className="bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-300 flex-1 whitespace-pre-wrap break-words">
+                      {line}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {/* New content (added) */}
+              <div className="space-y-0">
+                {newLines.map((line, index) => (
+                  <div key={`new-${index}`} className="flex">
+                    <span className="text-green-500 select-none mr-2">+</span>
+                    <span className="bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-300 flex-1 whitespace-pre-wrap break-words">
+                      {line}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      // Default rendering for other tools
+      return (
+        <div className="mt-1 p-3 bg-muted/30 rounded border text-xs">
+          <div className="whitespace-pre-wrap break-words font-mono">
+            {content}
+          </div>
+        </div>
+      );
+    };
+
     // Regular tool message rendering
     return (
       <div className="-mt-2"> {/* -mt-2 to make it snug with the previous assistant message */}
@@ -200,13 +269,7 @@ export const AIMessageItem = memo(({
           </span>
         </button>
 
-        {isToolExpanded && (
-          <div className="mt-1 p-3 bg-muted/30 rounded border text-xs">
-            <div className="whitespace-pre-wrap break-words font-mono">
-              {content}
-            </div>
-          </div>
-        )}
+        {isToolExpanded && renderSpecialContent()}
       </div>
     );
   }

@@ -26,3 +26,4 @@ export { UniqCommand } from './uniq';
 export { WcCommand } from './wc';
 export { WhoamiCommand } from './whoami';
 export { WhichCommand } from './which';
+export { UnzipCommand } from './unzip';

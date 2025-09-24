@@ -7,7 +7,7 @@ import { useBuildProject } from '@/hooks/useBuildProject';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { FolderOpen, ArrowLeft, Bug, Copy, Check, Play, Loader2, MenuIcon, Code, CloudUpload } from 'lucide-react';
+import { FolderOpen, ArrowLeft, Bug, Copy, Check, Play, Loader2, MenuIcon, Code, CloudUpload, Trash2, Download, X } from 'lucide-react';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { GitStatusIndicator } from '@/components/GitStatusIndicator';
 import { BrowserAddressBar } from '@/components/ui/browser-address-bar';
@@ -16,7 +16,13 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { ConsoleMessage } from '@/types/console';
 
@@ -91,7 +97,7 @@ export function PreviewPane({ projectId, activeTab, config = {} }: PreviewPanePr
   const [currentPath, setCurrentPath] = useState('/');
   const [navigationHistory, setNavigationHistory] = useState<string[]>(['/']);
   const [historyIndex, setHistoryIndex] = useState(0);
-  const [copiedMessageId, setCopiedMessageId] = useState<number | null>(null);
+
   const [deployDialogOpen, setDeployDialogOpen] = useState(false);
 
   // Use external state if provided, otherwise use internal state
@@ -429,26 +435,36 @@ export function PreviewPane({ projectId, activeTab, config = {} }: PreviewPanePr
   };
 
   const ConsoleDropdown = () => {
+    const [isOpen, setIsOpen] = useState(false);
+    const copiedMessageRef = useRef<number | null>(null);
+    const [_, setCopyUpdate] = useState(0);
+    
     const copyMessageToClipboard = async (msg: ConsoleMessage) => {
       try {
         await navigator.clipboard.writeText(msg.message);
-        setCopiedMessageId(msg.id);
+        copiedMessageRef.current = msg.id;
+        setCopyUpdate(prev => prev + 1);
 
         // Reset the copied state after 2 seconds
         setTimeout(() => {
-          setCopiedMessageId(null);
+          copiedMessageRef.current = null;
+          setCopyUpdate(prev => prev + 1);
         }, 2000);
       } catch (error) {
         console.error('Failed to copy message to clipboard:', error);
       }
     };
 
+    const closePanel = () => {
+      setIsOpen(false);
+    };
+
     const hasErrors = consoleMessages.some(msg => msg.level === 'error');
     const messageCount = consoleMessages.length;
 
     return (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
+      <Popover open={isOpen} onOpenChange={setIsOpen}>
+        <PopoverTrigger asChild>
           <Button
             variant="ghost"
             size="sm"
@@ -459,18 +475,18 @@ export function PreviewPane({ projectId, activeTab, config = {} }: PreviewPanePr
               <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full border-2 border-background bg-red-500" />
             )}
           </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent
+        </PopoverTrigger>
+        <PopoverContent
           align="end"
-          className="w-[calc(100vw-1rem)] max-w-[480px] max-h-[512px] p-0 overflow-hidden shadow-lg border-border/50"
+          className="w-[calc(100vw-1rem)] max-w-[480px] max-h-[512px] overflow-hidden shadow-lg border-0 rounded-lg bg-black p-0"
           sideOffset={4}
         >
+
           {/* Messages */}
-          <ScrollArea className="h-[60vh] max-h-[512px] w-full bg-black text-white font-mono text-xs">
-            <div className="p-1 pr-2 space-y-0">
+          <div className="h-[60vh] max-h-[512px] w-full bg-black text-white font-mono text-xs relative overflow-y-auto overflow-x-hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+            <div className="py-2 px-1 space-y-0">
               {messageCount === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <Bug className="h-8 w-8 text-muted-foreground/30 mb-3" />
                   <p className="text-sm text-muted-foreground font-medium">No console messages</p>
                   <p className="text-xs text-muted-foreground mt-1">Messages from your project will appear here</p>
                 </div>
@@ -478,7 +494,11 @@ export function PreviewPane({ projectId, activeTab, config = {} }: PreviewPanePr
                 consoleMessages.map((msg) => (
                   <div
                     key={msg.id}
-                    className="group relative py-0.5 pl-1 pr-2 hover:bg-gray-900 transition-colors duration-150"
+                    className="group relative py-0.5 px-1 hover:bg-gray-900 transition-colors duration-150 rounded cursor-pointer"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      copyMessageToClipboard(msg);
+                    }}
                   >
                     <div className={cn(
                       "text-xs font-mono leading-tight whitespace-pre-wrap break-words",
@@ -497,9 +517,9 @@ export function PreviewPane({ projectId, activeTab, config = {} }: PreviewPanePr
                         e.stopPropagation();
                         copyMessageToClipboard(msg);
                       }}
-                      className="h-3 w-3 p-0 opacity-0 group-hover:opacity-100 transition-all duration-200 absolute right-1 top-1 hover:bg-muted-foreground/10 text-muted-foreground hover:text-foreground bg-black/50"
+                      className="h-3 w-3 p-0 opacity-0 group-hover:opacity-100 transition-all duration-200 absolute right-1 top-1 hover:bg-muted-foreground/10 text-muted-foreground hover:text-foreground bg-black/50 rounded"
                     >
-                      {copiedMessageId === msg.id ? (
+                      {copiedMessageRef.current === msg.id ? (
                         <Check className="h-2 w-2 text-green-400" />
                       ) : (
                         <Copy className="h-2 w-2" />
@@ -509,9 +529,17 @@ export function PreviewPane({ projectId, activeTab, config = {} }: PreviewPanePr
                 ))
               )}
             </div>
-          </ScrollArea>
-        </DropdownMenuContent>
-      </DropdownMenu>
+          </div>
+
+          {/* Close button */}
+          <button
+            onClick={closePanel}
+            className="absolute top-2 right-2 h-8 w-8 p-0 bg-gray-800/50 hover:bg-gray-700/70 rounded-md z-10 flex items-center justify-center border-0"
+          >
+            <X className="h-5 w-5 text-gray-400" />
+          </button>
+        </PopoverContent>
+      </Popover>
     );
   };
 

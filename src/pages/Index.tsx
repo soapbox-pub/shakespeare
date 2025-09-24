@@ -11,6 +11,8 @@ import { AppLayout } from '@/components/AppLayout';
 import { OnboardingDialog } from '@/components/OnboardingDialog';
 import { DotAI } from '@/lib/DotAI';
 import type { AIMessage } from '@/lib/SessionManager';
+import { saveFileToTmp } from '@/lib/fileUtils';
+import type OpenAI from 'openai';
 
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -164,13 +166,48 @@ export default function Index() {
       // Create project with AI-generated ID
       const project = await projectsManager.createProject(prompt.trim(), projectId);
 
+      // Build message content as text parts (same as ChatPane)
+      const contentParts: Array<OpenAI.Chat.Completions.ChatCompletionContentPartText> = [];
+
+      // Add user input as text part if present
+      if (prompt.trim()) {
+        contentParts.push({
+          type: 'text',
+          text: prompt.trim()
+        });
+      }
+
+      // Process attached files and add as separate text parts
+      if (attachedFiles.length > 0) {
+        const filePromises = attachedFiles.map(async (file) => {
+          try {
+            const savedPath = await saveFileToTmp(fs, file);
+            return `Added file: ${savedPath}`;
+          } catch (error) {
+            console.error('Failed to save file:', error);
+            return `Failed to save file: ${file.name}`;
+          }
+        });
+
+        const fileResults = await Promise.all(filePromises);
+
+        // Add each file as a separate text part
+        fileResults.forEach(fileResult => {
+          contentParts.push({
+            type: 'text',
+            text: fileResult
+          });
+        });
+      }
+
       // Store the initial message in chat history using DotAI
       const dotAI = new DotAI(fs, `/projects/${project.id}`);
       const sessionName = DotAI.generateSessionName();
-      // Create initial message with content parts
+
+      // Create initial message with content parts (same format as ChatPane)
       const initialMessage: AIMessage = {
         role: 'user',
-        content: prompt.trim()
+        content: contentParts.length === 1 ? contentParts[0].text : contentParts
       };
       await dotAI.setHistory(sessionName, [initialMessage]);
 

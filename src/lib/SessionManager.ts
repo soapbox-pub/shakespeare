@@ -405,7 +405,9 @@ export class SessionManager {
       console.error('AI generation error:', error);
 
       // Handle different error types
-      if (error?.name === 'AbortError') return; // User cancelled
+      if (error instanceof OpenAI.APIUserAbortError || error?.name === 'AbortError') {
+        return; // User cancelled
+      }
 
       let errorMessage = 'Sorry, I encountered an unexpected error. Please try again.';
       const errorMsg = error?.message || '';

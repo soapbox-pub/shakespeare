@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ArrowLeft, Mail, CheckCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
@@ -21,6 +21,14 @@ export function EmailSettings() {
   const [email, setEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+
+  // Check localStorage on component mount
+  useEffect(() => {
+    const hasSubscribed = localStorage.getItem('shakespeare-email-subscribed');
+    if (hasSubscribed === 'true') {
+      setIsSubmitted(true);
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -108,6 +116,9 @@ export function EmailSettings() {
         document.body.removeChild(form);
       }, 1000);
 
+      // Save subscription status to localStorage
+      localStorage.setItem('shakespeare-email-subscribed', 'true');
+
       setIsSubmitted(true);
       toast({
         title: "Successfully subscribed!",
@@ -155,12 +166,25 @@ export function EmailSettings() {
                     You can opt out at any time using the unsubscribe link in our emails.
                   </p>
                 </div>
-                <Button
-                  onClick={() => navigate('/settings')}
-                  className="w-full"
-                >
-                  Back to Settings
-                </Button>
+                <div className="space-y-2">
+                  <Button
+                    onClick={() => navigate('/settings')}
+                    className="w-full"
+                  >
+                    Back to Settings
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      localStorage.removeItem('shakespeare-email-subscribed');
+                      setIsSubmitted(false);
+                      setEmail('');
+                    }}
+                    variant="outline"
+                    className="w-full text-xs"
+                  >
+                    Subscribe with different email
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>

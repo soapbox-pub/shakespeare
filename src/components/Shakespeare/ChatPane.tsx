@@ -266,12 +266,6 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     }
   }, [aiModelAlert.hasError, consoleAlert.hasError, scrollToBottom]);
 
-  const suggestErrorFix = useCallback((errorMessage: string, errorCount: number) => {
-    const errorText = errorCount === 1 ? 'this error' : 'these errors';
-    setInput(`The user gets ${errorText} in the app now: ${errorMessage}\n\nCan you identify the problem and create a concise fix.`);
-  }, []);
-
-
   // Check for autostart parameter and trigger AI generation
   useEffect(() => {
     const autostart = searchParams.get('autostart');
@@ -401,7 +395,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     setAttachedFiles(prev => [...prev, ...files]);
   };
 
-  const handleSend = async () => {
+  const send = useCallback(async (input: string, attachedFiles: File[]) => {
     if ((!input.trim() && attachedFiles.length === 0) || isLoading) return;
 
     // If AI is not configured, show onboarding dialog
@@ -463,7 +457,11 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
       console.error('AI chat error:', error);
       // Error handling is done in the useAIChat hook and SessionManager
     }
-  };
+  }, [addRecentlyUsedModel, fs, isConfigured, isLoading, providerModel, sendMessage]);
+
+  const handleSend = useCallback(async () => {
+    await send(input, attachedFiles);
+  }, [input, attachedFiles, send]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -527,7 +525,9 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     }
   }), [internalStartNewSession]);
 
-
+  const suggestErrorFix = useCallback(async (errorMessage: string) => {
+    await send(errorMessage, attachedFiles);
+  }, [send, attachedFiles]);
 
   return (
     <div className="h-full flex flex-col relative">
@@ -625,7 +625,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
               onDismiss={consoleAlert.dismiss}
               action={{
                 label: `Fix ${consoleAlert.errorCount === 1 ? 'error' : 'errors'}`,
-                onClick: () => suggestErrorFix(consoleAlert.errorSummary || '', consoleAlert.errorCount)
+                onClick: () => suggestErrorFix(consoleAlert.errorSummary || '')
               }}
             />
           )}

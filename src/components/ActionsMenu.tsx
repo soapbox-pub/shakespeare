@@ -11,6 +11,7 @@ import {
   MoreHorizontal,
   MessageSquarePlus,
   History,
+  Folder,
 } from 'lucide-react';
 import { GitHistoryDialog } from '@/components/ai/GitHistoryDialog';
 import { GitDialog } from '@/components/GitDialog';
@@ -19,6 +20,7 @@ interface ActionsMenuProps {
   projectId: string;
   projectName: string;
   onNewChat: () => void;
+  onProjectDetails?: () => void;
   isLoading?: boolean;
   isBuildLoading?: boolean;
   disabled?: boolean;
@@ -29,6 +31,7 @@ export function ActionsMenu({
   projectId,
   projectName: _projectName,
   onNewChat,
+  onProjectDetails,
   isLoading = false,
   isBuildLoading = false,
   disabled = false,
@@ -66,6 +69,15 @@ export function ActionsMenu({
           </DropdownMenuItem>
 
           <DropdownMenuItem
+            onClick={() => setGitHistoryOpen(true)}
+            disabled={isAnyLoading}
+            className="gap-2"
+          >
+            <History className="h-4 w-4" />
+            Rollback
+          </DropdownMenuItem>
+
+          <DropdownMenuItem
             onClick={() => setGitDialogOpen(true)}
             disabled={isAnyLoading}
             className="gap-2"
@@ -75,12 +87,12 @@ export function ActionsMenu({
           </DropdownMenuItem>
 
           <DropdownMenuItem
-            onClick={() => setGitHistoryOpen(true)}
+            onClick={onProjectDetails}
             disabled={isAnyLoading}
             className="gap-2"
           >
-            <History className="h-4 w-4" />
-            Rollback
+            <Folder className="h-4 w-4" />
+            Project Details
           </DropdownMenuItem>
 
 

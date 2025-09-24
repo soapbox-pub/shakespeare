@@ -36,14 +36,14 @@ import {
 import JSZip from 'jszip';
 import { Separator } from './ui/separator';
 
-interface ProjectInfoDialogProps {
+interface ProjectDetailsDialogProps {
   project: Project;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onProjectDeleted?: () => void;
 }
 
-export function ProjectInfoDialog({ project, open, onOpenChange, onProjectDeleted }: ProjectInfoDialogProps) {
+export function ProjectDetailsDialog({ project, open, onOpenChange, onProjectDeleted }: ProjectDetailsDialogProps) {
   const [isExporting, setIsExporting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
@@ -212,7 +212,7 @@ export function ProjectInfoDialog({ project, open, onOpenChange, onProjectDelete
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Folder className="h-5 w-5" />
-            Project Info
+            {project.name}
           </DialogTitle>
         </DialogHeader>
 

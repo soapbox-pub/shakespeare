@@ -6,7 +6,7 @@ import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { ChatPane, type ChatPaneRef } from '@/components/Shakespeare/ChatPane';
 import { PreviewPane } from '@/components/Shakespeare/PreviewPane';
 import { ProjectSidebar } from '@/components/ProjectSidebar';
-import { ProjectInfoDialog } from '@/components/ProjectInfoDialog';
+import { ProjectDetailsDialog } from '@/components/ProjectDetailsDialog';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -29,7 +29,7 @@ export function ProjectView() {
   const [activeTab, setActiveTab] = useState<'preview' | 'code'>('preview');
   const [mobileView, setMobileView] = useState<'chat' | 'preview' | 'code'>('chat');
   const [isAILoading, setIsAILoading] = useState(false);
-  const [isProjectInfoOpen, setIsProjectInfoOpen] = useState(false);
+  const [isProjectDetailsOpen, setIsProjectDetailsOpen] = useState(false);
   const projectsManager = useProjectsManager();
   const chatPaneRef = useRef<ChatPaneRef>(null);
   const navigate = useNavigate();
@@ -162,7 +162,7 @@ export function ProjectView() {
                 <Button
                   variant="ghost"
                   className="block p-0 h-auto text-sm font-semibold truncate hover:bg-transparent hover:text-primary"
-                  onClick={() => setIsProjectInfoOpen(true)}
+                  onClick={() => setIsProjectDetailsOpen(true)}
                 >
                   {project.name}
                 </Button>
@@ -184,6 +184,7 @@ export function ProjectView() {
                   projectId={project.id}
                   projectName={project.name}
                   onNewChat={handleNewChat}
+                  onProjectDetails={() => setIsProjectDetailsOpen(true)}
                   isLoading={isAILoading}
                   isBuildLoading={build.isPending}
                   onFirstInteraction={handleFirstInteraction}
@@ -305,12 +306,12 @@ export function ProjectView() {
           </div>
         </div>
 
-        {/* Project Info Dialog */}
+        {/* Project Details Dialog */}
         {project && (
-          <ProjectInfoDialog
+          <ProjectDetailsDialog
             project={project}
-            open={isProjectInfoOpen}
-            onOpenChange={setIsProjectInfoOpen}
+            open={isProjectDetailsOpen}
+            onOpenChange={setIsProjectDetailsOpen}
             onProjectDeleted={handleProjectDeleted}
           />
         )}
@@ -367,7 +368,7 @@ export function ProjectView() {
                           <Button
                             variant="ghost"
                             className="block p-0 h-auto font-semibold text-lg truncate hover:bg-transparent hover:text-primary"
-                            onClick={() => setIsProjectInfoOpen(true)}
+                            onClick={() => setIsProjectDetailsOpen(true)}
                           >
                             {project.name}
                           </Button>
@@ -390,6 +391,7 @@ export function ProjectView() {
                             projectId={project.id}
                             projectName={project.name}
                             onNewChat={handleNewChat}
+                            onProjectDetails={() => setIsProjectDetailsOpen(true)}
                             isLoading={isAILoading}
                             isBuildLoading={build.isPending}
                             onFirstInteraction={handleFirstInteraction}
@@ -457,12 +459,12 @@ export function ProjectView() {
         </div>
       </div>
 
-      {/* Project Info Dialog */}
+      {/* Project Details Dialog */}
       {project && (
-        <ProjectInfoDialog
+        <ProjectDetailsDialog
           project={project}
-          open={isProjectInfoOpen}
-          onOpenChange={setIsProjectInfoOpen}
+          open={isProjectDetailsOpen}
+          onOpenChange={setIsProjectDetailsOpen}
           onProjectDeleted={handleProjectDeleted}
         />
       )}

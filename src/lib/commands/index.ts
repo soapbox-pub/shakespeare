@@ -13,6 +13,7 @@ export { FindCommand } from './find';
 export { GitCommand } from './git';
 export { GrepCommand } from './grep';
 export { HeadCommand } from './head';
+export { HexdumpCommand } from './hexdump';
 export { LsCommand } from './ls';
 export { MkdirCommand } from './mkdir';
 export { MvCommand } from './mv';

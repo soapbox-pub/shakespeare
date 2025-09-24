@@ -18,6 +18,7 @@ import {
   GitCommand,
   GrepCommand,
   HeadCommand,
+  HexdumpCommand,
   LsCommand,
   MkdirCommand,
   MvCommand,
@@ -47,7 +48,7 @@ export class ShellTool implements Tool<ShellToolParams> {
   private git: Git;
   private commands: Map<string, ShellCommand>;
 
-  readonly description = "Execute shell commands like cat, ls, cd, pwd, rm, cp, mv, echo, head, tail, grep, find, wc, touch, mkdir, sort, uniq, cut, tr, diff, which, whoami, date, env, clear, git, curl, unzip. Supports compound commands with &&, ||, ;, and | operators";
+  readonly description = "Execute shell commands like cat, ls, cd, pwd, rm, cp, mv, echo, head, tail, grep, find, wc, touch, mkdir, sort, uniq, cut, tr, diff, which, whoami, date, env, clear, git, curl, unzip, hexdump. Supports compound commands with &&, ||, ;, and | operators";
 
   readonly inputSchema = z.object({
     command: z.string().describe(
@@ -76,6 +77,7 @@ export class ShellTool implements Tool<ShellToolParams> {
     this.registerCommand(new GitCommand({ git: this.git, fs, cwd: this.cwd }));
     this.registerCommand(new GrepCommand(fs));
     this.registerCommand(new HeadCommand(fs));
+    this.registerCommand(new HexdumpCommand(fs));
     this.registerCommand(new LsCommand(fs));
     this.registerCommand(new MkdirCommand(fs));
     this.registerCommand(new MvCommand(fs));

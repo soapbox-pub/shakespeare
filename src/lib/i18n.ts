@@ -254,6 +254,11 @@ const resources = {
       recentlyUsed: 'Recently Used',
       errorLoadingModels: 'Error Loading Models',
 
+      // API Authentication Errors
+      apiAuthenticationFailed: 'API Authentication Failed',
+      invalidApiKey: 'Invalid API key for {{provider}}. Please check your API key in Settings.',
+      checkApiKeySettings: 'Check API Key Settings',
+
       // Context and Cost
       contextUsage: 'Context usage: {{tokens}} / {{total}} tokens ({{percentage}}%)',
       totalCostSession: 'Total cost for this chat session',
@@ -547,6 +552,11 @@ const resources = {
       tryCustomModel: 'Tente usar um modelo personalizado.',
       recentlyUsed: 'Usados Recentemente',
       errorLoadingModels: 'Erro ao Carregar Modelos',
+
+      // API Authentication Errors
+      apiAuthenticationFailed: 'Falha na Autenticação da API',
+      invalidApiKey: 'Chave de API inválida para {{provider}}. Verifique sua chave de API nas Configurações.',
+      checkApiKeySettings: 'Verificar Configurações da Chave de API',
 
       // Context and Cost
       contextUsage: 'Uso de contexto: {{tokens}} / {{total}} tokens ({{percentage}}%)',
@@ -842,6 +852,11 @@ const resources = {
       recentlyUsed: '最近使用',
       errorLoadingModels: '加载模型时出错',
 
+      // API Authentication Errors
+      apiAuthenticationFailed: 'API身份验证失败',
+      invalidApiKey: '{{provider}}的API密钥无效。请在设置中检查您的API密钥。',
+      checkApiKeySettings: '检查API密钥设置',
+
       // Context and Cost
       contextUsage: '上下文使用：{{tokens}} / {{total}} 令牌 ({{percentage}}%)',
       totalCostSession: '此聊天会话的总费用',
@@ -1135,6 +1150,11 @@ const resources = {
       tryCustomModel: 'Gwada amfani da samfuri na musamman.',
       recentlyUsed: 'An yi amfani da su kwanan nan',
       errorLoadingModels: 'Kuskure wajen Lodin Samfura',
+
+      // API Authentication Errors
+      apiAuthenticationFailed: 'Gazawar Tabbatarwar API',
+      invalidApiKey: 'Maɓallin API na {{provider}} ba daidai ba ne. Da fatan za a duba maɓallin API a cikin Saitunan.',
+      checkApiKeySettings: 'Duba Saitunan Maɓallin API',
 
       // Context and Cost
       contextUsage: 'Amfanin mahallin: {{tokens}} / {{total}} alamomi ({{percentage}}%)',

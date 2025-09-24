@@ -7,7 +7,7 @@ import { useBuildProject } from '@/hooks/useBuildProject';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { FolderOpen, ArrowLeft, Bug, Copy, Check, Play, Loader2, MenuIcon, Code, CloudUpload, AlertCircle, AlertTriangle, Info, Search, Trash2 } from 'lucide-react';
+import { FolderOpen, ArrowLeft, Bug, Copy, Check, Play, Loader2, MenuIcon, Code, CloudUpload } from 'lucide-react';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { GitStatusIndicator } from '@/components/GitStatusIndicator';
 import { BrowserAddressBar } from '@/components/ui/browser-address-bar';
@@ -429,46 +429,9 @@ export function PreviewPane({ projectId, activeTab, config = {} }: PreviewPanePr
   };
 
   const ConsoleDropdown = () => {
-    const getLevelColor = (level: ConsoleMessage['level']) => {
-      switch (level) {
-        case 'error': return 'text-red-600 dark:text-red-400';
-        case 'warn': return 'text-yellow-600 dark:text-yellow-400';
-        case 'info': return 'text-blue-600 dark:text-blue-400';
-        case 'debug': return 'text-gray-600 dark:text-gray-400';
-        default: return 'text-gray-600 dark:text-gray-400';
-      }
-    };
-
-    const getLevelBgColor = (level: ConsoleMessage['level']) => {
-      switch (level) {
-        case 'error': return 'bg-red-50 dark:bg-red-950/50 border-red-200 dark:border-red-800';
-        case 'warn': return 'bg-yellow-50 dark:bg-yellow-950/50 border-yellow-200 dark:border-yellow-800';
-        case 'info': return 'bg-blue-50 dark:bg-blue-950/50 border-blue-200 dark:border-blue-800';
-        case 'debug': return 'bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700';
-        default: return 'bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700';
-      }
-    };
-
-    const getLevelIcon = (level: ConsoleMessage['level']) => {
-      switch (level) {
-        case 'error': return AlertCircle;
-        case 'warn': return AlertTriangle;
-        case 'info': return Info;
-        case 'debug': return Search;
-        default: return Bug;
-      }
-    };
-
-    const clearConsole = () => {
-      setConsoleMessages([]);
-    };
-
     const copyMessageToClipboard = async (msg: ConsoleMessage) => {
       try {
-        // Create a formatted string with all message details
-        const formattedMessage = `[${msg.level.toUpperCase()}] ${msg.message}`;
-
-        await navigator.clipboard.writeText(formattedMessage);
+        await navigator.clipboard.writeText(msg.message);
         setCopiedMessageId(msg.id);
 
         // Reset the copied state after 2 seconds
@@ -481,9 +444,6 @@ export function PreviewPane({ projectId, activeTab, config = {} }: PreviewPanePr
     };
 
     const hasErrors = consoleMessages.some(msg => msg.level === 'error');
-    const errorCount = consoleMessages.filter(m => m.level === 'error').length;
-    const warnCount = consoleMessages.filter(m => m.level === 'warn').length;
-    const infoCount = consoleMessages.filter(m => m.level === 'info').length;
     const messageCount = consoleMessages.length;
 
     return (
@@ -502,34 +462,12 @@ export function PreviewPane({ projectId, activeTab, config = {} }: PreviewPanePr
         </DropdownMenuTrigger>
         <DropdownMenuContent
           align="end"
-          className="w-[480px] max-w-[480px] max-h-[512px] p-0 overflow-hidden shadow-lg border-border/50"
+          className="w-[calc(100vw-1rem)] max-w-[480px] max-h-[512px] p-0 overflow-hidden shadow-lg border-border/50"
           sideOffset={4}
         >
-          {/* Header */}
-          <div className="flex items-center justify-between p-3 border-b bg-muted/30">
-            <div className="flex items-center gap-2">
-              <Bug className="h-4 w-4 text-muted-foreground" />
-              <div>
-                <span className="font-medium text-sm">Console Output</span>
-                <span className="text-xs text-muted-foreground ml-1">
-                  ({messageCount} {messageCount === 1 ? 'message' : 'messages'})
-                </span>
-              </div>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={clearConsole}
-              className="h-7 w-7 p-0 hover:bg-muted text-muted-foreground hover:text-foreground"
-              disabled={messageCount === 0}
-            >
-              <Trash2 className="h-3 w-3" />
-            </Button>
-          </div>
-
           {/* Messages */}
-          <ScrollArea className="h-[400px] w-full">
-            <div className="p-2 space-y-1.5">
+          <ScrollArea className="h-[60vh] max-h-[512px] w-full bg-black text-white font-mono text-xs">
+            <div className="p-1 pr-2 space-y-0">
               {messageCount === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <Bug className="h-8 w-8 text-muted-foreground/30 mb-3" />
@@ -537,96 +475,41 @@ export function PreviewPane({ projectId, activeTab, config = {} }: PreviewPanePr
                   <p className="text-xs text-muted-foreground mt-1">Messages from your project will appear here</p>
                 </div>
               ) : (
-                consoleMessages.map((msg) => {
-                  const IconComponent = getLevelIcon(msg.level);
-                  return (
-                    <div
-                      key={msg.id}
-                      className={cn(
-                        "group relative rounded-md border p-2.5 transition-all duration-200 hover:shadow-sm",
-                        getLevelBgColor(msg.level),
-                        copiedMessageId === msg.id && "ring-2 ring-primary/20"
-                      )}
-                    >
-                      <div className="flex items-start gap-2 w-full">
-                        {/* Level indicator */}
-                        <div className={cn(
-                          "flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center mt-0.5",
-                          msg.level === 'error' && "bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300",
-                          msg.level === 'warn' && "bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700 dark:text-yellow-300",
-                          msg.level === 'info' && "bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300",
-                          msg.level === 'debug' && "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
-                        )}>
-                          <IconComponent className="h-3 w-3" />
-                        </div>
-
-                        {/* Message content */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between mb-1">
-                            <span className={cn(
-                              "text-xs font-medium uppercase tracking-wide",
-                              getLevelColor(msg.level)
-                            )}>
-                              {msg.level}
-                            </span>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => copyMessageToClipboard(msg)}
-                              className={cn(
-                                "h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-all duration-200",
-                                "hover:bg-muted-foreground/10 text-muted-foreground hover:text-foreground",
-                                copiedMessageId === msg.id && "opacity-100"
-                              )}
-                            >
-                              {copiedMessageId === msg.id ? (
-                                <Check className="h-3 w-3 text-green-600 dark:text-green-400" />
-                              ) : (
-                                <Copy className="h-3 w-3" />
-                              )}
-                            </Button>
-                          </div>
-                          <div className={cn(
-                            "text-xs font-mono leading-relaxed whitespace-pre-wrap break-words",
-                            msg.level === 'error' ? "text-red-700 dark:text-red-300" :
-                            msg.level === 'warn' ? "text-yellow-700 dark:text-yellow-300" :
-                            msg.level === 'info' ? "text-blue-700 dark:text-blue-300" :
-                            "text-foreground"
-                          )}>
-                            {msg.message}
-                          </div>
-                        </div>
-                      </div>
+                consoleMessages.map((msg) => (
+                  <div
+                    key={msg.id}
+                    className="group relative py-0.5 pl-1 pr-2 hover:bg-gray-900 transition-colors duration-150"
+                  >
+                    <div className={cn(
+                      "text-xs font-mono leading-tight whitespace-pre-wrap break-words",
+                      msg.level === 'error' ? "text-red-400" :
+                      msg.level === 'warn' ? "text-yellow-400" :
+                      msg.level === 'info' ? "text-blue-400" :
+                      "text-gray-300"
+                    )}>
+                      {msg.message}
                     </div>
-                  );
-                })
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        copyMessageToClipboard(msg);
+                      }}
+                      className="h-3 w-3 p-0 opacity-0 group-hover:opacity-100 transition-all duration-200 absolute right-1 top-1 hover:bg-muted-foreground/10 text-muted-foreground hover:text-foreground bg-black/50"
+                    >
+                      {copiedMessageId === msg.id ? (
+                        <Check className="h-2 w-2 text-green-400" />
+                      ) : (
+                        <Copy className="h-2 w-2" />
+                      )}
+                    </Button>
+                  </div>
+                ))
               )}
             </div>
           </ScrollArea>
-
-          {/* Footer */}
-          {messageCount > 0 && (
-            <div className="flex items-center gap-4 p-2 border-t bg-muted/20">
-              {errorCount > 0 && (
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <div className="w-2 h-2 rounded-full bg-red-500"></div>
-                  <span>{errorCount} error{errorCount !== 1 ? 's' : ''}</span>
-                </div>
-              )}
-              {warnCount > 0 && (
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
-                  <span>{warnCount} warning{warnCount !== 1 ? 's' : ''}</span>
-                </div>
-              )}
-              {infoCount > 0 && (
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                  <span>{infoCount} info{infoCount !== 1 ? '' : ''}</span>
-                </div>
-              )}
-            </div>
-          )}
         </DropdownMenuContent>
       </DropdownMenu>
     );
@@ -647,7 +530,7 @@ export function PreviewPane({ projectId, activeTab, config = {} }: PreviewPanePr
             <span className="sr-only">Open menu</span>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-48">
+        <DropdownMenuContent align="end" className="w-48 sm:w-48">
           <DropdownMenuItem
             onClick={handleBuildProject}
             disabled={isBuildLoading}

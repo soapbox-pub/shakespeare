@@ -40,6 +40,59 @@ import OpenAI from 'openai';
 import { makeSystemPrompt } from '@/lib/system';
 import { saveFileToTmp } from '@/lib/fileUtils';
 import { useGit } from '@/hooks/useGit';
+import { useConsoleErrorAlert, useAIModelErrorAlert } from '@/hooks/useErrorDetection';
+import { QuillySVG } from '@/components/ui/QuillySVG';
+
+
+function ChatIntervention({
+  message,
+  onDismiss,
+  action
+}: {
+  message: string;
+  onDismiss: () => void;
+  action?: { label: string; onClick: () => void };
+}) {
+  return (
+    <div className="py-2 px-3 bg-primary/5 border border-primary/20 rounded-lg">
+      <div className="flex items-start gap-2">
+        <QuillySVG className="h-14 w-14 flex-shrink-0" fillColor="hsl(var(--primary))" />
+        <div className="flex-1 min-w-0">
+          <div className="space-y-1">
+            <div className="space-y-1">
+              <h4 className="font-semibold text-sm text-primary">
+                Pardon the interruption
+              </h4>
+              <p className="text-sm text-muted-foreground">{message}</p>
+            </div>
+            {action && (
+              <div className="flex justify-end pt-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={action.onClick}
+                  className="text-xs h-6 px-2"
+                >
+                  {action.label}
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onDismiss}
+          className="h-5 w-5 p-0 hover:bg-muted flex-shrink-0"
+        >
+          ×
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// Clean interfaces now handled by proper hooks
 
 interface ChatPaneProps {
   projectId: string;
@@ -81,6 +134,8 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     // Initialize with first recently used model if available, otherwise empty
     return settings.recentlyUsedModels?.[0] || '';
   });
+  // State to control model selector dropdown
+  const [isModelSelectorOpen, setIsModelSelectorOpen] = useState(false);
 
   useEffect(() => {
     if (!providerModel && settings.recentlyUsedModels?.length) {
@@ -207,6 +262,38 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     }
   }, [internalIsLoading, onLoadingChange]);
 
+  // Function to scroll to bottom
+  const scrollToBottom = useCallback(() => {
+    if (scrollAreaRef.current) {
+      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+    }
+  }, []);
+
+  // Function to open model selector dropdown
+  const openModelSelector = useCallback(() => {
+    setIsModelSelectorOpen(true);
+  }, []);
+
+  // Function to suggest error fix
+  // Clean alert hooks with proper interfaces
+  const aiModelAlert = useAIModelErrorAlert(messages, _onNewChat, openModelSelector);
+  const consoleAlert = useConsoleErrorAlert(messages, isBuildLoading, internalIsLoading);
+
+  // Scroll to bottom when alerts appear
+  useEffect(() => {
+    if (aiModelAlert.hasError || consoleAlert.hasError) {
+      setTimeout(() => {
+        scrollToBottom();
+      }, 50);
+    }
+  }, [aiModelAlert.hasError, consoleAlert.hasError, scrollToBottom]);
+
+  const suggestErrorFix = useCallback((errorMessage: string, errorCount: number) => {
+    const errorText = errorCount === 1 ? 'this error' : 'these errors';
+    setInput(`The user gets ${errorText} in the app now: ${errorMessage}\n\nCan you identify the problem and create a concise fix.`);
+  }, []);
+
+
   // Check for autostart parameter and trigger AI generation
   useEffect(() => {
     const autostart = searchParams.get('autostart');
@@ -234,14 +321,6 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
       }
     }
   }, [addRecentlyUsedModel, isConfigured, providerModel, searchParams, setSearchParams, startGeneration]);
-
-
-  // Function to scroll to bottom
-  const scrollToBottom = () => {
-    if (scrollAreaRef.current) {
-      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
-    }
-  };
 
   // Simple scroll event listener
   useEffect(() => {
@@ -277,7 +356,6 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
       if (isNearBottom) {
         container.scrollTop = container.scrollHeight;
       }
-
     }
   }, [messages, streamingMessage, isLoading]);
 
@@ -292,7 +370,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
 
       return () => clearTimeout(timer);
     }
-  }, [projectId, scrolledProjects]);
+  }, [projectId, scrolledProjects, scrollToBottom]);
 
   const handleFileSelect = (file: File) => {
     setAttachedFiles(prev => [...prev, file]);
@@ -405,7 +483,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
       await sendMessage(messageContent, modelToUse);
     } catch (error) {
       console.error('AI chat error:', error);
-      // Error handling is done in the useAIChat hook
+      // Error handling is done in the useAIChat hook and SessionManager
     }
   };
 
@@ -552,6 +630,28 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
               </div>
             </div>
           )}
+
+          {/* AI Model Alert */}
+          {aiModelAlert.hasError && (
+            <ChatIntervention
+              message={aiModelAlert.errorMessage || ''}
+              onDismiss={aiModelAlert.dismiss}
+              action={aiModelAlert.action}
+            />
+          )}
+
+          {/* Console Error Alert */}
+          {consoleAlert.hasError && (
+            <ChatIntervention
+              message={`Console ${consoleAlert.errorCount === 1 ? 'error' : 'errors'} detected in your app. Would you like me to help fix ${consoleAlert.errorCount === 1 ? 'it' : 'them'}?`}
+              onDismiss={consoleAlert.dismiss}
+              action={{
+                label: `Fix ${consoleAlert.errorCount === 1 ? 'error' : 'errors'}`,
+                onClick: () => suggestErrorFix(consoleAlert.errorSummary || '', consoleAlert.errorCount)
+              }}
+            />
+          )}
+
         </div>
       </div>
 
@@ -572,9 +672,8 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
       <div className="border-t p-4">
         {/* Chat Input Container */}
         <div
-          className={`flex flex-col rounded-2xl border border-input bg-background shadow-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 transition-all ${
-            isDragOver ? 'border-primary bg-primary/5 ring-2 ring-primary/20' : ''
-          }`}
+          className={`flex flex-col rounded-2xl border border-input bg-background shadow-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 transition-all ${isDragOver ? 'border-primary bg-primary/5 ring-2 ring-primary/20' : ''
+            }`}
           onDragEnter={handleDragEnter}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
@@ -667,6 +766,8 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
                 className="w-full"
                 disabled={isLoading}
                 placeholder={t('chooseModel')}
+                open={isModelSelectorOpen}
+                onOpenChange={setIsModelSelectorOpen}
               />
             </div>
 

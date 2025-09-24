@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { useFS } from '@/hooks/useFS';
+import { useConsoleMessages, addConsoleMessage, clearConsoleMessages, type ConsoleMessage } from '@/hooks/useConsoleMessages';
 import { useBuildProject } from '@/hooks/useBuildProject';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
@@ -65,11 +66,6 @@ interface JSONRPCResponse {
   id: number;
 }
 
-interface ConsoleMessage {
-  id: number;
-  level: 'log' | 'warn' | 'error' | 'info' | 'debug';
-  message: string;
-}
 
 export function PreviewPane({ projectId, activeTab, onToggleView, projectName, onFirstInteraction, isPreviewable = true }: PreviewPaneProps) {
   const { t } = useTranslation();
@@ -82,12 +78,12 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
   const [currentPath, setCurrentPath] = useState('/');
   const [navigationHistory, setNavigationHistory] = useState<string[]>(['/']);
   const [historyIndex, setHistoryIndex] = useState(0);
-  const [consoleMessages, setConsoleMessages] = useState<ConsoleMessage[]>([]);
   const [copiedMessageId, setCopiedMessageId] = useState<number | null>(null);
   const [deployDialogOpen, setDeployDialogOpen] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const { fs } = useFS();
   const projectsManager = useProjectsManager();
+  const { messages: consoleMessages } = useConsoleMessages();
   const { mutate: buildProject, isPending: isBuildLoading } = useBuildProject(projectId);
 
   const [searchParams, setSearchParams] = useSearchParams();
@@ -259,13 +255,8 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
       normalizedLevel = params.level as ConsoleMessage['level'];
     }
 
-    const newConsoleMessage: ConsoleMessage = {
-      id: Date.now(),
-      level: normalizedLevel,
-      message: params.message,
-    };
-
-    setConsoleMessages(prev => [...prev, newConsoleMessage]);
+    // Add to global console messages
+    addConsoleMessage(normalizedLevel, params.message);
 
     // Log to parent console for debugging with appropriate level
     console[normalizedLevel](`[IFRAME ${params.level.toUpperCase()}] ${params.message}`);
@@ -467,7 +458,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
     };
 
     const clearConsole = () => {
-      setConsoleMessages([]);
+      clearConsoleMessages();
     };
 
     const copyMessageToClipboard = async (msg: ConsoleMessage) => {

@@ -256,6 +256,7 @@ export default function Index() {
       // Navigate to the project with autostart parameter and model
       const searchParams = new URLSearchParams({
         autostart: 'true',
+        build: 'true',
         ...(providerModel.trim() && { model: providerModel.trim() })
       });
       navigate(`/project/${project.id}?${searchParams.toString()}`);

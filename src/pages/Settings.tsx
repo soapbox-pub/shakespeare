@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Bot, GitBranch, Database, Wifi, Settings2, Info } from 'lucide-react';
+import { Bot, GitBranch, Database, Wifi, Settings2, Info, Mail } from 'lucide-react';
 import { useIsMobile } from '@/hooks/useIsMobile';
 
 interface SettingsItem {
@@ -47,6 +47,13 @@ const getSettingsItems = (t: (key: string) => string): SettingsItem[] => [
     description: t('dataSettingsDescription'),
     icon: Database,
     href: '/settings/data',
+  },
+  {
+    id: 'email',
+    title: t('emailUpdates'),
+    description: t('emailUpdatesDescription'),
+    icon: Mail,
+    href: '/settings/email',
   },
   {
     id: 'about',

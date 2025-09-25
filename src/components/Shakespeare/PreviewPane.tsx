@@ -556,9 +556,9 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
                   <p className="text-xs text-muted-foreground mt-1">Messages from your project will appear here</p>
                 </div>
               ) : (
-                consoleMessages.map((msg) => (
+                consoleMessages.map((msg, index) => (
                   <div
-                    key={msg.id}
+                    key={index}
                     className="group relative py-0.5 px-1 hover:bg-gray-900 transition-colors duration-150 rounded cursor-pointer"
                     onClick={(e) => {
                       e.stopPropagation();

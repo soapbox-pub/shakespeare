@@ -68,7 +68,7 @@ describe('ReadConsoleMessagesTool', () => {
 describe('ProjectPreviewConsoleError', () => {
   it('should create error with console logs', () => {
     const logs = [
-      { id: 1, level: 'error' as const, message: 'Test error', timestamp: Date.now() }
+      { level: 'error' as const, message: 'Test error' }
     ];
     const error = new ProjectPreviewConsoleError('Test message', logs);
 

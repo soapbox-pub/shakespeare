@@ -1,10 +1,8 @@
 import { Tool } from './Tool';
 
 export interface ConsoleMessage {
-  id: number;
   level: 'log' | 'warn' | 'error' | 'info' | 'debug';
   message: string;
-  timestamp?: number;
 }
 
 export interface ReadConsoleMessagesParams {
@@ -31,37 +29,29 @@ const errorListeners: Array<(error: ProjectPreviewConsoleError) => void> = [];
 
 export const addConsoleMessage = (level: ConsoleMessage['level'], message: string) => {
   const consoleMessage: ConsoleMessage = {
-    id: Date.now() + Math.random(),
     level,
     message,
-    timestamp: Date.now(),
   };
 
   consoleMessages.push(consoleMessage);
 
   // If this is an error, notify listeners
   if (level === 'error') {
-    const recentErrors = getConsoleMessages().filter(msg =>
-      msg.level === 'error' &&
-      msg.timestamp &&
-      Date.now() - msg.timestamp < 5000 // Last 5 seconds
+    const allErrors = getConsoleMessages().filter(msg => msg.level === 'error');
+
+    const error = new ProjectPreviewConsoleError(
+      `Console error detected: ${message}`,
+      allErrors
     );
 
-    if (recentErrors.length > 0) {
-      const error = new ProjectPreviewConsoleError(
-        `Console error detected: ${message}`,
-        recentErrors
-      );
-
-      // Notify all listeners
-      errorListeners.forEach(listener => {
-        try {
-          listener(error);
-        } catch (err) {
-          console.warn('Error listener failed:', err);
-        }
-      });
-    }
+    // Notify all listeners
+    errorListeners.forEach(listener => {
+      try {
+        listener(error);
+      } catch (err) {
+        console.warn('Error listener failed:', err);
+      }
+    });
   }
 };
 
@@ -112,8 +102,7 @@ export class ReadConsoleMessagesTool implements Tool<ReadConsoleMessagesParams> 
 
     // Format the messages
     const formattedMessages = filteredMessages.map(msg => {
-      const timestamp = new Date(msg.id).toLocaleTimeString();
-      return `[${timestamp}] [${msg.level.toUpperCase()}] ${msg.message}`;
+      return `[${msg.level.toUpperCase()}] ${msg.message}`;
     }).join('\n');
 
     return `Found ${filteredMessages.length} console message${filteredMessages.length !== 1 ? 's' : ''}${filter !== 'all' ? ` (level: ${filter})` : ''}:\n\n${formattedMessages}`;

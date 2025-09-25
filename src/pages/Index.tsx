@@ -15,7 +15,6 @@ import { parseProviderModel } from '@/lib/parseProviderModel';
 import type { AIMessage } from '@/lib/SessionManager';
 import { saveFileToTmp } from '@/lib/fileUtils';
 import type OpenAI from 'openai';
-
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ModelSelector } from '@/components/ModelSelector';
@@ -262,7 +261,13 @@ export default function Index() {
       navigate(`/project/${project.id}?${searchParams.toString()}`);
     } catch (error) {
       console.error('Failed to create project:', error);
-      checkForKeyFailure(error);
+      if (!checkForKeyFailure(error)) {
+        toast({
+          title: "Project Creation Failed",
+          description: error instanceof Error ? error.message : "An unexpected error occurred",
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsCreating(false);
     }

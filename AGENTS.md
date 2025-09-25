@@ -168,6 +168,8 @@ This project is a Nostr client application built with React 18.x, TailwindCSS 3.
   - `/src/components/ai/`: AI-related components (GitCommit, GitHistoryDialog)
   - `/src/components/comments/`: Comment system components (Comment, CommentForm, CommentsSection)
   - `/src/components/Shakespeare/`: Core Shakespeare editor components (ChatPane, FileEditor, FileTree, PreviewPane)
+  - `/src/components/ProjectSidebar.tsx`: Sidebar component containing project list and import options
+  - `/src/components/ZipImportDialog.tsx`: Dialog component for importing projects from ZIP files
   - Zap components: `ZapButton`, `ZapDialog`, `WalletModal` for Lightning payments
 - `/src/hooks/`: Custom hooks including:
   - `useNostr`: Core Nostr protocol integration
@@ -182,7 +184,7 @@ This project is a Nostr client application built with React 18.x, TailwindCSS 3.
   - `useSessionManager`: Access session management for AI chat sessions
   - `useGitStatus`: Real-time Git repository status monitoring
   - `useProjects`: Project management and CRUD operations
-  - `useProjectsManager`: Advanced project operations (creation, cloning, building)
+  - `useProjectsManager`: Advanced project operations (creation, cloning, building, ZIP import)
   - `useTheme`: Theme management
   - `useToast`: Toast notifications
   - `useLocalStorage`: Persistent local storage

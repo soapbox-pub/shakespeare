@@ -34,7 +34,7 @@ import { NostrReadNipsIndexTool } from '@/lib/tools/NostrReadNipsIndexTool';
 import { NostrGenerateKindTool } from '@/lib/tools/NostrGenerateKindTool';
 import { ShellTool } from '@/lib/tools/ShellTool';
 import { TypecheckTool } from '@/lib/tools/TypecheckTool';
-import { ReadConsoleMessagesTool } from '@/lib/tools/ReadConsoleMessagesTool';
+import { ReadConsoleMessagesTool, ProjectPreviewConsoleError, addErrorListener, removeErrorListener } from '@/lib/tools/ReadConsoleMessagesTool';
 import { toolToOpenAI } from '@/lib/tools/openai-adapter';
 import { Tool } from '@/lib/tools/Tool';
 import OpenAI from 'openai';
@@ -74,6 +74,19 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [isStuck, setIsStuck] = useState(false);
   const [aiError, setAIError] = useState<Error | null>(null);
+
+  // Console error handling
+  useEffect(() => {
+    const handleConsoleError = (error: ProjectPreviewConsoleError) => {
+      // Only show console errors if there's no existing AI error
+      if (!aiError) {
+        setAIError(error);
+      }
+    };
+
+    addErrorListener(handleConsoleError);
+    return () => removeErrorListener(handleConsoleError);
+  }, [aiError]);
 
   // Use external state if provided, otherwise default to false
   const isBuildLoading = externalIsBuildLoading || false;
@@ -188,6 +201,25 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     onUpdateMetadata,
     onAIError,
   });
+
+  // Handle console error help requests
+  const handleConsoleErrorHelp = useCallback((error: ProjectPreviewConsoleError) => {
+    const errorMessages = error.logs.filter(log => log.level === 'error').map(log => log.message);
+    const warningMessages = error.logs.filter(log => log.level === 'warn').map(log => log.message);
+
+    let consoleOutput = '';
+    if (errorMessages.length > 0) {
+      consoleOutput += `Console Errors:\n${errorMessages.map(msg => `- ${msg}`).join('\n')}\n\n`;
+    }
+    if (warningMessages.length > 0) {
+      consoleOutput += `Console Warnings:\n${warningMessages.map(msg => `- ${msg}`).join('\n')}\n\n`;
+    }
+
+    const helpMessage = `I noticed some console issues in the project preview:\n\n${consoleOutput}Could you help me understand what's causing these issues and how to fix them?`;
+
+    // Send the console error information as a user message
+    sendMessage(helpMessage, providerModel);
+  }, [sendMessage, providerModel]);
 
   // Use external loading state if provided, otherwise use internal state
   const isLoading = externalIsLoading !== undefined ? externalIsLoading : internalIsLoading;
@@ -598,6 +630,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
               onDismiss={() => setAIError(null)}
               onNewChat={onNewChat}
               onOpenModelSelector={openModelSelector}
+              onRequestConsoleErrorHelp={handleConsoleErrorHelp}
               providerModel={providerModel}
             />
           )}

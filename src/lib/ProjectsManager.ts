@@ -46,12 +46,6 @@ export class ProjectsManager {
   async createProject(name: string, customId?: string): Promise<Project> {
     const project = await this.cloneProject(name, GIT_TEMPLATE_URL, customId, { depth: 1 });
 
-    try {
-      await this.fs.mkdir(this.dir + `/${project.id}/.ai/history`, { recursive: true });
-    } catch {
-      // Directory might already exist
-    }
-
     // Delete README.md if it exists
     try {
       await this.fs.unlink(`${project.path}/README.md`);
@@ -75,8 +69,8 @@ export class ProjectsManager {
     // Add all files to git
     const files = await this.getAllFiles(project.path);
     for (const file of files) {
-      // Skip .git directory and other hidden files we don't want to track
-      if (!file.startsWith('.git/') && !file.startsWith('.ai/')) {
+      // Skip .git directory
+      if (!file.startsWith('.git/')) {
         await this.git.add({
           dir: project.path,
           filepath: file,
@@ -144,12 +138,12 @@ export class ProjectsManager {
       // Create project directory (or ensure it exists for overwrite)
       await this.fs.mkdir(projectPath, { recursive: true });
 
-      // If overwriting, delete existing files except .ai directory and .git directory
+      // If overwriting, delete existing files except .git directory
       if (projectExists && overwrite) {
         const existingFiles = await this.getAllFiles(projectPath);
         for (const file of existingFiles) {
-          // Preserve .ai directory and .git directory
-          if (!file.startsWith('.ai/') && !file.startsWith('.git/')) {
+          // Preserve .git directory
+          if (!file.startsWith('.git/')) {
             try {
               await this.fs.unlink(`${projectPath}/${file}`);
             } catch {
@@ -212,8 +206,8 @@ export class ProjectsManager {
         if (overwrite) {
           const projectFiles = await this.getAllFiles(projectPath);
           for (const file of projectFiles) {
-            // Skip .git directory and .ai directory
-            if (!file.startsWith('.git/') && !file.startsWith('.ai/')) {
+            // Skip .git directory
+            if (!file.startsWith('.git/')) {
               try {
                 await this.git.add({
                   dir: projectPath,
@@ -242,11 +236,11 @@ export class ProjectsManager {
           defaultBranch: 'main',
         });
 
-        // Add all files to git (excluding .ai directory)
+        // Add all files to git
         const projectFiles = await this.getAllFiles(projectPath);
         for (const file of projectFiles) {
-          // Skip .git directory and .ai directory
-          if (!file.startsWith('.git/') && !file.startsWith('.ai/')) {
+          // Skip .git directory
+          if (!file.startsWith('.git/')) {
             await this.git.add({
               dir: projectPath,
               filepath: file,
@@ -263,13 +257,6 @@ export class ProjectsManager {
             email: 'assistant@shakespeare.diy',
           },
         });
-      }
-
-      // Create .ai/history directory
-      try {
-        await this.fs.mkdir(`${projectPath}/.ai/history`, { recursive: true });
-      } catch {
-        // Directory might already exist
       }
 
       return {

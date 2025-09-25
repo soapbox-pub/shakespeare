@@ -98,8 +98,6 @@ invalid json line
     it('should create history directory if it does not exist', async () => {
       // Mock historyDirExists to return false initially
       vi.spyOn(dotAI, 'historyDirExists').mockResolvedValue(false);
-      // Mock setupAiHistoryDir
-      vi.spyOn(dotAI, 'setupAiHistoryDir').mockResolvedValue();
 
       const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
         { role: 'user', content: 'Hello' }
@@ -107,8 +105,8 @@ invalid json line
 
       await dotAI.setHistory('test-session', messages);
 
-      // Verify setupAiHistoryDir was called
-      expect(dotAI.setupAiHistoryDir).toHaveBeenCalled();
+      // Verify mkdir was called with recursive option
+      expect(mockFS.mkdir).toHaveBeenCalledWith('/test-project/.git/ai/history', { recursive: true });
     });
 
     it('should write messages as JSONL format', async () => {
@@ -124,7 +122,7 @@ invalid json line
 
       // Verify writeFile was called with correct content
       expect(mockFS.writeFile).toHaveBeenCalledWith(
-        '/test-project/.ai/history/test-session.jsonl',
+        '/test-project/.git/ai/history/test-session.jsonl',
         '{"role":"user","content":"Hello"}\n{"role":"assistant","content":"Hi there!"}\n'
       );
     });
@@ -137,7 +135,7 @@ invalid json line
 
       // Verify writeFile was called with empty content
       expect(mockFS.writeFile).toHaveBeenCalledWith(
-        '/test-project/.ai/history/test-session.jsonl',
+        '/test-project/.git/ai/history/test-session.jsonl',
         ''
       );
     });

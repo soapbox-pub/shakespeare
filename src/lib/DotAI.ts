@@ -2,7 +2,7 @@ import { join } from "path-browserify";
 import type OpenAI from "openai";
 import type { JSRuntimeFS } from "./JSRuntime";
 
-/** AI message history manager and .ai directory utilities */
+/** AI message history manager and .git/ai directory utilities */
 export class DotAI {
   readonly fs: JSRuntimeFS;
   readonly historyDir: string;
@@ -11,7 +11,7 @@ export class DotAI {
   constructor(fs: JSRuntimeFS, workingDir: string = "/") {
     this.fs = fs;
     this.workingDir = workingDir;
-    this.historyDir = join(workingDir, ".ai", "history");
+    this.historyDir = join(workingDir, ".git", "ai", "history");
   }
 
   /** Generate a unique session name based on the current date and time */
@@ -31,8 +31,6 @@ export class DotAI {
     return filename;
   }
 
-
-
   /** Check if the history directory exists */
   async historyDirExists(): Promise<boolean> {
     try {
@@ -51,10 +49,9 @@ export class DotAI {
     // Validate messages before saving
     this.validateMessages(messages);
 
-    // Always create the .ai directory and write session history
     // Create the history directory if it doesn't exist
     if (!(await this.historyDirExists())) {
-      await this.setupAiHistoryDir();
+      await this.fs.mkdir(this.historyDir, { recursive: true });
     }
 
     const sessionFile = join(this.historyDir, sessionName + ".jsonl");
@@ -122,29 +119,11 @@ export class DotAI {
   }
 
   /**
-   * Creates .ai/history directory and ensures .ai/ is gitignored at the project root.
-   */
-  async setupAiHistoryDir(): Promise<void> {
-    const aiHistoryDir = join(this.workingDir, ".ai", "history");
-
-    try {
-      // Create .ai/history directory
-      await this.fs.mkdir(aiHistoryDir, { recursive: true });
-
-      // Ensure .ai/ is gitignored at the project root
-      await this.ensureAiGitignored();
-    } catch (error) {
-      // Log error but don't fail the main operation
-      console.warn(`Failed to setup .ai/history directory: ${error}`);
-    }
-  }
-
-  /**
-   * Read the model from .ai/MODEL file
+   * Read the model from .git/ai/MODEL file
    */
   async readAiModel(): Promise<string | undefined> {
     try {
-      const modelPath = join(this.workingDir, ".ai", "MODEL");
+      const modelPath = join(this.workingDir, ".git", "ai", "MODEL");
       const content = await this.fs.readFile(modelPath, "utf8");
       return content.trim();
     } catch {
@@ -153,32 +132,29 @@ export class DotAI {
   }
 
   /**
-   * Write the model to .ai/MODEL file
+   * Write the model to .git/ai/MODEL file
    */
   async writeAiModel(model: string): Promise<void> {
-    const aiDir = join(this.workingDir, ".ai");
+    const aiDir = join(this.workingDir, ".git", "ai");
     const modelPath = join(aiDir, "MODEL");
 
     try {
-      // Ensure .ai directory exists
+      // Ensure .git/ai directory exists
       await this.fs.mkdir(aiDir, { recursive: true });
-
-      // Ensure .ai/ is gitignored
-      await this.ensureAiGitignored();
 
       // Write the model
       await this.fs.writeFile(modelPath, model.trim() + "\n");
     } catch (error) {
-      console.warn(`Failed to write .ai/MODEL file: ${error}`);
+      console.warn(`Failed to write .git/ai/MODEL file: ${error}`);
     }
   }
 
   /**
-   * Read parameters from .ai/PARAMETERS file
+   * Read parameters from .git/ai/PARAMETERS file
    */
   async readAiParameters(): Promise<Record<string, string>> {
     try {
-      const parametersPath = join(this.workingDir, ".ai", "PARAMETERS");
+      const parametersPath = join(this.workingDir, ".git", "ai", "PARAMETERS");
       const content = await this.fs.readFile(parametersPath, "utf8");
 
       const parameters: Record<string, string> = {};
@@ -203,18 +179,15 @@ export class DotAI {
   }
 
   /**
-   * Write parameters to .ai/PARAMETERS file
+   * Write parameters to .git/ai/PARAMETERS file
    */
   async writeAiParameters(parameters: Record<string, string>): Promise<void> {
-    const aiDir = join(this.workingDir, ".ai");
+    const aiDir = join(this.workingDir, ".git", "ai");
     const parametersPath = join(aiDir, "PARAMETERS");
 
     try {
-      // Ensure .ai directory exists
+      // Ensure .git/ai directory exists
       await this.fs.mkdir(aiDir, { recursive: true });
-
-      // Ensure .ai/ is gitignored
-      await this.ensureAiGitignored();
 
       // Format parameters as key=value pairs
       const lines = Object.entries(parameters).map(([key, value]) =>
@@ -225,12 +198,12 @@ export class DotAI {
       // Write the parameters
       await this.fs.writeFile(parametersPath, content);
     } catch (error) {
-      console.warn(`Failed to write .ai/PARAMETERS file: ${error}`);
+      console.warn(`Failed to write .git/ai/PARAMETERS file: ${error}`);
     }
   }
 
   /**
-   * Update a single parameter in .ai/PARAMETERS file
+   * Update a single parameter in .git/ai/PARAMETERS file
    */
   async updateAiParameter(key: string, value: string): Promise<void> {
     const currentParameters = await this.readAiParameters();
@@ -299,49 +272,6 @@ export class DotAI {
     } catch (error) {
       console.warn('Failed to read last session history:', error);
       return null;
-    }
-  }
-
-  /**
-   * Ensures that .ai/ is gitignored at the project root level.
-   * Creates a .gitignore file if it doesn't exist, or adds the line if not already present.
-   */
-  async ensureAiGitignored(): Promise<void> {
-    const gitignorePath = join(this.workingDir, ".gitignore");
-    const aiPattern = ".ai/";
-
-    try {
-      // Try to read existing .gitignore
-      let gitignoreContent = "";
-      try {
-        gitignoreContent = await this.fs.readFile(gitignorePath, "utf8");
-      } catch {
-        // .gitignore doesn't exist, will create it
-      }
-
-      // Check if .ai/ is already gitignored
-      const lines = gitignoreContent.split("\n").map((line) => line.trim());
-      const hasAiPattern = lines.some((line) => {
-        if (line.startsWith("#") || line === "") {
-          return false;
-        }
-        // Check for various .ai patterns
-        return line === ".ai" || line === ".ai/" || line === "/.ai" ||
-          line === "/.ai/" ||
-          line === ".ai/*" || line === "/.ai/*";
-      });
-
-      if (!hasAiPattern) {
-        // Add .ai/ to .gitignore
-        const newContent = gitignoreContent.trim() === ""
-          ? aiPattern
-          : gitignoreContent.trim() + "\n" + aiPattern;
-
-        await this.fs.writeFile(gitignorePath, newContent + "\n");
-      }
-    } catch (error) {
-      // Log error but don't fail the main operation
-      console.warn(`Failed to ensure .ai/ is gitignored: ${error}`);
     }
   }
 }

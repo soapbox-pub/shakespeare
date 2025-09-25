@@ -101,7 +101,7 @@ export function AppLayout({
               onClick={() => setIsSidebarVisible(false)}
             />
             {/* Sidebar - positioned above the backdrop */}
-            <div className="relative left-0 top-0 h-full w-80 max-w-[80vw] bg-background border-r shadow-lg z-10">
+            <div className="relative left-0 top-0 h-full w-64 max-w-[75vw] bg-background border-r shadow-lg z-10">
               <ProjectSidebar
                 selectedProject={selectedProject}
                 onSelectProject={(project) => {

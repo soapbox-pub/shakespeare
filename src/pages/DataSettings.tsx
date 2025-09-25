@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Download, Trash2, AlertTriangle, Loader2, Database, Info, ArrowLeft, Shield } from 'lucide-react';
+import { Download, Trash2, AlertTriangle, Loader2, Database, Info, ArrowLeft, Shield, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -10,6 +10,8 @@ import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/useToast';
 import { useFS } from '@/hooks/useFS';
 import { useIsMobile } from '@/hooks/useIsMobile';
+import { useProjectsManager } from '@/hooks/useProjectsManager';
+import { BulkProjectImportDialog } from '@/components/BulkProjectImportDialog';
 import {
   isPersistentStorageSupported,
   isPersistentStorageGranted,
@@ -39,10 +41,12 @@ export function DataSettings() {
   const [storageInfo, setStorageInfo] = useState<StorageInfo | null>(null);
   const [storageError, setStorageError] = useState<string | null>(null);
   const [isPersistent, setIsPersistent] = useState<boolean | null>(null);
+  const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
   const { toast } = useToast();
   const { fs } = useFS();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const projectsManager = useProjectsManager();
 
   // Format bytes to human readable format
   const formatBytes = (bytes: number): string => {
@@ -214,6 +218,66 @@ export function DataSettings() {
       });
     } finally {
       setIsRequestingPersistent(false);
+    }
+  };
+
+  const handleBulkImport = async (
+    projects: { id: string; files: { [path: string]: Uint8Array } }[],
+    overwrite: boolean
+  ) => {
+    try {
+      let successCount = 0;
+      const errors: string[] = [];
+
+      for (const project of projects) {
+        try {
+          // Create a temporary zip file for each project to use existing import logic
+          const zip = new JSZip();
+
+          // Add all files to the zip at the root level (not nested under project name)
+          for (const [filePath, content] of Object.entries(project.files)) {
+            zip.file(filePath, content);
+          }
+
+          // Generate zip blob
+          const zipBlob = await zip.generateAsync({ type: 'blob' });
+          const zipFile = new File([zipBlob], `${project.id}.zip`, { type: 'application/zip' });
+
+          // Import the project using existing logic
+          await projectsManager.importProjectFromZip(zipFile, project.id, overwrite);
+          successCount++;
+        } catch (error) {
+          console.error(`Failed to import project ${project.id}:`, error);
+          errors.push(`${project.id}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+      }
+
+      // Show success/error toast
+      if (successCount > 0) {
+        toast({
+          title: `${successCount} Project${successCount !== 1 ? 's' : ''} Imported Successfully`,
+          description: errors.length > 0
+            ? `${errors.length} project${errors.length !== 1 ? 's' : ''} failed to import.`
+            : `All projects have been imported and are ready to use.`,
+          variant: errors.length > 0 ? "destructive" : "default",
+        });
+      }
+
+      if (errors.length > 0 && successCount === 0) {
+        toast({
+          title: "Import Failed",
+          description: `Failed to import projects: ${errors.slice(0, 3).join(', ')}${errors.length > 3 ? '...' : ''}`,
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Bulk import failed:', error);
+      toast({
+        title: "Import Failed",
+        description: error instanceof Error ? error.message : 'Unknown error occurred',
+        variant: "destructive",
+      });
+      throw error; // Re-throw to let the dialog handle the error display
     }
   };
 
@@ -391,6 +455,28 @@ export function DataSettings() {
           </CardContent>
         </Card>
 
+        {/* Import Projects */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Upload className="h-5 w-5" />
+              Import Projects
+            </CardTitle>
+            <CardDescription>
+              Import multiple projects from a ZIP file exported from Shakespeare. You can choose which projects to import and handle conflicts with existing projects.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button
+              onClick={() => setIsBulkImportOpen(true)}
+              className="w-full sm:w-auto"
+            >
+              <Upload className="h-4 w-4 mr-2" />
+              Import Projects
+            </Button>
+          </CardContent>
+        </Card>
+
         {/* Clear All Data */}
         <Card className="border-destructive/20">
           <CardHeader>
@@ -459,6 +545,13 @@ export function DataSettings() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Bulk Project Import Dialog */}
+      <BulkProjectImportDialog
+        onImport={handleBulkImport}
+        open={isBulkImportOpen}
+        onOpenChange={setIsBulkImportOpen}
+      />
     </div>
   );
 }

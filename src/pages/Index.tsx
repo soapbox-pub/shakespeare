@@ -10,6 +10,7 @@ import { useAISettings } from '@/hooks/useAISettings';
 import { useToast } from '@/hooks/useToast';
 import { AppLayout } from '@/components/AppLayout';
 import { OnboardingDialog } from '@/components/OnboardingDialog';
+import { Act1Dialog } from '@/components/Act1Dialog';
 import { DotAI } from '@/lib/DotAI';
 import { parseProviderModel } from '@/lib/parseProviderModel';
 import type { AIMessage } from '@/lib/SessionManager';
@@ -29,6 +30,7 @@ export default function Index() {
   const [isCreating, setIsCreating] = useState(false);
   const [storedPrompt, setStoredPrompt] = useLocalStorage('shakespeare-draft-prompt', '');
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showAct1Dialog, setShowAct1Dialog] = useState(false);
   const navigate = useNavigate();
   const projectsManager = useProjectsManager();
   const { fs } = useFS();
@@ -98,6 +100,13 @@ export default function Index() {
       setPrompt(storedPrompt);
     }
   }, [storedPrompt]);
+
+  // Check for Act 1 users and show welcome dialog
+  useEffect(() => {
+    if (localStorage.getItem('selectedNSPAddr')) {
+      setShowAct1Dialog(true);
+    }
+  }, []);
 
   // Sync prompt with local storage
   const handlePromptChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -382,6 +391,12 @@ export default function Index() {
       <OnboardingDialog
         open={showOnboarding}
         onOpenChange={setShowOnboarding}
+      />
+
+      {/* Act 1 Welcome Dialog */}
+      <Act1Dialog
+        open={showAct1Dialog}
+        onOpenChange={setShowAct1Dialog}
       />
     </>
   );

@@ -203,22 +203,8 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   });
 
   // Handle console error help requests
-  const handleConsoleErrorHelp = useCallback((error: ProjectPreviewConsoleError) => {
-    const errorMessages = error.logs.filter(log => log.level === 'error').map(log => log.message);
-    const warningMessages = error.logs.filter(log => log.level === 'warn').map(log => log.message);
-
-    let consoleOutput = '';
-    if (errorMessages.length > 0) {
-      consoleOutput += `Console Errors:\n${errorMessages.map(msg => `- ${msg}`).join('\n')}\n\n`;
-    }
-    if (warningMessages.length > 0) {
-      consoleOutput += `Console Warnings:\n${warningMessages.map(msg => `- ${msg}`).join('\n')}\n\n`;
-    }
-
-    const helpMessage = `I noticed some console issues in the project preview:\n\n${consoleOutput}Could you help me understand what's causing these issues and how to fix them?`;
-
-    // Send the console error information as a user message
-    sendMessage(helpMessage, providerModel);
+  const handleConsoleErrorHelp = useCallback(() => {
+    sendMessage('Read the console messages and fix any errors present.', providerModel);
   }, [sendMessage, providerModel]);
 
   // Use external loading state if provided, otherwise use internal state

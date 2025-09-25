@@ -37,21 +37,8 @@ export function Quilly({ error, onDismiss, onNewChat, onOpenModelSelector, onReq
   const renderBody = (error: Error): ErrorBody => {
     // Handle Project Preview Console Errors
     if (error instanceof ProjectPreviewConsoleError) {
-      const errorCount = error.logs.filter(log => log.level === 'error').length;
-      const warningCount = error.logs.filter(log => log.level === 'warn').length;
-
-      let message = 'I noticed some console errors in your project preview.';
-
-      if (errorCount > 1) {
-        message = `I noticed ${errorCount} console errors in your project preview.`;
-      } else if (errorCount === 1 && warningCount > 0) {
-        message = `I noticed ${errorCount} console error and ${warningCount} warning${warningCount > 1 ? 's' : ''} in your project preview.`;
-      } else if (warningCount > 0) {
-        message = `I noticed ${warningCount} console warning${warningCount > 1 ? 's' : ''} in your project preview.`;
-      }
-
       return {
-        message: message + ' Would you like me to take a look and help fix them?',
+        message: 'I noticed some console errors in your project preview. Would you like me to take a look and help fix them?',
         action: {
           label: 'Help fix errors',
           onClick: () => {

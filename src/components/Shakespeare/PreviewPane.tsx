@@ -166,67 +166,23 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
     }
   }, [projectId, projectsManager]);
 
-  const refreshIframe = useCallback(() => {
+  // Legacy refresh function for build completion events
+  const refreshIframeLegacy = useCallback(() => {
     if (iframeRef.current) {
       // Force reload the iframe by updating its src
       iframeRef.current.src = '/';
       // Use a small timeout to ensure the src is cleared before setting it back
       setTimeout(() => {
         if (iframeRef.current) {
-          iframeRef.current.src = `https://${projectId}.${IFRAME_DOMAIN}${currentPath}`;
+          iframeRef.current.src = `https://${projectId}.${IFRAME_DOMAIN}/`;
         }
       }, 10);
     }
-  }, [currentPath, projectId]);
-
-  const navigateToPath = useCallback((path: string) => {
-    if (iframeRef.current) {
-      const baseUrl = `https://${projectId}.${IFRAME_DOMAIN}`;
-      const newUrl = `${baseUrl}${path}`;
-      iframeRef.current.src = newUrl;
-      setCurrentPath(path);
-
-      // Update navigation history
-      const newHistory = navigationHistory.slice(0, historyIndex + 1);
-      newHistory.push(path);
-      setNavigationHistory(newHistory);
-      setHistoryIndex(newHistory.length - 1);
-    }
-  }, [projectId, navigationHistory, historyIndex]);
-
-  const goBack = useCallback(() => {
-    if (historyIndex > 0) {
-      const newIndex = historyIndex - 1;
-      const path = navigationHistory[newIndex];
-      setHistoryIndex(newIndex);
-      setCurrentPath(path);
-
-      if (iframeRef.current) {
-        const baseUrl = `https://${projectId}.${IFRAME_DOMAIN}`;
-        const newUrl = `${baseUrl}${path}`;
-        iframeRef.current.src = newUrl;
-      }
-    }
-  }, [historyIndex, navigationHistory, projectId]);
-
-  const goForward = useCallback(() => {
-    if (historyIndex < navigationHistory.length - 1) {
-      const newIndex = historyIndex + 1;
-      const path = navigationHistory[newIndex];
-      setHistoryIndex(newIndex);
-      setCurrentPath(path);
-
-      if (iframeRef.current) {
-        const baseUrl = `https://${projectId}.${IFRAME_DOMAIN}`;
-        const newUrl = `${baseUrl}${path}`;
-        iframeRef.current.src = newUrl;
-      }
-    }
-  }, [historyIndex, navigationHistory, projectId]);
+  }, [projectId]);
 
   const sendResponse = useCallback((message: JSONRPCResponse) => {
     if (iframeRef.current?.contentWindow) {
-      console.log(`Sending response to iframe:`, message);
+
       const targetOrigin = `https://${projectId}.${IFRAME_DOMAIN}`;
       iframeRef.current.contentWindow.postMessage(message, targetOrigin);
     }
@@ -262,11 +218,92 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
     console[normalizedLevel](`[IFRAME ${params.level.toUpperCase()}] ${params.message}`);
   }, []);
 
+  const handleUpdateNavigationState = useCallback((message: {
+    jsonrpc: '2.0';
+    method: 'updateNavigationState';
+    params: {
+      currentUrl: string;
+      canGoBack: boolean;
+      canGoForward: boolean;
+    };
+  }) => {
+    const { params } = message;
+
+    try {
+      // params.currentUrl is now just a semantic path (e.g., "/about", "/contact?param=value#section")
+      const path = params.currentUrl;
+
+      setCurrentPath(path);
+
+      // Update navigation history if this is a new navigation
+      // But only if it's different from current path (avoid duplicates)
+      if (path !== navigationHistory[historyIndex]) {
+        const newHistory = navigationHistory.slice(0, historyIndex + 1);
+        newHistory.push(path);
+        setNavigationHistory(newHistory);
+        setHistoryIndex(newHistory.length - 1);
+      }
+    } catch (error) {
+      console.error('Failed to handle navigation state:', params.currentUrl, error);
+    }
+  }, [historyIndex, navigationHistory]);
+
+  const sendNavigationCommand = useCallback((method: string, params?: Record<string, unknown>) => {
+    if (iframeRef.current?.contentWindow) {
+      const message = {
+        jsonrpc: '2.0',
+        method,
+        params: params || {},
+        id: Date.now()
+      };
+      const targetOrigin = `https://${projectId}.${IFRAME_DOMAIN}`;
+      iframeRef.current.contentWindow.postMessage(message, targetOrigin);
+    }
+  }, [projectId]);
+
+  const navigateIframe = useCallback((url: string) => {
+    // Send semantic path directly (e.g., "/about", "/contact")
+    // The iframe's NavigationHandler will handle this as semantic navigation
+    sendNavigationCommand('navigate', { url });
+  }, [sendNavigationCommand]);
+
+  const refreshIframe = useCallback(() => {
+    sendNavigationCommand('refresh');
+  }, [sendNavigationCommand]);
+
+  const goBackIframe = useCallback(() => {
+    if (historyIndex > 0) {
+      // Move back in history
+      const newIndex = historyIndex - 1;
+      const targetPath = navigationHistory[newIndex];
+
+      setHistoryIndex(newIndex);
+      setCurrentPath(targetPath);
+
+      // Tell iframe to navigate to this path
+      sendNavigationCommand('navigate', { url: targetPath });
+    }
+  }, [historyIndex, navigationHistory, sendNavigationCommand]);
+
+  const goForwardIframe = useCallback(() => {
+    if (historyIndex < navigationHistory.length - 1) {
+      // Move forward in history
+      const newIndex = historyIndex + 1;
+      const targetPath = navigationHistory[newIndex];
+
+      setHistoryIndex(newIndex);
+      setCurrentPath(targetPath);
+
+      // Tell iframe to navigate to this path
+      sendNavigationCommand('navigate', { url: targetPath });
+    }
+  }, [historyIndex, navigationHistory, sendNavigationCommand]);
+
   const handleFetch = useCallback(async (request: JSONRPCRequest) => {
     const { params, id } = request;
     const { request: fetchRequest } = params;
 
-    console.log(`Preview iframe requesting: ${fetchRequest.url}`);
+
 
     try {
       // Parse the URL and validate origin
@@ -290,6 +327,9 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
       const path = url.pathname;
       const filePath = path;
 
+      // Skip SPA fallback for static assets (files with extensions)
+      const isStaticAsset = /\.[a-zA-Z0-9]+$/.test(path);
+
       // SPA routing: try to serve the exact file first
       try {
         const bytes = await projectsManager.readFileBytes(projectId, 'dist' + filePath);
@@ -310,11 +350,30 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
         });
         return;
       } catch {
-        // File not found, try SPA fallback to index.html
-        console.log(`File not found: ${filePath}, trying index.html fallback`);
+
+        // For static assets, return 404 immediately
+        if (isStaticAsset) {
+
+          sendResponse({
+            jsonrpc: '2.0',
+            result: {
+              status: 404,
+              statusText: 'Not Found',
+              headers: {
+                'Content-Type': 'text/plain',
+              },
+              body: encodeBase64(`Static asset not found: ${path}`),
+            },
+            id
+          });
+          return;
+        }
+
+        // For non-static assets, try SPA fallback to index.html
+
       }
 
-      // SPA fallback: serve index.html for non-file requests
+      // SPA fallback: serve index.html for non-file requests (SPA routing)
       try {
         const bytes = await projectsManager.readFileBytes(projectId, 'dist/index.html');
         console.log(`Serving index.html fallback for: ${path}`);
@@ -334,7 +393,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
         });
       } catch {
         // Even index.html doesn't exist
-        console.log(`No files found, returning 404 for: ${path}`);
+
 
         sendResponse({
           jsonrpc: '2.0',
@@ -379,12 +438,14 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
         handleFetch(message);
       } else if (message.jsonrpc === '2.0' && message.method === 'console') {
         handleConsoleMessage(message);
+      } else if (message.jsonrpc === '2.0' && message.method === 'updateNavigationState') {
+        handleUpdateNavigationState(message);
       }
     };
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [handleFetch, handleConsoleMessage, projectId]);
+  }, [handleFetch, handleConsoleMessage, handleUpdateNavigationState, projectId]);
 
   useEffect(() => {
     if (selectedFile) {
@@ -392,11 +453,16 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
     }
   }, [selectedFile, loadFileContent]);
 
-  // Reset selected file when projectId changes
+  // Reset selected file and navigation history when projectId changes
   useEffect(() => {
     setSelectedFile(null);
     setFileContent('');
     setMobileCodeView('explorer');
+
+    // Reset navigation history and state
+    setCurrentPath('/');
+    setNavigationHistory(['/']);
+    setHistoryIndex(0);
   }, [projectId]);
 
   useEffect(() => {
@@ -410,13 +476,13 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
         console.log('Build completed for project, refreshing preview');
         // Check for built project and refresh iframe
         checkForBuiltProject();
-        refreshIframe();
+        refreshIframeLegacy();
       }
     };
 
     window.addEventListener('buildComplete', handleBuildComplete as EventListener);
     return () => window.removeEventListener('buildComplete', handleBuildComplete as EventListener);
-  }, [projectId, checkForBuiltProject, refreshIframe]);
+  }, [projectId, checkForBuiltProject, refreshIframeLegacy]);
 
   const handleFileSelect = (filePath: string) => {
     setSelectedFile(filePath);
@@ -583,10 +649,10 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
             <div className="h-12 flex items-center w-full">
               <BrowserAddressBar
                 currentPath={currentPath}
-                onNavigate={hasBuiltProject ? navigateToPath : undefined}
+                onNavigate={hasBuiltProject ? navigateIframe : undefined}
                 onRefresh={hasBuiltProject ? refreshIframe : undefined}
-                onBack={hasBuiltProject ? goBack : undefined}
-                onForward={hasBuiltProject ? goForward : undefined}
+                onBack={hasBuiltProject ? goBackIframe : undefined}
+                onForward={hasBuiltProject ? goForwardIframe : undefined}
                 canGoBack={hasBuiltProject && historyIndex > 0}
                 canGoForward={hasBuiltProject && historyIndex < navigationHistory.length - 1}
                 extraContent={(
@@ -613,7 +679,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
               {hasBuiltProject ? (
                 <iframe
                   ref={iframeRef}
-                  src={`https://${projectId}.${IFRAME_DOMAIN}${currentPath}`}
+                  src={`https://${projectId}.${IFRAME_DOMAIN}/`}
                   className="w-full h-full border-0"
                   title="Project Preview"
                   sandbox="allow-scripts allow-same-origin"

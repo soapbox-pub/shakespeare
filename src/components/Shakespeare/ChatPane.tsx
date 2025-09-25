@@ -8,7 +8,7 @@ import { CircularProgress } from '@/components/ui/circular-progress';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { FileAttachment } from '@/components/ui/file-attachment';
 import { OnboardingDialog } from '@/components/OnboardingDialog';
-import { Square, Loader2, ChevronDown, ArrowUp, X } from 'lucide-react';
+import { Square, Loader2, ChevronDown, ArrowUp } from 'lucide-react';
 import { useAISettings } from '@/hooks/useAISettings';
 import { useFS } from '@/hooks/useFS';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
@@ -39,51 +39,8 @@ import { Tool } from '@/lib/tools/Tool';
 import OpenAI from 'openai';
 import { saveFileToTmp } from '@/lib/fileUtils';
 import { useGit } from '@/hooks/useGit';
-import { useConsoleErrorAlert, useAIModelErrorAlert } from '@/hooks/useErrorDetection';
-import { QuillySVG } from '@/components/ui/QuillySVG';
-
-
-function ChatIntervention({
-  message,
-  onDismiss,
-  action,
-}: {
-  message: string;
-  onDismiss: () => void;
-  action?: { label: string; onClick: () => void };
-}) {
-  return (
-    <div className="py-2 px-3 bg-primary/5 border border-primary/20 rounded-lg">
-      <div className="flex items-start gap-2">
-        <QuillySVG className="h-20 px-2 flex-shrink-0" fillColor="hsl(var(--primary))" />
-        <div className="flex-1 min-w-0">
-          <div className="space-y-1">
-            <h4 className="font-semibold text-primary">
-              Pardon the interruption
-            </h4>
-            <p className="text-sm text-muted-foreground">
-              {message}
-              {' '}
-              {action && (
-                <button className="text-primary underline" onClick={action.onClick}>
-                  {action.label}
-                </button>
-              )}
-            </p>
-          </div>
-        </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onDismiss}
-          className="h-5 w-5 p-0 hover:text-foreground/70 hover:bg-transparent flex-shrink-0"
-        >
-          <X className="h-4 w-4" />
-        </Button>
-      </div>
-    </div>
-  );
-}
+import { useConsoleErrorAlert } from '@/hooks/useErrorDetection';
+import { Quilly } from '@/components/Quilly';
 
 // Clean interfaces now handled by proper hooks
 
@@ -137,6 +94,11 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
       setProviderModel(settings.recentlyUsedModels[0]);
     }
   }, [providerModel, settings.recentlyUsedModels]);
+
+  // Reset state when navigating between projects
+  useEffect(() => {
+    setAIError(null);
+  }, [projectId]);
 
   const [searchParams, setSearchParams] = useSearchParams();
   const { fs } = useFS();
@@ -276,22 +238,19 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
 
   // Function to suggest error fix
   // Clean alert hooks with proper interfaces
-  const aiModelAlert = useAIModelErrorAlert(messages, _onNewChat, openModelSelector);
   const consoleAlert = useConsoleErrorAlert(messages, isBuildLoading, internalIsLoading);
 
   // Create AI error alert object
   const aiErrorAlert = useMemo(() => {
     if (!aiError) {
-      return { hasError: false, errorMessage: '', dismiss: () => {}, action: undefined };
+      return { hasError: false, dismiss: () => {}, action: undefined };
     }
 
-    let errorMessage = 'Sorry, I encountered an unexpected error. Please try again.';
     let action: { label: string; onClick: () => void } | undefined;
 
     const errorMsg = aiError.message || '';
 
     if (aiError.name === 'TypeError' && errorMsg.includes('fetch')) {
-      errorMessage = 'Network error: Unable to connect to AI service. Please check your internet connection and AI settings.';
       action = {
         label: 'Check AI settings',
         onClick: () => {
@@ -300,7 +259,6 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
         }
       };
     } else if (errorMsg.includes('API key')) {
-      errorMessage = 'Authentication error: Please check your API key in AI settings.';
       action = {
         label: 'Check API key',
         onClick: () => {
@@ -308,10 +266,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
           window.location.href = '/settings/ai';
         }
       };
-    } else if (errorMsg.includes('rate limit')) {
-      errorMessage = 'Rate limit exceeded. Please wait a moment before trying again.';
     } else if (errorMsg.includes('insufficient_quota')) {
-      errorMessage = 'Quota exceeded: Your API key has reached its usage limit. Please check your billing or try a different provider.';
       action = {
         label: 'Check AI settings',
         onClick: () => {
@@ -319,31 +274,37 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
         }
       };
     } else if (errorMsg.includes('model_not_found') || errorMsg.includes('does not exist')) {
-      errorMessage = 'Model not found: The selected AI model is not available. Please choose a different model.';
       action = {
         label: 'Choose model',
         onClick: openModelSelector
       };
-    } else if (errorMsg) {
-      errorMessage = `AI service error: ${errorMsg}`;
+    } else if (errorMsg.includes('maximum context length') || errorMsg.includes('context length')) {
+      action = _onNewChat ? {
+        label: 'New chat',
+        onClick: _onNewChat
+      } : undefined;
+    } else if (errorMsg.includes('422') || errorMsg.includes('Provider returned error')) {
+      action = openModelSelector ? {
+        label: 'Change model',
+        onClick: openModelSelector
+      } : undefined;
     }
 
     return {
       hasError: true,
-      errorMessage,
       dismiss: () => setAIError(null),
       action
     };
-  }, [aiError, openModelSelector]);
+  }, [aiError, openModelSelector, _onNewChat]);
 
   // Scroll to bottom when alerts appear
   useEffect(() => {
-    if (aiModelAlert.hasError || consoleAlert.hasError || aiErrorAlert.hasError) {
+    if (consoleAlert.hasError || aiErrorAlert.hasError) {
       setTimeout(() => {
         scrollToBottom();
       }, 50);
     }
-  }, [aiModelAlert.hasError, consoleAlert.hasError, aiErrorAlert.hasError, scrollToBottom]);
+  }, [consoleAlert.hasError, aiErrorAlert.hasError, scrollToBottom]);
 
   // Check for autostart parameter and trigger AI generation
   useEffect(() => {
@@ -698,19 +659,10 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
             </div>
           )}
 
-          {/* AI Model Alert */}
-          {aiModelAlert.hasError && (
-            <ChatIntervention
-              message={aiModelAlert.errorMessage || ''}
-              onDismiss={aiModelAlert.dismiss}
-              action={aiModelAlert.action}
-            />
-          )}
-
           {/* Console Error Alert */}
           {consoleAlert.hasError && (
-            <ChatIntervention
-              message={`Console ${consoleAlert.errorCount === 1 ? 'error' : 'errors'} detected in your app. Would you like me to help fix ${consoleAlert.errorCount === 1 ? 'it' : 'them'}?`}
+            <Quilly
+              error={new Error(`Console ${consoleAlert.errorCount === 1 ? 'error' : 'errors'} detected in your app. Would you like me to help fix ${consoleAlert.errorCount === 1 ? 'it' : 'them'}?`)}
               onDismiss={consoleAlert.dismiss}
               action={{
                 label: `Fix ${consoleAlert.errorCount === 1 ? 'error' : 'errors'}`,
@@ -721,8 +673,8 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
 
           {/* AI Error Alert */}
           {aiErrorAlert.hasError && (
-            <ChatIntervention
-              message={aiErrorAlert.errorMessage}
+            <Quilly
+              error={aiError!}
               onDismiss={aiErrorAlert.dismiss}
               action={aiErrorAlert.action}
             />

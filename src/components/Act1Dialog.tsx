@@ -159,22 +159,22 @@ export function Act1Dialog({ open, onOpenChange }: Act1DialogProps) {
                     <div className="flex items-start gap-3">
                       <Badge variant="secondary" className="mt-0.5">New</Badge>
                       <div>
-                        <p className="font-medium">Enhanced AI Capabilities</p>
-                        <p className="text-sm text-muted-foreground">More powerful models and better code generation</p>
+                        <p className="font-medium">Use any AI Provider</p>
+                        <p className="text-sm text-muted-foreground">Your browser connects to AI providers directly</p>
                       </div>
                     </div>
                     <div className="flex items-start gap-3">
                       <Badge variant="secondary" className="mt-0.5">New</Badge>
                       <div>
-                        <p className="font-medium">Improved Git Integration</p>
-                        <p className="text-sm text-muted-foreground">Better version control with credential management</p>
+                        <p className="font-medium">Git Integration</p>
+                        <p className="text-sm text-muted-foreground">Push to GitHub, Nostr relays, and more</p>
                       </div>
                     </div>
                     <div className="flex items-start gap-3">
                       <Badge variant="secondary" className="mt-0.5">New</Badge>
                       <div>
-                        <p className="font-medium">Project Import/Export</p>
-                        <p className="text-sm text-muted-foreground">Easily migrate your projects between versions</p>
+                        <p className="font-medium">Your Files</p>
+                        <p className="text-sm text-muted-foreground">Files are stored on your device directly in your browser</p>
                       </div>
                     </div>
                   </CardContent>
@@ -224,29 +224,18 @@ export function Act1Dialog({ open, onOpenChange }: Act1DialogProps) {
                   </p>
                 </div>
 
-                <div className="grid gap-4">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        <ExternalLink className="h-5 w-5 text-blue-500" />
-                        Access Act 1
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      <p className="text-sm text-muted-foreground">
-                        Your original Shakespeare (Act 1) is still available with all your projects and data intact.
-                      </p>
-                      <Button
-                        variant="outline"
-                        onClick={handleVisitAct1}
-                        className="gap-2"
-                      >
-                        <ExternalLink className="h-4 w-4" />
-                        Visit Act 1
-                      </Button>
-                    </CardContent>
-                  </Card>
+                <div className="text-center">
+                  <Button
+                    variant="outline"
+                    onClick={handleVisitAct1}
+                    className="gap-2"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    Visit Act 1
+                  </Button>
+                </div>
 
+                <div className="grid gap-4">
                   <Card>
                     <CardHeader>
                       <CardTitle className="text-lg flex items-center gap-2">
@@ -256,11 +245,8 @@ export function Act1Dialog({ open, onOpenChange }: Act1DialogProps) {
                     </CardHeader>
                     <CardContent className="space-y-3">
                       <p className="text-sm text-muted-foreground">
-                        In Act 1, you can export your projects as ZIP files using the project menu or settings.
+                        In Act 1, you can export your projects as ZIP files using the project menu.
                       </p>
-                      <div className="text-xs text-muted-foreground bg-muted rounded p-2">
-                        💡 Tip: Export projects you want to continue working on in Act 2
-                      </div>
                     </CardContent>
                   </Card>
 
@@ -275,16 +261,12 @@ export function Act1Dialog({ open, onOpenChange }: Act1DialogProps) {
                       <p className="text-sm text-muted-foreground">
                         In Act 2, use the "Import Project" option in the sidebar to upload your exported ZIP files.
                       </p>
-                      <div className="text-xs text-muted-foreground bg-muted rounded p-2">
-                        💡 Tip: Look for the import button in the project sidebar
-                      </div>
                     </CardContent>
                   </Card>
 
-
                 </div>
 
-                <div className="flex justify-end pt-4 border-t">
+                <div className="flex justify-end pt-4">
                   <Button
                     onClick={handleContinue}
                     className="gap-2"

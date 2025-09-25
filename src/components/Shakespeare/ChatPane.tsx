@@ -42,7 +42,6 @@ import { ReadConsoleMessagesTool } from '@/lib/tools/ReadConsoleMessagesTool';
 import { saveFileToTmp } from '@/lib/fileUtils';
 import { useGit } from '@/hooks/useGit';
 import { Quilly } from '@/components/Quilly';
-import { getConsoleMessages } from '@/lib/consoleMessages';
 
 // Clean interfaces now handled by proper hooks
 
@@ -128,7 +127,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
       nostr_read_nips_index: new NostrReadNipsIndexTool(),
       nostr_generate_kind: new NostrGenerateKindTool(),
       shell: new ShellTool(fs, cwd, git),
-      read_console_messages: new ReadConsoleMessagesTool(getConsoleMessages),
+      read_console_messages: new ReadConsoleMessagesTool(),
     };
 
     // Add deploy tool only if user is logged in

@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo } from 'react';
 import type { AIMessage } from '@/lib/SessionManager';
-import { getConsoleMessages } from '@/lib/consoleMessages';
+import { getConsoleMessages } from '@/lib/tools/ReadConsoleMessagesTool';
 
 export interface ConsoleErrorAlert {
 	hasError: boolean;

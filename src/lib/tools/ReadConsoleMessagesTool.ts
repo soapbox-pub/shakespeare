@@ -6,23 +6,41 @@ export interface ReadConsoleMessagesParams {
   limit?: number;
 }
 
-export class ReadConsoleMessagesTool implements Tool<ReadConsoleMessagesParams> {
-  private getConsoleMessages: () => ConsoleMessage[];
+// Simple global console messages storage
+const consoleMessages: ConsoleMessage[] = [];
 
-  constructor(getConsoleMessages: () => ConsoleMessage[]) {
-    this.getConsoleMessages = getConsoleMessages;
+export const addConsoleMessage = (level: ConsoleMessage['level'], message: string) => {
+  consoleMessages.push({
+    id: Date.now() + Math.random(),
+    level,
+    message,
+    timestamp: Date.now(),
+  });
+};
+
+export const getConsoleMessages = (): ConsoleMessage[] => {
+  return [...consoleMessages];
+};
+
+export const clearConsoleMessages = () => {
+  consoleMessages.length = 0;
+};
+
+export class ReadConsoleMessagesTool implements Tool<ReadConsoleMessagesParams> {
+  constructor() {
+    // No longer need to pass getConsoleMessages function
   }
 
   async execute(params: ReadConsoleMessagesParams): Promise<string> {
     const { filter = 'all', limit } = params;
 
     // Get fresh console messages at execution time
-    const consoleMessages = this.getConsoleMessages();
-    let filteredMessages = consoleMessages;
+    const messages = getConsoleMessages();
+    let filteredMessages = messages;
 
     // Apply filter if specified
     if (filter !== 'all') {
-      filteredMessages = consoleMessages.filter(msg => msg.level === filter);
+      filteredMessages = messages.filter(msg => msg.level === filter);
     }
 
     // Apply limit if specified

@@ -18,7 +18,7 @@ import { GitStatusIndicator } from '@/components/GitStatusIndicator';
 import { StarButton } from '@/components/StarButton';
 import { useBuildProject } from '@/hooks/useBuildProject';
 import { useIsProjectPreviewable } from '@/hooks/useIsProjectPreviewable';
-import { clearConsoleMessages } from '@/lib/consoleMessages';
+import { clearConsoleMessages } from '@/lib/tools/ReadConsoleMessagesTool';
 
 export function ProjectView() {
   const { projectId } = useParams<{ projectId: string }>();

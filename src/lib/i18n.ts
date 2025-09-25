@@ -79,6 +79,9 @@ const resources = {
       nostrSettingsDescription: 'Configure relay connections and Nostr preferences',
       dataSettings: 'Data',
       dataSettingsDescription: 'Export files and manage local data',
+      emailUpdates: 'Email Updates',
+      emailUpdatesDescription: 'Subscribe to Shakespeare updates and resources',
+      emailUpdatesDescriptionLong: 'Stay updated with the latest Shakespeare features, tutorials, and resources.',
       aboutShakespeareSettings: 'About Shakespeare',
       aboutShakespeareSettingsDescription: 'Information about Shakespeare',
 
@@ -378,6 +381,9 @@ const resources = {
       nostrSettingsDescription: 'Configure conexões de relay e preferências do Nostr',
       dataSettings: 'Dados',
       dataSettingsDescription: 'Exporte arquivos e gerencie dados locais',
+      emailUpdates: 'Atualizações por Email',
+      emailUpdatesDescription: 'Inscreva-se para receber atualizações e recursos do Shakespeare',
+      emailUpdatesDescriptionLong: 'Mantenha-se atualizado com os recursos mais recentes do Shakespeare, tutoriais e recursos. Enviamos apenas atualizações ocasionais e você pode cancelar a inscrição a qualquer momento.',
       aboutShakespeareSettings: 'Sobre o Shakespeare',
       aboutShakespeareSettingsDescription: 'Informações sobre o Shakespeare',
 
@@ -677,6 +683,9 @@ const resources = {
       nostrSettingsDescription: '配置中继连接和Nostr偏好',
       dataSettings: '数据',
       dataSettingsDescription: '导出文件和管理本地数据',
+      emailUpdates: '邮件更新',
+      emailUpdatesDescription: '订阅Shakespeare更新和资源',
+      emailUpdatesDescriptionLong: '及时了解最新的Shakespeare功能、教程和资源。我们只会偶尔发送更新，您可以随时取消订阅。',
       aboutShakespeareSettings: '关于Shakespeare',
       aboutShakespeareSettingsDescription: '关于Shakespeare的信息',
 
@@ -976,6 +985,9 @@ const resources = {
       nostrSettingsDescription: 'Saita haɗin relay da zaɓuɓɓukan Nostr',
       dataSettings: 'Bayanai',
       dataSettingsDescription: 'Fitar da fayiloli da sarrafa bayanan gida',
+      emailUpdates: 'Sabuntawar Imel',
+      emailUpdatesDescription: 'Yi rajista don karbar sabuntawar Shakespeare da albarkatu',
+      emailUpdatesDescriptionLong: 'Kasance da sabuntawa game da sabbin fasalolin Shakespeare, koyarwa, da albarkatu. Muna aika sabuntawa lokaci-lokaci kawai kuma kuna iya dakatar da rajista koyaushe.',
       aboutShakespeareSettings: 'Game da Shakespeare',
       aboutShakespeareSettingsDescription: 'Bayani game da Shakespeare',
 
@@ -1275,6 +1287,9 @@ const resources = {
       nostrSettingsDescription: 'Tunto awọn asopọ relay ati awọn ayanfẹ Nostr',
       dataSettings: 'Data',
       dataSettingsDescription: 'Gbe awọn faili jade ati ṣakoso data agbegbe',
+      emailUpdates: 'Awọn Imudojuiwọn Imeeli',
+      emailUpdatesDescription: 'Forukọsilẹ fun awọn imudojuiwọn Shakespeare ati awọn ohun elo',
+      emailUpdatesDescriptionLong: 'Wa pẹlu imudojuiwọn pẹlu awọn ẹya Shakespeare tuntun, awọn ikẹkọ, ati awọn ohun elo. A nfi awọn imudojuiwọn lọọrọọ nikan ranṣẹ ati pe o le da forukọsilẹ duro nigbakugba.',
       aboutShakespeareSettings: 'Nipa Shakespeare',
       aboutShakespeareSettingsDescription: 'Alaye nipa Shakespeare',
 
@@ -1569,6 +1584,9 @@ const resources = {
       nostrSettingsDescription: 'Hazie njikọ relay na nhọrọ Nostr',
       dataSettings: 'Data',
       dataSettingsDescription: 'Bupụta faịlụ na jikwaa data mpaghara',
+      emailUpdates: 'Nmelite Email',
+      emailUpdatesDescription: 'Debanye aha maka nmelite Shakespeare na akụrụngwa',
+      emailUpdatesDescriptionLong: 'Nọrọ na-emelite na atụmatụ Shakespeare ọhụrụ, nkuzi, na akụrụngwa. Anyị na-eziga naanị nmelite mgbe ụfọdụ ma ị nwere ike ịkwụsị ndebanye aha mgbe ọ bụla.',
       aboutShakespeareSettings: 'Gbasara Shakespeare',
       aboutShakespeareSettingsDescription: 'Ozi gbasara Shakespeare',
 

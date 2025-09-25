@@ -12,6 +12,7 @@ interface UseAIChatSessionOptions {
   customTools?: Record<string, Tool<unknown>>;
   maxSteps?: number;
   onUpdateMetadata?: (title: string, description: string) => void;
+  onAIError?: (error: Error) => void;
 }
 
 interface StreamingMessage {
@@ -30,7 +31,8 @@ export function useAIChat({
   tools = {},
   customTools = {},
   maxSteps = 50,
-  onUpdateMetadata
+  onUpdateMetadata,
+  onAIError
 }: UseAIChatSessionOptions) {
   const sessionManager = useSessionManager();
   const { isConfigured } = useAISettings();
@@ -113,14 +115,30 @@ export function useAIChat({
 
   // Actions
   const sendMessage = useCallback(async (content: string | Array<OpenAI.Chat.Completions.ChatCompletionContentPartText>, providerModel: string) => {
-    await initSession();
-    await sessionManager.sendMessage(projectId, content, providerModel);
-  }, [projectId, sessionManager, initSession]);
+    try {
+      await initSession();
+      await sessionManager.sendMessage(projectId, content, providerModel);
+    } catch (error) {
+      if (onAIError && error instanceof Error) {
+        onAIError(error);
+      } else {
+        console.error('AI chat error:', error);
+      }
+    }
+  }, [projectId, sessionManager, initSession, onAIError]);
 
   const startGeneration = useCallback(async (providerModel: string) => {
-    await initSession();
-    await sessionManager.startGeneration(projectId, providerModel);
-  }, [projectId, sessionManager, initSession]);
+    try {
+      await initSession();
+      await sessionManager.startGeneration(projectId, providerModel);
+    } catch (error) {
+      if (onAIError && error instanceof Error) {
+        onAIError(error);
+      } else {
+        console.error('AI chat error:', error);
+      }
+    }
+  }, [projectId, sessionManager, initSession, onAIError]);
 
   const stopGeneration = useCallback(() => {
     sessionManager.stopGeneration(projectId);

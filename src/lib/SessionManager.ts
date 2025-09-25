@@ -178,6 +178,7 @@ export class SessionManager {
    * Start AI generation for a session
    */
   async startGeneration(projectId: string, providerModel: string): Promise<void> {
+    console.log('Starting AI generation for project:', projectId, 'with model:', providerModel);
     let session = this.sessions.get(projectId);
 
     if (!session) {
@@ -403,23 +404,13 @@ export class SessionManager {
     } catch (error) {
       console.error('AI generation error:', error);
 
-      // Handle different error types
-      if (error?.name === 'AbortError') return; // User cancelled
-
-      let errorMessage = 'Sorry, I encountered an unexpected error. Please try again.';
-      const errorMsg = error?.message || '';
-
-      if (error?.name === 'TypeError' && errorMsg.includes('fetch')) {
-        errorMessage = 'Network error: Unable to connect to AI service. Please check your internet connection and AI settings.';
-      } else if (errorMsg.includes('API key')) {
-        errorMessage = 'Authentication error: Please check your API key in AI settings.';
-      } else if (errorMsg.includes('rate limit')) {
-        errorMessage = 'Rate limit exceeded. Please wait a moment before trying again.';
-      } else if (errorMsg) {
-        errorMessage = `AI service error: ${errorMsg}`;
+      // Handle user cancellation
+      if (error instanceof OpenAI.APIUserAbortError || error?.name === 'AbortError') {
+        return; // User cancelled
       }
 
-      await this.addMessage(projectId, { role: 'assistant', content: errorMessage });
+      // Re-throw service errors to be handled at the UI level
+      throw error;
     } finally {
       if (session) {
         session.isLoading = false;

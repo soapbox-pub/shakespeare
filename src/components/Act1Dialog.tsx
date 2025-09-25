@@ -72,6 +72,8 @@ export function Act1Dialog({ open, onOpenChange }: Act1DialogProps) {
   };
 
   const handleFinish = () => {
+    // Mark that the user is a previous Act 1 user
+    localStorage.setItem('act1', 'true');
     // Remove the selectedNSPAddr from localStorage
     localStorage.removeItem('selectedNSPAddr');
     onOpenChange(false);

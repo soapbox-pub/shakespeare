@@ -7,7 +7,7 @@ import { useAISettings } from '@/hooks/useAISettings';
 import { parseProviderModel } from '@/lib/parseProviderModel';
 import { useAICredits } from '@/hooks/useAICredits';
 import { CreditsDialog } from './CreditsDialog';
-import { ProjectPreviewConsoleError } from '@/lib/tools/ReadConsoleMessagesTool';
+import { ProjectPreviewConsoleError } from '@/contexts/ConsoleContext';
 import { useState } from 'react';
 
 export interface QuillyProps {

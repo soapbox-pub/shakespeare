@@ -18,7 +18,7 @@ import { GitStatusIndicator } from '@/components/GitStatusIndicator';
 import { StarButton } from '@/components/StarButton';
 import { useBuildProject } from '@/hooks/useBuildProject';
 import { useIsProjectPreviewable } from '@/hooks/useIsProjectPreviewable';
-import { clearConsoleMessages } from '@/lib/tools/ReadConsoleMessagesTool';
+import { useConsole } from '@/contexts/ConsoleContext';
 
 export function ProjectView() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -34,6 +34,7 @@ export function ProjectView() {
   const chatPaneRef = useRef<ChatPaneRef>(null);
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { clearMessages: clearConsoleMessages } = useConsole();
 
   const [isSidebarVisible, setIsSidebarVisible] = useState(!isMobile);
 
@@ -53,7 +54,7 @@ export function ProjectView() {
     } finally {
       setIsLoading(false);
     }
-  }, [projectId, projectsManager]);
+  }, [projectId, projectsManager, clearConsoleMessages]);
 
   useEffect(() => {
     loadProject();

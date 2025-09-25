@@ -7,6 +7,7 @@ import NostrProvider from '@/components/NostrProvider';
 import { AppProvider } from '@/components/AppProvider';
 import { AppConfig } from '@/contexts/AppContext';
 import { FSProvider } from '@/components/FSProvider';
+import { ConsoleProvider } from '@/contexts/ConsoleContext';
 import { LightningFSAdapter } from '@/lib/LightningFSAdapter';
 import { AISettingsProvider } from '@/components/AISettingsProvider';
 import { GitSettingsProvider } from '@/components/GitSettingsProvider';
@@ -43,19 +44,21 @@ export function TestApp({ children }: TestAppProps) {
       <QueryClientProvider client={queryClient}>
         <AppProvider storageKey='test-app-config' defaultConfig={defaultConfig}>
           <FSProvider fs={fs}>
-            <AISettingsProvider>
-              <GitSettingsProvider>
-                <NostrLoginProvider storageKey='test-login'>
-                <NostrProvider>
-                  <SessionManagerProvider>
-                    <BrowserRouter>
-                      {children}
-                    </BrowserRouter>
-                  </SessionManagerProvider>
-                </NostrProvider>
-                </NostrLoginProvider>
-              </GitSettingsProvider>
-            </AISettingsProvider>
+            <ConsoleProvider>
+              <AISettingsProvider>
+                <GitSettingsProvider>
+                  <NostrLoginProvider storageKey='test-login'>
+                  <NostrProvider>
+                    <SessionManagerProvider>
+                      <BrowserRouter>
+                        {children}
+                      </BrowserRouter>
+                    </SessionManagerProvider>
+                  </NostrProvider>
+                  </NostrLoginProvider>
+                </GitSettingsProvider>
+              </AISettingsProvider>
+            </ConsoleProvider>
           </FSProvider>
         </AppProvider>
       </QueryClientProvider>

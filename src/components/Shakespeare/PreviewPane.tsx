@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { useFS } from '@/hooks/useFS';
-import { addConsoleMessage, getConsoleMessages, type ConsoleMessage } from '@/lib/tools/ReadConsoleMessagesTool';
+import { useConsole, type ConsoleMessage } from '@/contexts/ConsoleContext';
 import { useBuildProject } from '@/hooks/useBuildProject';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
@@ -87,6 +87,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const { fs } = useFS();
   const projectsManager = useProjectsManager();
+  const { addMessage: addConsoleMessage, messages: consoleMessages } = useConsole();
 
   const { mutate: buildProject, isPending: isBuildLoading } = useBuildProject(projectId);
 
@@ -220,7 +221,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
 
     // Log to parent console for debugging with appropriate level
     console[normalizedLevel](`[IFRAME ${params.level.toUpperCase()}] ${params.message}`);
-  }, []);
+  }, [addConsoleMessage]);
 
   const handleUpdateNavigationState = useCallback((message: {
     jsonrpc: '2.0';
@@ -513,7 +514,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
       }
     };
 
-    const consoleMessages = getConsoleMessages();
+    // consoleMessages is now available from the hook
     const messageCount = consoleMessages.length;
     const hasErrors = consoleMessages.some(msg => msg.level === 'error');
 

@@ -34,7 +34,8 @@ import { NostrReadNipsIndexTool } from '@/lib/tools/NostrReadNipsIndexTool';
 import { NostrGenerateKindTool } from '@/lib/tools/NostrGenerateKindTool';
 import { ShellTool } from '@/lib/tools/ShellTool';
 import { TypecheckTool } from '@/lib/tools/TypecheckTool';
-import { ReadConsoleMessagesTool, ProjectPreviewConsoleError, addErrorListener, removeErrorListener } from '@/lib/tools/ReadConsoleMessagesTool';
+import { ReadConsoleMessagesTool } from '@/lib/tools/ReadConsoleMessagesTool';
+import { useConsole, ProjectPreviewConsoleError } from '@/contexts/ConsoleContext';
 import { toolToOpenAI } from '@/lib/tools/openai-adapter';
 import { Tool } from '@/lib/tools/Tool';
 import OpenAI from 'openai';
@@ -75,6 +76,9 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   const [isStuck, setIsStuck] = useState(false);
   const [aiError, setAIError] = useState<Error | null>(null);
 
+  // Get console functionality early so it can be used in useEffect
+  const { messagesRef: consoleMessagesRef, addErrorListener, removeErrorListener } = useConsole();
+
   // Console error handling
   useEffect(() => {
     const handleConsoleError = (error: ProjectPreviewConsoleError) => {
@@ -86,7 +90,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
 
     addErrorListener(handleConsoleError);
     return () => removeErrorListener(handleConsoleError);
-  }, [aiError]);
+  }, [aiError, addErrorListener, removeErrorListener]);
 
   // Use external state if provided, otherwise default to false
   const isBuildLoading = externalIsBuildLoading || false;
@@ -137,7 +141,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
       nostr_read_nips_index: new NostrReadNipsIndexTool(),
       nostr_generate_kind: new NostrGenerateKindTool(),
       shell: new ShellTool(fs, cwd, git),
-      read_console_messages: new ReadConsoleMessagesTool(),
+      read_console_messages: new ReadConsoleMessagesTool(() => consoleMessagesRef.current),
     };
 
     // Add deploy tool only if user is logged in
@@ -149,7 +153,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     }
 
     return baseTools;
-  }, [fs, git, cwd, user, projectId]);
+  }, [fs, git, cwd, user, projectId, consoleMessagesRef]);
 
   // Convert tools to OpenAI format
   const tools = useMemo(() => {

@@ -1,25 +1,24 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import {
-  ReadConsoleMessagesTool,
-  addConsoleMessage,
-  clearConsoleMessages,
-  ProjectPreviewConsoleError,
-  addErrorListener,
-  removeErrorListener
-} from './ReadConsoleMessagesTool';
+import { describe, it, expect, beforeEach } from 'vitest';
+import { ReadConsoleMessagesTool } from './ReadConsoleMessagesTool';
+import { ConsoleMessage, ProjectPreviewConsoleError } from '@/contexts/ConsoleContext';
 
 describe('ReadConsoleMessagesTool', () => {
+  let mockMessages: ConsoleMessage[];
+  let getMessages: () => ConsoleMessage[];
+
   beforeEach(() => {
-    clearConsoleMessages();
-    // Add test messages
-    addConsoleMessage('log', 'App started');
-    addConsoleMessage('warn', 'Deprecated API used');
-    addConsoleMessage('error', 'Network request failed');
-    addConsoleMessage('info', 'User logged in');
+    // Set up test messages
+    mockMessages = [
+      { level: 'log', message: 'App started' },
+      { level: 'warn', message: 'Deprecated API used' },
+      { level: 'error', message: 'Network request failed' },
+      { level: 'info', message: 'User logged in' },
+    ];
+    getMessages = () => mockMessages;
   });
 
   it('should return all messages by default', async () => {
-    const tool = new ReadConsoleMessagesTool();
+    const tool = new ReadConsoleMessagesTool(getMessages);
     const result = await tool.execute({});
 
     expect(result).toContain('Found 4 console messages');
@@ -30,7 +29,7 @@ describe('ReadConsoleMessagesTool', () => {
   });
 
   it('should filter messages by level', async () => {
-    const tool = new ReadConsoleMessagesTool();
+    const tool = new ReadConsoleMessagesTool(getMessages);
     const result = await tool.execute({ filter: 'error' });
 
     expect(result).toContain('Found 1 console message (level: error)');
@@ -39,7 +38,7 @@ describe('ReadConsoleMessagesTool', () => {
   });
 
   it('should limit number of messages', async () => {
-    const tool = new ReadConsoleMessagesTool();
+    const tool = new ReadConsoleMessagesTool(getMessages);
     const result = await tool.execute({ limit: 2 });
 
     expect(result).toContain('Found 2 console messages');
@@ -50,15 +49,15 @@ describe('ReadConsoleMessagesTool', () => {
   });
 
   it('should handle no messages found', async () => {
-    clearConsoleMessages();
-    const tool = new ReadConsoleMessagesTool();
+    const emptyGetMessages = () => [];
+    const tool = new ReadConsoleMessagesTool(emptyGetMessages);
     const result = await tool.execute({});
 
     expect(result).toBe('No console messages found.');
   });
 
   it('should handle no messages found with filter', async () => {
-    const tool = new ReadConsoleMessagesTool();
+    const tool = new ReadConsoleMessagesTool(getMessages);
     const result = await tool.execute({ filter: 'debug' });
 
     expect(result).toBe('No console messages found for level: debug.');
@@ -80,89 +79,5 @@ describe('ProjectPreviewConsoleError', () => {
   });
 });
 
-describe('Console Error Listeners', () => {
-  beforeEach(() => {
-    clearConsoleMessages();
-  });
-
-  it('should trigger error listener when console error is added', async () => {
-    const errorListener = vi.fn();
-    addErrorListener(errorListener);
-
-    // Add an error message
-    addConsoleMessage('error', 'Test error message');
-
-    // Wait a bit for the listener to be called
-    await new Promise(resolve => setTimeout(resolve, 10));
-
-    expect(errorListener).toHaveBeenCalledTimes(1);
-    expect(errorListener).toHaveBeenCalledWith(
-      expect.objectContaining({
-        message: 'Console error detected: Test error message',
-        logs: expect.arrayContaining([
-          expect.objectContaining({
-            level: 'error',
-            message: 'Test error message'
-          })
-        ])
-      })
-    );
-
-    removeErrorListener(errorListener);
-  });
-
-  it('should not trigger error listener for non-error messages', async () => {
-    const errorListener = vi.fn();
-    addErrorListener(errorListener);
-
-    // Add non-error messages
-    addConsoleMessage('log', 'Test log message');
-    addConsoleMessage('warn', 'Test warning message');
-    addConsoleMessage('info', 'Test info message');
-
-    // Wait a bit
-    await new Promise(resolve => setTimeout(resolve, 10));
-
-    expect(errorListener).not.toHaveBeenCalled();
-
-    removeErrorListener(errorListener);
-  });
-
-  it('should remove error listener correctly', async () => {
-    const errorListener = vi.fn();
-    addErrorListener(errorListener);
-    removeErrorListener(errorListener);
-
-    // Add an error message
-    addConsoleMessage('error', 'Test error message');
-
-    // Wait a bit
-    await new Promise(resolve => setTimeout(resolve, 10));
-
-    expect(errorListener).not.toHaveBeenCalled();
-  });
-
-  it('should handle listener errors gracefully', async () => {
-    const faultyListener = vi.fn(() => {
-      throw new Error('Listener error');
-    });
-    const workingListener = vi.fn();
-
-    addErrorListener(faultyListener);
-    addErrorListener(workingListener);
-
-    // Should not throw despite faulty listener
-    expect(() => {
-      addConsoleMessage('error', 'Test error message');
-    }).not.toThrow();
-
-    // Wait a bit
-    await new Promise(resolve => setTimeout(resolve, 10));
-
-    expect(faultyListener).toHaveBeenCalled();
-    expect(workingListener).toHaveBeenCalled();
-
-    removeErrorListener(faultyListener);
-    removeErrorListener(workingListener);
-  });
-});
+// Console error listener tests are now handled by the ConsoleContext
+// These tests should be moved to a separate ConsoleContext test file

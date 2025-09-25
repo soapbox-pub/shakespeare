@@ -1,99 +1,108 @@
 import { Button } from '@/components/ui/button';
 import { QuillySVG } from '@/components/ui/QuillySVG';
+import OpenAI from 'openai';
 import { X } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 export interface QuillyProps {
   error: Error;
   onDismiss: () => void;
-  onNewChat?: () => void;
-  onOpenModelSelector?: () => void;
-  onFixConsoleErrors?: () => void;
+  onNewChat: () => void;
+  onOpenModelSelector: () => void;
+  onFixConsoleErrors: () => void;
+}
+
+interface ErrorBody {
+  message: string;
+  action?: {
+    label: string;
+    onClick: () => void;
+  };
 }
 
 export function Quilly({ error, onDismiss, onNewChat, onOpenModelSelector, onFixConsoleErrors }: QuillyProps) {
-  // Generate user-friendly message from error
-  const getMessage = (error: Error): string => {
-    const errorMsg = error.message || '';
+  const navigate = useNavigate();
 
-    if (error.name === 'TypeError' && errorMsg.includes('fetch')) {
-      return 'Network error: Unable to connect to AI service. Please check your internet connection and AI settings.';
-    } else if (errorMsg.includes('API key')) {
-      return 'Authentication error: Please check your API key in AI settings.';
-    } else if (errorMsg.includes('rate limit')) {
-      return 'Rate limit exceeded. Please wait a moment before trying again.';
-    } else if (errorMsg.includes('insufficient_quota')) {
-      return 'Quota exceeded: Your API key has reached its usage limit. Please check your billing or try a different provider.';
-    } else if (errorMsg.includes('model_not_found') || errorMsg.includes('does not exist')) {
-      return 'Model not found: The selected AI model is not available. Please choose a different model.';
-    } else if (errorMsg.includes('maximum context length') || errorMsg.includes('context length')) {
-      return 'Your conversation is too long for this model. Try starting a new chat or switching to a model with a larger context window.';
-    } else if (errorMsg.includes('422') || errorMsg.includes('Provider returned error')) {
-      return 'The AI model encountered an issue. Try switching to a different model or starting a new chat.';
-    } else if (errorMsg.includes('too many requests')) {
-      return 'You\'re sending requests too quickly. Please wait a moment before trying again.';
-    } else if (errorMsg) {
-      return `AI service error: ${errorMsg}`;
-    } else {
-      return 'Sorry, I encountered an unexpected error. Please try again.';
+  const renderBody = (error: Error): ErrorBody => {
+    // Handle OpenAI API errors with specific error codes
+    if (error instanceof OpenAI.APIError) {
+      switch (error.code) {
+        case 'invalid_api_key':
+        case 'invalid_request_error':
+          return {
+            message: 'Authentication error: Please check your API key in AI settings.',
+            action: {
+              label: 'Check API key',
+              onClick: () => navigate('/settings/ai'),
+            }
+          };
+
+        case 'insufficient_quota':
+          return {
+            message: 'Your API key has reached its usage limit. Please check your billing or try a different provider.',
+            action: {
+              label: 'Check AI settings',
+              onClick: () => navigate('/settings/ai'),
+            }
+          };
+
+        case 'rate_limit_exceeded':
+          return {
+            message: 'Rate limit exceeded. Please wait a moment before trying again.',
+          };
+
+        case 'model_not_found':
+          return {
+            message: 'The selected AI model is not available. Please choose a different model.',
+            action: {
+              label: 'Choose model',
+              onClick: onOpenModelSelector,
+            },
+          };
+
+        case 'context_length_exceeded':
+          return {
+            message: 'Your conversation is too long for this model. Try starting a new chat or switching to a model with a larger context window.',
+            action: {
+              label: 'New chat',
+              onClick: onNewChat,
+            },
+          };
+
+        case 'server_error':
+        case 'service_unavailable':
+          return {
+            message: 'The AI service is temporarily unavailable. Please try again in a moment.',
+          };
+
+        default:
+          return {
+            message: `AI service error: ${error.message}`,
+          };
+      }
     }
+
+    // Handle console error messages
+    if (error.message.includes('Console') && error.message.includes('detected in your app') && onFixConsoleErrors) {
+      const isPlural = error.message.includes('errors detected');
+      return {
+        message: error.message,
+        action: {
+          label: `Fix ${isPlural ? 'errors' : 'error'}`,
+          onClick: onFixConsoleErrors,
+        }
+      };
+    }
+
+    // Default fallback
+    return {
+      message: error.message
+        ? `AI service error: ${error.message}`
+        : 'Sorry, I encountered an unexpected error. Please try again.',
+    };
   };
 
-  // Determine action based on error
-  const getAction = (error: Error): { label: string; onClick: () => void } | undefined => {
-    const errorMsg = error.message || '';
-
-    // Check for console error messages first
-    if (errorMsg.includes('Console') && errorMsg.includes('detected in your app') && onFixConsoleErrors) {
-      const isPlural = errorMsg.includes('errors detected');
-      return {
-        label: `Fix ${isPlural ? 'errors' : 'error'}`,
-        onClick: onFixConsoleErrors
-      };
-    }
-
-    if (error.name === 'TypeError' && errorMsg.includes('fetch')) {
-      return {
-        label: 'Check AI settings',
-        onClick: () => {
-          window.location.href = '/settings/ai';
-        }
-      };
-    } else if (errorMsg.includes('API key')) {
-      return {
-        label: 'Check API key',
-        onClick: () => {
-          window.location.href = '/settings/ai';
-        }
-      };
-    } else if (errorMsg.includes('insufficient_quota')) {
-      return {
-        label: 'Check AI settings',
-        onClick: () => {
-          window.location.href = '/settings/ai';
-        }
-      };
-    } else if (errorMsg.includes('model_not_found') || errorMsg.includes('does not exist')) {
-      return onOpenModelSelector ? {
-        label: 'Choose model',
-        onClick: onOpenModelSelector
-      } : undefined;
-    } else if (errorMsg.includes('maximum context length') || errorMsg.includes('context length')) {
-      return onNewChat ? {
-        label: 'New chat',
-        onClick: onNewChat
-      } : undefined;
-    } else if (errorMsg.includes('422') || errorMsg.includes('Provider returned error')) {
-      return onOpenModelSelector ? {
-        label: 'Change model',
-        onClick: onOpenModelSelector
-      } : undefined;
-    }
-
-    return undefined;
-  };
-
-  const message = getMessage(error);
-  const action = getAction(error);
+  const { message, action } = renderBody(error);
 
   return (
     <div className="py-2 px-3 bg-primary/5 border border-primary/20 rounded-lg">

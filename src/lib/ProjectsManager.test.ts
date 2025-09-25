@@ -361,6 +361,83 @@ describe('ProjectsManager', () => {
       expect(project.name).toBe('new-project');
       expect(project.id).toBe('new-project');
     });
+
+    it('should prevent zip slip attacks during import', async () => {
+      await projectsManager.init();
+
+      // Mock the git methods
+      const mockGit = {
+        init: vi.fn(),
+        clone: vi.fn(),
+        add: vi.fn(),
+        commit: vi.fn(),
+        getConfig: vi.fn(),
+        getAllFiles: vi.fn().mockResolvedValue([]),
+      } as Partial<import('./git').Git>;
+
+      // Replace git instance
+      Object.assign(projectsManager, { git: mockGit });
+
+      // Create a mock ZIP file that would try to escape the project directory
+      const zipFile = new File(['malicious content'], 'malicious.zip', { type: 'application/zip' });
+
+      // Mock JSZip to simulate a malicious ZIP with path traversal
+      const JSZip = await import('jszip');
+
+      const mockLoadAsync = vi.fn().mockResolvedValue({
+        files: {
+          '../../../etc/passwd': {
+            dir: false,
+            async: vi.fn().mockResolvedValue(new Uint8Array([1, 2, 3]))
+          },
+          '../../outside.txt': {
+            dir: false,
+            async: vi.fn().mockResolvedValue(new Uint8Array([4, 5, 6]))
+          },
+          'safe-file.txt': {
+            dir: false,
+            async: vi.fn().mockResolvedValue(new Uint8Array([7, 8, 9]))
+          }
+        }
+      });
+
+      vi.spyOn(JSZip.default, 'loadAsync').mockImplementation(mockLoadAsync);
+
+      // Mock arrayBuffer method
+      Object.defineProperty(zipFile, 'arrayBuffer', {
+        value: () => Promise.resolve(new ArrayBuffer(0)),
+        writable: false
+      });
+
+      // Spy on console.warn to check for security warnings
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      try {
+        // Import the malicious ZIP
+        const project = await projectsManager.importProjectFromZip(zipFile, undefined, false);
+
+        // Should have completed successfully (safe files extracted)
+        expect(project).toBeDefined();
+
+        // Should have logged a security warning about skipped files
+        expect(consoleSpy).toHaveBeenCalledWith(
+          expect.stringContaining('Skipped 2 files due to security concerns'),
+          ['../../../etc/passwd', '../../outside.txt']
+        );
+
+        // Verify that only safe files would be written (check writeFile calls)
+        const writeFileCalls = (fs.writeFile as unknown as { mock?: { calls: [string, unknown][] } }).mock?.calls || [];
+        const maliciousPaths = writeFileCalls.filter((call: [string, unknown]) =>
+          call[0].includes('../') || call[0].includes('etc/passwd') || call[0].includes('outside.txt')
+        );
+        expect(maliciousPaths).toHaveLength(0);
+
+      } finally {
+        // Restore mocks
+        consoleSpy.mockRestore();
+        vi.restoreAllMocks();
+      }
+    });
   });
 
   describe('renameProject', () => {

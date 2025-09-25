@@ -154,32 +154,41 @@ export class ProjectsManager {
       const arrayBuffer = await zipFile.arrayBuffer();
       const zip = await JSZip.loadAsync(arrayBuffer);
 
-      // Extract all files from the zip
-      const files = Object.keys(zip.files);
+      // Extract all files from the zip with security validation
+      const extractedFiles: string[] = [];
+      const skippedFiles: string[] = [];
 
-      for (const filePath of files) {
-        const zipEntry = zip.files[filePath];
+      for (const [relativePath, zipEntry] of Object.entries(zip.files)) {
+        // Validate the extraction path is within the project directory
+        const extractPath = this.join(projectPath, relativePath);
 
-        // Skip directories (they end with / in JSZip)
+        if (!this.isPathWithinProject(extractPath, projectPath)) {
+          skippedFiles.push(relativePath);
+          continue;
+        }
+
         if (zipEntry.dir) {
           // Create the directory structure
-          const dirPath = `${projectPath}/${filePath}`;
-          await this.fs.mkdir(dirPath, { recursive: true });
+          await this.fs.mkdir(extractPath, { recursive: true });
           continue;
         }
 
         // Extract file content
         const content = await zipEntry.async('uint8array');
-        const fullPath = `${projectPath}/${filePath}`;
 
         // Ensure parent directory exists
-        const dirPath = fullPath.split('/').slice(0, -1).join('/');
+        const dirPath = extractPath.split('/').slice(0, -1).join('/');
         if (dirPath) {
           await this.fs.mkdir(dirPath, { recursive: true });
         }
 
         // Write the file (this will overwrite existing files)
-        await this.fs.writeFile(fullPath, content);
+        await this.fs.writeFile(extractPath, content);
+        extractedFiles.push(relativePath);
+      }
+
+      if (skippedFiles.length > 0) {
+        console.warn(`Skipped ${skippedFiles.length} files due to resolving to paths outside the project direcotry:`, skippedFiles);
       }
 
       // Get filesystem stats for timestamps
@@ -579,5 +588,58 @@ export class ProjectsManager {
     }
 
     return files;
+  }
+
+  /**
+   * Safe path join that normalizes the result to prevent directory traversal
+   */
+  private join(...paths: string[]): string {
+    // Simple path joining with normalization
+    const joined = paths.join('/').replace(/\/+/g, '/');
+
+    // Normalize path separators and resolve .. and . components
+    const parts = joined.split('/').filter(part => part !== '');
+    const normalized: string[] = [];
+
+    for (const part of parts) {
+      if (part === '..') {
+        normalized.pop();
+      } else if (part !== '.') {
+        normalized.push(part);
+      }
+    }
+
+    return '/' + normalized.join('/');
+  }
+
+  /**
+   * Check if a path is within the project directory
+   */
+  private isPathWithinProject(extractPath: string, projectPath: string): boolean {
+    // Normalize both paths
+    const normalizedExtractPath = this.normalize(extractPath);
+    const normalizedProjectPath = this.normalize(projectPath);
+
+    // Check if the extract path starts with the project path
+    return normalizedExtractPath.startsWith(normalizedProjectPath + '/') ||
+           normalizedExtractPath === normalizedProjectPath;
+  }
+
+  /**
+   * Normalize a path by resolving . and .. components
+   */
+  private normalize(path: string): string {
+    const parts = path.split('/').filter(part => part !== '');
+    const normalized: string[] = [];
+
+    for (const part of parts) {
+      if (part === '..') {
+        normalized.pop();
+      } else if (part !== '.') {
+        normalized.push(part);
+      }
+    }
+
+    return '/' + normalized.join('/');
   }
 }

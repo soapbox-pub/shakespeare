@@ -92,10 +92,10 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     }
   }, [providerModel, settings.recentlyUsedModels]);
 
-  // Reset state when navigating between projects
+  // Reset error state when navigating between projects and switching models
   useEffect(() => {
     setAIError(null);
-  }, [projectId]);
+  }, [projectId, providerModel]);
 
   const [searchParams, setSearchParams] = useSearchParams();
   const { fs } = useFS();
@@ -232,6 +232,11 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   const openModelSelector = useCallback(() => {
     setIsModelSelectorOpen(true);
   }, []);
+
+  // Scroll to bottom when AI error occurs
+  useEffect(() => {
+    scrollToBottom();
+  }, [aiError, scrollToBottom]);
 
   // Check for autostart parameter and trigger AI generation
   useEffect(() => {
@@ -376,6 +381,8 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
 
     // If configured but no model selected, don't proceed
     if (!providerModel.trim()) return;
+
+    setAIError(null);
 
     const modelToUse = providerModel.trim();
 
@@ -589,6 +596,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
               onDismiss={() => setAIError(null)}
               onNewChat={onNewChat}
               onOpenModelSelector={openModelSelector}
+              providerModel={providerModel}
             />
           )}
         </div>

@@ -1,14 +1,20 @@
+import OpenAI from 'openai';
+import { useNavigate } from 'react-router-dom';
+import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { QuillySVG } from '@/components/ui/QuillySVG';
-import OpenAI from 'openai';
-import { X } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useAISettings } from '@/hooks/useAISettings';
+import { parseProviderModel } from '@/lib/parseProviderModel';
+import { useAICredits } from '@/hooks/useAICredits';
+import { CreditsDialog } from './CreditsDialog';
+import { useState } from 'react';
 
 export interface QuillyProps {
   error: Error;
   onDismiss: () => void;
   onNewChat: () => void;
   onOpenModelSelector: () => void;
+  providerModel: string;
 }
 
 interface ErrorBody {
@@ -19,8 +25,12 @@ interface ErrorBody {
   };
 }
 
-export function Quilly({ error, onDismiss, onNewChat, onOpenModelSelector }: QuillyProps) {
+export function Quilly({ error, onDismiss, onNewChat, onOpenModelSelector, providerModel }: QuillyProps) {
   const navigate = useNavigate();
+  const { settings } = useAISettings();
+  const { provider } = parseProviderModel(providerModel, settings.providers);
+  const credits = useAICredits(provider);
+  const [showCreditsDialog, setShowCreditsDialog] = useState(false);
 
   const renderBody = (error: Error): ErrorBody => {
     // Handle OpenAI API errors with specific error codes
@@ -36,14 +46,25 @@ export function Quilly({ error, onDismiss, onNewChat, onOpenModelSelector }: Qui
             }
           };
 
-        case 'insufficient_quota':
-          return {
-            message: 'Your API key has reached its usage limit. Please check your billing or try a different provider.',
-            action: {
-              label: 'Check AI settings',
-              onClick: () => navigate('/settings/ai'),
-            }
-          };
+        case 'insufficient_quota': {
+          if (credits.data) {
+            return {
+              message: `Your account has $${credits.data.amount.toFixed(2)} credits. Please add credits to keep creating.`,
+              action: {
+                label: 'Add credits',
+                onClick: () => setShowCreditsDialog(true),
+              }
+            };
+          } else {
+            return {
+              message: 'Your API key has reached its usage limit. Please check your billing or try a different provider.',
+              action: {
+                label: 'Check AI settings',
+                onClick: () => navigate('/settings/ai'),
+              }
+            };
+          }
+        }
 
         case 'rate_limit_exceeded':
           return {
@@ -120,6 +141,12 @@ export function Quilly({ error, onDismiss, onNewChat, onOpenModelSelector }: Qui
           <X className="h-4 w-4" />
         </Button>
       </div>
+
+      <CreditsDialog
+        open={showCreditsDialog}
+        onOpenChange={setShowCreditsDialog}
+        provider={provider}
+      />
     </div>
   );
 }

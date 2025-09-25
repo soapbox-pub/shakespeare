@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useQueryClient } from '@tanstack/react-query';
 import { Download, Trash2, AlertTriangle, Loader2, Database, Info, ArrowLeft, Shield, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -47,6 +48,7 @@ export function DataSettings() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const projectsManager = useProjectsManager();
+  const queryClient = useQueryClient();
 
   // Format bytes to human readable format
   const formatBytes = (bytes: number): string => {
@@ -245,8 +247,11 @@ export function DataSettings() {
         }
       }
 
-      // Show success/error toast
+      // Show success/error toast and refresh project list
       if (successCount > 0) {
+        // Refresh projects list to show newly imported projects
+        queryClient.invalidateQueries({ queryKey: ['projects'] });
+
         toast({
           title: `${successCount} Project${successCount !== 1 ? 's' : ''} Imported Successfully`,
           description: errors.length > 0

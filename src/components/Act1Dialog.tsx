@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 
 import { useAISettings } from '@/hooks/useAISettings';
+import { useAICredits } from '@/hooks/useAICredits';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 
 interface Act1DialogProps {
@@ -13,7 +14,7 @@ interface Act1DialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-type DialogStep = 'welcome' | 'migration' | 'conclusion';
+type DialogStep = 'welcome' | 'migration' | 'credits' | 'conclusion';
 
 const SHAKESPEARE_PROVIDER = {
   id: "shakespeare",
@@ -22,7 +23,6 @@ const SHAKESPEARE_PROVIDER = {
 };
 
 const MKSTACK_NSP_ADDR = '31999:4bcaa7b5606e3c14df05cd497e588f5d3fe559b4e9a425e8b418a43af1ffb015:mkstack';
-const MKSTACK_NSP_FREE_ADDR = '31999:8c68ce13a4a4a178ba95cbca8a759b31fe95c4b6e61fa1a7f6ad2e751458f49:mkstack';
 
 export function Act1Dialog({ open, onOpenChange }: Act1DialogProps) {
   const [step, setStep] = useState<DialogStep>('welcome');
@@ -32,6 +32,9 @@ export function Act1Dialog({ open, onOpenChange }: Act1DialogProps) {
   // Get the selectedNSPAddr from localStorage
   const [selectedNSPAddr] = useLocalStorage<string | null>('selectedNSPAddr', null);
 
+  // Get user's credits
+  const { data: creditsData } = useAICredits(SHAKESPEARE_PROVIDER);
+
   const handleGetStarted = async () => {
     setIsSettingUp(true);
 
@@ -39,12 +42,15 @@ export function Act1Dialog({ open, onOpenChange }: Act1DialogProps) {
       // Add Shakespeare provider to their config
       setProvider(SHAKESPEARE_PROVIDER);
 
-      // Configure recently used models based on their Act 1 NSP
-      if (selectedNSPAddr === MKSTACK_NSP_ADDR) {
-        // MKStack NSP - set to shakespeare model
+      // Configure recently used models based on credits or NSP
+      const hasCredits = creditsData?.amount && creditsData.amount > 0;
+      const hasMKStackNSP = selectedNSPAddr === MKSTACK_NSP_ADDR;
+
+      if (hasCredits || hasMKStackNSP) {
+        // User has credits or MKStack NSP - set to shakespeare model
         updateSettings({ recentlyUsedModels: ['shakespeare/shakespeare'] });
-      } else if (selectedNSPAddr === MKSTACK_NSP_FREE_ADDR) {
-        // MKStack NSP Free - set to tybalt model
+      } else {
+        // No credits - set to tybalt model (free)
         updateSettings({ recentlyUsedModels: ['shakespeare/tybalt'] });
       }
 
@@ -58,6 +64,10 @@ export function Act1Dialog({ open, onOpenChange }: Act1DialogProps) {
   };
 
   const handleContinue = () => {
+    setStep('credits');
+  };
+
+  const handleCreditsNext = () => {
     setStep('conclusion');
   };
 
@@ -94,7 +104,7 @@ export function Act1Dialog({ open, onOpenChange }: Act1DialogProps) {
                 <ArrowLeft className="h-4 w-4" />
               </Button>
             )}
-            {step === 'conclusion' && (
+            {step === 'credits' && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -104,9 +114,20 @@ export function Act1Dialog({ open, onOpenChange }: Act1DialogProps) {
                 <ArrowLeft className="h-4 w-4" />
               </Button>
             )}
+            {step === 'conclusion' && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setStep('credits')}
+                className="mr-2 p-1 h-auto"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+            )}
             <span className="text-xl">
               {step === 'welcome' && 'Welcome to Shakespeare: Act 2! 🎭'}
               {step === 'migration' && 'Migrating Your Projects'}
+              {step === 'credits' && 'Your Credits'}
               {step === 'conclusion' && "You're All Set!"}
             </span>
           </DialogTitle>
@@ -260,28 +281,69 @@ export function Act1Dialog({ open, onOpenChange }: Act1DialogProps) {
                     </CardContent>
                   </Card>
 
-                  <Card className="border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/20">
-                    <CardHeader>
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        <span className="text-2xl">💳</span>
-                        Your Credits
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      <p className="text-sm text-muted-foreground">
-                        Your Act 1 credits are still available through the Shakespeare AI provider.
-                        We've automatically configured this for you!
-                      </p>
-                      <Badge variant="secondary" className="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
-                        Credits Available
-                      </Badge>
-                    </CardContent>
-                  </Card>
+
                 </div>
 
                 <div className="flex justify-end pt-4 border-t">
                   <Button
                     onClick={handleContinue}
+                    className="gap-2"
+                  >
+                    Continue
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {step === 'credits' && (
+              <div className="text-center space-y-6">
+                <div className="text-6xl mb-4">💳</div>
+                <div className="space-y-3">
+                  <h2 className="text-2xl font-bold">Your Credits</h2>
+                  <p className="text-lg text-muted-foreground max-w-md mx-auto">
+                    Your Act 1 credits are still available through the Shakespeare AI provider.
+                  </p>
+                </div>
+
+                <Card className="max-w-md mx-auto">
+                  <CardContent className="pt-6">
+                    {creditsData?.amount && creditsData.amount > 0 ? (
+                      <div className="text-center space-y-4">
+                        <div className="space-y-2">
+                          <div className="text-3xl font-bold text-green-600 dark:text-green-400">
+                            ${creditsData.amount.toFixed(2)}
+                          </div>
+                          <p className="text-sm text-muted-foreground">
+                            Available credits
+                          </p>
+                        </div>
+                        <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg p-3">
+                          <p className="text-sm text-green-800 dark:text-green-200">
+                            ✅ You're all set! We've configured the premium Shakespeare model for you.
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center space-y-4">
+                        <div className="space-y-2">
+                          <div className="text-2xl">🆓</div>
+                          <p className="font-medium">Free Access</p>
+                        </div>
+                        <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+                          <p className="text-sm text-blue-800 dark:text-blue-200">
+                            You can continue using Shakespeare for free with the Tybalt model.
+                            It's perfect for learning and building amazing projects!
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <div className="flex justify-end pt-4">
+                  <Button
+                    onClick={handleCreditsNext}
                     className="gap-2"
                   >
                     Continue

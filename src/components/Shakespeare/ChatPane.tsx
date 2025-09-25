@@ -34,6 +34,7 @@ import { NostrReadNipsIndexTool } from '@/lib/tools/NostrReadNipsIndexTool';
 import { NostrGenerateKindTool } from '@/lib/tools/NostrGenerateKindTool';
 import { ShellTool } from '@/lib/tools/ShellTool';
 import { TypecheckTool } from '@/lib/tools/TypecheckTool';
+import { ReadConsoleMessagesTool, ProjectPreviewConsoleError, addErrorListener, removeErrorListener } from '@/lib/tools/ReadConsoleMessagesTool';
 import { toolToOpenAI } from '@/lib/tools/openai-adapter';
 import { Tool } from '@/lib/tools/Tool';
 import OpenAI from 'openai';
@@ -73,6 +74,19 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [isStuck, setIsStuck] = useState(false);
   const [aiError, setAIError] = useState<Error | null>(null);
+
+  // Console error handling
+  useEffect(() => {
+    const handleConsoleError = (error: ProjectPreviewConsoleError) => {
+      // Only show console errors if there's no existing AI error
+      if (!aiError) {
+        setAIError(error);
+      }
+    };
+
+    addErrorListener(handleConsoleError);
+    return () => removeErrorListener(handleConsoleError);
+  }, [aiError]);
 
   // Use external state if provided, otherwise default to false
   const isBuildLoading = externalIsBuildLoading || false;
@@ -123,6 +137,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
       nostr_read_nips_index: new NostrReadNipsIndexTool(),
       nostr_generate_kind: new NostrGenerateKindTool(),
       shell: new ShellTool(fs, cwd, git),
+      read_console_messages: new ReadConsoleMessagesTool(),
     };
 
     // Add deploy tool only if user is logged in
@@ -186,6 +201,11 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     onUpdateMetadata,
     onAIError,
   });
+
+  // Handle console error help requests
+  const handleConsoleErrorHelp = useCallback(() => {
+    sendMessage('Read the console messages and fix any errors present.', providerModel);
+  }, [sendMessage, providerModel]);
 
   // Use external loading state if provided, otherwise use internal state
   const isLoading = externalIsLoading !== undefined ? externalIsLoading : internalIsLoading;
@@ -596,6 +616,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
               onDismiss={() => setAIError(null)}
               onNewChat={onNewChat}
               onOpenModelSelector={openModelSelector}
+              onRequestConsoleErrorHelp={handleConsoleErrorHelp}
               providerModel={providerModel}
             />
           )}

@@ -3,12 +3,12 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { useFS } from '@/hooks/useFS';
-import { useConsoleMessages, addConsoleMessage, clearConsoleMessages, type ConsoleMessage } from '@/hooks/useConsoleMessages';
+import { addConsoleMessage, getConsoleMessages, type ConsoleMessage } from '@/lib/tools/ReadConsoleMessagesTool';
 import { useBuildProject } from '@/hooks/useBuildProject';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { FolderOpen, ArrowLeft, X, Bug, Copy, Check, Play, Loader2, MenuIcon, Code, CloudUpload } from 'lucide-react';
+import { FolderOpen, ArrowLeft, Bug, Copy, Check, Play, Loader2, MenuIcon, Code, CloudUpload, X } from 'lucide-react';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { GitStatusIndicator } from '@/components/GitStatusIndicator';
 import { BrowserAddressBar } from '@/components/ui/browser-address-bar';
@@ -18,7 +18,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
 import { FileTree } from './FileTree';
 import { FileEditor } from './FileEditor';
 import { DeployDialog } from '@/components/DeployDialog';
@@ -66,7 +71,6 @@ interface JSONRPCResponse {
   id: number;
 }
 
-
 export function PreviewPane({ projectId, activeTab, onToggleView, projectName, onFirstInteraction, isPreviewable = true }: PreviewPaneProps) {
   const { t } = useTranslation();
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
@@ -78,12 +82,12 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
   const [currentPath, setCurrentPath] = useState('/');
   const [navigationHistory, setNavigationHistory] = useState<string[]>(['/']);
   const [historyIndex, setHistoryIndex] = useState(0);
-  const [copiedMessageId, setCopiedMessageId] = useState<number | null>(null);
+
   const [deployDialogOpen, setDeployDialogOpen] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const { fs } = useFS();
   const projectsManager = useProjectsManager();
-  const { messages: consoleMessages } = useConsoleMessages();
+
   const { mutate: buildProject, isPending: isBuildLoading } = useBuildProject(projectId);
 
   const [searchParams, setSearchParams] = useSearchParams();
@@ -211,7 +215,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
       normalizedLevel = params.level as ConsoleMessage['level'];
     }
 
-    // Add to global console messages
+    // Add to console messages
     addConsoleMessage(normalizedLevel, params.message);
 
     // Log to parent console for debugging with appropriate level
@@ -303,8 +307,6 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
     const { params, id } = request;
     const { request: fetchRequest } = params;
 
-
-
     try {
       // Parse the URL and validate origin
       const url = new URL(fetchRequest.url);
@@ -368,9 +370,6 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
           });
           return;
         }
-
-        // For non-static assets, try SPA fallback to index.html
-
       }
 
       // SPA fallback: serve index.html for non-file requests (SPA routing)
@@ -393,8 +392,6 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
         });
       } catch {
         // Even index.html doesn't exist
-
-
         sendResponse({
           jsonrpc: '2.0',
           result: {
@@ -503,98 +500,101 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
   };
 
   const ConsoleDropdown = () => {
-    const getLevelColor = (level: ConsoleMessage['level']) => {
-      switch (level) {
-        case 'error': return 'text-red-500';
-        case 'warn': return 'text-yellow-500';
-        case 'info': return 'text-blue-500';
-        case 'debug': return 'text-gray-500';
-        default: return 'text-gray-400';
-      }
-    };
+    const [isOpen, setIsOpen] = useState(false);
+    const [copiedMessageIndex, setCopiedMessageIndex] = useState<number | null>(null);
 
-    const getLevelIcon = (level: ConsoleMessage['level']) => {
-      switch (level) {
-        case 'error': return '!';
-        case 'warn': return '⚠';
-        case 'info': return 'ℹ';
-        case 'debug': return '🔍';
-        default: return '•';
-      }
-    };
-
-    const clearConsole = () => {
-      clearConsoleMessages();
-    };
-
-    const copyMessageToClipboard = async (msg: ConsoleMessage) => {
+    const copyMessageToClipboard = async (msg: ConsoleMessage, index: number) => {
       try {
-        // Create a formatted string with all message details
-        const formattedMessage = `[${msg.level.toUpperCase()}] ${msg.message}`;
-
-        await navigator.clipboard.writeText(formattedMessage);
-        setCopiedMessageId(msg.id);
-
-        // Reset the copied state after 2 seconds
-        setTimeout(() => {
-          setCopiedMessageId(null);
-        }, 2000);
+        await navigator.clipboard.writeText(msg.message);
+        setCopiedMessageIndex(index);
+        setTimeout(() => setCopiedMessageIndex(null), 2000);
       } catch (error) {
         console.error('Failed to copy message to clipboard:', error);
       }
     };
 
+    const consoleMessages = getConsoleMessages();
+    const messageCount = consoleMessages.length;
+    const hasErrors = consoleMessages.some(msg => msg.level === 'error');
+
     return (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 relative">
+      <Popover open={isOpen} onOpenChange={setIsOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0 relative hover:bg-accent hover:text-accent-foreground transition-colors"
+          >
             <Bug className="h-4 w-4" />
-            {consoleMessages.some(msg => msg.level === 'error') && (
-              <span className="absolute bottom-0 left-0 h-2 w-2 bg-red-500 rounded-full"></span>
+            {hasErrors && (
+              <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full border-2 border-background bg-red-500" />
             )}
           </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-96 max-w-96 max-h-96 overflow-x-hidden">
-          <div className="flex items-center justify-between p-2 border-b">
-            <span className="font-medium text-sm">Console Output ({consoleMessages.length})</span>
-            <Button variant="ghost" size="sm" onClick={clearConsole}>
-              <X className="h-3 w-3" />
-            </Button>
-          </div>
-          <ScrollArea className="h-80 w-full max-w-full overflow-x-hidden">
-            <div className="space-y-1 p-2 w-full max-w-full overflow-x-hidden">
-              {consoleMessages.length === 0 ? (
-                <div className="text-center text-muted-foreground text-sm py-4">
-                  No console messages
+        </PopoverTrigger>
+        <PopoverContent
+          align="end"
+          className="w-[calc(100vw-1rem)] max-w-[480px] max-h-[512px] overflow-hidden shadow-lg border rounded-lg bg-background p-0"
+          sideOffset={4}
+        >
+
+          {/* Messages */}
+          <div className="h-[60vh] max-h-[512px] w-full bg-background text-foreground font-mono text-xs relative overflow-y-auto overflow-x-hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+            <div className="py-2 px-1 space-y-0">
+              {messageCount === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <p className="text-sm text-muted-foreground font-medium">No console messages</p>
+                  <p className="text-xs text-muted-foreground mt-1">Messages from your project will appear here</p>
                 </div>
               ) : (
-                consoleMessages.map((msg) => (
+                consoleMessages.map((msg, index) => (
                   <div
-                    key={msg.id}
-                    className={`text-xs font-mono p-2 rounded ${getLevelColor(msg.level)} bg-muted/50 group relative w-full overflow-hidden`}
+                    key={index}
+                    className="group relative py-0.5 px-1 hover:bg-muted/50 transition-colors duration-150 rounded cursor-pointer"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      copyMessageToClipboard(msg, index);
+                    }}
                   >
-                    <div className="flex items-start justify-between w-full">
-                      <div className="whitespace-pre-wrap break-all flex-1 pr-2 overflow-x-hidden">{getLevelIcon(msg.level)} {msg.message}</div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => copyMessageToClipboard(msg)}
-                        className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex-shrink-0"
-                      >
-                        {copiedMessageId === msg.id ? (
-                          <Check className="h-3 w-3 text-green-500" />
-                        ) : (
-                          <Copy className="h-3 w-3" />
-                        )}
-                      </Button>
+                    <div className={cn(
+                      "text-xs font-mono leading-tight whitespace-pre-wrap break-words",
+                      msg.level === 'error' ? "text-destructive" :
+                      msg.level === 'warn' ? "text-warning" :
+                      msg.level === 'info' ? "text-primary" :
+                      "text-muted-foreground"
+                    )}>
+                      {msg.message}
                     </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        copyMessageToClipboard(msg, index);
+                      }}
+                      className="h-3 w-3 p-0 opacity-0 group-hover:opacity-100 transition-all duration-200 absolute right-1 top-1 hover:bg-muted/70 text-muted-foreground hover:text-foreground bg-background/80 rounded border"
+                    >
+                      {copiedMessageIndex === index ? (
+                        <Check className="h-2 w-2 text-success" />
+                      ) : (
+                        <Copy className="h-2 w-2" />
+                      )}
+                    </Button>
                   </div>
                 ))
               )}
             </div>
-          </ScrollArea>
-        </DropdownMenuContent>
-      </DropdownMenu>
+          </div>
+
+          {/* Close button */}
+          <button
+            onClick={() => setIsOpen(false)}
+            className="absolute top-2 right-2 h-8 w-8 p-0 bg-muted/50 hover:bg-muted/70 rounded-md z-10 flex items-center justify-center border"
+          >
+            <X className="h-5 w-5 text-muted-foreground" />
+          </button>
+        </PopoverContent>
+      </Popover>
     );
   };
 
@@ -613,7 +613,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
             <span className="sr-only">Open menu</span>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-48">
+        <DropdownMenuContent align="end" className="w-48 sm:w-48">
           <DropdownMenuItem
             onClick={handleBuildProject}
             disabled={isBuildLoading}

@@ -7,6 +7,7 @@ import { useAISettings } from '@/hooks/useAISettings';
 import { parseProviderModel } from '@/lib/parseProviderModel';
 import { useAICredits } from '@/hooks/useAICredits';
 import { CreditsDialog } from './CreditsDialog';
+import { ProjectPreviewConsoleError } from '@/lib/tools/ReadConsoleMessagesTool';
 import { useState } from 'react';
 
 export interface QuillyProps {
@@ -14,6 +15,7 @@ export interface QuillyProps {
   onDismiss: () => void;
   onNewChat: () => void;
   onOpenModelSelector: () => void;
+  onRequestConsoleErrorHelp?: (error: ProjectPreviewConsoleError) => void;
   providerModel: string;
 }
 
@@ -25,7 +27,7 @@ interface ErrorBody {
   };
 }
 
-export function Quilly({ error, onDismiss, onNewChat, onOpenModelSelector, providerModel }: QuillyProps) {
+export function Quilly({ error, onDismiss, onNewChat, onOpenModelSelector, onRequestConsoleErrorHelp, providerModel }: QuillyProps) {
   const navigate = useNavigate();
   const { settings } = useAISettings();
   const { provider } = parseProviderModel(providerModel, settings.providers);
@@ -33,6 +35,20 @@ export function Quilly({ error, onDismiss, onNewChat, onOpenModelSelector, provi
   const [showCreditsDialog, setShowCreditsDialog] = useState(false);
 
   const renderBody = (error: Error): ErrorBody => {
+    // Handle Project Preview Console Errors
+    if (error instanceof ProjectPreviewConsoleError) {
+      return {
+        message: 'I noticed some console errors in your project preview. Would you like me to take a look and help fix them?',
+        action: {
+          label: 'Help fix errors',
+          onClick: () => {
+            onRequestConsoleErrorHelp?.(error);
+            onDismiss();
+          },
+        },
+      };
+    }
+
     // Handle OpenAI API errors with specific error codes
     if (error instanceof OpenAI.APIError) {
       switch (error.code) {

@@ -16,9 +16,9 @@ import { ActionsMenu } from '@/components/ActionsMenu';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { GitStatusIndicator } from '@/components/GitStatusIndicator';
 import { StarButton } from '@/components/StarButton';
-
 import { useBuildProject } from '@/hooks/useBuildProject';
 import { useIsProjectPreviewable } from '@/hooks/useIsProjectPreviewable';
+import { clearConsoleMessages } from '@/lib/tools/ReadConsoleMessagesTool';
 
 export function ProjectView() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -29,6 +29,7 @@ export function ProjectView() {
   const [mobileView, setMobileView] = useState<'chat' | 'preview' | 'code'>('chat');
   const [isAILoading, setIsAILoading] = useState(false);
   const [isProjectDetailsOpen, setIsProjectDetailsOpen] = useState(false);
+
   const projectsManager = useProjectsManager();
   const chatPaneRef = useRef<ChatPaneRef>(null);
   const navigate = useNavigate();
@@ -45,6 +46,8 @@ export function ProjectView() {
     try {
       const projectData = await projectsManager.getProject(projectId);
       setProject(projectData);
+      // Clear console messages when switching projects
+      clearConsoleMessages();
     } catch (error) {
       console.error('Failed to load project:', error);
     } finally {

@@ -42,9 +42,8 @@ describe('useAIProjectId', () => {
 
     // Mock parseProviderModel
     mockParseProviderModel.mockReturnValue({
-      provider: 'openai',
+      provider: { id: 'openai', apiKey: 'test-key', baseURL: 'https://api.openai.com/v1' },
       model: 'gpt-4',
-      connection: { apiKey: 'test-key', baseURL: 'https://api.openai.com/v1' }
     });
 
     // Mock createAIClient
@@ -63,12 +62,12 @@ describe('useAIProjectId', () => {
 
   it('should return not configured when AI settings are not configured', () => {
     mockUseAISettings.mockReturnValue({
-      settings: { providers: {}, recentlyUsedModels: [] },
+      settings: { providers: [], recentlyUsedModels: [] },
       isConfigured: false,
       updateSettings: vi.fn(),
-      addProvider: vi.fn(),
+      setProvider: vi.fn(),
       removeProvider: vi.fn(),
-      updateProvider: vi.fn(),
+      setProviders: vi.fn(),
       addRecentlyUsedModel: vi.fn(),
     });
 
@@ -80,12 +79,13 @@ describe('useAIProjectId', () => {
 
   it('should throw error when trying to generate ID without configuration', async () => {
     mockUseAISettings.mockReturnValue({
-      settings: { providers: {}, recentlyUsedModels: [] },
+      settings: { providers: [], recentlyUsedModels: [] },
       isConfigured: false,
       updateSettings: vi.fn(),
-      addProvider: vi.fn(),
+      setProvider: vi.fn(),
       removeProvider: vi.fn(),
-      updateProvider: vi.fn(),
+      setProviders: vi.fn(),
+
       addRecentlyUsedModel: vi.fn(),
     });
 
@@ -99,16 +99,17 @@ describe('useAIProjectId', () => {
   it('should throw error when prompt is empty', async () => {
     mockUseAISettings.mockReturnValue({
       settings: {
-        providers: {
-          openai: { apiKey: 'test-key', baseURL: 'https://api.openai.com/v1' }
-        },
+        providers: [
+          { id: 'openai', apiKey: 'test-key', baseURL: 'https://api.openai.com/v1' }
+        ],
         recentlyUsedModels: []
       },
       isConfigured: true,
       updateSettings: vi.fn(),
-      addProvider: vi.fn(),
+      setProvider: vi.fn(),
       removeProvider: vi.fn(),
-      updateProvider: vi.fn(),
+      setProviders: vi.fn(),
+
       addRecentlyUsedModel: vi.fn(),
     });
 
@@ -122,16 +123,17 @@ describe('useAIProjectId', () => {
   it('should have configured status when providers are available', () => {
     mockUseAISettings.mockReturnValue({
       settings: {
-        providers: {
-          openai: { apiKey: 'test-key', baseURL: 'https://api.openai.com/v1' }
-        },
+        providers: [
+          { id: 'openai', apiKey: 'test-key', baseURL: 'https://api.openai.com/v1' }
+        ],
         recentlyUsedModels: []
       },
       isConfigured: true,
       updateSettings: vi.fn(),
-      addProvider: vi.fn(),
+      setProvider: vi.fn(),
       removeProvider: vi.fn(),
-      updateProvider: vi.fn(),
+      setProviders: vi.fn(),
+
       addRecentlyUsedModel: vi.fn(),
     });
 
@@ -144,16 +146,17 @@ describe('useAIProjectId', () => {
   it('should successfully generate project ID', async () => {
     mockUseAISettings.mockReturnValue({
       settings: {
-        providers: {
-          openai: { apiKey: 'test-key', baseURL: 'https://api.openai.com/v1' }
-        },
+        providers: [
+          { id: 'openai', apiKey: 'test-key', baseURL: 'https://api.openai.com/v1' }
+        ],
         recentlyUsedModels: []
       },
       isConfigured: true,
       updateSettings: vi.fn(),
-      addProvider: vi.fn(),
+      setProvider: vi.fn(),
       removeProvider: vi.fn(),
-      updateProvider: vi.fn(),
+      setProviders: vi.fn(),
+
       addRecentlyUsedModel: vi.fn(),
     });
 
@@ -162,11 +165,11 @@ describe('useAIProjectId', () => {
     const projectId = await result.current.generateProjectId('openai/gpt-4', 'A social media app for developers');
 
     expect(projectId).toBe('test-project-name');
-    expect(mockParseProviderModel).toHaveBeenCalledWith('openai/gpt-4', {
-      openai: { apiKey: 'test-key', baseURL: 'https://api.openai.com/v1' }
-    });
+    expect(mockParseProviderModel).toHaveBeenCalledWith('openai/gpt-4', [
+      { id: 'openai', apiKey: 'test-key', baseURL: 'https://api.openai.com/v1' }
+    ]);
     expect(mockCreateAIClient).toHaveBeenCalledWith(
-      { apiKey: 'test-key', baseURL: 'https://api.openai.com/v1' },
+      { id: 'openai', apiKey: 'test-key', baseURL: 'https://api.openai.com/v1' },
       undefined
     );
   });
@@ -174,16 +177,17 @@ describe('useAIProjectId', () => {
   it('should fallback to untitled when project exists', async () => {
     mockUseAISettings.mockReturnValue({
       settings: {
-        providers: {
-          openai: { apiKey: 'test-key', baseURL: 'https://api.openai.com/v1' }
-        },
+        providers: [
+          { id: 'openai', apiKey: 'test-key', baseURL: 'https://api.openai.com/v1' }
+        ],
         recentlyUsedModels: []
       },
       isConfigured: true,
       updateSettings: vi.fn(),
-      addProvider: vi.fn(),
+      setProvider: vi.fn(),
       removeProvider: vi.fn(),
-      updateProvider: vi.fn(),
+      setProviders: vi.fn(),
+
       addRecentlyUsedModel: vi.fn(),
     });
 
@@ -226,16 +230,17 @@ describe('useAIProjectId', () => {
   it('should fallback to untitled-1 when untitled exists', async () => {
     mockUseAISettings.mockReturnValue({
       settings: {
-        providers: {
-          openai: { apiKey: 'test-key', baseURL: 'https://api.openai.com/v1' }
-        },
+        providers: [
+          { id: 'openai', apiKey: 'test-key', baseURL: 'https://api.openai.com/v1' }
+        ],
         recentlyUsedModels: []
       },
       isConfigured: true,
       updateSettings: vi.fn(),
-      addProvider: vi.fn(),
+      setProvider: vi.fn(),
       removeProvider: vi.fn(),
-      updateProvider: vi.fn(),
+      setProviders: vi.fn(),
+
       addRecentlyUsedModel: vi.fn(),
     });
 
@@ -280,16 +285,17 @@ describe('useAIProjectId', () => {
   it('should fallback to untitled when AI generates too long name', async () => {
     mockUseAISettings.mockReturnValue({
       settings: {
-        providers: {
-          openai: { apiKey: 'test-key', baseURL: 'https://api.openai.com/v1' }
-        },
+        providers: [
+          { id: 'openai', apiKey: 'test-key', baseURL: 'https://api.openai.com/v1' }
+        ],
         recentlyUsedModels: []
       },
       isConfigured: true,
       updateSettings: vi.fn(),
-      addProvider: vi.fn(),
+      setProvider: vi.fn(),
       removeProvider: vi.fn(),
-      updateProvider: vi.fn(),
+      setProviders: vi.fn(),
+
       addRecentlyUsedModel: vi.fn(),
     });
 
@@ -329,16 +335,17 @@ describe('useAIProjectId', () => {
   it('should fallback to untitled when AI generates invalid name', async () => {
     mockUseAISettings.mockReturnValue({
       settings: {
-        providers: {
-          openai: { apiKey: 'test-key', baseURL: 'https://api.openai.com/v1' }
-        },
+        providers: [
+          { id: 'openai', apiKey: 'test-key', baseURL: 'https://api.openai.com/v1' }
+        ],
         recentlyUsedModels: []
       },
       isConfigured: true,
       updateSettings: vi.fn(),
-      addProvider: vi.fn(),
+      setProvider: vi.fn(),
       removeProvider: vi.fn(),
-      updateProvider: vi.fn(),
+      setProviders: vi.fn(),
+
       addRecentlyUsedModel: vi.fn(),
     });
 
@@ -378,16 +385,17 @@ describe('useAIProjectId', () => {
   it('should fallback to untitled-2 when untitled and untitled-1 exist', async () => {
     mockUseAISettings.mockReturnValue({
       settings: {
-        providers: {
-          openai: { apiKey: 'test-key', baseURL: 'https://api.openai.com/v1' }
-        },
+        providers: [
+          { id: 'openai', apiKey: 'test-key', baseURL: 'https://api.openai.com/v1' }
+        ],
         recentlyUsedModels: []
       },
       isConfigured: true,
       updateSettings: vi.fn(),
-      addProvider: vi.fn(),
+      setProvider: vi.fn(),
       removeProvider: vi.fn(),
-      updateProvider: vi.fn(),
+      setProviders: vi.fn(),
+
       addRecentlyUsedModel: vi.fn(),
     });
 
@@ -434,16 +442,17 @@ describe('useAIProjectId', () => {
   it('should handle loading state correctly', async () => {
     mockUseAISettings.mockReturnValue({
       settings: {
-        providers: {
-          openai: { apiKey: 'test-key', baseURL: 'https://api.openai.com/v1' }
-        },
+        providers: [
+          { id: 'openai', apiKey: 'test-key', baseURL: 'https://api.openai.com/v1' }
+        ],
         recentlyUsedModels: []
       },
       isConfigured: true,
       updateSettings: vi.fn(),
-      addProvider: vi.fn(),
+      setProvider: vi.fn(),
       removeProvider: vi.fn(),
-      updateProvider: vi.fn(),
+      setProviders: vi.fn(),
+
       addRecentlyUsedModel: vi.fn(),
     });
 

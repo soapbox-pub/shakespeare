@@ -13,13 +13,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/useToast';
 import { createAIClient } from '@/lib/ai-client';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
-import type { AIConnection } from '@/contexts/AISettingsContext';
+import { AIProvider } from '@/contexts/AISettingsContext';
 
 interface CreditsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  providerId: string;
-  connection: AIConnection;
+  provider: AIProvider;
 }
 
 interface Payment {
@@ -182,7 +181,7 @@ function LightningPayment({ invoice, amount, onClose }: LightningPaymentProps) {
   );
 }
 
-export function CreditsDialog({ open, onOpenChange, providerId, connection }: CreditsDialogProps) {
+export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogProps) {
   const { user } = useCurrentUser();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -194,13 +193,13 @@ export function CreditsDialog({ open, onOpenChange, providerId, connection }: Cr
 
   // Query for payment history
   const { data: payments, isLoading: isLoadingPayments } = useQuery({
-    queryKey: ['ai-payments', connection.nostr ? user?.pubkey ?? '' : '', providerId],
+    queryKey: ['ai-payments', provider.nostr ? user?.pubkey ?? '' : '', provider.id],
     queryFn: async (): Promise<Payment[]> => {
-      const ai = createAIClient(connection, user);
+      const ai = createAIClient(provider, user);
       const data = await ai.get('/credits/payments?limit=50') as PaymentsResponse;
       return data.data;
     },
-    enabled: open && !!user,
+    enabled: open,
     retry: false,
     refetchOnWindowFocus: false,
   });
@@ -208,7 +207,7 @@ export function CreditsDialog({ open, onOpenChange, providerId, connection }: Cr
   // Mutation for adding credits
   const addCreditsMutation = useMutation({
     mutationFn: async (request: AddCreditsRequest): Promise<Payment> => {
-      const ai = createAIClient(connection, user);
+      const ai = createAIClient(provider, user);
       return await ai.post('/credits/add', {
         body: request,
       }) as Payment;
@@ -228,12 +227,12 @@ export function CreditsDialog({ open, onOpenChange, providerId, connection }: Cr
 
       // Refresh payments list
       queryClient.invalidateQueries({
-        queryKey: ['ai-payments', connection.nostr ? user?.pubkey ?? '' : '', providerId],
+        queryKey: ['ai-payments', provider.nostr ? user?.pubkey ?? '' : '', provider.id],
       });
 
       // Refresh credits balance
       queryClient.invalidateQueries({
-        queryKey: ['ai-credits', connection.nostr ? user?.pubkey ?? '' : '', providerId],
+        queryKey: ['ai-credits', provider.nostr ? user?.pubkey ?? '' : '', provider.id],
       });
     },
     onError: (error: Error) => {
@@ -249,7 +248,7 @@ export function CreditsDialog({ open, onOpenChange, providerId, connection }: Cr
   // Mutation for checking payment status
   const checkPaymentMutation = useMutation({
     mutationFn: async (paymentId: string): Promise<Payment> => {
-      const ai = createAIClient(connection, user);
+      const ai = createAIClient(provider, user);
       return await ai.get(`/credits/payments/${paymentId}`) as Payment;
     },
     onMutate: async (paymentId: string) => {
@@ -266,7 +265,7 @@ export function CreditsDialog({ open, onOpenChange, providerId, connection }: Cr
 
       // Update the specific payment in the cache instead of refetching
       queryClient.setQueryData<Payment[]>(
-        ['ai-payments', connection.nostr ? user?.pubkey ?? '' : '', providerId],
+        ['ai-payments', provider.nostr ? user?.pubkey ?? '' : '', provider.id],
         (oldPayments) => {
           if (!oldPayments) return oldPayments;
           return oldPayments.map(payment =>
@@ -278,7 +277,7 @@ export function CreditsDialog({ open, onOpenChange, providerId, connection }: Cr
       // If payment completed, refresh credits balance
       if (updatedPayment.status === 'completed') {
         queryClient.invalidateQueries({
-          queryKey: ['ai-credits', connection.nostr ? user?.pubkey ?? '' : '', providerId],
+          queryKey: ['ai-credits', provider.nostr ? user?.pubkey ?? '' : '', provider.id],
         });
         toast({
           title: 'Payment completed!',
@@ -316,15 +315,6 @@ export function CreditsDialog({ open, onOpenChange, providerId, connection }: Cr
   });
 
   const handleAddCredits = () => {
-    if (!user) {
-      toast({
-        title: 'Authentication required',
-        description: 'Please log in to purchase credits.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
     if (amount <= 0) {
       toast({
         title: 'Invalid amount',
@@ -498,7 +488,7 @@ export function CreditsDialog({ open, onOpenChange, providerId, connection }: Cr
 
             <Button
               onClick={handleAddCredits}
-              disabled={!user || amount <= 0 || addCreditsMutation.isPending}
+              disabled={amount <= 0 || addCreditsMutation.isPending}
               className="w-full h-12 text-base font-medium"
               size="lg"
             >
@@ -506,12 +496,6 @@ export function CreditsDialog({ open, onOpenChange, providerId, connection }: Cr
               {paymentMethod === 'stripe' ? 'Pay with Card' : 'Generate Invoice'}
               {amount > 0 && ` - ${formatCurrency(amount)}`}
             </Button>
-
-            {!user && (
-              <p className="text-sm text-muted-foreground text-center px-4">
-                Please log in to purchase credits
-              </p>
-            )}
             </div>
 
             <div className="flex-shrink-0 px-1 -mx-1 py-4">

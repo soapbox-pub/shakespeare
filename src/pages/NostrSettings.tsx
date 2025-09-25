@@ -6,8 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { RelaySelector } from '@/components/RelaySelector';
-import LoginDialog from '@/components/auth/LoginDialog';
-import SignupDialog from '@/components/auth/SignupDialog';
+import SimpleLoginDialog from '@/components/auth/SimpleLoginDialog';
+import SimpleSignupDialog from '@/components/auth/SimpleSignupDialog';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { useNavigate } from 'react-router-dom';
 import { useLoggedInAccounts, type Account } from '@/hooks/useLoggedInAccounts';
@@ -207,7 +207,7 @@ export function NostrSettings() {
       </div>
 
       {/* Login Dialog */}
-      <LoginDialog
+      <SimpleLoginDialog
         isOpen={showLoginDialog}
         onClose={() => setShowLoginDialog(false)}
         onLogin={handleLoginSuccess}
@@ -218,10 +218,14 @@ export function NostrSettings() {
       />
 
       {/* Signup Dialog */}
-      <SignupDialog
+      <SimpleSignupDialog
         isOpen={showSignupDialog}
         onClose={() => setShowSignupDialog(false)}
         onComplete={handleSignupComplete}
+        onLogin={() => {
+          setShowSignupDialog(false);
+          setShowLoginDialog(true);
+        }}
       />
     </div>
   );

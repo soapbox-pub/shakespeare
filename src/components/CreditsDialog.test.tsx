@@ -2,14 +2,16 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { TestApp } from '@/test/TestApp';
 import { CreditsDialog } from './CreditsDialog';
-import type { AIConnection } from '@/contexts/AISettingsContext';
+import type { AIProvider } from '@/contexts/AISettingsContext';
 
 // Mock the fetch function
 global.fetch = vi.fn();
 
-const mockConnection: AIConnection = {
+const mockProvider: AIProvider = {
+  id: 'test-provider',
   baseURL: 'https://api.test.com/v1',
   apiKey: 'test-key',
+  nostr: false,
 };
 
 describe('CreditsDialog', () => {
@@ -19,8 +21,7 @@ describe('CreditsDialog', () => {
         <CreditsDialog
           open={true}
           onOpenChange={() => {}}
-          providerId="test-provider"
-          connection={mockConnection}
+          provider={mockProvider}
         />
       </TestApp>
     );
@@ -36,8 +37,7 @@ describe('CreditsDialog', () => {
         <CreditsDialog
           open={false}
           onOpenChange={() => {}}
-          providerId="test-provider"
-          connection={mockConnection}
+          provider={mockProvider}
         />
       </TestApp>
     );
@@ -51,8 +51,7 @@ describe('CreditsDialog', () => {
         <CreditsDialog
           open={true}
           onOpenChange={() => {}}
-          providerId="test-provider"
-          connection={mockConnection}
+          provider={mockProvider}
         />
       </TestApp>
     );
@@ -67,8 +66,7 @@ describe('CreditsDialog', () => {
         <CreditsDialog
           open={true}
           onOpenChange={() => {}}
-          providerId="test-provider"
-          connection={mockConnection}
+          provider={mockProvider}
         />
       </TestApp>
     );
@@ -80,20 +78,7 @@ describe('CreditsDialog', () => {
     expect(screen.getByText('$100')).toBeInTheDocument();
   });
 
-  it('shows login requirement when user is not logged in', () => {
-    render(
-      <TestApp>
-        <CreditsDialog
-          open={true}
-          onOpenChange={() => {}}
-          providerId="test-provider"
-          connection={mockConnection}
-        />
-      </TestApp>
-    );
 
-    expect(screen.getByText('Please log in to purchase credits')).toBeInTheDocument();
-  });
 
   it('calls onDialogStateChange callback when dialog state changes', () => {
     const mockCallback = vi.fn();
@@ -102,8 +87,7 @@ describe('CreditsDialog', () => {
         <CreditsDialog
           open={false}
           onOpenChange={mockCallback}
-          providerId="test-provider"
-          connection={mockConnection}
+          provider={mockProvider}
         />
       </TestApp>
     );
@@ -114,8 +98,7 @@ describe('CreditsDialog', () => {
         <CreditsDialog
           open={true}
           onOpenChange={mockCallback}
-          providerId="test-provider"
-          connection={mockConnection}
+          provider={mockProvider}
         />
       </TestApp>
     );

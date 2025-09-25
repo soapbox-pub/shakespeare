@@ -78,15 +78,16 @@ Change the current working directory.
 
 **Examples:**
 ```bash
-cd                              # Go to project root
+cd                              # Stay in current directory
 cd src/                         # Change to src directory
 cd ..                           # Go to parent directory
 cd .                            # Stay in current directory
+cd /projects/my-project         # Change to absolute path
 ```
 
 **Features:**
 - Changes working directory for subsequent commands
-- Supports relative paths (., .., subdirectories)
+- Supports both relative and absolute paths
 - Validates target exists and is a directory
 - Updates shell working directory state
 

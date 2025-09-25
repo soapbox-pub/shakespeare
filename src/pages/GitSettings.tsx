@@ -4,7 +4,6 @@ import { Check, GitBranch, ArrowLeft, Github, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useGitSettings } from '@/hooks/useGitSettings';
@@ -12,6 +11,7 @@ import { useGitHubOAuth } from '@/hooks/useGitHubOAuth';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { useNavigate } from 'react-router-dom';
 import type { GitCredential } from '@/contexts/GitSettingsContext';
+import { PasswordInput } from '@/components/ui/password-input';
 
 interface PresetProvider {
   id: string;
@@ -192,9 +192,8 @@ export function GitSettings() {
                         </div>
                         <div className="grid gap-2">
                           <Label htmlFor={`${origin}-password`}>{t('password')}</Label>
-                          <Input
+                          <PasswordInput
                             id={`${origin}-password`}
-                            type="password"
                             placeholder={t('enterPassword')}
                             value={credential?.password || ''}
                             onChange={(e) => handleUpdateCredential(origin, { password: e.target.value })}
@@ -208,8 +207,6 @@ export function GitSettings() {
             </Accordion>
           </div>
         )}
-
-        {configuredOrigins.length > 0 && availablePresets.length > 0 && <Separator />}
 
         {/* Available Preset Providers */}
         {availablePresets.length > 0 && (
@@ -263,9 +260,8 @@ export function GitSettings() {
                       </div>
                     ) : (
                       <div className="flex gap-2">
-                        <Input
+                        <PasswordInput
                           placeholder={t('enterToken')}
-                          type="password"
                           className="flex-1"
                           value={presetTokens[preset.id] || ''}
                           onChange={(e) => setPresetTokens(prev => ({
@@ -290,9 +286,8 @@ export function GitSettings() {
                   ) : (
                     // Standard rendering for other providers
                     <div className="flex gap-2">
-                      <Input
+                      <PasswordInput
                         placeholder={t('enterToken')}
-                        type="password"
                         className="flex-1"
                         value={presetTokens[preset.id] || ''}
                         onChange={(e) => setPresetTokens(prev => ({
@@ -319,8 +314,6 @@ export function GitSettings() {
             </div>
           </div>
         )}
-
-        <Separator />
 
         {/* Custom Provider */}
         <div className="space-y-3">
@@ -351,9 +344,8 @@ export function GitSettings() {
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor="custom-password">{t('password')}</Label>
-                    <Input
+                    <PasswordInput
                       id="custom-password"
-                      type="password"
                       placeholder={t('enterPassword')}
                       value={customPassword}
                       onChange={(e) => setCustomPassword(e.target.value)}
@@ -390,18 +382,16 @@ export function GitSettings() {
                 <h4 className="text-sm font-medium">{t('corsProxy')}</h4>
               </AccordionTrigger>
               <AccordionContent className="px-4 pb-4">
-                <div className="space-y-3">
-                  <div className="grid gap-2">
-                    <Input
-                      id="cors-proxy"
-                      placeholder="https://cors.isomorphic-git.org"
-                      value={settings.corsProxy}
-                      onChange={(e) => updateSettings({ corsProxy: e.target.value })}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      {t('corsProxyDescription')}
-                    </p>
-                  </div>
+                <div className="py-1 space-y-2">
+                  <Input
+                    id="cors-proxy"
+                    placeholder="https://proxy.shakespeare.diy/?url={href}"
+                    value={settings.corsProxy}
+                    onChange={(e) => updateSettings({ corsProxy: e.target.value })}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {t('corsProxyDescription')}
+                  </p>
                 </div>
               </AccordionContent>
             </AccordionItem>

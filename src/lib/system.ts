@@ -1,6 +1,6 @@
 import { NUser } from "@nostrify/react/login";
 import { NostrMetadata } from "@nostrify/nostrify";
-import { join } from "@std/path";
+import { join } from "path-browserify";
 import OpenAI from "openai";
 import { nip19 } from "nostr-tools";
 import { JSRuntimeFS } from "./JSRuntime";
@@ -46,7 +46,7 @@ export async function makeSystemPrompt(opts: MakeSystemPromptOpts): Promise<stri
     if (metadata?.nip05) userText += `\n- **NIP-05**: ${metadata.nip05}`;
     if (metadata?.lud16) userText += `\n- **Lightning Address**: ${metadata.lud16}`;
 
-    userText += `Since the user is logged in, they can deploy their creations to public URLs and use Nostr-enabled AI providers.`;
+    userText += `\n\nSince the user is logged in, they can deploy their creations to public URLs and use Nostr-enabled AI providers.`;
   } else {
     userText = `The user is not logged in. The user can log into Nostr by clicking the "Login" button in the sidebar menu. Logging in will allow the user to deploy their creations to public URLs and use Nostr-enabled AI providers.`;
   }

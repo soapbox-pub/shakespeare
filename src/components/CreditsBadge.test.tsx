@@ -2,7 +2,6 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { TestApp } from '@/test/TestApp';
 import { CreditsBadge } from './CreditsBadge';
-import type { AIConnection } from '@/contexts/AISettingsContext';
 
 // Mock the useAICredits hook
 vi.mock('@/hooks/useAICredits', () => ({
@@ -16,7 +15,8 @@ vi.mock('@/hooks/useAICredits', () => ({
 // Mock the fetch function
 global.fetch = vi.fn();
 
-const mockConnection: AIConnection = {
+const mockProvider = {
+  id: 'test-provider',
   baseURL: 'https://api.test.com/v1',
   apiKey: 'test-key',
 };
@@ -25,10 +25,7 @@ describe('CreditsBadge', () => {
   it('renders the credits amount', () => {
     render(
       <TestApp>
-        <CreditsBadge
-          providerId="test-provider"
-          connection={mockConnection}
-        />
+        <CreditsBadge provider={mockProvider} />
       </TestApp>
     );
 
@@ -41,8 +38,7 @@ describe('CreditsBadge', () => {
     render(
       <TestApp>
         <CreditsBadge
-          providerId="test-provider"
-          connection={mockConnection}
+          provider={mockProvider}
           onOpenDialog={mockCallback}
         />
       </TestApp>
@@ -57,10 +53,7 @@ describe('CreditsBadge', () => {
   it('has proper styling for clickable badge', () => {
     render(
       <TestApp>
-        <CreditsBadge
-          providerId="test-provider"
-          connection={mockConnection}
-        />
+        <CreditsBadge provider={mockProvider} />
       </TestApp>
     );
 
@@ -72,10 +65,7 @@ describe('CreditsBadge', () => {
   it('does not render dialog directly', () => {
     render(
       <TestApp>
-        <CreditsBadge
-          providerId="test-provider"
-          connection={mockConnection}
-        />
+        <CreditsBadge provider={mockProvider} />
       </TestApp>
     );
 

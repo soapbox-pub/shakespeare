@@ -54,12 +54,13 @@ describe('configUtils', () => {
 
   describe('AI Settings', () => {
     const sampleAISettings: AISettings = {
-      providers: {
-        'openai': {
+      providers: [
+        {
+          id: 'openai',
           baseURL: 'https://api.openai.com/v1',
           apiKey: 'sk-test123',
         },
-      },
+      ],
       recentlyUsedModels: ['gpt-4', 'gpt-3.5-turbo'],
     };
 
@@ -80,7 +81,7 @@ describe('configUtils', () => {
         const result = await readAISettings(mockFS);
 
         expect(result).toEqual({
-          providers: {},
+          providers: [],
           recentlyUsedModels: [],
         });
       });
@@ -92,7 +93,7 @@ describe('configUtils', () => {
         const result = await readAISettings(mockFS);
 
         expect(result).toEqual({
-          providers: {},
+          providers: [],
           recentlyUsedModels: [],
         });
       });
@@ -184,7 +185,7 @@ describe('configUtils', () => {
 
         expect(result).toEqual({
           credentials: {},
-          corsProxy: 'https://cors.isomorphic-git.org',
+          corsProxy: 'https://proxy.shakespeare.diy/?url={href}',
         });
       });
 

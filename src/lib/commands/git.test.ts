@@ -40,7 +40,16 @@ describe('GitCommand', () => {
 
   beforeEach(() => {
     mockFS = createMockFS();
-    const git = new Git(mockFS);
+    const mockNostr = {
+      req: vi.fn(),
+      query: vi.fn(),
+      event: vi.fn(),
+      group: vi.fn(),
+      relay: vi.fn(),
+      relays: new Map(),
+      close: vi.fn(),
+    } as unknown as import('@nostrify/nostrify').NPool;
+    const git = new Git({ fs: mockFS, nostr: mockNostr });
     gitCommand = new GitCommand({ git, fs: mockFS, cwd: testCwd });
   });
 

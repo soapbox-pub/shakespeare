@@ -7,7 +7,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { CircularProgress } from '@/components/ui/circular-progress';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { FileAttachment } from '@/components/ui/file-attachment';
-import { Square, Loader2, ChevronDown, ArrowUp } from 'lucide-react';
+import { OnboardingDialog } from '@/components/OnboardingDialog';
+import { Square, Loader2, ChevronDown, ArrowUp, X } from 'lucide-react';
 import { useAISettings } from '@/hooks/useAISettings';
 import { useFS } from '@/hooks/useFS';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
@@ -33,24 +34,67 @@ import { NostrReadNipsIndexTool } from '@/lib/tools/NostrReadNipsIndexTool';
 import { NostrGenerateKindTool } from '@/lib/tools/NostrGenerateKindTool';
 import { ShellTool } from '@/lib/tools/ShellTool';
 import { TypecheckTool } from '@/lib/tools/TypecheckTool';
-import { Git } from '@/lib/git';
 import { toolToOpenAI } from '@/lib/tools/openai-adapter';
 import { Tool } from '@/lib/tools/Tool';
 import OpenAI from 'openai';
-import { makeSystemPrompt } from '@/lib/system';
-import { assistantContentEmpty } from '@/lib/ai-messages';
 import { saveFileToTmp } from '@/lib/fileUtils';
+import { useGit } from '@/hooks/useGit';
+import { useConsoleErrorAlert, useAIModelErrorAlert } from '@/hooks/useErrorDetection';
+import { QuillySVG } from '@/components/ui/QuillySVG';
+
+
+function ChatIntervention({
+  message,
+  onDismiss,
+  action,
+}: {
+  message: string;
+  onDismiss: () => void;
+  action?: { label: string; onClick: () => void };
+}) {
+  return (
+    <div className="py-2 px-3 bg-primary/5 border border-primary/20 rounded-lg">
+      <div className="flex items-start gap-2">
+        <QuillySVG className="h-20 px-2 flex-shrink-0" fillColor="hsl(var(--primary))" />
+        <div className="flex-1 min-w-0">
+          <div className="space-y-1">
+            <h4 className="font-semibold text-primary">
+              Pardon the interruption
+            </h4>
+            <p className="text-sm text-muted-foreground">
+              {message}
+              {' '}
+              {action && (
+                <button className="text-primary underline" onClick={action.onClick}>
+                  {action.label}
+                </button>
+              )}
+            </p>
+          </div>
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onDismiss}
+          className="h-5 w-5 p-0 hover:text-foreground/70 hover:bg-transparent flex-shrink-0"
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// Clean interfaces now handled by proper hooks
 
 interface ChatPaneProps {
   projectId: string;
   onNewChat?: () => void;
   onBuild?: () => void;
-  onDeploy?: () => void;
   onFirstInteraction?: () => void;
   onLoadingChange?: (isLoading: boolean) => void;
   isLoading?: boolean;
   isBuildLoading?: boolean;
-  isDeployLoading?: boolean;
 }
 
 export interface ChatPaneRef {
@@ -61,29 +105,31 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   projectId,
   onNewChat: _onNewChat,
   onBuild: _onBuild,
-  onDeploy: _onDeploy,
   onFirstInteraction,
   onLoadingChange,
   isLoading: externalIsLoading,
   isBuildLoading: externalIsBuildLoading,
-  isDeployLoading: externalIsDeployLoading
 }, ref) => {
   const { t } = useTranslation();
   const [input, setInput] = useState('');
-  const [systemPrompt, setSystemPrompt] = useState('');
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
+  const [isDragOver, setIsDragOver] = useState(false);
   const [scrolledProjects] = useState(() => new Set<string>());
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [isStuck, setIsStuck] = useState(false);
 
   // Use external state if provided, otherwise default to false
   const isBuildLoading = externalIsBuildLoading || false;
-  const isDeployLoading = externalIsDeployLoading || false;
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const { isConfigured, settings, addRecentlyUsedModel } = useAISettings();
   const [providerModel, setProviderModel] = useState(() => {
     // Initialize with first recently used model if available, otherwise empty
     return settings.recentlyUsedModels?.[0] || '';
   });
+  // State to control model selector dropdown
+  const [isModelSelectorOpen, setIsModelSelectorOpen] = useState(false);
+  const autostartedRef = useRef(false);
 
   useEffect(() => {
     if (!providerModel && settings.recentlyUsedModels?.length) {
@@ -93,13 +139,13 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
 
   const [searchParams, setSearchParams] = useSearchParams();
   const { fs } = useFS();
-  const { user, metadata } = useCurrentUser();
+  const { git } = useGit();
+  const { user } = useCurrentUser();
   const { models } = useProviderModels();
 
   // Initialize AI chat with tools
   const cwd = `/projects/${projectId}`;
   const customTools = useMemo(() => {
-    const git = new Git(fs);
     const baseTools = {
       git_commit: new GitCommitTool(fs, cwd, git),
       text_editor_view: new TextEditorViewTool(fs, cwd),
@@ -128,7 +174,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     }
 
     return baseTools;
-  }, [fs, cwd, user, projectId]);
+  }, [fs, git, cwd, user, projectId]);
 
   // Convert tools to OpenAI format
   const tools = useMemo(() => {
@@ -141,7 +187,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
 
   // Keep-alive functionality to prevent tab throttling during AI processing
   const { updateMetadata } = useKeepAlive({
-    enabled: externalIsLoading || isBuildLoading || isDeployLoading,
+    enabled: externalIsLoading || isBuildLoading,
     title: 'Shakespeare',
     artist: `Working on ${projectId}...`,
     artwork: [
@@ -158,19 +204,6 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     updateMetadata(title, description);
   }, [updateMetadata]);
 
-  useEffect(() => {
-    makeSystemPrompt({
-      cwd,
-      fs,
-      mode: "agent",
-      name: "Shakespeare",
-      profession: "software extraordinaire",
-      tools: Object.values(tools),
-      user,
-      metadata,
-    }).then(setSystemPrompt)
-  }, [fs, cwd, tools, user, metadata]);
-
   const {
     messages,
     streamingMessage,
@@ -185,7 +218,6 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     projectId,
     tools,
     customTools,
-    systemPrompt,
     onUpdateMetadata,
   });
 
@@ -210,8 +242,49 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     }
   }, [internalIsLoading, onLoadingChange]);
 
+  // Timer to detect when AI appears stuck during tool generation
+  useEffect(() => {
+    // Start a 2-second timer
+    const timer = streamingMessage
+      ? setTimeout(() => setIsStuck(true), 2000)
+      : undefined;
+
+    return () => {
+      setIsStuck(false);
+      clearTimeout(timer);
+    };
+  }, [streamingMessage]);
+
+  // Function to scroll to bottom
+  const scrollToBottom = useCallback(() => {
+    if (scrollAreaRef.current) {
+      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+    }
+  }, []);
+
+  // Function to open model selector dropdown
+  const openModelSelector = useCallback(() => {
+    setIsModelSelectorOpen(true);
+  }, []);
+
+  // Function to suggest error fix
+  // Clean alert hooks with proper interfaces
+  const aiModelAlert = useAIModelErrorAlert(messages, _onNewChat, openModelSelector);
+  const consoleAlert = useConsoleErrorAlert(messages, isBuildLoading, internalIsLoading);
+
+  // Scroll to bottom when alerts appear
+  useEffect(() => {
+    if (aiModelAlert.hasError || consoleAlert.hasError) {
+      setTimeout(() => {
+        scrollToBottom();
+      }, 50);
+    }
+  }, [aiModelAlert.hasError, consoleAlert.hasError, scrollToBottom]);
+
   // Check for autostart parameter and trigger AI generation
   useEffect(() => {
+    if (autostartedRef.current) return;
+
     const autostart = searchParams.get('autostart');
     const urlModel = searchParams.get('model');
 
@@ -234,17 +307,10 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
         // Start AI generation
         addRecentlyUsedModel(modelToUse);
         startGeneration(modelToUse);
+        autostartedRef.current = true;
       }
     }
   }, [addRecentlyUsedModel, isConfigured, providerModel, searchParams, setSearchParams, startGeneration]);
-
-
-  // Function to scroll to bottom
-  const scrollToBottom = () => {
-    if (scrollAreaRef.current) {
-      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
-    }
-  };
 
   // Simple scroll event listener
   useEffect(() => {
@@ -280,7 +346,6 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
       if (isNearBottom) {
         container.scrollTop = container.scrollHeight;
       }
-
     }
   }, [messages, streamingMessage, isLoading]);
 
@@ -295,7 +360,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
 
       return () => clearTimeout(timer);
     }
-  }, [projectId, scrolledProjects]);
+  }, [projectId, scrolledProjects, scrollToBottom]);
 
   const handleFileSelect = (file: File) => {
     setAttachedFiles(prev => [...prev, file]);
@@ -305,8 +370,60 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     setAttachedFiles(prev => prev.filter(file => file !== fileToRemove));
   };
 
-  const handleSend = async () => {
-    if ((!input.trim() && attachedFiles.length === 0) || isLoading || !providerModel.trim()) return;
+  // Drag and drop handlers
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isDragOver) {
+      setIsDragOver(true);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Only reset drag state if we're actually leaving the container
+    // This prevents flickering when dragging over child elements
+    const container = e.currentTarget;
+    const relatedTarget = e.relatedTarget as Node;
+
+    if (!container.contains(relatedTarget)) {
+      setIsDragOver(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+
+    if (isLoading || !providerModel.trim()) return;
+
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length === 0) return;
+
+    // Add all files without validation
+    setAttachedFiles(prev => [...prev, ...files]);
+  };
+
+  const send = useCallback(async (input: string, attachedFiles: File[]) => {
+    if ((!input.trim() && attachedFiles.length === 0) || isLoading) return;
+
+    // If AI is not configured, show onboarding dialog
+    if (!isConfigured) {
+      setShowOnboarding(true);
+      return;
+    }
+
+    // If configured but no model selected, don't proceed
+    if (!providerModel.trim()) return;
 
     const modelToUse = providerModel.trim();
 
@@ -356,9 +473,13 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
       await sendMessage(messageContent, modelToUse);
     } catch (error) {
       console.error('AI chat error:', error);
-      // Error handling is done in the useAIChat hook
+      // Error handling is done in the useAIChat hook and SessionManager
     }
-  };
+  }, [addRecentlyUsedModel, fs, isConfigured, isLoading, providerModel, sendMessage]);
+
+  const handleSend = useCallback(async () => {
+    await send(input, attachedFiles);
+  }, [input, attachedFiles, send]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -396,6 +517,16 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     }
   };
 
+  // Handle textarea focus - show onboarding if not configured
+  const handleTextareaFocus = () => {
+    if (!isConfigured) {
+      setShowOnboarding(true);
+    }
+    if (onFirstInteraction) {
+      onFirstInteraction();
+    }
+  };
+
   // Handle first user interaction to enable audio context
   const handleFirstInteraction = () => {
     // This will be handled automatically by the useKeepAlive hook
@@ -412,28 +543,9 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     }
   }), [internalStartNewSession]);
 
-  if (!isConfigured) {
-    return (
-      <div className="h-full flex flex-col">
-        <div className="flex-1 flex items-center justify-center bg-gradient-to-br from-primary/5 to-accent/5">
-          <div className="text-center space-y-4 max-w-md mx-auto p-6">
-            <div className="text-4xl mb-4">🤖</div>
-            <div>
-              <h3 className="text-lg font-semibold mb-2 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">{t('aiNotConfigured')}</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                {t('configureAI')}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {t('useMenuForAI')}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-
+  const suggestErrorFix = useCallback(async (errorMessage: string) => {
+    await send(errorMessage, attachedFiles);
+  }, [send, attachedFiles]);
 
   return (
     <div className="h-full flex flex-col relative">
@@ -464,11 +576,6 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
           )}
 
           {messages.map((message, index) => {
-            // Skip assistant messages with no content
-            if (message.role === 'assistant' && assistantContentEmpty(message.content)) {
-              return null;
-            }
-
             // Find the corresponding tool call for tool messages
             let toolCall: OpenAI.Chat.Completions.ChatCompletionMessageToolCall | undefined = undefined;
             if (message.role === 'tool') {
@@ -492,12 +599,23 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
           })}
           {streamingMessage && (
             streamingMessage.content || streamingMessage.reasoning_content ? (
-              <AIMessageItem
-                key="streaming-message"
-                message={streamingMessage}
-                isCurrentlyLoading={isLoading}
-                reasoningContent={streamingMessage.reasoning_content}
-              />
+              <>
+                <AIMessageItem
+                  key="streaming-message"
+                  message={streamingMessage}
+                  isCurrentlyLoading={isLoading}
+                />
+                {/* Show loading skeleton if AI appears stuck generating tools */}
+                {isStuck && (
+                  <div key="stuck-loading-skeleton" className="flex">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm space-y-2">
+                        <Skeleton className="h-4 w-3/4" />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
             ) : (
               !(streamingMessage?.tool_calls?.[0]?.type === 'function') && (
                 <div key="streaming-loading" className="flex">
@@ -520,6 +638,28 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
               </div>
             </div>
           )}
+
+          {/* AI Model Alert */}
+          {aiModelAlert.hasError && (
+            <ChatIntervention
+              message={aiModelAlert.errorMessage || ''}
+              onDismiss={aiModelAlert.dismiss}
+              action={aiModelAlert.action}
+            />
+          )}
+
+          {/* Console Error Alert */}
+          {consoleAlert.hasError && (
+            <ChatIntervention
+              message={`Console ${consoleAlert.errorCount === 1 ? 'error' : 'errors'} detected in your app. Would you like me to help fix ${consoleAlert.errorCount === 1 ? 'it' : 'them'}?`}
+              onDismiss={consoleAlert.dismiss}
+              action={{
+                label: `Fix ${consoleAlert.errorCount === 1 ? 'error' : 'errors'}`,
+                onClick: () => suggestErrorFix(consoleAlert.errorSummary || '')
+              }}
+            />
+          )}
+
         </div>
       </div>
 
@@ -539,17 +679,31 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
 
       <div className="border-t p-4">
         {/* Chat Input Container */}
-        <div className="flex flex-col rounded-2xl border border-input bg-background shadow-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 transition-all">
+        <div
+          className={`flex flex-col rounded-2xl border border-input bg-background shadow-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 transition-all ${isDragOver ? 'border-primary bg-primary/5 ring-2 ring-primary/20' : ''
+            }`}
+          onDragEnter={handleDragEnter}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
           <Textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
-            onFocus={handleFirstInteraction}
-            placeholder={providerModel.trim() ? t('askToAddFeatures') : t('selectModelFirst')}
+            onFocus={handleTextareaFocus}
+            placeholder={
+              !isConfigured
+                ? t('askToAddFeatures')
+                : providerModel.trim()
+                ? t('askToAddFeatures')
+                : t('selectModelFirst')
+            }
             className="flex-1 resize-none border-0 bg-transparent px-4 py-3 text-sm focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground"
-            disabled={isLoading || !providerModel.trim()}
+            disabled={isLoading || (isConfigured && !providerModel.trim())}
             rows={1}
+            aria-label="Chat message input"
             style={{
               height: 'auto',
               minHeight: '96px'
@@ -620,6 +774,8 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
                 className="w-full"
                 disabled={isLoading}
                 placeholder={t('chooseModel')}
+                open={isModelSelectorOpen}
+                onOpenChange={setIsModelSelectorOpen}
               />
             </div>
 
@@ -638,7 +794,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
                 <Button
                   onClick={handleSend}
                   onMouseDown={handleFirstInteraction}
-                  disabled={(!input.trim() && attachedFiles.length === 0) || !providerModel.trim()}
+                  disabled={(!input.trim() && attachedFiles.length === 0) || (isConfigured && !providerModel.trim())}
                   size="sm"
                   className="size-8 [&_svg]:size-5 rounded-full p-0"
                 >
@@ -649,6 +805,12 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
           </div>
         </div>
       </div>
+
+      {/* Onboarding Dialog */}
+      <OnboardingDialog
+        open={showOnboarding}
+        onOpenChange={setShowOnboarding}
+      />
     </div>
   );
 });

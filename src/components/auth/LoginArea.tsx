@@ -12,8 +12,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu.tsx';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar.tsx';
-import LoginDialog from './LoginDialog';
-import SignupDialog from './SignupDialog';
+import SimpleLoginDialog from './SimpleLoginDialog';
+import SimpleSignupDialog from './SimpleSignupDialog';
 import { useLoggedInAccounts } from '@/hooks/useLoggedInAccounts';
 import { AccountSwitcher } from './AccountSwitcher';
 import { cn } from '@/lib/utils';
@@ -71,33 +71,37 @@ export function LoginArea({ className }: LoginAreaProps) {
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              onClick={() => setLoginDialogOpen(true)}
-              className='flex items-center gap-2 cursor-pointer p-2 rounded-md'
-            >
-              <User className='w-4 h-4' />
-              <span>{t('logIn')}</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem
               onClick={() => setSignupDialogOpen(true)}
               className='flex items-center gap-2 cursor-pointer p-2 rounded-md'
             >
               <UserPlus className='w-4 h-4' />
               <span>{t('signUp')}</span>
             </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => setLoginDialogOpen(true)}
+              className='flex items-center gap-2 cursor-pointer p-2 rounded-md'
+            >
+              <User className='w-4 h-4' />
+              <span>{t('logIn')}</span>
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       )}
 
-      <LoginDialog
+      <SimpleLoginDialog
         isOpen={loginDialogOpen}
         onClose={() => setLoginDialogOpen(false)}
         onLogin={handleLogin}
         onSignup={() => setSignupDialogOpen(true)}
       />
 
-      <SignupDialog
+      <SimpleSignupDialog
         isOpen={signupDialogOpen}
         onClose={() => setSignupDialogOpen(false)}
+        onLogin={() => {
+          setSignupDialogOpen(false);
+          setLoginDialogOpen(true);
+        }}
       />
     </div>
   );

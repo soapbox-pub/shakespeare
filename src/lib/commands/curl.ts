@@ -1,4 +1,4 @@
-import { join } from "@std/path";
+import { join } from "path-browserify";
 import type { JSRuntimeFS } from "../JSRuntime";
 import type { ShellCommand, ShellCommandResult } from "./ShellCommand";
 import { createSuccessResult, createErrorResult } from "./ShellCommand";
@@ -62,7 +62,7 @@ export class CurlCommand implements ShellCommand {
 
       // Proxy the URL through CorsProxy
       const originalUrl = url.toString();
-      const proxiedUrl = `https://corsproxy.io/?url=${encodeURIComponent(originalUrl)}`;
+      const proxiedUrl = `https://proxy.shakespeare.diy/?url=${encodeURIComponent(originalUrl)}`;
 
       // Prepare request
       const requestInit: RequestInit = {

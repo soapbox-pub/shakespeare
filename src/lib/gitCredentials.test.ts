@@ -64,17 +64,17 @@ describe('gitCredentials', () => {
         .toEqual({ username: 'git', password: 'github-token' });
     });
 
-    it('should return null when no credentials found', () => {
+    it('should return undefined when no credentials found', () => {
       expect(findCredentialsForRepo('https://unknown.com/user/repo.git', mockCredentials))
-        .toBe(null);
-      
+        .toBe(undefined);
+
       expect(findCredentialsForRepo('invalid-url', mockCredentials))
-        .toBe(null);
+        .toBe(undefined);
     });
 
-    it('should return null for empty credentials', () => {
+    it('should return undefined for empty credentials', () => {
       expect(findCredentialsForRepo('https://github.com/user/repo.git', {}))
-        .toBe(null);
+        .toBe(undefined);
     });
   });
 

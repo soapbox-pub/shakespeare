@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { AppLayout } from '@/components/AppLayout';
@@ -7,18 +7,8 @@ import { Input } from '@/components/ui/input';
 import { GitBranch, Loader2, AlertCircle } from 'lucide-react';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { useToast } from '@/hooks/useToast';
-import { NIP05 } from '@nostrify/nostrify';
-import { useNostr } from '@nostrify/react';
-import { nip19 } from 'nostr-tools';
-import type { Project } from '@/lib/ProjectsManager';
 
 import { useSeoMeta } from '@unhead/react';
-
-interface NostrCloneUri {
-  pubkey: string;
-  dTag: string;
-  relay?: string;
-}
 
 export default function Clone() {
   const { t } = useTranslation();
@@ -29,7 +19,7 @@ export default function Clone() {
   const [searchParams] = useSearchParams();
   const projectsManager = useProjectsManager();
   const { toast } = useToast();
-  const { nostr } = useNostr();
+  const autoCloneInitiatedRef = useRef(false);
 
   useSeoMeta({
     title: `${t('importRepository')} - Shakespeare`,
@@ -38,8 +28,19 @@ export default function Clone() {
 
   const extractRepoName = (url: string): string => {
     try {
-      // Handle different URL formats
       const cleanUrl = url.trim();
+
+      // Handle Nostr clone URIs
+      if (cleanUrl.startsWith('nostr://')) {
+        const path = cleanUrl.slice(8); // Remove 'nostr://' prefix
+        const parts = path.split('/');
+
+        // Return the d-tag (last part) as the repo name
+        if (parts.length >= 2) {
+          return parts[parts.length - 1] || 'nostr-repo';
+        }
+        return 'nostr-repo';
+      }
 
       // Extract from GitHub URLs, GitLab URLs, etc.
       const match = cleanUrl.match(/\/([^/]+?)(?:\.git)?(?:\/)?$/);
@@ -56,70 +57,12 @@ export default function Clone() {
     }
   };
 
-  const parseNostrCloneUri = async (uri: string): Promise<NostrCloneUri | null> => {
-    try {
-      if (!uri.startsWith('nostr://')) {
-        return null;
-      }
-
-      const path = uri.slice(8); // Remove 'nostr://' prefix
-      const parts = path.split('/');
-
-      if (parts.length < 2) {
-        return null;
-      }
-
-      const identifier = parts[0];
-      let pubkey: string;
-
-      // Try to decode as npub first, otherwise assume it's already a hex pubkey
-      try {
-        const decoded = nip19.decode(identifier);
-        if (decoded.type === 'npub') {
-          pubkey = decoded.data;
-        } else {
-          return null;
-        }
-      } catch {
-        // If decoding fails, check if it's a NIP-05 identifier
-        if (identifier.split('@').length === 2) {
-          const pointer = await NIP05.lookup(identifier, {
-            signal: AbortSignal.timeout(3000),
-          });
-          pubkey = pointer.pubkey;
-        } else {
-          return null;
-        }
-      }
-
-      // Check if we have relay and d-tag or just d-tag
-      if (parts.length === 3) {
-        // Format: nostr://npub/relay/dtag
-        return {
-          pubkey,
-          relay: parts[1],
-          dTag: parts[2],
-        };
-      } else if (parts.length === 2) {
-        // Format: nostr://npub/dtag
-        return {
-          pubkey,
-          dTag: parts[1],
-        };
-      }
-
-      return null;
-    } catch {
-      return null;
-    }
-  };
-
   const validateGitUrl = useCallback((url: string): boolean => {
     if (!url.trim()) return false;
 
     // Check if it's a Nostr clone URI
     if (url.startsWith('nostr://')) {
-      return parseNostrCloneUri(url) !== null;
+      return true; // Git class will handle validation
     }
 
     // Basic URL validation
@@ -133,73 +76,6 @@ export default function Clone() {
     const gitUrlPattern = /^https?:\/\/.*\.git$|^https?:\/\/github\.com\/.*\/.*$|^https?:\/\/gitlab\.com\/.*\/.*$/i;
     return gitUrlPattern.test(url) || url.includes('github.com') || url.includes('gitlab.com');
   }, []);
-
-  const fetchNostrRepository = useCallback(async (nostrUri: NostrCloneUri): Promise<string[]> => {
-    const signal = AbortSignal.timeout(10000); // 10 second timeout
-
-    // Build the filter for the NIP-34 repository announcement
-    const filter = {
-      kinds: [30617],
-      authors: [nostrUri.pubkey],
-      '#d': [nostrUri.dTag],
-      limit: 1,
-    };
-
-    // Use a specific relay if provided
-    const client = nostrUri.relay
-      ? nostr.relay(nostrUri.relay)
-      : nostr.group(['wss://relay.ngit.dev/', 'wss://gitnostr.com/']);
-
-    // Query for the repository announcement event
-    const events = await client.query([filter], { signal });
-
-    if (events.length === 0) {
-      throw new Error('Repository not found on Nostr network');
-    }
-
-    const repoEvent = events[0];
-
-    // Extract clone URLs from the event tags
-    const cloneUrls: string[] = [];
-    for (const tag of repoEvent.tags) {
-      if (tag[0] === 'clone' && tag[1]) {
-        cloneUrls.push(tag[1]);
-      }
-    }
-
-    if (cloneUrls.length === 0) {
-      throw new Error('No clone URLs found in repository announcement');
-    }
-
-    return cloneUrls;
-  }, [nostr]);
-
-  const tryCloneUrls = useCallback(async (cloneUrls: string[], repoName: string): Promise<Project> => {
-    let lastError: Error | null = null;
-
-    for (const cloneUrl of cloneUrls) {
-      try {
-        console.log(`Attempting to clone from: ${cloneUrl}`);
-
-        // Try cloning with a timeout
-        const project = await Promise.race([
-          projectsManager.cloneProject(repoName, cloneUrl),
-          new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error('Clone timeout')), 30000)
-          )
-        ]);
-
-        return project; // Success!
-      } catch (error) {
-        console.warn(`Failed to clone from ${cloneUrl}:`, error);
-        lastError = error instanceof Error ? error : new Error('Unknown error');
-        continue; // Try the next URL
-      }
-    }
-
-    // If we get here, all clone attempts failed
-    throw lastError || new Error('All clone attempts failed');
-  }, [projectsManager]);
 
   const handleClone = useCallback(async (url?: string) => {
     const targetUrl = url || repoUrl;
@@ -220,43 +96,28 @@ export default function Clone() {
     try {
       await projectsManager.init();
 
-      // Check if it's a Nostr clone URI
-      const nostrUri = await parseNostrCloneUri(targetUrl.trim());
+      // Extract repository name
+      const repoName = extractRepoName(targetUrl);
 
-      if (nostrUri) {
-        // Handle Nostr clone URI
-        console.log('Parsing Nostr clone URI:', nostrUri);
+      // Clone the repository (Git class handles both regular Git URLs and Nostr URIs)
+      const project = await projectsManager.cloneProject(repoName, targetUrl.trim());
 
-        // Fetch the repository announcement from Nostr
-        const cloneUrls = await fetchNostrRepository(nostrUri);
-        console.log('Found clone URLs:', cloneUrls);
+      // Determine success message based on URL type
+      const isNostrUri = targetUrl.startsWith('nostr://');
+      const successTitle = isNostrUri
+        ? t('nostrRepositoryImportedSuccessfully')
+        : t('repositoryImportedSuccessfully');
+      const successDescription = isNostrUri
+        ? t('repositoryClonedFromNostr', { repoName })
+        : t('repositoryClonedReady', { repoName });
 
-        // Extract repository name from d-tag
-        const repoName = nostrUri.dTag;
+      toast({
+        title: successTitle,
+        description: successDescription,
+      });
 
-        // Try cloning from each URL in order
-        const project = await tryCloneUrls(cloneUrls, repoName);
-
-        toast({
-          title: t('nostrRepositoryImportedSuccessfully'),
-          description: t('repositoryClonedFromNostr', { repoName }),
-        });
-
-        // Navigate to the new project
-        navigate(`/project/${project.id}`);
-      } else {
-        // Handle regular Git URL
-        const repoName = extractRepoName(targetUrl);
-        const project = await projectsManager.cloneProject(repoName, targetUrl.trim());
-
-        toast({
-          title: t('repositoryImportedSuccessfully'),
-          description: t('repositoryClonedReady', { repoName }),
-        });
-
-        // Navigate to the new project
-        navigate(`/project/${project.id}`);
-      }
+      // Navigate to the new project with build parameter
+      navigate(`/project/${project.id}?build`);
     } catch (error) {
       console.error('Failed to clone repository:', error);
 
@@ -289,7 +150,7 @@ export default function Clone() {
     } finally {
       setIsCloning(false);
     }
-  }, [fetchNostrRepository, navigate, projectsManager, repoUrl, t, toast, tryCloneUrls, validateGitUrl]);
+  }, [navigate, projectsManager, repoUrl, t, toast, validateGitUrl]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !isCloning) {
@@ -300,9 +161,10 @@ export default function Clone() {
   // Initialize repoUrl from URL parameters and auto-import if URL is provided
   useEffect(() => {
     const urlParam = searchParams.get('url');
-    if (urlParam) {
+    if (urlParam && !autoCloneInitiatedRef.current) {
       const decodedUrl = decodeURIComponent(urlParam);
       setRepoUrl(decodedUrl);
+      autoCloneInitiatedRef.current = true;
 
       // Automatically start the clone process with the URL directly
       handleClone(decodedUrl);

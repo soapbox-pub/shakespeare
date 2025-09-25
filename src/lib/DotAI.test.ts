@@ -28,17 +28,8 @@ describe('DotAI', () => {
   });
 
   describe('readLastSessionHistory', () => {
-    it('should return null when AI is not enabled', async () => {
-      // Mock isEnabled to return false
-      vi.spyOn(dotAI, 'isEnabled').mockResolvedValue(false);
-
-      const result = await dotAI.readLastSessionHistory();
-      expect(result).toBeNull();
-    });
-
     it('should return null when history directory does not exist', async () => {
-      // Mock isEnabled to return true but historyDirExists to return false
-      vi.spyOn(dotAI, 'isEnabled').mockResolvedValue(true);
+      // Mock historyDirExists to return false
       vi.spyOn(dotAI, 'historyDirExists').mockResolvedValue(false);
 
       const result = await dotAI.readLastSessionHistory();
@@ -46,8 +37,7 @@ describe('DotAI', () => {
     });
 
     it('should return null when no session files exist', async () => {
-      // Mock isEnabled and historyDirExists to return true
-      vi.spyOn(dotAI, 'isEnabled').mockResolvedValue(true);
+      // Mock historyDirExists to return true
       vi.spyOn(dotAI, 'historyDirExists').mockResolvedValue(true);
 
       // Mock readdir to return empty array
@@ -58,8 +48,7 @@ describe('DotAI', () => {
     });
 
     it('should return messages and session name from most recent file', async () => {
-      // Mock isEnabled and historyDirExists to return true
-      vi.spyOn(dotAI, 'isEnabled').mockResolvedValue(true);
+      // Mock historyDirExists to return true
       vi.spyOn(dotAI, 'historyDirExists').mockResolvedValue(true);
 
       // Mock readdir to return session files
@@ -84,8 +73,7 @@ describe('DotAI', () => {
     });
 
     it('should handle malformed JSON lines gracefully', async () => {
-      // Mock isEnabled and historyDirExists to return true
-      vi.spyOn(dotAI, 'isEnabled').mockResolvedValue(true);
+      // Mock historyDirExists to return true
       vi.spyOn(dotAI, 'historyDirExists').mockResolvedValue(true);
 
       // Mock readdir to return session files
@@ -107,24 +95,7 @@ invalid json line
   });
 
   describe('setHistory', () => {
-    it('should not save when AI is not enabled', async () => {
-      // Mock isEnabled to return false
-      vi.spyOn(dotAI, 'isEnabled').mockResolvedValue(false);
-
-      const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
-        { role: 'user', content: 'Hello' },
-        { role: 'assistant', content: 'Hi there!' }
-      ];
-
-      await dotAI.setHistory('test-session', messages);
-
-      // Verify writeFile was not called
-      expect(mockFS.writeFile).not.toHaveBeenCalled();
-    });
-
     it('should create history directory if it does not exist', async () => {
-      // Mock isEnabled to return true
-      vi.spyOn(dotAI, 'isEnabled').mockResolvedValue(true);
       // Mock historyDirExists to return false initially
       vi.spyOn(dotAI, 'historyDirExists').mockResolvedValue(false);
       // Mock setupAiHistoryDir
@@ -141,8 +112,6 @@ invalid json line
     });
 
     it('should write messages as JSONL format', async () => {
-      // Mock isEnabled to return true
-      vi.spyOn(dotAI, 'isEnabled').mockResolvedValue(true);
       // Mock historyDirExists to return true
       vi.spyOn(dotAI, 'historyDirExists').mockResolvedValue(true);
 
@@ -161,8 +130,6 @@ invalid json line
     });
 
     it('should handle empty messages array', async () => {
-      // Mock isEnabled to return true
-      vi.spyOn(dotAI, 'isEnabled').mockResolvedValue(true);
       // Mock historyDirExists to return true
       vi.spyOn(dotAI, 'historyDirExists').mockResolvedValue(true);
 
@@ -176,8 +143,6 @@ invalid json line
     });
 
     it('should handle write errors gracefully', async () => {
-      // Mock isEnabled to return true
-      vi.spyOn(dotAI, 'isEnabled').mockResolvedValue(true);
       // Mock historyDirExists to return true
       vi.spyOn(dotAI, 'historyDirExists').mockResolvedValue(true);
       // Mock writeFile to throw an error
@@ -190,9 +155,6 @@ invalid json line
     });
 
     it('should validate tool messages have matching tool_call_id', async () => {
-      // Mock isEnabled to return true
-      vi.spyOn(dotAI, 'isEnabled').mockResolvedValue(true);
-
       const validMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
         { role: 'user', content: 'Hello' },
         {
@@ -249,9 +211,6 @@ invalid json line
     });
 
     it('should validate multiple tool messages correctly', async () => {
-      // Mock isEnabled to return true
-      vi.spyOn(dotAI, 'isEnabled').mockResolvedValue(true);
-
       const validMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
         { role: 'user', content: 'Hello' },
         {
@@ -271,9 +230,6 @@ invalid json line
     });
 
     it('should allow tool messages to reference tool calls from the most recent assistant message', async () => {
-      // Mock isEnabled to return true
-      vi.spyOn(dotAI, 'isEnabled').mockResolvedValue(true);
-
       const validMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
         { role: 'user', content: 'First request' },
         {

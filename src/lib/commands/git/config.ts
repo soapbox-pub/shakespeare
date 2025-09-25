@@ -138,7 +138,6 @@ export class GitConfigCommand implements GitSubcommand {
   private async setConfig(key: string, value: string, global: boolean): Promise<ShellCommandResult> {
     try {
       await this.git.setConfig({
-
         dir: global ? undefined : this.pwd,
         path: key,
         value: value,

@@ -1,7 +1,8 @@
-import { join, resolve, dirname } from "@std/path";
+import { join, resolve, dirname } from "path-browserify";
 import type { JSRuntimeFS } from "../JSRuntime";
 import type { ShellCommand, ShellCommandResult } from "./ShellCommand";
 import { createSuccessResult, createErrorResult } from "./ShellCommand";
+import { isAbsolutePath } from "../security";
 
 /**
  * Implementation of the 'cd' command
@@ -31,20 +32,19 @@ export class CdCommand implements ShellCommand {
         return createErrorResult(`${this.name}: too many arguments`);
       }
 
-      // Handle absolute paths
-      if (targetPath.startsWith('/') || targetPath.startsWith('\\') || /^[A-Za-z]:[\\/]/.test(targetPath)) {
-        return createErrorResult(`${this.name}: absolute paths are not supported: ${targetPath}`);
-      }
-
-      // Resolve the new path
+      // Handle both absolute and relative paths
       let newCwd: string;
-      if (targetPath === '.') {
+
+      if (isAbsolutePath(targetPath)) {
+        // Absolute path - use it directly
+        newCwd = targetPath;
+      } else if (targetPath === '.') {
         // Current directory
         newCwd = cwd;
       } else if (targetPath === '..') {
         // Parent directory
         const parentPath = dirname(cwd);
-        // Don't allow going above the project root
+        // Don't allow going above the filesystem root
         if (parentPath === cwd) {
           return createErrorResult(`${this.name}: cannot access parent directory: Permission denied`);
         }

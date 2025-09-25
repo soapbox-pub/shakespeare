@@ -31,9 +31,9 @@ export function extractGitOrigin(gitUrl: string): string | null {
 export function findCredentialsForRepo(
   repoUrl: string,
   credentials: Record<string, GitCredential>
-): GitCredential | null {
+): GitCredential | undefined {
   const repoOrigin = extractGitOrigin(repoUrl);
-  if (!repoOrigin) return null;
+  if (!repoOrigin) return;
 
   // Direct match
   if (credentials[repoOrigin]) {
@@ -57,8 +57,6 @@ export function findCredentialsForRepo(
       return credential;
     }
   }
-
-  return null;
 }
 
 /**

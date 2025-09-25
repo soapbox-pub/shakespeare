@@ -1,5 +1,18 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ProjectsManager } from './ProjectsManager';
+import { JSRuntimeFS } from './JSRuntime';
+import { Git } from './git';
+import type { NPool } from '@nostrify/nostrify';
+
+const createMockNostr = (): NPool => ({
+  req: vi.fn(),
+  query: vi.fn(),
+  event: vi.fn(),
+  group: vi.fn(),
+  relay: vi.fn(),
+  relays: new Map(),
+  close: vi.fn(),
+}) as unknown as NPool;
 
 // Mock JSZip
 vi.mock('jszip', () => ({
@@ -23,10 +36,13 @@ vi.mock('jszip', () => ({
 }));
 
 // Mock filesystem for testing
-class MockFS {
+class MockFS implements JSRuntimeFS {
   private files: Map<string, string | Uint8Array> = new Map();
   private dirs: Set<string> = new Set();
 
+  async readFile(path: string): Promise<Uint8Array>;
+  async readFile(path: string, encoding: "utf8"): Promise<string>;
+  async readFile(path: string, encoding: string): Promise<string | Uint8Array>;
   async readFile(path: string, encoding?: string): Promise<string | Uint8Array> {
     const content = this.files.get(path);
     if (content === undefined) {
@@ -34,10 +50,18 @@ class MockFS {
       error.code = 'ENOENT';
       throw error;
     }
-    if (encoding === 'utf8' && typeof content === 'string') {
-      return content;
+    if (encoding === 'utf8') {
+      if (typeof content === 'string') {
+        return content;
+      }
+      // Convert Uint8Array to string
+      return new TextDecoder('utf-8').decode(content as Uint8Array);
     }
-    return content;
+    if (typeof content === 'string') {
+      // Convert string to Uint8Array
+      return new TextEncoder().encode(content);
+    }
+    return content as Uint8Array;
   }
 
   async writeFile(path: string, data: string | Uint8Array): Promise<void> {
@@ -49,7 +73,8 @@ class MockFS {
     }
   }
 
-  async readdir(path: string): Promise<string[]> {
+  // @ts-expect-error I don't know how to type this properly
+  async readdir(path: string, options?: { withFileTypes?: boolean }): Promise<string[] | DirectoryEntry[]> {
     if (!this.dirs.has(path)) {
       const error = new Error(`ENOENT: no such file or directory, scandir '${path}'`) as NodeJS.ErrnoException;
       error.code = 'ENOENT';
@@ -72,7 +97,22 @@ class MockFS {
       }
     }
 
-    return [...new Set(entries)];
+    const uniqueEntries = [...new Set(entries)];
+
+    if (options && options.withFileTypes) {
+      // Provide a minimal DirectoryEntry mock
+      return uniqueEntries.map(name => {
+        const fullPath = path.endsWith('/') ? path + name : path + '/' + name;
+        const isDir = this.dirs.has(fullPath);
+        return {
+          name,
+          isDirectory: () => isDir,
+          isFile: () => !isDir,
+        } as unknown as DirectoryEntry;
+      });
+    }
+
+    return uniqueEntries;
   }
 
   async mkdir(path: string): Promise<void> {
@@ -106,15 +146,76 @@ class MockFS {
   async rmdir(path: string): Promise<void> {
     this.dirs.delete(path);
   }
+
+  async rename(oldPath: string, newPath: string): Promise<void> {
+    // Handle both files and directories
+    if (this.files.has(oldPath)) {
+      const content = this.files.get(oldPath);
+      this.files.delete(oldPath);
+      this.files.set(newPath, content!);
+    }
+
+    if (this.dirs.has(oldPath)) {
+      this.dirs.delete(oldPath);
+      this.dirs.add(newPath);
+
+      // Also move all subdirectories and files
+      const itemsToMove: Array<{ oldPath: string; newPath: string; isDir: boolean }> = [];
+
+      // Collect directories to move
+      for (const dir of this.dirs) {
+        if (dir.startsWith(oldPath + '/')) {
+          const relativePath = dir.slice(oldPath.length);
+          itemsToMove.push({
+            oldPath: dir,
+            newPath: newPath + relativePath,
+            isDir: true
+          });
+        }
+      }
+
+      // Collect files to move
+      for (const file of this.files.keys()) {
+        if (file.startsWith(oldPath + '/')) {
+          const relativePath = file.slice(oldPath.length);
+          itemsToMove.push({
+            oldPath: file,
+            newPath: newPath + relativePath,
+            isDir: false
+          });
+        }
+      }
+
+      // Move all items
+      for (const item of itemsToMove) {
+        if (item.isDir) {
+          this.dirs.delete(item.oldPath);
+          this.dirs.add(item.newPath);
+        } else {
+          const content = this.files.get(item.oldPath);
+          this.files.delete(item.oldPath);
+          this.files.set(item.newPath, content!);
+        }
+      }
+    }
+  }
+
+  async lstat(path: string): Promise<{ isDirectory(): boolean; isFile(): boolean; mtimeMs?: number }> {
+    return this.stat(path);
+  }
 }
 
 describe('ProjectsManager', () => {
-  let fs: MockFS;
+  let fs: JSRuntimeFS;
+  let git: Git;
+  let nostr: NPool;
   let projectsManager: ProjectsManager;
 
   beforeEach(() => {
-    fs = new MockFS();
-    projectsManager = new ProjectsManager(fs as unknown as import('./JSRuntime').JSRuntimeFS);
+    fs = new MockFS() as unknown as JSRuntimeFS;
+    nostr = createMockNostr();
+    git = new Git({ fs, nostr });
+    projectsManager = new ProjectsManager({ fs, git });
   });
 
   describe('getProjects', () => {
@@ -259,6 +360,70 @@ describe('ProjectsManager', () => {
       // Should use formatted name from ID
       expect(project.name).toBe('new-project');
       expect(project.id).toBe('new-project');
+    });
+  });
+
+  describe('renameProject', () => {
+    it('should rename a project directory', async () => {
+      await projectsManager.init();
+
+      // Create a project
+      await fs.mkdir('/projects/old-name');
+      await fs.writeFile('/projects/old-name/package.json', '{}');
+
+      // Verify the project exists
+      const originalProject = await projectsManager.getProject('old-name');
+      expect(originalProject).not.toBeNull();
+
+      // Rename the project
+      const renamedProject = await projectsManager.renameProject('old-name', 'new-name');
+
+      // Verify the renamed project
+      expect(renamedProject.id).toBe('new-name');
+      expect(renamedProject.name).toBe('new-name');
+      expect(renamedProject.path).toBe('/projects/new-name');
+
+      // Verify old project no longer exists
+      const oldProject = await projectsManager.getProject('old-name');
+      expect(oldProject).toBeNull();
+
+      // Verify new project exists
+      const newProject = await projectsManager.getProject('new-name');
+      expect(newProject).not.toBeNull();
+      expect(newProject?.id).toBe('new-name');
+    });
+
+    it('should throw error when old project does not exist', async () => {
+      await projectsManager.init();
+
+      await expect(projectsManager.renameProject('non-existent', 'new-name'))
+        .rejects.toThrow('Project with ID "non-existent" does not exist');
+    });
+
+    it('should throw error when new project name already exists', async () => {
+      await projectsManager.init();
+
+      // Create two projects
+      await fs.mkdir('/projects/project-1');
+      await fs.mkdir('/projects/project-2');
+
+      await expect(projectsManager.renameProject('project-1', 'project-2'))
+        .rejects.toThrow('Project with ID "project-2" already exists');
+    });
+
+    it('should validate and normalize project names', async () => {
+      await projectsManager.init();
+
+      // Create a project
+      await fs.mkdir('/projects/old-name');
+
+      // Try to rename with invalid characters
+      await expect(projectsManager.renameProject('old-name', 'New Name With Spaces'))
+        .rejects.toThrow('Project name must contain only lowercase letters, numbers, and hyphens');
+
+      // Try to rename with empty name
+      await expect(projectsManager.renameProject('old-name', ''))
+        .rejects.toThrow('Project name cannot be empty');
     });
   });
 });

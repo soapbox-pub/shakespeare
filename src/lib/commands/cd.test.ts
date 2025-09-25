@@ -98,11 +98,25 @@ describe('CdCommand', () => {
     expect(result.stderr).toContain('Not a directory');
   });
 
-  it('should reject absolute paths', async () => {
+  it('should handle absolute paths to non-existent directories', async () => {
+    vi.mocked(mockFS.stat).mockRejectedValue(new Error('ENOENT: no such file or directory'));
+
     const result = await cdCommand.execute(['/absolute/path'], testCwd);
 
     expect(result.exitCode).toBe(1);
-    expect(result.stderr).toContain('absolute paths are not supported');
+    expect(result.stderr).toContain('No such file or directory');
+  });
+
+  it('should handle absolute paths to existing directories', async () => {
+    vi.mocked(mockFS.stat).mockResolvedValue({
+      isDirectory: () => true,
+      isFile: () => false,
+    });
+
+    const result = await cdCommand.execute(['/projects/my-project'], testCwd);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.newCwd).toBe('/projects/my-project');
   });
 
   it('should reject too many arguments', async () => {

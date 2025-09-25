@@ -11,10 +11,13 @@ vi.mock('@/hooks/useCurrentUser', () => ({
 
 vi.mock('@/hooks/useAISettings', () => ({
   useAISettings: vi.fn(() => ({
-    settings: { providers: {} },
-    addProvider: vi.fn(),
+    settings: { providers: [] },
+    setProvider: vi.fn(),
     removeProvider: vi.fn(),
-    updateProvider: vi.fn(),
+    setProviders: vi.fn(),
+    updateSettings: vi.fn(),
+    addRecentlyUsedModel: vi.fn(),
+    isConfigured: false,
   })),
 }));
 

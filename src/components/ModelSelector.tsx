@@ -17,6 +17,8 @@ interface ModelSelectorProps {
   className?: string;
   disabled?: boolean;
   placeholder?: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 export function ModelSelector({
@@ -25,9 +27,16 @@ export function ModelSelector({
   className,
   disabled = false,
   placeholder,
+  open: controlledOpen,
+  onOpenChange: setControlledOpen,
 }: ModelSelectorProps) {
   const { t } = useTranslation();
-  const [open, setOpen] = useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+
+  // Use controlled state if provided, otherwise use local state
+  const open = controlledOpen !== undefined ? controlledOpen : uncontrolledOpen;
+  const setOpen = setControlledOpen || setUncontrolledOpen;
+
   const [isCustomInput, setIsCustomInput] = useState(false);
   const [customValue, setCustomValue] = useState('');
   const { settings, addRecentlyUsedModel, isConfigured } = useAISettings();
@@ -49,6 +58,29 @@ export function ModelSelector({
     }
     return groups;
   }, [models]);
+
+  // Determine if we should show the "Recently Used" section
+  const shouldShowRecentlyUsed = useMemo(() => {
+    // If no recently used models, don't show the section
+    if (recentlyUsedModels.length === 0) {
+      return false;
+    }
+
+    // If there are 5 or more total provider models, always show recently used
+    if (models.length >= 5) {
+      return true;
+    }
+
+    // If less than 5 total provider models, check if all recently used models
+    // are contained within the available provider models
+    const availableModelIds = new Set(models.map(model => model.fullId));
+    const allRecentlyUsedAreAvailable = recentlyUsedModels.every(model =>
+      availableModelIds.has(model)
+    );
+
+    // Hide recently used section if all recently used models are already available
+    return !allRecentlyUsedAreAvailable;
+  }, [recentlyUsedModels, models]);
 
   // Don't auto-initialize with recently used models
   // Let the parent component handle initialization
@@ -117,51 +149,27 @@ export function ModelSelector({
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            variant="ghost"
-            role="combobox"
-            aria-expanded={open}
-            className={cn(
-              "h-8 p-0 gap-0.5 justify-between text-xs border-0 bg-transparent hover:bg-transparent hover:text-foreground focus-visible:ring-0 focus-visible:ring-offset-0 text-muted-foreground text-right",
-              className
-            )}
-            disabled={disabled}
-          >
-            <span className="w-full truncate">
-              {value || placeholder || defaultPlaceholder}
-            </span>
-            <ChevronDown className="size-3 shrink-0 opacity-50" />
-          </Button>
-        </PopoverTrigger>
+      <PopoverTrigger asChild>
+        <Button
+          variant="ghost"
+          role="combobox"
+          aria-expanded={open}
+          className={cn(
+            "h-8 p-0 gap-0.5 justify-between text-xs border-0 bg-transparent hover:bg-transparent hover:text-foreground focus-visible:ring-0 focus-visible:ring-offset-0 text-muted-foreground text-right",
+            className
+          )}
+          disabled={disabled}
+        >
+          <span className="w-full truncate">
+            {value || placeholder || defaultPlaceholder}
+          </span>
+          <ChevronDown className="size-3 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
       <PopoverContent className="w-96 p-0" align="end">
         <Command>
           {isConfigured && <CommandInput placeholder={t('searchModels')} className="h-9" />}
           <CommandList className="max-h-[300px]">
-            {/* Custom model option and manage providers */}
-            <CommandGroup>
-              {isConfigured && (
-                <CommandItem
-                  value="__custom_model_option__"
-                  onSelect={() => handleSelect('__custom__')}
-                  className="cursor-pointer"
-                >
-                  <Edit3 className="mr-2 h-4 w-4" />
-                  {t('enterCustomModel')}
-                </CommandItem>
-              )}
-              <CommandItem
-                value="__manage_providers_option__"
-                onSelect={() => handleSelect('__manage_providers__')}
-                className="cursor-pointer"
-              >
-                <Settings className="mr-2 h-4 w-4" />
-                {t('manageProviders')}
-              </CommandItem>
-            </CommandGroup>
-
-            <CommandSeparator />
-
             <CommandEmpty>
               <div className="py-6 text-center text-sm text-muted-foreground">
                 <p>{t('noModelsFound')}</p>
@@ -169,7 +177,7 @@ export function ModelSelector({
               </div>
             </CommandEmpty>
 
-            {recentlyUsedModels.length > 0 && (
+            {shouldShowRecentlyUsed && (
               <CommandGroup heading={t('recentlyUsed')}>
                 {recentlyUsedModels.map((model) => (
                   <CommandItem
@@ -190,7 +198,7 @@ export function ModelSelector({
               </CommandGroup>
             )}
 
-            {recentlyUsedModels.length > 0 && <CommandSeparator />}
+            {shouldShowRecentlyUsed && <CommandSeparator />}
 
             {/* Loading state */}
             {isLoading && (
@@ -252,6 +260,29 @@ export function ModelSelector({
                 </CommandGroup>
               </div>
             ))}
+
+            {/* Custom model option and manage providers - moved to bottom */}
+            <CommandSeparator />
+            <CommandGroup>
+              {isConfigured && (
+                <CommandItem
+                  value="__custom_model_option__"
+                  onSelect={() => handleSelect('__custom__')}
+                  className="cursor-pointer"
+                >
+                  <Edit3 className="mr-2 h-4 w-4" />
+                  {t('enterCustomModel')}
+                </CommandItem>
+              )}
+              <CommandItem
+                value="__manage_providers_option__"
+                onSelect={() => handleSelect('__manage_providers__')}
+                className="cursor-pointer"
+              >
+                <Settings className="mr-2 h-4 w-4" />
+                {t('manageProviders')}
+              </CommandItem>
+            </CommandGroup>
           </CommandList>
         </Command>
       </PopoverContent>

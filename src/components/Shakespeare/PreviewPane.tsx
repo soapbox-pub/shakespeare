@@ -644,10 +644,10 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
             <div className="h-12 flex items-center w-full">
               <BrowserAddressBar
                 currentPath={currentPath}
-                onNavigate={navigateIframe}
-                onRefresh={refreshIframe}
-                onBack={goBackIframe}
-                onForward={goForwardIframe}
+                onNavigate={hasBuiltProject ? navigateIframe : undefined}
+                onRefresh={hasBuiltProject ? refreshIframe : undefined}
+                onBack={hasBuiltProject ? goBackIframe : undefined}
+                onForward={hasBuiltProject ? goForwardIframe : undefined}
                 canGoBack={hasBuiltProject && historyIndex > 0}
                 canGoForward={hasBuiltProject && historyIndex < navigationHistory.length - 1}
                 extraContent={(

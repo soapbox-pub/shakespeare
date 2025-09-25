@@ -7,6 +7,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Upload, FileArchive, AlertCircle, FileText, Trash2, FolderOpen, CheckSquare, Square, AlertTriangle } from 'lucide-react';
 import { useProjects } from '@/hooks/useProjects';
+import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { cn } from '@/lib/utils';
 import JSZip from 'jszip';
 
@@ -44,6 +45,7 @@ export function BulkProjectImportDialog({ onImport, disabled = false, className,
   const [zipData, setZipData] = useState<JSZip | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { data: existingProjects = [] } = useProjects();
+  const projectsManager = useProjectsManager();
 
   const analyzeZipForProjects = useCallback(async (zip: JSZip): Promise<ProjectInfo[]> => {
     const projects: ProjectInfo[] = [];
@@ -234,21 +236,11 @@ export function BulkProjectImportDialog({ onImport, disabled = false, className,
     setError(null);
 
     try {
-      // Prepare project data for import
+      // Prepare project data for import using the ProjectsManager's extraction logic
       const projectsToImport = await Promise.all(
         selectedProjects.map(async (project) => {
-          const files: { [path: string]: Uint8Array } = {};
-
-          // Extract files for this project
-          for (const filePath of project.files) {
-            const zipPath = `${project.path}/${filePath}`;
-            const zipEntry = zipData.files[zipPath];
-
-            if (zipEntry && !zipEntry.dir) {
-              const content = await zipEntry.async('uint8array');
-              files[filePath] = content;
-            }
-          }
+          // Extract files for this project using the unified extraction method
+          const files = await projectsManager.extractFilesFromZip(zipData, project.path);
 
           return {
             id: project.id,

@@ -46,57 +46,114 @@ export class ProjectsManager {
   async createProject(name: string, customId?: string): Promise<Project> {
     const project = await this.cloneProject(name, GIT_TEMPLATE_URL, customId, { depth: 1 });
 
-    // Delete README.md if it exists
+    // Delete README.md if it exists (template-specific cleanup)
     try {
       await this.fs.unlink(`${project.path}/README.md`);
     } catch {
       // README.md might not exist, ignore error
     }
 
-    // Delete .git directory and reinitialize
-    try {
-      await this.deleteDirectory(`${project.path}/.git`);
-    } catch {
-      // .git directory might not exist, ignore error
-    }
-
-    // Initialize new git repository
-    await this.git.init({
-      dir: project.path,
-      defaultBranch: 'main',
+    // Setup project infrastructure using unified method
+    await this.setupProjectInfrastructure(project.path, {
+      isOverwrite: false,
+      commitMessage: 'New project created with Shakespeare',
+      skipPersistentStorage: false,
     });
-
-    // Add all files to git
-    const files = await this.getAllFiles(project.path);
-    for (const file of files) {
-      // Skip .git directory
-      if (!file.startsWith('.git/')) {
-        await this.git.add({
-          dir: project.path,
-          filepath: file,
-        });
-      }
-    }
-
-    // Make initial commit
-    await this.git.commit({
-      dir: project.path,
-      message: 'New project created with Shakespeare',
-      author: {
-        name: 'shakespeare.diy',
-        email: 'assistant@shakespeare.diy',
-      },
-    });
-
-    // Automatically request persistent storage after project creation
-    try {
-      await ensurePersistentStorage();
-    } catch (error) {
-      // Don't fail project creation if persistent storage request fails
-      console.warn('Failed to request persistent storage after project creation:', error);
-    }
 
     return project;
+  }
+
+  /**
+   * Unified method for setting up project infrastructure.
+   * Handles git initialization/management, .ai directory creation, and persistent storage.
+   */
+  private async setupProjectInfrastructure(
+    projectPath: string,
+    options: {
+      isOverwrite?: boolean;
+      commitMessage?: string;
+      skipPersistentStorage?: boolean;
+    } = {}
+  ): Promise<void> {
+    const { isOverwrite = false, commitMessage = 'Project setup', skipPersistentStorage = false } = options;
+
+    // Initialize git repository if there's no .git directory
+    try {
+      await this.fs.stat(`${projectPath}/.git`);
+
+      // If git exists and we're overwriting, stage the new files
+      if (isOverwrite) {
+        const projectFiles = await this.getAllFiles(projectPath);
+        for (const file of projectFiles) {
+          // Skip .git directory and .ai directory
+          if (!file.startsWith('.git/') && !file.startsWith('.ai/')) {
+            try {
+              await this.git.add({
+                dir: projectPath,
+                filepath: file,
+              });
+            } catch {
+              // Ignore git add errors for files that might be gitignored
+            }
+          }
+        }
+
+        // Make commit for the overwrite
+        await this.git.commit({
+          dir: projectPath,
+          message: commitMessage,
+          author: {
+            name: 'shakespeare.diy',
+            email: 'assistant@shakespeare.diy',
+          },
+        });
+      }
+    } catch {
+      // No .git directory found, initialize new repository
+      await this.git.init({
+        dir: projectPath,
+        defaultBranch: 'main',
+      });
+
+      // Add all files to git (excluding .ai directory)
+      const projectFiles = await this.getAllFiles(projectPath);
+      for (const file of projectFiles) {
+        // Skip .git directory and .ai directory
+        if (!file.startsWith('.git/') && !file.startsWith('.ai/')) {
+          await this.git.add({
+            dir: projectPath,
+            filepath: file,
+          });
+        }
+      }
+
+      // Make initial commit
+      await this.git.commit({
+        dir: projectPath,
+        message: commitMessage,
+        author: {
+          name: 'shakespeare.diy',
+          email: 'assistant@shakespeare.diy',
+        },
+      });
+    }
+
+    // Create .ai/history directory
+    try {
+      await this.fs.mkdir(`${projectPath}/.ai/history`, { recursive: true });
+    } catch {
+      // Directory might already exist
+    }
+
+    // Automatically request persistent storage (unless skipped)
+    if (!skipPersistentStorage) {
+      try {
+        await ensurePersistentStorage();
+      } catch (error) {
+        // Don't fail project setup if persistent storage request fails
+        console.warn('Failed to request persistent storage after project setup:', error);
+      }
+    }
   }
 
   async importProjectFromZip(zipFile: File, customId?: string, overwrite = false): Promise<Project> {
@@ -198,66 +255,12 @@ export class ProjectsManager {
       const stats = await this.fs.stat(projectPath);
       const timestamp = stats.mtimeMs ? new Date(stats.mtimeMs) : new Date();
 
-      // Initialize git repository if there's no .git directory
-      try {
-        await this.fs.stat(`${projectPath}/.git`);
-
-        // If git exists and we're overwriting, stage the new files
-        if (overwrite) {
-          const projectFiles = await this.getAllFiles(projectPath);
-          for (const file of projectFiles) {
-            // Skip .git directory
-            if (!file.startsWith('.git/')) {
-              try {
-                await this.git.add({
-                  dir: projectPath,
-                  filepath: file,
-                });
-              } catch {
-                // Ignore git add errors for files that might be gitignored
-              }
-            }
-          }
-
-          // Make commit for the overwrite
-          await this.git.commit({
-            dir: projectPath,
-            message: `Overwrite project from ${zipFile.name}`,
-            author: {
-              name: 'shakespeare.diy',
-              email: 'assistant@shakespeare.diy',
-            },
-          });
-        }
-      } catch {
-        // No .git directory found, initialize new repository
-        await this.git.init({
-          dir: projectPath,
-          defaultBranch: 'main',
-        });
-
-        // Add all files to git
-        const projectFiles = await this.getAllFiles(projectPath);
-        for (const file of projectFiles) {
-          // Skip .git directory
-          if (!file.startsWith('.git/')) {
-            await this.git.add({
-              dir: projectPath,
-              filepath: file,
-            });
-          }
-        }
-
-        // Make initial commit
-        await this.git.commit({
-          dir: projectPath,
-          message: `Import project from ${zipFile.name}`,
-          author: {
-            name: 'shakespeare.diy',
-            email: 'assistant@shakespeare.diy',
-          },
-        });
-      }
+      // Setup project infrastructure using unified method
+      await this.setupProjectInfrastructure(projectPath, {
+        isOverwrite: overwrite,
+        commitMessage: `Import project from ${zipFile.name}`,
+        skipPersistentStorage: false,
+      });
 
       return {
         id,
@@ -276,6 +279,148 @@ export class ProjectsManager {
       }
       throw error;
     }
+  }
+
+  /**
+   * Import project directly from files object (bypasses ZIP creation)
+   * Used by bulk import to avoid unnecessary ZIP repackaging
+   */
+  async importProjectFromFiles(
+    projectId: string,
+    files: { [path: string]: Uint8Array },
+    overwrite = false,
+    projectName?: string
+  ): Promise<Project> {
+    const projectPath = `${this.dir}/${projectId}`;
+    const projectExists = await this.projectExists(projectId);
+
+    // Check if project with this ID already exists when not overwriting
+    if (projectExists && !overwrite) {
+      throw new Error(`Project with ID "${projectId}" already exists`);
+    }
+
+    // Determine project name
+    const finalProjectName = projectName || this.formatProjectName(projectId);
+
+    try {
+      // Create project directory (or ensure it exists for overwrite)
+      await this.fs.mkdir(projectPath, { recursive: true });
+
+      // If overwriting, delete existing files except .ai directory and .git directory
+      if (projectExists && overwrite) {
+        const existingFiles = await this.getAllFiles(projectPath);
+        for (const file of existingFiles) {
+          // Preserve .ai directory and .git directory
+          if (!file.startsWith('.ai/') && !file.startsWith('.git/')) {
+            try {
+              await this.fs.unlink(`${projectPath}/${file}`);
+            } catch {
+              // Ignore deletion errors
+            }
+          }
+        }
+      }
+
+      // Extract all files with security validation
+      const extractedFiles: string[] = [];
+      const skippedFiles: string[] = [];
+
+      for (const [relativePath, content] of Object.entries(files)) {
+        // Validate the extraction path is within the project directory
+        const extractPath = this.join(projectPath, relativePath);
+
+        if (!this.isPathWithinProject(extractPath, projectPath)) {
+          skippedFiles.push(relativePath);
+          continue;
+        }
+
+        // Ensure parent directory exists
+        const dirPath = extractPath.split('/').slice(0, -1).join('/');
+        if (dirPath) {
+          await this.fs.mkdir(dirPath, { recursive: true });
+        }
+
+        // Write the file (this will overwrite existing files)
+        await this.fs.writeFile(extractPath, content);
+        extractedFiles.push(relativePath);
+      }
+
+      if (skippedFiles.length > 0) {
+        console.warn(`Skipped ${skippedFiles.length} files due to resolving to paths outside the project directory:`, skippedFiles);
+      }
+
+      // Get filesystem stats for timestamps
+      const stats = await this.fs.stat(projectPath);
+      const timestamp = stats.mtimeMs ? new Date(stats.mtimeMs) : new Date();
+
+      // Setup project infrastructure using unified method
+      await this.setupProjectInfrastructure(projectPath, {
+        isOverwrite: overwrite,
+        commitMessage: `Import project from files`,
+        skipPersistentStorage: false,
+      });
+
+      return {
+        id: projectId,
+        name: finalProjectName,
+        path: projectPath,
+        lastModified: timestamp,
+      };
+    } catch (error) {
+      // Clean up on error (only if this was a new project creation)
+      if (!projectExists) {
+        try {
+          await this.deleteDirectory(projectPath);
+        } catch {
+          // Ignore cleanup errors
+        }
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Extract files from a JSZip instance for a specific project path
+   * Used by bulk import to get files for each discovered project
+   */
+  async extractFilesFromZip(zip: JSZip, projectPath: string): Promise<{ [path: string]: Uint8Array }> {
+    const files: { [path: string]: Uint8Array } = {};
+    const skippedFiles: string[] = [];
+
+    for (const [relativePath, zipEntry] of Object.entries(zip.files)) {
+      // Only process files that belong to this project path
+      if (!relativePath.startsWith(projectPath + '/')) {
+        continue;
+      }
+
+      // Remove the project path prefix to get relative file path
+      const filePath = relativePath.substring(projectPath.length + 1);
+
+      // Skip empty file paths (shouldn't happen, but safety check)
+      if (!filePath) {
+        continue;
+      }
+
+      // Skip directories
+      if (zipEntry.dir) {
+        continue;
+      }
+
+      try {
+        // Extract file content
+        const content = await zipEntry.async('uint8array');
+        files[filePath] = content;
+      } catch (error) {
+        console.warn(`Failed to extract file ${filePath}:`, error);
+        skippedFiles.push(filePath);
+      }
+    }
+
+    if (skippedFiles.length > 0) {
+      console.warn(`Failed to extract ${skippedFiles.length} files:`, skippedFiles);
+    }
+
+    return files;
   }
 
   async cloneProject(name: string, repoUrl: string, customId?: string, options?: { depth?: number }): Promise<Project> {

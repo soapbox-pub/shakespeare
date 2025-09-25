@@ -231,20 +231,13 @@ export function DataSettings() {
 
       for (const project of projects) {
         try {
-          // Create a temporary zip file for each project to use existing import logic
-          const zip = new JSZip();
-
-          // Add all files to the zip at the root level (not nested under project name)
-          for (const [filePath, content] of Object.entries(project.files)) {
-            zip.file(filePath, content);
-          }
-
-          // Generate zip blob
-          const zipBlob = await zip.generateAsync({ type: 'blob' });
-          const zipFile = new File([zipBlob], `${project.id}.zip`, { type: 'application/zip' });
-
-          // Import the project using existing logic
-          await projectsManager.importProjectFromZip(zipFile, project.id, overwrite);
+          // Import the project directly using files (bypasses ZIP creation)
+          await projectsManager.importProjectFromFiles(
+            project.id,
+            project.files,
+            overwrite,
+            project.id // Use project ID as name
+          );
           successCount++;
         } catch (error) {
           console.error(`Failed to import project ${project.id}:`, error);

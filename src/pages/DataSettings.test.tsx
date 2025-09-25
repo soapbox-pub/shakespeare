@@ -17,6 +17,9 @@ describe('DataSettings', () => {
     // Check for description
     expect(screen.getByText('Export files and manage local data.')).toBeInTheDocument();
 
+    // Check for Persist Data section
+    expect(screen.getByText('Persist Data')).toBeInTheDocument();
+
     // Check for Export Files section
     expect(screen.getByText('Export Files')).toBeInTheDocument();
     expect(screen.getByText('Export All Files')).toBeInTheDocument();
@@ -26,12 +29,16 @@ describe('DataSettings', () => {
     expect(screen.getByRole('button', { name: /clear all data/i })).toBeInTheDocument();
   });
 
-  it('shows export and clear buttons', () => {
+  it('shows persist data toggle, export and clear buttons', () => {
     render(
       <TestApp>
         <DataSettings />
       </TestApp>
     );
+
+    // Persist storage toggle should be visible
+    const persistToggle = screen.getByRole('switch');
+    expect(persistToggle).toBeInTheDocument();
 
     // Export button should be visible
     const exportButton = screen.getByRole('button', { name: /export all files/i });

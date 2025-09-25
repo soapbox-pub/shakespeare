@@ -13,6 +13,11 @@ class JSONRPCClient {
 
   setupMessageListener() {
     window.addEventListener("message", (event) => {
+      // Only accept messages from parent window for security
+      if (event.source !== window.parent) {
+        return;
+      }
+
       const message = event.data;
       // Check if this is a response to our own request or a ServiceWorker request
       if (message.jsonrpc === "2.0" && message.id !== undefined) {
@@ -148,12 +153,194 @@ class ConsoleInterceptor {
   }
 }
 
+// Navigation Handler - manages iframe navigation and history
+class NavigationHandler {
+  constructor() {
+    // Get initial path from window property or default to root
+    this.currentSemanticPath = window.__IFRAME_INITIAL_PATH__ || '/';
+
+    this.setupMessageListener();
+    this.setupHistoryListeners();
+    this.overrideHistoryMethods();
+    this.updateNavigationState();
+  }
+
+  // Extract semantic path from URL or string
+  extractSemanticPath(urlOrString) {
+    try {
+      const url = typeof urlOrString === 'string'
+        ? new URL(urlOrString, window.location.origin)
+        : urlOrString;
+      return url.pathname + url.search + url.hash;
+    } catch {
+      return window.location.pathname + window.location.search + window.location.hash;
+    }
+  }
+
+  setupMessageListener() {
+    window.addEventListener("message", (event) => {
+      // Only accept messages from parent window for security
+      if (event.source !== window.parent) {
+        return;
+      }
+
+      const message = event.data;
+      if (message.jsonrpc === "2.0") {
+        switch (message.method) {
+          case "navigate":
+            this.handleNavigate(message.params.url);
+            break;
+          case "refresh":
+            this.handleRefresh();
+            break;
+          case "goBack":
+            this.handleGoBack();
+            break;
+          case "goForward":
+            this.handleGoForward();
+            break;
+        }
+      }
+    });
+  }
+
+  setupHistoryListeners() {
+    // Listen for popstate events (back/forward navigation)
+    window.addEventListener('popstate', () => {
+      this.currentSemanticPath = this.extractSemanticPath(window.location);
+      this.updateNavigationState();
+    });
+
+    // Listen for hash changes
+    window.addEventListener('hashchange', () => {
+      this.currentSemanticPath = this.extractSemanticPath(window.location);
+      this.updateNavigationState();
+    });
+  }
+
+  overrideHistoryMethods() {
+    // Override history.pushState and history.replaceState to detect SPA navigation
+    this.originalPushState = window.history.pushState;
+    this.originalReplaceState = window.history.replaceState;
+
+    window.history.pushState = (...args) => {
+      const result = this.originalPushState.apply(window.history, args);
+
+      // Extract semantic path from URL argument or use current location
+      const semanticPath = args[2]
+        ? this.extractSemanticPath(args[2])
+        : this.extractSemanticPath(window.location);
+
+      this.currentSemanticPath = semanticPath;
+      this.updateNavigationState();
+      return result;
+    };
+
+    window.history.replaceState = (...args) => {
+      const result = this.originalReplaceState.apply(window.history, args);
+
+      const semanticPath = args[2]
+        ? this.extractSemanticPath(args[2])
+        : this.extractSemanticPath(window.location);
+
+      this.currentSemanticPath = semanticPath;
+      this.updateNavigationState();
+      return result;
+    };
+  }
+
+  handleNavigate(url) {
+    try {
+      // Validate URL - must be same origin
+      const targetUrl = new URL(url, window.location.origin);
+      if (targetUrl.origin !== window.location.origin) {
+        console.error('Navigation to different origin not allowed:', url);
+        return;
+      }
+
+      const semanticPath = this.extractSemanticPath(targetUrl);
+      this.currentSemanticPath = semanticPath;
+      this.updateNavigationState();
+
+      // Trigger SPA navigation
+      window.history.pushState({}, '', semanticPath);
+      window.dispatchEvent(new PopStateEvent('popstate', { state: {} }));
+
+    } catch (error) {
+      console.error('Invalid navigation URL:', url, error);
+    }
+  }
+
+  handleRefresh() {
+    // Store current semantic path for reload
+    const currentPath = this.currentSemanticPath || '/';
+
+    // Save the current path to sessionStorage so it persists across reload
+    try {
+      sessionStorage.setItem('iframe_initial_path', currentPath);
+    } catch (error) {
+      console.warn('Failed to store initial path in sessionStorage:', error);
+    }
+
+    // Actually reload the iframe to get a fresh SPA instance
+    window.location.reload();
+  }
+
+  handleGoBack() {
+    window.history.back();
+  }
+
+  handleGoForward() {
+    window.history.forward();
+  }
+
+  updateNavigationState() {
+    // Use tracked semantic path, fallback to current location if needed
+    const semanticPath = this.currentSemanticPath || this.extractSemanticPath(window.location);
+
+    const state = {
+      currentUrl: semanticPath,
+      canGoBack: false, // Let parent handle history tracking
+      canGoForward: false // Let parent handle history tracking
+    };
+
+    // Send navigation state to parent
+    try {
+      window.parent.postMessage({
+        jsonrpc: "2.0",
+        method: "updateNavigationState",
+        params: state
+      }, "*");
+    } catch (error) {
+      console.error('Failed to send navigation state:', error);
+    }
+  }
+}
+
 // Main Fetch Client
 class FetchClient {
   constructor() {
     this.rpcClient = new JSONRPCClient();
     this.consoleInterceptor = new ConsoleInterceptor();
+    this.navigationHandler = new NavigationHandler();
     this.init();
+  }
+
+  // Ensure SPA navigates to initial path after document is loaded
+  ensureInitialNavigation() {
+    // Wait for the SPA to initialize, then navigate to the initial path
+    setTimeout(() => {
+      const initialPath = window.__IFRAME_INITIAL_PATH__;
+
+      if (initialPath && initialPath !== '/') {
+        const currentPath = window.location.pathname + window.location.search + window.location.hash;
+
+        // If we're not already at the initial path, navigate there
+        if (currentPath !== initialPath) {
+          this.navigationHandler.handleNavigate(initialPath);
+        }
+      }
+    }, 150); // Give SPA more time to initialize
   }
 
   async init() {
@@ -161,6 +348,7 @@ class FetchClient {
       await this.setupServiceWorker();
       await this.loadSiteIndex();
     } catch (error) {
+      console.error("FetchClient: Initialization failed:", error);
       this.showError("Failed to initialize fetch client", error);
     }
   }
@@ -212,6 +400,20 @@ class FetchClient {
   }
 
   async loadSiteIndex() {
+    // Check if we have a stored initial path from a refresh
+    let initialPath = '/';
+    try {
+      const storedPath = sessionStorage.getItem('iframe_initial_path');
+      if (storedPath) {
+        initialPath = storedPath;
+        // Clear the stored path after using it
+        sessionStorage.removeItem('iframe_initial_path');
+
+      }
+    } catch (error) {
+      console.warn('loadSiteIndex: Failed to read initial path from sessionStorage:', error);
+    }
+
     const serializedRequest = {
       url: `${location.origin}/`,
       method: "GET",
@@ -232,10 +434,33 @@ class FetchClient {
     const bytes = new Uint8Array(atob(response.body).split('').map(c => c.charCodeAt(0)));
     const text = new TextDecoder().decode(bytes);
 
+    // Set the initial path on window before replacing the document
+    // This will be available to the NavigationHandler when it initializes
+    if (initialPath && initialPath !== '/') {
+      window.__IFRAME_INITIAL_PATH__ = initialPath;
+    }
+
     this.replaceDocument(text);
   }
 
   replaceDocument(htmlContent) {
+    console.log("replaceDocument: Starting...");
+
+    // Restore the initial path from sessionStorage before replacing document
+    let initialPath = '/';
+    try {
+      const storedPath = sessionStorage.getItem('spa_initial_path');
+      if (storedPath) {
+        initialPath = storedPath;
+        sessionStorage.removeItem('spa_initial_path');
+        console.log('replaceDocument: Restored initial path:', initialPath);
+        // Set it on window for the new document
+        window.__IFRAME_INITIAL_PATH__ = initialPath;
+      }
+    } catch (error) {
+      console.warn('replaceDocument: Failed to restore initial path:', error);
+    }
+
     // Create a new document from the HTML content
     const parser = new DOMParser();
     const newDoc = parser.parseFromString(htmlContent, "text/html");
@@ -266,7 +491,8 @@ class FetchClient {
       document.body.appendChild(newScript);
     });
 
-    console.log("Document replaced with site content");
+    // Ensure initial navigation after document is loaded
+    this.ensureInitialNavigation();
   }
 
   showError(message, error) {

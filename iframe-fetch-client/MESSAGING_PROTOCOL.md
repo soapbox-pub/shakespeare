@@ -148,6 +148,36 @@ consistent handling of both text and binary data across the messaging protocol.
 
 **Result:** None (notification only, no response expected)
 
+### Navigation Methods
+
+#### `navigate`
+**Purpose:** Navigate iframe to a new URL within the same origin
+**Parameters:** `url` (string) - Target URL (must be same origin)
+**Result:** None (notification only)
+
+#### `refresh`
+**Purpose:** Refresh/reload the current page in the iframe
+**Parameters:** None
+**Result:** None (notification only)
+
+#### `goBack`
+**Purpose:** Navigate back in the iframe's history
+**Parameters:** None
+**Result:** None (notification only)
+
+#### `goForward`
+**Purpose:** Navigate forward in the iframe's history
+**Parameters:** None
+**Result:** None (notification only)
+
+#### `updateNavigationState`
+**Purpose:** Update parent about iframe's current navigation state
+**Parameters:**
+- `currentUrl` (string) - Current URL of the iframe
+- `canGoBack` (boolean) - Whether iframe can go back in history
+- `canGoForward` (boolean) - Whether iframe can go forward in history
+**Result:** None (notification only)
+
 ## Implementation
 
 ### Parent Page

@@ -81,4 +81,21 @@ describe('BrowserAddressBar', () => {
     expect(onForward).toHaveBeenCalled();
     expect(onRefresh).toHaveBeenCalled();
   });
+
+  it('updates input value when currentPath prop changes', () => {
+    const { rerender } = render(<BrowserAddressBar currentPath="/" />);
+
+    const input = screen.getByPlaceholderText('Enter path (e.g., /, /about)');
+    expect(input).toHaveValue('/');
+
+    // Re-render with new currentPath
+    rerender(<BrowserAddressBar currentPath="/about" />);
+
+    expect(input).toHaveValue('/about');
+
+    // Re-render with another path
+    rerender(<BrowserAddressBar currentPath="/contact" />);
+
+    expect(input).toHaveValue('/contact');
+  });
 });

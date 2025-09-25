@@ -1,6 +1,7 @@
 import { Buffer } from 'buffer';
 import type { Git } from '@/lib/git';
 import type { JSRuntimeFS } from '@/lib/JSRuntime';
+import { ensurePersistentStorage } from '@/lib/persistentStorage';
 
 // Polyfill Buffer for browser
 if (typeof window !== 'undefined') {
@@ -92,6 +93,14 @@ export class ProjectsManager {
       },
     });
 
+    // Automatically request persistent storage after project creation
+    try {
+      await ensurePersistentStorage();
+    } catch (error) {
+      // Don't fail project creation if persistent storage request fails
+      console.warn('Failed to request persistent storage after project creation:', error);
+    }
+
     return project;
   }
 
@@ -118,6 +127,14 @@ export class ProjectsManager {
     // Get filesystem stats for timestamps
     const stats = await this.fs.stat(projectPath);
     const timestamp = stats.mtimeMs ? new Date(stats.mtimeMs) : new Date();
+
+    // Automatically request persistent storage after project cloning
+    try {
+      await ensurePersistentStorage();
+    } catch (error) {
+      // Don't fail project cloning if persistent storage request fails
+      console.warn('Failed to request persistent storage after project cloning:', error);
+    }
 
     // Return the full project object with dynamically generated properties
     return {

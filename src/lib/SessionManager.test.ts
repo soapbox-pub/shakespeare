@@ -95,4 +95,26 @@ describe('SessionManager', () => {
       expect(messageWithReasoning.reasoning_content).toBe('Let me think about this step by step...');
     }
   });
+
+  it('should throw service errors instead of adding them to message history', async () => {
+    const projectId = 'test-project';
+    const tools = {};
+    const customTools = {};
+
+    // Load a session
+    await sessionManager.loadSession(projectId, tools, customTools);
+
+    // Add a user message to enable generation
+    await sessionManager.addMessage(projectId, { role: 'user', content: 'test message' });
+
+    // Attempt to start generation with invalid provider - should throw error instead of adding to messages
+    await expect(
+      sessionManager.startGeneration(projectId, 'invalid-provider/invalid-model')
+    ).rejects.toThrow('Provider "invalid-provider" not found');
+
+    // Verify that no error message was added to the conversation
+    const updatedSession = sessionManager.getSession(projectId);
+    expect(updatedSession?.messages).toHaveLength(1); // Only the user message
+    expect(updatedSession?.messages[0].role).toBe('user');
+  });
 });

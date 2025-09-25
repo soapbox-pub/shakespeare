@@ -118,6 +118,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   const [scrolledProjects] = useState(() => new Set<string>());
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [isStuck, setIsStuck] = useState(false);
+  const [aiError, setAIError] = useState<Error | null>(null);
 
   // Use external state if provided, otherwise default to false
   const isBuildLoading = externalIsBuildLoading || false;
@@ -204,6 +205,11 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     updateMetadata(title, description);
   }, [updateMetadata]);
 
+  // Handle AI errors from the SessionManager
+  const onAIError = useCallback((error: Error) => {
+    setAIError(error);
+  }, []);
+
   const {
     messages,
     streamingMessage,
@@ -219,6 +225,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     tools,
     customTools,
     onUpdateMetadata,
+    onAIError,
   });
 
   // Use external loading state if provided, otherwise use internal state
@@ -272,14 +279,71 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   const aiModelAlert = useAIModelErrorAlert(messages, _onNewChat, openModelSelector);
   const consoleAlert = useConsoleErrorAlert(messages, isBuildLoading, internalIsLoading);
 
+  // Create AI error alert object
+  const aiErrorAlert = useMemo(() => {
+    if (!aiError) {
+      return { hasError: false, errorMessage: '', dismiss: () => {}, action: undefined };
+    }
+
+    let errorMessage = 'Sorry, I encountered an unexpected error. Please try again.';
+    let action: { label: string; onClick: () => void } | undefined;
+
+    const errorMsg = aiError.message || '';
+
+    if (aiError.name === 'TypeError' && errorMsg.includes('fetch')) {
+      errorMessage = 'Network error: Unable to connect to AI service. Please check your internet connection and AI settings.';
+      action = {
+        label: 'Check AI settings',
+        onClick: () => {
+          // Navigate to AI settings
+          window.location.href = '/settings/ai';
+        }
+      };
+    } else if (errorMsg.includes('API key')) {
+      errorMessage = 'Authentication error: Please check your API key in AI settings.';
+      action = {
+        label: 'Check API key',
+        onClick: () => {
+          // Navigate to AI settings
+          window.location.href = '/settings/ai';
+        }
+      };
+    } else if (errorMsg.includes('rate limit')) {
+      errorMessage = 'Rate limit exceeded. Please wait a moment before trying again.';
+    } else if (errorMsg.includes('insufficient_quota')) {
+      errorMessage = 'Quota exceeded: Your API key has reached its usage limit. Please check your billing or try a different provider.';
+      action = {
+        label: 'Check AI settings',
+        onClick: () => {
+          window.location.href = '/settings/ai';
+        }
+      };
+    } else if (errorMsg.includes('model_not_found') || errorMsg.includes('does not exist')) {
+      errorMessage = 'Model not found: The selected AI model is not available. Please choose a different model.';
+      action = {
+        label: 'Choose model',
+        onClick: openModelSelector
+      };
+    } else if (errorMsg) {
+      errorMessage = `AI service error: ${errorMsg}`;
+    }
+
+    return {
+      hasError: true,
+      errorMessage,
+      dismiss: () => setAIError(null),
+      action
+    };
+  }, [aiError, openModelSelector]);
+
   // Scroll to bottom when alerts appear
   useEffect(() => {
-    if (aiModelAlert.hasError || consoleAlert.hasError) {
+    if (aiModelAlert.hasError || consoleAlert.hasError || aiErrorAlert.hasError) {
       setTimeout(() => {
         scrollToBottom();
       }, 50);
     }
-  }, [aiModelAlert.hasError, consoleAlert.hasError, scrollToBottom]);
+  }, [aiModelAlert.hasError, consoleAlert.hasError, aiErrorAlert.hasError, scrollToBottom]);
 
   // Check for autostart parameter and trigger AI generation
   useEffect(() => {
@@ -467,14 +531,9 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     // Add model to recently used when sending a message
     addRecentlyUsedModel(modelToUse);
 
-    try {
-      // Send as text parts if we have multiple parts, otherwise send as string for simplicity
-      const messageContent = contentParts.length === 1 ? contentParts[0].text : contentParts;
-      await sendMessage(messageContent, modelToUse);
-    } catch (error) {
-      console.error('AI chat error:', error);
-      // Error handling is done in the useAIChat hook and SessionManager
-    }
+    // Send as text parts if we have multiple parts, otherwise send as string for simplicity
+    const messageContent = contentParts.length === 1 ? contentParts[0].text : contentParts;
+    await sendMessage(messageContent, modelToUse);
   }, [addRecentlyUsedModel, fs, isConfigured, isLoading, providerModel, sendMessage]);
 
   const handleSend = useCallback(async () => {
@@ -657,6 +716,15 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
                 label: `Fix ${consoleAlert.errorCount === 1 ? 'error' : 'errors'}`,
                 onClick: () => suggestErrorFix(consoleAlert.errorSummary || '')
               }}
+            />
+          )}
+
+          {/* AI Error Alert */}
+          {aiErrorAlert.hasError && (
+            <ChatIntervention
+              message={aiErrorAlert.errorMessage}
+              onDismiss={aiErrorAlert.dismiss}
+              action={aiErrorAlert.action}
             />
           )}
 

@@ -141,6 +141,9 @@ export function ProjectSidebar({
         throw new Error('Bulk import not supported in sidebar');
       }
 
+      // Close dialog before navigation to prevent reopening
+      setIsZipDialogOpen(false);
+
       // Navigate to the imported project
       if (project) {
         navigate(`/project/${project.id}`);

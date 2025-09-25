@@ -302,12 +302,10 @@ export function ProjectImportDialog({
         setImportProgress(100);
       }
 
-      // Close dialog after a short delay
-      setTimeout(() => {
-        setIsOpen(false);
-        handleFileRemove();
-        setImportProgress(0);
-      }, 1000);
+      // Close dialog and reset state immediately
+      setIsOpen(false);
+      handleFileRemove();
+      setImportProgress(0);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to import projects');
       setImportProgress(0);

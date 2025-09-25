@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { useFS } from '@/hooks/useFS';
-import { useProjectConsoleMessages, addProjectConsoleMessage } from '@/hooks/useProjectConsoleMessages';
+import { addConsoleMessage, getConsoleMessages } from '@/lib/consoleMessages';
 import { useBuildProject } from '@/hooks/useBuildProject';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
@@ -93,7 +93,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
   const { fs } = useFS();
   const projectsManager = useProjectsManager();
 
-  const { messages: consoleMessages } = useProjectConsoleMessages(projectId);
+  const [consoleMessages, setConsoleMessages] = useState<ConsoleMessage[]>([]);
   const { mutate: buildProject, isPending: isBuildLoading } = useBuildProject(projectId);
 
   const [searchParams, setSearchParams] = useSearchParams();
@@ -118,6 +118,11 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
       setSearchParams(newSearchParams, { replace: true });
     }
   }, [searchParams, setSearchParams]);
+
+  // Load console messages when project changes
+  useEffect(() => {
+    setConsoleMessages(getConsoleMessages());
+  }, []);
 
   // Build automatically if "build" parameter was present
   useEffect(() => {
@@ -266,11 +271,12 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
     }
 
     // Add to project-specific console messages
-    addProjectConsoleMessage(projectId, normalizedLevel, params.message);
+    addConsoleMessage(normalizedLevel, params.message);
+    setConsoleMessages(getConsoleMessages());
 
     // Log to parent console for debugging with appropriate level
     console[normalizedLevel](`[IFRAME ${params.level.toUpperCase()}] ${params.message}`);
-  }, [projectId]);
+  }, []);
 
   const handleFetch = useCallback(async (request: JSONRPCRequest) => {
     const { params, id } = request;

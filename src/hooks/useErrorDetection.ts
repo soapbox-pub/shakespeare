@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo } from 'react';
 import type { AIMessage } from '@/lib/SessionManager';
-import { useProjectConsoleMessages } from './useProjectConsoleMessages';
+import { getConsoleMessages } from '@/lib/consoleMessages';
 
 export interface ConsoleErrorAlert {
 	hasError: boolean;
@@ -15,12 +15,11 @@ export const useConsoleErrorAlert = (
 	isBuilding?: boolean,
 	isLoading?: boolean
 ): ConsoleErrorAlert => {
-	const { messages } = useProjectConsoleMessages(projectId || null);
 	const [dismissedErrorSummary, setDismissedErrorSummary] = useState<string>('');
 
 	const { hasError, errorSummary, errorCount } = useMemo(() => {
 		// Don't show alerts while building or AI is working
-		if (isBuilding || isLoading) {
+		if (isBuilding || isLoading || !projectId) {
 			return { hasError: false, errorSummary: null, errorCount: 0 };
 		}
 
@@ -37,6 +36,7 @@ export const useConsoleErrorAlert = (
 
 		// Get recent errors (last 10 seconds worth to catch errors from recent AI actions)
 		const recentTimeThreshold = Date.now() - (10 * 1000); // 10 seconds ago
+		const messages = getConsoleMessages();
 		const recentErrors = messages.filter(msg =>
 			msg.level === 'error' &&
 			msg.timestamp && msg.timestamp > recentTimeThreshold
@@ -54,7 +54,7 @@ export const useConsoleErrorAlert = (
 			errorSummary: summary,
 			errorCount: recentErrors.length
 		};
-	}, [messages, dismissedErrorSummary, aiMessages, isBuilding, isLoading]);
+	}, [projectId, dismissedErrorSummary, aiMessages, isBuilding, isLoading]);
 
 	const dismiss = useCallback(() => {
 		if (errorSummary) {

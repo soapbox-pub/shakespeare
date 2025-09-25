@@ -18,7 +18,7 @@ import { GitStatusIndicator } from '@/components/GitStatusIndicator';
 import { StarButton } from '@/components/StarButton';
 import { useBuildProject } from '@/hooks/useBuildProject';
 import { useIsProjectPreviewable } from '@/hooks/useIsProjectPreviewable';
-import { useProjectConsoleMessages } from '@/hooks/useProjectConsoleMessages';
+import { clearConsoleMessages } from '@/lib/consoleMessages';
 
 export function ProjectView() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -29,7 +29,7 @@ export function ProjectView() {
   const [mobileView, setMobileView] = useState<'chat' | 'preview' | 'code'>('chat');
   const [isAILoading, setIsAILoading] = useState(false);
   const [isProjectDetailsOpen, setIsProjectDetailsOpen] = useState(false);
-  const { clearMessages } = useProjectConsoleMessages(projectId || null);
+
   const projectsManager = useProjectsManager();
   const chatPaneRef = useRef<ChatPaneRef>(null);
   const navigate = useNavigate();
@@ -47,13 +47,13 @@ export function ProjectView() {
       const projectData = await projectsManager.getProject(projectId);
       setProject(projectData);
       // Clear console messages when switching projects
-      clearMessages();
+      clearConsoleMessages();
     } catch (error) {
       console.error('Failed to load project:', error);
     } finally {
       setIsLoading(false);
     }
-  }, [projectId, projectsManager, clearMessages]);
+  }, [projectId, projectsManager]);
 
   useEffect(() => {
     loadProject();
@@ -83,10 +83,10 @@ export function ProjectView() {
   useEffect(() => {
     return () => {
       if (projectId) {
-        clearMessages();
+        clearConsoleMessages();
       }
     };
-  }, [projectId, clearMessages]);
+  }, [projectId]);
 
   const handleNewChat = () => {
     // Reset to chat view on mobile when starting new chat

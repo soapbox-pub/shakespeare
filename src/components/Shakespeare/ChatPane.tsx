@@ -34,13 +34,15 @@ import { NostrReadNipsIndexTool } from '@/lib/tools/NostrReadNipsIndexTool';
 import { NostrGenerateKindTool } from '@/lib/tools/NostrGenerateKindTool';
 import { ShellTool } from '@/lib/tools/ShellTool';
 import { TypecheckTool } from '@/lib/tools/TypecheckTool';
-import { ReadConsoleMessagesTool } from '@/lib/tools/ReadConsoleMessagesTool';
+
 import { toolToOpenAI } from '@/lib/tools/openai-adapter';
 import { Tool } from '@/lib/tools/Tool';
 import OpenAI from 'openai';
+import { ReadConsoleMessagesTool } from '@/lib/tools/ReadConsoleMessagesTool';
 import { saveFileToTmp } from '@/lib/fileUtils';
 import { useGit } from '@/hooks/useGit';
 import { Quilly } from '@/components/Quilly';
+import { getConsoleMessages } from '@/lib/consoleMessages';
 
 // Clean interfaces now handled by proper hooks
 
@@ -104,13 +106,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   const { user } = useCurrentUser();
   const { models } = useProviderModels();
 
-  // Use ref to maintain stable reference to console messages for tools
-  const consoleMessagesRef = useRef<ConsoleMessage[]>([]);
 
-  // Update ref when console messages change
-  useEffect(() => {
-    consoleMessagesRef.current = consoleMessages;
-  }, [consoleMessages]);
 
   // Initialize AI chat with tools
   const cwd = `/projects/${projectId}`;
@@ -132,7 +128,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
       nostr_read_nips_index: new NostrReadNipsIndexTool(),
       nostr_generate_kind: new NostrGenerateKindTool(),
       shell: new ShellTool(fs, cwd, git),
-      read_console_messages: new ReadConsoleMessagesTool(() => consoleMessagesRef.current),
+      read_console_messages: new ReadConsoleMessagesTool(getConsoleMessages),
     };
 
     // Add deploy tool only if user is logged in

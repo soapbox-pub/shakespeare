@@ -10,6 +10,12 @@ import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/useToast';
 import { useFS } from '@/hooks/useFS';
 import { useIsMobile } from '@/hooks/useIsMobile';
+import {
+  isPersistentStorageSupported,
+  isPersistentStorageGranted,
+  requestPersistentStorage,
+  getStorageInfo
+} from '@/lib/persistentStorage';
 import JSZip from 'jszip';
 
 interface StorageUsageDetails {
@@ -52,28 +58,24 @@ export function DataSettings() {
     const loadStorageInfo = async () => {
       try {
         // Check if StorageManager API is available
-        if (!('storage' in navigator)) {
+        if (!isPersistentStorageSupported()) {
           setStorageError('StorageManager API is not available in this browser');
           return;
         }
 
         // Get storage estimate
-        const estimate = await navigator.storage.estimate();
-
-        // Extract usage details safely
-        const usageDetails: StorageUsageDetails | undefined = (estimate as StorageEstimate & { usageDetails?: StorageUsageDetails }).usageDetails;
-
-        setStorageInfo({
-          quota: estimate.quota || 0,
-          usage: estimate.usage || 0,
-          usageDetails,
-        });
+        const info = await getStorageInfo();
+        if (info) {
+          setStorageInfo({
+            quota: info.quota,
+            usage: info.usage,
+            usageDetails: info.usageDetails as StorageUsageDetails,
+          });
+        }
 
         // Check if storage is persistent
-        if ('persist' in navigator.storage) {
-          const persistent = await navigator.storage.persisted();
-          setIsPersistent(persistent);
-        }
+        const persistent = await isPersistentStorageGranted();
+        setIsPersistent(persistent);
       } catch (error) {
         console.error('Failed to get storage information:', error);
         setStorageError(error instanceof Error ? error.message : 'Failed to get storage information');
@@ -167,7 +169,7 @@ export function DataSettings() {
     setIsRequestingPersistent(true);
     try {
       // Check if persist method is available
-      if (!('storage' in navigator) || !('persist' in navigator.storage)) {
+      if (!isPersistentStorageSupported()) {
         toast({
           title: t('persistentStorageNotSupported'),
           description: t('persistentStorageNotSupportedDescription'),
@@ -177,7 +179,7 @@ export function DataSettings() {
       }
 
       // Check if already persistent
-      const alreadyPersistent = await navigator.storage.persisted();
+      const alreadyPersistent = await isPersistentStorageGranted();
       if (alreadyPersistent) {
         setIsPersistent(true);
         toast({
@@ -188,7 +190,7 @@ export function DataSettings() {
       }
 
       // Request persistent storage
-      const granted = await navigator.storage.persist();
+      const granted = await requestPersistentStorage();
 
       if (granted) {
         setIsPersistent(true);

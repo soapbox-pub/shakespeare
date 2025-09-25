@@ -7,20 +7,22 @@ export interface ReadConsoleMessagesParams {
 }
 
 export class ReadConsoleMessagesTool implements Tool<ReadConsoleMessagesParams> {
-  private consoleMessages: ConsoleMessage[];
+  private getConsoleMessages: () => ConsoleMessage[];
 
-  constructor(consoleMessages: ConsoleMessage[]) {
-    this.consoleMessages = consoleMessages;
+  constructor(getConsoleMessages: () => ConsoleMessage[]) {
+    this.getConsoleMessages = getConsoleMessages;
   }
 
   async execute(params: ReadConsoleMessagesParams): Promise<string> {
     const { filter = 'all', limit } = params;
 
-    let filteredMessages = this.consoleMessages;
+    // Get fresh console messages at execution time
+    const consoleMessages = this.getConsoleMessages();
+    let filteredMessages = consoleMessages;
 
     // Apply filter if specified
     if (filter !== 'all') {
-      filteredMessages = this.consoleMessages.filter(msg => msg.level === filter);
+      filteredMessages = consoleMessages.filter(msg => msg.level === filter);
     }
 
     // Apply limit if specified

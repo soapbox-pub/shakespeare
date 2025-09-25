@@ -43,6 +43,7 @@ import { useGit } from '@/hooks/useGit';
 import { useConsoleErrorAlert, useAIModelErrorAlert } from '@/hooks/useErrorDetection';
 import { useProjectConsoleMessages } from '@/hooks/useProjectConsoleMessages';
 import { QuillySVG } from '@/components/ui/QuillySVG';
+import type { ConsoleMessage } from '@/types/console';
 
 function ChatIntervention({
   message,
@@ -143,6 +144,14 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   const { models } = useProviderModels();
   const { messages: consoleMessages } = useProjectConsoleMessages(projectId);
 
+  // Use ref to maintain stable reference to console messages for tools
+  const consoleMessagesRef = useRef<ConsoleMessage[]>([]);
+
+  // Update ref when console messages change
+  useEffect(() => {
+    consoleMessagesRef.current = consoleMessages;
+  }, [consoleMessages]);
+
   // Initialize AI chat with tools
   const cwd = `/projects/${projectId}`;
   const customTools = useMemo(() => {
@@ -163,7 +172,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
       nostr_read_nips_index: new NostrReadNipsIndexTool(),
       nostr_generate_kind: new NostrGenerateKindTool(),
       shell: new ShellTool(fs, cwd, git),
-      read_console_messages: new ReadConsoleMessagesTool(consoleMessages || []),
+      read_console_messages: new ReadConsoleMessagesTool(() => consoleMessagesRef.current),
     };
 
     // Add deploy tool only if user is logged in
@@ -175,7 +184,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     }
 
     return baseTools;
-  }, [fs, git, cwd, user, projectId, consoleMessages]);
+  }, [fs, git, cwd, user, projectId]);
 
   // Convert tools to OpenAI format
   const tools = useMemo(() => {

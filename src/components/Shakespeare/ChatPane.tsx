@@ -34,11 +34,10 @@ import { NostrReadNipsIndexTool } from '@/lib/tools/NostrReadNipsIndexTool';
 import { NostrGenerateKindTool } from '@/lib/tools/NostrGenerateKindTool';
 import { ShellTool } from '@/lib/tools/ShellTool';
 import { TypecheckTool } from '@/lib/tools/TypecheckTool';
-
+import { ReadConsoleMessagesTool } from '@/lib/tools/ReadConsoleMessagesTool';
 import { toolToOpenAI } from '@/lib/tools/openai-adapter';
 import { Tool } from '@/lib/tools/Tool';
 import OpenAI from 'openai';
-import { ReadConsoleMessagesTool } from '@/lib/tools/ReadConsoleMessagesTool';
 import { saveFileToTmp } from '@/lib/fileUtils';
 import { useGit } from '@/hooks/useGit';
 import { Quilly } from '@/components/Quilly';
@@ -104,8 +103,6 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   const { git } = useGit();
   const { user } = useCurrentUser();
   const { models } = useProviderModels();
-
-
 
   // Initialize AI chat with tools
   const cwd = `/projects/${projectId}`;

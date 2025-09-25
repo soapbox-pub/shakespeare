@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { useFS } from '@/hooks/useFS';
-import { addConsoleMessage, getConsoleMessages } from '@/lib/tools/ReadConsoleMessagesTool';
+import { addConsoleMessage, getConsoleMessages, type ConsoleMessage } from '@/lib/tools/ReadConsoleMessagesTool';
 import { useBuildProject } from '@/hooks/useBuildProject';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
@@ -24,7 +24,6 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import type { ConsoleMessage } from '@/types/console';
 
 import { FileTree } from './FileTree';
 import { FileEditor } from './FileEditor';
@@ -73,8 +72,6 @@ interface JSONRPCResponse {
   id: number;
 }
 
-
-
 export function PreviewPane({ projectId, activeTab, onToggleView, projectName, onFirstInteraction, isPreviewable = true }: PreviewPaneProps) {
   const { t } = useTranslation();
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
@@ -88,12 +85,10 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
   const [historyIndex, setHistoryIndex] = useState(0);
 
   const [deployDialogOpen, setDeployDialogOpen] = useState(false);
-
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const { fs } = useFS();
   const projectsManager = useProjectsManager();
 
-  const [consoleMessages, setConsoleMessages] = useState<ConsoleMessage[]>([]);
   const { mutate: buildProject, isPending: isBuildLoading } = useBuildProject(projectId);
 
   const [searchParams, setSearchParams] = useSearchParams();
@@ -119,10 +114,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
     }
   }, [searchParams, setSearchParams]);
 
-  // Load console messages when project changes
-  useEffect(() => {
-    setConsoleMessages(getConsoleMessages());
-  }, []);
+
 
   // Build automatically if "build" parameter was present
   useEffect(() => {
@@ -226,9 +218,8 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
       normalizedLevel = params.level as ConsoleMessage['level'];
     }
 
-    // Add to project-specific console messages
+    // Add to console messages
     addConsoleMessage(normalizedLevel, params.message);
-    setConsoleMessages(getConsoleMessages());
 
     // Log to parent console for debugging with appropriate level
     console[normalizedLevel](`[IFRAME ${params.level.toUpperCase()}] ${params.message}`);
@@ -520,28 +511,19 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
 
   const ConsoleDropdown = () => {
     const [isOpen, setIsOpen] = useState(false);
-    const copiedMessageRef = useRef<number | null>(null);
-    const [_, setCopyUpdate] = useState(0);
+    const [copiedMessageId, setCopiedMessageId] = useState<number | null>(null);
+
     const copyMessageToClipboard = async (msg: ConsoleMessage) => {
       try {
         await navigator.clipboard.writeText(msg.message);
-        copiedMessageRef.current = msg.id;
-        setCopyUpdate(prev => prev + 1);
-
-        // Reset the copied state after 2 seconds
-        setTimeout(() => {
-          copiedMessageRef.current = null;
-          setCopyUpdate(prev => prev + 1);
-        }, 2000);
+        setCopiedMessageId(msg.id);
+        setTimeout(() => setCopiedMessageId(null), 2000);
       } catch (error) {
         console.error('Failed to copy message to clipboard:', error);
       }
     };
 
-    const closePanel = () => {
-      setIsOpen(false);
-    };
-
+    const consoleMessages = getConsoleMessages();
     const hasErrors = consoleMessages.some(msg => msg.level === 'error');
     const messageCount = consoleMessages.length;
 
@@ -602,7 +584,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
                       }}
                       className="h-3 w-3 p-0 opacity-0 group-hover:opacity-100 transition-all duration-200 absolute right-1 top-1 hover:bg-muted-foreground/10 text-muted-foreground hover:text-foreground bg-black/50 rounded"
                     >
-                      {copiedMessageRef.current === msg.id ? (
+                      {copiedMessageId === msg.id ? (
                         <Check className="h-2 w-2 text-green-400" />
                       ) : (
                         <Copy className="h-2 w-2" />
@@ -616,7 +598,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
 
           {/* Close button */}
           <button
-            onClick={closePanel}
+            onClick={() => setIsOpen(false)}
             className="absolute top-2 right-2 h-8 w-8 p-0 bg-gray-800/50 hover:bg-gray-700/70 rounded-md z-10 flex items-center justify-center border-0"
           >
             <X className="h-5 w-5 text-gray-400" />

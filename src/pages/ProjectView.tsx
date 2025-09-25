@@ -79,14 +79,7 @@ export function ProjectView() {
     }
   }, [isPreviewable, mobileView, activeTab]);
 
-  // Clear console messages when projectId changes or component unmounts
-  useEffect(() => {
-    return () => {
-      if (projectId) {
-        clearConsoleMessages();
-      }
-    };
-  }, [projectId]);
+
 
   const handleNewChat = () => {
     // Reset to chat view on mobile when starting new chat

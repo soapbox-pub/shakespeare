@@ -1,5 +1,11 @@
 import { Tool } from './Tool';
-import type { ConsoleMessage } from '@/types/console';
+
+export interface ConsoleMessage {
+  id: number;
+  level: 'log' | 'warn' | 'error' | 'info' | 'debug';
+  message: string;
+  timestamp?: number;
+}
 
 export interface ReadConsoleMessagesParams {
   filter?: 'error' | 'warn' | 'info' | 'debug' | 'log' | 'all';

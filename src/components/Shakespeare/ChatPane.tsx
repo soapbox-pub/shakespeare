@@ -8,7 +8,7 @@ import { CircularProgress } from '@/components/ui/circular-progress';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { FileAttachment } from '@/components/ui/file-attachment';
 import { OnboardingDialog } from '@/components/OnboardingDialog';
-import { Square, Loader2, ChevronDown, ArrowUp, X } from 'lucide-react';
+import { Square, Loader2, ChevronDown, ArrowUp } from 'lucide-react';
 import { useAISettings } from '@/hooks/useAISettings';
 import { useFS } from '@/hooks/useFS';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
@@ -39,58 +39,13 @@ import { Tool } from '@/lib/tools/Tool';
 import OpenAI from 'openai';
 import { saveFileToTmp } from '@/lib/fileUtils';
 import { useGit } from '@/hooks/useGit';
-import { useConsoleErrorAlert, useAIModelErrorAlert } from '@/hooks/useErrorDetection';
-import { QuillySVG } from '@/components/ui/QuillySVG';
-
-
-function ChatIntervention({
-  message,
-  onDismiss,
-  action,
-}: {
-  message: string;
-  onDismiss: () => void;
-  action?: { label: string; onClick: () => void };
-}) {
-  return (
-    <div className="py-2 px-3 bg-primary/5 border border-primary/20 rounded-lg">
-      <div className="flex items-start gap-2">
-        <QuillySVG className="h-20 px-2 flex-shrink-0" fillColor="hsl(var(--primary))" />
-        <div className="flex-1 min-w-0">
-          <div className="space-y-1">
-            <h4 className="font-semibold text-primary">
-              Pardon the interruption
-            </h4>
-            <p className="text-sm text-muted-foreground">
-              {message}
-              {' '}
-              {action && (
-                <button className="text-primary underline" onClick={action.onClick}>
-                  {action.label}
-                </button>
-              )}
-            </p>
-          </div>
-        </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onDismiss}
-          className="h-5 w-5 p-0 hover:text-foreground/70 hover:bg-transparent flex-shrink-0"
-        >
-          <X className="h-4 w-4" />
-        </Button>
-      </div>
-    </div>
-  );
-}
+import { Quilly } from '@/components/Quilly';
 
 // Clean interfaces now handled by proper hooks
 
 interface ChatPaneProps {
   projectId: string;
-  onNewChat?: () => void;
-  onBuild?: () => void;
+  onNewChat: () => void;
   onFirstInteraction?: () => void;
   onLoadingChange?: (isLoading: boolean) => void;
   isLoading?: boolean;
@@ -103,8 +58,7 @@ export interface ChatPaneRef {
 
 export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   projectId,
-  onNewChat: _onNewChat,
-  onBuild: _onBuild,
+  onNewChat,
   onFirstInteraction,
   onLoadingChange,
   isLoading: externalIsLoading,
@@ -118,6 +72,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   const [scrolledProjects] = useState(() => new Set<string>());
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [isStuck, setIsStuck] = useState(false);
+  const [aiError, setAIError] = useState<Error | null>(null);
 
   // Use external state if provided, otherwise default to false
   const isBuildLoading = externalIsBuildLoading || false;
@@ -136,6 +91,11 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
       setProviderModel(settings.recentlyUsedModels[0]);
     }
   }, [providerModel, settings.recentlyUsedModels]);
+
+  // Reset error state when navigating between projects and switching models
+  useEffect(() => {
+    setAIError(null);
+  }, [projectId, providerModel]);
 
   const [searchParams, setSearchParams] = useSearchParams();
   const { fs } = useFS();
@@ -204,6 +164,11 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     updateMetadata(title, description);
   }, [updateMetadata]);
 
+  // Handle AI errors from the SessionManager
+  const onAIError = useCallback((error: Error) => {
+    setAIError(error);
+  }, []);
+
   const {
     messages,
     streamingMessage,
@@ -219,6 +184,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     tools,
     customTools,
     onUpdateMetadata,
+    onAIError,
   });
 
   // Use external loading state if provided, otherwise use internal state
@@ -267,19 +233,10 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     setIsModelSelectorOpen(true);
   }, []);
 
-  // Function to suggest error fix
-  // Clean alert hooks with proper interfaces
-  const aiModelAlert = useAIModelErrorAlert(messages, _onNewChat, openModelSelector);
-  const consoleAlert = useConsoleErrorAlert(messages, isBuildLoading, internalIsLoading);
-
-  // Scroll to bottom when alerts appear
+  // Scroll to bottom when AI error occurs
   useEffect(() => {
-    if (aiModelAlert.hasError || consoleAlert.hasError) {
-      setTimeout(() => {
-        scrollToBottom();
-      }, 50);
-    }
-  }, [aiModelAlert.hasError, consoleAlert.hasError, scrollToBottom]);
+    scrollToBottom();
+  }, [aiError, scrollToBottom]);
 
   // Check for autostart parameter and trigger AI generation
   useEffect(() => {
@@ -425,6 +382,8 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     // If configured but no model selected, don't proceed
     if (!providerModel.trim()) return;
 
+    setAIError(null);
+
     const modelToUse = providerModel.trim();
 
     // Build message content as text parts
@@ -467,14 +426,9 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     // Add model to recently used when sending a message
     addRecentlyUsedModel(modelToUse);
 
-    try {
-      // Send as text parts if we have multiple parts, otherwise send as string for simplicity
-      const messageContent = contentParts.length === 1 ? contentParts[0].text : contentParts;
-      await sendMessage(messageContent, modelToUse);
-    } catch (error) {
-      console.error('AI chat error:', error);
-      // Error handling is done in the useAIChat hook and SessionManager
-    }
+    // Send as text parts if we have multiple parts, otherwise send as string for simplicity
+    const messageContent = contentParts.length === 1 ? contentParts[0].text : contentParts;
+    await sendMessage(messageContent, modelToUse);
   }, [addRecentlyUsedModel, fs, isConfigured, isLoading, providerModel, sendMessage]);
 
   const handleSend = useCallback(async () => {
@@ -542,10 +496,6 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
       internalStartNewSession();
     }
   }), [internalStartNewSession]);
-
-  const suggestErrorFix = useCallback(async (errorMessage: string) => {
-    await send(errorMessage, attachedFiles);
-  }, [send, attachedFiles]);
 
   return (
     <div className="h-full flex flex-col relative">
@@ -639,27 +589,16 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
             </div>
           )}
 
-          {/* AI Model Alert */}
-          {aiModelAlert.hasError && (
-            <ChatIntervention
-              message={aiModelAlert.errorMessage || ''}
-              onDismiss={aiModelAlert.dismiss}
-              action={aiModelAlert.action}
+          {/* AI Error Alert */}
+          {aiError && (
+            <Quilly
+              error={aiError}
+              onDismiss={() => setAIError(null)}
+              onNewChat={onNewChat}
+              onOpenModelSelector={openModelSelector}
+              providerModel={providerModel}
             />
           )}
-
-          {/* Console Error Alert */}
-          {consoleAlert.hasError && (
-            <ChatIntervention
-              message={`Console ${consoleAlert.errorCount === 1 ? 'error' : 'errors'} detected in your app. Would you like me to help fix ${consoleAlert.errorCount === 1 ? 'it' : 'them'}?`}
-              onDismiss={consoleAlert.dismiss}
-              action={{
-                label: `Fix ${consoleAlert.errorCount === 1 ? 'error' : 'errors'}`,
-                onClick: () => suggestErrorFix(consoleAlert.errorSummary || '')
-              }}
-            />
-          )}
-
         </div>
       </div>
 

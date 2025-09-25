@@ -453,11 +453,16 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
     }
   }, [selectedFile, loadFileContent]);
 
-  // Reset selected file when projectId changes
+  // Reset selected file and navigation history when projectId changes
   useEffect(() => {
     setSelectedFile(null);
     setFileContent('');
     setMobileCodeView('explorer');
+
+    // Reset navigation history and state
+    setCurrentPath('/');
+    setNavigationHistory(['/']);
+    setHistoryIndex(0);
   }, [projectId]);
 
   useEffect(() => {

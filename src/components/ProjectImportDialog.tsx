@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
@@ -20,21 +20,30 @@ interface ProjectInfo {
   selected: boolean;
 }
 
-interface BulkProjectImportDialogProps {
-  onImport: (projects: { id: string; files: { [path: string]: Uint8Array } }[], overwrite: boolean) => Promise<void>;
+interface ProjectImportDialogProps {
+  mode?: 'single' | 'bulk';
+  onImport: (data: { file: File; projectId?: string } | { projects: { id: string; files: { [path: string]: Uint8Array } }[] }, overwrite: boolean) => Promise<void>;
   disabled?: boolean;
   className?: string;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 }
 
-export function BulkProjectImportDialog({ onImport, disabled = false, className, open, onOpenChange }: BulkProjectImportDialogProps) {
+export function ProjectImportDialog({
+  mode = 'single',
+  onImport,
+  disabled = false,
+  className,
+  open,
+  onOpenChange
+}: ProjectImportDialogProps) {
   // Use controlled state if props are provided, otherwise use internal state
   const [internalIsOpen, setInternalIsOpen] = useState(false);
   const isOpen = open !== undefined ? open : internalIsOpen;
   const setIsOpen = onOpenChange || setInternalIsOpen;
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [generatedId, setGeneratedId] = useState('');
   const [discoveredProjects, setDiscoveredProjects] = useState<ProjectInfo[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
@@ -47,12 +56,12 @@ export function BulkProjectImportDialog({ onImport, disabled = false, className,
   const { data: existingProjects = [] } = useProjects();
   const projectsManager = useProjectsManager();
 
+  // Analyze ZIP for bulk import
   const analyzeZipForProjects = useCallback(async (zip: JSZip): Promise<ProjectInfo[]> => {
     const projects: ProjectInfo[] = [];
     const projectPaths = new Set<string>();
 
     // Find all potential project directories
-    // Look for directories that contain package.json, index.html, or other project indicators
     for (const [path] of Object.entries(zip.files)) {
       const pathParts = path.split('/').filter(part => part !== '');
 
@@ -61,10 +70,9 @@ export function BulkProjectImportDialog({ onImport, disabled = false, className,
 
       // Check if this looks like a project indicator file
       if (isProjectIndicator(path)) {
-        // Determine the project directory path
         let projectPath: string;
 
-        // If the structure is projects/project-name/file, extract project-name
+        // If structure is projects/project-name/file, extract project-name
         if (pathParts[0] === 'projects' && pathParts.length >= 3) {
           projectPath = `projects/${pathParts[1]}`;
         } else {
@@ -83,7 +91,6 @@ export function BulkProjectImportDialog({ onImport, disabled = false, className,
       // Collect all files in this project directory
       for (const [path, zipEntry] of Object.entries(zip.files)) {
         if (path.startsWith(projectPath + '/') && !zipEntry.dir) {
-          // Remove the project path prefix to get relative file path
           const relativePath = path.substring(projectPath.length + 1);
           files.push(relativePath);
         }
@@ -94,7 +101,6 @@ export function BulkProjectImportDialog({ onImport, disabled = false, className,
       let name: string;
 
       if (projectPath.startsWith('projects/')) {
-        // Extract just the project name from projects/project-name
         const projectName = projectPath.substring('projects/'.length);
         id = projectName
           .toLowerCase()
@@ -102,7 +108,6 @@ export function BulkProjectImportDialog({ onImport, disabled = false, className,
           .replace(/^-+|-+$/g, '');
         name = projectName;
       } else {
-        // Use the full path as both ID and name
         id = projectPath
           .toLowerCase()
           .replace(/[^a-z0-9]+/g, '-')
@@ -129,6 +134,7 @@ export function BulkProjectImportDialog({ onImport, disabled = false, className,
     return projects;
   }, [existingProjects]);
 
+  // Handle file selection
   const handleFileSelect = useCallback(async (file: File) => {
     // Only accept zip files
     if (!file.name.toLowerCase().endsWith('.zip')) {
@@ -138,24 +144,38 @@ export function BulkProjectImportDialog({ onImport, disabled = false, className,
 
     setSelectedFile(file);
     setError(null);
-    setIsAnalyzing(true);
-    setDiscoveredProjects([]);
+    setGeneratedId('');
 
-    try {
-      // Read and analyze the ZIP file
-      const arrayBuffer = await file.arrayBuffer();
-      const zip = await JSZip.loadAsync(arrayBuffer);
-      setZipData(zip);
-
-      // Discover projects in the ZIP file
-      const projects = await analyzeZipForProjects(zip);
-      setDiscoveredProjects(projects);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to analyze ZIP file');
-    } finally {
-      setIsAnalyzing(false);
+    // Auto-generate ID from file name for single mode
+    if (mode === 'single') {
+      const baseName = file.name.replace(/\.zip$/i, '');
+      const id = baseName
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+      setGeneratedId(id);
     }
-  }, [analyzeZipForProjects]);
+
+    // For bulk mode, analyze the ZIP to discover projects
+    if (mode === 'bulk') {
+      setIsAnalyzing(true);
+      setDiscoveredProjects([]);
+
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const zip = await JSZip.loadAsync(arrayBuffer);
+        setZipData(zip);
+
+        const projects = await analyzeZipForProjects(zip);
+        setDiscoveredProjects(projects);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to analyze ZIP file');
+      } finally {
+        setIsAnalyzing(false);
+      }
+    }
+  }, [mode, analyzeZipForProjects]);
+
 
   const isProjectIndicator = (path: string): boolean => {
     const indicators = [
@@ -172,6 +192,18 @@ export function BulkProjectImportDialog({ onImport, disabled = false, className,
 
     return indicators.some(indicator => path.includes('/' + indicator));
   };
+
+  // Check for existing project when generated ID changes (single mode)
+  useEffect(() => {
+    if (mode === 'single' && generatedId && existingProjects.length > 0) {
+      const existing = existingProjects.find(project => project.id === generatedId);
+      if (existing) {
+        setError(`A project with ID "${generatedId}" already exists. You can choose to overwrite it.`);
+      } else {
+        setError(null);
+      }
+    }
+  }, [generatedId, existingProjects, mode]);
 
   // Drag and drop handlers
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -200,11 +232,13 @@ export function BulkProjectImportDialog({ onImport, disabled = false, className,
 
   const handleFileRemove = () => {
     setSelectedFile(null);
+    setGeneratedId('');
     setDiscoveredProjects([]);
     setZipData(null);
     setError(null);
   };
 
+  // Bulk import project selection handlers
   const handleProjectToggle = (projectId: string, checked: boolean) => {
     setDiscoveredProjects(prev =>
       prev.map(project =>
@@ -229,42 +263,49 @@ export function BulkProjectImportDialog({ onImport, disabled = false, className,
   const conflictingProjects = selectedProjects.filter(project => project.isConflict);
 
   const handleImport = async (overwrite = false) => {
-    if (!zipData || selectedProjects.length === 0) return;
+    if (!selectedFile) return;
 
     setIsImporting(true);
     setImportProgress(0);
     setError(null);
 
     try {
-      // Prepare project data for import using the ProjectsManager's extraction logic
-      const projectsToImport = await Promise.all(
-        selectedProjects.map(async (project) => {
-          // Extract files for this project using the unified extraction method
-          const files = await projectsManager.extractFilesFromZip(zipData, project.path);
+      if (mode === 'single') {
+        // Single project import
+        const progressInterval = setInterval(() => {
+          setImportProgress(prev => Math.min(prev + 10, 90));
+        }, 200);
 
-          return {
-            id: project.id,
-            files,
-          };
-        })
-      );
+        await onImport({ file: selectedFile, projectId: generatedId }, overwrite);
 
-      // Simulate progress for better UX
-      const progressInterval = setInterval(() => {
-        setImportProgress(prev => Math.min(prev + 5, 90));
-      }, 100);
+        clearInterval(progressInterval);
+        setImportProgress(100);
+      } else {
+        // Bulk project import
+        const projectsToImport = await Promise.all(
+          selectedProjects.map(async (project) => {
+            const files = await projectsManager.extractFilesFromZip(zipData!, project.path);
+            return {
+              id: project.id,
+              files,
+            };
+          })
+        );
 
-      await onImport(projectsToImport, overwrite);
+        const progressInterval = setInterval(() => {
+          setImportProgress(prev => Math.min(prev + 5, 90));
+        }, 100);
 
-      clearInterval(progressInterval);
-      setImportProgress(100);
+        await onImport({ projects: projectsToImport }, overwrite);
+
+        clearInterval(progressInterval);
+        setImportProgress(100);
+      }
 
       // Close dialog after a short delay
       setTimeout(() => {
         setIsOpen(false);
-        setSelectedFile(null);
-        setDiscoveredProjects([]);
-        setZipData(null);
+        handleFileRemove();
         setImportProgress(0);
       }, 1000);
     } catch (err) {
@@ -276,10 +317,21 @@ export function BulkProjectImportDialog({ onImport, disabled = false, className,
   };
 
   const handleImportWithOverwriteCheck = async () => {
-    if (conflictingProjects.length > 0) {
-      setShowOverwriteDialog(true);
+    if (mode === 'single') {
+      // For single mode, check if project exists
+      const existingProject = existingProjects.find(project => project.id === generatedId);
+      if (existingProject) {
+        setShowOverwriteDialog(true);
+      } else {
+        await handleImport(false);
+      }
     } else {
-      await handleImport(false);
+      // For bulk mode, check for conflicts
+      if (conflictingProjects.length > 0) {
+        setShowOverwriteDialog(true);
+      } else {
+        await handleImport(false);
+      }
     }
   };
 
@@ -291,16 +343,17 @@ export function BulkProjectImportDialog({ onImport, disabled = false, className,
   const handleClose = () => {
     if (!isImporting && !isAnalyzing) {
       setIsOpen(false);
-      setSelectedFile(null);
-      setDiscoveredProjects([]);
-      setZipData(null);
-      setError(null);
+      handleFileRemove();
       setImportProgress(0);
     }
   };
 
   // Only render DialogTrigger if this component is being used in uncontrolled mode
   const isControlled = open !== undefined && onOpenChange !== undefined;
+
+  const canImport = mode === 'single'
+    ? selectedFile && generatedId
+    : selectedProjects.length > 0;
 
   return (
     <>
@@ -313,19 +366,25 @@ export function BulkProjectImportDialog({ onImport, disabled = false, className,
               className={cn("gap-2", className)}
             >
               <FileArchive className="h-4 w-4" />
-              Import Projects
+              {mode === 'single' ? 'Import ZIP' : 'Import Projects'}
             </Button>
           </DialogTrigger>
         )}
 
-        <DialogContent className="sm:max-w-xl h-auto max-h-[90vh] flex flex-col">
+        <DialogContent className={cn(
+          "h-auto max-h-[90vh] flex flex-col",
+          mode === 'single' ? "sm:max-w-md" : "sm:max-w-xl"
+        )}>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Upload className="h-5 w-5" />
-              Import Multiple Projects
+              {mode === 'single' ? 'Import Project from ZIP' : 'Import Multiple Projects'}
             </DialogTitle>
             <DialogDescription>
-              Upload a ZIP file containing multiple projects to import them into Shakespeare.
+              {mode === 'single'
+                ? 'Upload a ZIP file containing your project source code to import it into Shakespeare.'
+                : 'Upload a ZIP file containing multiple projects to import them into Shakespeare.'
+              }
             </DialogDescription>
           </DialogHeader>
 
@@ -392,7 +451,10 @@ export function BulkProjectImportDialog({ onImport, disabled = false, className,
                             Drop your ZIP file here or click to browse
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            Supports ZIP files containing exported Shakespeare projects
+                            {mode === 'single'
+                              ? 'Supports ZIP files up to 50MB'
+                              : 'Supports ZIP files containing exported Shakespeare projects'
+                            }
                           </p>
                         </div>
                       )}
@@ -408,8 +470,8 @@ export function BulkProjectImportDialog({ onImport, disabled = false, className,
                   </div>
                 )}
 
-                {/* Project List */}
-                {discoveredProjects.length > 0 && (
+                {/* Project List (Bulk Mode Only) */}
+                {mode === 'bulk' && discoveredProjects.length > 0 && (
                   <div className="space-y-3 flex-1 flex flex-col min-h-0">
                     <div className="flex items-center justify-between flex-shrink-0">
                       <h3 className="text-sm font-medium">
@@ -440,50 +502,47 @@ export function BulkProjectImportDialog({ onImport, disabled = false, className,
                     <div className="border rounded-lg overflow-hidden">
                       <ScrollArea className="h-64">
                         <div className="p-2 space-y-1">
-                        {discoveredProjects.map((project) => (
-                          <div
-                            key={project.id}
-                            className={cn(
-                              "flex items-start space-x-3 p-2 rounded-lg border transition-colors",
-                              project.selected ? "bg-primary/5 border-primary/20" : "bg-background",
-                              project.isConflict && "border-amber-200 bg-amber-50/50 dark:border-amber-800 dark:bg-amber-950/20"
-                            )}
-                          >
-                            <Checkbox
-                              id={`project-${project.id}`}
-                              checked={project.selected}
-                              onCheckedChange={(checked) => handleProjectToggle(project.id, checked as boolean)}
-                              className="mt-1"
-                            />
-                            <div className="flex-1 min-w-0 space-y-1">
-                              <div className="flex items-center gap-2">
-                                <FolderOpen className="h-4 w-4 text-primary flex-shrink-0" />
-                                <span className="font-medium text-sm truncate">{project.name}</span>
-                                {/* Show conflict indicator inline on larger screens */}
+                          {discoveredProjects.map((project) => (
+                            <div
+                              key={project.id}
+                              className={cn(
+                                "flex items-start space-x-3 p-2 rounded-lg border transition-colors",
+                                project.selected ? "bg-primary/5 border-primary/20" : "bg-background",
+                                project.isConflict && "border-amber-200 bg-amber-50/50 dark:border-amber-800 dark:bg-amber-950/20"
+                              )}
+                            >
+                              <Checkbox
+                                id={`project-${project.id}`}
+                                checked={project.selected}
+                                onCheckedChange={(checked) => handleProjectToggle(project.id, checked as boolean)}
+                                className="mt-1"
+                              />
+                              <div className="flex-1 min-w-0 space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <FolderOpen className="h-4 w-4 text-primary flex-shrink-0" />
+                                  <span className="font-medium text-sm truncate">{project.name}</span>
+                                  {project.isConflict && (
+                                    <div className="hidden sm:flex items-center gap-1 text-amber-600 flex-shrink-0">
+                                      <AlertTriangle className="h-3 w-3" />
+                                      <span className="text-xs">Conflict</span>
+                                    </div>
+                                  )}
+                                </div>
+
                                 {project.isConflict && (
-                                  <div className="hidden sm:flex items-center gap-1 text-amber-600 flex-shrink-0">
+                                  <div className="sm:hidden flex items-center gap-1 text-amber-600">
                                     <AlertTriangle className="h-3 w-3" />
-                                    <span className="text-xs">Conflict</span>
+                                    <span className="text-xs font-medium">Conflict - Will overwrite existing project</span>
                                   </div>
                                 )}
+
+                                <p className="text-xs text-muted-foreground">
+                                  {project.files.length} file{project.files.length !== 1 ? 's' : ''}
+                                  {project.isConflict && <span className="hidden sm:inline"> • Will overwrite existing project</span>}
+                                </p>
                               </div>
-
-                              {/* Mobile conflict indicator on its own line */}
-                              {project.isConflict && (
-                                <div className="sm:hidden flex items-center gap-1 text-amber-600">
-                                  <AlertTriangle className="h-3 w-3" />
-                                  <span className="text-xs font-medium">Conflict - Will overwrite existing project</span>
-                                </div>
-                              )}
-
-                              <p className="text-xs text-muted-foreground">
-                                {project.files.length} file{project.files.length !== 1 ? 's' : ''}
-                                {/* Only show overwrite text on desktop when conflict exists */}
-                                {project.isConflict && <span className="hidden sm:inline"> • Will overwrite existing project</span>}
-                              </p>
                             </div>
-                          </div>
-                        ))}
+                          ))}
                         </div>
                       </ScrollArea>
                     </div>
@@ -491,25 +550,32 @@ export function BulkProjectImportDialog({ onImport, disabled = false, className,
                 )}
 
                 {/* Import Button */}
-                {discoveredProjects.length > 0 && (
+                {selectedFile && (mode === 'single' || discoveredProjects.length > 0) && (
                   <div className="flex justify-end gap-2 pt-3 border-t flex-shrink-0">
                     <Button variant="outline" onClick={handleClose} disabled={isImporting}>
                       Cancel
                     </Button>
                     <Button
                       onClick={handleImportWithOverwriteCheck}
-                      disabled={selectedProjects.length === 0 || isImporting}
-                      className={conflictingProjects.length > 0 ? "bg-amber-600 hover:bg-amber-700" : ""}
+                      disabled={!canImport || isImporting}
+                      className={mode === 'single' && error ? "bg-amber-600 hover:bg-amber-700" : conflictingProjects.length > 0 ? "bg-amber-600 hover:bg-amber-700" : ""}
                     >
-                      {conflictingProjects.length > 0 ? (
-                        <>
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Import & Overwrite ({selectedProjects.length})
-                        </>
+                      {mode === 'single' ? (
+                        error ? (
+                          <>
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Overwrite Project
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="mr-2 h-4 w-4" />
+                            Import Project
+                          </>
+                        )
                       ) : (
                         <>
-                          <Upload className="mr-2 h-4 w-4" />
-                          Import Projects ({selectedProjects.length})
+                          {conflictingProjects.length > 0 ? <Trash2 className="mr-2 h-4 w-4" /> : <Upload className="mr-2 h-4 w-4" />}
+                          {conflictingProjects.length > 0 ? 'Import & Overwrite' : 'Import Projects'} ({selectedProjects.length})
                         </>
                       )}
                     </Button>
@@ -518,8 +584,8 @@ export function BulkProjectImportDialog({ onImport, disabled = false, className,
               </>
             )}
 
-            {/* Analysis Progress */}
-            {isAnalyzing && (
+            {/* Analysis Progress (Bulk Mode Only) */}
+            {mode === 'bulk' && isAnalyzing && (
               <div className="space-y-2 py-6">
                 <div className="flex items-center gap-2 text-sm justify-center">
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
@@ -535,8 +601,8 @@ export function BulkProjectImportDialog({ onImport, disabled = false, className,
             {isImporting && (
               <div className="space-y-3 py-6">
                 <div className="flex items-center gap-2 text-sm justify-center">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-                  Importing {selectedProjects.length} project{selectedProjects.length !== 1 ? 's' : ''}...
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div                  >
+                  {mode === 'single' ? 'Importing project...' : `Importing ${selectedProjects.length} project${selectedProjects.length !== 1 ? 's' : ''}...`}
                 </div>
                 <Progress value={importProgress} className="w-full" />
                 <p className="text-xs text-muted-foreground text-center">
@@ -551,7 +617,7 @@ export function BulkProjectImportDialog({ onImport, disabled = false, className,
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
                 </svg>
-                Projects imported successfully!
+                {mode === 'single' ? 'Project imported successfully!' : 'Projects imported successfully!'}
               </div>
             )}
           </div>
@@ -564,26 +630,43 @@ export function BulkProjectImportDialog({ onImport, disabled = false, className,
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <AlertCircle className="h-5 w-5 text-amber-600" />
-              Overwrite Existing Projects
+              {mode === 'single' ? 'Overwrite Existing Project' : 'Overwrite Existing Projects'}
             </AlertDialogTitle>
             <AlertDialogDescription className="space-y-3">
-              <p>
-                You have selected <strong>{conflictingProjects.length}</strong> project{conflictingProjects.length !== 1 ? 's' : ''} that already exist:
-              </p>
-              <ul className="list-disc list-inside text-sm space-y-1 ml-2 max-h-32 overflow-y-auto">
-                {conflictingProjects.map((project) => (
-                  <li key={project.id}>
-                    <strong>{project.name}</strong> (ID: {project.id})
-                  </li>
-                ))}
-              </ul>
-              <p>Overwriting will:</p>
-              <ul className="list-disc list-inside text-sm space-y-1 ml-2">
-                <li><strong>Delete all existing files</strong> in these projects</li>
-                <li><strong>Replace them with files</strong> from the ZIP archive</li>
-                <li><strong>Preserve Git history</strong> if it exists</li>
-                <li><strong>Keep AI chat history</strong> and session data</li>
-              </ul>
+              {mode === 'single' ? (
+                <>
+                  <p>
+                    A project with ID "<strong>{generatedId}</strong>" already exists.
+                    Overwriting it will:
+                  </p>
+                  <ul className="list-disc list-inside text-sm space-y-1 ml-2">
+                    <li><strong>Delete all existing files</strong> in project</li>
+                    <li><strong>Replace them with files</strong> from the ZIP archive</li>
+                    <li><strong>Preserve Git history</strong> if it exists</li>
+                    <li><strong>Keep AI chat history</strong> and session data</li>
+                  </ul>
+                </>
+              ) : (
+                <>
+                  <p>
+                    You have selected <strong>{conflictingProjects.length}</strong> project{conflictingProjects.length !== 1 ? 's' : ''} that already exist:
+                  </p>
+                  <ul className="list-disc list-inside text-sm space-y-1 ml-2 max-h-32 overflow-y-auto">
+                    {conflictingProjects.map((project) => (
+                      <li key={project.id}>
+                        <strong>{project.name}</strong> (ID: {project.id})
+                      </li>
+                    ))}
+                  </ul>
+                  <p>Overwriting will:</p>
+                  <ul className="list-disc list-inside text-sm space-y-1 ml-2">
+                    <li><strong>Delete all existing files</strong> in these projects</li>
+                    <li><strong>Replace them with files</strong> from the ZIP archive</li>
+                    <li><strong>Preserve Git history</strong> if it exists</li>
+                    <li><strong>Keep AI chat history</strong> and session data</li>
+                  </ul>
+                </>
+              )}
               <p className="text-amber-600 font-medium">
                 This action cannot be undone. Are you sure you want to continue?
               </p>
@@ -595,7 +678,7 @@ export function BulkProjectImportDialog({ onImport, disabled = false, className,
               onClick={confirmOverwrite}
               className="bg-amber-600 hover:bg-amber-700"
             >
-              Yes, Overwrite Projects
+              Yes, {mode === 'single' ? 'Overwrite Project' : 'Overwrite Projects'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

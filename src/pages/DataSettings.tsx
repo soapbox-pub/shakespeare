@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/useToast';
 import { useFS } from '@/hooks/useFS';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
-import { BulkProjectImportDialog } from '@/components/BulkProjectImportDialog';
+import { ProjectImportDialog } from '@/components/ProjectImportDialog';
 import {
   isPersistentStorageSupported,
   isPersistentStorageGranted,
@@ -224,27 +224,32 @@ export function DataSettings() {
   };
 
   const handleBulkImport = async (
-    projects: { id: string; files: { [path: string]: Uint8Array } }[],
+    data: { file: File; projectId?: string } | { projects: { id: string; files: { [path: string]: Uint8Array } }[] },
     overwrite: boolean
   ) => {
     try {
       let successCount = 0;
       const errors: string[] = [];
 
-      for (const project of projects) {
-        try {
-          // Import the project directly using files (bypasses ZIP creation)
-          await projectsManager.importProjectFromFiles(
-            project.id,
-            project.files,
-            overwrite,
-            project.id // Use project ID as name
-          );
-          successCount++;
-        } catch (error) {
-          console.error(`Failed to import project ${project.id}:`, error);
-          errors.push(`${project.id}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      // Handle both single and bulk import data
+      if ('projects' in data) {
+        // Bulk import
+        for (const project of data.projects) {
+          try {
+            // Import the project directly using files (bypasses ZIP creation)
+            await projectsManager.importProject(
+              { files: project.files },
+              { projectId: project.id, overwrite, projectName: project.id }
+            );
+            successCount++;
+          } catch (error) {
+            console.error(`Failed to import project ${project.id}:`, error);
+            errors.push(`${project.id}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          }
         }
+      } else {
+        // Single import (shouldn't happen in bulk mode, but handle gracefully)
+        throw new Error('Single import not supported in bulk import mode');
       }
 
       // Show success/error toast and refresh project list
@@ -545,7 +550,8 @@ export function DataSettings() {
       </div>
 
       {/* Bulk Project Import Dialog */}
-      <BulkProjectImportDialog
+      <ProjectImportDialog
+        mode="bulk"
         onImport={handleBulkImport}
         open={isBulkImportOpen}
         onOpenChange={setIsBulkImportOpen}

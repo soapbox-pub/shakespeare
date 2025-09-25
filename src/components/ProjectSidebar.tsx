@@ -9,7 +9,7 @@ import { useProjects } from '@/hooks/useProjects';
 import { useProjectSessionStatus } from '@/hooks/useProjectSessionStatus';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useIsMobile } from '@/hooks/useIsMobile';
-import { ZipImportDialog } from '@/components/ZipImportDialog';
+import { ProjectImportDialog } from '@/components/ProjectImportDialog';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { useToast } from '@/hooks/useToast';
 import type { Project } from '@/lib/ProjectsManager';
@@ -123,19 +123,28 @@ export function ProjectSidebar({
     }
   };
 
-  const handleImportZip = async (file: File, overwrite = false, projectId?: string) => {
+  const handleImportZip = async (data: { file: File; projectId?: string } | { projects: { id: string; files: { [path: string]: Uint8Array } }[] }, overwrite: boolean) => {
     try {
-      // Import project from zip file
-      const project = await projectsManager.importProjectFromZip(file, projectId, overwrite);
+      let project;
 
-      // Show success toast
-      toast({
-        title: overwrite ? "Project Overwritten Successfully" : "Project Imported Successfully",
-        description: `"${project.name}" has been ${overwrite ? 'overwritten' : 'imported'} and is ready to use.`,
-      });
+      if ('file' in data) {
+        // Single project import
+        project = await projectsManager.importProject(data.file, { projectId: data.projectId, overwrite });
+
+        // Show success toast
+        toast({
+          title: overwrite ? "Project Overwritten Successfully" : "Project Imported Successfully",
+          description: `"${project.name}" has been ${overwrite ? 'overwritten' : 'imported'} and is ready to use.`,
+        });
+      } else {
+        // Bulk import - this shouldn't happen in sidebar mode, but handle gracefully
+        throw new Error('Bulk import not supported in sidebar');
+      }
 
       // Navigate to the imported project
-      navigate(`/project/${project.id}`);
+      if (project) {
+        navigate(`/project/${project.id}`);
+      }
     } catch (error) {
       console.error('Failed to import project:', error);
       throw error; // Re-throw to let the dialog handle the error display
@@ -282,7 +291,8 @@ export function ProjectSidebar({
       </div>
 
       {/* ZIP Import Dialog */}
-      <ZipImportDialog
+      <ProjectImportDialog
+        mode="single"
         onImport={handleImportZip}
         open={isZipDialogOpen}
         onOpenChange={setIsZipDialogOpen}

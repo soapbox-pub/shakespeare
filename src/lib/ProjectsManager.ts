@@ -156,6 +156,149 @@ export class ProjectsManager {
     }
   }
 
+  /**
+   * Unified project import method that handles both ZIP files and direct file objects
+   */
+  async importProject(
+    source: File | { files: { [path: string]: Uint8Array } },
+    options: {
+      projectId?: string;
+      overwrite?: boolean;
+      projectName?: string;
+    } = {}
+  ): Promise<Project> {
+    const { projectId, overwrite = false, projectName } = options;
+
+    let finalProjectId: string;
+    let finalProjectName: string;
+    let files: { [path: string]: Uint8Array };
+
+    if (source instanceof File) {
+      // Handle ZIP file import
+      finalProjectId = projectId || await this.generateUniqueProjectId(source.name.replace(/\.zip$/i, ''));
+      finalProjectName = projectName || this.formatProjectName(finalProjectId);
+
+      // Extract files from ZIP
+      const arrayBuffer = await source.arrayBuffer();
+      const zip = await JSZip.loadAsync(arrayBuffer);
+
+      files = {};
+      const skippedFiles: string[] = [];
+
+      for (const [relativePath, zipEntry] of Object.entries(zip.files)) {
+        if (zipEntry.dir) continue;
+
+        // Validate extraction path is within project directory
+        const projectPath = `${this.dir}/${finalProjectId}`;
+        const extractPath = this.join(projectPath, relativePath);
+
+        if (!this.isPathWithinProject(extractPath, projectPath)) {
+          skippedFiles.push(relativePath);
+          continue;
+        }
+
+        const content = await zipEntry.async('uint8array');
+        files[relativePath] = content;
+      }
+
+      if (skippedFiles.length > 0) {
+        console.warn(`Skipped ${skippedFiles.length} files due to resolving to paths outside of project directory:`, skippedFiles);
+      }
+    } else {
+      // Handle direct files import
+      finalProjectId = projectId || await this.generateUniqueProjectId('imported-project');
+      finalProjectName = projectName || this.formatProjectName(finalProjectId);
+      files = source.files;
+    }
+
+    const projectPath = `${this.dir}/${finalProjectId}`;
+    const projectExists = await this.projectExists(finalProjectId);
+
+    // Check if project with this ID already exists when not overwriting
+    if (projectExists && !overwrite) {
+      throw new Error(`Project with ID "${finalProjectId}" already exists`);
+    }
+
+    try {
+      // Create project directory (or ensure it exists for overwrite)
+      await this.fs.mkdir(projectPath, { recursive: true });
+
+      // If overwriting, delete existing files except .ai directory and .git directory
+      if (projectExists && overwrite) {
+        const existingFiles = await this.getAllFiles(projectPath);
+        for (const file of existingFiles) {
+          // Preserve .ai directory and .git directory
+          if (!file.startsWith('.ai/') && !file.startsWith('.git/')) {
+            try {
+              await this.fs.unlink(`${projectPath}/${file}`);
+            } catch {
+              // Ignore deletion errors
+            }
+          }
+        }
+      }
+
+      // Extract all files with security validation
+      const extractedFiles: string[] = [];
+      const skippedFiles: string[] = [];
+
+      for (const [relativePath, content] of Object.entries(files)) {
+        // Validate extraction path is within project directory
+        const extractPath = this.join(projectPath, relativePath);
+
+        if (!this.isPathWithinProject(extractPath, projectPath)) {
+          skippedFiles.push(relativePath);
+          continue;
+        }
+
+        // Ensure parent directory exists
+        const dirPath = extractPath.split('/').slice(0, -1).join('/');
+        if (dirPath) {
+          await this.fs.mkdir(dirPath, { recursive: true });
+        }
+
+        // Write the file (this will overwrite existing files)
+        await this.fs.writeFile(extractPath, content);
+        extractedFiles.push(relativePath);
+      }
+
+      if (skippedFiles.length > 0) {
+        console.warn(`Skipped ${skippedFiles.length} files due to resolving to paths outside of project directory:`, skippedFiles);
+      }
+
+      // Get filesystem stats for timestamps
+      const stats = await this.fs.stat(projectPath);
+      const timestamp = stats.mtimeMs ? new Date(stats.mtimeMs) : new Date();
+
+      // Setup project infrastructure using unified method
+      await this.setupProjectInfrastructure(projectPath, {
+        isOverwrite: overwrite,
+        commitMessage: source instanceof File
+          ? `Import project from ${source.name}`
+          : `Import project from files`,
+        skipPersistentStorage: false,
+      });
+
+      return {
+        id: finalProjectId,
+        name: finalProjectName,
+        path: projectPath,
+        lastModified: timestamp,
+      };
+    } catch (error) {
+      // Clean up on error (only if this was a new project creation)
+      if (!projectExists) {
+        try {
+          await this.deleteDirectory(projectPath);
+        } catch {
+          // Ignore cleanup errors
+        }
+      }
+      throw error;
+    }
+  }
+
+  // Legacy method for backward compatibility
   async importProjectFromZip(zipFile: File, customId?: string, overwrite = false): Promise<Project> {
     // Generate a project ID based on the zip file name or use custom ID
     const baseName = zipFile.name.replace(/\.zip$/i, '');
@@ -379,49 +522,7 @@ export class ProjectsManager {
     }
   }
 
-  /**
-   * Extract files from a JSZip instance for a specific project path
-   * Used by bulk import to get files for each discovered project
-   */
-  async extractFilesFromZip(zip: JSZip, projectPath: string): Promise<{ [path: string]: Uint8Array }> {
-    const files: { [path: string]: Uint8Array } = {};
-    const skippedFiles: string[] = [];
 
-    for (const [relativePath, zipEntry] of Object.entries(zip.files)) {
-      // Only process files that belong to this project path
-      if (!relativePath.startsWith(projectPath + '/')) {
-        continue;
-      }
-
-      // Remove the project path prefix to get relative file path
-      const filePath = relativePath.substring(projectPath.length + 1);
-
-      // Skip empty file paths (shouldn't happen, but safety check)
-      if (!filePath) {
-        continue;
-      }
-
-      // Skip directories
-      if (zipEntry.dir) {
-        continue;
-      }
-
-      try {
-        // Extract file content
-        const content = await zipEntry.async('uint8array');
-        files[filePath] = content;
-      } catch (error) {
-        console.warn(`Failed to extract file ${filePath}:`, error);
-        skippedFiles.push(filePath);
-      }
-    }
-
-    if (skippedFiles.length > 0) {
-      console.warn(`Failed to extract ${skippedFiles.length} files:`, skippedFiles);
-    }
-
-    return files;
-  }
 
   async cloneProject(name: string, repoUrl: string, customId?: string, options?: { depth?: number }): Promise<Project> {
     const id = customId || await this.generateUniqueProjectId(name);
@@ -790,5 +891,43 @@ export class ProjectsManager {
     }
 
     return '/' + normalized.join('/');
+  }
+
+  /**
+   * Extract files from a ZIP archive for a specific project path
+   * Used by bulk import to extract files from a specific directory within a ZIP
+   */
+  async extractFilesFromZip(zip: JSZip, projectPath: string): Promise<{ [path: string]: Uint8Array }> {
+    const files: { [path: string]: Uint8Array } = {};
+    const skippedFiles: string[] = [];
+
+    for (const [relativePath, zipEntry] of Object.entries(zip.files)) {
+      if (zipEntry.dir) continue;
+
+      // Check if this file is within the specified project path
+      if (!relativePath.startsWith(projectPath + '/')) {
+        continue;
+      }
+
+      // Get the relative path within the project
+      const fileRelativePath = relativePath.substring(projectPath.length + 1);
+
+      // Skip empty paths (shouldn't happen due to the dir check above, but just in case)
+      if (!fileRelativePath) continue;
+
+      try {
+        const content = await zipEntry.async('uint8array');
+        files[fileRelativePath] = content;
+      } catch (error) {
+        console.warn(`Failed to extract file ${relativePath}:`, error);
+        skippedFiles.push(relativePath);
+      }
+    }
+
+    if (skippedFiles.length > 0) {
+      console.warn(`Skipped ${skippedFiles.length} files due to extraction errors:`, skippedFiles);
+    }
+
+    return files;
   }
 }

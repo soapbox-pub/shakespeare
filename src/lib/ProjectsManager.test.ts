@@ -421,7 +421,7 @@ describe('ProjectsManager', () => {
 
         // Should have logged a security warning about skipped files
         expect(consoleSpy).toHaveBeenCalledWith(
-          expect.stringContaining('Skipped 2 files due to security concerns'),
+          expect.stringContaining('Skipped 2 files due to resolving to paths outside the project direcotry:'),
           ['../../../etc/passwd', '../../outside.txt']
         );
 

@@ -23,16 +23,39 @@ describe('BrowserAddressBar', () => {
     expect(onNavigate).toHaveBeenCalledWith('/about');
   });
 
-  it('disables back/forward buttons based on canGoBack/canGoForward props', () => {
+  it('disables back/forward buttons based on canGoBack/canGoForward props and handlers', () => {
+    // Test with handlers provided
+    const onBack = vi.fn();
+    const onForward = vi.fn();
+
     render(
       <BrowserAddressBar
+        onBack={onBack}
+        onForward={onForward}
         canGoBack={false}
         canGoForward={true}
       />
     );
 
+    expect(screen.getByTitle('Go back')).toBeDisabled(); // disabled because canGoBack=false
+    expect(screen.getByTitle('Go forward')).not.toBeDisabled(); // enabled because canGoForward=true and handler provided
+  });
+
+  it('disables buttons when no handlers are provided', () => {
+    render(
+      <BrowserAddressBar
+        canGoBack={true}
+        canGoForward={true}
+      />
+    );
+
+    // All buttons should be disabled when no handlers are provided
     expect(screen.getByTitle('Go back')).toBeDisabled();
-    expect(screen.getByTitle('Go forward')).not.toBeDisabled();
+    expect(screen.getByTitle('Go forward')).toBeDisabled();
+    expect(screen.getByTitle('Refresh')).toBeDisabled();
+
+    // Input should also be disabled when no onNavigate handler is provided
+    expect(screen.getByPlaceholderText('Enter path (e.g., /, /about)')).toBeDisabled();
   });
 
   it('calls navigation handlers when buttons are clicked', () => {

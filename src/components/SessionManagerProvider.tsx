@@ -17,13 +17,13 @@ export function SessionManagerProvider({ children }: SessionManagerProviderProps
   const { fs } = useFS();
   const { settings } = useAISettings();
   const { models } = useProviderModels();
-  const { user } = useCurrentUser();
+  const { user, metadata } = useCurrentUser();
 
   const sessionManager = useMemo(() => {
     const getProviderModels = () => models;
-    const getCurrentUser = () => user;
+    const getCurrentUser = () => ({ user, metadata });
     return new SessionManager(fs, settings, getProviderModels, getCurrentUser);
-  }, [fs, settings, models, user]);
+  }, [fs, settings, models, user, metadata]);
 
   // Cleanup on unmount
   useEffect(() => {

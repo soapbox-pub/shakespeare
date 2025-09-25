@@ -14,6 +14,8 @@ export interface DeployOptions {
   projectPath: string;
   /** Nostr signer for NIP-98 authentication */
   signer: NostrSigner;
+  /** Custom hostname to use instead of constructing from projectId.deployServer */
+  customHostname?: string;
 }
 
 export interface DeployResult {
@@ -28,10 +30,10 @@ export interface DeployResult {
  * to the deployment server using NIP-98 authentication.
  */
 export async function deployProject(options: DeployOptions): Promise<DeployResult> {
-  const { projectId, deployServer, fs, projectPath, signer } = options;
+  const { projectId, deployServer, fs, projectPath, signer, customHostname } = options;
 
-  // Construct hostname and URL
-  const hostname = `${projectId}.${deployServer}`;
+  // Use custom hostname if provided, otherwise construct from projectId.deployServer
+  const hostname = customHostname || `${projectId}.${deployServer}`;
   const deployUrl = `https://${deployServer}/deploy`;
   const siteUrl = `https://${hostname}`;
 

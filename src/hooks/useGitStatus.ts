@@ -40,7 +40,7 @@ interface GitStatus {
 }
 
 export function useGitStatus(projectId: string | null) {
-  const git = useGit();
+  const { git } = useGit();
 
   return useQuery({
     queryKey: ['git-status', projectId],

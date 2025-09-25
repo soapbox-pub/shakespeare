@@ -1,22 +1,23 @@
 import { createContext } from 'react';
 
-export interface AIConnection {
+export interface AIProvider {
+  id: string;
   baseURL: string;
   apiKey?: string;
   nostr?: boolean;
 }
 
 export interface AISettings {
-  providers: Record<string, AIConnection>;
+  providers: AIProvider[];
   recentlyUsedModels: string[];
 }
 
 export interface AISettingsContextType {
   settings: AISettings;
   updateSettings: (settings: Partial<AISettings>) => void;
-  addProvider: (name: string, connection: AIConnection) => void;
-  removeProvider: (name: string) => void;
-  updateProvider: (name: string, connection: Partial<AIConnection>) => void;
+  setProvider: (provider: AIProvider) => void;
+  removeProvider: (id: string) => void;
+  setProviders: (providers: AIProvider[]) => void;
   addRecentlyUsedModel: (modelId: string) => void;
   isConfigured: boolean;
 }

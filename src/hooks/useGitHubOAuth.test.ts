@@ -61,7 +61,7 @@ describe('useGitHubOAuth PKCE', () => {
       wrapper: TestApp,
     });
 
-    // Mock fetch for token exchange and user info (using corsproxy.io URLs)
+    // Mock fetch for token exchange and user info (using proxy URLs)
     const mockFetch = vi.fn()
       .mockResolvedValueOnce({
         ok: true,
@@ -147,7 +147,7 @@ describe('useGitHubOAuth PKCE', () => {
 
     // Check that the token request includes the code verifier
     expect(mockFetch).toHaveBeenCalledWith(
-      expect.stringContaining('corsproxy.io/?url=https://github.com/login/oauth/access_token'),
+      'https://proxy.shakespeare.diy/?url=https%3A%2F%2Fgithub.com%2Flogin%2Foauth%2Faccess_token',
       expect.objectContaining({
         method: 'POST',
         body: expect.stringContaining('"code_verifier":"test-verifier"'),

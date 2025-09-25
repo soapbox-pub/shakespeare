@@ -39,14 +39,14 @@ export function useProviderModels(): ModelFetchResult {
     isLoading,
     refetch,
   } = useQuery({
-    queryKey: ['provider-models'],
+    queryKey: ['provider-models', settings.providers],
     queryFn: async () => {
       const errors: string[] = [];
 
       // Fetch models from each configured provider in parallel
-      const providerPromises = Object.entries(settings.providers).map(async ([providerKey, connection]) => {
+      const providerPromises = settings.providers.map(async (provider) => {
         try {
-          const openai = createAIClient(connection, user);
+          const openai = createAIClient(provider, user);
 
           // Fetch models with timeout
           try {
@@ -58,8 +58,8 @@ export function useProviderModels(): ModelFetchResult {
             const providerModels = response.data.map((model) => {
               const providerModel: ProviderModel = {
                 id: model.id,
-                provider: providerKey,
-                fullId: `${providerKey}/${model.id}`,
+                provider: provider.id,
+                fullId: `${provider.id}/${model.id}`,
               };
 
               if ('name' in model && typeof model.name === 'string') {
@@ -94,16 +94,16 @@ export function useProviderModels(): ModelFetchResult {
             return providerModels;
           } catch (fetchError) {
             if (fetchError instanceof Error && fetchError.name === 'AbortError') {
-              errors.push(`${providerKey}: Request timeout`);
+              errors.push(`${provider.id}: Request timeout`);
             } else {
               throw fetchError;
             }
             return [];
           }
         } catch (providerError) {
-          console.warn(`Failed to fetch models from ${providerKey}:`, providerError);
+          console.warn(`Failed to fetch models from ${provider.id}:`, providerError);
           errors.push(
-            `${providerKey}: ${
+            `${provider.id}: ${
               providerError instanceof Error ? providerError.message : 'Unknown error'
             }`
           );
@@ -126,7 +126,7 @@ export function useProviderModels(): ModelFetchResult {
 
       return allModels;
     },
-    enabled: Object.keys(settings.providers).length > 0,
+    enabled: settings.providers.length > 0,
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
     retry: false, // Don't retry on failure
   });

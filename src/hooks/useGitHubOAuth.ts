@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useGitSettings } from './useGitSettings';
+import { proxyUrl } from '@/lib/proxyUrl';
 
 interface GitHubOAuthState {
   isLoading: boolean;
@@ -17,7 +18,8 @@ export function useGitHubOAuth() {
     isLoading: false,
     error: null,
   });
-  const { addCredential } = useGitSettings();
+  const { settings, addCredential } = useGitSettings();
+  const { corsProxy } = settings;
 
   // Check if OAuth is configured
   const isOAuthConfigured = !!(
@@ -70,7 +72,7 @@ export function useGitHubOAuth() {
       const params = new URLSearchParams({
         client_id: clientId,
         redirect_uri: window.location.origin + '/oauth/github',
-        scope: 'repo',
+        scope: 'repo workflow',
         state: state,
         code_challenge: codeChallenge,
         code_challenge_method: 'S256',
@@ -122,7 +124,8 @@ export function useGitHubOAuth() {
         code_verifier: codeVerifier,
       };
 
-      const tokenResponse = await fetch('https://corsproxy.io/?url=https://github.com/login/oauth/access_token', {
+      const tokenUrl = proxyUrl(corsProxy, 'https://github.com/login/oauth/access_token');
+      const tokenResponse = await fetch(tokenUrl, {
         method: 'POST',
         headers: {
           'Accept': 'application/json',
@@ -142,7 +145,8 @@ export function useGitHubOAuth() {
       }
 
       // Get user info to verify the token works
-      const userResponse = await fetch('https://corsproxy.io/?url=https://api.github.com/user', {
+      const userUrl = proxyUrl(corsProxy, 'https://api.github.com/user');
+      const userResponse = await fetch(userUrl, {
         headers: {
           'Authorization': `Bearer ${tokenData.access_token}`,
           'Accept': 'application/vnd.github.v3+json',
@@ -177,7 +181,7 @@ export function useGitHubOAuth() {
       }));
       return false;
     }
-  }, [addCredential]);
+  }, [addCredential, corsProxy]);
 
   return {
     ...state,

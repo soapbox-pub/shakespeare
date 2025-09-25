@@ -16,14 +16,12 @@ interface AIMessageItemProps {
   message: AIMessage;
   isCurrentlyLoading?: boolean;
   toolCall?: OpenAI.Chat.Completions.ChatCompletionMessageToolCall | undefined; // Tool call data passed from the assistant message
-  reasoningContent?: string; // Reasoning content for streaming messages
 }
 
 export const AIMessageItem = memo(({
   message,
   isCurrentlyLoading = false,
   toolCall,
-  reasoningContent
 }: AIMessageItemProps) => {
   const [isToolExpanded, setIsToolExpanded] = useState(false);
   const [isReasoningExpanded, setIsReasoningExpanded] = useState(false);
@@ -186,6 +184,75 @@ export const AIMessageItem = memo(({
     const toolInfo = getToolInfo();
     const IconComponent = toolInfo.icon;
 
+    // Get tool call arguments for special rendering
+    let toolArgs: Record<string, unknown> = {};
+    let toolName = '';
+    if (toolCall?.type === 'function') {
+      toolName = toolCall.function.name;
+      try {
+        toolArgs = JSON.parse(toolCall.function.arguments);
+      } catch {
+        toolArgs = {};
+      }
+    }
+
+    // Special rendering for tools
+    const renderSpecialContent = () => {
+      if (toolName === 'text_editor_write' && toolArgs.file_text) {
+        return (
+          <div className="mt-1 p-3 bg-muted/30 rounded border text-xs">
+            <div className="whitespace-pre-wrap break-words font-mono">
+              {toolArgs.file_text as string}
+            </div>
+          </div>
+        );
+      }
+
+      if (toolName === 'text_editor_str_replace' && toolArgs.old_str && toolArgs.new_str) {
+        const oldLines = (toolArgs.old_str as string).split('\n');
+        const newLines = (toolArgs.new_str as string).split('\n');
+
+        return (
+          <div className="mt-1 p-3 bg-muted/30 rounded border text-xs font-mono">
+            <div className="space-y-1">
+              {/* Old content (removed) */}
+              <div className="space-y-0">
+                {oldLines.map((line, index) => (
+                  <div key={`old-${index}`} className="flex">
+                    <span className="text-red-500 select-none mr-2">-</span>
+                    <span className="bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-300 flex-1 whitespace-pre-wrap break-words">
+                      {line}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {/* New content (added) */}
+              <div className="space-y-0">
+                {newLines.map((line, index) => (
+                  <div key={`new-${index}`} className="flex">
+                    <span className="text-green-500 select-none mr-2">+</span>
+                    <span className="bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-300 flex-1 whitespace-pre-wrap break-words">
+                      {line}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      // Default rendering for other tools
+      return (
+        <div className="mt-1 p-3 bg-muted/30 rounded border text-xs">
+          <div className="whitespace-pre-wrap break-words font-mono">
+            {content}
+          </div>
+        </div>
+      );
+    };
+
     // Regular tool message rendering
     return (
       <div className="-mt-2"> {/* -mt-2 to make it snug with the previous assistant message */}
@@ -202,13 +269,7 @@ export const AIMessageItem = memo(({
           </span>
         </button>
 
-        {isToolExpanded && (
-          <div className="mt-1 p-3 bg-muted/30 rounded border text-xs">
-            <div className="whitespace-pre-wrap break-words font-mono">
-              {content}
-            </div>
-          </div>
-        )}
+        {isToolExpanded && renderSpecialContent()}
       </div>
     );
   }
@@ -233,16 +294,19 @@ export const AIMessageItem = memo(({
     );
   }
 
+  // If there's no reasoning content and the main content is empty, render nothing
+  if (!hasReasoningContent(message) && !getContent().trim()) {
+    return null;
+  }
+
   // Assistant messages: left-aligned without avatar/name
   return (
     <div className="flex">
       <div className="flex-1 min-w-0">
-        <div className="text-sm">
+        <div className="text-sm space-y-3">
           {/* Reasoning content display */}
-          {((reasoningContent && reasoningContent.trim()) ||
-            (hasReasoningContent(message) && message.reasoning_content.trim()) ||
-            (reasoningContent !== undefined && !getContent().trim() && isCurrentlyLoading)) && (
-            <div className="mb-3">
+          {hasReasoningContent(message) && message.reasoning_content.trim() && (
+            <div>
               <button
                 onClick={() => setIsReasoningExpanded(!isReasoningExpanded)}
                 className={cn(
@@ -250,7 +314,7 @@ export const AIMessageItem = memo(({
                   "hover:bg-muted/30 rounded transition-colors duration-200"
                 )}
               >
-                {reasoningContent !== undefined && !getContent().trim() && isCurrentlyLoading ? (
+                {!getContent().trim() && isCurrentlyLoading ? (
                   <Loader2 className="h-3 w-3 text-muted-foreground flex-shrink-0 animate-spin" />
                 ) : (
                   <Lightbulb className="h-3 w-3 text-muted-foreground flex-shrink-0" />
@@ -260,7 +324,7 @@ export const AIMessageItem = memo(({
                 </span>
               </button>
 
-              {isReasoningExpanded && (reasoningContent?.trim() || (hasReasoningContent(message) && message.reasoning_content.trim())) && (
+              {isReasoningExpanded && (
                 <div className="mt-1 p-3 bg-muted/30 rounded border text-xs">
                   <div className="whitespace-pre-wrap break-words">
                     <Streamdown
@@ -268,7 +332,7 @@ export const AIMessageItem = memo(({
                       parseIncompleteMarkdown={isCurrentlyLoading}
                       shikiTheme={displayTheme === 'dark' ? 'github-dark' : 'github-light'}
                     >
-                      {reasoningContent || (hasReasoningContent(message) ? message.reasoning_content : '') || ''}
+                      {message.reasoning_content}
                     </Streamdown>
                   </div>
                 </div>
@@ -276,15 +340,18 @@ export const AIMessageItem = memo(({
             </div>
           )}
 
-          <div className="break-words">
-            <Streamdown
-              className='size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0'
-              parseIncompleteMarkdown={isCurrentlyLoading}
-              shikiTheme={displayTheme === 'dark' ? 'github-dark' : 'github-light'}
-            >
-              {getContent()}
-            </Streamdown>
-          </div>
+          {/* Main content display */}
+          {getContent().trim() && (
+            <div className="break-words">
+              <Streamdown
+                className='size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0'
+                parseIncompleteMarkdown={isCurrentlyLoading}
+                shikiTheme={displayTheme === 'dark' ? 'github-dark' : 'github-light'}
+              >
+                {getContent()}
+              </Streamdown>
+            </div>
+          )}
 
           {/* Tool calls are now hidden from assistant messages */}
         </div>

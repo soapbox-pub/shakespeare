@@ -11,6 +11,8 @@ stages:
 test:
   stage: test
   script:
+    - npm run typecheck
+    - npm run build
     - npm run test
 
 pages:

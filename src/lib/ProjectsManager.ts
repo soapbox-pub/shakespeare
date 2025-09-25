@@ -1,7 +1,6 @@
 import { Buffer } from 'buffer';
-import { Git } from '@/lib/git';
+import type { Git } from '@/lib/git';
 import type { JSRuntimeFS } from '@/lib/JSRuntime';
-
 
 // Polyfill Buffer for browser
 if (typeof window !== 'undefined') {
@@ -18,14 +17,19 @@ export interface Project {
   lastModified: Date;
 }
 
+export interface ProjectsManagerOptions {
+  fs: JSRuntimeFS;
+  git: Git;
+}
+
 export class ProjectsManager {
   fs: JSRuntimeFS;
   git: Git;
   dir: string;
 
-  constructor(fs: JSRuntimeFS) {
-    this.fs = fs;
-    this.git = new Git(fs, 'https://cors.isomorphic-git.org');
+  constructor(options: ProjectsManagerOptions) {
+    this.fs = options.fs;
+    this.git = options.git;
     this.dir = '/projects';
   }
 
@@ -103,7 +107,7 @@ export class ProjectsManager {
 
     await this.fs.mkdir(projectPath);
 
-    // Clone the repository
+    // Clone the repository (Git class now handles Nostr URIs automatically)
     await this.git.clone({
       dir: projectPath,
       url: repoUrl,
@@ -258,6 +262,50 @@ export class ProjectsManager {
 
     // Recursively delete the project directory
     await this.deleteDirectory(projectPath);
+  }
+
+  async renameProject(oldId: string, newId: string): Promise<Project> {
+    // Validate that the old project exists
+    const oldProject = await this.getProject(oldId);
+    if (!oldProject) {
+      throw new Error(`Project with ID "${oldId}" does not exist`);
+    }
+
+    // Validate that the new ID doesn't already exist
+    if (await this.projectExists(newId)) {
+      throw new Error(`Project with ID "${newId}" already exists`);
+    }
+
+    // Validate the new ID format (same rules as generateUniqueProjectId)
+    const validatedNewId = newId
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+
+    if (validatedNewId !== newId) {
+      throw new Error(`Project name must contain only lowercase letters, numbers, and hyphens`);
+    }
+
+    if (!validatedNewId) {
+      throw new Error(`Project name cannot be empty`);
+    }
+
+    const oldPath = `${this.dir}/${oldId}`;
+    const newPath = `${this.dir}/${newId}`;
+
+    // Rename the directory
+    await this.fs.rename(oldPath, newPath);
+
+    // Return the updated project object
+    const stats = await this.fs.stat(newPath);
+    const timestamp = stats.mtimeMs ? new Date(stats.mtimeMs) : new Date();
+
+    return {
+      id: newId,
+      name: this.formatProjectName(newId),
+      path: newPath,
+      lastModified: timestamp,
+    };
   }
 
   private async deleteDirectory(dirPath: string): Promise<void> {

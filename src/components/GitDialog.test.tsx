@@ -43,17 +43,10 @@ vi.mock('@/hooks/useToast', () => ({
   })),
 }));
 
+const mockUseGitSettings = vi.fn();
+
 vi.mock('@/hooks/useGitSettings', () => ({
-  useGitSettings: vi.fn(() => ({
-    settings: {
-      credentials: {
-        'https://github.com': {
-          username: 'git',
-          password: 'github-token',
-        },
-      },
-    },
-  })),
+  useGitSettings: () => mockUseGitSettings(),
 }));
 
 describe('GitDialog', () => {
@@ -62,9 +55,20 @@ describe('GitDialog', () => {
       data: baseGitStatus,
       refetch: mockRefetch,
     });
+
+    mockUseGitSettings.mockReturnValue({
+      settings: {
+        credentials: {
+          'https://github.com': {
+            username: 'git',
+            password: 'github-token',
+          },
+        },
+      },
+    });
   });
 
-  it('renders git repository information', () => {
+  it('renders git dialog without repository information section', () => {
     render(
       <TestApp>
         <GitDialog projectId="test-project" open={true} onOpenChange={() => {}}>
@@ -73,11 +77,9 @@ describe('GitDialog', () => {
       </TestApp>
     );
 
-    expect(screen.getByText('Git Repository Status')).toBeInTheDocument();
-    expect(screen.getByText('Repository Information')).toBeInTheDocument();
-    expect(screen.getByText('main')).toBeInTheDocument();
-    expect(screen.getByText('5')).toBeInTheDocument();
-    expect(screen.getAllByText('origin')).toHaveLength(2); // Appears in remotes and credentials sections
+    expect(screen.getByText('Repository')).toBeInTheDocument();
+    expect(screen.queryByText('Repository Information')).not.toBeInTheDocument();
+    expect(screen.queryByText('Authentication')).not.toBeInTheDocument(); // Authentication section is removed
   });
 
   it('shows sync status', () => {
@@ -145,7 +147,7 @@ describe('GitDialog', () => {
     expect(pushButton.closest('button')).toBeDisabled();
   });
 
-  it('shows configured credentials status', () => {
+  it('does not show credentials warning when credentials are configured', () => {
     render(
       <TestApp>
         <GitDialog projectId="test-project" open={true} onOpenChange={() => {}}>
@@ -154,8 +156,38 @@ describe('GitDialog', () => {
       </TestApp>
     );
 
-    expect(screen.getByText('Authentication')).toBeInTheDocument();
-    expect(screen.getByText('github.com')).toBeInTheDocument();
-    expect(screen.getByText('Configured')).toBeInTheDocument();
+    // Should not show warning when credentials are configured
+    expect(screen.queryByText(/No credentials configured/)).not.toBeInTheDocument();
+    expect(screen.queryByText('Authentication')).not.toBeInTheDocument(); // Authentication section is removed
+  });
+
+  it('shows credentials warning when no credentials are configured', () => {
+    // Mock git settings with no credentials and mock git status with an https remote
+    mockUseGitSettings.mockReturnValue({
+      settings: {
+        credentials: {},
+      },
+    });
+
+    mockUseGitStatus.mockReturnValue({
+      data: {
+        ...baseGitStatus,
+        remotes: [{ name: 'origin', url: 'https://github.com/example/repo.git' }],
+      },
+      refetch: mockRefetch,
+    });
+
+    render(
+      <TestApp>
+        <GitDialog projectId="test-project" open={true} onOpenChange={() => {}}>
+          <button>Open Git Dialog</button>
+        </GitDialog>
+      </TestApp>
+    );
+
+    // Should show warning when credentials are missing
+    expect(screen.getByText(/You are not logged into github.com/)).toBeInTheDocument();
+    expect(screen.getByText('log in')).toBeInTheDocument();
+    expect(screen.queryByText('Authentication')).not.toBeInTheDocument(); // Authentication section is removed
   });
 });

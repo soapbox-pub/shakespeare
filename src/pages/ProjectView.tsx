@@ -6,25 +6,20 @@ import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { ChatPane, type ChatPaneRef } from '@/components/Shakespeare/ChatPane';
 import { PreviewPane } from '@/components/Shakespeare/PreviewPane';
 import { ProjectSidebar } from '@/components/ProjectSidebar';
-import { ProjectInfoDialog } from '@/components/ProjectInfoDialog';
+import { ProjectDetailsDialog } from '@/components/ProjectDetailsDialog';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowLeft, MessageSquare, Eye, Code, Menu } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { ActionsMenu } from '@/components/ActionsMenu';
-
 import { useIsMobile } from '@/hooks/useIsMobile';
-import { useFS } from '@/hooks/useFS';
 import { useKeepAlive } from '@/hooks/useKeepAlive';
 import { GitStatusIndicator } from '@/components/GitStatusIndicator';
 import { StarButton } from '@/components/StarButton';
 
-import { buildProject } from "@/lib/build";
-import { deployProject } from "@/lib/deploy";
-import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { useAppContext } from "@/hooks/useAppContext";
-import { useToast } from "@/hooks/useToast";
+import { useBuildProject } from '@/hooks/useBuildProject';
+import { useIsProjectPreviewable } from '@/hooks/useIsProjectPreviewable';
 
 export function ProjectView() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -33,23 +28,21 @@ export function ProjectView() {
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'preview' | 'code'>('preview');
   const [mobileView, setMobileView] = useState<'chat' | 'preview' | 'code'>('chat');
-  const [isBuildLoading, setIsBuildLoading] = useState(false);
-  const [isDeployLoading, setIsDeployLoading] = useState(false);
   const [isAILoading, setIsAILoading] = useState(false);
-  const [isProjectInfoOpen, setIsProjectInfoOpen] = useState(false);
+  const [isProjectDetailsOpen, setIsProjectDetailsOpen] = useState(false);
   const projectsManager = useProjectsManager();
   const chatPaneRef = useRef<ChatPaneRef>(null);
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const { fs } = useFS();
-  const { user } = useCurrentUser();
-  const { config } = useAppContext();
-  const { toast } = useToast();
+
   const [isSidebarVisible, setIsSidebarVisible] = useState(!isMobile);
+
+  const build = useBuildProject(projectId!);
+  const { data: isPreviewable = false } = useIsProjectPreviewable(projectId!);
 
   // Keep-alive functionality to prevent tab throttling during AI processing
   const { updateMetadata } = useKeepAlive({
-    enabled: isAILoading || isBuildLoading || isDeployLoading,
+    enabled: isAILoading || build.isPending,
     title: 'Shakespeare',
     artist: project ? `Working on ${project.name}...` : 'Working...',
     artwork: [
@@ -78,72 +71,38 @@ export function ProjectView() {
     loadProject();
   }, [loadProject]);
 
-  const runBuild = async () => {
-    if (isBuildLoading || !project) return;
+  // Reset view state when projectId changes
+  useEffect(() => {
+    if (projectId) {
+      // Reset to preview tab if the new project is previewable, otherwise code
+      setActiveTab(isPreviewable ? 'preview' : 'code');
+      // Reset mobile view to chat when switching projects
+      setMobileView('chat');
+    }
+  }, [projectId, isPreviewable]);
 
-    setIsBuildLoading(true);
+  // Switch away from preview mode if project is not previewable
+  useEffect(() => {
+    if (mobileView === 'preview' && !isPreviewable) {
+      setMobileView('code');
+    }
+    if (activeTab === 'preview' && !isPreviewable) {
+      setActiveTab('code');
+    }
+  }, [isPreviewable, mobileView, activeTab]);
+
+  const runBuild = async () => {
+    if (build.isPending || !project) return;
     updateMetadata('Shakespeare', `Building ${project.name}...`);
 
-    try {
-      const result = await buildProject({
-        fs,
-        projectPath: `/projects/${project.id}`,
-        domParser: new DOMParser(),
-      });
-
-      console.log('Build completed:', result);
-    } catch (error) {
-      console.error('Build failed:', error);
-    } finally {
-      setIsBuildLoading(false);
-    }
-  };
-
-  const runDeploy = async () => {
-    if (isDeployLoading || !project) return;
-
-    // Check if user is logged in
-    if (!user || !user.signer) {
-      toast({
-        title: "Authentication required",
-        description: "Please log in to deploy your project.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsDeployLoading(true);
-    updateMetadata('Shakespeare', `Deploying ${project.name}...`);
-
-    try {
-      const result = await deployProject({
-        projectId: project.id,
-        deployServer: config.deployServer,
-        fs,
-        projectPath: `/projects/${project.id}`,
-        signer: user.signer,
-      });
-
-      console.log('Project deployed:', result.url);
-
-      toast({
-        title: "Deployment successful!",
-        description: `Your project is now live at ${result.hostname}`,
-      });
-
-      // Open the deployed site in a new tab
-      window.open(result.url, '_blank');
-    } catch (error) {
-      console.error('Deploy failed:', error);
-
-      toast({
-        title: "Deployment failed",
-        description: error instanceof Error ? error.message : "An unexpected error occurred",
-        variant: "destructive",
-      });
-    } finally {
-      setIsDeployLoading(false);
-    }
+    await build.mutateAsync(undefined, {
+      onSuccess(result) {
+        console.log('Project built:', result);
+      },
+      onError(error) {
+        console.error('Build failed:', error);
+      },
+    });
   };
 
   const handleNewChat = () => {
@@ -203,7 +162,7 @@ export function ProjectView() {
                 <Button
                   variant="ghost"
                   className="block p-0 h-auto text-sm font-semibold truncate hover:bg-transparent hover:text-primary"
-                  onClick={() => setIsProjectInfoOpen(true)}
+                  onClick={() => setIsProjectDetailsOpen(true)}
                 >
                   {project.name}
                 </Button>
@@ -225,13 +184,10 @@ export function ProjectView() {
                   projectId={project.id}
                   projectName={project.name}
                   onNewChat={handleNewChat}
-                  onBuild={runBuild}
-                  onDeploy={runDeploy}
+                  onProjectDetails={() => setIsProjectDetailsOpen(true)}
                   isLoading={isAILoading}
-                  isBuildLoading={isBuildLoading}
-                  isDeployLoading={isDeployLoading}
+                  isBuildLoading={build.isPending}
                   onFirstInteraction={handleFirstInteraction}
-                  onProjectDeleted={handleProjectDeleted}
                 />
               </>
             ) : (
@@ -279,12 +235,10 @@ export function ProjectView() {
                 projectId={project.id}
                 onNewChat={handleNewChat}
                 onBuild={runBuild}
-                onDeploy={runDeploy}
                 onFirstInteraction={handleFirstInteraction}
                 onLoadingChange={handleAILoadingChange}
                 isLoading={isAILoading}
-                isBuildLoading={isBuildLoading}
-                isDeployLoading={isDeployLoading}
+                isBuildLoading={build.isPending}
               />
             ) : (
               <div className="h-full p-4 space-y-4">
@@ -300,6 +254,8 @@ export function ProjectView() {
               <PreviewPane
                 projectId={project.id}
                 activeTab={mobileView}
+                projectName={project.name}
+                onFirstInteraction={handleFirstInteraction}
               />
             ) : (
               <div className="h-full p-4 space-y-4">
@@ -322,16 +278,18 @@ export function ProjectView() {
               <MessageSquare className="h-4 w-4 mr-1" />
               {t('chat')}
             </Button>
-            <Button
-              variant={mobileView === 'preview' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setMobileView('preview')}
-              className="flex-1 rounded-none"
-              disabled={!project}
-            >
-              <Eye className="h-4 w-4 mr-1" />
-              {t('preview')}
-            </Button>
+            {isPreviewable && (
+              <Button
+                variant={mobileView === 'preview' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setMobileView('preview')}
+                className="flex-1 rounded-none"
+                disabled={!project}
+              >
+                <Eye className="h-4 w-4 mr-1" />
+                {t('preview')}
+              </Button>
+            )}
             <Button
               variant={mobileView === 'code' ? 'default' : 'ghost'}
               size="sm"
@@ -348,12 +306,13 @@ export function ProjectView() {
           </div>
         </div>
 
-        {/* Project Info Dialog */}
+        {/* Project Details Dialog */}
         {project && (
-          <ProjectInfoDialog
+          <ProjectDetailsDialog
             project={project}
-            open={isProjectInfoOpen}
-            onOpenChange={setIsProjectInfoOpen}
+            open={isProjectDetailsOpen}
+            onOpenChange={setIsProjectDetailsOpen}
+            onProjectDeleted={handleProjectDeleted}
           />
         )}
       </div>
@@ -409,7 +368,7 @@ export function ProjectView() {
                           <Button
                             variant="ghost"
                             className="block p-0 h-auto font-semibold text-lg truncate hover:bg-transparent hover:text-primary"
-                            onClick={() => setIsProjectInfoOpen(true)}
+                            onClick={() => setIsProjectDetailsOpen(true)}
                           >
                             {project.name}
                           </Button>
@@ -432,13 +391,10 @@ export function ProjectView() {
                             projectId={project.id}
                             projectName={project.name}
                             onNewChat={handleNewChat}
-                            onBuild={runBuild}
-                            onDeploy={runDeploy}
+                            onProjectDetails={() => setIsProjectDetailsOpen(true)}
                             isLoading={isAILoading}
-                            isBuildLoading={isBuildLoading}
-                            isDeployLoading={isDeployLoading}
+                            isBuildLoading={build.isPending}
                             onFirstInteraction={handleFirstInteraction}
-                            onProjectDeleted={handleProjectDeleted}
                           />
                         </>
                       ) : (
@@ -459,12 +415,10 @@ export function ProjectView() {
                       projectId={project.id}
                       onNewChat={handleNewChat}
                       onBuild={runBuild}
-                      onDeploy={runDeploy}
                       onFirstInteraction={handleFirstInteraction}
                       onLoadingChange={handleAILoadingChange}
                       isLoading={isAILoading}
-                      isBuildLoading={isBuildLoading}
-                      isDeployLoading={isDeployLoading}
+                      isBuildLoading={build.isPending}
                     />
                   ) : (
                     <div className="h-full p-4 space-y-4">
@@ -483,61 +437,35 @@ export function ProjectView() {
 
             {/* Preview/Code Panel */}
             <ResizablePanel defaultSize={60} minSize={30}>
-              <div className="h-full flex flex-col">
-                {/* Preview Header */}
-                <div className="h-12 px-4 border-b flex-shrink-0">
-                  <div className="flex items-center justify-between h-12">
-                    <div className="flex space-x-2">
-                      <Button
-                        variant={activeTab === 'preview' ? 'default' : 'ghost'}
-                        size="sm"
-                        onClick={() => setActiveTab('preview')}
-                        disabled={!project}
-                      >
-                        {t('preview')}
-                      </Button>
-                      <Button
-                        variant={activeTab === 'code' ? 'default' : 'ghost'}
-                        size="sm"
-                        onClick={() => setActiveTab('code')}
-                        className="gap-2"
-                        disabled={!project}
-                      >
-                        {t('code')}
-                        {activeTab !== 'code' && project && (
-                          <GitStatusIndicator projectId={project.id} />
-                        )}
-                      </Button>
-                    </div>
+              <div className="h-full">
+                {project ? (
+                  <PreviewPane
+                    projectId={project.id}
+                    activeTab={isPreviewable ? activeTab : 'code'}
+                    onToggleView={isPreviewable ? () => setActiveTab(activeTab === 'preview' ? 'code' : 'preview') : undefined}
+                    projectName={project.name}
+                    onFirstInteraction={handleFirstInteraction}
+                    isPreviewable={isPreviewable}
+                  />
+                ) : (
+                  <div className="h-full p-4 space-y-4">
+                    <Skeleton className="h-8 w-32" />
+                    <Skeleton className="h-full w-full" />
                   </div>
-                </div>
-
-                {/* Preview Content */}
-                <div className="flex-1 overflow-hidden">
-                  {project ? (
-                    <PreviewPane
-                      projectId={project.id}
-                      activeTab={activeTab}
-                    />
-                  ) : (
-                    <div className="h-full p-4 space-y-4">
-                      <Skeleton className="h-8 w-32" />
-                      <Skeleton className="h-full w-full" />
-                    </div>
-                  )}
-                </div>
+                )}
               </div>
             </ResizablePanel>
           </ResizablePanelGroup>
         </div>
       </div>
 
-      {/* Project Info Dialog */}
+      {/* Project Details Dialog */}
       {project && (
-        <ProjectInfoDialog
+        <ProjectDetailsDialog
           project={project}
-          open={isProjectInfoOpen}
-          onOpenChange={setIsProjectInfoOpen}
+          open={isProjectDetailsOpen}
+          onOpenChange={setIsProjectDetailsOpen}
+          onProjectDeleted={handleProjectDeleted}
         />
       )}
     </div>

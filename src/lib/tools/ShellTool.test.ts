@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ShellTool } from './ShellTool';
 import { Git } from '../git';
 import type { JSRuntimeFS } from '../JSRuntime';
+import { NPool } from '@nostrify/nostrify';
 
 // Mock filesystem
 const createMockFS = (): JSRuntimeFS => ({
@@ -18,20 +19,32 @@ const createMockFS = (): JSRuntimeFS => ({
   symlink: vi.fn(),
 });
 
+const createMockNostr = (): NPool => ({
+  req: vi.fn(),
+  query: vi.fn(),
+  event: vi.fn(),
+  group: vi.fn(),
+  relay: vi.fn(),
+  relays: new Map(),
+  close: vi.fn(),
+}) as unknown as NPool;
+
 describe('ShellTool', () => {
   let mockFS: JSRuntimeFS;
   let mockGit: Git;
+  let mockNostr: NPool;
   let shellTool: ShellTool;
   const testCwd = '/test/dir';
 
   beforeEach(() => {
     mockFS = createMockFS();
-    mockGit = new Git(mockFS);
+    mockNostr = createMockNostr();
+    mockGit = new Git({ fs: mockFS, nostr: mockNostr });
     shellTool = new ShellTool(mockFS, testCwd, mockGit);
   });
 
   it('should have correct tool properties', () => {
-    expect(shellTool.description).toBe('Execute shell commands like cat, ls, cd, pwd, rm, cp, mv, echo, head, tail, grep, find, wc, touch, mkdir, sort, uniq, cut, tr, diff, which, whoami, date, env, clear, git, curl. Supports compound commands with &&, ||, ;, and | operators');
+    expect(shellTool.description).toBe('Execute shell commands like cat, ls, cd, pwd, rm, cp, mv, echo, head, tail, grep, find, wc, touch, mkdir, sort, uniq, cut, tr, diff, which, whoami, date, env, clear, git, curl, unzip, hexdump. Supports compound commands with &&, ||, ;, and | operators');
     expect(shellTool.inputSchema).toBeDefined();
   });
 

@@ -174,11 +174,11 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
       // Use a small timeout to ensure the src is cleared before setting it back
       setTimeout(() => {
         if (iframeRef.current) {
-          iframeRef.current.src = `https://${projectId}.${IFRAME_DOMAIN}${currentPath}`;
+          iframeRef.current.src = `https://${projectId}.${IFRAME_DOMAIN}/`;
         }
       }, 10);
     }
-  }, [currentPath, projectId]);
+  }, [projectId]);
 
   const sendResponse = useCallback((message: JSONRPCResponse) => {
     if (iframeRef.current?.contentWindow) {
@@ -674,7 +674,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
               {hasBuiltProject ? (
                 <iframe
                   ref={iframeRef}
-                  src={`https://${projectId}.${IFRAME_DOMAIN}${currentPath}`}
+                  src={`https://${projectId}.${IFRAME_DOMAIN}/`}
                   className="w-full h-full border-0"
                   title="Project Preview"
                   sandbox="allow-scripts allow-same-origin"

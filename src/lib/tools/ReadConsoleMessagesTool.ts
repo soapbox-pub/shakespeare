@@ -37,14 +37,11 @@ export const addConsoleMessage = (level: ConsoleMessage['level'], message: strin
 
   // If this is an error, notify listeners
   if (level === 'error') {
-    const allErrors = getConsoleMessages().filter(msg => msg.level === 'error');
-
     const error = new ProjectPreviewConsoleError(
       `Console error detected: ${message}`,
-      allErrors
+      consoleMessages.filter(msg => msg.level === 'error')
     );
 
-    // Notify all listeners
     errorListeners.forEach(listener => {
       try {
         listener(error);
@@ -75,37 +72,26 @@ export const clearConsoleMessages = () => {
 };
 
 export class ReadConsoleMessagesTool implements Tool<ReadConsoleMessagesParams> {
-  constructor() {
-    // No longer need to pass getConsoleMessages function
-  }
-
   async execute(params: ReadConsoleMessagesParams): Promise<string> {
     const { filter = 'all', limit } = params;
 
-    // Get fresh console messages at execution time
-    const messages = getConsoleMessages();
-    let filteredMessages = messages;
-
-    // Apply filter if specified
-    if (filter !== 'all') {
-      filteredMessages = messages.filter(msg => msg.level === filter);
-    }
-
-    // Apply limit if specified
-    if (limit && limit > 0) {
-      filteredMessages = filteredMessages.slice(-limit);
-    }
+    // Filter and limit messages in one chain
+    const filteredMessages = getConsoleMessages()
+      .filter(msg => filter === 'all' || msg.level === filter)
+      .slice(limit && limit > 0 ? -limit : 0);
 
     if (filteredMessages.length === 0) {
       return `No console messages found${filter !== 'all' ? ` for level: ${filter}` : ''}.`;
     }
 
-    // Format the messages
-    const formattedMessages = filteredMessages.map(msg => {
-      return `[${msg.level.toUpperCase()}] ${msg.message}`;
-    }).join('\n');
+    const formattedMessages = filteredMessages
+      .map(msg => `[${msg.level.toUpperCase()}] ${msg.message}`)
+      .join('\n');
 
-    return `Found ${filteredMessages.length} console message${filteredMessages.length !== 1 ? 's' : ''}${filter !== 'all' ? ` (level: ${filter})` : ''}:\n\n${formattedMessages}`;
+    const plural = filteredMessages.length !== 1 ? 's' : '';
+    const levelInfo = filter !== 'all' ? ` (level: ${filter})` : '';
+
+    return `Found ${filteredMessages.length} console message${plural}${levelInfo}:\n\n${formattedMessages}`;
   }
 
   description = 'Read console messages from the project preview. Can filter by level and limit results.';

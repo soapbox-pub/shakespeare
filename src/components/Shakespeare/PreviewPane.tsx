@@ -24,7 +24,6 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-
 import { FileTree } from './FileTree';
 import { FileEditor } from './FileEditor';
 import { DeployDialog } from '@/components/DeployDialog';
@@ -113,8 +112,6 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
       setSearchParams(newSearchParams, { replace: true });
     }
   }, [searchParams, setSearchParams]);
-
-
 
   // Build automatically if "build" parameter was present
   useEffect(() => {
@@ -310,8 +307,6 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
     const { params, id } = request;
     const { request: fetchRequest } = params;
 
-
-
     try {
       // Parse the URL and validate origin
       const url = new URL(fetchRequest.url);
@@ -375,9 +370,6 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
           });
           return;
         }
-
-        // For non-static assets, try SPA fallback to index.html
-
       }
 
       // SPA fallback: serve index.html for non-file requests (SPA routing)
@@ -400,8 +392,6 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
         });
       } catch {
         // Even index.html doesn't exist
-
-
         sendResponse({
           jsonrpc: '2.0',
           result: {
@@ -524,8 +514,8 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
     };
 
     const consoleMessages = getConsoleMessages();
-    const hasErrors = consoleMessages.some(msg => msg.level === 'error');
     const messageCount = consoleMessages.length;
+    const hasErrors = consoleMessages.some(msg => msg.level === 'error');
 
     return (
       <Popover open={isOpen} onOpenChange={setIsOpen}>

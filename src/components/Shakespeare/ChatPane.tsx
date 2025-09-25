@@ -39,14 +39,13 @@ import { Tool } from '@/lib/tools/Tool';
 import OpenAI from 'openai';
 import { saveFileToTmp } from '@/lib/fileUtils';
 import { useGit } from '@/hooks/useGit';
-import { useConsoleErrorAlert } from '@/hooks/useErrorDetection';
 import { Quilly } from '@/components/Quilly';
 
 // Clean interfaces now handled by proper hooks
 
 interface ChatPaneProps {
   projectId: string;
-  onNewChat?: () => void;
+  onNewChat: () => void;
   onFirstInteraction?: () => void;
   onLoadingChange?: (isLoading: boolean) => void;
   isLoading?: boolean;
@@ -233,19 +232,6 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   const openModelSelector = useCallback(() => {
     setIsModelSelectorOpen(true);
   }, []);
-
-  // Function to suggest error fix
-  // Clean alert hooks with proper interfaces
-  const consoleAlert = useConsoleErrorAlert(messages, isBuildLoading, internalIsLoading);
-
-  // Scroll to bottom when alerts appear
-  useEffect(() => {
-    if (consoleAlert.hasError || aiError) {
-      setTimeout(() => {
-        scrollToBottom();
-      }, 50);
-    }
-  }, [consoleAlert.hasError, aiError, scrollToBottom]);
 
   // Check for autostart parameter and trigger AI generation
   useEffect(() => {
@@ -504,10 +490,6 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     }
   }), [internalStartNewSession]);
 
-  const suggestErrorFix = useCallback(async (errorMessage: string) => {
-    await send(errorMessage, attachedFiles);
-  }, [send, attachedFiles]);
-
   return (
     <div className="h-full flex flex-col relative">
 
@@ -600,15 +582,6 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
             </div>
           )}
 
-          {/* Console Error Alert */}
-          {consoleAlert.hasError && (
-            <Quilly
-              error={new Error(`Console ${consoleAlert.errorCount === 1 ? 'error' : 'errors'} detected in your app. Would you like me to help fix ${consoleAlert.errorCount === 1 ? 'it' : 'them'}?`)}
-              onDismiss={consoleAlert.dismiss}
-              onFixConsoleErrors={() => suggestErrorFix(consoleAlert.errorSummary || '')}
-            />
-          )}
-
           {/* AI Error Alert */}
           {aiError && (
             <Quilly
@@ -618,7 +591,6 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
               onOpenModelSelector={openModelSelector}
             />
           )}
-
         </div>
       </div>
 

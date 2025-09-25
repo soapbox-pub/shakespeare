@@ -9,7 +9,6 @@ export interface QuillyProps {
   onDismiss: () => void;
   onNewChat: () => void;
   onOpenModelSelector: () => void;
-  onFixConsoleErrors: () => void;
 }
 
 interface ErrorBody {
@@ -20,7 +19,7 @@ interface ErrorBody {
   };
 }
 
-export function Quilly({ error, onDismiss, onNewChat, onOpenModelSelector, onFixConsoleErrors }: QuillyProps) {
+export function Quilly({ error, onDismiss, onNewChat, onOpenModelSelector }: QuillyProps) {
   const navigate = useNavigate();
 
   const renderBody = (error: Error): ErrorBody => {
@@ -80,18 +79,6 @@ export function Quilly({ error, onDismiss, onNewChat, onOpenModelSelector, onFix
             message: `AI service error: ${error.message}`,
           };
       }
-    }
-
-    // Handle console error messages
-    if (error.message.includes('Console') && error.message.includes('detected in your app') && onFixConsoleErrors) {
-      const isPlural = error.message.includes('errors detected');
-      return {
-        message: error.message,
-        action: {
-          label: `Fix ${isPlural ? 'errors' : 'error'}`,
-          onClick: onFixConsoleErrors,
-        }
-      };
     }
 
     // Default fallback

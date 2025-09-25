@@ -511,13 +511,13 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
 
   const ConsoleDropdown = () => {
     const [isOpen, setIsOpen] = useState(false);
-    const [copiedMessageId, setCopiedMessageId] = useState<number | null>(null);
+    const [copiedMessageIndex, setCopiedMessageIndex] = useState<number | null>(null);
 
-    const copyMessageToClipboard = async (msg: ConsoleMessage) => {
+    const copyMessageToClipboard = async (msg: ConsoleMessage, index: number) => {
       try {
         await navigator.clipboard.writeText(msg.message);
-        setCopiedMessageId(msg.id);
-        setTimeout(() => setCopiedMessageId(null), 2000);
+        setCopiedMessageIndex(index);
+        setTimeout(() => setCopiedMessageIndex(null), 2000);
       } catch (error) {
         console.error('Failed to copy message to clipboard:', error);
       }
@@ -562,7 +562,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
                     className="group relative py-0.5 px-1 hover:bg-gray-900 transition-colors duration-150 rounded cursor-pointer"
                     onClick={(e) => {
                       e.stopPropagation();
-                      copyMessageToClipboard(msg);
+                      copyMessageToClipboard(msg, index);
                     }}
                   >
                     <div className={cn(
@@ -580,11 +580,11 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        copyMessageToClipboard(msg);
+                        copyMessageToClipboard(msg, index);
                       }}
                       className="h-3 w-3 p-0 opacity-0 group-hover:opacity-100 transition-all duration-200 absolute right-1 top-1 hover:bg-muted-foreground/10 text-muted-foreground hover:text-foreground bg-black/50 rounded"
                     >
-                      {copiedMessageId === msg.id ? (
+                      {copiedMessageIndex === index ? (
                         <Check className="h-2 w-2 text-green-400" />
                       ) : (
                         <Copy className="h-2 w-2" />

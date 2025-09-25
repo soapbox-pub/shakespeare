@@ -79,8 +79,6 @@ export function ProjectView() {
     }
   }, [isPreviewable, mobileView, activeTab]);
 
-
-
   const handleNewChat = () => {
     // Reset to chat view on mobile when starting new chat
     if (isMobile) {

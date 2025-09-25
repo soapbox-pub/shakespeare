@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Download, Trash2, AlertTriangle, Loader2, Database, Info, ArrowLeft } from 'lucide-react';
+import { Download, Trash2, AlertTriangle, Loader2, Database, Info, ArrowLeft, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Progress } from '@/components/ui/progress';
+import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/useToast';
 import { useFS } from '@/hooks/useFS';
 import { useIsMobile } from '@/hooks/useIsMobile';
@@ -28,8 +29,10 @@ export function DataSettings() {
   const { t } = useTranslation();
   const [isExporting, setIsExporting] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
+  const [isRequestingPersistent, setIsRequestingPersistent] = useState(false);
   const [storageInfo, setStorageInfo] = useState<StorageInfo | null>(null);
   const [storageError, setStorageError] = useState<string | null>(null);
+  const [isPersistent, setIsPersistent] = useState<boolean | null>(null);
   const { toast } = useToast();
   const { fs } = useFS();
   const navigate = useNavigate();
@@ -44,7 +47,7 @@ export function DataSettings() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  // Load storage information
+  // Load storage information and persistent status
   useEffect(() => {
     const loadStorageInfo = async () => {
       try {
@@ -65,6 +68,12 @@ export function DataSettings() {
           usage: estimate.usage || 0,
           usageDetails,
         });
+
+        // Check if storage is persistent
+        if ('persist' in navigator.storage) {
+          const persistent = await navigator.storage.persisted();
+          setIsPersistent(persistent);
+        }
       } catch (error) {
         console.error('Failed to get storage information:', error);
         setStorageError(error instanceof Error ? error.message : 'Failed to get storage information');
@@ -146,6 +155,63 @@ export function DataSettings() {
       });
     } finally {
       setIsExporting(false);
+    }
+  };
+
+  const handlePersistentStorageToggle = async (checked: boolean) => {
+    // If trying to turn off, we can't actually do that - just ignore
+    if (!checked) {
+      return;
+    }
+
+    setIsRequestingPersistent(true);
+    try {
+      // Check if persist method is available
+      if (!('storage' in navigator) || !('persist' in navigator.storage)) {
+        toast({
+          title: t('persistentStorageNotSupported'),
+          description: t('persistentStorageNotSupportedDescription'),
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Check if already persistent
+      const alreadyPersistent = await navigator.storage.persisted();
+      if (alreadyPersistent) {
+        setIsPersistent(true);
+        toast({
+          title: t('persistentStorageAlreadyGranted'),
+          description: t('persistentStorageAlreadyGrantedDescription'),
+        });
+        return;
+      }
+
+      // Request persistent storage
+      const granted = await navigator.storage.persist();
+
+      if (granted) {
+        setIsPersistent(true);
+        toast({
+          title: t('persistentStorageGranted'),
+          description: t('persistentStorageGrantedDescription'),
+        });
+      } else {
+        toast({
+          title: t('persistentStorageDenied'),
+          description: t('persistentStorageDeniedDescription'),
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Failed to request persistent storage:', error);
+      toast({
+        title: t('failedToRequestPersistentStorage'),
+        description: error instanceof Error ? error.message : t('error'),
+        variant: "destructive",
+      });
+    } finally {
+      setIsRequestingPersistent(false);
     }
   };
 
@@ -267,6 +333,29 @@ export function DataSettings() {
             <span className="text-sm">{t('loadingStorageInfo')}</span>
           </div>
         )}
+
+        {/* Persist Data */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Shield className="h-5 w-5" />
+              {t('persistData')}
+            </CardTitle>
+            <CardDescription>
+              {t('persistDataDescription')}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-start">
+              <Switch
+                id="persistent-storage"
+                checked={isPersistent === true}
+                onCheckedChange={handlePersistentStorageToggle}
+                disabled={isRequestingPersistent || isPersistent === null}
+              />
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Export Files */}
         <Card>

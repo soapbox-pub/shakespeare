@@ -5,10 +5,12 @@ import { X } from 'lucide-react';
 export interface QuillyProps {
   error: Error;
   onDismiss: () => void;
-  action?: { label: string; onClick: () => void };
+  onNewChat?: () => void;
+  onOpenModelSelector?: () => void;
+  onFixConsoleErrors?: () => void;
 }
 
-export function Quilly({ error, onDismiss, action }: QuillyProps) {
+export function Quilly({ error, onDismiss, onNewChat, onOpenModelSelector, onFixConsoleErrors }: QuillyProps) {
   // Generate user-friendly message from error
   const getMessage = (error: Error): string => {
     const errorMsg = error.message || '';
@@ -36,7 +38,62 @@ export function Quilly({ error, onDismiss, action }: QuillyProps) {
     }
   };
 
+  // Determine action based on error
+  const getAction = (error: Error): { label: string; onClick: () => void } | undefined => {
+    const errorMsg = error.message || '';
+
+    // Check for console error messages first
+    if (errorMsg.includes('Console') && errorMsg.includes('detected in your app') && onFixConsoleErrors) {
+      const isPlural = errorMsg.includes('errors detected');
+      return {
+        label: `Fix ${isPlural ? 'errors' : 'error'}`,
+        onClick: onFixConsoleErrors
+      };
+    }
+
+    if (error.name === 'TypeError' && errorMsg.includes('fetch')) {
+      return {
+        label: 'Check AI settings',
+        onClick: () => {
+          window.location.href = '/settings/ai';
+        }
+      };
+    } else if (errorMsg.includes('API key')) {
+      return {
+        label: 'Check API key',
+        onClick: () => {
+          window.location.href = '/settings/ai';
+        }
+      };
+    } else if (errorMsg.includes('insufficient_quota')) {
+      return {
+        label: 'Check AI settings',
+        onClick: () => {
+          window.location.href = '/settings/ai';
+        }
+      };
+    } else if (errorMsg.includes('model_not_found') || errorMsg.includes('does not exist')) {
+      return onOpenModelSelector ? {
+        label: 'Choose model',
+        onClick: onOpenModelSelector
+      } : undefined;
+    } else if (errorMsg.includes('maximum context length') || errorMsg.includes('context length')) {
+      return onNewChat ? {
+        label: 'New chat',
+        onClick: onNewChat
+      } : undefined;
+    } else if (errorMsg.includes('422') || errorMsg.includes('Provider returned error')) {
+      return onOpenModelSelector ? {
+        label: 'Change model',
+        onClick: onOpenModelSelector
+      } : undefined;
+    }
+
+    return undefined;
+  };
+
   const message = getMessage(error);
+  const action = getAction(error);
 
   return (
     <div className="py-2 px-3 bg-primary/5 border border-primary/20 rounded-lg">

@@ -35,27 +35,44 @@ describe('Quilly', () => {
     expect(onDismiss).toHaveBeenCalledTimes(1);
   });
 
-  it('renders action button when provided', () => {
-    const error = new Error('Test error');
+  it('renders action button for console errors', () => {
+    const error = new Error('Console errors detected in your app. Would you like me to help fix them?');
     const onDismiss = vi.fn();
-    const actionOnClick = vi.fn();
+    const onFixConsoleErrors = vi.fn();
 
     render(
       <Quilly
         error={error}
         onDismiss={onDismiss}
-        action={{
-          label: 'Fix it',
-          onClick: actionOnClick
-        }}
+        onFixConsoleErrors={onFixConsoleErrors}
       />
     );
 
-    const actionButton = screen.getByRole('button', { name: 'Fix it' });
+    const actionButton = screen.getByRole('button', { name: 'Fix errors' });
     expect(actionButton).toBeInTheDocument();
 
     fireEvent.click(actionButton);
-    expect(actionOnClick).toHaveBeenCalledTimes(1);
+    expect(onFixConsoleErrors).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders action button for model not found errors', () => {
+    const error = new Error('model_not_found: The specified model does not exist');
+    const onDismiss = vi.fn();
+    const onOpenModelSelector = vi.fn();
+
+    render(
+      <Quilly
+        error={error}
+        onDismiss={onDismiss}
+        onOpenModelSelector={onOpenModelSelector}
+      />
+    );
+
+    const actionButton = screen.getByRole('button', { name: 'Choose model' });
+    expect(actionButton).toBeInTheDocument();
+
+    fireEvent.click(actionButton);
+    expect(onOpenModelSelector).toHaveBeenCalledTimes(1);
   });
 
   it('formats network error messages correctly', () => {

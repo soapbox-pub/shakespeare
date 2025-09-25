@@ -47,7 +47,6 @@ import { Quilly } from '@/components/Quilly';
 interface ChatPaneProps {
   projectId: string;
   onNewChat?: () => void;
-  onBuild?: () => void;
   onFirstInteraction?: () => void;
   onLoadingChange?: (isLoading: boolean) => void;
   isLoading?: boolean;
@@ -60,8 +59,7 @@ export interface ChatPaneRef {
 
 export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   projectId,
-  onNewChat: _onNewChat,
-  onBuild: _onBuild,
+  onNewChat,
   onFirstInteraction,
   onLoadingChange,
   isLoading: externalIsLoading,
@@ -240,71 +238,14 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   // Clean alert hooks with proper interfaces
   const consoleAlert = useConsoleErrorAlert(messages, isBuildLoading, internalIsLoading);
 
-  // Create AI error alert object
-  const aiErrorAlert = useMemo(() => {
-    if (!aiError) {
-      return { hasError: false, dismiss: () => {}, action: undefined };
-    }
-
-    let action: { label: string; onClick: () => void } | undefined;
-
-    const errorMsg = aiError.message || '';
-
-    if (aiError.name === 'TypeError' && errorMsg.includes('fetch')) {
-      action = {
-        label: 'Check AI settings',
-        onClick: () => {
-          // Navigate to AI settings
-          window.location.href = '/settings/ai';
-        }
-      };
-    } else if (errorMsg.includes('API key')) {
-      action = {
-        label: 'Check API key',
-        onClick: () => {
-          // Navigate to AI settings
-          window.location.href = '/settings/ai';
-        }
-      };
-    } else if (errorMsg.includes('insufficient_quota')) {
-      action = {
-        label: 'Check AI settings',
-        onClick: () => {
-          window.location.href = '/settings/ai';
-        }
-      };
-    } else if (errorMsg.includes('model_not_found') || errorMsg.includes('does not exist')) {
-      action = {
-        label: 'Choose model',
-        onClick: openModelSelector
-      };
-    } else if (errorMsg.includes('maximum context length') || errorMsg.includes('context length')) {
-      action = _onNewChat ? {
-        label: 'New chat',
-        onClick: _onNewChat
-      } : undefined;
-    } else if (errorMsg.includes('422') || errorMsg.includes('Provider returned error')) {
-      action = openModelSelector ? {
-        label: 'Change model',
-        onClick: openModelSelector
-      } : undefined;
-    }
-
-    return {
-      hasError: true,
-      dismiss: () => setAIError(null),
-      action
-    };
-  }, [aiError, openModelSelector, _onNewChat]);
-
   // Scroll to bottom when alerts appear
   useEffect(() => {
-    if (consoleAlert.hasError || aiErrorAlert.hasError) {
+    if (consoleAlert.hasError || aiError) {
       setTimeout(() => {
         scrollToBottom();
       }, 50);
     }
-  }, [consoleAlert.hasError, aiErrorAlert.hasError, scrollToBottom]);
+  }, [consoleAlert.hasError, aiError, scrollToBottom]);
 
   // Check for autostart parameter and trigger AI generation
   useEffect(() => {
@@ -664,19 +605,17 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
             <Quilly
               error={new Error(`Console ${consoleAlert.errorCount === 1 ? 'error' : 'errors'} detected in your app. Would you like me to help fix ${consoleAlert.errorCount === 1 ? 'it' : 'them'}?`)}
               onDismiss={consoleAlert.dismiss}
-              action={{
-                label: `Fix ${consoleAlert.errorCount === 1 ? 'error' : 'errors'}`,
-                onClick: () => suggestErrorFix(consoleAlert.errorSummary || '')
-              }}
+              onFixConsoleErrors={() => suggestErrorFix(consoleAlert.errorSummary || '')}
             />
           )}
 
           {/* AI Error Alert */}
-          {aiErrorAlert.hasError && (
+          {aiError && (
             <Quilly
-              error={aiError!}
-              onDismiss={aiErrorAlert.dismiss}
-              action={aiErrorAlert.action}
+              error={aiError}
+              onDismiss={() => setAIError(null)}
+              onNewChat={onNewChat}
+              onOpenModelSelector={openModelSelector}
             />
           )}
 

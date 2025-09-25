@@ -14,7 +14,6 @@ import { ArrowLeft, MessageSquare, Eye, Code, Menu } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { ActionsMenu } from '@/components/ActionsMenu';
 import { useIsMobile } from '@/hooks/useIsMobile';
-import { useKeepAlive } from '@/hooks/useKeepAlive';
 import { GitStatusIndicator } from '@/components/GitStatusIndicator';
 import { StarButton } from '@/components/StarButton';
 
@@ -39,20 +38,6 @@ export function ProjectView() {
 
   const build = useBuildProject(projectId!);
   const { data: isPreviewable = false } = useIsProjectPreviewable(projectId!);
-
-  // Keep-alive functionality to prevent tab throttling during AI processing
-  const { updateMetadata } = useKeepAlive({
-    enabled: isAILoading || build.isPending,
-    title: 'Shakespeare',
-    artist: project ? `Working on ${project.name}...` : 'Working...',
-    artwork: [
-      {
-        src: '/favicon.png',
-        sizes: '512x512',
-        type: 'image/png'
-      }
-    ]
-  });
 
   const loadProject = useCallback(async () => {
     if (!projectId) return;
@@ -90,20 +75,6 @@ export function ProjectView() {
       setActiveTab('code');
     }
   }, [isPreviewable, mobileView, activeTab]);
-
-  const runBuild = async () => {
-    if (build.isPending || !project) return;
-    updateMetadata('Shakespeare', `Building ${project.name}...`);
-
-    await build.mutateAsync(undefined, {
-      onSuccess(result) {
-        console.log('Project built:', result);
-      },
-      onError(error) {
-        console.error('Build failed:', error);
-      },
-    });
-  };
 
   const handleNewChat = () => {
     // Reset to chat view on mobile when starting new chat
@@ -234,7 +205,6 @@ export function ProjectView() {
                 ref={chatPaneRef}
                 projectId={project.id}
                 onNewChat={handleNewChat}
-                onBuild={runBuild}
                 onFirstInteraction={handleFirstInteraction}
                 onLoadingChange={handleAILoadingChange}
                 isLoading={isAILoading}
@@ -414,7 +384,6 @@ export function ProjectView() {
                       ref={chatPaneRef}
                       projectId={project.id}
                       onNewChat={handleNewChat}
-                      onBuild={runBuild}
                       onFirstInteraction={handleFirstInteraction}
                       onLoadingChange={handleAILoadingChange}
                       isLoading={isAILoading}

@@ -543,12 +543,12 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
         </PopoverTrigger>
         <PopoverContent
           align="end"
-          className="w-[calc(100vw-1rem)] max-w-[480px] max-h-[512px] overflow-hidden shadow-lg border-0 rounded-lg bg-black p-0"
+          className="w-[calc(100vw-1rem)] max-w-[480px] max-h-[512px] overflow-hidden shadow-lg border rounded-lg bg-background p-0"
           sideOffset={4}
         >
 
           {/* Messages */}
-          <div className="h-[60vh] max-h-[512px] w-full bg-black text-white font-mono text-xs relative overflow-y-auto overflow-x-hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+          <div className="h-[60vh] max-h-[512px] w-full bg-background text-foreground font-mono text-xs relative overflow-y-auto overflow-x-hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
             <div className="py-2 px-1 space-y-0">
               {messageCount === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -559,7 +559,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
                 consoleMessages.map((msg, index) => (
                   <div
                     key={index}
-                    className="group relative py-0.5 px-1 hover:bg-gray-900 transition-colors duration-150 rounded cursor-pointer"
+                    className="group relative py-0.5 px-1 hover:bg-muted/50 transition-colors duration-150 rounded cursor-pointer"
                     onClick={(e) => {
                       e.stopPropagation();
                       copyMessageToClipboard(msg, index);
@@ -567,10 +567,10 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
                   >
                     <div className={cn(
                       "text-xs font-mono leading-tight whitespace-pre-wrap break-words",
-                      msg.level === 'error' ? "text-red-400" :
-                      msg.level === 'warn' ? "text-yellow-400" :
-                      msg.level === 'info' ? "text-blue-400" :
-                      "text-gray-300"
+                      msg.level === 'error' ? "text-destructive" :
+                      msg.level === 'warn' ? "text-warning" :
+                      msg.level === 'info' ? "text-primary" :
+                      "text-muted-foreground"
                     )}>
                       {msg.message}
                     </div>
@@ -582,10 +582,10 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
                         e.stopPropagation();
                         copyMessageToClipboard(msg, index);
                       }}
-                      className="h-3 w-3 p-0 opacity-0 group-hover:opacity-100 transition-all duration-200 absolute right-1 top-1 hover:bg-muted-foreground/10 text-muted-foreground hover:text-foreground bg-black/50 rounded"
+                      className="h-3 w-3 p-0 opacity-0 group-hover:opacity-100 transition-all duration-200 absolute right-1 top-1 hover:bg-muted/70 text-muted-foreground hover:text-foreground bg-background/80 rounded border"
                     >
                       {copiedMessageIndex === index ? (
-                        <Check className="h-2 w-2 text-green-400" />
+                        <Check className="h-2 w-2 text-success" />
                       ) : (
                         <Copy className="h-2 w-2" />
                       )}
@@ -599,9 +599,9 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
           {/* Close button */}
           <button
             onClick={() => setIsOpen(false)}
-            className="absolute top-2 right-2 h-8 w-8 p-0 bg-gray-800/50 hover:bg-gray-700/70 rounded-md z-10 flex items-center justify-center border-0"
+            className="absolute top-2 right-2 h-8 w-8 p-0 bg-muted/50 hover:bg-muted/70 rounded-md z-10 flex items-center justify-center border"
           >
-            <X className="h-5 w-5 text-gray-400" />
+            <X className="h-5 w-5 text-muted-foreground" />
           </button>
         </PopoverContent>
       </Popover>

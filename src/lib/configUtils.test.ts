@@ -61,7 +61,7 @@ describe('configUtils', () => {
           apiKey: 'sk-test123',
         },
       ],
-      recentlyUsedModels: ['gpt-4', 'gpt-3.5-turbo'],
+      recentlyUsedModels: ['openai/gpt-4', 'openai/gpt-3.5-turbo'],
     };
 
     describe('readAISettings', () => {
@@ -96,26 +96,6 @@ describe('configUtils', () => {
           providers: [],
           recentlyUsedModels: [],
         });
-      });
-
-      it('should migrate from localStorage if VFS file does not exist', async () => {
-        vi.mocked(mockFS.readFile).mockRejectedValue(new Error('File not found'));
-        vi.mocked(mockFS.stat).mockRejectedValue(new Error('Directory not found'));
-        vi.mocked(mockFS.mkdir).mockResolvedValue(undefined);
-        vi.mocked(mockFS.writeFile).mockResolvedValue(undefined);
-
-        mockLocalStorage.getItem.mockReturnValue(JSON.stringify(sampleAISettings));
-
-        const result = await readAISettings(mockFS);
-
-        expect(result).toEqual(sampleAISettings);
-        expect(mockLocalStorage.getItem).toHaveBeenCalledWith('ai-settings');
-        expect(mockLocalStorage.removeItem).toHaveBeenCalledWith('ai-settings');
-        expect(mockFS.writeFile).toHaveBeenCalledWith(
-          '/config/ai.json',
-          JSON.stringify(sampleAISettings, null, 2),
-          'utf8'
-        );
       });
     });
 
@@ -187,26 +167,6 @@ describe('configUtils', () => {
           credentials: {},
           corsProxy: 'https://proxy.shakespeare.diy/?url={href}',
         });
-      });
-
-      it('should migrate from localStorage if VFS file does not exist', async () => {
-        vi.mocked(mockFS.readFile).mockRejectedValue(new Error('File not found'));
-        vi.mocked(mockFS.stat).mockRejectedValue(new Error('Directory not found'));
-        vi.mocked(mockFS.mkdir).mockResolvedValue(undefined);
-        vi.mocked(mockFS.writeFile).mockResolvedValue(undefined);
-
-        mockLocalStorage.getItem.mockReturnValue(JSON.stringify(sampleGitSettings));
-
-        const result = await readGitSettings(mockFS);
-
-        expect(result).toEqual(sampleGitSettings);
-        expect(mockLocalStorage.getItem).toHaveBeenCalledWith('git-settings');
-        expect(mockLocalStorage.removeItem).toHaveBeenCalledWith('git-settings');
-        expect(mockFS.writeFile).toHaveBeenCalledWith(
-          '/config/git.json',
-          JSON.stringify(sampleGitSettings, null, 2),
-          'utf8'
-        );
       });
     });
 

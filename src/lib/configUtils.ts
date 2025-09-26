@@ -1,10 +1,39 @@
+import z from 'zod';
+import { filteredArray } from '@/lib/schema';
 import type { JSRuntimeFS } from '@/lib/JSRuntime';
-import type { AISettings, AIProvider } from '@/contexts/AISettingsContext';
+import type { AIProvider, AISettings } from '@/contexts/AISettingsContext';
 import type { GitSettings } from '@/contexts/GitSettingsContext';
 
 const CONFIG_DIR = '/config';
 const AI_CONFIG_PATH = `${CONFIG_DIR}/ai.json`;
 const GIT_CONFIG_PATH = `${CONFIG_DIR}/git.json`;
+
+const aiProviderSchema: z.ZodType<AIProvider> = z.object({
+  id: z.string(),
+  baseURL: z.string().url(),
+  apiKey: z.string().optional(),
+  nostr: z.boolean().optional(),
+});
+
+const providerModelSchema = z.string().regex(
+  /^[^/]+\/.+$/,
+  'Must be in format provider/model (e.g., "openai/gpt-4o")',
+);
+
+const aiSettingsSchema = z.object({
+  providers: filteredArray(aiProviderSchema),
+  recentlyUsedModels: filteredArray(providerModelSchema),
+});
+
+const gitCredentialSchema = z.object({
+  username: z.string(),
+  password: z.string(),
+});
+
+const gitSettingsSchema = z.object({
+  credentials: z.record(z.string(), gitCredentialSchema),
+  corsProxy: z.string().url().catch('https://proxy.shakespeare.diy/?url={href}')
+});
 
 /**
  * Ensures the config directory exists
@@ -18,49 +47,6 @@ async function ensureConfigDir(fs: JSRuntimeFS): Promise<void> {
 }
 
 /**
- * Migrate AI settings from localStorage to VFS (internal function)
- */
-async function migrateAISettingsFromLocalStorage(fs: JSRuntimeFS): Promise<AISettings | null> {
-  // If not in VFS, try to migrate from localStorage
-  const stored = localStorage.getItem('ai-settings');
-  if (stored) {
-    try {
-      const parsed = JSON.parse(stored);
-      if (parsed && typeof parsed === 'object' && 'providers' in parsed) {
-        // Handle migration from old map format to new array format
-        let providers;
-        if (Array.isArray(parsed.providers)) {
-          providers = parsed.providers;
-        } else if (parsed.providers && typeof parsed.providers === 'object') {
-          // Convert map to array
-          providers = Object.entries(parsed.providers).map(([id, connection]) => ({
-            id,
-            ...(connection as Omit<AIProvider, 'id'>),
-          }));
-        } else {
-          providers = [];
-        }
-
-        const settings: AISettings = {
-          providers,
-          recentlyUsedModels: parsed.recentlyUsedModels || [],
-        };
-
-        // Write to VFS and remove from localStorage
-        await writeAISettings(fs, settings);
-        localStorage.removeItem('ai-settings');
-
-        return settings;
-      }
-    } catch {
-      // If parsing fails, return null
-    }
-  }
-
-  return null;
-}
-
-/**
  * Read AI settings from VFS (with automatic migration from localStorage)
  */
 export async function readAISettings(fs: JSRuntimeFS): Promise<AISettings> {
@@ -69,50 +55,16 @@ export async function readAISettings(fs: JSRuntimeFS): Promise<AISettings> {
     recentlyUsedModels: [],
   };
 
-  // Try to read from VFS first
   try {
     const content = await fs.readFile(AI_CONFIG_PATH, 'utf8');
-    const parsed = JSON.parse(content);
-
-    if (parsed && typeof parsed === 'object' && 'providers' in parsed) {
-      // Handle migration from old map format to new array format
-      let providers;
-      if (Array.isArray(parsed.providers)) {
-        providers = parsed.providers;
-      } else if (parsed.providers && typeof parsed.providers === 'object') {
-        // Convert map to array
-        providers = Object.entries(parsed.providers).map(([id, connection]) => ({
-          id,
-          ...(connection as Omit<AIProvider, 'id'>),
-        }));
-
-        // Write back the migrated format
-        const migratedSettings: AISettings = {
-          providers,
-          recentlyUsedModels: parsed.recentlyUsedModels || [],
-        };
-        await writeAISettings(fs, migratedSettings);
-        return migratedSettings;
-      } else {
-        providers = [];
-      }
-
-      return {
-        providers,
-        recentlyUsedModels: parsed.recentlyUsedModels || [],
-      };
+    const data = JSON.parse(content);
+    return aiSettingsSchema.parse(data);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      console.error('AI settings parsing error:', error.errors);
     }
-  } catch {
-    // File doesn't exist or is invalid, try migration
+    return defaultSettings;
   }
-
-  // If not in VFS, try to migrate from localStorage
-  const migratedSettings = await migrateAISettingsFromLocalStorage(fs);
-  if (migratedSettings) {
-    return migratedSettings;
-  }
-
-  return defaultSettings;
 }
 
 /**
@@ -121,35 +73,6 @@ export async function readAISettings(fs: JSRuntimeFS): Promise<AISettings> {
 export async function writeAISettings(fs: JSRuntimeFS, settings: AISettings): Promise<void> {
   await ensureConfigDir(fs);
   await fs.writeFile(AI_CONFIG_PATH, JSON.stringify(settings, null, 2), 'utf8');
-}
-
-/**
- * Migrate Git settings from localStorage to VFS (internal function)
- */
-async function migrateGitSettingsFromLocalStorage(fs: JSRuntimeFS): Promise<GitSettings | null> {
-  // If not in VFS, try to migrate from localStorage
-  const stored = localStorage.getItem('git-settings');
-  if (stored) {
-    try {
-      const parsed = JSON.parse(stored);
-      if (parsed && typeof parsed === 'object' && 'credentials' in parsed) {
-        const settings: GitSettings = {
-          credentials: parsed.credentials || {},
-          corsProxy: parsed.corsProxy || 'https://proxy.shakespeare.diy/?url={href}',
-        };
-
-        // Write to VFS and remove from localStorage
-        await writeGitSettings(fs, settings);
-        localStorage.removeItem('git-settings');
-
-        return settings;
-      }
-    } catch {
-      // If parsing fails, return null
-    }
-  }
-
-  return null;
 }
 
 /**
@@ -164,25 +87,11 @@ export async function readGitSettings(fs: JSRuntimeFS): Promise<GitSettings> {
   // Try to read from VFS first
   try {
     const content = await fs.readFile(GIT_CONFIG_PATH, 'utf8');
-    const parsed = JSON.parse(content);
-
-    if (parsed && typeof parsed === 'object' && 'credentials' in parsed) {
-      return {
-        credentials: parsed.credentials || {},
-        corsProxy: parsed.corsProxy || 'https://proxy.shakespeare.diy/?url={href}',
-      };
-    }
+    const data = JSON.parse(content);
+    return gitSettingsSchema.parse(data);
   } catch {
-    // File doesn't exist or is invalid, try migration
+    return defaultSettings;
   }
-
-  // If not in VFS, try to migrate from localStorage
-  const migratedSettings = await migrateGitSettingsFromLocalStorage(fs);
-  if (migratedSettings) {
-    return migratedSettings;
-  }
-
-  return defaultSettings;
 }
 
 /**

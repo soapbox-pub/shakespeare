@@ -252,7 +252,7 @@ export function Terminal({ projectId, onClose, className }: TerminalProps) {
             {!isExecuting && (
               <div className="flex items-center gap-2">
                 <span className="text-blue-400 text-xs font-mono whitespace-nowrap">
-                  {getPrompt()}
+                  $
                 </span>
                 <form onSubmit={handleSubmit} className="flex-1 relative">
                   <input

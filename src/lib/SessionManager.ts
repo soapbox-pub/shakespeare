@@ -250,7 +250,6 @@ export class SessionManager {
           model,
           messages,
           tools: session.tools && Object.keys(session.tools).length > 0 ? Object.values(session.tools) : undefined,
-          tool_choice: session.tools && Object.keys(session.tools).length > 0 ? 'auto' : undefined,
           stream: true,
           stream_options: {
             include_usage: true,

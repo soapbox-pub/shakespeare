@@ -750,26 +750,25 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
                     variant="outline"
                     size="sm"
                     onClick={() => setMobileCodeView('terminal')}
-                    className="absolute bottom-4 right-4 h-10 w-10 p-0 rounded-full shadow-lg bg-background border-2"
+                    className="absolute bottom-4 right-4 h-12 w-12 p-0 rounded-full shadow-lg bg-background border-2"
                   >
-                    <Terminal className="h-4 w-4" />
+                    <Terminal className="h-6 w-6" />
                   </Button>
                 </div>
               ) : mobileCodeView === 'terminal' ? (
                 <>
-                  <div className="p-3 border-b bg-gradient-to-r from-primary/5 to-accent/5 flex items-center gap-2">
+                  <div className="px-1 flex items-center gap-2 bg-black text-green-400">
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => setMobileCodeView('explorer')}
-                      className="p-1"
+                      className="p-0.5 hover:bg-transparent hover:text-white -mb-3"
                     >
                       <ArrowLeft className="h-4 w-4" />
+                      <h3 className="font-semibold flex-1">
+                        Back
+                      </h3>
                     </Button>
-                    <h3 className="font-semibold flex-1 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                      Terminal
-                    </h3>
-                    <GitStatusIndicator projectId={projectId} />
                   </div>
                   <div className="flex-1">
                     <TerminalComponent projectId={projectId} />
@@ -845,7 +844,6 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
                   >
                     <Terminal className="h-4 w-4" />
                   </Button>
-                  <GitStatusIndicator projectId={projectId} />
                 </div>
               )}
               {/* Code view header without back button for non-previewable projects */}

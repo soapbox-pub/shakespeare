@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { X, Copy, Trash2 } from 'lucide-react';
+import { Copy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ShellTool } from '@/lib/tools/ShellTool';
 import { useFS } from '@/hooks/useFS';
@@ -9,7 +9,6 @@ import { useGit } from '@/hooks/useGit';
 
 interface TerminalProps {
   projectId: string;
-  onClose?: () => void;
   className?: string;
 }
 
@@ -20,13 +19,12 @@ interface TerminalLine {
   timestamp: Date;
 }
 
-export function Terminal({ projectId, onClose, className }: TerminalProps) {
+export function Terminal({ projectId, className }: TerminalProps) {
   const [lines, setLines] = useState<TerminalLine[]>([]);
   const [currentInput, setCurrentInput] = useState('');
   const [isExecuting, setIsExecuting] = useState(false);
   const [commandHistory, setCommandHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
-  const [currentWorkingDirectory, setCurrentWorkingDirectory] = useState(`/projects/${projectId}`);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -43,7 +41,7 @@ export function Terminal({ projectId, onClose, className }: TerminalProps) {
     setLines([{
       id: Date.now().toString(),
       type: 'output',
-      content: `Welcome to Shakespeare Terminal\nProject: ${projectId}\nType 'help' to see available commands.`,
+      content: `Welcome to Shakespeare Terminal\nType 'help' to see available commands.`,
       timestamp: new Date()
     }]);
   }, [projectId, fs, git]);
@@ -89,24 +87,22 @@ export function Terminal({ projectId, onClose, className }: TerminalProps) {
     setHistoryIndex(-1);
 
     // Add input line
-    addLine('input', `$ ${command}`);
+    addLine('input', command);
 
     setIsExecuting(true);
 
     try {
       // Handle special help command
-      if (command.trim().toLowerCase() === 'help') {
+      if (command.trim() === 'help') {
         const availableCommands = shellToolRef.current.getAvailableCommands();
         const helpText = `Available commands:\n\n${availableCommands.map(cmd =>
           `${cmd.name.padEnd(12)} - ${cmd.description}`
         ).join('\n')}\n\nUse 'which <command>' for more details about a specific command.`;
         addLine('output', helpText);
+      } else if (command.trim() === 'clear') {
+        setLines([]);
       } else {
         const result = await shellToolRef.current.execute({ command });
-
-        // Update current working directory
-        const newCwd = shellToolRef.current.getCurrentWorkingDirectory();
-        setCurrentWorkingDirectory(newCwd);
 
         // Add output
         if (result && result.trim()) {
@@ -162,15 +158,6 @@ export function Terminal({ projectId, onClose, className }: TerminalProps) {
     }
   }, []);
 
-  const clearTerminal = useCallback(() => {
-    setLines([]);
-  }, []);
-
-  const getPrompt = () => {
-    const relativePath = currentWorkingDirectory.replace(`/projects/${projectId}`, '') || '/';
-    return `${projectId}:${relativePath}$`;
-  };
-
   // Focus input when clicking anywhere in the terminal
   const handleTerminalClick = useCallback(() => {
     if (inputRef.current) {
@@ -179,39 +166,7 @@ export function Terminal({ projectId, onClose, className }: TerminalProps) {
   }, []);
 
   return (
-    <div className={cn("h-full flex flex-col bg-black text-green-400 font-mono text-sm", className)}>
-      {/* Terminal Header */}
-      <div className="flex items-center justify-between p-2 bg-gray-900 border-b border-gray-700">
-        <div className="flex items-center gap-2">
-          <div className="flex gap-1">
-            <div className="w-3 h-3 rounded-full bg-red-500"></div>
-            <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-            <div className="w-3 h-3 rounded-full bg-green-500"></div>
-          </div>
-          <span className="text-gray-300 text-xs">Terminal - {projectId}</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={clearTerminal}
-            className="h-6 w-6 p-0 text-gray-400 hover:text-white hover:bg-gray-700"
-          >
-            <Trash2 className="h-3 w-3" />
-          </Button>
-          {onClose && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onClose}
-              className="h-6 w-6 p-0 text-gray-400 hover:text-white hover:bg-gray-700"
-            >
-              <X className="h-3 w-3" />
-            </Button>
-          )}
-        </div>
-      </div>
-
+    <div className={cn("h-full flex flex-col bg-black text-slate-300 font-mono text-sm", className)}>
       {/* Terminal Content */}
       <div className="flex-1 flex flex-col min-h-0" onClick={handleTerminalClick}>
         <ScrollArea className="flex-1" ref={scrollRef}>
@@ -221,12 +176,17 @@ export function Terminal({ projectId, onClose, className }: TerminalProps) {
                 key={line.id}
                 className={cn(
                   "group relative",
-                  line.type === 'input' && "text-blue-400",
+                  line.type === 'input' && "text-white",
                   line.type === 'error' && "text-red-400",
-                  line.type === 'output' && "text-green-400"
+                  line.type === 'output' && "text-slate-300"
                 )}
               >
-                <pre className="whitespace-pre-wrap break-words font-mono text-xs leading-relaxed">
+                <pre className="whitespace-pre-wrap break-words font-mono leading-relaxed">
+                  {line.type === 'input' ? (
+                    <span className="text-purple-400 font-mono whitespace-nowrap">
+                      ${' '}
+                    </span>
+                  ) : null}
                   {line.content}
                 </pre>
                 <Button
@@ -242,16 +202,11 @@ export function Terminal({ projectId, onClose, className }: TerminalProps) {
                 </Button>
               </div>
             ))}
-            {isExecuting && (
-              <div className="text-yellow-400 text-xs">
-                <span className="animate-pulse">Executing...</span>
-              </div>
-            )}
 
             {/* Current Command Input - inline with content */}
             {!isExecuting && (
               <div className="flex items-center gap-2">
-                <span className="text-blue-400 text-xs font-mono whitespace-nowrap">
+                <span className="text-purple-400 font-mono whitespace-nowrap">
                   $
                 </span>
                 <form onSubmit={handleSubmit} className="flex-1 relative">
@@ -262,17 +217,11 @@ export function Terminal({ projectId, onClose, className }: TerminalProps) {
                     onChange={(e) => setCurrentInput(e.target.value)}
                     onKeyDown={handleKeyDown}
                     disabled={isExecuting}
-                    className="w-full bg-transparent border-none outline-none text-green-400 font-mono text-xs placeholder-gray-500 caret-green-400"
+                    className="w-full bg-transparent border-none outline-none text-white font-mono placeholder-gray-500 caret-white leading-relaxedFP"
                     placeholder=""
                     autoComplete="off"
                     spellCheck="false"
                   />
-                  {/* Blinking cursor when input is empty */}
-                  {!currentInput && (
-                    <span className="absolute left-0 top-0 text-green-400 font-mono text-xs animate-pulse">
-                      _
-                    </span>
-                  )}
                 </form>
               </div>
             )}

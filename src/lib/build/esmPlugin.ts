@@ -110,6 +110,71 @@ export function esmPlugin(packageLock: PackageLock, target?: string): Plugin {
 
       // Handle relative or absolute imports inside esm.sh modules
       build.onResolve({ filter: /.*/, namespace: "esm" }, async (args) => {
+        // Check if this is a bare package import (not a relative path)
+        if (!args.path.startsWith("./") && !args.path.startsWith("../") && !args.path.startsWith("/")) {
+          try {
+            // This is a bare import like "@emotion/is-prop-valid" - treat it as a new package
+            const packageName = args.path.startsWith("@")
+              ? args.path.split("/").slice(0, 2).join("/")
+              : args.path.split("/")[0];
+
+            // Handle transitive dependency versions
+            const keys: string[] = [];
+            try {
+              const importerPackage = extractPackageName(args.importer);
+              keys.push(
+                `node_modules/${importerPackage}/node_modules/${packageName}`,
+              );
+            } catch {
+              // fallthrough
+            }
+
+            if (packageName.startsWith("@jsr/")) {
+              keys.push(`node_modules/@${packageName.slice(5).replace("__", "/")}`);
+            }
+
+            keys.push(`node_modules/${packageName}`);
+
+            const packageInfo = keys
+              .map((key) => packageLock.packages[key])
+              .find((info) => info);
+
+            const packagePath = args.path.slice(packageName.length);
+            const version = packageInfo?.version;
+
+            if (version) {
+              const name = packageInfo.name ?? packageName;
+              const specifier = `${name}@${version}${packagePath}`;
+
+              const url = new URL(`https://esm.sh/*${specifier}`);
+
+              if (target) {
+                url.searchParams.set("target", target);
+              }
+
+              return {
+                path: url.toString(),
+                namespace: "esm",
+              };
+            } else {
+              // If we can't find the version in package lock, let ESM.sh resolve it
+              // This handles transitive dependencies that might not be in our package-lock
+              const url = new URL(`https://esm.sh/${args.path}`);
+
+              if (target) {
+                url.searchParams.set("target", target);
+              }
+
+              return {
+                path: url.toString(),
+                namespace: "esm",
+              };
+            }
+          } catch {
+            // If package resolution fails, fall through to URL resolution
+          }
+        }
+
         let fullURL: URL;
 
         try {

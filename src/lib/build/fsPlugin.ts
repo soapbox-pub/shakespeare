@@ -38,7 +38,7 @@ export function fsPlugin(fs: JSRuntimeFS, cwd: string): Plugin {
         async (args) => {
           const ext = path.extname(args.path).slice(1);
 
-          if (!["ts", "tsx", "js", "jsx", "css"].includes(ext)) {
+          if (!["ts", "tsx", "js", "jsx", "css", "json"].includes(ext)) {
             return;
           }
 
@@ -56,7 +56,7 @@ async function tryFileVariants(
   fs: JSRuntimeFS,
   basePath: string,
 ): Promise<string> {
-  const extensions = [".ts", ".tsx", ".js", ".jsx", ".css"];
+  const extensions = [".ts", ".tsx", ".js", ".jsx", ".css", ".json"];
   const stat = await statSafe(fs, basePath);
 
   // If it's a file, check if it exists

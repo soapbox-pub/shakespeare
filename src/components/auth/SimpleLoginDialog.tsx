@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Cloud } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Cloud, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -32,6 +32,7 @@ const SimpleLoginDialog: React.FC<SimpleLoginDialogProps> = ({
 }) => {
   // Removed step state - we only have one step now
   const [isLoading, setIsLoading] = useState(false);
+  const [isFileLoading, setIsFileLoading] = useState(false);
   const [nsec, setNsec] = useState('');
   const [bunkerUri, setBunkerUri] = useState('');
   const [activeTab, setActiveTab] = useState<'nsec' | 'bunker'>('nsec');
@@ -39,7 +40,9 @@ const SimpleLoginDialog: React.FC<SimpleLoginDialogProps> = ({
     nsec?: string;
     bunker?: string;
     extension?: string;
+    file?: string;
   }>({});
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const login = useLoginActions();
 
@@ -47,10 +50,15 @@ const SimpleLoginDialog: React.FC<SimpleLoginDialogProps> = ({
   useEffect(() => {
     if (isOpen) {
       setIsLoading(false);
+      setIsFileLoading(false);
       setNsec('');
       setBunkerUri('');
       setActiveTab('nsec');
       setErrors({});
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   }, [isOpen]);
 
@@ -86,20 +94,7 @@ const SimpleLoginDialog: React.FC<SimpleLoginDialogProps> = ({
       setErrors(prev => ({ ...prev, nsec: 'Invalid secret key format. Must be a valid nsec starting with nsec1.' }));
       return;
     }
-
-    setIsLoading(true);
-    setErrors({});
-
-    setTimeout(() => {
-      try {
-        login.nsec(nsec);
-        onLogin();
-        onClose();
-      } catch {
-        setErrors({ nsec: "Failed to login with this key. Please check that it's correct." });
-        setIsLoading(false);
-      }
-    }, 50);
+    executeLogin(nsec);
   };
 
   const handleBunkerLogin = async () => {
@@ -129,6 +124,52 @@ const SimpleLoginDialog: React.FC<SimpleLoginDialogProps> = ({
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const executeLogin = (key: string) => {
+    setIsLoading(true);
+    setErrors({});
+
+    // Use a timeout to allow the UI to update before the synchronous login call
+    setTimeout(() => {
+      try {
+        login.nsec(key);
+        onLogin();
+        onClose();
+      } catch {
+        setErrors({ nsec: "Failed to login with this key. Please check that it's correct." });
+        setIsLoading(false);
+      }
+    }, 50);
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsFileLoading(true);
+    setErrors({});
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setIsFileLoading(false);
+      const content = event.target?.result as string;
+      if (content) {
+        const trimmedContent = content.trim();
+        if (validateNsec(trimmedContent)) {
+          executeLogin(trimmedContent);
+        } else {
+          setErrors({ file: 'File does not contain a valid secret key.' });
+        }
+      } else {
+        setErrors({ file: 'Could not read file content.' });
+      }
+    };
+    reader.onerror = () => {
+      setIsFileLoading(false);
+      setErrors({ file: 'Failed to read file.' });
+    };
+    reader.readAsText(file);
   };
 
   const handleSignupClick = () => {
@@ -202,14 +243,37 @@ const SimpleLoginDialog: React.FC<SimpleLoginDialogProps> = ({
                   )}
                 </div>
 
-                <Button
-                  size="lg"
-                  onClick={handleKeyLogin}
-                  disabled={isLoading || !nsec.trim()}
-                  className="w-full"
-                >
-                  {isLoading ? 'Verifying...' : 'Add Key'}
-                </Button>
+                <div className="flex space-x-2">
+                  <Button
+                    size="lg"
+                    onClick={handleKeyLogin}
+                    disabled={isLoading || !nsec.trim()}
+                    className="flex-1"
+                  >
+                    {isLoading ? 'Verifying...' : 'Add Key'}
+                  </Button>
+
+                  <input
+                    type="file"
+                    accept=".txt"
+                    className="hidden"
+                    ref={fileInputRef}
+                    onChange={handleFileUpload}
+                  />
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isLoading || isFileLoading}
+                    className="px-3"
+                  >
+                    <Upload className="w-4 h-4" />
+                  </Button>
+                </div>
+
+                {errors.file && (
+                  <p className="text-sm text-red-500 text-center">{errors.file}</p>
+                )}
               </div>
             )}
 

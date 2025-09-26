@@ -111,7 +111,11 @@ export function esmPlugin(packageLock: PackageLock, target?: string): Plugin {
       // Handle relative or absolute imports inside esm.sh modules
       build.onResolve({ filter: /.*/, namespace: "esm" }, async (args) => {
         // Check if this is a bare package import (not a relative path)
-        if (!args.path.startsWith("./") && !args.path.startsWith("../") && !args.path.startsWith("/")) {
+        // Note: CSS assets and some other relative imports don't use ./ prefix
+        const isLikelyAsset = /\.(png|jpg|jpeg|gif|svg|woff|woff2|ttf|eot|ico|webp|avif)$/i.test(args.path);
+        const isRelativePath = args.path.startsWith("./") || args.path.startsWith("../") || args.path.startsWith("/") || isLikelyAsset;
+
+        if (!isRelativePath) {
           try {
             // This is a bare import like "@emotion/is-prop-valid" - treat it as a new package
             const packageName = args.path.startsWith("@")

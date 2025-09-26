@@ -66,6 +66,11 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   isBuildLoading: externalIsBuildLoading,
 }, ref) => {
   const { t } = useTranslation();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { fs } = useFS();
+  const { git } = useGit();
+  const { user } = useCurrentUser();
+  const { models } = useProviderModels();
   const [input, setInput] = useState('');
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
@@ -98,6 +103,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   });
   // State to control model selector dropdown
   const [isModelSelectorOpen, setIsModelSelectorOpen] = useState(false);
+  const [shouldAutostart, setShouldAutostart] = useState(false);
   const autostartedRef = useRef(false);
 
   useEffect(() => {
@@ -106,16 +112,28 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     }
   }, [providerModel, settings.recentlyUsedModels]);
 
+  useEffect(() => {
+    const urlModel = searchParams.get('model');
+    const autostart = searchParams.get('autostart');
+
+    if (urlModel && !providerModel) {
+      setProviderModel(urlModel);
+    }
+    if (autostart === 'true') {
+      setShouldAutostart(true);
+    }
+
+    // Clear the autostart and model parameters
+    const newSearchParams = new URLSearchParams(searchParams);
+    newSearchParams.delete('autostart');
+    newSearchParams.delete('model');
+    setSearchParams(newSearchParams, { replace: true });
+  }, [providerModel, searchParams, setSearchParams])
+
   // Reset error state when navigating between projects and switching models
   useEffect(() => {
     setAIError(null);
   }, [projectId, providerModel]);
-
-  const [searchParams, setSearchParams] = useSearchParams();
-  const { fs } = useFS();
-  const { git } = useGit();
-  const { user } = useCurrentUser();
-  const { models } = useProviderModels();
 
   // Initialize AI chat with tools
   const cwd = `/projects/${projectId}`;
@@ -262,32 +280,13 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   useEffect(() => {
     if (autostartedRef.current) return;
 
-    const autostart = searchParams.get('autostart');
-    const urlModel = searchParams.get('model');
-
-    if (autostart === 'true' && isConfigured) {
-      // Use model from URL if available, otherwise use current selection
-      const modelToUse = urlModel?.trim() || providerModel.trim();
-
-      if (modelToUse) {
-        // Update provider model if it came from URL
-        if (urlModel?.trim() && urlModel.trim() !== providerModel) {
-          setProviderModel(urlModel.trim());
-        }
-
-        // Clear the autostart and model parameters so they don't trigger again
-        const newSearchParams = new URLSearchParams(searchParams);
-        newSearchParams.delete('autostart');
-        newSearchParams.delete('model');
-        setSearchParams(newSearchParams, { replace: true });
-
-        // Start AI generation
-        addRecentlyUsedModel(modelToUse);
-        startGeneration(modelToUse);
-        autostartedRef.current = true;
-      }
+    if (shouldAutostart && providerModel && isConfigured) {
+      // Start AI generation
+      addRecentlyUsedModel(providerModel);
+      startGeneration(providerModel);
+      autostartedRef.current = true;
     }
-  }, [addRecentlyUsedModel, isConfigured, providerModel, searchParams, setSearchParams, startGeneration]);
+  }, [addRecentlyUsedModel, isConfigured, providerModel, shouldAutostart, startGeneration]);
 
   // Simple scroll event listener
   useEffect(() => {

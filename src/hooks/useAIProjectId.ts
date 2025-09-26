@@ -80,7 +80,7 @@ export function useAIProjectId({ onError }: UseAIProjectIdOptions = {}) {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to generate project ID';
       onError?.(errorMessage);
-      throw new Error(errorMessage);
+      throw error;
     } finally {
       setIsLoading(false);
     }

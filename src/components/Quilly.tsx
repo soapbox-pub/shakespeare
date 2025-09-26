@@ -30,8 +30,17 @@ interface ErrorBody {
 export function Quilly({ error, onDismiss, onNewChat, onOpenModelSelector, onRequestConsoleErrorHelp, providerModel }: QuillyProps) {
   const navigate = useNavigate();
   const { settings } = useAISettings();
-  const { provider } = parseProviderModel(providerModel, settings.providers);
-  const credits = useAICredits(provider);
+
+  // Handle empty provider model gracefully
+  let provider;
+  try {
+    provider = parseProviderModel(providerModel, settings.providers).provider;
+  } catch {
+    // If no valid provider model, use a default or undefined
+    provider = undefined;
+  }
+
+  const credits = useAICredits(provider || { id: '', name: '', apiKey: '', nostr: false });
   const [showCreditsDialog, setShowCreditsDialog] = useState(false);
 
   const renderBody = (error: Error): ErrorBody => {

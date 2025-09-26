@@ -509,17 +509,13 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
               </div>
               <div className="flex-1 min-h-0 overflow-y-auto">
                 {isLoadingPayments ? (
-                  <div className="space-y-3">
-                    {Array.from({ length: 3 }).map((_, i) => (
-                      <div key={i} className="p-3 border rounded-lg space-y-2">
-                        <div className="flex items-center gap-2">
-                          <Skeleton className="h-4 w-4 rounded" />
-                          <Skeleton className="h-4 w-24" />
-                          <Skeleton className="h-4 w-16 ml-auto" />
-                        </div>
-                        <Skeleton className="h-3 w-32" />
-                      </div>
-                    ))}
+                  <div className="p-3 border rounded-lg space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Skeleton className="h-4 w-4 rounded" />
+                      <Skeleton className="h-4 w-24" />
+                      <Skeleton className="h-4 w-16 ml-auto" />
+                    </div>
+                    <Skeleton className="h-3 w-32" />
                   </div>
                 ) : !payments || payments.length === 0 ? (
                   <div className="flex-1 flex items-center justify-center">

@@ -48,12 +48,12 @@ export function Terminal({ projectId, onClose, className }: TerminalProps) {
     }]);
   }, [projectId, fs, git]);
 
-  // Auto-scroll to bottom when new lines are added
+  // Auto-scroll to bottom when new lines are added or execution state changes
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [lines]);
+  }, [lines, isExecuting]);
 
   // Focus input when component mounts
   useEffect(() => {
@@ -61,6 +61,13 @@ export function Terminal({ projectId, onClose, className }: TerminalProps) {
       inputRef.current.focus();
     }
   }, []);
+
+  // Refocus input after command execution
+  useEffect(() => {
+    if (!isExecuting && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [isExecuting]);
 
   const addLine = useCallback((type: TerminalLine['type'], content: string) => {
     const newLine: TerminalLine = {
@@ -164,6 +171,13 @@ export function Terminal({ projectId, onClose, className }: TerminalProps) {
     return `${projectId}:${relativePath}$`;
   };
 
+  // Focus input when clicking anywhere in the terminal
+  const handleTerminalClick = useCallback(() => {
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, []);
+
   return (
     <div className={cn("h-full flex flex-col bg-black text-green-400 font-mono text-sm", className)}>
       {/* Terminal Header */}
@@ -199,7 +213,7 @@ export function Terminal({ projectId, onClose, className }: TerminalProps) {
       </div>
 
       {/* Terminal Content */}
-      <div className="flex-1 flex flex-col min-h-0">
+      <div className="flex-1 flex flex-col min-h-0" onClick={handleTerminalClick}>
         <ScrollArea className="flex-1" ref={scrollRef}>
           <div className="p-2 space-y-1">
             {lines.map((line) => (
@@ -218,7 +232,10 @@ export function Terminal({ projectId, onClose, className }: TerminalProps) {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => copyToClipboard(line.content)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    copyToClipboard(line.content);
+                  }}
                   className="absolute right-0 top-0 h-4 w-4 p-0 opacity-0 group-hover:opacity-100 transition-opacity text-gray-500 hover:text-white hover:bg-gray-700"
                 >
                   <Copy className="h-2 w-2" />
@@ -230,29 +247,37 @@ export function Terminal({ projectId, onClose, className }: TerminalProps) {
                 <span className="animate-pulse">Executing...</span>
               </div>
             )}
+
+            {/* Current Command Input - inline with content */}
+            {!isExecuting && (
+              <div className="flex items-center gap-2">
+                <span className="text-blue-400 text-xs font-mono whitespace-nowrap">
+                  {getPrompt()}
+                </span>
+                <form onSubmit={handleSubmit} className="flex-1 relative">
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    value={currentInput}
+                    onChange={(e) => setCurrentInput(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    disabled={isExecuting}
+                    className="w-full bg-transparent border-none outline-none text-green-400 font-mono text-xs placeholder-gray-500 caret-green-400"
+                    placeholder=""
+                    autoComplete="off"
+                    spellCheck="false"
+                  />
+                  {/* Blinking cursor when input is empty */}
+                  {!currentInput && (
+                    <span className="absolute left-0 top-0 text-green-400 font-mono text-xs animate-pulse">
+                      _
+                    </span>
+                  )}
+                </form>
+              </div>
+            )}
           </div>
         </ScrollArea>
-
-        {/* Command Input */}
-        <div className="border-t border-gray-700 p-2">
-          <form onSubmit={handleSubmit} className="flex items-center gap-2">
-            <span className="text-blue-400 text-xs font-mono whitespace-nowrap">
-              {getPrompt()}
-            </span>
-            <input
-              ref={inputRef}
-              type="text"
-              value={currentInput}
-              onChange={(e) => setCurrentInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              disabled={isExecuting}
-              className="flex-1 bg-transparent border-none outline-none text-green-400 font-mono text-xs placeholder-gray-500"
-              placeholder="Enter command..."
-              autoComplete="off"
-              spellCheck="false"
-            />
-          </form>
-        </div>
       </div>
     </div>
   );

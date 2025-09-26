@@ -247,6 +247,31 @@
     max-height: 100dvh;
   }
 
+  /* iOS Safe Area Support */
+  .safe-area-inset-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .safe-area-inset-top {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  /* Mobile navigation button styles - text/icon highlighting only */
+  .mobile-nav-button,
+  .mobile-nav-button:hover,
+  .mobile-nav-button:active,
+  .mobile-nav-button-active,
+  .mobile-nav-button-active:hover,
+  .mobile-nav-button-active:active {
+    background-color: transparent !important;
+  }
+
+  .mobile-nav-button-active,
+  .mobile-nav-button-active:hover,
+  .mobile-nav-button-active:active {
+    color: hsl(var(--primary)) !important;
+  }
+
   pre.shiki {
     background-color: transparent !important;
   }

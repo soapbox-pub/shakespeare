@@ -22,6 +22,10 @@ export function EmailSettings() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
 
+  const url = new URL('https://pub.us7.list-manage.com/subscribe/post?u=f1f718a93795f42a604d558d8&id=f7271442a0&f_id=00ffa3e4f0');
+  const honeypot = `b_${url.searchParams.get('u')}_${url.searchParams.get('id')}`;
+  const tag = '8982396';
+
   // Check localStorage on component mount
   useEffect(() => {
     const hasSubscribed = localStorage.getItem('shakespeare-email-subscribed');
@@ -56,21 +60,10 @@ export function EmailSettings() {
     setIsSubmitting(true);
 
     try {
-      // Prepare form data
-      const formData = new FormData();
-      formData.append('email', email.trim());
-      formData.append('tag_id', '8982396');
-
-      // Include npub if user is signed in
-      if (user?.pubkey) {
-        const npub = nip19.npubEncode(user.pubkey);
-        formData.append('npub', npub);
-      }
-
-      // Submit to Mailchimp using the same setup as soapbox2
+      // Submit to Mailchimp
       const form = document.createElement('form');
       form.method = 'POST';
-      form.action = 'https://pub.us7.list-manage.com/subscribe/post?u=f1f718a93795f42a604d558d8&id=f7271442a0&f_id=00ffa3e4f0';
+      form.action = url.href;
       form.target = '_blank'; // Open in new tab
       form.style.display = 'none';
 
@@ -85,7 +78,7 @@ export function EmailSettings() {
       const tagInput = document.createElement('input');
       tagInput.type = 'hidden';
       tagInput.name = 'tags';
-      tagInput.value = '8982396';
+      tagInput.value = tag;
       form.appendChild(tagInput);
 
       // Add npub if available
@@ -101,7 +94,7 @@ export function EmailSettings() {
       // Add honeypot field
       const honeypotInput = document.createElement('input');
       honeypotInput.type = 'text';
-      honeypotInput.name = 'b_f1f718a93795f42a604d558d8_f7271442a0';
+      honeypotInput.name = honeypot;
       honeypotInput.tabIndex = -1;
       honeypotInput.style.position = 'absolute';
       honeypotInput.style.left = '-5000px';
@@ -274,8 +267,6 @@ export function EmailSettings() {
                   required
                 />
               </div>
-
-
 
               <div className="space-y-3">
                 <Button

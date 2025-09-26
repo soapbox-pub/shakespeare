@@ -57,6 +57,7 @@ export function AISettingsProvider({ children }: AISettingsProviderProps) {
     // If providers are being updated, invalidate the provider-models query
     if ('providers' in newSettings) {
       queryClient.invalidateQueries({ queryKey: ['provider-models'] });
+      queryClient.invalidateQueries({ queryKey: ['ai-credits'] });
     }
   };
 
@@ -80,6 +81,7 @@ export function AISettingsProvider({ children }: AISettingsProviderProps) {
       }
     });
     queryClient.invalidateQueries({ queryKey: ['provider-models'] });
+    queryClient.invalidateQueries({ queryKey: ['ai-credits'] });
   };
 
   const removeProvider = (id: string) => {
@@ -88,6 +90,7 @@ export function AISettingsProvider({ children }: AISettingsProviderProps) {
       providers: prev.providers.filter(provider => provider.id !== id),
     }));
     queryClient.invalidateQueries({ queryKey: ['provider-models'] });
+    queryClient.invalidateQueries({ queryKey: ['ai-credits'] });
   };
 
   const setProviders = (providers: AIProvider[]) => {
@@ -96,6 +99,7 @@ export function AISettingsProvider({ children }: AISettingsProviderProps) {
       providers,
     }));
     queryClient.invalidateQueries({ queryKey: ['provider-models'] });
+    queryClient.invalidateQueries({ queryKey: ['ai-credits'] });
   };
 
   const addRecentlyUsedModel = (modelId: string) => {

@@ -168,7 +168,9 @@ export function ModelSelector({
       </PopoverTrigger>
       <PopoverContent className="w-96 p-0" align="end">
         <Command>
-          {isConfigured && <CommandInput placeholder={t('searchModels')} className="h-9" />}
+          {(isConfigured && models.length >= 5) && (
+            <CommandInput placeholder={t('searchModels')} className="h-9" />
+          )}
           <CommandList className="max-h-[300px]">
             <CommandEmpty>
               <div className="py-6 text-center text-sm text-muted-foreground">

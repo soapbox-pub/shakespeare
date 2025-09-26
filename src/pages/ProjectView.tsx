@@ -121,7 +121,7 @@ export function ProjectView() {
 
   if (isMobile) {
     return (
-      <div className="h-dvh flex flex-col bg-background">
+      <div className="h-dvh flex flex-col bg-background safe-area-inset-top">
         <header className="overflow-hidden border-b bg-gradient-to-r from-primary/10 via-accent/5 to-primary/10 backdrop-blur supports-[backdrop-filter]:bg-gradient-to-r supports-[backdrop-filter]:from-primary/10 supports-[backdrop-filter]:via-accent/5 supports-[backdrop-filter]:to-primary/10 px-4 py-3 flex items-center justify-between">
           <div className="flex items-center space-x-2 overflow-hidden">
             <Button
@@ -239,13 +239,13 @@ export function ProjectView() {
           )}
         </div>
 
-        <div className="border-t bg-gradient-to-r from-primary/5 via-background to-accent/5 backdrop-blur">
+        <div className="border-t bg-gradient-to-r from-primary/5 via-background to-accent/5 backdrop-blur safe-area-inset-bottom">
           <div className="flex">
             <Button
-              variant={mobileView === 'chat' ? 'default' : 'ghost'}
+              variant="ghost"
               size="sm"
               onClick={() => setMobileView('chat')}
-              className="flex-1 rounded-none"
+              className={`flex-1 rounded-none mobile-nav-button ${mobileView === 'chat' ? 'mobile-nav-button-active' : ''}`}
               disabled={!project}
             >
               <MessageSquare className="h-4 w-4 mr-1" />
@@ -253,10 +253,10 @@ export function ProjectView() {
             </Button>
             {isPreviewable && (
               <Button
-                variant={mobileView === 'preview' ? 'default' : 'ghost'}
+                variant="ghost"
                 size="sm"
                 onClick={() => setMobileView('preview')}
-                className="flex-1 rounded-none"
+                className={`flex-1 rounded-none mobile-nav-button ${mobileView === 'preview' ? 'mobile-nav-button-active' : ''}`}
                 disabled={!project}
               >
                 <Eye className="h-4 w-4 mr-1" />
@@ -264,10 +264,10 @@ export function ProjectView() {
               </Button>
             )}
             <Button
-              variant={mobileView === 'code' ? 'default' : 'ghost'}
+              variant="ghost"
               size="sm"
               onClick={() => setMobileView('code')}
-              className="flex-1 rounded-none"
+              className={`flex-1 rounded-none mobile-nav-button ${mobileView === 'code' ? 'mobile-nav-button-active' : ''}`}
               disabled={!project}
             >
               <Code className="h-4 w-4 mr-1" />

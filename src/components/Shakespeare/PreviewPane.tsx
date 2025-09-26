@@ -8,7 +8,7 @@ import { useBuildProject } from '@/hooks/useBuildProject';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { FolderOpen, ArrowLeft, Bug, Copy, Check, Play, Loader2, MenuIcon, Code, CloudUpload, X } from 'lucide-react';
+import { FolderOpen, ArrowLeft, Bug, Copy, Check, Play, Loader2, MenuIcon, Code, CloudUpload, X, Terminal } from 'lucide-react';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { GitStatusIndicator } from '@/components/GitStatusIndicator';
 import { BrowserAddressBar } from '@/components/ui/browser-address-bar';
@@ -27,6 +27,7 @@ import { cn } from '@/lib/utils';
 import { FileTree } from './FileTree';
 import { FileEditor } from './FileEditor';
 import { DeployDialog } from '@/components/DeployDialog';
+import { Terminal as TerminalComponent } from '@/components/Terminal';
 import { useSearchParams } from 'react-router-dom';
 
 // Get iframe domain from environment variable
@@ -76,7 +77,8 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [fileContent, setFileContent] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
-  const [mobileCodeView, setMobileCodeView] = useState<'explorer' | 'editor'>('explorer');
+  const [mobileCodeView, setMobileCodeView] = useState<'explorer' | 'editor' | 'terminal'>('explorer');
+  const [desktopCodeView, setDesktopCodeView] = useState<'files' | 'terminal'>('files');
   const isMobile = useIsMobile();
   const [hasBuiltProject, setHasBuiltProject] = useState(false);
   const [currentPath, setCurrentPath] = useState('/');
@@ -455,6 +457,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
     setSelectedFile(null);
     setFileContent('');
     setMobileCodeView('explorer');
+    setDesktopCodeView('files');
 
     // Reset navigation history and state
     setCurrentPath('/');
@@ -731,16 +734,47 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
           {isMobile ? (
             <div className="h-full flex flex-col">
               {mobileCodeView === 'explorer' ? (
-                <ScrollArea className="flex-1">
-                  <ScrollBar orientation="horizontal" />
-                  <div className="min-w-max">
-                    <FileTree
-                      projectId={projectId}
-                      onFileSelect={handleFileSelect}
-                      selectedFile={selectedFile}
-                    />
+                <div className="flex-1 relative">
+                  <ScrollArea className="h-full">
+                    <ScrollBar orientation="horizontal" />
+                    <div className="min-w-max">
+                      <FileTree
+                        projectId={projectId}
+                        onFileSelect={handleFileSelect}
+                        selectedFile={selectedFile}
+                      />
+                    </div>
+                  </ScrollArea>
+                  {/* Floating Terminal Button */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setMobileCodeView('terminal')}
+                    className="absolute bottom-4 right-4 h-10 w-10 p-0 rounded-full shadow-lg bg-background border-2"
+                  >
+                    <Terminal className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : mobileCodeView === 'terminal' ? (
+                <>
+                  <div className="p-3 border-b bg-gradient-to-r from-primary/5 to-accent/5 flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setMobileCodeView('explorer')}
+                      className="p-1"
+                    >
+                      <ArrowLeft className="h-4 w-4" />
+                    </Button>
+                    <h3 className="font-semibold flex-1 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                      Terminal
+                    </h3>
+                    <GitStatusIndicator projectId={projectId} />
                   </div>
-                </ScrollArea>
+                  <div className="flex-1">
+                    <TerminalComponent projectId={projectId} />
+                  </div>
+                </>
               ) : (
                 <>
                   <div className="p-3 border-b bg-gradient-to-r from-primary/5 to-accent/5 flex items-center gap-2">
@@ -803,6 +837,14 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
                     {t('backToPreview')}
                   </Button>
                   <div className="flex-1" />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setDesktopCodeView(desktopCodeView === 'terminal' ? 'files' : 'terminal')}
+                    className="gap-2 text-muted-foreground hover:text-foreground"
+                  >
+                    <Terminal className="h-4 w-4" />
+                  </Button>
                   <GitStatusIndicator projectId={projectId} />
                 </div>
               )}
@@ -810,43 +852,59 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
               {!isMobile && !isPreviewable && (
                 <div className="h-12 px-4 border-b flex items-center bg-gradient-to-r from-muted/20 to-background">
                   <div className="flex-1" />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setDesktopCodeView(desktopCodeView === 'terminal' ? 'files' : 'terminal')}
+                    className="gap-2 text-muted-foreground hover:text-foreground"
+                  >
+                    <Terminal className="h-4 w-4" />
+                  </Button>
                   <GitStatusIndicator projectId={projectId} />
                 </div>
               )}
 
               <div className="flex-1 flex min-h-0">
-                <div className="w-1/3 border-r flex flex-col">
-                  <ScrollArea className="flex-1">
-                    <ScrollBar orientation="horizontal" />
-                    <div className="min-w-max">
-                      <FileTree
-                        projectId={projectId}
-                        onFileSelect={handleFileSelect}
-                        selectedFile={selectedFile}
-                      />
+                {desktopCodeView === 'terminal' ? (
+                  <div className="flex-1">
+                    <TerminalComponent projectId={projectId} />
+                  </div>
+                ) : (
+                  <>
+                    <div className="w-1/3 border-r flex flex-col">
+                      <ScrollArea className="flex-1">
+                        <ScrollBar orientation="horizontal" />
+                        <div className="min-w-max">
+                          <FileTree
+                            projectId={projectId}
+                            onFileSelect={handleFileSelect}
+                            selectedFile={selectedFile}
+                          />
+                        </div>
+                      </ScrollArea>
                     </div>
-                  </ScrollArea>
-                </div>
 
-                <div className="flex-1">
-                  {selectedFile ? (
-                    <FileEditor
-                      filePath={selectedFile}
-                      content={fileContent}
-                      onSave={handleFileSave}
-                      isLoading={isLoading}
-                      projectId={projectId}
-                    />
-                  ) : (
-                    <div className="h-full flex items-center justify-center">
-                      <div className="text-center">
-                        <p className="text-muted-foreground">
-                          {t('selectFileFromExplorer')}
-                        </p>
-                      </div>
+                    <div className="flex-1">
+                      {selectedFile ? (
+                        <FileEditor
+                          filePath={selectedFile}
+                          content={fileContent}
+                          onSave={handleFileSave}
+                          isLoading={isLoading}
+                          projectId={projectId}
+                        />
+                      ) : (
+                        <div className="h-full flex items-center justify-center">
+                          <div className="text-center">
+                            <p className="text-muted-foreground">
+                              {t('selectFileFromExplorer')}
+                            </p>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
+                  </>
+                )}
               </div>
             </div>
           )}

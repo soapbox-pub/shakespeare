@@ -4,21 +4,10 @@ import { createAIClient } from '@/lib/ai-client';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { AIProvider } from '@/contexts/AISettingsContext';
 
-// Zod schemas for the two possible response formats
-const creditsResponseV1Schema = z.object({
+const creditsResponseSchema = z.object({
   object: z.literal('credits'),
   amount: z.number(),
 });
-
-const creditsResponseV2Schema = z.object({
-  data: z.object({
-    total_credits: z.number(),
-    total_usage: z.number(),
-  }),
-});
-
-// Union schema to handle both response formats
-const creditsResponseSchema = z.union([creditsResponseV1Schema, creditsResponseV2Schema]);
 
 // Normalized response type (always in V1 format)
 export interface CreditsResponse {
@@ -26,12 +15,7 @@ export interface CreditsResponse {
   amount: number;
 }
 
-/**
- * Custom hook to fetch AI provider credits
- * @param providerId - The ID of the AI provider
- * @param connection - The AI connection configuration
- * @returns Query result with credits information
- */
+/** Custom hook to fetch AI provider credits */
 export function useAICredits(provider: AIProvider) {
   const { user } = useCurrentUser();
 
@@ -41,20 +25,7 @@ export function useAICredits(provider: AIProvider) {
       try {
         const ai = createAIClient(provider, user);
         const data = await ai.get('/credits');
-
-        // Validate and normalize the response
-        const parsed = creditsResponseSchema.parse(data);
-
-        // Convert V2 format to V1 format if needed
-        if ('data' in parsed) {
-          return {
-            object: 'credits',
-            amount: parsed.data.total_credits - parsed.data.total_usage,
-          };
-        }
-
-        // Already in V1 format
-        return parsed;
+        return creditsResponseSchema.parse(data);
       } catch (error) {
         if (error instanceof Error && !error.message.includes('Connection error')) {
           console.error('Error fetching AI credits:', error);

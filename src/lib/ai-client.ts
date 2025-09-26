@@ -13,11 +13,11 @@ export function createAIClient(provider: AIProvider, user?: NUser): OpenAI {
     baseURL: provider.baseURL,
     apiKey: provider.apiKey ?? '',
     dangerouslyAllowBrowser: true,
-    defaultHeaders: {
+    defaultHeaders: provider.id === 'openrouter' ? {
       // https://openrouter.ai/docs/app-attribution
       'HTTP-Referer': 'https://shakespeare.diy',
       'X-Title': 'Shakespeare',
-    },
+    } : {},
   };
 
   let openai: OpenAI;

@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Info, ExternalLink, Loader2, AlertTriangle, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useIsMobile } from '@/hooks/useIsMobile';
 
@@ -22,7 +22,7 @@ export function AboutSettings() {
         setIsLoading(true);
         setError(null);
 
-        const response = await fetch('/LICENSE.txt');
+        const response = await fetch('/LICENSE.html');
 
         if (!response.ok) {
           throw new Error(`Failed to fetch license: ${response.status} ${response.statusText}`);
@@ -109,35 +109,33 @@ export function AboutSettings() {
         </Card>
 
         {/* License */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Info className="h-5 w-5" />
-              {t('license')}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="flex items-center gap-2 text-muted-foreground py-4">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span className="text-sm">{t('loadingLicense')}</span>
+        <Accordion type="single" collapsible className="w-full">
+          <AccordionItem value="license-text" className="border rounded-lg">
+            <AccordionTrigger className="px-4 py-3 hover:no-underline">
+              <div className="flex items-center gap-2">
+                <Info className="h-5 w-5" />
+                {t('license')}
               </div>
-            ) : error ? (
-              <Alert variant="destructive">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>
-                  {t('failedToLoadLicense')}: {error}
-                </AlertDescription>
-              </Alert>
-            ) : license ? (
-              <ScrollArea className="h-96 w-full rounded-md border p-4">
-                <pre className="text-xs font-mono whitespace-pre-wrap break-words">
-                  {license}
-                </pre>
-              </ScrollArea>
-            ) : null}
-          </CardContent>
-        </Card>
+            </AccordionTrigger>
+            <AccordionContent className="px-4 pb-4">
+              {isLoading ? (
+                <div className="flex items-center gap-2 text-muted-foreground py-4">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="text-sm">{t('loadingLicense')}</span>
+                </div>
+              ) : error ? (
+                <Alert variant="destructive">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>
+                    {t('failedToLoadLicense')}: {error}
+                  </AlertDescription>
+                </Alert>
+              ) : license ? (
+                <div className="prose text-sm" dangerouslySetInnerHTML={{ __html: license }} />
+              ) : null}
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
       </div>
     </div>
   );

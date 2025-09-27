@@ -419,6 +419,16 @@ export class SessionManager {
         apiError.code = code;
         throw apiError;
       }
+      if (error?.status === 403) {
+        const code = 'key_limit_exceeded';
+        const apiError = new OpenAI.APIError({
+          status: error.status,
+          code,
+          message: `${error.status} Provider returned error`
+        });
+        apiError.code = code;
+        throw apiError;
+      }
       if (error?.status === 422) {
         const code = 'unprocessable_entity'
         const apiError = new OpenAI.APIError({

@@ -96,7 +96,15 @@ export function esmPlugin(packageLock: PackageLock, target?: string): Plugin {
         const name = packageInfo.name ?? packageName;
         const specifier = `${name}@${version}${packagePath}`;
 
-        const url = new URL(`https://esm.sh/*${specifier}`);
+        // Handle JSR packages with correct ESM.sh JSR format
+        let url: URL;
+        if (packageName.startsWith("@jsr/")) {
+          // Convert @jsr/scope__package to jsr/@scope/package format for ESM.sh
+          const jsrName = packageName.slice(5).replace("__", "/");
+          url = new URL(`https://esm.sh/jsr/@${jsrName}@${version}${packagePath}`);
+        } else {
+          url = new URL(`https://esm.sh/*${specifier}`);
+        }
 
         if (target) {
           url.searchParams.set("target", target);
@@ -150,7 +158,15 @@ export function esmPlugin(packageLock: PackageLock, target?: string): Plugin {
               const name = packageInfo.name ?? packageName;
               const specifier = `${name}@${version}${packagePath}`;
 
-              const url = new URL(`https://esm.sh/*${specifier}`);
+              // Handle JSR packages with correct ESM.sh JSR format
+              let url: URL;
+              if (packageName.startsWith("@jsr/")) {
+                // Convert @jsr/scope__package to jsr/@scope/package format for ESM.sh
+                const jsrName = packageName.slice(5).replace("__", "/");
+                url = new URL(`https://esm.sh/jsr/@${jsrName}@${version}${packagePath}`);
+              } else {
+                url = new URL(`https://esm.sh/*${specifier}`);
+              }
 
               if (target) {
                 url.searchParams.set("target", target);
@@ -163,7 +179,14 @@ export function esmPlugin(packageLock: PackageLock, target?: string): Plugin {
             } else {
               // If we can't find the version in package lock, let ESM.sh resolve it
               // This handles transitive dependencies that might not be in our package-lock
-              const url = new URL(`https://esm.sh/${args.path}`);
+              let url: URL;
+              if (packageName.startsWith("@jsr/")) {
+                // Convert @jsr/scope__package to jsr/@scope/package format for ESM.sh
+                const jsrName = packageName.slice(5).replace("__", "/");
+                url = new URL(`https://esm.sh/jsr/@${jsrName}${packagePath}`);
+              } else {
+                url = new URL(`https://esm.sh/${args.path}`);
+              }
 
               if (target) {
                 url.searchParams.set("target", target);
@@ -185,14 +208,19 @@ export function esmPlugin(packageLock: PackageLock, target?: string): Plugin {
           fullURL = new URL(args.path);
         } catch {
           try {
-            // When resolving relative paths, it's important the baseURL is *after* any redirects.
-            // For example, `https://esm.sh/@fontsource/inter@5.2.6` redirects to `https://esm.sh/@fontsource/inter@5.2.6/index.css`
-            // and this changes the outcome of resolving paths like `./font.woff2` and `../font.woff2`
-            const baseURL = args.path.startsWith("./")
-              ? await getRedirectedURL(args.importer)
-              : args.importer;
+            // Handle ESM.sh internal paths like /@jsr/package__name@version/...
+            if (args.path.startsWith("/")) {
+              fullURL = new URL(`https://esm.sh${args.path}`);
+            } else {
+              // When resolving relative paths, it's important the baseURL is *after* any redirects.
+              // For example, `https://esm.sh/@fontsource/inter@5.2.6` redirects to `https://esm.sh/@fontsource/inter@5.2.6/index.css`
+              // and this changes the outcome of resolving paths like `./font.woff2` and `../font.woff2`
+              const baseURL = args.path.startsWith("./")
+                ? await getRedirectedURL(args.importer)
+                : args.importer;
 
-            fullURL = new URL(args.path, baseURL);
+              fullURL = new URL(args.path, baseURL);
+            }
           } catch {
             return {
               errors: [{ text: `Could not resolve ${args.path}` }],
@@ -215,6 +243,40 @@ export function esmPlugin(packageLock: PackageLock, target?: string): Plugin {
         }
 
         if (!res.ok) {
+          // Special handling for JSR packages when specific version isn't available
+          if (args.path.includes('esm.sh/jsr/') && res.status === 404) {
+            // Try without version (let ESM.sh pick the latest available version)
+            const urlWithoutVersion = args.path.replace(/@[\d.]+(\?|$)/, '$1');
+
+            const fallbackRes = await fetch(urlWithoutVersion);
+
+            if (fallbackRes.ok) {
+              if (fallbackRes.redirected) {
+                redirectedURLs.set(args.path, fallbackRes.url);
+              }
+
+              let loader: Loader | undefined;
+              const contentType = fallbackRes.headers.get("Content-Type")?.split(";")[0];
+
+              if (contentType) {
+                if (contentType === "application/javascript") {
+                  loader = "js";
+                } else if (contentType === "text/css") {
+                  loader = "css";
+                } else {
+                  loader = "text";
+                }
+              }
+
+              const contents = await fallbackRes.text();
+
+              return {
+                contents,
+                loader,
+              };
+            }
+          }
+
           throw new Error(`Failed to fetch ${args.path}`);
         }
 

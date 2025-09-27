@@ -525,7 +525,13 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
           {messages.length === 0 && !streamingMessage && !isLoading && (
             <div className="flex-1 flex items-center justify-center min-h-[400px]">
               <div className="text-center space-y-4 max-w-md mx-auto">
-                <div className="text-6xl mb-6">🎭</div>
+                <div className="mb-6">
+                  <img 
+                    src="/favicon.png" 
+                    alt="Shakespeare" 
+                    className="w-16 h-16 mx-auto"
+                  />
+                </div>
                 <div>
                   <h3 className="text-xl font-semibold mb-2 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
                     {t('welcomeToShakespeare')}

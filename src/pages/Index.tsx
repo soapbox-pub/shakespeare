@@ -267,7 +267,13 @@ export default function Index() {
       <AppLayout headerContent={headerContent}>
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-8 md:mb-12">
-            <div className="text-4xl md:text-6xl mb-4 md:mb-6">🎭</div>
+            <div className="mb-4 md:mb-6">
+              <img 
+                src="/favicon.png" 
+                alt="Shakespeare" 
+                className="w-20 h-20 md:w-24 md:h-24 mx-auto"
+              />
+            </div>
             <h1 className="text-3xl md:text-4xl font-bold mb-3 md:mb-4 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
               {t('buildNostrApps')}
             </h1>

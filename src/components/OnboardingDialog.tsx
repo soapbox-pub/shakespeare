@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAISettings } from '@/hooks/useAISettings';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useLoginActions } from '@/hooks/useLoginActions';
@@ -119,8 +118,8 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden">
-          <DialogHeader>
+        <DialogContent className="max-w-2xl max-h-[90vh] sm:max-h-[80vh] flex flex-col">
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle className="flex items-center gap-2">
               {step === 'model-selection' && (
                 <Button
@@ -132,18 +131,32 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
                   <ArrowLeft className="h-4 w-4" />
                 </Button>
               )}
+              {step === 'conclusion' && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setStep('model-selection')}
+                  className="mr-2 p-1 h-auto"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+              )}
               <span className="text-xl">
-                {step === 'welcome' && 'Welcome to Shakespeare!'}
                 {step === 'model-selection' && 'Choose Your AI Model'}
-                {step === 'conclusion' && "You're All Set!"}
               </span>
             </DialogTitle>
           </DialogHeader>
 
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-1 overflow-y-auto min-h-0">
             {step === 'welcome' && (
               <div className="text-center space-y-6 py-4">
-                <div className="text-6xl mb-4">🎭</div>
+                <div className="mb-4">
+                  <img 
+                    src="/favicon.png" 
+                    alt="Shakespeare" 
+                    className="w-16 h-16 mx-auto"
+                  />
+                </div>
                 <div className="space-y-3">
                   <h2 className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
                     Welcome to Shakespeare!
@@ -191,15 +204,8 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
             )}
 
             {step === 'model-selection' && (
-              <div className="space-y-4">
-                <div className="text-center space-y-2">
-                  <p className="text-muted-foreground">
-                    Choose an AI model to power your development experience.
-                    Different models offer various capabilities and pricing.
-                  </p>
-                </div>
-
-                <ScrollArea className="h-96">
+              <div className="flex flex-col h-full">
+                <div className="flex-1 overflow-y-auto min-h-0 my-4">
                   <div className="space-y-3 p-1">
                     {isLoadingModels ? (
                       <>
@@ -232,6 +238,7 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
                       shakespeareModels.map((model) => {
                         const isSelected = selectedModel === model.fullId;
                         const isFree = model.pricing?.prompt.equals(0) && model.pricing?.completion.equals(0);
+                        const isPremium = !isFree;
 
                         return (
                           <Card
@@ -244,12 +251,12 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
                             <CardHeader className="pb-3">
                               <div className="flex items-center justify-between">
                                 <div className="flex-1">
-                                  <CardTitle className="text-base font-semibold">
-                                    {model.description || model.name || model.id}
+                                  <CardTitle className={`text-xl font-semibold ${isPremium ? 'bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent' : ''}`}>
+                                    { model.name || model.description || model.id}
                                   </CardTitle>
                                   {model.description && (
                                     <p className="text-sm text-muted-foreground mt-1">
-                                      {model.name || model.id}
+                                      {model.description || model.id}
                                     </p>
                                   )}
                                 </div>
@@ -257,6 +264,11 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
                                   {isFree && (
                                     <Badge variant="secondary" className="text-xs">
                                       Free
+                                    </Badge>
+                                  )}
+                                  {isPremium && (
+                                    <Badge className="text-xs bg-primary text-white border-0">
+                                      Premium
                                     </Badge>
                                   )}
                                   {isSelected && (
@@ -268,12 +280,12 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
                               </div>
                             </CardHeader>
                             <CardContent className="pt-0">
-                              <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                              <div className="flex items-end justify-end gap-4 text-xs text-muted-foreground">
                                 {model.pricing && (
-                                  <>
-                                    <span>Input: {formatPrice(model.pricing.prompt)}</span>
-                                    <span>Output: {formatPrice(model.pricing.completion)}</span>
-                                  </>
+                                  <div className="text-right">
+                                    <div>Input: {formatPrice(model.pricing.prompt)}</div>
+                                    <div>Output: {formatPrice(model.pricing.completion)}</div>
+                                  </div>
                                 )}
                                 {model.contextLength && (
                                   <span>Context: {model.contextLength.toLocaleString()} tokens</span>
@@ -285,9 +297,9 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
                       })
                     )}
                   </div>
-                </ScrollArea>
+                </div>
 
-                <div className="flex justify-end gap-2 pt-4 border-t">
+                <div className="flex justify-end gap-2 pt-4 border-t flex-shrink-0">
                   <Button
                     onClick={handleContinue}
                     disabled={!selectedModel}
@@ -308,11 +320,6 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
                   <p className="text-lg text-muted-foreground max-w-md mx-auto">
                     Your AI assistant is configured and ready to help.
                     Just enter your prompt to start building amazing Nostr applications.
-                  </p>
-                </div>
-                <div className="bg-muted/50 rounded-lg p-4 max-w-md mx-auto">
-                  <p className="text-sm text-muted-foreground italic">
-                    "Create a farming equipment marketplace for local farmers to buy and sell tractors, tools, and supplies..."
                   </p>
                 </div>
                 <Button onClick={handleFinish} size="lg" className="gap-2">

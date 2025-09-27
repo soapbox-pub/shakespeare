@@ -4,11 +4,12 @@ import { useTranslation } from 'react-i18next';
 import { AppLayout } from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { GitBranch, Loader2, AlertCircle } from 'lucide-react';
+import { GitBranch, Loader2, AlertCircle, FileArchive, MoreHorizontal } from 'lucide-react';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { useToast } from '@/hooks/useToast';
-
+import { ZipImportDialog } from '@/components/ZipImportDialog';
 import { useSeoMeta } from '@unhead/react';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 
 export default function Clone() {
   const { t } = useTranslation();
@@ -20,6 +21,7 @@ export default function Clone() {
   const projectsManager = useProjectsManager();
   const { toast } = useToast();
   const autoCloneInitiatedRef = useRef(false);
+  const [isZipDialogOpen, setIsZipDialogOpen] = useState(false);
 
   useSeoMeta({
     title: `${t('importRepository')} - Shakespeare`,
@@ -171,6 +173,25 @@ export default function Clone() {
     }
   }, [handleClone, searchParams]);
 
+  const handleImportZip = async (file: File, overwrite = false, projectId?: string) => {
+    try {
+      // Import project from zip file
+      const project = await projectsManager.importProjectFromZip(file, projectId, overwrite);
+
+      // Show success toast
+      toast({
+        title: overwrite ? "Project Overwritten Successfully" : "Project Imported Successfully",
+        description: `"${project.name}" has been ${overwrite ? 'overwritten' : 'imported'} and is ready to use.`,
+      });
+
+      // Navigate to the imported project
+      navigate(`/project/${project.id}`);
+    } catch (error) {
+      console.error('Failed to import project:', error);
+      throw error; // Re-throw to let the dialog handle the error display
+    }
+  };
+
   return (
     <AppLayout title={t('importRepository')}>
       <div className="max-w-2xl mx-auto">
@@ -226,7 +247,35 @@ export default function Clone() {
             )}
           </Button>
         </div>
+
+        {/* Import ZIP File Link */}
+        <div className="mt-8 text-center">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary hover:bg-transparent">
+                <MoreHorizontal className="h-5 w-5" />
+                <span className="sr-only">More options</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="center">
+              <DropdownMenuItem
+                className="flex items-center gap-2 w-full"
+                onClick={() => setIsZipDialogOpen(true)}
+              >
+                <FileArchive className="h-4 w-4" />
+                Import ZIP File
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
+
+      {/* ZIP Import Dialog */}
+      <ZipImportDialog
+        onImport={handleImportZip}
+        open={isZipDialogOpen}
+        onOpenChange={setIsZipDialogOpen}
+      />
     </AppLayout>
   );
 }

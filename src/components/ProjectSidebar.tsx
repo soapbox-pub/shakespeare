@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Plus, Folder, GitBranch, Loader2, ChevronDown, Star, Columns2, X, Settings, HelpCircle, FileArchive } from 'lucide-react';
+import { Plus, Folder, GitBranch, Loader2, ChevronDown, Star, Columns2, X, Settings, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -9,9 +9,7 @@ import { useProjects } from '@/hooks/useProjects';
 import { useProjectSessionStatus } from '@/hooks/useProjectSessionStatus';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useIsMobile } from '@/hooks/useIsMobile';
-import { ZipImportDialog } from '@/components/ZipImportDialog';
-import { useProjectsManager } from '@/hooks/useProjectsManager';
-import { useToast } from '@/hooks/useToast';
+
 import type { Project } from '@/lib/ProjectsManager';
 import { cn } from '@/lib/utils';
 import { useQueryClient } from '@tanstack/react-query';
@@ -95,9 +93,6 @@ export function ProjectSidebar({
   const queryClient = useQueryClient();
   const { data: projects = [], isLoading, error } = useProjects();
   const [favorites] = useLocalStorage<string[]>('project-favorites', []);
-  const projectsManager = useProjectsManager();
-  const { toast } = useToast();
-  const [isZipDialogOpen, setIsZipDialogOpen] = useState(false);
 
   const isMobile = useIsMobile();
   const navigate = useNavigate();
@@ -123,24 +118,7 @@ export function ProjectSidebar({
     }
   };
 
-  const handleImportZip = async (file: File, overwrite = false, projectId?: string) => {
-    try {
-      // Import project from zip file
-      const project = await projectsManager.importProjectFromZip(file, projectId, overwrite);
 
-      // Show success toast
-      toast({
-        title: overwrite ? "Project Overwritten Successfully" : "Project Imported Successfully",
-        description: `"${project.name}" has been ${overwrite ? 'overwritten' : 'imported'} and is ready to use.`,
-      });
-
-      // Navigate to the imported project
-      navigate(`/project/${project.id}`);
-    } catch (error) {
-      console.error('Failed to import project:', error);
-      throw error; // Re-throw to let the dialog handle the error display
-    }
-  };
 
   useEffect(() => {
     queryClient.invalidateQueries({ queryKey: ['projects'] });
@@ -211,13 +189,6 @@ export function ProjectSidebar({
                       <GitBranch className="h-4 w-4" />
                       {t('importRepository')}
                     </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => setIsZipDialogOpen(true)}
-                      className="flex items-center gap-2 w-full"
-                    >
-                      <FileArchive className="h-4 w-4" />
-                      Import ZIP File
-                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
@@ -281,12 +252,7 @@ export function ProjectSidebar({
         </div>
       </div>
 
-      {/* ZIP Import Dialog */}
-      <ZipImportDialog
-        onImport={handleImportZip}
-        open={isZipDialogOpen}
-        onOpenChange={setIsZipDialogOpen}
-      />
+
     </div>
   );
 }

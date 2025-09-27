@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Info, ExternalLink, Loader2, AlertTriangle, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useIsMobile } from '@/hooks/useIsMobile';
@@ -80,33 +79,21 @@ export function AboutSettings() {
 
       <div className="space-y-4">
         {/* Project Information */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Info className="h-5 w-5" />
-              {t('sourceCode')}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Button
-                variant="outline"
-                asChild
-                className="w-full sm:w-auto"
-              >
-                <a
-                  href="https://gitlab.com/soapbox-pub/act2"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2"
-                >
-                  <ExternalLink className="h-4 w-4" />
-                  {t('viewOnGitLab')}
-                </a>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        <Button
+          variant="outline"
+          asChild
+          className="w-full sm:w-auto"
+        >
+          <a
+            href="https://gitlab.com/soapbox-pub/act2"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2"
+          >
+            <ExternalLink className="h-4 w-4" />
+            {t('sourceCode')}
+          </a>
+        </Button>
 
         {/* License */}
         <Accordion type="single" collapsible className="w-full">
@@ -131,7 +118,7 @@ export function AboutSettings() {
                   </AlertDescription>
                 </Alert>
               ) : license ? (
-                <div className="prose text-sm" dangerouslySetInnerHTML={{ __html: license }} />
+                <div className="prose text-sm dark:prose-invert" dangerouslySetInnerHTML={{ __html: license }} />
               ) : null}
             </AccordionContent>
           </AccordionItem>

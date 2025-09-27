@@ -757,20 +757,20 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
                 </div>
               ) : mobileCodeView === 'terminal' ? (
                 <>
-                  <div className="px-1 flex items-center gap-2 bg-black text-purple-400">
+                  <div className="h-12 px-3 flex items-center gap-2 bg-black text-purple-400 flex-shrink-0">
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => setMobileCodeView('explorer')}
-                      className="p-0.5 hover:bg-transparent hover:text-white -mb-3"
+                      className="p-1 hover:bg-transparent hover:text-white"
                     >
                       <ArrowLeft className="h-4 w-4" />
-                      <h3 className="font-semibold flex-1">
-                        Back
-                      </h3>
                     </Button>
+                    <h3 className="font-semibold">
+                      Terminal
+                    </h3>
                   </div>
-                  <div className="flex-1">
+                  <div className="flex-1 min-h-0">
                     <TerminalComponent projectId={projectId} />
                   </div>
                 </>

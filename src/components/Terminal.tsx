@@ -217,7 +217,7 @@ export function Terminal({ projectId, className }: TerminalProps) {
                     onChange={(e) => setCurrentInput(e.target.value)}
                     onKeyDown={handleKeyDown}
                     disabled={isExecuting}
-                    className="w-full bg-transparent border-none outline-none text-white font-mono placeholder-gray-500 caret-white leading-relaxedFP"
+                    className="w-full bg-transparent border-none outline-none text-white font-mono placeholder-gray-500 caret-white leading-relaxed"
                     placeholder=""
                     autoComplete="off"
                     spellCheck="false"

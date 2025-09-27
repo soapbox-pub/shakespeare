@@ -114,6 +114,15 @@ export function Quilly({ error, onDismiss, onNewChat, onOpenModelSelector, onReq
             },
           };
 
+        case 'bad_request':
+          return {
+            message: 'Invalid request parameters. Try a different model.',
+            action: {
+              label: 'Choose model',
+              onClick: onOpenModelSelector,
+            },
+          };
+
         case 'unprocessable_entity':
           return {
             message: 'Request rejected by AI provider. Try a different model.',

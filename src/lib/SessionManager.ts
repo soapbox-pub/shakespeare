@@ -408,14 +408,25 @@ export class SessionManager {
         return; // User cancelled
       }
 
-      // Convert UnprocessableEntityError to standard OpenAI APIError with code
-      if (error?.constructor?.name === 'UnprocessableEntityError') {
+      // Convert provider errors to standard OpenAI APIError with appropriate code
+      if (error?.status === 400) {
+        const code = 'bad_request';
         const apiError = new OpenAI.APIError({
-          status: 422,
-          code: 'unprocessable_entity',
-          message: '422 Provider returned error'
+          status: error.status,
+          code,
+          message: `${error.status} Provider returned error`
         });
-        apiError.code = 'unprocessable_entity';
+        apiError.code = code;
+        throw apiError;
+      }
+      if (error?.status === 422) {
+        const code = 'unprocessable_entity'
+        const apiError = new OpenAI.APIError({
+          status: error.status,
+          code,
+          message: `${error.status} Provider returned error`
+        });
+        apiError.code = code;
         throw apiError;
       }
 

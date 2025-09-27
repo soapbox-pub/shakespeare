@@ -750,7 +750,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
                     variant="outline"
                     size="sm"
                     onClick={() => setMobileCodeView('terminal')}
-                    className="fixed bottom-12 right-4 h-12 w-12 p-0 rounded-full shadow-lg bg-background border-2"
+                    className="fixed right-4 bottom-safe-nav z-20 h-12 w-12 p-0 rounded-full shadow-lg bg-background border-2"
                   >
                     <Terminal className="h-6 w-6" />
                   </Button>

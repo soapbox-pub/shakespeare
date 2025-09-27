@@ -732,9 +732,9 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
 
         <TabsContent value="code" className="h-full mt-0">
           {isMobile ? (
-            <div className="h-full flex flex-col">
+            <div className="h-full flex flex-col min-h-0">
               {mobileCodeView === 'explorer' ? (
-                <div className="flex-1 relative">
+                <div className="flex-1 relative min-h-0">
                   <ScrollArea className="h-full">
                     <ScrollBar orientation="horizontal" />
                     <div className="min-w-max">

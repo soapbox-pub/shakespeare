@@ -118,11 +118,17 @@ export function Quilly({ error, onDismiss, onNewChat, onOpenModelSelector, onReq
             }],
           };
 
-        case 'key_limit_exceeded':
-          return {
-            message: `It seems your API key has been used up. Check your API provider's settings, or try a different API key or different provider/model combo`,
-            actions: [],
-          };
+          case 'key_limit_exceeded':
+            return {
+              message: `It seems your API key has been used up. Check your API provider's settings, or try a different API key or different provider/model combo:`,
+              actions: [{
+                label: 'Check API settings',
+                onClick: () => navigate('/settings/ai'),
+              }, {
+                label: 'Change model',
+                onClick: onOpenModelSelector,
+              }],
+            };
 
         case 'bad_request':
           return {

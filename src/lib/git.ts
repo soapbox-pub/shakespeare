@@ -1313,6 +1313,7 @@ export class Git {
         dir: options.dir,
         ref: `refs/heads/${currentBranch}`,
         value: upstreamCommit,
+        force: true,
       });
 
       // Update the working directory

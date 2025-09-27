@@ -18,7 +18,6 @@ const GIT_KINDS = [
 const GIT_RELAYS = [
   'wss://git.shakespeare.diy/',
   'wss://relay.ngit.dev/',
-  'wss://gitnostr.com/',
 ];
 
 const NostrProvider: React.FC<NostrProviderProps> = (props) => {

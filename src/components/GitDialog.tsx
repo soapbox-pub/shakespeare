@@ -47,7 +47,7 @@ import { cn } from '@/lib/utils';
 import { findCredentialsForRepo } from '@/lib/gitCredentials';
 import { nip19 } from 'nostr-tools';
 
-const GRASP_SERVERS = ["git.shakespeare.diy", "relay.ngit.dev", "gitnostr.com"];
+const GRASP_SERVERS = ["git.shakespeare.diy", "relay.ngit.dev"];
 
 interface GitDialogProps {
   projectId: string;

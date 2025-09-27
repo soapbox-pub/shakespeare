@@ -911,7 +911,6 @@ export class Git {
     const gitRelays = new Set<string>([
       'wss://git.shakespeare.diy/',
       'wss://relay.ngit.dev/',
-      'wss://gitnostr.com/',
       'wss://relay.nostr.band/', // General purpose relay as fallback
     ]);
 
@@ -1396,7 +1395,6 @@ export class Git {
       relayUrls.push(
         'wss://git.shakespeare.diy/',
         'wss://relay.ngit.dev/',
-        'wss://gitnostr.com/',
         'wss://relay.nostr.band/'
       );
     }

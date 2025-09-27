@@ -408,6 +408,17 @@ export class SessionManager {
         return; // User cancelled
       }
 
+      // Convert UnprocessableEntityError to standard OpenAI APIError with code
+      if (error?.constructor?.name === 'UnprocessableEntityError') {
+        const apiError = new OpenAI.APIError({
+          status: 422,
+          code: 'unprocessable_entity',
+          message: '422 Provider returned error'
+        });
+        apiError.code = 'unprocessable_entity';
+        throw apiError;
+      }
+
       // Re-throw service errors to be handled at the UI level
       throw error;
     } finally {

@@ -221,6 +221,8 @@ export function Terminal({ projectId, className }: TerminalProps) {
                     placeholder=""
                     autoComplete="off"
                     spellCheck="false"
+                    autoCapitalize="off"
+                    autoCorrect="off"
                   />
                 </form>
               </div>

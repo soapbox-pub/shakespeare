@@ -81,9 +81,6 @@ const resources = {
       dataSettingsDescription: 'Export files and manage local data',
       emailUpdates: 'Email Updates',
       emailUpdatesDescription: 'Subscribe to Shakespeare updates and resources',
-      emailUpdatesDescriptionLong: 'Stay updated with the latest Shakespeare features, tutorials, and resources.',
-      aboutShakespeareSettings: 'About Shakespeare',
-      aboutShakespeareSettingsDescription: 'Information about Shakespeare',
 
       // Project Sidebar
       newProject: 'New Project',
@@ -393,9 +390,6 @@ const resources = {
       dataSettingsDescription: 'Exporte arquivos e gerencie dados locais',
       emailUpdates: 'Atualizações por Email',
       emailUpdatesDescription: 'Inscreva-se para receber atualizações e recursos do Shakespeare',
-      emailUpdatesDescriptionLong: 'Mantenha-se atualizado com os recursos mais recentes do Shakespeare, tutoriais e recursos. Enviamos apenas atualizações ocasionais e você pode cancelar a inscrição a qualquer momento.',
-      aboutShakespeareSettings: 'Sobre o Shakespeare',
-      aboutShakespeareSettingsDescription: 'Informações sobre o Shakespeare',
 
       // Project Sidebar
       newProject: 'Novo Projeto',
@@ -705,9 +699,6 @@ const resources = {
       dataSettingsDescription: '导出文件和管理本地数据',
       emailUpdates: '邮件更新',
       emailUpdatesDescription: '订阅Shakespeare更新和资源',
-      emailUpdatesDescriptionLong: '及时了解最新的Shakespeare功能、教程和资源。我们只会偶尔发送更新，您可以随时取消订阅。',
-      aboutShakespeareSettings: '关于Shakespeare',
-      aboutShakespeareSettingsDescription: '关于Shakespeare的信息',
 
       // Project Sidebar
       newProject: '新项目',
@@ -1017,9 +1008,6 @@ const resources = {
       dataSettingsDescription: 'Fitar da fayiloli da sarrafa bayanan gida',
       emailUpdates: 'Sabuntawar Imel',
       emailUpdatesDescription: 'Yi rajista don karbar sabuntawar Shakespeare da albarkatu',
-      emailUpdatesDescriptionLong: 'Kasance da sabuntawa game da sabbin fasalolin Shakespeare, koyarwa, da albarkatu. Muna aika sabuntawa lokaci-lokaci kawai kuma kuna iya dakatar da rajista koyaushe.',
-      aboutShakespeareSettings: 'Game da Shakespeare',
-      aboutShakespeareSettingsDescription: 'Bayani game da Shakespeare',
 
       // Project Sidebar
       newProject: 'Sabon Aikin',
@@ -1329,9 +1317,6 @@ const resources = {
       dataSettingsDescription: 'Gbe awọn faili jade ati ṣakoso data agbegbe',
       emailUpdates: 'Awọn Imudojuiwọn Imeeli',
       emailUpdatesDescription: 'Forukọsilẹ fun awọn imudojuiwọn Shakespeare ati awọn ohun elo',
-      emailUpdatesDescriptionLong: 'Wa pẹlu imudojuiwọn pẹlu awọn ẹya Shakespeare tuntun, awọn ikẹkọ, ati awọn ohun elo. A nfi awọn imudojuiwọn lọọrọọ nikan ranṣẹ ati pe o le da forukọsilẹ duro nigbakugba.',
-      aboutShakespeareSettings: 'Nipa Shakespeare',
-      aboutShakespeareSettingsDescription: 'Alaye nipa Shakespeare',
 
       // Project Sidebar
       newProject: 'Iṣẹ akanṣe Tuntun',
@@ -1636,9 +1621,6 @@ const resources = {
       dataSettingsDescription: 'Bupụta faịlụ na jikwaa data mpaghara',
       emailUpdates: 'Nmelite Email',
       emailUpdatesDescription: 'Debanye aha maka nmelite Shakespeare na akụrụngwa',
-      emailUpdatesDescriptionLong: 'Nọrọ na-emelite na atụmatụ Shakespeare ọhụrụ, nkuzi, na akụrụngwa. Anyị na-eziga naanị nmelite mgbe ụfọdụ ma ị nwere ike ịkwụsị ndebanye aha mgbe ọ bụla.',
-      aboutShakespeareSettings: 'Gbasara Shakespeare',
-      aboutShakespeareSettingsDescription: 'Ozi gbasara Shakespeare',
 
       // Project Sidebar
       newProject: 'Ọrụ Ọhụrụ',

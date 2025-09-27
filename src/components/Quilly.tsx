@@ -21,10 +21,10 @@ export interface QuillyProps {
 
 interface ErrorBody {
   message: string;
-  action?: {
+  actions?: Array<{
     label: string;
     onClick: () => void;
-  };
+  }>;
 }
 
 export function Quilly({ error, onDismiss, onNewChat, onOpenModelSelector, onRequestConsoleErrorHelp, providerModel }: QuillyProps) {
@@ -46,16 +46,16 @@ export function Quilly({ error, onDismiss, onNewChat, onOpenModelSelector, onReq
   const renderBody = (error: Error): ErrorBody => {
     // Handle Project Preview Console Errors
     if (error instanceof ProjectPreviewConsoleError) {
-      return {
-        message: 'I noticed some console errors in your project preview. Would you like me to take a look and help fix them?',
-        action: {
-          label: 'Help fix errors',
-          onClick: () => {
-            onRequestConsoleErrorHelp?.(error);
-            onDismiss();
-          },
-        },
-      };
+          return {
+            message: 'I noticed some console errors in your project preview. Would you like me to take a look and help fix them?',
+            actions: [{
+              label: 'Help fix errors',
+              onClick: () => {
+                onRequestConsoleErrorHelp?.(error);
+                onDismiss();
+              },
+            }],
+          };
     }
 
     // Handle OpenAI API errors with specific error codes
@@ -65,28 +65,28 @@ export function Quilly({ error, onDismiss, onNewChat, onOpenModelSelector, onReq
         case 'invalid_request_error':
           return {
             message: 'Authentication error: Please check your API key in AI settings.',
-            action: {
+            actions: [{
               label: 'Check API key',
               onClick: () => navigate('/settings/ai'),
-            }
+            }],
           };
 
         case 'insufficient_quota': {
           if (credits.data) {
             return {
               message: `Your account has $${credits.data.amount.toFixed(2)} credits. Please add credits to keep creating.`,
-              action: {
+              actions: [{
                 label: 'Add credits',
                 onClick: () => setShowCreditsDialog(true),
-              }
+              }],
             };
           } else {
             return {
               message: 'Your API key has reached its usage limit. Please check your billing or try a different provider.',
-              action: {
+              actions: [{
                 label: 'Check AI settings',
                 onClick: () => navigate('/settings/ai'),
-              }
+              }],
             };
           }
         }
@@ -94,53 +94,62 @@ export function Quilly({ error, onDismiss, onNewChat, onOpenModelSelector, onReq
         case 'rate_limit_exceeded':
           return {
             message: 'Rate limit exceeded. Please wait a moment before trying again.',
+            actions: [],
           };
 
         case 'model_not_found':
           return {
             message: 'The selected AI model is not available. Please choose a different model.',
-            action: {
+            actions: [{
               label: 'Choose model',
               onClick: onOpenModelSelector,
-            },
+            }],
           };
 
         case 'context_length_exceeded':
           return {
             message: 'Your conversation is too long for this model. Try starting a new chat or switching to a model with a larger context window.',
-            action: {
+            actions: [{
               label: 'New chat',
               onClick: onNewChat,
-            },
+            }, {
+              label: 'Change model',
+              onClick: onOpenModelSelector,
+            }],
           };
 
         case 'bad_request':
           return {
             message: 'The AI provider did not understand the message / data it got. If it persists, try stating a new conversation or using a different model.',
-            action: {
-              label: 'Choose model',
+            actions: [{
+              label: 'New chat',
+              onClick: onNewChat,
+            }, {
+              label: 'Change model',
               onClick: onOpenModelSelector,
-            },
+            }],
           };
 
         case 'unprocessable_entity':
           return {
             message: 'Request rejected by AI provider. Try a different model.',
-            action: {
+            actions: [{
               label: 'Choose model',
               onClick: onOpenModelSelector,
-            },
+            }],
           };
 
         case 'server_error':
         case 'service_unavailable':
           return {
             message: 'The AI service is temporarily unavailable. Please try again in a moment.',
+            actions: [],
           };
 
         default:
           return {
             message: `AI service error: ${error.message}`,
+            actions: [],
           };
       }
     }
@@ -150,10 +159,11 @@ export function Quilly({ error, onDismiss, onNewChat, onOpenModelSelector, onReq
       message: error.message
         ? `AI service error: ${error.message}`
         : 'Sorry, I encountered an unexpected error. Please try again.',
+      actions: [],
     };
   };
 
-  const { message, action } = renderBody(error);
+  const { message, actions = [] } = renderBody(error);
 
   return (
     <div className="py-2 px-3 bg-primary/5 border border-primary/20 rounded-lg">
@@ -166,11 +176,18 @@ export function Quilly({ error, onDismiss, onNewChat, onOpenModelSelector, onReq
             </h4>
             <p className="text-sm text-muted-foreground">
               {message}
-              {' '}
-              {action && (
-                <button className="text-primary underline" onClick={action.onClick}>
-                  {action.label}
-                </button>
+              {actions.length > 0 && (
+                <>
+                  {' '}
+                  {actions.map((action, i) => (
+                    <span key={action.label}>
+                      <button className="text-primary underline" onClick={action.onClick}>
+                        {action.label}
+                      </button>
+                      {i < actions.length - 1 && <> or </>}
+                    </span>
+                  ))}
+                </>
               )}
             </p>
           </div>

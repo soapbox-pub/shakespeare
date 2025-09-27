@@ -410,13 +410,13 @@ export class SessionManager {
 
       // Convert provider errors to standard OpenAI APIError with appropriate code
       if (error?.status === 400) {
-        throw new OpenAI.BadRequestError(400, { code: 'bad_request' }, error.message, new Headers());
+        throw new OpenAI.APIError(400, { code: 'bad_request' }, error.message, new Headers());
       }
       if (error?.status === 403) {
-        throw new OpenAI.PermissionDeniedError(403,  { code: 'key_limit_exceeded' }, error.message, new Headers());
+        throw new OpenAI.APIError(403,  { code: 'key_limit_exceeded' }, error.message, new Headers());
       }
       if (error?.status === 422) {
-        throw new OpenAI.UnprocessableEntityError(422, { code: 'unprocessable_entity' }, error.message, new Headers());
+        throw new OpenAI.APIError(422, { code: 'unprocessable_entity' }, error.message, new Headers());
       }
 
       // Re-throw service errors to be handled at the UI level

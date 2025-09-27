@@ -410,34 +410,13 @@ export class SessionManager {
 
       // Convert provider errors to standard OpenAI APIError with appropriate code
       if (error?.status === 400) {
-        const code = 'bad_request';
-        const apiError = new OpenAI.APIError({
-          status: error.status,
-          code,
-          message: `${error.status} Provider returned error`
-        });
-        apiError.code = code;
-        throw apiError;
+        throw new OpenAI.BadRequestError(400, { code: 'bad_request' }, error.message, new Headers());
       }
       if (error?.status === 403) {
-        const code = 'key_limit_exceeded';
-        const apiError = new OpenAI.APIError({
-          status: error.status,
-          code,
-          message: `${error.status} Provider returned error`
-        });
-        apiError.code = code;
-        throw apiError;
+        throw new OpenAI.PermissionDeniedError(403,  { code: 'key_limit_exceeded' }, error.message, new Headers());
       }
       if (error?.status === 422) {
-        const code = 'unprocessable_entity'
-        const apiError = new OpenAI.APIError({
-          status: error.status,
-          code,
-          message: `${error.status} Provider returned error`
-        });
-        apiError.code = code;
-        throw apiError;
+        throw new OpenAI.UnprocessableEntityError(422, { code: 'unprocessable_entity' }, error.message, new Headers());
       }
 
       // Re-throw service errors to be handled at the UI level

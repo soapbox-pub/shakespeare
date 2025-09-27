@@ -116,7 +116,7 @@ export function Quilly({ error, onDismiss, onNewChat, onOpenModelSelector, onReq
 
         case 'bad_request':
           return {
-            message: 'Invalid request parameters. Try a different model.',
+            message: 'The AI provider did not understand the message / data it got. If it persists, try stating a new conversation or using a different model.',
             action: {
               label: 'Choose model',
               onClick: onOpenModelSelector,

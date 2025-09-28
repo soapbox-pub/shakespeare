@@ -461,8 +461,8 @@ export function ProjectImportDialog({
 
                 {/* Error Display */}
                 {error && (
-                  <div className="flex items-center gap-2 text-sm text-destructive mb-4">
-                    <AlertCircle className="h-4 w-4" />
+                  <div className="flex items-center gap-2 text-sm text-amber-600 mb-4">
+                    <AlertTriangle className="h-4 w-4" />
                     {error}
                   </div>
                 )}

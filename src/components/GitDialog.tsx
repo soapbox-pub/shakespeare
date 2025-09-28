@@ -335,6 +335,7 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
         title: "Push to Nostr failed",
         description: errorMessage,
         variant: "destructive",
+        duration: Infinity,
       });
     } finally {
       setIsPushingToNostr(false);
@@ -396,6 +397,7 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
         title: "Push failed",
         description: errorMessage,
         variant: "destructive",
+        duration: Infinity,
       });
     } finally {
       setIsPushing(false);
@@ -474,6 +476,7 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
         title: "Pull failed",
         description: errorMessage,
         variant: "destructive",
+        duration: Infinity,
       });
     } finally {
       setIsPulling(false);

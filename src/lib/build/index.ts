@@ -73,7 +73,7 @@ async function bundle(
   }
 
   // Update index.html with proper script and link tags
-  updateIndexHtml(doc);
+  updateIndexHtml(doc, dist);
 
   const updatedHtml = "<!DOCTYPE html>\n" + doc.documentElement.outerHTML;
   dist["index.html"] = new TextEncoder().encode(updatedHtml);
@@ -156,7 +156,7 @@ export async function buildProject(options: BuildProjectOptions): Promise<{
   };
 }
 
-function updateIndexHtml(doc: Document): void {
+function updateIndexHtml(doc: Document, dist: Record<string, Uint8Array>): void {
   const entrypoint = doc.querySelector('script[src="/src/main.tsx"]');
 
   if (!entrypoint) {
@@ -165,8 +165,11 @@ function updateIndexHtml(doc: Document): void {
 
   entrypoint.setAttribute("src", "/main.js");
 
-  const style = doc.createElement("link");
-  style.setAttribute("rel", "stylesheet");
-  style.setAttribute("href", "/main.css");
-  doc.head.appendChild(style);
+  const css = dist["main.css"];
+  if (css) {
+    const style = doc.createElement("style");
+    style.setAttribute("type", "text/tailwindcss");
+    style.textContent = new TextDecoder().decode(css);
+    doc.head.appendChild(style);
+  }
 }

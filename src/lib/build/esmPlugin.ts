@@ -78,15 +78,18 @@ export function esmPlugin(packageLock: PackageLock, target?: string): Plugin {
 
         // Handle transitive dependency versions
         const keys: string[] = [];
-        let importerPackage: string | undefined;
+        let importerPkg: string | undefined;
+        let importerVersion: string | undefined;
         try {
           const { pathname } = new URL(args.importer);
           if (/\.css$/.test(pathname)) {
             return; // CSS imports don't have external dependencies
           }
-          importerPackage = extractPackageName(args.importer);
+          const result = extractPackageName(args.importer);
+          importerPkg = result.pkg;
+          importerVersion = result.version;
           keys.push(
-            `node_modules/${importerPackage}/node_modules/${packageName}`,
+            `node_modules/${importerPkg}/node_modules/${packageName}`,
           );
         } catch {
           // fallthrough
@@ -103,8 +106,15 @@ export function esmPlugin(packageLock: PackageLock, target?: string): Plugin {
           .find((info) => info);
 
         const packagePath = args.path.slice(packageName.length);
-        const version = packageInfo?.version
-          || packageLock.packages[`node_modules/${importerPackage}`]?.peerDependencies?.[packageName];
+
+        let version: string | undefined;
+
+        if (importerPkg === packageName && importerVersion) {
+          version = importerVersion;
+        } else {
+          version = packageInfo?.version
+            || packageLock.packages[`node_modules/${importerPkg}`]?.peerDependencies?.[packageName];
+        }
 
         const name = packageInfo?.name ?? packageName;
         const specifier = version
@@ -197,7 +207,7 @@ export function esmPlugin(packageLock: PackageLock, target?: string): Plugin {
 }
 
 /** Extract package name from esm.sh-style URL */
-function extractPackageName(esmShURL: string): string {
+function extractPackageName(esmShURL: string): { pkg?: string; version?: string } {
   const full = new URL(esmShURL)
     .pathname
     .slice(1)
@@ -207,7 +217,15 @@ function extractPackageName(esmShURL: string): string {
     ? full.split("/").slice(0, 2).join("/")
     : full.split("/")[0];
 
-  return full.startsWith("@")
+  const pkg = full.startsWith("@")
     ? base.split("@").splice(0, 2).join("@")
     : base.split("@")[0];
+
+  let version: string | undefined;
+
+  if (full.slice(pkg.length).startsWith("@")) {
+    version = full.slice(pkg.length + 1).split("/")[0];
+  }
+
+  return { pkg, version };
 }

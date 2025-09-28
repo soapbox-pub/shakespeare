@@ -5,6 +5,7 @@ interface PackageLock {
     [key: string]: {
       name?: string;
       version: string;
+      peerDependencies?: { [key: string]: string };
     } | undefined;
   };
 }
@@ -77,8 +78,9 @@ export function esmPlugin(packageLock: PackageLock, target?: string): Plugin {
 
         // Handle transitive dependency versions
         const keys: string[] = [];
+        let importerPackage: string | undefined;
         try {
-          const importerPackage = extractPackageName(args.importer);
+          importerPackage = extractPackageName(args.importer);
           keys.push(
             `node_modules/${importerPackage}/node_modules/${packageName}`,
           );
@@ -97,12 +99,13 @@ export function esmPlugin(packageLock: PackageLock, target?: string): Plugin {
           .find((info) => info);
 
         const packagePath = args.path.slice(packageName.length);
-        const version = packageInfo?.version;
+        const version = packageInfo?.version
+          || packageLock.packages[`node_modules/${importerPackage}`]?.peerDependencies?.[packageName];
 
-        if (!version) return;
-
-        const name = packageInfo.name ?? packageName;
-        const specifier = `${name}@${version}${packagePath}`;
+        const name = packageInfo?.name ?? packageName;
+        const specifier = version
+          ? `${name}@${version}${packagePath}`
+          : `${name}${packagePath}`;
 
         const url = new URL(`https://esm.sh/*${specifier}`);
 

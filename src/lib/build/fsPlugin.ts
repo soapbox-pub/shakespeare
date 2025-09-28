@@ -52,7 +52,7 @@ export function fsPlugin(fs: JSRuntimeFS, cwd: string): Plugin {
 
           const ext = extname(path).slice(1);
 
-          if (!["ts", "tsx", "js", "jsx", "css"].includes(ext)) {
+          if (!["ts", "tsx", "js", "jsx", "css", "json"].includes(ext)) {
             return;
           }
 

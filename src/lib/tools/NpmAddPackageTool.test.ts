@@ -196,6 +196,25 @@ describe('NpmAddPackageTool', () => {
     };
 
     vi.mocked(mockFS.readFile).mockResolvedValue(JSON.stringify(packageJson, null, 2));
+
+    const result = await tool.execute({ name: 'lodash' });
+
+    // Should not fetch from registry when no version specified and package already installed
+    expect(mockFetch).not.toHaveBeenCalled();
+    expect(mockFS.writeFile).not.toHaveBeenCalled();
+    expect(result).toContain('ℹ️ Package lodash is already installed in dependencies with version ^4.17.21.');
+  });
+
+  it('should handle package already installed with specific version', async () => {
+    const packageJson = {
+      name: 'test-project',
+      version: '1.0.0',
+      dependencies: {
+        'lodash': '^4.17.21'
+      }
+    };
+
+    vi.mocked(mockFS.readFile).mockResolvedValue(JSON.stringify(packageJson, null, 2));
     mockFetch.mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({
@@ -208,10 +227,10 @@ describe('NpmAddPackageTool', () => {
       })
     });
 
-    const result = await tool.execute({ name: 'lodash' });
+    const result = await tool.execute({ name: 'lodash', version: '4.17.21' });
 
     expect(mockFS.writeFile).not.toHaveBeenCalled();
-    expect(result).toContain('ℹ️ Package lodash@4.17.21 is already installed');
+    expect(result).toContain('ℹ️ Package lodash@4.17.21 is already installed in dependencies.');
   });
 
   it('should handle missing package.json', async () => {

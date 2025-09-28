@@ -8,6 +8,13 @@ export function fsPlugin(fs: JSRuntimeFS, cwd: string): Plugin {
     name: "fs",
 
     setup(build) {
+      build.onResolve({ filter: /^data:/ }, (args) => {
+        return {
+          path: args.path,
+          external: true,
+        };
+      });
+
       build.onResolve({ filter: /.*/ }, async (args) => {
         let resolved: string;
 

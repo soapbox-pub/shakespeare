@@ -61,6 +61,14 @@ export function esmPlugin(packageLock: PackageLock, target?: string): Plugin {
         }
       });
 
+      // Legacy (Internet Explorer) "behavior" syntax
+      build.onResolve({ filter: /^#default#/, namespace: "esm" }, (args) => {
+        return {
+          path: args.path,
+          external: true,
+        };
+      });
+
       // Handle bare imports like "react"
       build.onResolve({ filter: /^[^./].*/ }, (args) => {
         const packageName = args.path.startsWith("@")

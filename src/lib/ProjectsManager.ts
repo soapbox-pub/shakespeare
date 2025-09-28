@@ -900,6 +900,7 @@ export class ProjectsManager {
   async extractFilesFromZip(zip: JSZip, projectPath: string): Promise<{ [path: string]: Uint8Array }> {
     const files: { [path: string]: Uint8Array } = {};
     const skippedFiles: string[] = [];
+    const securitySkippedFiles: string[] = [];
 
     for (const [relativePath, zipEntry] of Object.entries(zip.files)) {
       if (zipEntry.dir) continue;
@@ -915,6 +916,13 @@ export class ProjectsManager {
       // Skip empty paths (shouldn't happen due to the dir check above, but just in case)
       if (!fileRelativePath) continue;
 
+      // Validate extraction path is safe (zip slip protection)
+      // Check for directory traversal attempts in the original path
+      if (fileRelativePath.includes('../') || fileRelativePath.includes('..\\') || fileRelativePath.startsWith('/') || fileRelativePath.startsWith('\\')) {
+        securitySkippedFiles.push(relativePath);
+        continue;
+      }
+
       try {
         const content = await zipEntry.async('uint8array');
         files[fileRelativePath] = content;
@@ -922,6 +930,10 @@ export class ProjectsManager {
         console.warn(`Failed to extract file ${relativePath}:`, error);
         skippedFiles.push(relativePath);
       }
+    }
+
+    if (securitySkippedFiles.length > 0) {
+      console.warn(`Skipped ${securitySkippedFiles.length} files due to resolving to paths outside of project directory:`, securitySkippedFiles);
     }
 
     if (skippedFiles.length > 0) {

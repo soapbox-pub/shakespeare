@@ -174,63 +174,21 @@ export default function Clone() {
   }, [handleClone, searchParams]);
 
   const handleImportZip = async (
-    data: { file: File; projectId?: string } | { projects: { id: string; files: { [path: string]: Uint8Array } }[] },
+    data: { file: File; projectId?: string },
     overwrite: boolean
   ) => {
     try {
-      if ('file' in data) {
-        // Single project import from ZIP file
-        const project = await projectsManager.importProjectFromZip(data.file, data.projectId, overwrite);
+      // Single project import from ZIP file
+      const project = await projectsManager.importProjectFromZip(data.file, data.projectId, overwrite);
 
-        // Show success toast
-        toast({
-          title: overwrite ? "Project Overwritten Successfully" : "Project Imported Successfully",
-          description: `"${project.name}" has been ${overwrite ? 'overwritten' : 'imported'} and is ready to use.`,
-        });
+      // Show success toast
+      toast({
+        title: overwrite ? "Project Overwritten Successfully" : "Project Imported Successfully",
+        description: `"${project.name}" has been ${overwrite ? 'overwritten' : 'imported'} and is ready to use.`,
+      });
 
-        // Navigate to the imported project
-        navigate(`/project/${project.id}`);
-      } else {
-        // Bulk project import
-        let successCount = 0;
-        const errors: string[] = [];
-
-        for (const project of data.projects) {
-          try {
-            await projectsManager.importProject(
-              { files: project.files },
-              { projectId: project.id, overwrite, projectName: project.id }
-            );
-            successCount++;
-          } catch (error) {
-            console.error(`Failed to import project ${project.id}:`, error);
-            errors.push(`${project.id}: ${error instanceof Error ? error.message : 'Unknown error'}`);
-          }
-        }
-
-        // Show appropriate toast based on results
-        if (successCount === data.projects.length) {
-          toast({
-            title: "All Projects Imported Successfully",
-            description: `${successCount} project${successCount !== 1 ? 's' : ''} imported successfully.`,
-          });
-        } else if (successCount > 0) {
-          toast({
-            title: "Partial Import Success",
-            description: `${successCount} of ${data.projects.length} projects imported. ${errors.length} failed.`,
-            variant: "destructive",
-          });
-        } else {
-          toast({
-            title: "Import Failed",
-            description: "All projects failed to import. Check console for details.",
-            variant: "destructive",
-          });
-        }
-
-        // Navigate to homepage to see all projects
-        navigate('/');
-      }
+      // Navigate to the imported project
+      navigate(`/project/${project.id}`);
     } catch (error) {
       console.error('Failed to import project:', error);
       throw error; // Re-throw to let the dialog handle the error display

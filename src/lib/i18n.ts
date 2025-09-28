@@ -250,8 +250,6 @@ const resources = {
       persistentStorageNotSupportedDescription: 'Your browser does not support persistent storage requests.',
       failedToRequestPersistentStorage: 'Failed to request persistent storage',
 
-
-
       // 404 Page
       pageNotFound: 'Oops! Page not found',
       returnToHome: 'Return to Home',
@@ -551,8 +549,6 @@ const resources = {
       persistentStorageNotSupported: 'Armazenamento persistente não suportado',
       persistentStorageNotSupportedDescription: 'Seu navegador não suporta solicitações de armazenamento persistente.',
       failedToRequestPersistentStorage: 'Falha ao solicitar armazenamento persistente',
-
-
 
       // About Settings
       aboutShakespeare: 'Sobre o Shakespeare',
@@ -863,8 +859,6 @@ const resources = {
       persistentStorageNotSupportedDescription: '您的浏览器不支持持久存储请求。',
       failedToRequestPersistentStorage: '请求持久存储失败',
 
-      
-
       // About Settings
       aboutShakespeare: '关于Shakespeare',
       aboutShakespeareDescription: '关于Shakespeare的信息。',
@@ -1173,7 +1167,6 @@ const resources = {
       persistentStorageNotSupported: 'Ba a goyan bayan ajiyar ta dindindin ba',
       persistentStorageNotSupportedDescription: 'Burauzar ku ba ta goyan bayan bukatun ajiyar ta dindindin ba.',
       failedToRequestPersistentStorage: 'Ya gaza neman ajiyar ta dindindin',
-
 
       // About Settings
       aboutShakespeare: 'Game da Shakespeare',
@@ -1484,7 +1477,6 @@ const resources = {
       persistentStorageNotSupportedDescription: 'Aṣawakiri rẹ ko ni atilẹyin awọn ibeere ibi ipamọ ti o wa nigbagbogbo.',
       failedToRequestPersistentStorage: 'O kuna lati beere ibi ipamọ ti o wa nigbagbogbo',
 
-
       // About Settings
       aboutShakespeare: 'Nipa Shakespeare',
       aboutShakespeareDescription: 'Alaye nipa Shakespeare.',
@@ -1788,7 +1780,6 @@ const resources = {
       persistentStorageNotSupported: 'Akwadoghị nchekwa na-adịgide adịgide',
       persistentStorageNotSupportedDescription: 'Browser gị akwadoghị arịrịọ nchekwa na-adịgide adịgide.',
       failedToRequestPersistentStorage: 'O dara ịrịọ nchekwa na-adịgide adịgide',
-
 
       // About Settings
       aboutShakespeare: 'Gbasara Shakespeare',

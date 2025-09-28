@@ -3,6 +3,7 @@ import { ProjectsManager } from './ProjectsManager';
 import { JSRuntimeFS } from './JSRuntime';
 import { Git } from './git';
 import type { NPool } from '@nostrify/nostrify';
+import type JSZip from 'jszip';
 
 const createMockNostr = (): NPool => ({
   req: vi.fn(),
@@ -436,6 +437,50 @@ describe('ProjectsManager', () => {
         // Restore mocks
         consoleSpy.mockRestore();
         vi.restoreAllMocks();
+      }
+    });
+
+    it('should prevent zip slip attacks during bulk file extraction', async () => {
+      await projectsManager.init();
+
+      // Create a mock ZIP with malicious paths for bulk import
+      const mockZip = {
+        files: {
+          'projects/project1/../../../etc/passwd': {
+            dir: false,
+            async: vi.fn().mockResolvedValue(new Uint8Array([1, 2, 3]))
+          },
+          'projects/project1/../../outside.txt': {
+            dir: false,
+            async: vi.fn().mockResolvedValue(new Uint8Array([4, 5, 6]))
+          },
+          'projects/project1/safe-file.txt': {
+            dir: false,
+            async: vi.fn().mockResolvedValue(new Uint8Array([7, 8, 9]))
+          }
+        }
+      };
+
+      // Spy on console.warn to check for security warnings
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      try {
+        // Extract files from the malicious ZIP for bulk import
+        const files = await projectsManager.extractFilesFromZip(mockZip as unknown as JSZip, 'projects/project1');
+
+        // Should only contain safe files
+        expect(Object.keys(files)).toEqual(['safe-file.txt']);
+        expect(files['safe-file.txt']).toEqual(new Uint8Array([7, 8, 9]));
+
+        // Should have logged a security warning about skipped files
+        expect(consoleSpy).toHaveBeenCalledWith(
+          expect.stringContaining('Skipped 2 files due to resolving to paths outside of project directory:'),
+          ['projects/project1/../../../etc/passwd', 'projects/project1/../../outside.txt']
+        );
+
+      } finally {
+        // Restore mocks
+        consoleSpy.mockRestore();
       }
     });
   });

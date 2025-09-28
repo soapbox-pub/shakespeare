@@ -21,6 +21,7 @@ import { ModelSelector } from '@/components/ModelSelector';
 import { FileAttachment } from '@/components/ui/file-attachment';
 import { Plus } from 'lucide-react';
 import { useSeoMeta } from '@unhead/react';
+import { ShakespeareLogo } from '@/components/ShakespeareLogo';
 
 export default function Index() {
   const { t } = useTranslation();
@@ -268,11 +269,7 @@ export default function Index() {
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-8 md:mb-12">
             <div className="mb-4 md:mb-6">
-              <img 
-                src="/favicon.png" 
-                alt="Shakespeare" 
-                className="w-20 h-20 md:w-24 md:h-24 mx-auto"
-              />
+              <ShakespeareLogo className="w-20 h-20 md:w-24 md:h-24 mx-auto" />
             </div>
             <h1 className="text-3xl md:text-4xl font-bold mb-3 md:mb-4 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
               {t('buildNostrApps')}

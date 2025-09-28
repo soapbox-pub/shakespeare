@@ -41,6 +41,7 @@ import OpenAI from 'openai';
 import { saveFileToTmp } from '@/lib/fileUtils';
 import { useGit } from '@/hooks/useGit';
 import { Quilly } from '@/components/Quilly';
+import { ShakespeareLogo } from '@/components/ShakespeareLogo';
 
 // Clean interfaces now handled by proper hooks
 
@@ -185,7 +186,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     artist: `Working on ${projectId}...`,
     artwork: [
       {
-        src: '/favicon.png',
+        src: '/shakespeare.png',
         sizes: '512x512',
         type: 'image/png'
       }
@@ -526,11 +527,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
             <div className="flex-1 flex items-center justify-center min-h-[400px]">
               <div className="text-center space-y-4 max-w-md mx-auto">
                 <div className="mb-6">
-                  <img 
-                    src="/favicon.png" 
-                    alt="Shakespeare" 
-                    className="w-16 h-16 mx-auto"
-                  />
+                  <ShakespeareLogo className="w-16 h-16 mx-auto" />
                 </div>
                 <div>
                   <h3 className="text-xl font-semibold mb-2 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">

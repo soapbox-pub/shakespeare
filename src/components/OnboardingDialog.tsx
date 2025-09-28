@@ -13,6 +13,8 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useLoginActions } from '@/hooks/useLoginActions';
 import { useProviderModels } from '@/hooks/useProviderModels';
 import { CreditsDialog } from '@/components/CreditsDialog';
+import { ShakespeareLogo } from '@/components/ShakespeareLogo';
+
 interface OnboardingDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -151,11 +153,7 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
             {step === 'welcome' && (
               <div className="text-center space-y-6 py-4">
                 <div className="mb-4">
-                  <img 
-                    src="/favicon.png" 
-                    alt="Shakespeare" 
-                    className="w-16 h-16 mx-auto"
-                  />
+                  <ShakespeareLogo className="w-16 h-16 mx-auto" />
                 </div>
                 <div className="space-y-3">
                   <h2 className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">

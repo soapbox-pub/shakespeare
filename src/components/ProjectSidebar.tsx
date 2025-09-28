@@ -9,10 +9,10 @@ import { useProjects } from '@/hooks/useProjects';
 import { useProjectSessionStatus } from '@/hooks/useProjectSessionStatus';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useIsMobile } from '@/hooks/useIsMobile';
-
 import type { Project } from '@/lib/ProjectsManager';
 import { cn } from '@/lib/utils';
 import { useQueryClient } from '@tanstack/react-query';
+import { ShakespeareLogo } from '@/components/ShakespeareLogo';
 
 interface ProjectItemProps {
   project: Project;
@@ -137,11 +137,7 @@ export function ProjectSidebar({
             onClick={() => navigateAndClose('/')}
             className="flex items-center gap-3 hover:opacity-80 transition-opacity text-left"
           >
-            <img 
-              src="/favicon.png" 
-              alt="Shakespeare" 
-              className="w-6 h-6"
-            />
+            <ShakespeareLogo className="w-6 h-6" />
             <h1 className="text-xl font-semibold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
               Shakespeare
             </h1>

@@ -18,7 +18,7 @@ import { GitStatusIndicator } from '@/components/GitStatusIndicator';
 import { StarButton } from '@/components/StarButton';
 import { useBuildProject } from '@/hooks/useBuildProject';
 import { useIsProjectPreviewable } from '@/hooks/useIsProjectPreviewable';
-import { clearConsoleMessages } from '@/lib/tools/ReadConsoleMessagesTool';
+import { clearConsoleMessages, ProjectPreviewConsoleError, addErrorListener, removeErrorListener } from '@/lib/tools/ReadConsoleMessagesTool';
 
 export function ProjectView() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -29,6 +29,7 @@ export function ProjectView() {
   const [mobileView, setMobileView] = useState<'chat' | 'preview' | 'code'>('chat');
   const [isAILoading, setIsAILoading] = useState(false);
   const [isProjectDetailsOpen, setIsProjectDetailsOpen] = useState(false);
+  const [consoleError, setConsoleError] = useState<ProjectPreviewConsoleError | null>(null);
 
   const projectsManager = useProjectsManager();
   const chatPaneRef = useRef<ChatPaneRef>(null);
@@ -46,8 +47,9 @@ export function ProjectView() {
     try {
       const projectData = await projectsManager.getProject(projectId);
       setProject(projectData);
-      // Clear console messages when switching projects
+      // Clear console messages and error state when switching projects
       clearConsoleMessages();
+      setConsoleError(null);
     } catch (error) {
       console.error('Failed to load project:', error);
     } finally {
@@ -79,6 +81,16 @@ export function ProjectView() {
     }
   }, [isPreviewable, mobileView, activeTab]);
 
+  // Global console error listener (always active regardless of current tab)
+  useEffect(() => {
+    const handleConsoleError = (error: ProjectPreviewConsoleError) => {
+      setConsoleError(error);
+    };
+
+    addErrorListener(handleConsoleError);
+    return () => removeErrorListener(handleConsoleError);
+  }, []);
+
   const handleNewChat = () => {
     // Reset to chat view on mobile when starting new chat
     if (isMobile) {
@@ -98,6 +110,10 @@ export function ProjectView() {
   const handleFirstInteraction = () => {
     // This will be handled automatically by the useKeepAlive hook
     // when isAILoading becomes true after user interaction
+  };
+
+  const handleDismissConsoleError = () => {
+    setConsoleError(null);
   };
 
   const handleProjectDeleted = async () => {
@@ -212,6 +228,8 @@ export function ProjectView() {
                 onLoadingChange={handleAILoadingChange}
                 isLoading={isAILoading}
                 isBuildLoading={build.isPending}
+                consoleError={consoleError}
+                onDismissConsoleError={handleDismissConsoleError}
               />
             ) : (
               <div className="h-full p-4 space-y-4">

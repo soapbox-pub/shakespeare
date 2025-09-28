@@ -18,7 +18,6 @@ interface AppLayoutProps {
 export function AppLayout({
   children,
   selectedProject = null,
-  title = "Shakespeare",
   showSidebar = true,
   headerContent
 }: AppLayoutProps) {
@@ -85,9 +84,6 @@ export function AppLayout({
                 <Menu className="h-4 w-4" />
               </Button>
             )}
-            <h1 className="text-lg font-semibold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              {title}
-            </h1>
           </div>
           {headerContent}
         </header>

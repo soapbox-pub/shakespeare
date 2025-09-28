@@ -42,7 +42,7 @@ describe('OnboardingDialog', () => {
       </TestApp>
     );
 
-    expect(screen.getAllByText('Welcome to Shakespeare!')).toHaveLength(2); // Title and heading
+    expect(screen.getByText('Welcome to Shakespeare!')).toBeInTheDocument(); // Only in dialog title now
     expect(screen.getByText(/Your AI-powered development assistant/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Get Started/i })).toBeInTheDocument();
   });

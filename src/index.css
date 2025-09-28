@@ -260,6 +260,10 @@
     padding-top: env(safe-area-inset-top);
   }
 
+  .bottom-safe-nav {
+    bottom: calc(env(safe-area-inset-bottom) + 3.75rem);
+  }
+
   /* Mobile navigation button styles - text/icon highlighting only */
   .mobile-nav-button,
   .mobile-nav-button:hover,

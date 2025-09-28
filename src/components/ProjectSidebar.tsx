@@ -137,7 +137,11 @@ export function ProjectSidebar({
             onClick={() => navigateAndClose('/')}
             className="flex items-center gap-3 hover:opacity-80 transition-opacity text-left"
           >
-            <span className="text-2xl">🎭</span>
+            <img 
+              src="/favicon.png" 
+              alt="Shakespeare" 
+              className="w-6 h-6"
+            />
             <h1 className="text-xl font-semibold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
               Shakespeare
             </h1>

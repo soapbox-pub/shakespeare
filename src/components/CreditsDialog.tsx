@@ -399,7 +399,7 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg w-full max-h-[75vh] overflow-hidden flex flex-col sm:max-w-lg sm:max-h-[75vh] max-sm:w-full max-sm:h-full max-sm:max-w-none max-sm:max-h-none max-sm:m-0 max-sm:rounded-none">
+      <DialogContent onOpenAutoFocus={(e) => e.preventDefault()} className="max-w-lg w-full max-h-[75vh] overflow-hidden flex flex-col sm:max-w-lg sm:max-h-[75vh] max-sm:w-full max-sm:h-full max-sm:max-w-none max-sm:max-h-none max-sm:m-0 max-sm:rounded-none">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2 text-lg">
             {lightningInvoice ? (

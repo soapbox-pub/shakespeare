@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { GitBranch, Loader2, AlertCircle, FileArchive, MoreHorizontal } from 'lucide-react';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { useToast } from '@/hooks/useToast';
-import { ZipImportDialog } from '@/components/ZipImportDialog';
+import { ProjectImportDialog } from '@/components/ProjectImportDialog';
 import { useSeoMeta } from '@unhead/react';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 
@@ -173,19 +173,64 @@ export default function Clone() {
     }
   }, [handleClone, searchParams]);
 
-  const handleImportZip = async (file: File, overwrite = false, projectId?: string) => {
+  const handleImportZip = async (
+    data: { file: File; projectId?: string } | { projects: { id: string; files: { [path: string]: Uint8Array } }[] },
+    overwrite: boolean
+  ) => {
     try {
-      // Import project from zip file
-      const project = await projectsManager.importProjectFromZip(file, projectId, overwrite);
+      if ('file' in data) {
+        // Single project import from ZIP file
+        const project = await projectsManager.importProjectFromZip(data.file, data.projectId, overwrite);
 
-      // Show success toast
-      toast({
-        title: overwrite ? "Project Overwritten Successfully" : "Project Imported Successfully",
-        description: `"${project.name}" has been ${overwrite ? 'overwritten' : 'imported'} and is ready to use.`,
-      });
+        // Show success toast
+        toast({
+          title: overwrite ? "Project Overwritten Successfully" : "Project Imported Successfully",
+          description: `"${project.name}" has been ${overwrite ? 'overwritten' : 'imported'} and is ready to use.`,
+        });
 
-      // Navigate to the imported project
-      navigate(`/project/${project.id}`);
+        // Navigate to the imported project
+        navigate(`/project/${project.id}`);
+      } else {
+        // Bulk project import
+        let successCount = 0;
+        const errors: string[] = [];
+
+        for (const project of data.projects) {
+          try {
+            await projectsManager.importProject(
+              { files: project.files },
+              { projectId: project.id, overwrite, projectName: project.id }
+            );
+            successCount++;
+          } catch (error) {
+            console.error(`Failed to import project ${project.id}:`, error);
+            errors.push(`${project.id}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          }
+        }
+
+        // Show appropriate toast based on results
+        if (successCount === data.projects.length) {
+          toast({
+            title: "All Projects Imported Successfully",
+            description: `${successCount} project${successCount !== 1 ? 's' : ''} imported successfully.`,
+          });
+        } else if (successCount > 0) {
+          toast({
+            title: "Partial Import Success",
+            description: `${successCount} of ${data.projects.length} projects imported. ${errors.length} failed.`,
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Import Failed",
+            description: "All projects failed to import. Check console for details.",
+            variant: "destructive",
+          });
+        }
+
+        // Navigate to homepage to see all projects
+        navigate('/');
+      }
     } catch (error) {
       console.error('Failed to import project:', error);
       throw error; // Re-throw to let the dialog handle the error display
@@ -271,7 +316,8 @@ export default function Clone() {
       </div>
 
       {/* ZIP Import Dialog */}
-      <ZipImportDialog
+      <ProjectImportDialog
+        mode="single"
         onImport={handleImportZip}
         open={isZipDialogOpen}
         onOpenChange={setIsZipDialogOpen}

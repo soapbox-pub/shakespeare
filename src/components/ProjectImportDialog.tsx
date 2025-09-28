@@ -41,7 +41,6 @@ export function ProjectImportDialog({
   const [internalIsOpen, setInternalIsOpen] = useState(false);
   const isOpen = open !== undefined ? open : internalIsOpen;
   const setIsOpen = onOpenChange || setInternalIsOpen;
-
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [generatedId, setGeneratedId] = useState('');
   const [discoveredProjects, setDiscoveredProjects] = useState<ProjectInfo[]>([]);

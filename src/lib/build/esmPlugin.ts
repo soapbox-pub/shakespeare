@@ -131,6 +131,14 @@ export function esmPlugin(packageLock: PackageLock, target?: string): Plugin {
           }
         }
 
+        // Skip static assets
+        if (/\.(woff2?|ttf|otf|eot)$/.test(fullURL.pathname)) {
+          return {
+            path: fullURL.toString(),
+            external: true,
+          };
+        }
+
         return {
           path: fullURL.toString(),
           namespace: "esm",

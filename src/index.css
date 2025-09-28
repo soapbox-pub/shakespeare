@@ -110,11 +110,13 @@
 
 @layer base {
   * {
-    @apply border-border;
+    border-color: hsl(var(--border));
   }
 
   body {
-    @apply bg-background text-foreground font-sans;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-family: 'Inter Variable', 'Inter', 'system-ui', 'sans-serif';
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 
@@ -138,8 +140,10 @@
   }
 
   /* GitHub-style focus rings */
-  .focus-ring {
-    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2;
+  .focus-ring:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px hsl(var(--ring));
+    outline-offset: 2px;
   }
 
   /* Smooth transitions for theme switching */
@@ -254,6 +258,10 @@
 
   .safe-area-inset-top {
     padding-top: env(safe-area-inset-top);
+  }
+
+  .bottom-safe-nav {
+    bottom: calc(env(safe-area-inset-bottom) + 3.75rem);
   }
 
   /* Mobile navigation button styles - text/icon highlighting only */

@@ -250,7 +250,6 @@ export class SessionManager {
           model,
           messages,
           tools: session.tools && Object.keys(session.tools).length > 0 ? Object.values(session.tools) : undefined,
-          tool_choice: session.tools && Object.keys(session.tools).length > 0 ? 'auto' : undefined,
           stream: true,
           stream_options: {
             include_usage: true,
@@ -301,9 +300,9 @@ export class SessionManager {
           }
 
           if (delta?.tool_calls) {
-            for (const toolCallDelta of delta.tool_calls) {
-              const index = toolCallDelta.index;
-              if (index === undefined) continue;
+            for (let i = 0; i < delta.tool_calls.length; i++) {
+              const toolCallDelta = delta.tool_calls[i];
+              const index = toolCallDelta.index ?? i; // Fix for Gemini models
 
               accumulatedToolCalls[index] ??= {
                 id: '',

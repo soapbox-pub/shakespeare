@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Plus, Folder, GitBranch, Loader2, ChevronDown, Star, Columns2, X, Settings, HelpCircle, FileArchive } from 'lucide-react';
+import { Plus, Folder, GitBranch, Loader2, ChevronDown, Star, Columns2, X, Settings, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -9,12 +9,10 @@ import { useProjects } from '@/hooks/useProjects';
 import { useProjectSessionStatus } from '@/hooks/useProjectSessionStatus';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useIsMobile } from '@/hooks/useIsMobile';
-import { ProjectImportDialog } from '@/components/ProjectImportDialog';
-import { useProjectsManager } from '@/hooks/useProjectsManager';
-import { useToast } from '@/hooks/useToast';
 import type { Project } from '@/lib/ProjectsManager';
 import { cn } from '@/lib/utils';
 import { useQueryClient } from '@tanstack/react-query';
+import { ShakespeareLogo } from '@/components/ShakespeareLogo';
 
 interface ProjectItemProps {
   project: Project;
@@ -95,9 +93,6 @@ export function ProjectSidebar({
   const queryClient = useQueryClient();
   const { data: projects = [], isLoading, error } = useProjects();
   const [favorites] = useLocalStorage<string[]>('project-favorites', []);
-  const projectsManager = useProjectsManager();
-  const { toast } = useToast();
-  const [isZipDialogOpen, setIsZipDialogOpen] = useState(false);
 
   const isMobile = useIsMobile();
   const navigate = useNavigate();
@@ -123,37 +118,6 @@ export function ProjectSidebar({
     }
   };
 
-  const handleImportZip = async (data: { file: File; projectId?: string } | { projects: { id: string; files: { [path: string]: Uint8Array } }[] }, overwrite: boolean) => {
-    try {
-      let project;
-
-      if ('file' in data) {
-        // Single project import
-        project = await projectsManager.importProject(data.file, { projectId: data.projectId, overwrite });
-
-        // Show success toast
-        toast({
-          title: overwrite ? "Project Overwritten Successfully" : "Project Imported Successfully",
-          description: `"${project.name}" has been ${overwrite ? 'overwritten' : 'imported'} and is ready to use.`,
-        });
-      } else {
-        // Bulk import - this shouldn't happen in sidebar mode, but handle gracefully
-        throw new Error('Bulk import not supported in sidebar');
-      }
-
-      // Close dialog before navigation to prevent reopening
-      setIsZipDialogOpen(false);
-
-      // Navigate to the imported project
-      if (project) {
-        navigate(`/project/${project.id}`);
-      }
-    } catch (error) {
-      console.error('Failed to import project:', error);
-      throw error; // Re-throw to let the dialog handle the error display
-    }
-  };
-
   useEffect(() => {
     queryClient.invalidateQueries({ queryKey: ['projects'] });
   }, [favorites, queryClient]);
@@ -171,7 +135,7 @@ export function ProjectSidebar({
             onClick={() => navigateAndClose('/')}
             className="flex items-center gap-3 hover:opacity-80 transition-opacity text-left"
           >
-            <span className="text-2xl">🎭</span>
+            <ShakespeareLogo className="w-6 h-6" />
             <h1 className="text-xl font-semibold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
               Shakespeare
             </h1>
@@ -222,13 +186,6 @@ export function ProjectSidebar({
                     >
                       <GitBranch className="h-4 w-4" />
                       {t('importRepository')}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => setIsZipDialogOpen(true)}
-                      className="flex items-center gap-2 w-full"
-                    >
-                      <FileArchive className="h-4 w-4" />
-                      Import ZIP File
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -292,14 +249,6 @@ export function ProjectSidebar({
           </Button>
         </div>
       </div>
-
-      {/* ZIP Import Dialog */}
-      <ProjectImportDialog
-        mode="single"
-        onImport={handleImportZip}
-        open={isZipDialogOpen}
-        onOpenChange={setIsZipDialogOpen}
-      />
     </div>
   );
 }

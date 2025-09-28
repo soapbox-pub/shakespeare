@@ -5,6 +5,7 @@ interface PackageLock {
     [key: string]: {
       name?: string;
       version: string;
+      peerDependencies?: { [key: string]: string };
     } | undefined;
   };
 }
@@ -61,6 +62,14 @@ export function esmPlugin(packageLock: PackageLock, target?: string): Plugin {
         }
       });
 
+      // Legacy (Internet Explorer) "behavior" syntax
+      build.onResolve({ filter: /^#default#/, namespace: "esm" }, (args) => {
+        return {
+          path: args.path,
+          external: true,
+        };
+      });
+
       // Handle bare imports like "react"
       build.onResolve({ filter: /^[^./].*/ }, (args) => {
         const packageName = args.path.startsWith("@")
@@ -69,8 +78,13 @@ export function esmPlugin(packageLock: PackageLock, target?: string): Plugin {
 
         // Handle transitive dependency versions
         const keys: string[] = [];
+        let importerPackage: string | undefined;
         try {
-          const importerPackage = extractPackageName(args.importer);
+          const { pathname } = new URL(args.importer);
+          if (/\.css$/.test(pathname)) {
+            return; // CSS imports don't have external dependencies
+          }
+          importerPackage = extractPackageName(args.importer);
           keys.push(
             `node_modules/${importerPackage}/node_modules/${packageName}`,
           );
@@ -89,12 +103,13 @@ export function esmPlugin(packageLock: PackageLock, target?: string): Plugin {
           .find((info) => info);
 
         const packagePath = args.path.slice(packageName.length);
-        const version = packageInfo?.version;
+        const version = packageInfo?.version
+          || packageLock.packages[`node_modules/${importerPackage}`]?.peerDependencies?.[packageName];
 
-        if (!version) return;
-
-        const name = packageInfo.name ?? packageName;
-        const specifier = `${name}@${version}${packagePath}`;
+        const name = packageInfo?.name ?? packageName;
+        const specifier = version
+          ? `${name}@${version}${packagePath}`
+          : `${name}${packagePath}`;
 
         const url = new URL(`https://esm.sh/*${specifier}`);
 
@@ -129,6 +144,14 @@ export function esmPlugin(packageLock: PackageLock, target?: string): Plugin {
               errors: [{ text: `Could not resolve ${args.path}` }],
             };
           }
+        }
+
+        // Skip static assets
+        if (/\.(woff2?|ttf|otf|eot)$/.test(fullURL.pathname)) {
+          return {
+            path: fullURL.toString(),
+            external: true,
+          };
         }
 
         return {

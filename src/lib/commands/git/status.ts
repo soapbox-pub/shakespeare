@@ -39,7 +39,6 @@ export class GitStatusCommand implements GitSubcommand {
       let currentBranch: string | null = null;
       try {
         currentBranch = await this.git.currentBranch({
-          
           dir: this.pwd,
         }) || null;
       } catch {
@@ -78,22 +77,26 @@ export class GitStatusCommand implements GitSubcommand {
       let indexStatus = ' ';
       let workingStatus = ' ';
 
-      // Determine index status (staged changes)
-      if (headStatus === 0 && stageStatus === 1) {
-        indexStatus = 'A'; // Added
+      // Determine index status (staged changes - comparing HEAD to stage)
+      if (headStatus === 0 && stageStatus === 2) {
+        indexStatus = 'A'; // Added to stage
       } else if (headStatus === 1 && stageStatus === 0) {
-        indexStatus = 'D'; // Deleted
-      } else if (headStatus === 1 && stageStatus === 1 && headStatus !== stageStatus) {
-        indexStatus = 'M'; // Modified
+        indexStatus = 'D'; // Deleted from stage
+      } else if (headStatus === 1 && stageStatus === 2) {
+        indexStatus = 'M'; // Modified in stage
       }
 
-      // Determine working directory status
-      if (headStatus === 0 && stageStatus === 0 && workdirStatus === 1) {
-        workingStatus = '?'; // Untracked
+      // Determine working directory status (comparing stage to working dir)
+      if (headStatus === 0 && stageStatus === 0 && workdirStatus === 2) {
+        // Untracked files show as ?? in porcelain format
+        indexStatus = '?';
+        workingStatus = '?';
+      } else if (stageStatus === 2 && workdirStatus === 0) {
+        workingStatus = 'D'; // Deleted in working dir
       } else if (stageStatus === 1 && workdirStatus === 0) {
-        workingStatus = 'D'; // Deleted
-      } else if (stageStatus !== workdirStatus) {
-        workingStatus = 'M'; // Modified
+        workingStatus = 'D'; // Deleted in working dir (was same as HEAD)
+      } else if (stageStatus !== workdirStatus && workdirStatus === 2) {
+        workingStatus = 'M'; // Modified in working dir
       }
 
       // Only show files with changes
@@ -112,7 +115,7 @@ export class GitStatusCommand implements GitSubcommand {
     if (currentBranch) {
       lines.push(`On branch ${currentBranch}`);
     } else {
-      lines.push('On branch main');
+      lines.push('HEAD detached at unknown');
     }
 
     // Categorize changes
@@ -122,24 +125,26 @@ export class GitStatusCommand implements GitSubcommand {
     const deleted: string[] = [];
 
     for (const [filepath, headStatus, workdirStatus, stageStatus] of statusMatrix) {
-      // Staged changes (index differs from HEAD)
-      if (headStatus === 0 && stageStatus === 1) {
+      // Staged changes (stage differs from HEAD)
+      if (headStatus === 0 && stageStatus === 2) {
         staged.push(`\tnew file:   ${filepath}`);
       } else if (headStatus === 1 && stageStatus === 0) {
         staged.push(`\tdeleted:    ${filepath}`);
-      } else if (headStatus !== stageStatus && headStatus === 1 && stageStatus === 1) {
+      } else if (headStatus === 1 && stageStatus === 2) {
         staged.push(`\tmodified:   ${filepath}`);
       }
 
-      // Working directory changes (working dir differs from index)
-      if (stageStatus === 1 && workdirStatus === 0) {
+      // Working directory changes (working dir differs from stage)
+      if (stageStatus === 2 && workdirStatus === 0) {
         deleted.push(`\tdeleted:    ${filepath}`);
-      } else if (stageStatus !== workdirStatus && stageStatus === 1 && workdirStatus === 1) {
+      } else if (stageStatus === 1 && workdirStatus === 0) {
+        deleted.push(`\tdeleted:    ${filepath}`);
+      } else if (stageStatus !== workdirStatus && workdirStatus === 2) {
         modified.push(`\tmodified:   ${filepath}`);
       }
 
-      // Untracked files
-      if (headStatus === 0 && stageStatus === 0 && workdirStatus === 1) {
+      // Untracked files (not in HEAD, not in stage, but in working dir)
+      if (headStatus === 0 && stageStatus === 0 && workdirStatus === 2) {
         untracked.push(`\t${filepath}`);
       }
     }
@@ -148,7 +153,7 @@ export class GitStatusCommand implements GitSubcommand {
     if (staged.length > 0) {
       lines.push('');
       lines.push('Changes to be committed:');
-      lines.push('  (use "git reset HEAD <file>..." to unstage)');
+      lines.push('  (use "git restore --staged <file>..." to unstage)');
       lines.push('');
       lines.push(...staged);
     }
@@ -158,7 +163,7 @@ export class GitStatusCommand implements GitSubcommand {
       lines.push('');
       lines.push('Changes not staged for commit:');
       lines.push('  (use "git add <file>..." to update what will be committed)');
-      lines.push('  (use "git checkout -- <file>..." to discard changes in working directory)');
+      lines.push('  (use "git restore <file>..." to discard changes in working directory)');
       lines.push('');
       lines.push(...modified);
       lines.push(...deleted);

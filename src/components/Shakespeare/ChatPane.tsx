@@ -34,13 +34,14 @@ import { NostrReadNipsIndexTool } from '@/lib/tools/NostrReadNipsIndexTool';
 import { NostrGenerateKindTool } from '@/lib/tools/NostrGenerateKindTool';
 import { ShellTool } from '@/lib/tools/ShellTool';
 import { TypecheckTool } from '@/lib/tools/TypecheckTool';
-import { ReadConsoleMessagesTool, ProjectPreviewConsoleError, addErrorListener, removeErrorListener } from '@/lib/tools/ReadConsoleMessagesTool';
+import { ReadConsoleMessagesTool, ProjectPreviewConsoleError } from '@/lib/tools/ReadConsoleMessagesTool';
 import { toolToOpenAI } from '@/lib/tools/openai-adapter';
 import { Tool } from '@/lib/tools/Tool';
 import OpenAI from 'openai';
 import { saveFileToTmp } from '@/lib/fileUtils';
 import { useGit } from '@/hooks/useGit';
 import { Quilly } from '@/components/Quilly';
+import { ShakespeareLogo } from '@/components/ShakespeareLogo';
 
 // Clean interfaces now handled by proper hooks
 
@@ -51,6 +52,8 @@ interface ChatPaneProps {
   onLoadingChange?: (isLoading: boolean) => void;
   isLoading?: boolean;
   isBuildLoading?: boolean;
+  consoleError?: ProjectPreviewConsoleError | null;
+  onDismissConsoleError?: () => void;
 }
 
 export interface ChatPaneRef {
@@ -64,6 +67,8 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   onLoadingChange,
   isLoading: externalIsLoading,
   isBuildLoading: externalIsBuildLoading,
+  consoleError,
+  onDismissConsoleError,
 }, ref) => {
   const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -80,18 +85,8 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   const [isStuck, setIsStuck] = useState(false);
   const [aiError, setAIError] = useState<Error | null>(null);
 
-  // Console error handling
-  useEffect(() => {
-    const handleConsoleError = (error: ProjectPreviewConsoleError) => {
-      // Only show console errors if there's no existing AI error
-      if (!aiError) {
-        setAIError(error);
-      }
-    };
-
-    addErrorListener(handleConsoleError);
-    return () => removeErrorListener(handleConsoleError);
-  }, [aiError]);
+  // Determine which error to show - console error takes priority over AI errors
+  const displayError = consoleError || aiError;
 
   // Use external state if provided, otherwise default to false
   const isBuildLoading = externalIsBuildLoading || false;
@@ -185,7 +180,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     artist: `Working on ${projectId}...`,
     artwork: [
       {
-        src: '/favicon.png',
+        src: '/shakespeare.png',
         sizes: '512x512',
         type: 'image/png'
       }
@@ -224,6 +219,15 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   const handleConsoleErrorHelp = useCallback(() => {
     sendMessage('Read the console messages and fix any errors present.', providerModel);
   }, [sendMessage, providerModel]);
+
+  // Handle error dismissal
+  const handleErrorDismiss = useCallback(() => {
+    if (consoleError && onDismissConsoleError) {
+      onDismissConsoleError();
+    } else {
+      setAIError(null);
+    }
+  }, [consoleError, onDismissConsoleError]);
 
   // Use external loading state if provided, otherwise use internal state
   const isLoading = externalIsLoading !== undefined ? externalIsLoading : internalIsLoading;
@@ -525,7 +529,9 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
           {messages.length === 0 && !streamingMessage && !isLoading && (
             <div className="flex-1 flex items-center justify-center min-h-[400px]">
               <div className="text-center space-y-4 max-w-md mx-auto">
-                <div className="text-6xl mb-6">🎭</div>
+                <div className="mb-6">
+                  <ShakespeareLogo className="w-16 h-16 mx-auto" />
+                </div>
                 <div>
                   <h3 className="text-xl font-semibold mb-2 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
                     {t('welcomeToShakespeare')}
@@ -608,11 +614,11 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
             </div>
           )}
 
-          {/* AI Error Alert */}
-          {aiError && (
+          {/* Error Alert (Console or AI) */}
+          {displayError && (
             <Quilly
-              error={aiError}
-              onDismiss={() => setAIError(null)}
+              error={displayError}
+              onDismiss={handleErrorDismiss}
               onNewChat={onNewChat}
               onOpenModelSelector={openModelSelector}
               onRequestConsoleErrorHelp={handleConsoleErrorHelp}

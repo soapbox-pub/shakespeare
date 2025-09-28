@@ -911,7 +911,6 @@ export class Git {
     const gitRelays = new Set<string>([
       'wss://git.shakespeare.diy/',
       'wss://relay.ngit.dev/',
-      'wss://gitnostr.com/',
       'wss://relay.nostr.band/', // General purpose relay as fallback
     ]);
 
@@ -1313,6 +1312,7 @@ export class Git {
         dir: options.dir,
         ref: `refs/heads/${currentBranch}`,
         value: upstreamCommit,
+        force: true,
       });
 
       // Update the working directory
@@ -1395,7 +1395,6 @@ export class Git {
       relayUrls.push(
         'wss://git.shakespeare.diy/',
         'wss://relay.ngit.dev/',
-        'wss://gitnostr.com/',
         'wss://relay.nostr.band/'
       );
     }

@@ -88,6 +88,16 @@ export class NpmAddPackageTool implements Tool<NpmAddPackageParams> {
         throw new Error(`❌ Invalid package.json format. Could not parse JSON.`);
       }
 
+      // Check if package already exists
+      const dependencyKey = dev ? 'devDependencies' : 'dependencies';
+      const otherKey = dev ? 'dependencies' : 'devDependencies';
+
+      // If no version is specified and package is already installed, it's a no-op
+      if (!version && packageJson[dependencyKey]?.[name]) {
+        const currentVersion = packageJson[dependencyKey][name];
+        return `ℹ️ Package ${name} is already installed in ${dependencyKey} with version ${currentVersion}.`;
+      }
+
       // Determine version to use and fetch package metadata
       let targetVersion = version;
       let packageMetadata: NpmRegistryResponse;
@@ -107,10 +117,7 @@ export class NpmAddPackageTool implements Tool<NpmAddPackageParams> {
         }
       }
 
-      // Check if package already exists
-      const dependencyKey = dev ? 'devDependencies' : 'dependencies';
-      const otherKey = dev ? 'dependencies' : 'devDependencies';
-
+      // Check if package already exists with the specific version
       if (packageJson[dependencyKey]?.[name]) {
         const currentVersion = packageJson[dependencyKey][name];
         if (currentVersion === `^${targetVersion}`) {

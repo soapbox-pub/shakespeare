@@ -1,4 +1,4 @@
-import path from "path-browserify";
+import { join, dirname, extname } from "path-browserify";
 
 import type { Loader, Plugin } from "esbuild-wasm";
 import type { JSRuntimeFS } from '@/lib/JSRuntime';
@@ -8,27 +8,37 @@ export function fsPlugin(fs: JSRuntimeFS, cwd: string): Plugin {
     name: "fs",
 
     setup(build) {
+      build.onResolve({ filter: /^data:/ }, (args) => {
+        return {
+          path: args.path,
+          external: true,
+        };
+      });
+
       build.onResolve({ filter: /.*/ }, async (args) => {
         let resolved: string;
 
         if (args.path.startsWith("@/")) {
-          resolved = path.join(cwd, args.path.slice(2));
+          resolved = join(cwd, args.path.slice(2));
         } else if (args.kind === "entry-point") {
-          resolved = path.join(cwd, args.path);
+          resolved = join(cwd, args.path);
         } else if (args.importer) {
-          resolved = path.join(path.dirname(args.importer), args.path);
+          resolved = join(dirname(args.importer), args.path);
         } else {
           return;
         }
 
+        // Vite query parameters https://vite.dev/guide/assets
+        const [cleaned, query] = resolved.split("?");
+
         try {
-          resolved = await tryFileVariants(fs, resolved);
+          resolved = await tryFileVariants(fs, cleaned);
         } catch {
           return; // Let other plugins handle this
         }
 
         return {
-          path: resolved,
+          path: resolved + (typeof query === "string" ? "?" + query : ""),
           namespace: "fs",
         };
       });
@@ -36,14 +46,25 @@ export function fsPlugin(fs: JSRuntimeFS, cwd: string): Plugin {
       build.onLoad(
         { filter: /.*/, namespace: "fs" },
         async (args) => {
-          const ext = path.extname(args.path).slice(1);
+          const [path, query] = args.path.split("?");
+          const params = new URLSearchParams(query);
 
-          if (!["ts", "tsx", "js", "jsx", "css"].includes(ext)) {
+          // https://vite.dev/guide/assets.html#importing-asset-as-string
+          if (params.has("raw")) {
+            return {
+              contents: await fs.readFile(path, "utf8"),
+              loader: "text",
+            };
+          }
+
+          const ext = extname(path).slice(1);
+
+          if (!["ts", "tsx", "js", "jsx", "css", "json"].includes(ext)) {
             return;
           }
 
           return {
-            contents: await fs.readFile(args.path, "utf8"),
+            contents: await fs.readFile(path, "utf8"),
             loader: ext as Loader,
           };
         },
@@ -67,7 +88,7 @@ async function tryFileVariants(
   // If it's a directory, try index files
   if (stat.isDirectory()) {
     for (const ext of extensions) {
-      const indexFile = path.join(basePath, "index" + ext);
+      const indexFile = join(basePath, "index" + ext);
       const indexStat = await statSafe(fs, indexFile);
       if (indexStat.isFile()) {
         return indexFile;

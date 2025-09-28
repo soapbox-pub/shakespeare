@@ -38,7 +38,7 @@ const queryClient = new QueryClient({
 });
 
 const defaultConfig: AppConfig = {
-  theme: "light",
+  theme: "system",
   relayUrl: "wss://relay.primal.net",
   deployServer: "shakespeare.wtf",
 };

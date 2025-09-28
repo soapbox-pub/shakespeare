@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -47,7 +47,7 @@ import { cn } from '@/lib/utils';
 import { findCredentialsForRepo } from '@/lib/gitCredentials';
 import { nip19 } from 'nostr-tools';
 
-const GRASP_SERVERS = ["git.shakespeare.diy", "relay.ngit.dev", "gitnostr.com"];
+const GRASP_SERVERS = ["git.shakespeare.diy", "relay.ngit.dev"];
 
 interface GitDialogProps {
   projectId: string;
@@ -62,6 +62,7 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
   const [isPushingToNostr, setIsPushingToNostr] = useState(false);
   const [originUrl, setOriginUrl] = useState('');
   const [isSavingOrigin, setIsSavingOrigin] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
 
   const { data: gitStatus, refetch: refetchGitStatus } = useGitStatus(projectId);
@@ -334,6 +335,7 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
         title: "Push to Nostr failed",
         description: errorMessage,
         variant: "destructive",
+        duration: Infinity,
       });
     } finally {
       setIsPushingToNostr(false);
@@ -395,6 +397,7 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
         title: "Push failed",
         description: errorMessage,
         variant: "destructive",
+        duration: Infinity,
       });
     } finally {
       setIsPushing(false);
@@ -425,6 +428,12 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
     try {
       const remote = gitStatus.remotes[0]; // Use first remote (usually 'origin')
 
+      // Get the current HEAD commit before pulling
+      const beforeCommit = await git.resolveRef({
+        dir: projectPath,
+        ref: 'HEAD',
+      });
+
       await git.pull({
         dir: projectPath,
         ref: gitStatus.currentBranch,
@@ -436,20 +445,38 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
         onAuth: (url) => findCredentialsForRepo(url, settings.credentials),
       });
 
+      // Get the current HEAD commit after pulling
+      const afterCommit = await git.resolveRef({
+        dir: projectPath,
+        ref: 'HEAD',
+      });
+
+      // Check if the repository actually changed
+      const repoChanged = beforeCommit !== afterCommit;
 
       toast({
         title: "Pull successful",
-        description: `Latest changes pulled from ${remote.name}/${gitStatus.currentBranch}`,
+        description: repoChanged
+          ? `Latest changes pulled from ${remote.name}/${gitStatus.currentBranch}`
+          : `Already up to date with ${remote.name}/${gitStatus.currentBranch}`,
       });
 
       // Refresh git status after pull
       await refetchGitStatus();
+
+      // Only trigger build if the repository actually changed
+      if (repoChanged) {
+        const newSearchParams = new URLSearchParams(searchParams);
+        newSearchParams.set('build', '');
+        setSearchParams(newSearchParams);
+      }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       toast({
         title: "Pull failed",
         description: errorMessage,
         variant: "destructive",
+        duration: Infinity,
       });
     } finally {
       setIsPulling(false);

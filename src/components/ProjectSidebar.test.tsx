@@ -60,7 +60,7 @@ describe('ProjectSidebar', () => {
       </TestApp>
     );
 
-    expect(screen.getByText('🎭')).toBeInTheDocument();
+    expect(screen.getByAltText('Shakespeare')).toBeInTheDocument();
     expect(screen.getByText('Shakespeare')).toBeInTheDocument();
   });
 

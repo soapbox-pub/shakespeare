@@ -77,27 +77,22 @@ export class GitAddCommand implements GitSubcommand {
         dir: this.pwd,
       });
 
-      let addedCount = 0;
-      let removedCount = 0;
-
-      for (const [filepath, headStatus, workdirStatus] of statusMatrix) {
+      for (const [filepath, headStatus, workdirStatus, stageStatus] of statusMatrix) {
         try {
           if (workdirStatus === 0 && headStatus === 1) {
-            // File was deleted
+            // File was deleted in working directory
             await this.git.remove({
-              
+
               dir: this.pwd,
               filepath,
             });
-            removedCount++;
-          } else if (workdirStatus === 1) {
-            // File exists (new or modified)
+          } else if (workdirStatus === 2 && stageStatus !== 2) {
+            // File exists and has changes that aren't staged yet
             await this.git.add({
-              
+
               dir: this.pwd,
               filepath,
             });
-            addedCount++;
           }
         } catch {
           // Continue with other files if one fails
@@ -105,19 +100,8 @@ export class GitAddCommand implements GitSubcommand {
         }
       }
 
-      const messages: string[] = [];
-      if (addedCount > 0) {
-        messages.push(`Added ${addedCount} file${addedCount !== 1 ? 's' : ''}`);
-      }
-      if (removedCount > 0) {
-        messages.push(`Removed ${removedCount} file${removedCount !== 1 ? 's' : ''}`);
-      }
-
-      if (messages.length === 0) {
-        return createSuccessResult('');
-      }
-
-      return createSuccessResult(messages.join(', ') + '\n');
+      // Git add is typically silent on success, like real git
+      return createSuccessResult('');
 
     } catch (error) {
       return createErrorResult(`Failed to add all files: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -133,24 +117,24 @@ export class GitAddCommand implements GitSubcommand {
         if (path === '.') {
           // Add current directory (all files in it)
           const statusMatrix = await this.git.statusMatrix({
-            
+
             dir: this.pwd,
           });
 
-          for (const [filepath, headStatus, workdirStatus] of statusMatrix) {
+          for (const [filepath, headStatus, workdirStatus, stageStatus] of statusMatrix) {
             try {
               if (workdirStatus === 0 && headStatus === 1) {
-                // File was deleted
+                // File was deleted in working directory
                 await this.git.remove({
-                  
+
                   dir: this.pwd,
                   filepath,
                 });
                 addedFiles.push(filepath);
-              } else if (workdirStatus === 1) {
-                // File exists
+              } else if (workdirStatus === 2 && stageStatus !== 2) {
+                // File exists and has changes that aren't staged yet
                 await this.git.add({
-                  
+
                   dir: this.pwd,
                   filepath,
                 });
@@ -179,7 +163,7 @@ export class GitAddCommand implements GitSubcommand {
             } else {
               // Add single file
               await this.git.add({
-                
+
                 dir: this.pwd,
                 filepath: path,
               });
@@ -189,7 +173,7 @@ export class GitAddCommand implements GitSubcommand {
             // Check if it's a deleted file
             try {
               await this.git.remove({
-                
+
                 dir: this.pwd,
                 filepath: path,
               });
@@ -208,11 +192,8 @@ export class GitAddCommand implements GitSubcommand {
       return createErrorResult(errors.join('\n'));
     }
 
-    if (addedFiles.length === 0) {
-      return createSuccessResult('');
-    }
-
-    return createSuccessResult(`Added ${addedFiles.length} file${addedFiles.length !== 1 ? 's' : ''}\n`);
+    // Git add is typically silent on success, like real git
+    return createSuccessResult('');
   }
 
   private async addDirectory(dirPath: string, addedFiles: string[]): Promise<void> {
@@ -231,7 +212,7 @@ export class GitAddCommand implements GitSubcommand {
       } else {
         try {
           await this.git.add({
-            
+
             dir: this.pwd,
             filepath: entryPath,
           });

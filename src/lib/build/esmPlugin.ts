@@ -80,6 +80,10 @@ export function esmPlugin(packageLock: PackageLock, target?: string): Plugin {
         const keys: string[] = [];
         let importerPackage: string | undefined;
         try {
+          const { pathname } = new URL(args.importer);
+          if (/\.css$/.test(pathname)) {
+            return; // CSS imports don't have external dependencies
+          }
           importerPackage = extractPackageName(args.importer);
           keys.push(
             `node_modules/${importerPackage}/node_modules/${packageName}`,

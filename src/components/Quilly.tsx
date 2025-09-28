@@ -46,16 +46,16 @@ export function Quilly({ error, onDismiss, onNewChat, onOpenModelSelector, onReq
   const renderBody = (error: Error): ErrorBody => {
     // Handle Project Preview Console Errors
     if (error instanceof ProjectPreviewConsoleError) {
-          return {
-            message: 'I noticed some console errors in your project preview. Would you like me to take a look and help fix them?',
-            actions: [{
-              label: 'Help fix errors',
-              onClick: () => {
-                onRequestConsoleErrorHelp?.(error);
-                onDismiss();
-              },
-            }],
-          };
+      return {
+        message: 'I noticed some console errors in your project preview. Would you like me to take a look and help fix them?',
+        actions: [{
+          label: 'Help fix errors',
+          onClick: () => {
+            onRequestConsoleErrorHelp?.(error);
+            onDismiss();
+          },
+        }],
+      };
     }
 
     // Handle OpenAI API errors with specific error codes
@@ -118,17 +118,17 @@ export function Quilly({ error, onDismiss, onNewChat, onOpenModelSelector, onReq
             }],
           };
 
-          case 'key_limit_exceeded':
-            return {
-              message: `It seems your API key has been used up. Check your API provider's settings, or try a different API key or different provider/model combo:`,
-              actions: [{
-                label: 'Check API settings',
-                onClick: () => navigate('/settings/ai'),
-              }, {
-                label: 'Change model',
-                onClick: onOpenModelSelector,
-              }],
-            };
+        case 'key_limit_exceeded':
+          return {
+            message: `It seems your API key has been used up. Check your API provider's settings, or try a different API key or different provider/model combo:`,
+            actions: [{
+              label: 'Check API settings',
+              onClick: () => navigate('/settings/ai'),
+            }, {
+              label: 'Change model',
+              onClick: onOpenModelSelector,
+            }],
+          };
 
         case 'bad_request':
           return {

@@ -1,6 +1,7 @@
 import { getEsbuild } from "@/lib/esbuild";
 import { copyFiles } from "@/lib/copyFiles";
 
+import { shakespearePlugin } from "./shakespearePlugin";
 import { esmPlugin } from "./esmPlugin";
 import { fsPlugin } from "./fsPlugin";
 
@@ -49,6 +50,7 @@ async function bundle(
     outdir: "/",
     jsx: "automatic",
     plugins: [
+      shakespearePlugin(), // Takes precedence over esmPlugin
       fsPlugin(fs, `${projectPath}/src`),
       esmPlugin(JSON.parse(packageLockText), target),
     ],

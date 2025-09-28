@@ -287,7 +287,7 @@ export class SessionManager {
           // LiteLLM, Z.ai, etc. use 'reasoning_content'
           if (delta && 'reasoning_content' in delta && typeof delta.reasoning_content === 'string') {
             reasoningContent = delta.reasoning_content;
-          // ollama uses 'reasoning'
+            // ollama uses 'reasoning'
           } else if (delta && 'reasoning' in delta && typeof delta.reasoning === 'string') {
             reasoningContent = delta.reasoning;
           }
@@ -410,13 +410,13 @@ export class SessionManager {
 
       // Convert provider errors to standard OpenAI APIError with appropriate code
       if (error?.status === 400) {
-        throw new OpenAI.APIError(400, { code: 'bad_request' }, error.message, new Headers());
+        error.code = 'bad_request';
       }
       if (error?.status === 403) {
-        throw new OpenAI.APIError(403,  { code: 'key_limit_exceeded' }, error.message, new Headers());
+        error.code = 'key_limit_exceeded';
       }
       if (error?.status === 422) {
-        throw new OpenAI.APIError(422, { code: 'unprocessable_entity' }, error.message, new Headers());
+        error.code = 'unprocessable_entity';
       }
 
       // Re-throw service errors to be handled at the UI level

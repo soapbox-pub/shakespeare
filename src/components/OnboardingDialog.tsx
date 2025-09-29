@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useAISettings } from '@/hooks/useAISettings';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useLoginActions } from '@/hooks/useLoginActions';
@@ -20,7 +21,7 @@ interface OnboardingDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-type OnboardingStep = 'welcome' | 'model-selection' | 'conclusion';
+type OnboardingStep = 'welcome' | 'open-source' | 'model-selection' | 'conclusion';
 
 const SHAKESPEARE_PROVIDER = {
   id: "shakespeare",
@@ -33,6 +34,7 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
   const [selectedModel, setSelectedModel] = useState<string>('');
   const [isSettingUp, setIsSettingUp] = useState(false);
   const [showCreditsDialog, setShowCreditsDialog] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   const { setProvider, addRecentlyUsedModel } = useAISettings();
   const { user } = useCurrentUser();
@@ -42,7 +44,13 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
   // Filter models to only show Shakespeare provider models
   const shakespeareModels = models.filter(model => model.provider === 'shakespeare');
 
-  const handleGetStarted = async () => {
+  const handleGetStarted = () => {
+    setStep('open-source');
+  };
+
+  const handleContinueFromOpenSource = async () => {
+    if (!agreedToTerms) return;
+
     setIsSettingUp(true);
 
     try {
@@ -114,20 +122,31 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
       setSelectedModel('');
       setIsSettingUp(false);
       setShowCreditsDialog(false);
+      setAgreedToTerms(false);
     }
   }, [open]);
 
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-2xl max-h-[90vh] sm:max-h-[80vh] flex flex-col">
+        <DialogContent className="max-w-2xl max-h-[100vh] lg:max-h-[90vh] flex flex-col">
           <DialogHeader className="flex-shrink-0">
             <DialogTitle className="flex items-center gap-2">
-              {step === 'model-selection' && (
+              {step === 'open-source' && (
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setStep('welcome')}
+                  className="mr-2 p-1 h-auto"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+              )}
+              {step === 'model-selection' && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setStep('open-source')}
                   className="mr-2 p-1 h-auto"
                 >
                   <ArrowLeft className="h-4 w-4" />
@@ -194,6 +213,79 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
                       <>
                         <Sparkles className="h-4 w-4" />
                         Get Started
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {step === 'open-source' && (
+              <div className="space-y-6 py-4">
+                <div className="text-center space-y-4">
+                  <h2 className="text-2xl font-bold">Shakespeare is Open Source software that runs entirely in your web&nbsp;browser</h2>
+                </div>
+
+                <div className="grid gap-1 max-w-md mx-auto">
+                  <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                    <div className="h-2 w-2 rounded-full bg-primary mt-2 flex-shrink-0" />
+                    <p className="text-sm">Your browser connects directly to third-party AI providers of your choice</p>
+                  </div>
+                  <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                    <div className="h-2 w-2 rounded-full bg-primary mt-2 flex-shrink-0" />
+                    <p className="text-sm">Your files are stored on your device in your browser</p>
+                  </div>
+                  <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                    <div className="h-2 w-2 rounded-full bg-primary mt-2 flex-shrink-0" />
+                    <p className="text-sm">Be careful not to delete your browser data or you may lose project files</p>
+                  </div>
+                  <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                    <div className="h-2 w-2 rounded-full bg-primary mt-2 flex-shrink-0" />
+                    <p className="text-sm">You are responsible for taking backups or syncing to git</p>
+                  </div>
+                  <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                    <div className="h-2 w-2 rounded-full bg-primary mt-2 flex-shrink-0" />
+                    <p className="text-sm">Quality of output depends on models used and is not guaranteed</p>
+                  </div>
+                </div>
+
+                <div className="space-y-3 max-w-md mx-auto">
+                  <p className="text-xs text-muted-foreground max-w-xl mx-auto">
+                    Shakespeare is not a cloud service. It's Open Source software that runs in your web browser.
+                    You agree to the Terms of Service of AI providers you interact with.
+                    Shakespeare is provided "as is" without warranty of any kind.
+                  </p>
+
+                  <div className="flex items-center justify-center gap-2">
+                    <Checkbox
+                      id="agree-terms"
+                      checked={agreedToTerms}
+                      onCheckedChange={(checked) => setAgreedToTerms(checked === true)}
+                    />
+                    <label
+                      htmlFor="agree-terms"
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                    >
+                      I agree
+                    </label>
+                  </div>
+                </div>
+
+                <div className="flex justify-center">
+                  <Button
+                    onClick={handleContinueFromOpenSource}
+                    disabled={!agreedToTerms || isSettingUp}
+                    className="gap-2 rounded-full w-full max-w-md"
+                  >
+                    {isSettingUp ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                        Setting up...
+                      </>
+                    ) : (
+                      <>
+                        Continue
+                        <ArrowRight className="h-4 w-4" />
                       </>
                     )}
                   </Button>

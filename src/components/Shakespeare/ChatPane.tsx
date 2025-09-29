@@ -249,13 +249,13 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     const modelToUse = providerModel.trim();
     addRecentlyUsedModel(modelToUse);
 
-    // Send each queued message individually
-    for (const queuedMessage of messagesToProcess) {
-      const contentParts: Array<OpenAI.Chat.Completions.ChatCompletionContentPartText> = [];
+    // Combine all queued messages into a single batch
+    const allContentParts: Array<OpenAI.Chat.Completions.ChatCompletionContentPartText> = [];
 
+    for (const queuedMessage of messagesToProcess) {
       // Add text content if present
       if (queuedMessage.content.trim()) {
-        contentParts.push({
+        allContentParts.push({
           type: 'text',
           text: queuedMessage.content.trim()
         });
@@ -275,18 +275,18 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
 
         const fileResults = await Promise.all(filePromises);
         fileResults.forEach(fileResult => {
-          contentParts.push({
+          allContentParts.push({
             type: 'text',
             text: fileResult
           });
         });
       }
+    }
 
-      // Only send if there's content
-      if (contentParts.length > 0) {
-        const messageContent = contentParts.length === 1 ? contentParts[0].text : contentParts;
-        await sendMessage(messageContent, modelToUse);
-      }
+    // Send all queued messages as a single batch
+    if (allContentParts.length > 0) {
+      const messageContent = allContentParts.length === 1 ? allContentParts[0].text : allContentParts;
+      await sendMessage(messageContent, modelToUse);
     }
   }, [addRecentlyUsedModel, clearQueue, fs, isConfigured, isLoading, providerModel, queuedMessages, sendMessage]);
 

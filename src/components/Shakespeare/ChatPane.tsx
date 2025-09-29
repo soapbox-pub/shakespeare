@@ -714,9 +714,19 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
 
       <div className="border-t p-4">
         {/* Chat Input Container */}
+        {/* Queued Messages Indicator */}
+        {hasQueuedMessages && (
+          <button
+            onClick={() => setShowQueueModal(true)}
+            className="w-full px-3 py-1 text-xs text-muted-foreground bg-muted/50 border border-input rounded-t-2xl hover:bg-muted/70 transition-colors text-left mb-0"
+          >
+            {queueLength} message{queueLength > 1 ? 's' : ''} queued • will send when AI finishes (click to manage)
+          </button>
+        )}
+
         <div
-          className={`flex flex-col rounded-2xl border border-input bg-background shadow-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 transition-all ${isDragOver ? 'border-primary bg-primary/5 ring-2 ring-primary/20' : ''
-            }`}
+          className={`flex flex-col border border-input bg-background shadow-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 transition-all ${hasQueuedMessages ? 'rounded-b-2xl border-t-0' : 'rounded-2xl'
+            } ${isDragOver ? 'border-primary bg-primary/5 ring-2 ring-primary/20' : ''}`}
           onDragEnter={handleDragEnter}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
@@ -749,16 +759,6 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
               target.style.height = Math.min(target.scrollHeight, 128) + 'px';
             }}
           />
-
-          {/* Queued Messages Indicator */}
-          {hasQueuedMessages && (
-            <button
-              onClick={() => setShowQueueModal(true)}
-              className="w-full px-3 py-1 text-xs text-muted-foreground bg-muted/50 border-t hover:bg-muted/70 transition-colors text-left"
-            >
-              {queueLength} message{queueLength > 1 ? 's' : ''} queued • will send when AI finishes (click to manage)
-            </button>
-          )}
 
           {/* Bottom Controls Row */}
           <div className="flex items-center gap-4 px-2 py-2">

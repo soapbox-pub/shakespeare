@@ -171,7 +171,7 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-2xl h-[100vh] sm:h-auto sm:max-h-[90vh] flex flex-col">
+        <DialogContent className="max-w-2xl h-[100dvh] sm:h-auto sm:max-h-[90vh] flex flex-col">
           <DialogHeader className="flex-shrink-0">
             <DialogTitle className="flex items-center gap-2">
               {step === 'open-source' && (
@@ -297,7 +297,7 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
                   </div>
                   <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
                     <div className="h-2 w-2 rounded-full bg-primary mt-2 flex-shrink-0" />
-                    <p className="text-sm">Quality of output depends on quality of input and models used and is not guaranteed</p>
+                    <p className="text-sm">Quality of output depends on quality of input and models used, and is not guaranteed</p>
                   </div>
                 </div>
 

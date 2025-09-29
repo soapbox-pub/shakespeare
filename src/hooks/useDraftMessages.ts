@@ -28,7 +28,9 @@ export function useDraftMessages(projectId?: string) {
 	useEffect(() => {
 		const listener = () => forceUpdate(prev => prev + 1);
 		listeners.add(listener);
-		return () => listeners.delete(listener);
+		return () => {
+			listeners.delete(listener);
+		};
 	}, []);
 
 	// Get draft for a specific project (or current project if projectId provided)
@@ -73,11 +75,11 @@ export function useDraftMessages(projectId?: string) {
 	// Get all projects that have drafts (global functionality)
 	const getProjectsWithDrafts = useCallback((): string[] => {
 		const projectsWithDrafts: string[] = [];
-		for (const [id, draft] of globalDrafts.entries()) {
+		globalDrafts.forEach((draft, id) => {
 			if (draft && draft.trim()) {
 				projectsWithDrafts.push(id);
 			}
-		}
+		});
 		return projectsWithDrafts;
 	}, []);
 

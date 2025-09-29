@@ -24,6 +24,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { CreditsBadge } from '@/components/CreditsBadge';
 import { CreditsDialog } from '@/components/CreditsDialog';
@@ -161,6 +162,7 @@ export function AISettings() {
   const [customApiKey, setCustomApiKey] = useState('');
   const [customAuthMethod, setCustomAuthMethod] = useState<'api-key' | 'nostr'>('api-key');
   const [presetApiKeys, setPresetApiKeys] = useState<Record<string, string>>({});
+  const [presetTermsAgreements, setPresetTermsAgreements] = useState<Record<string, boolean>>({});
   const [activeCreditsDialog, setActiveCreditsDialog] = useState<string | null>(null);
 
   const sensors = useSensors(
@@ -172,6 +174,9 @@ export function AISettings() {
 
   const handleAddPresetProvider = (preset: PresetProvider) => {
     const apiKey = presetApiKeys[preset.id] as string | undefined;
+
+    // Check if user agreed to terms
+    if (!presetTermsAgreements[preset.id]) return;
 
     const newProvider: AIProvider = {
       id: preset.id,
@@ -188,10 +193,14 @@ export function AISettings() {
     // Auto-save: Add provider immediately to persistent storage
     setProvider(newProvider);
 
-    // Clear the API key input for this preset
+    // Clear the API key input and terms agreement for this preset
     setPresetApiKeys(prev => ({
       ...prev,
       [preset.id]: '',
+    }));
+    setPresetTermsAgreements(prev => ({
+      ...prev,
+      [preset.id]: false,
     }));
   };
 
@@ -362,30 +371,69 @@ export function AISettings() {
                         </Button>
                       </div>
                     ) : (
-                      <div className="flex gap-2">
-                        {!preset.nostr && (
-                          <PasswordInput
-                            placeholder={preset.id === "routstr" ? t('enterCashuToken') : t('enterApiKey')}
-                            className="flex-1"
-                            value={presetApiKeys[preset.id] || ''}
-                            onChange={(e) => setPresetApiKeys(prev => ({
+                      <div className="space-y-2">
+                        <div className="flex gap-2">
+                          {!preset.nostr && (
+                            <PasswordInput
+                              placeholder={preset.id === "routstr" ? t('enterCashuToken') : t('enterApiKey')}
+                              className="flex-1"
+                              value={presetApiKeys[preset.id] || ''}
+                              onChange={(e) => setPresetApiKeys(prev => ({
+                                ...prev,
+                                [preset.id]: e.target.value,
+                              }))}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' &&
+                                    presetApiKeys[preset.id]?.trim() &&
+                                    presetTermsAgreements[preset.id]) {
+                                  handleAddPresetProvider(preset);
+                                }
+                              }}
+                            />
+                          )}
+                          <Button
+                            onClick={() => handleAddPresetProvider(preset)}
+                            disabled={
+                              !presetTermsAgreements[preset.id] ||
+                              (!!preset.apiKeysURL && !presetApiKeys[preset.id]?.trim())
+                            }
+                            className={preset.nostr ? "w-full" : "h-10 px-4 ml-auto"}
+                          >
+                            {t('add')}
+                          </Button>
+                        </div>
+
+                        {/* Terms of Service Agreement */}
+                        <div className="flex items-center gap-1.5">
+                          <Checkbox
+                            id={`agree-terms-${preset.id}`}
+                            checked={presetTermsAgreements[preset.id] || false}
+                            onCheckedChange={(checked) => setPresetTermsAgreements(prev => ({
                               ...prev,
-                              [preset.id]: e.target.value,
+                              [preset.id]: checked === true,
                             }))}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter' && presetApiKeys[preset.id]?.trim()) {
-                                handleAddPresetProvider(preset);
-                              }
-                            }}
+                            className="h-3 w-3"
                           />
-                        )}
-                        <Button
-                          onClick={() => handleAddPresetProvider(preset)}
-                          disabled={!!preset.apiKeysURL && !presetApiKeys[preset.id]?.trim()}
-                          className={preset.nostr ? "w-full" : "h-10 px-4 ml-auto"}
-                        >
-                          {t('add')}
-                        </Button>
+                          <label
+                            htmlFor={`agree-terms-${preset.id}`}
+                            className="text-xs text-muted-foreground leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                          >
+                            {t('agreeToTermsOfService', { providerName: preset.name })}{' '}
+                            {preset.tosURL ? (
+                              <a
+                                href={preset.tosURL}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-muted-foreground underline hover:text-foreground hover:no-underline"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {t('termsOfService')}
+                              </a>
+                            ) : (
+                              t('termsOfService')
+                            )}
+                          </label>
+                        </div>
                       </div>
                     )}
                   </div>

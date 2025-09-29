@@ -33,65 +33,7 @@ import { useIsMobile } from '@/hooks/useIsMobile';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useNavigate, Link } from 'react-router-dom';
 import type { AIProvider } from '@/contexts/AISettingsContext';
-
-interface PresetProvider {
-  id: string;
-  name: string;
-  baseURL: string;
-  apiKeysURL?: string;
-  nostr?: boolean;
-}
-
-const PRESET_PROVIDERS: PresetProvider[] = [
-  {
-    id: "shakespeare",
-    name: "Shakespeare AI",
-    baseURL: "https://ai.shakespeare.diy/v1",
-    nostr: true,
-  },
-  {
-    id: "openrouter",
-    name: "OpenRouter",
-    baseURL: "https://openrouter.ai/api/v1",
-    apiKeysURL: "https://openrouter.ai/settings/keys",
-  },
-  {
-    id: "ppq",
-    name: "PayPerQ",
-    baseURL: "https://api.ppq.ai",
-    apiKeysURL: "https://ppq.ai/api-docs",
-  },
-  {
-    id: "routstr",
-    name: "Routstr",
-    baseURL: "https://api.routstr.com/v1",
-    apiKeysURL: "https://chat.routstr.com/",
-  },
-  {
-    id: "zai",
-    name: "Z.ai",
-    baseURL: "https://api.z.ai/api/paas/v4",
-    apiKeysURL: "https://z.ai/manage-apikey/apikey-list",
-  },
-  {
-    id: "openai",
-    name: "OpenAI",
-    baseURL: "https://api.openai.com/v1",
-    apiKeysURL: "https://platform.openai.com/api-keys",
-  },
-  {
-    id: "anthropic",
-    name: "Anthropic",
-    baseURL: "https://api.anthropic.com/v1",
-    apiKeysURL: "https://console.anthropic.com/settings/keys",
-  },
-  {
-    id: "xai",
-    name: "xAI",
-    baseURL: "https://api.x.ai/v1",
-    apiKeysURL: "https://console.x.ai",
-  },
-];
+import { AI_PROVIDER_PRESETS, type PresetProvider } from '@/lib/aiProviderPresets';
 
 interface SortableProviderItemProps {
   provider: AIProvider;
@@ -305,7 +247,7 @@ export function AISettings() {
   };
 
   const configuredProviderIds = settings.providers.map(p => p.id);
-  const availablePresets = PRESET_PROVIDERS.filter(preset => !configuredProviderIds.includes(preset.id));
+  const availablePresets = AI_PROVIDER_PRESETS.filter(preset => !configuredProviderIds.includes(preset.id));
 
   return (
     <div className="p-6 space-y-6">
@@ -360,7 +302,7 @@ export function AISettings() {
               >
                 <Accordion type="multiple" className="w-full space-y-2">
                   {settings.providers.map((provider) => {
-                    const preset = PRESET_PROVIDERS.find(p => p.id === provider.id);
+                    const preset = AI_PROVIDER_PRESETS.find(p => p.id === provider.id);
 
                     return (
                       <SortableProviderItem

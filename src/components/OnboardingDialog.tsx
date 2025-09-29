@@ -2,35 +2,34 @@ import { Decimal } from 'decimal.js';
 import { useState, useEffect, useRef } from 'react';
 import { generateSecretKey } from 'nostr-tools';
 import { nip19 } from 'nostr-tools';
-import { Bot, Check, Sparkles, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Bot, Check, Sparkles, ArrowRight, ArrowLeft, ExternalLink } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
+import { PasswordInput } from '@/components/ui/password-input';
 import { useAISettings } from '@/hooks/useAISettings';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useLoginActions } from '@/hooks/useLoginActions';
 import { useProviderModels } from '@/hooks/useProviderModels';
 import { CreditsDialog } from '@/components/CreditsDialog';
 import { ShakespeareLogo } from '@/components/ShakespeareLogo';
+import { AI_PROVIDER_PRESETS, type PresetProvider } from '@/lib/aiProviderPresets';
+import { cn } from '@/lib/utils';
 
 interface OnboardingDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-type OnboardingStep = 'welcome' | 'open-source' | 'model-selection' | 'conclusion';
-
-const SHAKESPEARE_PROVIDER = {
-  id: "shakespeare",
-  baseURL: "https://ai.shakespeare.diy/v1",
-  nostr: true,
-};
+type OnboardingStep = 'welcome' | 'open-source' | 'provider-selection' | 'model-selection' | 'conclusion';
 
 export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) {
   const [step, setStep] = useState<OnboardingStep>('welcome');
+  const [selectedProvider, setSelectedProvider] = useState<PresetProvider | null>(null);
+  const [providerApiKey, setProviderApiKey] = useState<string>('');
   const [selectedModel, setSelectedModel] = useState<string>('');
   const [isSettingUp, setIsSettingUp] = useState(false);
   const [showCreditsDialog, setShowCreditsDialog] = useState(false);
@@ -44,28 +43,51 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
   const login = useLoginActions();
   const { models, isLoading: isLoadingModels } = useProviderModels();
 
-  // Filter models to only show Shakespeare provider models
-  const shakespeareModels = models.filter(model => model.provider === 'shakespeare');
+  // Filter models to only show selected provider models
+  const providerModels = selectedProvider
+    ? models.filter(model => model.provider === selectedProvider.id)
+    : [];
 
   const handleGetStarted = () => {
     setStep('open-source');
   };
 
-  const handleContinueFromOpenSource = async () => {
+  const handleContinueFromOpenSource = () => {
     if (!agreedToTerms) return;
+    setStep('provider-selection');
+  };
+
+  const handleProviderSelect = (provider: PresetProvider) => {
+    setSelectedProvider(provider);
+    // Clear API key when switching providers
+    setProviderApiKey('');
+  };
+
+  const handleContinueFromProviderSelection = async () => {
+    if (!selectedProvider) return;
+
+    // Check if provider requires API key and if it's provided
+    const requiresApiKey = selectedProvider.apiKeysURL && !selectedProvider.nostr;
+    if (requiresApiKey && !providerApiKey.trim()) return;
 
     setIsSettingUp(true);
 
     try {
-      // If user is not logged in, generate and login with secret key
-      if (!user) {
+      // If user is not logged in and provider uses Nostr auth, generate and login with secret key
+      if (!user && selectedProvider.nostr) {
         const secretKey = generateSecretKey();
         const nsec = nip19.nsecEncode(secretKey);
         login.nsec(nsec);
       }
 
-      // Add Shakespeare provider to their config
-      setProvider(SHAKESPEARE_PROVIDER);
+      // Add selected provider to their config
+      const providerConfig = {
+        id: selectedProvider.id,
+        baseURL: selectedProvider.baseURL,
+        nostr: selectedProvider.nostr || undefined,
+        apiKey: requiresApiKey ? providerApiKey.trim() : undefined,
+      };
+      setProvider(providerConfig);
 
       // Move to model selection
       setStep('model-selection');
@@ -87,7 +109,7 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
     addRecentlyUsedModel(selectedModel);
 
     // Find the selected model to check if it's free
-    const model = shakespeareModels.find(m => m.fullId === selectedModel);
+    const model = providerModels.find(m => m.fullId === selectedModel);
     const isFreeModel = !model?.pricing || (
       model.pricing.prompt.equals(0) && model.pricing.completion.equals(0)
     );
@@ -122,6 +144,8 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
   useEffect(() => {
     if (open) {
       setStep('welcome');
+      setSelectedProvider(null);
+      setProviderApiKey('');
       setSelectedModel('');
       setIsSettingUp(false);
       setShowCreditsDialog(false);
@@ -152,11 +176,21 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
                   <ArrowLeft className="h-4 w-4" />
                 </Button>
               )}
-              {step === 'model-selection' && (
+              {step === 'provider-selection' && (
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setStep('open-source')}
+                  className="mr-2 p-1 h-auto"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+              )}
+              {step === 'model-selection' && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setStep('provider-selection')}
                   className="mr-2 p-1 h-auto"
                 >
                   <ArrowLeft className="h-4 w-4" />
@@ -284,7 +318,102 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
                 <div className="flex justify-center">
                   <Button
                     onClick={handleContinueFromOpenSource}
-                    disabled={!agreedToTerms || isSettingUp}
+                    disabled={!agreedToTerms}
+                    className="gap-2 rounded-full w-full max-w-md"
+                  >
+                    Continue
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {step === 'provider-selection' && (
+              <div className="space-y-6 py-4">
+                <div className="text-center space-y-4">
+                  <h2 className="text-2xl font-bold">Choose your AI provider</h2>
+                  <p className="text-muted-foreground max-w-md mx-auto">
+                    Select an AI provider to power your development assistant. You can add more providers later in settings.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 p-1 gap-3 max-w-4xl mx-auto">
+                  {AI_PROVIDER_PRESETS.map((provider) => {
+                    const isSelected = selectedProvider?.id === provider.id;
+                    const isShakespeare = provider.id === 'shakespeare';
+
+                    return (
+                      <Card
+                        key={provider.id}
+                        className={cn('cursor-pointer transition-all hover:shadow-md', {
+                          'ring-2 ring-primary': isSelected,
+                        })}
+                        onClick={() => handleProviderSelect(provider)}
+                      >
+                        <div className="flex items-center justify-between p-3">
+                          <div className="flex-1">
+                            <CardTitle className={`text-lg font-semibold ${isShakespeare ? 'bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent' : ''}`}>
+                              {provider.name}
+                            </CardTitle>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {isSelected && (
+                              <div className="h-5 w-5 rounded-full bg-primary flex items-center justify-center">
+                                <Check className="h-3 w-3 text-primary-foreground" />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </Card>
+                    );
+                  })}
+                </div>
+
+                {/* API Key Input Section */}
+                {selectedProvider && selectedProvider.apiKeysURL && !selectedProvider.nostr && (
+                  <div className="space-y-3 max-w-md mx-auto">
+                    <div className="text-center">
+                      <h3 className="text-lg font-semibold">
+                        {selectedProvider.id === 'routstr' ? 'Enter Cashu Token' : 'Enter API Key'}
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        {selectedProvider.id === 'routstr' ? (
+                          <>{selectedProvider.name} requires a Cashu token</>
+                        ) : (
+                          <>
+                            {selectedProvider.name} requires an {selectedProvider.apiKeysURL ? (
+                              <a className="text-foreground underline" href={selectedProvider.apiKeysURL} target="_blank">
+                                API key
+                                <ExternalLink className="inline-block h-4 w-4 ml-1" />
+                              </a>
+                            ) : (
+                              <>API key</>
+                            )}
+                          </>
+                        )}
+                      </p>
+                    </div>
+                    <PasswordInput
+                      placeholder={selectedProvider.id === 'routstr' ? 'Enter a Cashu Token' : 'Enter your API key'}
+                      value={providerApiKey}
+                      onChange={(e) => setProviderApiKey(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && providerApiKey.trim()) {
+                          handleContinueFromProviderSelection();
+                        }
+                      }}
+                    />
+                  </div>
+                )}
+
+                <div className="flex justify-center">
+                  <Button
+                    onClick={handleContinueFromProviderSelection}
+                    disabled={
+                      !selectedProvider ||
+                      isSettingUp ||
+                      !!(selectedProvider?.apiKeysURL && !selectedProvider?.nostr && !providerApiKey.trim())
+                    }
                     className="gap-2 rounded-full w-full max-w-md"
                   >
                     {isSettingUp ? (
@@ -325,7 +454,7 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
                           </Card>
                         ))}
                       </>
-                    ) : shakespeareModels.length === 0 ? (
+                    ) : providerModels.length === 0 ? (
                       <Card className="p-6 text-center">
                         <div className="space-y-2">
                           <Bot className="h-8 w-8 mx-auto text-muted-foreground" />
@@ -335,10 +464,10 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
                         </div>
                       </Card>
                     ) : (
-                      shakespeareModels.map((model) => {
+                      providerModels.map((model) => {
                         const isSelected = selectedModel === model.fullId;
                         const isFree = model.pricing?.prompt.equals(0) && model.pricing?.completion.equals(0);
-                        const isPremium = !isFree;
+                        const isPremium = !!model.pricing && !isFree;
 
                         return (
                           <Card
@@ -348,7 +477,7 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
                             }`}
                             onClick={() => handleModelSelect(model.fullId)}
                           >
-                            <CardHeader className="pb-3">
+                            <CardHeader>
                               <div className="flex items-center justify-between">
                                 <div className="flex-1">
                                   <CardTitle className={`text-xl font-semibold ${isPremium ? 'bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent' : ''}`}>
@@ -379,19 +508,21 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
                                 </div>
                               </div>
                             </CardHeader>
-                            <CardContent className="pt-0">
-                              <div className="flex items-end justify-end gap-4 text-xs text-muted-foreground">
-                                {model.pricing && (
-                                  <div className="text-right">
-                                    <div>Input: {formatPrice(model.pricing.prompt)}</div>
-                                    <div>Output: {formatPrice(model.pricing.completion)}</div>
-                                  </div>
-                                )}
-                                {model.contextLength && (
-                                  <span>Context: {model.contextLength.toLocaleString()} tokens</span>
-                                )}
-                              </div>
-                            </CardContent>
+                            {(model.pricing || model.contextLength) && (
+                              <CardContent className="pt-0">
+                                <div className="flex items-end justify-end gap-4 text-xs text-muted-foreground">
+                                  {model.pricing && (
+                                    <div className="text-right">
+                                      <div>Input: {formatPrice(model.pricing.prompt)}</div>
+                                      <div>Output: {formatPrice(model.pricing.completion)}</div>
+                                    </div>
+                                  )}
+                                  {model.contextLength && (
+                                    <span>Context: {model.contextLength.toLocaleString()} tokens</span>
+                                  )}
+                                </div>
+                              </CardContent>
+                            )}
                           </Card>
                         );
                       })
@@ -399,7 +530,7 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
                   </div>
                 </div>
 
-                <div className="flex justify-end gap-2 pt-4 border-t flex-shrink-0">
+                <div className="flex justify-end gap-2 pt-4 flex-shrink-0">
                   <Button
                     onClick={handleContinue}
                     disabled={!selectedModel}
@@ -433,7 +564,7 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
       </Dialog>
 
       {/* Credits Dialog */}
-      {showCreditsDialog && selectedModel && (
+      {showCreditsDialog && selectedModel && selectedProvider && (
         <CreditsDialog
           open={showCreditsDialog}
           onOpenChange={(open) => {
@@ -441,7 +572,11 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
               handleCreditsDialogClose();
             }
           }}
-          provider={SHAKESPEARE_PROVIDER}
+          provider={{
+            id: selectedProvider.id,
+            baseURL: selectedProvider.baseURL,
+            nostr: selectedProvider.nostr || undefined,
+          }}
         />
       )}
     </>

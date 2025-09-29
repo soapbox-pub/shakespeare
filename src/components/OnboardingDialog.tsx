@@ -34,6 +34,7 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
   const [isSettingUp, setIsSettingUp] = useState(false);
   const [showCreditsDialog, setShowCreditsDialog] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [agreedToProviderTerms, setAgreedToProviderTerms] = useState(false);
 
   // Ref for the scrollable content area
   const scrollableContentRef = useRef<HTMLDivElement>(null);
@@ -61,10 +62,15 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
     setSelectedProvider(provider);
     // Clear API key when switching providers
     setProviderApiKey('');
+    // Reset provider terms agreement when switching providers
+    setAgreedToProviderTerms(false);
   };
 
   const handleContinueFromProviderSelection = async () => {
     if (!selectedProvider) return;
+
+    // Check if user agreed to provider terms
+    if (!agreedToProviderTerms) return;
 
     // Check if provider requires API key and if it's provided
     const requiresApiKey = selectedProvider.apiKeysURL && !selectedProvider.nostr;
@@ -150,6 +156,7 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
       setIsSettingUp(false);
       setShowCreditsDialog(false);
       setAgreedToTerms(false);
+      setAgreedToProviderTerms(false);
     }
   }, [open]);
 
@@ -406,12 +413,45 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
                   </div>
                 )}
 
+                {/* Terms of Service Agreement */}
+                {selectedProvider && (
+                  <div className="space-y-3 max-w-md mx-auto">
+                    <div className="flex items-center justify-center gap-2">
+                      <Checkbox
+                        id="agree-provider-terms"
+                        checked={agreedToProviderTerms}
+                        onCheckedChange={(checked) => setAgreedToProviderTerms(checked === true)}
+                      />
+                      <label
+                        htmlFor="agree-provider-terms"
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                      >
+                        I agree to {selectedProvider.name}'s{' '}
+                        {selectedProvider.tosURL ? (
+                          <a
+                            href={selectedProvider.tosURL}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-primary underline hover:no-underline"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            Terms of Service
+                          </a>
+                        ) : (
+                          'Terms of Service'
+                        )}
+                      </label>
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex justify-center">
                   <Button
                     onClick={handleContinueFromProviderSelection}
                     disabled={
                       !selectedProvider ||
                       isSettingUp ||
+                      !agreedToProviderTerms ||
                       !!(selectedProvider?.apiKeysURL && !selectedProvider?.nostr && !providerApiKey.trim())
                     }
                     className="gap-2 rounded-full w-full max-w-md"

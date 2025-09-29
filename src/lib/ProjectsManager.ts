@@ -290,33 +290,45 @@ export class ProjectsManager {
 
     await this.fs.mkdir(projectPath);
 
-    // Clone the repository (Git class now handles Nostr URIs automatically)
-    await this.git.clone({
-      dir: projectPath,
-      url: repoUrl,
-      singleBranch: true,
-      depth: options?.depth, // Use depth if provided, otherwise clone full history
-    });
-
-    // Get filesystem stats for timestamps
-    const stats = await this.fs.stat(projectPath);
-    const timestamp = stats.mtimeMs ? new Date(stats.mtimeMs) : new Date();
-
-    // Automatically request persistent storage after project cloning
     try {
-      await ensurePersistentStorage();
-    } catch (error) {
-      // Don't fail project cloning if persistent storage request fails
-      console.warn('Failed to request persistent storage after project cloning:', error);
-    }
+      // Clone the repository (Git class now handles Nostr URIs automatically)
+      await this.git.clone({
+        dir: projectPath,
+        url: repoUrl,
+        singleBranch: true,
+        depth: options?.depth, // Use depth if provided, otherwise clone full history
+      });
 
-    // Return the full project object with dynamically generated properties
-    return {
-      id,
-      name: this.formatProjectName(id), // Use formatted directory name
-      path: projectPath,
-      lastModified: timestamp,
-    };
+      // Get filesystem stats for timestamps
+      const stats = await this.fs.stat(projectPath);
+      const timestamp = stats.mtimeMs ? new Date(stats.mtimeMs) : new Date();
+
+      // Automatically request persistent storage after project cloning
+      try {
+        await ensurePersistentStorage();
+      } catch (error) {
+        // Don't fail project cloning if persistent storage request fails
+        console.warn('Failed to request persistent storage after project cloning:', error);
+      }
+
+      // Return the full project object with dynamically generated properties
+      return {
+        id,
+        name: this.formatProjectName(id), // Use formatted directory name
+        path: projectPath,
+        lastModified: timestamp,
+      };
+    } catch (error) {
+      // Clean up the directory that was created if cloning fails
+      try {
+        await this.deleteDirectory(projectPath);
+      } catch (cleanupError) {
+        // Log cleanup error but don't mask the original clone error
+        console.warn('Failed to clean up directory after clone failure:', cleanupError);
+      }
+      // Re-throw the original clone error
+      throw error;
+    }
   }
 
   async getProjects(): Promise<Project[]> {

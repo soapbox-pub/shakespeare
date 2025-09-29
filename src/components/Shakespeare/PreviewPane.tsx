@@ -532,7 +532,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
           <Button
             variant="ghost"
             size="sm"
-            className="h-8 w-8 p-0 relative hover:bg-accent hover:text-accent-foreground transition-colors"
+            className="h-8 w-8 p-0 relative"
           >
             <Bug className="h-4 w-4" />
             {hasErrors && (

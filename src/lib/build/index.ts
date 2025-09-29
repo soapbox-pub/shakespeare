@@ -1,5 +1,6 @@
 import { getEsbuild } from "@/lib/esbuild";
 import { copyFiles } from "@/lib/copyFiles";
+import JSZip from "jszip";
 
 import { shakespearePlugin } from "./shakespearePlugin";
 import { esmPlugin } from "./esmPlugin";
@@ -88,8 +89,15 @@ export async function buildProject(options: BuildProjectOptions): Promise<{
   files: Record<string, Uint8Array>;
   outputPath: string;
   projectId?: string;
-}> {
+  buildStats?: {
+    totalTime: number;
+    zipTime: number;
+    zipFileCount: number;
+    zipSize: number;
+  };
+  }> {
   const { fs, projectPath, outputPath = `${projectPath}/dist` } = options;
+  const buildStartTime = performance.now();
 
   // Check if we're in a valid project directory
   try {
@@ -141,6 +149,14 @@ export async function buildProject(options: BuildProjectOptions): Promise<{
   // Expected format: /projects/{projectId}
   const projectId = projectPath.split('/').pop();
 
+  // Generate source code zip for Shakespeare cloning
+  console.log('📦 Generating source code archive...');
+  const zipStartTime = performance.now();
+  const zipResult = await generateSourceCodeZip(fs, projectPath, outputPath);
+  const zipEndTime = performance.now();
+  const zipDuration = zipEndTime - zipStartTime;
+  console.log(`✅ Source code archive created: ${zipResult.fileCount} files, ${(zipResult.zipSize / 1024).toFixed(2)}KB (${zipDuration.toFixed(2)}ms)`);
+
   // Emit build completion event for PreviewPane to listen to
   if (projectId && typeof window !== 'undefined') {
     const buildCompleteEvent = new CustomEvent('buildComplete', {
@@ -149,10 +165,20 @@ export async function buildProject(options: BuildProjectOptions): Promise<{
     window.dispatchEvent(buildCompleteEvent);
   }
 
+  const buildEndTime = performance.now();
+  const totalTime = buildEndTime - buildStartTime;
+  console.log(`🚀 Build completed in ${totalTime.toFixed(2)}ms (${((zipDuration / totalTime) * 100).toFixed(1)}% spent on zip generation)`);
+
   return {
     files: dist,
     outputPath,
     projectId,
+    buildStats: {
+      totalTime,
+      zipTime: zipDuration,
+      zipFileCount: zipResult.fileCount,
+      zipSize: zipResult.zipSize,
+    },
   };
 }
 
@@ -172,4 +198,95 @@ function updateIndexHtml(doc: Document, dist: Record<string, Uint8Array>): void 
     style.textContent = new TextDecoder().decode(css);
     doc.head.appendChild(style);
   }
+}
+
+/**
+ * Generate a source code zip file containing all project files for Shakespeare cloning
+ */
+async function generateSourceCodeZip(fs: JSRuntimeFS, projectPath: string, outputPath: string): Promise<{ fileCount: number, zipSize: number }> {
+  const zip = new JSZip();
+  const fileCount = { count: 0 };
+  
+  // Recursively add all files from project directory, excluding unwanted files
+  await addDirectoryToZip(fs, zip, projectPath, '', projectPath, fileCount);
+  
+  // Generate and save zip directly to the dist folder
+  const zipBuffer = await zip.generateAsync({ type: 'uint8array' });
+  await fs.writeFile(`${outputPath}/sourcecode.zip`, zipBuffer);
+  
+  return { fileCount: fileCount.count, zipSize: zipBuffer.length };
+}
+
+/**
+ * Recursively add a directory and its contents to a zip file
+ */
+async function addDirectoryToZip(
+  fs: JSRuntimeFS, 
+  zip: JSZip, 
+  dirPath: string, 
+  relativePath: string,
+  projectPath: string,
+  fileCount: { count: number }
+): Promise<void> {
+  try {
+    const entries = await fs.readdir(dirPath);
+    
+    for (const entry of entries) {
+      const fullEntryPath = `${dirPath}/${entry}`;
+      const relativeEntryPath = `${relativePath}/${entry}`;
+      
+      // Skip excluded files and directories
+      if (shouldExcludeFromZip(entry)) {
+        continue;
+      }
+      
+      try {
+        const stat = await fs.stat(fullEntryPath);
+        
+        if (stat.isFile()) {
+          const content = await fs.readFile(fullEntryPath, 'utf8');
+          zip.file(relativeEntryPath, content);
+          fileCount.count++;
+        } else if (stat.isDirectory()) {
+          await addDirectoryToZip(fs, zip, fullEntryPath, relativeEntryPath, projectPath, fileCount);
+        }
+      } catch {
+        // Skip files that can't be read
+        continue;
+      }
+    }
+  } catch {
+    // Directory can't be read, skip it
+    return;
+  }
+}
+
+/**
+ * Check if a file or directory should be excluded from the source code zip
+ */
+function shouldExcludeFromZip(name: string): boolean {
+  const excludePatterns = [
+    'node_modules',
+    'dist',
+    '.git',
+    '.env',
+    '.env.local',
+    '.env.development',
+    '.env.production',
+    'sourcecode.zip', // Don't include the zip in itself
+    '.DS_Store',
+    'Thumbs.db',
+    '*.log',
+    '.vscode',
+    '.idea'
+  ];
+  
+  return excludePatterns.some(pattern => {
+    if (pattern.includes('*')) {
+      // Simple wildcard matching
+      const regex = new RegExp(pattern.replace('*', '.*'));
+      return regex.test(name);
+    }
+    return name === pattern;
+  });
 }

@@ -17,6 +17,7 @@ import { useKeepAlive } from '@/hooks/useKeepAlive';
 import { useAIChat } from '@/hooks/useAIChat';
 import { useProviderModels } from '@/hooks/useProviderModels';
 import { useMessageQueue } from '@/hooks/useMessageQueue';
+import { useDraftMessages } from '@/hooks/useDraftMessages';
 import { ModelSelector } from '@/components/ModelSelector';
 import { AIMessageItem } from '@/components/AIMessageItem';
 import { TextEditorViewTool } from '@/lib/tools/TextEditorViewTool';
@@ -91,6 +92,9 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   // Message queue for handling messages while AI is working
   const { queuedMessages, addToQueue, clearQueue, removeFromQueue, hasQueuedMessages, queueLength } = useMessageQueue(projectId);
 
+  // Draft messages for preserving input across project switches
+  const { getDraft, saveDraft, clearDraft } = useDraftMessages(projectId);
+
   // Determine which error to show - console error takes priority over AI errors
   const displayError = consoleError || aiError;
 
@@ -135,6 +139,12 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   useEffect(() => {
     setAIError(null);
   }, [projectId, providerModel]);
+
+  // Load draft when switching projects
+  useEffect(() => {
+    const draft = getDraft();
+    setInput(draft);
+  }, [projectId, getDraft]);
 
   // Initialize AI chat with tools
   const cwd = `/projects/${projectId}`;
@@ -238,7 +248,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   // Use external loading state if provided, otherwise use internal state
   const isLoading = externalIsLoading !== undefined ? externalIsLoading : internalIsLoading;
 
-  // Process queued messages when AI becomes available
+  // Process queued messages when AI becomes available for this project
   const processQueuedMessages = useCallback(async () => {
     if (isLoading || !isConfigured || !providerModel.trim() || queuedMessages.length === 0) return;
 
@@ -463,6 +473,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
       addToQueue(input, attachedFiles);
       setInput('');
       setAttachedFiles([]);
+      clearDraft(); // Clear draft when message is queued
       return;
     }
 
@@ -515,6 +526,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
 
     setInput('');
     setAttachedFiles([]);
+    clearDraft(); // Clear draft when message is sent
 
     // Add model to recently used when sending a message
     addRecentlyUsedModel(modelToUse);
@@ -522,7 +534,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     // Send as text parts if we have multiple parts, otherwise send as string for simplicity
     const messageContent = contentParts.length === 1 ? contentParts[0].text : contentParts;
     await sendMessage(messageContent, modelToUse);
-  }, [addRecentlyUsedModel, addToQueue, fs, isConfigured, isLoading, providerModel, sendMessage]);
+  }, [addRecentlyUsedModel, addToQueue, clearDraft, fs, isConfigured, isLoading, providerModel, sendMessage]);
 
   const handleSend = useCallback(async () => {
     await send(input, attachedFiles);
@@ -739,7 +751,11 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
           >
             <Textarea
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={(e) => {
+                const newValue = e.target.value;
+                setInput(newValue);
+                saveDraft(newValue);
+              }}
               onKeyDown={handleKeyDown}
               onPaste={handlePaste}
               onFocus={handleTextareaFocus}

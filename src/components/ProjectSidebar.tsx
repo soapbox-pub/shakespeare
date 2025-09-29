@@ -1,13 +1,14 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Plus, Folder, GitBranch, Loader2, ChevronDown, Star, Columns2, X, Settings, HelpCircle } from 'lucide-react';
+import { Plus, Folder, GitBranch, Loader2, ChevronDown, Star, Columns2, X, Settings, HelpCircle, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useProjects } from '@/hooks/useProjects';
 import { useProjectSessionStatus } from '@/hooks/useProjectSessionStatus';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { useDraftMessages } from '@/hooks/useDraftMessages';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import type { Project } from '@/lib/ProjectsManager';
 import { cn } from '@/lib/utils';
@@ -19,9 +20,10 @@ interface ProjectItemProps {
   isSelected: boolean;
   onSelect: (project: Project) => void;
   isFavorite?: boolean;
+  hasDraft?: boolean;
 }
 
-const ProjectItem: React.FC<ProjectItemProps> = ({ project, isSelected, onSelect, isFavorite }) => {
+const ProjectItem: React.FC<ProjectItemProps> = ({ project, isSelected, onSelect, isFavorite, hasDraft }) => {
   const navigate = useNavigate();
   const { hasRunningSessions } = useProjectSessionStatus(project.id);
 
@@ -51,10 +53,16 @@ const ProjectItem: React.FC<ProjectItemProps> = ({ project, isSelected, onSelect
             )}
           </div>
           <div className="flex justify-between gap-2 flex-1 min-w-0">
-            <div className="min-w-0 flex-1 flex items-center">
+            <div className="min-w-0 flex-1 flex items-center gap-2">
               <h3 className="font-medium text-sm truncate">
                 {project.name}
               </h3>
+              {/* Draft indicator - only shown when project has draft */}
+              {hasDraft && (
+                <div className="flex-shrink-0 pointer-events-none">
+                  <Pencil className="h-3 w-3 text-sidebar-foreground opacity-60" />
+                </div>
+              )}
             </div>
 
             {/* Star indicator - only shown when favorited */}
@@ -93,6 +101,7 @@ export function ProjectSidebar({
   const queryClient = useQueryClient();
   const { data: projects = [], isLoading, error } = useProjects();
   const [favorites] = useLocalStorage<string[]>('project-favorites', []);
+  const { hasDraft } = useDraftMessages(); // Use without projectId for global access
 
   const isMobile = useIsMobile();
   const navigate = useNavigate();
@@ -221,6 +230,7 @@ export function ProjectSidebar({
                   isSelected={selectedProject?.id === project.id}
                   onSelect={onSelectProject}
                   isFavorite={favorites.includes(project.id)}
+                  hasDraft={hasDraft(project.id)}
                 />
               ))}
             </div>

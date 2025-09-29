@@ -512,6 +512,7 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
                         const isSelected = selectedModel === model.fullId;
                         const isFree = model.pricing?.prompt.equals(0) && model.pricing?.completion.equals(0);
                         const isPremium = !!model.pricing && !isFree;
+                        const modelName = model.name || model.id;
 
                         return (
                           <Card
@@ -524,12 +525,16 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
                             <CardHeader>
                               <div className="flex items-center justify-between">
                                 <div className="flex-1">
-                                  <CardTitle className={`text-xl font-semibold ${isPremium ? 'bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent' : ''}`}>
-                                    { model.name || model.description || model.id}
+                                  <CardTitle className={cn('text-xl font-semibold', {
+                                    'bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent': isPremium,
+                                  })}>
+                                    {modelName}
                                   </CardTitle>
                                   {model.description && (
                                     <p className="text-sm text-muted-foreground mt-1">
-                                      {model.description || model.id}
+                                      {model.description.length > 70
+                                        ? model.description.slice(0, 70) + '...'
+                                        : model.description}
                                     </p>
                                   )}
                                 </div>

@@ -89,7 +89,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   const [showQueueModal, setShowQueueModal] = useState(false);
 
   // Message queue for handling messages while AI is working
-  const { queuedMessages, addToQueue, clearQueue, removeFromQueue, hasQueuedMessages, queueLength } = useMessageQueue();
+  const { queuedMessages, addToQueue, clearQueue, removeFromQueue, hasQueuedMessages, queueLength } = useMessageQueue(projectId);
 
   // Determine which error to show - console error takes priority over AI errors
   const displayError = consoleError || aiError;

@@ -412,7 +412,7 @@ export function AISettings() {
                               ...prev,
                               [preset.id]: checked === true,
                             }))}
-                            className="h-3 w-3"
+                            className="size-3 [&_svg]:size-3"
                           />
                           <label
                             htmlFor={`agree-terms-${preset.id}`}

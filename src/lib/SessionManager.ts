@@ -188,10 +188,6 @@ export class SessionManager {
       throw new Error('No messages in session');
     }
 
-    // Check if last message is from user
-    const lastMessage = session.messages[session.messages.length - 1];
-    if (lastMessage.role !== 'user') return;
-
     session.isLoading = true;
     session.abortController = new AbortController();
     session.lastActivity = new Date();

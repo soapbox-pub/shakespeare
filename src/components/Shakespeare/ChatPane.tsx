@@ -203,6 +203,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     isLoading: internalIsLoading,
     totalCost,
     lastInputTokens,
+    addMessage,
     sendMessage,
     startGeneration,
     stopGeneration,
@@ -216,9 +217,33 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   });
 
   // Handle console error help requests
-  const handleConsoleErrorHelp = useCallback(() => {
-    sendMessage('Read the console messages and fix any errors present.', providerModel);
-  }, [sendMessage, providerModel]);
+  const handleConsoleErrorHelp = useCallback(async () => {
+    const tool = new ReadConsoleMessagesTool();
+    const toolCallId = `call_${crypto.randomUUID().replace(/-/g, '')}`;
+
+    await addMessage({
+      role: 'assistant',
+      content: 'Let me take a look at the console messages to help diagnose the issue.',
+      tool_calls: [
+        {
+          id: toolCallId,
+          type: 'function',
+          function: {
+            name: 'read_console_messages',
+            arguments: '{}',
+          }
+        }
+      ]
+    });
+
+    await addMessage({
+      role: 'tool',
+      content: await tool.execute({ filter: 'error' }),
+      tool_call_id: toolCallId,
+    });
+
+    await startGeneration(providerModel);
+  }, [addMessage, providerModel, startGeneration]);
 
   // Handle error dismissal
   const handleErrorDismiss = useCallback(() => {

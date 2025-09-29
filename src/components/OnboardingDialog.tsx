@@ -1,5 +1,5 @@
 import { Decimal } from 'decimal.js';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { generateSecretKey } from 'nostr-tools';
 import { nip19 } from 'nostr-tools';
 import { Bot, Check, Sparkles, ArrowRight, ArrowLeft } from 'lucide-react';
@@ -35,6 +35,9 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
   const [isSettingUp, setIsSettingUp] = useState(false);
   const [showCreditsDialog, setShowCreditsDialog] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+
+  // Ref for the scrollable content area
+  const scrollableContentRef = useRef<HTMLDivElement>(null);
 
   const { setProvider, addRecentlyUsedModel } = useAISettings();
   const { user } = useCurrentUser();
@@ -126,10 +129,17 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
     }
   }, [open]);
 
+  // Scroll to top when step changes
+  useEffect(() => {
+    if (scrollableContentRef.current) {
+      scrollableContentRef.current.scrollTop = 0;
+    }
+  }, [step]);
+
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-2xl max-h-[100vh] lg:max-h-[90vh] flex flex-col">
+        <DialogContent className="max-w-2xl h-[100vh] sm:h-auto sm:max-h-[90vh] flex flex-col">
           <DialogHeader className="flex-shrink-0">
             <DialogTitle className="flex items-center gap-2">
               {step === 'open-source' && (
@@ -168,7 +178,7 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
             </DialogTitle>
           </DialogHeader>
 
-          <div className="flex-1 overflow-y-auto min-h-0">
+          <div ref={scrollableContentRef} className="flex-1 overflow-y-auto min-h-0">
             {step === 'welcome' && (
               <div className="text-center space-y-6 py-4">
                 <div className="mb-4">

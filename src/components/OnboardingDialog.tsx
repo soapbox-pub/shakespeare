@@ -15,6 +15,7 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useLoginActions } from '@/hooks/useLoginActions';
 import { useProviderModels } from '@/hooks/useProviderModels';
 import { CreditsDialog } from '@/components/CreditsDialog';
+import { OnboardingCreditsBadge } from '@/components/OnboardingCreditsBadge';
 import { ShakespeareLogo } from '@/components/ShakespeareLogo';
 import { AI_PROVIDER_PRESETS, type PresetProvider } from '@/lib/aiProviderPresets';
 import { cn } from '@/lib/utils';
@@ -359,11 +360,14 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
                       >
                         <div className="flex items-center justify-between p-3">
                           <div className="flex-1">
-                            <CardTitle className={`text-lg font-semibold ${isShakespeare ? 'bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent' : ''}`}>
+                            <CardTitle className={cn('text-lg font-semibold', {
+                              'bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent': isShakespeare,
+                            })}>
                               {provider.name}
                             </CardTitle>
                           </div>
                           <div className="flex items-center gap-2">
+                            <OnboardingCreditsBadge provider={provider} />
                             {isSelected && (
                               <div className="h-5 w-5 rounded-full bg-primary flex items-center justify-center">
                                 <Check className="h-3 w-3 text-primary-foreground" />

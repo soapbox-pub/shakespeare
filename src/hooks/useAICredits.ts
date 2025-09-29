@@ -36,6 +36,6 @@ export function useAICredits(provider: AIProvider) {
     retry: false, // Don't retry as not all providers support this endpoint
     refetchOnWindowFocus: false,
     staleTime: 5 * 60 * 1000, // 5 minutes
-    enabled: provider.id === 'shakespeare' && !!user,
+    enabled: !!provider.nostr && !!user,
   });
 }

@@ -409,6 +409,8 @@ export function ProjectView() {
                       onLoadingChange={handleAILoadingChange}
                       isLoading={isAILoading}
                       isBuildLoading={build.isPending}
+                      consoleError={consoleError}
+                      onDismissConsoleError={handleDismissConsoleError}
                     />
                   ) : (
                     <div className="h-full p-4 space-y-4">

@@ -478,10 +478,9 @@ describe('ProjectsManager', () => {
       // Spy on console.warn to check for cleanup warnings
       const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-      // Mock deleteDirectory to also fail (simulate cleanup error)
-      type ProjectsManagerWithPrivate = ProjectsManager & { deleteDirectory: (path: string) => Promise<void> };
-      const originalDeleteDirectory = (projectsManager as ProjectsManagerWithPrivate).deleteDirectory;
-      (projectsManager as ProjectsManagerWithPrivate).deleteDirectory = vi.fn().mockRejectedValue(new Error('Cleanup failed'));
+      // Mock fs.rmdir to fail (simulate cleanup error)
+      const originalRmdir = fs.rmdir;
+      fs.rmdir = vi.fn().mockRejectedValue(new Error('Cleanup failed'));
 
       try {
         // Attempt to clone a project
@@ -497,7 +496,7 @@ describe('ProjectsManager', () => {
       } finally {
         // Restore mocks
         consoleSpy.mockRestore();
-        (projectsManager as ProjectsManagerWithPrivate).deleteDirectory = originalDeleteDirectory;
+        fs.rmdir = originalRmdir;
       }
     });
   });

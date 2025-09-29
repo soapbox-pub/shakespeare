@@ -497,6 +497,12 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
     try {
       await fs.writeFile(`/projects/${projectId}/${selectedFile}`, content);
       setFileContent(content);
+
+      // Automatically trigger a rebuild after saving a file
+      if (isPreviewable) {
+        console.log('File saved, triggering rebuild...');
+        handleBuildProject();
+      }
     } catch (error) {
       console.error('Failed to save file:', error);
     }

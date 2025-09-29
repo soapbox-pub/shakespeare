@@ -297,7 +297,7 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
                   </div>
                   <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
                     <div className="h-2 w-2 rounded-full bg-primary mt-2 flex-shrink-0" />
-                    <p className="text-sm">Quality of output depends on models used and is not guaranteed</p>
+                    <p className="text-sm">Quality of output depends on quality of input and models used and is not guaranteed</p>
                   </div>
                 </div>
 

@@ -6,15 +6,17 @@ import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CircularProgress } from '@/components/ui/circular-progress';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { FileAttachment } from '@/components/ui/file-attachment';
 import { OnboardingDialog } from '@/components/OnboardingDialog';
-import { Square, Loader2, ChevronDown, ArrowUp } from 'lucide-react';
+import { Square, Loader2, ChevronDown, ArrowUp, Plus, X } from 'lucide-react';
 import { useAISettings } from '@/hooks/useAISettings';
 import { useFS } from '@/hooks/useFS';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useKeepAlive } from '@/hooks/useKeepAlive';
 import { useAIChat } from '@/hooks/useAIChat';
 import { useProviderModels } from '@/hooks/useProviderModels';
+import { useMessageQueue } from '@/hooks/useMessageQueue';
 import { ModelSelector } from '@/components/ModelSelector';
 import { AIMessageItem } from '@/components/AIMessageItem';
 import { TextEditorViewTool } from '@/lib/tools/TextEditorViewTool';
@@ -84,6 +86,10 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [isStuck, setIsStuck] = useState(false);
   const [aiError, setAIError] = useState<Error | null>(null);
+  const [showQueueModal, setShowQueueModal] = useState(false);
+
+  // Message queue for handling messages while AI is working
+  const { queuedMessages, addToQueue, clearQueue, removeFromQueue, hasQueuedMessages, queueLength } = useMessageQueue();
 
   // Determine which error to show - console error takes priority over AI errors
   const displayError = consoleError || aiError;
@@ -231,6 +237,64 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
 
   // Use external loading state if provided, otherwise use internal state
   const isLoading = externalIsLoading !== undefined ? externalIsLoading : internalIsLoading;
+
+  // Process queued messages when AI becomes available
+  const processQueuedMessages = useCallback(async () => {
+    if (isLoading || !isConfigured || !providerModel.trim() || queuedMessages.length === 0) return;
+
+    const messagesToProcess = [...queuedMessages];
+    // Clear the queue first to prevent re-processing
+    clearQueue();
+
+    const modelToUse = providerModel.trim();
+    addRecentlyUsedModel(modelToUse);
+
+    // Send each queued message individually
+    for (const queuedMessage of messagesToProcess) {
+      const contentParts: Array<OpenAI.Chat.Completions.ChatCompletionContentPartText> = [];
+
+      // Add text content if present
+      if (queuedMessage.content.trim()) {
+        contentParts.push({
+          type: 'text',
+          text: queuedMessage.content.trim()
+        });
+      }
+
+      // Process attached files for this message
+      if (queuedMessage.attachedFiles.length > 0) {
+        const filePromises = queuedMessage.attachedFiles.map(async (file) => {
+          try {
+            const savedPath = await saveFileToTmp(fs, file);
+            return `Added file: ${savedPath}`;
+          } catch (error) {
+            console.error('Failed to save file:', error);
+            return `Failed to save file: ${file.name}`;
+          }
+        });
+
+        const fileResults = await Promise.all(filePromises);
+        fileResults.forEach(fileResult => {
+          contentParts.push({
+            type: 'text',
+            text: fileResult
+          });
+        });
+      }
+
+      // Only send if there's content
+      if (contentParts.length > 0) {
+        const messageContent = contentParts.length === 1 ? contentParts[0].text : contentParts;
+        await sendMessage(messageContent, modelToUse);
+      }
+    }
+  }, [addRecentlyUsedModel, clearQueue, fs, isConfigured, isLoading, providerModel, queuedMessages, sendMessage]);
+
+  useEffect(() => {
+    if (!isLoading && hasQueuedMessages) {
+      processQueuedMessages();
+    }
+  }, [isLoading, hasQueuedMessages, processQueuedMessages]);
 
   // Calculate context usage percentage
   const currentModel = useMemo(() => {
@@ -384,8 +448,6 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     e.stopPropagation();
     setIsDragOver(false);
 
-    if (isLoading || !providerModel.trim()) return;
-
     const files = Array.from(e.dataTransfer.files);
     if (files.length === 0) return;
 
@@ -394,7 +456,15 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   };
 
   const send = useCallback(async (input: string, attachedFiles: File[]) => {
-    if ((!input.trim() && attachedFiles.length === 0) || isLoading) return;
+    if ((!input.trim() && attachedFiles.length === 0)) return;
+
+    // If AI is loading, add to queue instead of sending immediately
+    if (isLoading) {
+      addToQueue(input, attachedFiles);
+      setInput('');
+      setAttachedFiles([]);
+      return;
+    }
 
     // If AI is not configured, show onboarding dialog
     if (!isConfigured) {
@@ -452,7 +522,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     // Send as text parts if we have multiple parts, otherwise send as string for simplicity
     const messageContent = contentParts.length === 1 ? contentParts[0].text : contentParts;
     await sendMessage(messageContent, modelToUse);
-  }, [addRecentlyUsedModel, fs, isConfigured, isLoading, providerModel, sendMessage]);
+  }, [addRecentlyUsedModel, addToQueue, fs, isConfigured, isLoading, providerModel, sendMessage]);
 
   const handleSend = useCallback(async () => {
     await send(input, attachedFiles);
@@ -662,11 +732,11 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
               !isConfigured
                 ? t('askToAddFeatures')
                 : providerModel.trim()
-                ? t('askToAddFeatures')
-                : t('selectModelFirst')
+                  ? t('askToAddFeatures')
+                  : t('selectModelFirst')
             }
             className="flex-1 resize-none border-0 bg-transparent px-4 py-3 text-sm focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground"
-            disabled={isLoading || (isConfigured && !providerModel.trim())}
+            disabled={isConfigured && !providerModel.trim()}
             rows={1}
             aria-label="Chat message input"
             style={{
@@ -680,6 +750,16 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
             }}
           />
 
+          {/* Queued Messages Indicator */}
+          {hasQueuedMessages && (
+            <button
+              onClick={() => setShowQueueModal(true)}
+              className="w-full px-3 py-1 text-xs text-muted-foreground bg-muted/50 border-t hover:bg-muted/70 transition-colors text-left"
+            >
+              {queueLength} message{queueLength > 1 ? 's' : ''} queued • will send when AI finishes (click to manage)
+            </button>
+          )}
+
           {/* Bottom Controls Row */}
           <div className="flex items-center gap-4 px-2 py-2">
             {/* File Attachment */}
@@ -687,7 +767,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
               onFileSelect={handleFileSelect}
               onFileRemove={handleFileRemove}
               selectedFiles={attachedFiles}
-              disabled={isLoading}
+              disabled={false}
               multiple={true}
             />
 
@@ -756,20 +836,85 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
                   <Square />
                 </Button>
               ) : (
-                <Button
-                  onClick={handleSend}
-                  onMouseDown={handleFirstInteraction}
-                  disabled={(!input.trim() && attachedFiles.length === 0) || (isConfigured && !providerModel.trim())}
-                  size="sm"
-                  className="size-8 [&_svg]:size-5 rounded-full p-0"
-                >
-                  <ArrowUp />
-                </Button>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        onClick={handleSend}
+                        onMouseDown={handleFirstInteraction}
+                        disabled={(!input.trim() && attachedFiles.length === 0) || (isConfigured && !providerModel.trim())}
+                        size="sm"
+                        className="size-8 [&_svg]:size-5 rounded-full p-0"
+                      >
+                        {hasQueuedMessages ? <Plus /> : <ArrowUp />}
+                      </Button>
+                    </TooltipTrigger>
+                    {hasQueuedMessages && (
+                      <TooltipContent>
+                        <p>{queueLength} message{queueLength > 1 ? 's' : ''} queued</p>
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
+                </TooltipProvider>
               )}
             </div>
           </div>
         </div>
       </div>
+
+      {/* Queue Management Modal */}
+      <Dialog open={showQueueModal} onOpenChange={setShowQueueModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Queued Messages</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            {queuedMessages.map((message, index) => (
+              <div key={index} className="flex items-start gap-3 p-3 bg-muted/30 rounded-lg">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-foreground break-words">
+                    {message.content || <em className="text-muted-foreground">No text content</em>}
+                  </p>
+                  {message.attachedFiles.length > 0 && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {message.attachedFiles.length} file{message.attachedFiles.length > 1 ? 's' : ''} attached
+                    </p>
+                  )}
+                </div>
+                <Button
+                  onClick={() => removeFromQueue(index)}
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+            ))}
+            {queuedMessages.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-4">No messages queued</p>
+            )}
+            <div className="flex gap-2 pt-2">
+              <Button
+                onClick={clearQueue}
+                variant="outline"
+                size="sm"
+                disabled={queuedMessages.length === 0}
+                className="flex-1"
+              >
+                Clear All
+              </Button>
+              <Button
+                onClick={() => setShowQueueModal(false)}
+                size="sm"
+                className="flex-1"
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Onboarding Dialog */}
       <OnboardingDialog

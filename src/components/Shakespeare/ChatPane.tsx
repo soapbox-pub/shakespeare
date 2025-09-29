@@ -714,149 +714,155 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
 
       <div className="border-t p-4">
         {/* Chat Input Container */}
-        {/* Queued Messages Indicator */}
-        {hasQueuedMessages && (
-          <button
-            onClick={() => setShowQueueModal(true)}
-            className="w-full px-3 py-1 text-xs text-muted-foreground bg-muted/50 border border-input rounded-t-2xl hover:bg-muted/70 transition-colors text-left mb-0"
-          >
-            {queueLength} message{queueLength > 1 ? 's' : ''} queued • will send when AI finishes (click to manage)
-          </button>
-        )}
-
         <div
-          className={`flex flex-col border border-input bg-background shadow-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 transition-all ${hasQueuedMessages ? 'rounded-b-2xl border-t-0' : 'rounded-2xl'
-            } ${isDragOver ? 'border-primary bg-primary/5 ring-2 ring-primary/20' : ''}`}
-          onDragEnter={handleDragEnter}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
+          className={`${hasQueuedMessages ? 'focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 rounded-2xl' : ''} transition-all`}
         >
-          <Textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            onPaste={handlePaste}
-            onFocus={handleTextareaFocus}
-            placeholder={
-              !isConfigured
-                ? t('askToAddFeatures')
-                : providerModel.trim()
-                  ? t('askToAddFeatures')
-                  : t('selectModelFirst')
-            }
-            className="flex-1 resize-none border-0 bg-transparent px-4 py-3 text-sm focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground"
-            disabled={isConfigured && !providerModel.trim()}
-            rows={1}
-            aria-label="Chat message input"
-            style={{
-              height: 'auto',
-              minHeight: '96px'
-            }}
-            onInput={(e) => {
-              const target = e.target as HTMLTextAreaElement;
-              target.style.height = 'auto';
-              target.style.height = Math.min(target.scrollHeight, 128) + 'px';
-            }}
-          />
+          {/* Queued Messages Indicator */}
+          {hasQueuedMessages && (
+            <button
+              onClick={() => setShowQueueModal(true)}
+              className="w-full px-3 py-1 text-xs text-muted-foreground bg-muted/50 border border-input rounded-t-2xl hover:bg-muted/70 transition-colors text-left mb-0"
+            >
+              {queueLength} message{queueLength > 1 ? 's' : ''} queued • will send when AI finishes (click to manage)
+            </button>
+          )}
 
-          {/* Bottom Controls Row */}
-          <div className="flex items-center gap-4 px-2 py-2">
-            {/* File Attachment */}
-            <FileAttachment
-              onFileSelect={handleFileSelect}
-              onFileRemove={handleFileRemove}
-              selectedFiles={attachedFiles}
-              disabled={false}
-              multiple={true}
+          <div
+            className={`flex flex-col border border-input bg-background shadow-sm transition-all ${hasQueuedMessages
+              ? 'rounded-b-2xl border-t-0'
+              : 'rounded-2xl focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2'
+              } ${isDragOver ? 'border-primary bg-primary/5 ring-2 ring-primary/20' : ''}`}
+            onDragEnter={handleDragEnter}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+          >
+            <Textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              onPaste={handlePaste}
+              onFocus={handleTextareaFocus}
+              placeholder={
+                !isConfigured
+                  ? t('askToAddFeatures')
+                  : providerModel.trim()
+                    ? t('askToAddFeatures')
+                    : t('selectModelFirst')
+              }
+              className="flex-1 resize-none border-0 bg-transparent px-4 py-3 text-sm focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground"
+              disabled={isConfigured && !providerModel.trim()}
+              rows={1}
+              aria-label="Chat message input"
+              style={{
+                height: 'auto',
+                minHeight: '96px'
+              }}
+              onInput={(e) => {
+                const target = e.target as HTMLTextAreaElement;
+                target.style.height = 'auto';
+                target.style.height = Math.min(target.scrollHeight, 128) + 'px';
+              }}
             />
 
-            {/* Context Usage Wheel */}
-            {contextUsagePercentage >= 10 && currentModel?.contextLength && lastInputTokens > 0 && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="cursor-help">
-                      <CircularProgress
-                        value={contextUsagePercentage}
-                        size={20}
-                        strokeWidth={2}
-                      />
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>{t('contextUsage', {
-                      tokens: lastInputTokens.toLocaleString(),
-                      total: currentModel.contextLength.toLocaleString(),
-                      percentage: contextUsagePercentage.toFixed(1)
-                    })}</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
-
-            {/* Cost Display */}
-            {totalCost >= 0.01 && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="text-xs text-muted-foreground px-2 py-1 bg-muted/50 rounded-md whitespace-nowrap cursor-help">
-                      ${totalCost.toFixed(2)}
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>{t('totalCostSession')}</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
-
-            {/* Model Selector */}
-            <div className="flex-1 max-w-72 ml-auto overflow-hidden">
-              <ModelSelector
-                value={providerModel}
-                onChange={setProviderModel}
-                className="w-full"
-                disabled={isLoading}
-                placeholder={t('chooseModel')}
-                open={isModelSelectorOpen}
-                onOpenChange={setIsModelSelectorOpen}
+            {/* Bottom Controls Row */}
+            <div className="flex items-center gap-4 px-2 py-2">
+              {/* File Attachment */}
+              <FileAttachment
+                onFileSelect={handleFileSelect}
+                onFileRemove={handleFileRemove}
+                selectedFiles={attachedFiles}
+                disabled={false}
+                multiple={true}
               />
-            </div>
 
-            {/* Send/Stop Button */}
-            <div>
-              {isLoading ? (
-                <Button
-                  onClick={stopGeneration}
-                  size="sm"
-                  variant="ghost"
-                  className="size-8 rounded-full p-0 bg-foreground/10 [&_svg]:size-3.5 [&_svg]:fill-foreground hover:bg-foreground/20"
-                >
-                  <Square />
-                </Button>
-              ) : (
+              {/* Context Usage Wheel */}
+              {contextUsagePercentage >= 10 && currentModel?.contextLength && lastInputTokens > 0 && (
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button
-                        onClick={handleSend}
-                        onMouseDown={handleFirstInteraction}
-                        disabled={(!input.trim() && attachedFiles.length === 0) || (isConfigured && !providerModel.trim())}
-                        size="sm"
-                        className="size-8 [&_svg]:size-5 rounded-full p-0"
-                      >
-                        {hasQueuedMessages ? <Plus /> : <ArrowUp />}
-                      </Button>
+                      <div className="cursor-help">
+                        <CircularProgress
+                          value={contextUsagePercentage}
+                          size={20}
+                          strokeWidth={2}
+                        />
+                      </div>
                     </TooltipTrigger>
-                    {hasQueuedMessages && (
-                      <TooltipContent>
-                        <p>{queueLength} message{queueLength > 1 ? 's' : ''} queued</p>
-                      </TooltipContent>
-                    )}
+                    <TooltipContent>
+                      <p>{t('contextUsage', {
+                        tokens: lastInputTokens.toLocaleString(),
+                        total: currentModel.contextLength.toLocaleString(),
+                        percentage: contextUsagePercentage.toFixed(1)
+                      })}</p>
+                    </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
               )}
+
+              {/* Cost Display */}
+              {totalCost >= 0.01 && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="text-xs text-muted-foreground px-2 py-1 bg-muted/50 rounded-md whitespace-nowrap cursor-help">
+                        ${totalCost.toFixed(2)}
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{t('totalCostSession')}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+
+              {/* Model Selector */}
+              <div className="flex-1 max-w-72 ml-auto overflow-hidden">
+                <ModelSelector
+                  value={providerModel}
+                  onChange={setProviderModel}
+                  className="w-full"
+                  disabled={isLoading}
+                  placeholder={t('chooseModel')}
+                  open={isModelSelectorOpen}
+                  onOpenChange={setIsModelSelectorOpen}
+                />
+              </div>
+
+              {/* Send/Stop Button */}
+              <div>
+                {isLoading ? (
+                  <Button
+                    onClick={stopGeneration}
+                    size="sm"
+                    variant="ghost"
+                    className="size-8 rounded-full p-0 bg-foreground/10 [&_svg]:size-3.5 [&_svg]:fill-foreground hover:bg-foreground/20"
+                  >
+                    <Square />
+                  </Button>
+                ) : (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          onClick={handleSend}
+                          onMouseDown={handleFirstInteraction}
+                          disabled={(!input.trim() && attachedFiles.length === 0) || (isConfigured && !providerModel.trim())}
+                          size="sm"
+                          className="size-8 [&_svg]:size-5 rounded-full p-0"
+                        >
+                          {hasQueuedMessages ? <Plus /> : <ArrowUp />}
+                        </Button>
+                      </TooltipTrigger>
+                      {hasQueuedMessages && (
+                        <TooltipContent>
+                          <p>{queueLength} message{queueLength > 1 ? 's' : ''} queued</p>
+                        </TooltipContent>
+                      )}
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+              </div>
             </div>
           </div>
         </div>

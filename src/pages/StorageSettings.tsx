@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Download, Trash2, AlertTriangle, Loader2, Database, Info, ArrowLeft, Shield } from 'lucide-react';
+import { Download, Trash2, AlertTriangle, Loader2, Database, Info, ArrowLeft, Shield, HardDrive } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -16,6 +16,7 @@ import {
   requestPersistentStorage,
   getStorageInfo
 } from '@/lib/persistentStorage';
+import { FullSystemImportDialog } from '@/components/FullSystemImportDialog';
 import JSZip from 'jszip';
 
 interface StorageUsageDetails {
@@ -119,6 +120,21 @@ export function StorageSettings() {
 
     // Start from root directory
     await addToZip('/', zip);
+
+    // Export localStorage data
+    const localStorageData: Record<string, string> = {};
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key) {
+        const value = localStorage.getItem(key);
+        if (value !== null) {
+          localStorageData[key] = value;
+        }
+      }
+    }
+
+    // Add localStorage data to zip
+    zip.file('localStorage.json', JSON.stringify(localStorageData, null, 2));
 
     // Generate zip file
     const content = await zip.generateAsync({ type: 'blob' });
@@ -388,6 +404,28 @@ export function StorageSettings() {
                 </>
               )}
             </Button>
+          </CardContent>
+        </Card>
+
+        {/* Import Full System */}
+        <Card className="border-amber-200 dark:border-amber-800">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
+              <HardDrive className="h-5 w-5" />
+              {t('importFullSystem')}
+            </CardTitle>
+            <CardDescription>
+              {t('importFullSystemDescription')}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <FullSystemImportDialog
+              onImport={() => {
+                // The dialog will handle page reload, but we can add any additional logic here
+                console.log('Full system import completed');
+              }}
+              className="w-full sm:w-auto"
+            />
           </CardContent>
         </Card>
 

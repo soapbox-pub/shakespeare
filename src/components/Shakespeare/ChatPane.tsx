@@ -300,10 +300,12 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     setIsModelSelectorOpen(true);
   }, []);
 
-  // Scroll to bottom when AI error occurs
+  // Scroll to bottom when any error occurs (AI error or console error)
   useEffect(() => {
-    scrollToBottom();
-  }, [aiError, scrollToBottom]);
+    if (displayError) {
+      scrollToBottom();
+    }
+  }, [displayError, scrollToBottom]);
 
   // Check for autostart parameter and trigger AI generation
   useEffect(() => {

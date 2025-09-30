@@ -908,15 +908,16 @@ export class Git {
       '#d': [nostrURI.d],
     };
 
-    const gitRelays = new Set<string>([
-      'wss://git.shakespeare.diy/',
+    // Always prioritize git.shakespeare.diy
+    const shakespeareRelayUrl = 'wss://git.shakespeare.diy/';
+    const otherGitRelays = [
       'wss://relay.ngit.dev/',
       'wss://relay.nostr.band/', // General purpose relay as fallback
-    ]);
+    ];
 
     let events: NostrEvent[] = [];
 
-    // Try the specified relay first, then fall back to known Git relays
+    // Try the specified relay first if provided
     if (nostrURI.relay) {
       try {
         events = await this.nostr.relay(nostrURI.relay).query([filter], { signal: AbortSignal.timeout(1000) });
@@ -924,11 +925,30 @@ export class Git {
         console.error(`Error querying relay ${nostrURI.relay}: ${error}`);
       }
     }
+
+    // If no events from specified relay, try git.shakespeare.diy first
     if (!events.length) {
       try {
-        events = await this.nostr.group([...gitRelays]).query([filter], { signal: AbortSignal.timeout(5000) });
+        console.log(`Trying git.shakespeare.diy first...`);
+        events = await this.nostr.relay(shakespeareRelayUrl).query([filter], { signal: AbortSignal.timeout(3000) });
+        if (events.length > 0) {
+          console.log(`✓ Found events on ${shakespeareRelayUrl}`);
+        }
       } catch (error) {
-        console.error(`Error querying group relays: ${error}`);
+        console.error(`Error querying ${shakespeareRelayUrl}: ${error}`);
+      }
+    }
+
+    // If still no events, try other git relays
+    if (!events.length) {
+      try {
+        console.log(`Trying other git relays: ${otherGitRelays.join(', ')}`);
+        events = await this.nostr.group(otherGitRelays).query([filter], { signal: AbortSignal.timeout(5000) });
+        if (events.length > 0) {
+          console.log(`✓ Found events on fallback relays`);
+        }
+      } catch (error) {
+        console.error(`Error querying fallback relays: ${error}`);
       }
     }
     if (!events.length) {
@@ -1390,13 +1410,24 @@ export class Git {
       }
     }
 
+    // Ensure git.shakespeare.diy is always included and prioritized
+    const shakespeareRelay = 'wss://git.shakespeare.diy/';
+
+    // Remove git.shakespeare.diy from relayUrls if it exists (to avoid duplicates)
+    const filteredRelayUrls = relayUrls.filter(url => url !== shakespeareRelay);
+
+    // Always prioritize git.shakespeare.diy by putting it first
+    relayUrls.unshift(shakespeareRelay);
+
     // If no relays specified in announcement, use default git-focused relays
-    if (relayUrls.length === 0) {
+    if (filteredRelayUrls.length === 0 && relayUrls.length === 1) {
       relayUrls.push(
-        'wss://git.shakespeare.diy/',
         'wss://relay.ngit.dev/',
         'wss://relay.nostr.band/'
       );
+    } else {
+      // Add back the other relays after git.shakespeare.diy
+      relayUrls.push(...filteredRelayUrls);
     }
 
     // Get current repository state
@@ -1417,12 +1448,42 @@ export class Git {
     // Publish the state event to Nostr relays
     console.log(`Publishing repository state to ${relayUrls.length} relays`);
 
+    // Always publish to git.shakespeare.diy first
+    const shakespeareRelayUrl = 'wss://git.shakespeare.diy/';
+    const otherRelays = relayUrls.filter(url => url !== shakespeareRelayUrl);
+
     try {
-      await this.nostr.group(relayUrls).event(stateEvent);
-      console.log('✓ Repository state published to Nostr successfully');
+      // Publish to git.shakespeare.diy first
+      console.log(`Publishing to ${shakespeareRelayUrl} first...`);
+      await this.nostr.relay(shakespeareRelayUrl).event(stateEvent);
+      console.log(`✓ Repository state published to ${shakespeareRelayUrl} successfully`);
+
+      // Then publish to other relays
+      if (otherRelays.length > 0) {
+        console.log(`Publishing to ${otherRelays.length} additional relays...`);
+        try {
+          await this.nostr.group(otherRelays).event(stateEvent);
+          console.log('✓ Repository state published to additional relays successfully');
+        } catch (error) {
+          console.warn('Failed to publish repository state to some additional relays:', error);
+          // Continue even if publishing to additional relays fails
+        }
+      }
+
+      console.log('✓ Nostr push completed successfully');
     } catch (error) {
-      console.warn('Failed to publish repository state to some relays:', error);
-      // Continue with Git push even if Nostr publishing partially fails
+      console.error('Failed to publish repository state to git.shakespeare.diy:', error);
+      // If git.shakespeare.diy fails, still try to publish to other relays as fallback
+      if (otherRelays.length > 0) {
+        console.log(`Attempting to publish to ${otherRelays.length} fallback relays...`);
+        try {
+          await this.nostr.group(otherRelays).event(stateEvent);
+          console.log('✓ Repository state published to fallback relays successfully');
+        } catch (fallbackError) {
+          console.warn('Failed to publish repository state to fallback relays:', fallbackError);
+        }
+      }
+      // Don't throw here - continue with Git push even if Nostr publishing fails
     }
 
     // Push to each clone URL

@@ -35,7 +35,7 @@ export class GitPullCommand implements GitSubcommand {
       let currentBranch: string | null = null;
       try {
         currentBranch = await this.git.currentBranch({
-          
+
           dir: this.pwd,
         }) || null;
         if (!targetBranch) {
@@ -51,7 +51,7 @@ export class GitPullCommand implements GitSubcommand {
       let remoteUrl: string;
       try {
         const remotes = await this.git.listRemotes({
-          
+
           dir: this.pwd,
         });
 
@@ -90,7 +90,7 @@ export class GitPullCommand implements GitSubcommand {
         let remoteOid: string;
         try {
           remoteOid = await this.git.resolveRef({
-            
+
             dir: this.pwd,
             ref: remoteRef,
           });
@@ -102,14 +102,14 @@ export class GitPullCommand implements GitSubcommand {
         let currentOid: string;
         try {
           currentOid = await this.git.resolveRef({
-            
+
             dir: this.pwd,
             ref: 'HEAD',
           });
         } catch {
           // Empty repository, just checkout the remote branch
           await this.git.checkout({
-            
+
             dir: this.pwd,
             ref: targetBranch,
           });
@@ -123,7 +123,7 @@ export class GitPullCommand implements GitSubcommand {
 
         // Perform fast-forward merge (simplified)
         await this.git.merge({
-          
+
           dir: this.pwd,
           ours: currentBranch || 'HEAD',
           theirs: remoteRef,
@@ -157,18 +157,13 @@ export class GitPullCommand implements GitSubcommand {
     let remote = 'origin'; // Default remote
     let branch: string | undefined;
 
-    for (let i = 0; i < args.length; i++) {
-      const arg = args[i];
+    const nonOptionArgs = args.filter(arg => !arg.startsWith('-'));
 
-      if (!arg.startsWith('-')) {
-        if (remote === 'origin' && !branch) {
-          // First non-option argument is remote
-          remote = arg;
-        } else if (!branch) {
-          // Second non-option argument is branch
-          branch = arg;
-        }
-      }
+    if (nonOptionArgs.length >= 1) {
+      remote = nonOptionArgs[0];
+    }
+    if (nonOptionArgs.length >= 2) {
+      branch = nonOptionArgs[1];
     }
 
     return { remote, branch };

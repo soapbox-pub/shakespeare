@@ -59,9 +59,12 @@ export class TextEditorViewTool implements Tool<TextEditorViewParams> {
           return tree;
         }
 
+        // Check if we're starting from a .git directory
+        const isGitRoot = absolutePath.endsWith('/.git') || absolutePath === '.git';
+
         // If it's a directory, generate a tree-like listing
         // Note: start_line and end_line are ignored for directories
-        const tree = await this.generateDirectoryTree(absolutePath);
+        const tree = await this.generateDirectoryTree(absolutePath, "", 3, 0, isGitRoot);
         return tree;
       }
 
@@ -117,6 +120,7 @@ export class TextEditorViewTool implements Tool<TextEditorViewParams> {
     prefix: string = "",
     maxDepth: number = 3,
     currentDepth: number = 0,
+    isGitRoot: boolean = false,
   ): Promise<string> {
     if (currentDepth >= maxDepth) {
       return prefix + "...\n";
@@ -142,13 +146,20 @@ export class TextEditorViewTool implements Tool<TextEditorViewParams> {
 
         if (entry.isDirectory()) {
           result += prefix + connector + entry.name + "/\n";
-          const subPath = join(dirPath, entry.name);
-          result += await this.generateDirectoryTree(
-            subPath,
-            nextPrefix,
-            maxDepth,
-            currentDepth + 1,
-          );
+
+          // Special handling for .git directories - don't traverse unless we started from .git
+          if (entry.name === '.git' && !isGitRoot) {
+            result += nextPrefix + "...\n";
+          } else {
+            const subPath = join(dirPath, entry.name);
+            result += await this.generateDirectoryTree(
+              subPath,
+              nextPrefix,
+              maxDepth,
+              currentDepth + 1,
+              isGitRoot,
+            );
+          }
         } else {
           result += prefix + connector + entry.name + "\n";
         }

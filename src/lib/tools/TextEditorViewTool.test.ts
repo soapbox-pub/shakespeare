@@ -23,11 +23,15 @@ class MockFS implements JSRuntimeFS {
 
     this.files.set('/projects/project1/package.json', '{"name": "project1"}');
     this.files.set('/projects/project1/src/index.ts', 'console.log("project1");');
+    this.files.set('/projects/project1/.git/config', '[core]\nrepositoryformatversion = 0');
+    this.files.set('/projects/project1/.git/HEAD', 'ref: refs/heads/main');
     this.files.set('/projects/project2/package.json', '{"name": "project2"}');
     this.files.set('/projects/project2/src/main.ts', 'console.log("project2");');
     this.files.set('/project/package.json', '{"name": "test"}');
     this.files.set('/project/src/index.ts', 'console.log("hello");');
     this.files.set('/project/.gitignore', 'node_modules\n.git\n');
+    this.files.set('/project/.git/config', '[core]\nrepositoryformatversion = 0');
+    this.files.set('/project/.git/HEAD', 'ref: refs/heads/main');
     this.files.set('/tmp/uploaded-file.txt', 'This is an uploaded file');
 
     // Add binary files for testing
@@ -283,5 +287,46 @@ describe('TextEditorViewTool', () => {
     expect(result).not.toContain('src/');
     expect(result).not.toContain('index.ts');
     expect(result).not.toContain('main.ts');
+  });
+
+  it('should show .git directory but not traverse its contents when viewing project root', async () => {
+    const result = await tool.execute({ path: '/project' });
+
+    // Should show the .git directory
+    expect(result).toContain('.git/');
+
+    // Should show "..." under .git instead of its contents
+    expect(result).toContain('...');
+
+    // Should NOT show .git file contents
+    expect(result).not.toContain('config');
+    expect(result).not.toContain('HEAD');
+    expect(result).not.toContain('repositoryformatversion');
+
+    // Should still show other directory contents normally
+    expect(result).toContain('src/');
+    expect(result).toContain('package.json');
+  });
+
+  it('should show .git contents when explicitly viewing .git directory', async () => {
+    const result = await tool.execute({ path: '/project/.git' });
+
+    // Should show the .git file contents when explicitly requested
+    expect(result).toContain('config');
+    expect(result).toContain('HEAD');
+
+    // Should NOT show "..." when explicitly viewing .git
+    expect(result).not.toContain('...');
+  });
+
+  it('should show .git contents when explicitly viewing .git with relative path', async () => {
+    const result = await tool.execute({ path: '.git' });
+
+    // Should show the .git file contents when explicitly requested
+    expect(result).toContain('config');
+    expect(result).toContain('HEAD');
+
+    // Should NOT show "..." when explicitly viewing .git
+    expect(result).not.toContain('...');
   });
 });

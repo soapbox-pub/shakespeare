@@ -92,12 +92,12 @@ export class GitDiffCommand implements GitSubcommand {
       // Filter for files with working directory changes
       // Status matrix: [filepath, headStatus, workdirStatus, stageStatus]
       // 0 = absent, 1 = same as previous stage, 2 = different from previous stage
-      const changedFiles = statusMatrix.filter(([filepath, headStatus, workdirStatus, stageStatus]) => {
+      const changedFiles = statusMatrix.filter(([filepath, _headStatus, workdirStatus, stageStatus]) => {
         // Show files that have working directory changes (differ from index)
-        const hasWorkingDirChanges = (stageStatus !== workdirStatus && workdirStatus === 2) ||
+        // Exclude untracked files - git diff only shows changes to tracked files
+        const hasWorkingDirChanges = (stageStatus !== workdirStatus && workdirStatus === 2 && stageStatus !== 0) ||
                                    (stageStatus === 2 && workdirStatus === 0) ||
-                                   (stageStatus === 1 && workdirStatus === 0) ||
-                                   (headStatus === 0 && stageStatus === 0 && workdirStatus === 2); // untracked
+                                   (stageStatus === 1 && workdirStatus === 0);
 
         if (paths.length > 0) {
           return hasWorkingDirChanges && paths.some(path => filepath.includes(path));
@@ -111,7 +111,7 @@ export class GitDiffCommand implements GitSubcommand {
 
       const diffLines: string[] = [];
 
-      for (const [filepath, headStatus, workdirStatus, stageStatus] of changedFiles) {
+      for (const [filepath, _headStatus, workdirStatus, stageStatus] of changedFiles) {
         try {
           // Get staged/index content
           let indexContent = '';
@@ -153,13 +153,7 @@ export class GitDiffCommand implements GitSubcommand {
           // Generate diff header
           diffLines.push(`diff --git a/${filepath} b/${filepath}`);
 
-          if ((headStatus === 0 && stageStatus === 0 && workdirStatus === 2)) {
-            // New untracked file
-            diffLines.push('new file mode 100644');
-            diffLines.push(`index 0000000..${this.getShortHash(workdirContent)}`);
-            diffLines.push('--- /dev/null');
-            diffLines.push(`+++ b/${filepath}`);
-          } else if (workdirStatus === 0 && (stageStatus === 1 || stageStatus === 2)) {
+          if (workdirStatus === 0 && (stageStatus === 1 || stageStatus === 2)) {
             // Deleted file
             diffLines.push('deleted file mode 100644');
             diffLines.push(`index ${this.getShortHash(indexContent)}..0000000`);
@@ -300,7 +294,7 @@ export class GitDiffCommand implements GitSubcommand {
 
           // Get staged content (approximated by working directory for now)
           let stagedContent = '';
-          if (stageStatus === 1) {
+          if (stageStatus === 1 || stageStatus === 2) {
             try {
               stagedContent = await this.fs.readFile(`${this.pwd}/${filepath}`, 'utf8');
             } catch {
@@ -311,7 +305,7 @@ export class GitDiffCommand implements GitSubcommand {
           // Generate diff header
           diffLines.push(`diff --git a/${filepath} b/${filepath}`);
 
-          if (headStatus === 0 && stageStatus === 1) {
+          if (headStatus === 0 && stageStatus === 2) {
             // New file staged
             diffLines.push('new file mode 100644');
             diffLines.push(`index 0000000..${this.getShortHash(stagedContent)}`);

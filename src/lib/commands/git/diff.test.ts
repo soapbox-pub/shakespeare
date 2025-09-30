@@ -124,15 +124,14 @@ describe('GitDiffCommand', () => {
       expect(result.stdout).toContain('+new line');
     });
 
-    it('should show untracked files in diff', async () => {
+    it('should NOT show untracked files in diff', async () => {
       const result = await command.execute([]);
 
       expect(result.exitCode).toBe(0);
-      expect(result.stdout).toContain('diff --git a/new.txt b/new.txt');
-      expect(result.stdout).toContain('new file mode 100644');
-      expect(result.stdout).toContain('--- /dev/null');
-      expect(result.stdout).toContain('+++ b/new.txt');
-      expect(result.stdout).toContain('+this is a new file');
+      // Untracked files should not appear in git diff output
+      expect(result.stdout).not.toContain('diff --git a/new.txt b/new.txt');
+      expect(result.stdout).not.toContain('new file mode 100644');
+      expect(result.stdout).not.toContain('+this is a new file');
     });
 
     it('should show deleted files in diff', async () => {
@@ -153,6 +152,27 @@ describe('GitDiffCommand', () => {
       expect(result.stdout).toContain('diff --git a/staged.txt b/staged.txt');
       expect(result.stdout).toContain('--- a/staged.txt');
       expect(result.stdout).toContain('+++ b/staged.txt');
+    });
+
+    it('should show newly added files in staged diff', async () => {
+      // Test with a file that was added to the index (new file staged)
+      const commandWithStagedNew = new GitDiffCommand({
+        ...mockOptions,
+        git: {
+          ...mockGit,
+          statusMatrix: async () => [
+            ['new-staged.txt', 0, 1, 2], // New file added to stage
+          ],
+        } as unknown as Git,
+      });
+
+      const result = await commandWithStagedNew.execute(['--cached']);
+
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).toContain('diff --git a/new-staged.txt b/new-staged.txt');
+      expect(result.stdout).toContain('new file mode 100644');
+      expect(result.stdout).toContain('--- /dev/null');
+      expect(result.stdout).toContain('+++ b/new-staged.txt');
     });
 
     it('should return empty output when no changes', async () => {

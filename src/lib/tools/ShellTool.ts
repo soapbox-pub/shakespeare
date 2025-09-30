@@ -24,6 +24,7 @@ import {
   MvCommand,
   PwdCommand,
   RmCommand,
+  SedCommand,
   SortCommand,
   TailCommand,
   TouchCommand,
@@ -48,7 +49,7 @@ export class ShellTool implements Tool<ShellToolParams> {
   private git: Git;
   private commands: Map<string, ShellCommand>;
 
-  readonly description = "Execute shell commands like cat, ls, cd, pwd, rm, cp, mv, echo, head, tail, grep, find, wc, touch, mkdir, sort, uniq, cut, tr, diff, which, whoami, date, env, clear, git, curl, unzip, hexdump. Supports compound commands with &&, ||, ;, and | operators";
+  readonly description = "Execute shell commands like cat, ls, cd, pwd, rm, cp, mv, echo, head, tail, grep, find, wc, touch, mkdir, sort, uniq, cut, tr, sed, diff, which, whoami, date, env, clear, git, curl, unzip, hexdump. Supports compound commands with &&, ||, ;, and | operators";
 
   readonly inputSchema = z.object({
     command: z.string().describe(
@@ -83,6 +84,7 @@ export class ShellTool implements Tool<ShellToolParams> {
     this.registerCommand(new MvCommand(fs));
     this.registerCommand(new PwdCommand());
     this.registerCommand(new RmCommand(fs));
+    this.registerCommand(new SedCommand(fs));
     this.registerCommand(new SortCommand(fs));
     this.registerCommand(new TailCommand(fs));
     this.registerCommand(new TouchCommand(fs));

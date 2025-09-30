@@ -14,6 +14,7 @@ import { GitCheckoutCommand } from "./git/checkout";
 import { GitRemoteCommand } from "./git/remote";
 import { GitPushCommand } from "./git/push";
 import { GitPullCommand } from "./git/pull";
+import { GitFetchCommand } from "./git/fetch";
 import { GitCloneCommand } from "./git/clone";
 import { GitConfigCommand } from "./git/config";
 import { GitResetCommand } from "./git/reset";
@@ -77,6 +78,7 @@ export class GitCommand implements ShellCommand {
     this.registerSubcommand(new GitRemoteCommand(subcommandOptions));
     this.registerSubcommand(new GitPushCommand(subcommandOptions));
     this.registerSubcommand(new GitPullCommand(subcommandOptions));
+    this.registerSubcommand(new GitFetchCommand(subcommandOptions));
     this.registerSubcommand(new GitCloneCommand(subcommandOptions));
     this.registerSubcommand(new GitConfigCommand(subcommandOptions));
     this.registerSubcommand(new GitResetCommand(subcommandOptions));
@@ -144,6 +146,7 @@ grow, mark and tweak your common history
    tag        Create, list, delete or verify a tag object
 
 collaborate (see also: git help workflows)
+   fetch      Download objects and refs from another repository
    pull       Fetch from and integrate with another repository or a local branch
    push       Update remote refs along with associated objects
    remote     Manage set of tracked repositories

@@ -91,10 +91,13 @@ export class GitDiffCommand implements GitSubcommand {
 
       // Filter for files with working directory changes
       // Status matrix: [filepath, headStatus, workdirStatus, stageStatus]
-      // 0 = absent, 1 = present, 2 = modified
-      const changedFiles = statusMatrix.filter(([filepath, _headStatus, workdirStatus, stageStatus]) => {
-        // Show files that differ between index and working directory
-        const hasWorkingDirChanges = stageStatus !== workdirStatus;
+      // 0 = absent, 1 = same as previous stage, 2 = different from previous stage
+      const changedFiles = statusMatrix.filter(([filepath, headStatus, workdirStatus, stageStatus]) => {
+        // Show files that have working directory changes (differ from index)
+        const hasWorkingDirChanges = (stageStatus !== workdirStatus && workdirStatus === 2) ||
+                                   (stageStatus === 2 && workdirStatus === 0) ||
+                                   (stageStatus === 1 && workdirStatus === 0) ||
+                                   (headStatus === 0 && stageStatus === 0 && workdirStatus === 2); // untracked
 
         if (paths.length > 0) {
           return hasWorkingDirChanges && paths.some(path => filepath.includes(path));
@@ -108,81 +111,95 @@ export class GitDiffCommand implements GitSubcommand {
 
       const diffLines: string[] = [];
 
-      for (const [filepath, _headStatus, workdirStatus, stageStatus] of changedFiles) {
+      for (const [filepath, headStatus, workdirStatus, stageStatus] of changedFiles) {
         try {
-          // Get staged content (index)
-          let stagedContent = '';
-          if (stageStatus === 1) {
+          // Get staged/index content
+          let indexContent = '';
+          if (stageStatus === 1 || stageStatus === 2) {
             try {
-              // Try to read from HEAD first as a fallback for staged content
+              // For files in the index, read from HEAD as the baseline
+              // This represents the last committed version for comparison
               const headBlob = await this.git.readBlob({
                 dir: this.pwd,
                 oid: 'HEAD',
                 filepath,
               });
-              stagedContent = new TextDecoder().decode(headBlob.blob);
+              indexContent = new TextDecoder().decode(headBlob.blob);
             } catch {
-              // File might be new
-              stagedContent = '';
+              // File might be new or not in HEAD
+              indexContent = '';
             }
           }
 
           // Get working directory content
           let workdirContent = '';
-          if (workdirStatus === 1) {
+          if (workdirStatus === 2) {
             try {
               workdirContent = await this.fs.readFile(`${this.pwd}/${filepath}`, 'utf8');
             } catch {
               // File might be deleted
               workdirContent = '';
             }
+          } else if (workdirStatus === 0) {
+            // File is deleted in working directory
+            workdirContent = '';
           }
 
           // Skip if contents are identical
-          if (stagedContent === workdirContent) {
+          if (indexContent === workdirContent) {
             continue;
           }
 
           // Generate diff header
           diffLines.push(`diff --git a/${filepath} b/${filepath}`);
 
-          if (stageStatus === 0 && workdirStatus === 1) {
+          if ((headStatus === 0 && stageStatus === 0 && workdirStatus === 2)) {
             // New untracked file
             diffLines.push('new file mode 100644');
             diffLines.push(`index 0000000..${this.getShortHash(workdirContent)}`);
             diffLines.push('--- /dev/null');
             diffLines.push(`+++ b/${filepath}`);
-          } else if (stageStatus === 1 && workdirStatus === 0) {
+          } else if (workdirStatus === 0 && (stageStatus === 1 || stageStatus === 2)) {
             // Deleted file
             diffLines.push('deleted file mode 100644');
-            diffLines.push(`index ${this.getShortHash(stagedContent)}..0000000`);
+            diffLines.push(`index ${this.getShortHash(indexContent)}..0000000`);
             diffLines.push(`--- a/${filepath}`);
             diffLines.push('+++ /dev/null');
           } else {
             // Modified file
-            diffLines.push(`index ${this.getShortHash(stagedContent)}..${this.getShortHash(workdirContent)} 100644`);
+            diffLines.push(`index ${this.getShortHash(indexContent)}..${this.getShortHash(workdirContent)} 100644`);
             diffLines.push(`--- a/${filepath}`);
             diffLines.push(`+++ b/${filepath}`);
           }
 
-          // Generate simple unified diff
-          const stagedLines = stagedContent.split('\n');
+          // Generate unified diff
+          const indexLines = indexContent.split('\n');
           const workdirLines = workdirContent.split('\n');
 
           // Simple hunk header
-          diffLines.push(`@@ -1,${stagedLines.length} +1,${workdirLines.length} @@`);
+          diffLines.push(`@@ -1,${indexLines.length} +1,${workdirLines.length} @@`);
 
-          // Show all old lines as removed
-          for (const line of stagedLines) {
-            if (line || stagedLines.length > 0) {
-              diffLines.push(`-${line}`);
-            }
-          }
+          // Simple line-by-line diff
+          const maxLines = Math.max(indexLines.length, workdirLines.length);
+          for (let i = 0; i < maxLines; i++) {
+            const oldLine = indexLines[i];
+            const newLine = workdirLines[i];
 
-          // Show all new lines as added
-          for (const line of workdirLines) {
-            if (line || workdirLines.length > 0) {
-              diffLines.push(`+${line}`);
+            if (oldLine !== undefined && newLine !== undefined) {
+              if (oldLine === newLine) {
+                // Unchanged line (show context)
+                diffLines.push(` ${oldLine}`);
+              } else {
+                // Changed line
+                diffLines.push(`-${oldLine}`);
+                diffLines.push(`+${newLine}`);
+              }
+            } else if (oldLine !== undefined) {
+              // Removed line
+              diffLines.push(`-${oldLine}`);
+            } else if (newLine !== undefined) {
+              // Added line
+              diffLines.push(`+${newLine}`);
             }
           }
 
@@ -248,7 +265,9 @@ export class GitDiffCommand implements GitSubcommand {
 
       // Filter for files with staged changes (index differs from HEAD)
       const stagedFiles = statusMatrix.filter(([filepath, headStatus, _workdirStatus, stageStatus]) => {
-        const hasStagedChanges = headStatus !== stageStatus;
+        const hasStagedChanges = (headStatus === 0 && stageStatus === 2) || // Added to stage
+                                (headStatus === 1 && stageStatus === 0) || // Deleted from stage
+                                (headStatus === 1 && stageStatus === 2);   // Modified in stage
 
         if (paths.length > 0) {
           return hasStagedChanges && paths.some(path => filepath.includes(path));
@@ -317,14 +336,28 @@ export class GitDiffCommand implements GitSubcommand {
 
           diffLines.push(`@@ -1,${headLines.length} +1,${stagedLines.length} @@`);
 
-          // Show removed lines
-          for (const line of headLines) {
-            diffLines.push(`-${line}`);
-          }
+          // Simple line-by-line diff
+          const maxLines = Math.max(headLines.length, stagedLines.length);
+          for (let i = 0; i < maxLines; i++) {
+            const oldLine = headLines[i];
+            const newLine = stagedLines[i];
 
-          // Show added lines
-          for (const line of stagedLines) {
-            diffLines.push(`+${line}`);
+            if (oldLine !== undefined && newLine !== undefined) {
+              if (oldLine === newLine) {
+                // Unchanged line (show context)
+                diffLines.push(` ${oldLine}`);
+              } else {
+                // Changed line
+                diffLines.push(`-${oldLine}`);
+                diffLines.push(`+${newLine}`);
+              }
+            } else if (oldLine !== undefined) {
+              // Removed line
+              diffLines.push(`-${oldLine}`);
+            } else if (newLine !== undefined) {
+              // Added line
+              diffLines.push(`+${newLine}`);
+            }
           }
 
           diffLines.push('');

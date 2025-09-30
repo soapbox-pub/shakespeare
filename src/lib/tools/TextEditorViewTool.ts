@@ -1,5 +1,4 @@
 import { join } from "path-browserify";
-import ignore from "ignore";
 import { z } from "zod";
 
 import type { Tool } from "./Tool";
@@ -111,30 +110,16 @@ export class TextEditorViewTool implements Tool<TextEditorViewParams> {
     prefix: string = "",
     maxDepth: number = 3,
     currentDepth: number = 0,
-    ignoreFilter?: (path: string) => boolean,
   ): Promise<string> {
     if (currentDepth >= maxDepth) {
       return prefix + "...\n";
     }
 
-    // Create ignore filter on first call (root level)
-    if (!ignoreFilter) {
-      ignoreFilter = await this.createIgnoreFilter();
-    }
-
     try {
       const entries = await this.fs.readdir(dirPath, { withFileTypes: true });
 
-      // Filter entries using gitignore patterns
-      const filteredEntries = entries.filter((entry) => {
-        // Calculate relative path from the project root (cwd)
-        const fullEntryPath = join(dirPath, entry.name);
-        const entryPath = this.makeRelativeToCwd(fullEntryPath);
-        return ignoreFilter!(entryPath);
-      });
-
       // Sort entries: directories first, then files, both alphabetically
-      filteredEntries.sort((a, b) => {
+      entries.sort((a, b) => {
         if (a.isDirectory() && !b.isDirectory()) return -1;
         if (!a.isDirectory() && b.isDirectory()) return 1;
         return a.name.localeCompare(b.name);
@@ -142,9 +127,9 @@ export class TextEditorViewTool implements Tool<TextEditorViewParams> {
 
       let result = "";
 
-      for (let i = 0; i < filteredEntries.length; i++) {
-        const entry = filteredEntries[i]!;
-        const isLastEntry = i === filteredEntries.length - 1;
+      for (let i = 0; i < entries.length; i++) {
+        const entry = entries[i]!
+        const isLastEntry = i === entries.length - 1;
         const connector = isLastEntry ? "└── " : "├── ";
         const nextPrefix = prefix + (isLastEntry ? "    " : "│   ");
 
@@ -156,7 +141,6 @@ export class TextEditorViewTool implements Tool<TextEditorViewParams> {
             nextPrefix,
             maxDepth,
             currentDepth + 1,
-            ignoreFilter,
           );
         } else {
           result += prefix + connector + entry.name + "\n";
@@ -169,55 +153,7 @@ export class TextEditorViewTool implements Tool<TextEditorViewParams> {
     }
   }
 
-  /**
-   * Create an ignore filter based on .gitignore files
-   */
-  private async createIgnoreFilter(): Promise<(path: string) => boolean> {
-    const ig = ignore();
 
-    // Always ignore .git directory
-    ig.add(".git");
-
-    try {
-      // Try to read .gitignore file
-      const gitignoreContent = await this.fs.readFile(".gitignore", "utf8");
-      ig.add(gitignoreContent);
-    } catch {
-      // If there's an error reading .gitignore, just proceed without it
-    }
-
-    return (path: string) => !ig.ignores(path);
-  }
-
-  /**
-   * Convert an absolute path to a relative path from the current working directory
-   */
-  private makeRelativeToCwd(absolutePath: string): string {
-    // Handle relative paths that start with "./"
-    if (absolutePath.startsWith('./')) {
-      return absolutePath.slice(2); // Remove "./" prefix
-    }
-
-    // Handle the current directory case
-    if (absolutePath === '.') {
-      return '.';
-    }
-
-    // If the path starts with the cwd, remove the cwd prefix
-    if (absolutePath.startsWith(this.cwd)) {
-      let relativePath = absolutePath.slice(this.cwd.length);
-      // Remove leading slash if present
-      if (relativePath.startsWith('/')) {
-        relativePath = relativePath.slice(1);
-      }
-      // Return '.' for empty path (current directory)
-      return relativePath || '.';
-    }
-
-    // If it doesn't start with cwd, just return the path as-is
-    // This handles cases where we might have relative paths already
-    return absolutePath;
-  }
 
   /**
    * Check if a file is likely to be binary based on file extension and content sampling

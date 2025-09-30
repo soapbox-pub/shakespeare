@@ -167,14 +167,13 @@ describe('TextEditorViewTool', () => {
     tool = new TextEditorViewTool(mockFS, '/project');
   });
 
-  it('should handle viewing current directory without ignore library errors', async () => {
+  it('should handle viewing current directory', async () => {
     const result = await tool.execute({ path: '.' });
 
     expect(result).toContain('src/');
     expect(result).toContain('package.json');
-    // .git should be filtered out by gitignore, but .gitignore should be present
     expect(result).toContain('.gitignore');
-    expect(result).not.toContain('.git/'); // Check for .git directory specifically
+    expect(result).toContain('.git/'); // .git directory should now be visible
   });
 
   it('should handle viewing subdirectory', async () => {

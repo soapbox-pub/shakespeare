@@ -69,12 +69,16 @@ export class GitPullCommand implements GitSubcommand {
         dir: this.pwd,
       });
 
-      const hasChanges = statusMatrix.some(([, headStatus, workdirStatus, stageStatus]) => {
-        return headStatus !== workdirStatus || headStatus !== stageStatus;
-      });
+      const modifiedFiles = statusMatrix
+        .filter(([, headStatus, workdirStatus, stageStatus]) => {
+          // Check for any uncommitted changes (modified, staged, or untracked)
+          return headStatus !== workdirStatus || headStatus !== stageStatus;
+        })
+        .map(([filepath]) => filepath);
 
-      if (hasChanges) {
-        return createErrorResult('error: Your local changes to the following files would be overwritten by merge:\nPlease commit your changes or stash them before you merge.');
+      if (modifiedFiles.length > 0) {
+        const fileList = modifiedFiles.map(file => `\t${file}`).join('\n');
+        return createErrorResult(`error: Your local changes to the following files would be overwritten by merge:\n${fileList}\nPlease commit your changes or stash them before you merge.`);
       }
 
       try {

@@ -81,4 +81,43 @@ describe('GitPullCommand', () => {
       });
     });
   });
+
+  describe('execute', () => {
+    it('should list modified files when there are uncommitted changes', async () => {
+      // Mock statusMatrix to return some modified files
+      const mockGitWithChanges = {
+        ...mockGit,
+        statusMatrix: async () => [
+          ['src/index.ts', 1, 2, 1], // Modified file
+          ['README.md', 1, 2, 2],   // Modified and staged
+          ['package.json', 0, 2, 0], // Untracked file
+        ],
+      } as unknown as Git;
+
+      // Mock FS to ensure .git directory exists
+      const mockFSWithGit = {
+        stat: async (path: string) => {
+          if (path.endsWith('/.git')) {
+            return { isDirectory: () => true };
+          }
+          throw new Error('File not found');
+        },
+      } as unknown as JSRuntimeFS;
+
+      const commandWithChanges = new GitPullCommand({
+        git: mockGitWithChanges,
+        fs: mockFSWithGit,
+        pwd: '/test/repo',
+      });
+
+      const result = await commandWithChanges.execute(['origin', 'main']);
+
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toContain('error: Your local changes to the following files would be overwritten by merge:');
+      expect(result.stderr).toContain('\tsrc/index.ts');
+      expect(result.stderr).toContain('\tREADME.md');
+      expect(result.stderr).toContain('\tpackage.json');
+      expect(result.stderr).toContain('Please commit your changes or stash them before you merge.');
+    });
+  });
 });

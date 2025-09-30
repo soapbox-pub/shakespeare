@@ -9,12 +9,22 @@ class MockFS implements JSRuntimeFS {
 
   constructor() {
     // Set up a basic project structure
+    this.dirs.add('/projects');
+    this.dirs.add('/projects/project1');
+    this.dirs.add('/projects/project1/src');
+    this.dirs.add('/projects/project1/.git');
+    this.dirs.add('/projects/project2');
+    this.dirs.add('/projects/project2/src');
     this.dirs.add('/project');
     this.dirs.add('/project/.git');
     this.dirs.add('/project/src');
     this.dirs.add('/project/node_modules');
     this.dirs.add('/tmp');
 
+    this.files.set('/projects/project1/package.json', '{"name": "project1"}');
+    this.files.set('/projects/project1/src/index.ts', 'console.log("project1");');
+    this.files.set('/projects/project2/package.json', '{"name": "project2"}');
+    this.files.set('/projects/project2/src/main.ts', 'console.log("project2");');
     this.files.set('/project/package.json', '{"name": "test"}');
     this.files.set('/project/src/index.ts', 'console.log("hello");');
     this.files.set('/project/.gitignore', 'node_modules\n.git\n');
@@ -65,12 +75,14 @@ class MockFS implements JSRuntimeFS {
   async readdir(path: string, options: { withFileTypes: true }): Promise<DirectoryEntry[]>;
   async readdir(path: string, options?: { withFileTypes?: boolean }): Promise<string[] | DirectoryEntry[]>;
   async readdir(path: string, options?: { withFileTypes?: boolean }): Promise<string[] | DirectoryEntry[]> {
+    // Normalize path by removing trailing slash
+    const normalizedPath = path.replace(/\/$/, '') || '/';
     const entries: string[] = [];
 
     // Find all files and directories that are direct children of this path
     for (const filePath of this.files.keys()) {
-      if (filePath.startsWith(path + '/')) {
-        const relativePath = filePath.slice(path.length + 1);
+      if (filePath.startsWith(normalizedPath + '/')) {
+        const relativePath = filePath.slice(normalizedPath.length + 1);
         const parts = relativePath.split('/');
         if (parts.length === 1) {
           entries.push(parts[0]);
@@ -79,8 +91,8 @@ class MockFS implements JSRuntimeFS {
     }
 
     for (const dirPath of this.dirs) {
-      if (dirPath.startsWith(path + '/')) {
-        const relativePath = dirPath.slice(path.length + 1);
+      if (dirPath.startsWith(normalizedPath + '/')) {
+        const relativePath = dirPath.slice(normalizedPath.length + 1);
         const parts = relativePath.split('/');
         if (parts.length === 1) {
           entries.push(parts[0]);
@@ -91,8 +103,8 @@ class MockFS implements JSRuntimeFS {
     if (options?.withFileTypes) {
       return entries.map(name => ({
         name,
-        isDirectory: () => this.dirs.has(`${path}/${name}`),
-        isFile: () => this.files.has(`${path}/${name}`)
+        isDirectory: () => this.dirs.has(`${normalizedPath}/${name}`),
+        isFile: () => this.files.has(`${normalizedPath}/${name}`)
       }));
     }
 
@@ -109,7 +121,10 @@ class MockFS implements JSRuntimeFS {
     size?: number;
     mtimeMs?: number;
   }> {
-    if (this.dirs.has(path)) {
+    // Normalize path by removing trailing slash for directories
+    const normalizedPath = path.replace(/\/$/, '') || '/';
+
+    if (this.dirs.has(normalizedPath)) {
       return {
         isDirectory: () => true,
         isFile: () => false,
@@ -118,11 +133,11 @@ class MockFS implements JSRuntimeFS {
       };
     }
 
-    if (this.files.has(path)) {
+    if (this.files.has(normalizedPath)) {
       return {
         isDirectory: () => false,
         isFile: () => true,
-        size: this.files.get(path)!.length,
+        size: this.files.get(normalizedPath)!.length,
         mtimeMs: Date.now()
       };
     }
@@ -240,5 +255,33 @@ describe('TextEditorViewTool', () => {
 
     expect(result).toContain('[Binary file: JPG file');
     expect(result).toContain('This appears to be a binary file and cannot be displayed as text.');
+  });
+
+  it('should show only project directories when viewing /projects', async () => {
+    const result = await tool.execute({ path: '/projects' });
+
+    // Should show the project directories
+    expect(result).toContain('project1/');
+    expect(result).toContain('project2/');
+
+    // Should NOT show the contents of the project directories (depth 1 only)
+    expect(result).not.toContain('package.json');
+    expect(result).not.toContain('src/');
+    expect(result).not.toContain('index.ts');
+    expect(result).not.toContain('main.ts');
+  });
+
+  it('should show only project directories when viewing /projects/', async () => {
+    const result = await tool.execute({ path: '/projects/' });
+
+    // Should show the project directories
+    expect(result).toContain('project1/');
+    expect(result).toContain('project2/');
+
+    // Should NOT show the contents of the project directories (depth 1 only)
+    expect(result).not.toContain('package.json');
+    expect(result).not.toContain('src/');
+    expect(result).not.toContain('index.ts');
+    expect(result).not.toContain('main.ts');
   });
 });

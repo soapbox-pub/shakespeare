@@ -52,6 +52,13 @@ export class TextEditorViewTool implements Tool<TextEditorViewParams> {
       const stats = await this.fs.stat(absolutePath);
 
       if (stats.isDirectory()) {
+        // Special handling for /projects directory - only show project directories, not their contents
+        const normalizedPath = absolutePath.replace(/\/$/, ''); // Remove trailing slash
+        if (normalizedPath === '/projects') {
+          const tree = await this.generateDirectoryTree(absolutePath, "", 1); // Only show immediate children
+          return tree;
+        }
+
         // If it's a directory, generate a tree-like listing
         // Note: start_line and end_line are ignored for directories
         const tree = await this.generateDirectoryTree(absolutePath);

@@ -49,11 +49,11 @@ export class ShellTool implements Tool<ShellToolParams> {
   private git: Git;
   private commands: Map<string, ShellCommand>;
 
-  readonly description = "Execute shell commands like cat, ls, cd, pwd, rm, cp, mv, echo, head, tail, grep, find, wc, touch, mkdir, sort, uniq, cut, tr, sed, diff, which, whoami, date, env, clear, git, curl, unzip, hexdump. Supports compound commands with &&, ||, ;, and | operators";
+  readonly description = "Execute shell commands like cat, ls, cd, pwd, rm, cp, mv, echo, head, tail, grep, find, wc, touch, mkdir, sort, uniq, cut, tr, sed, diff, which, whoami, date, env, clear, git, curl, unzip, hexdump. Supports compound commands with &&, ||, ;, and | operators, and output redirection with > and >> operators";
 
   readonly inputSchema = z.object({
     command: z.string().describe(
-      'Shell command to execute, e.g. "cat file.txt", "ls -la", "cd src", "pwd", "sort file.txt", "diff file1 file2", "git status", "git add .", "git commit -m \'message\'", "curl -X GET https://api.example.com", "curl -H \'Content-Type: application/json\' -d \'{"key":"value"}\' https://api.example.com". Supports compound commands with &&, ||, ;, and | operators, e.g. "pwd && ls -la", "cat file.txt | grep pattern", "git add . && git commit -m \'update\'"'
+      'Shell command to execute, e.g. "cat file.txt", "ls -la", "cd src", "pwd", "sort file.txt", "diff file1 file2", "git status", "git add .", "git commit -m \'message\'", "curl -X GET https://api.example.com", "curl -H \'Content-Type: application/json\' -d \'{"key":"value"}\' https://api.example.com". Supports compound commands with &&, ||, ;, and | operators, e.g. "pwd && ls -la", "cat file.txt | grep pattern", "git add . && git commit -m \'update\'". Also supports output redirection with > and >> operators, e.g. "echo hello > file.txt", "ls >> output.log"'
     ),
   });
 
@@ -106,17 +106,61 @@ export class ShellTool implements Tool<ShellToolParams> {
   }
 
   /**
-   * Parse a command string into command name and arguments
+   * Parse a command string into command name, arguments, and redirection info
    */
-  private parseCommand(commandStr: string): { name: string; args: string[] } {
-    // Simple parsing - split by spaces, respecting quoted strings
-    const parts: string[] = [];
-    let current = '';
+  private parseCommand(commandStr: string): { name: string; args: string[]; redirectType?: '>' | '>>'; redirectFile?: string } {
+    // First, check for redirection operators
+    let redirectType: '>' | '>>' | undefined;
+    let redirectFile: string | undefined;
+    let actualCommand = commandStr;
+
+    // Look for redirection operators (outside of quotes)
     let inQuotes = false;
     let quoteChar = '';
 
     for (let i = 0; i < commandStr.length; i++) {
       const char = commandStr[i];
+      const nextChar = commandStr[i + 1];
+
+      if (!inQuotes && (char === '"' || char === "'")) {
+        inQuotes = true;
+        quoteChar = char;
+      } else if (inQuotes && char === quoteChar) {
+        inQuotes = false;
+        quoteChar = '';
+      } else if (!inQuotes) {
+        if (char === '>' && nextChar === '>') {
+          // >> append redirection
+          redirectType = '>>';
+          actualCommand = commandStr.substring(0, i).trim();
+          redirectFile = commandStr.substring(i + 2).trim();
+          break;
+        } else if (char === '>' && nextChar !== '>') {
+          // > overwrite redirection
+          redirectType = '>';
+          actualCommand = commandStr.substring(0, i).trim();
+          redirectFile = commandStr.substring(i + 1).trim();
+          break;
+        }
+      }
+    }
+
+    // Remove quotes from redirect file if present
+    if (redirectFile) {
+      if ((redirectFile.startsWith('"') && redirectFile.endsWith('"')) ||
+          (redirectFile.startsWith("'") && redirectFile.endsWith("'"))) {
+        redirectFile = redirectFile.slice(1, -1);
+      }
+    }
+
+    // Parse the actual command part
+    const parts: string[] = [];
+    let current = '';
+    inQuotes = false;
+    quoteChar = '';
+
+    for (let i = 0; i < actualCommand.length; i++) {
+      const char = actualCommand[i];
 
       if (!inQuotes && (char === '"' || char === "'")) {
         inQuotes = true;
@@ -139,7 +183,7 @@ export class ShellTool implements Tool<ShellToolParams> {
     }
 
     const [name = '', ...args] = parts;
-    return { name, args };
+    return { name, args, redirectType, redirectFile };
   }
 
   /**
@@ -165,7 +209,7 @@ export class ShellTool implements Tool<ShellToolParams> {
         quoteChar = '';
         current += char;
       } else if (!inQuotes) {
-        // Check for compound operators
+        // Check for compound operators (but not redirection operators)
         if (char === '&' && nextChar === '&') {
           // && operator
           if (current.trim()) {
@@ -214,7 +258,7 @@ export class ShellTool implements Tool<ShellToolParams> {
    * Execute a single command and return the result
    */
   private async executeSingleCommand(commandStr: string, input?: string): Promise<{ stdout: string; stderr: string; exitCode: number; newCwd?: string }> {
-    const { name, args: cmdArgs } = this.parseCommand(commandStr);
+    const { name, args: cmdArgs, redirectType, redirectFile } = this.parseCommand(commandStr);
 
     if (!name) {
       return { stdout: '', stderr: 'Error: No command specified', exitCode: 1 };
@@ -234,6 +278,27 @@ export class ShellTool implements Tool<ShellToolParams> {
     try {
       // Execute the command
       const result = await command.execute(cmdArgs, this.cwd, input);
+
+      // Handle redirection if specified
+      if (redirectType && redirectFile) {
+        try {
+          await this.handleRedirection(result.stdout, redirectType, redirectFile);
+          // For redirection, we don't output to stdout
+          return {
+            stdout: '',
+            stderr: result.stderr || '',
+            exitCode: result.exitCode,
+            newCwd: result.newCwd,
+          };
+        } catch (redirectError) {
+          return {
+            stdout: '',
+            stderr: `Redirection error: ${redirectError instanceof Error ? redirectError.message : 'Unknown error'}`,
+            exitCode: 1,
+            newCwd: result.newCwd,
+          };
+        }
+      }
 
       return {
         stdout: result.stdout || '',
@@ -303,6 +368,32 @@ export class ShellTool implements Tool<ShellToolParams> {
     }
 
     return output || '(no output)';
+  }
+
+  /**
+   * Handle output redirection to a file
+   */
+  private async handleRedirection(output: string, redirectType: '>' | '>>', redirectFile: string): Promise<void> {
+    // Resolve the file path relative to current working directory
+    const filePath = redirectFile.startsWith('/') ? redirectFile : `${this.cwd}/${redirectFile}`;
+
+    if (redirectType === '>') {
+      // Overwrite the file
+      await this.fs.writeFile(filePath, output, 'utf8');
+    } else if (redirectType === '>>') {
+      // Append to the file
+      try {
+        const existingContent = await this.fs.readFile(filePath, 'utf8');
+        await this.fs.writeFile(filePath, existingContent + output, 'utf8');
+      } catch (error) {
+        // If file doesn't exist, create it
+        if (error instanceof Error && error.message.includes('ENOENT')) {
+          await this.fs.writeFile(filePath, output, 'utf8');
+        } else {
+          throw error;
+        }
+      }
+    }
   }
 
   /**

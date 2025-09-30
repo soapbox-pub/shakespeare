@@ -44,7 +44,7 @@ describe('ShellTool', () => {
   });
 
   it('should have correct tool properties', () => {
-    expect(shellTool.description).toBe('Execute shell commands like cat, ls, cd, pwd, rm, cp, mv, echo, head, tail, grep, find, wc, touch, mkdir, sort, uniq, cut, tr, sed, diff, which, whoami, date, env, clear, git, curl, unzip, hexdump. Supports compound commands with &&, ||, ;, and | operators');
+    expect(shellTool.description).toBe('Execute shell commands like cat, ls, cd, pwd, rm, cp, mv, echo, head, tail, grep, find, wc, touch, mkdir, sort, uniq, cut, tr, sed, diff, which, whoami, date, env, clear, git, curl, unzip, hexdump. Supports compound commands with &&, ||, ;, and | operators, and output redirection with > and >> operators');
     expect(shellTool.inputSchema).toBeDefined();
   });
 
@@ -175,6 +175,57 @@ describe('ShellTool', () => {
 
     expect(result).toBe('(no output)');
     expect(shellTool.getCurrentWorkingDirectory()).toBe('/test/dir/subdir');
+  });
+
+  describe('output redirection', () => {
+    it('should redirect output to file with > operator', async () => {
+      const result = await shellTool.execute({ command: 'echo "hello world" > test.txt' });
+
+      expect(result).toBe('(no output)');
+      expect(mockFS.writeFile).toHaveBeenCalledWith('/test/dir/test.txt', 'hello world\n', 'utf8');
+    });
+
+    it('should append output to file with >> operator', async () => {
+      vi.mocked(mockFS.readFile).mockResolvedValue('existing content\n');
+
+      const result = await shellTool.execute({ command: 'echo "new line" >> test.txt' });
+
+      expect(result).toBe('(no output)');
+      expect(mockFS.readFile).toHaveBeenCalledWith('/test/dir/test.txt', 'utf8');
+      expect(mockFS.writeFile).toHaveBeenCalledWith('/test/dir/test.txt', 'existing content\nnew line\n', 'utf8');
+    });
+
+    it('should create new file with >> operator if file does not exist', async () => {
+      vi.mocked(mockFS.readFile).mockRejectedValue(new Error('ENOENT: no such file or directory'));
+
+      const result = await shellTool.execute({ command: 'echo "first line" >> newfile.txt' });
+
+      expect(result).toBe('(no output)');
+      expect(mockFS.writeFile).toHaveBeenCalledWith('/test/dir/newfile.txt', 'first line\n', 'utf8');
+    });
+
+    it('should handle quoted filenames in redirection', async () => {
+      const result = await shellTool.execute({ command: 'echo test > "file with spaces.txt"' });
+
+      expect(result).toBe('(no output)');
+      expect(mockFS.writeFile).toHaveBeenCalledWith('/test/dir/file with spaces.txt', 'test\n', 'utf8');
+    });
+
+    it('should handle absolute paths in redirection', async () => {
+      const result = await shellTool.execute({ command: 'echo test > /tmp/absolute.txt' });
+
+      expect(result).toBe('(no output)');
+      expect(mockFS.writeFile).toHaveBeenCalledWith('/tmp/absolute.txt', 'test\n', 'utf8');
+    });
+
+    it('should handle redirection errors gracefully', async () => {
+      vi.mocked(mockFS.writeFile).mockRejectedValue(new Error('Permission denied'));
+
+      const result = await shellTool.execute({ command: 'echo test > /readonly/file.txt' });
+
+      expect(result).toContain('Redirection error: Permission denied');
+      expect(result).toContain('Exit code: 1');
+    });
   });
 
   describe('compound commands', () => {

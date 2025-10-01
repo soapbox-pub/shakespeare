@@ -763,7 +763,6 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
               <ModelSelector
                 value={providerModel}
                 onChange={setProviderModel}
-                className="w-full"
                 disabled={isLoading}
                 placeholder={t('chooseModel')}
                 open={isModelSelectorOpen}

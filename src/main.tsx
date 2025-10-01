@@ -12,4 +12,10 @@ import './index.css';
 // Using Inter Variable font for modern, clean typography
 import '@fontsource-variable/inter';
 
-createRoot(document.getElementById("root")!).render(<App />);
+// Initialize Capacitor for mobile platforms
+import { initializeCapacitor } from './capacitor';
+
+// Initialize Capacitor before rendering the app
+initializeCapacitor().then(() => {
+  createRoot(document.getElementById("root")!).render(<App />);
+});

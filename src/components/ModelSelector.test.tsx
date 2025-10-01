@@ -384,7 +384,7 @@ describe('ModelSelector', () => {
 
     // Wait for tooltip to appear
     await waitFor(() => {
-      expect(screen.getAllByText('You are using a free model. For better results, switch to a premium model.').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('You are using a free model. For better results, switch to a paid model.').length).toBeGreaterThan(0);
     });
   });
 
@@ -424,7 +424,7 @@ describe('ModelSelector', () => {
 
     // Tooltip should appear
     await waitFor(() => {
-      expect(screen.getAllByText('You are using a free model. For better results, switch to a premium model.').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('You are using a free model. For better results, switch to a paid model.').length).toBeGreaterThan(0);
     });
 
     // The button should still be clickable (no errors)

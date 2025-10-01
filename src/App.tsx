@@ -19,6 +19,7 @@ import { FSProvider } from '@/components/FSProvider';
 import { ConsoleErrorProvider } from '@/components/ConsoleErrorProvider';
 import { LightningFSAdapter } from '@/lib/LightningFSAdapter';
 import { cleanupTmpDirectory } from '@/lib/tmpCleanup';
+import { DynamicFavicon } from '@/components/DynamicFavicon';
 
 import AppRouter from './AppRouter';
 
@@ -80,13 +81,14 @@ export function App() {
                   <AISettingsProvider>
                     <GitSettingsProvider>
                       <SessionManagerProvider>
-                      <TooltipProvider>
-                        <Toaster />
-                        <Suspense>
-                          <AppRouter />
-                        </Suspense>
-                      </TooltipProvider>
-                    </SessionManagerProvider>
+                        <TooltipProvider>
+                          <Toaster />
+                          <DynamicFavicon />
+                          <Suspense>
+                            <AppRouter />
+                          </Suspense>
+                        </TooltipProvider>
+                      </SessionManagerProvider>
                     </GitSettingsProvider>
                   </AISettingsProvider>
                 </NostrProvider>

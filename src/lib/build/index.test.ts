@@ -11,12 +11,26 @@ vi.mock('../esbuild', () => ({
         {
           path: '/stdin.js',
           contents: new Uint8Array([1, 2, 3]),
+          text: '',
+          hash: 'abc123',
         },
         {
           path: '/stdin.css',
           contents: new Uint8Array([4, 5, 6]),
+          text: 'body { margin: 0; }',
+          hash: 'def456',
         },
       ],
+      metafile: {
+        outputs: {
+          'stdin.js': {
+            entryPoint: 'fs:/test/project/src/main.tsx',
+          },
+          'stdin.css': {
+            entryPoint: undefined,
+          },
+        },
+      },
     })),
   })),
 }));
@@ -52,9 +66,25 @@ describe('buildProject', () => {
         documentElement: {
           outerHTML: '<html><head></head><body><script src="/src/main.tsx"></script></body></html>',
         },
-        querySelector: vi.fn(() => ({
-          setAttribute: vi.fn(),
-        })),
+        querySelector: vi.fn((selector: string) => {
+          if (selector === 'meta[http-equiv="content-security-policy"]') {
+            // Return null for CSP meta tag (no CSP present in test)
+            return null;
+          }
+          return {
+            setAttribute: vi.fn(),
+            getAttribute: vi.fn(),
+          };
+        }),
+        scripts: [
+          {
+            getAttribute: vi.fn((attr: string) => {
+              if (attr === 'src') return '/src/main.tsx';
+              return null;
+            }),
+            type: 'module',
+          },
+        ],
         head: {
           appendChild: vi.fn(),
         },
@@ -133,10 +163,12 @@ describe('buildProject', () => {
       domParser: mockDOMParser,
     });
 
-    // Should include built files
-    expect(result.files['main.js']).toEqual(new Uint8Array([1, 2, 3]));
-    expect(result.files['main.css']).toEqual(new Uint8Array([4, 5, 6]));
+    // Should include built files with hashed names
+    expect(result.files['stdin-abc123.js']).toEqual(new Uint8Array([1, 2, 3]));
     expect(result.files['index.html']).toBeDefined();
+
+    // CSS should be embedded in HTML, not as separate file
+    expect(Object.keys(result.files)).not.toContain('stdin-def456.css');
 
     // Public files should be copied to filesystem, not included in files object
     // Verify copyFiles was called for public directory
@@ -190,10 +222,12 @@ describe('buildProject', () => {
       domParser: mockDOMParser,
     });
 
-    // Should still include built files
-    expect(result.files['main.js']).toEqual(new Uint8Array([1, 2, 3]));
-    expect(result.files['main.css']).toEqual(new Uint8Array([4, 5, 6]));
+    // Should still include built files with hashed names
+    expect(result.files['stdin-abc123.js']).toEqual(new Uint8Array([1, 2, 3]));
     expect(result.files['index.html']).toBeDefined();
+
+    // CSS should be embedded in HTML, not as separate file
+    expect(Object.keys(result.files)).not.toContain('stdin-def456.css');
 
     // Should not include any public files in bundle
     expect(Object.keys(result.files)).not.toContain('favicon.ico');
@@ -246,13 +280,15 @@ describe('buildProject', () => {
       domParser: mockDOMParser,
     });
 
-    // Should include built files
-    expect(result.files['main.js']).toEqual(new Uint8Array([1, 2, 3]));
-    expect(result.files['main.css']).toEqual(new Uint8Array([4, 5, 6]));
+    // Should include built files with hashed names
+    expect(result.files['stdin-abc123.js']).toEqual(new Uint8Array([1, 2, 3]));
     expect(result.files['index.html']).toBeDefined();
 
-    // Should have exactly 3 files (main.js, main.css, index.html)
-    expect(Object.keys(result.files)).toHaveLength(3);
+    // CSS should be embedded in HTML, not as separate file
+    expect(Object.keys(result.files)).not.toContain('stdin-def456.css');
+
+    // Should have exactly 2 files (stdin-abc123.js, index.html)
+    expect(Object.keys(result.files)).toHaveLength(2);
 
     // Should try to copy public files but directory is empty
     expect(copyFiles).toHaveBeenCalledWith(mockFS, mockFS, '/test/project/public', '/test/project/dist');

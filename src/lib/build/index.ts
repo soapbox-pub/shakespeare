@@ -1,6 +1,7 @@
 import { join } from "path-browserify";
 import { getEsbuild } from "@/lib/esbuild";
 import { copyFiles } from "@/lib/copyFiles";
+import { addDomainToCSP } from "@/lib/csp";
 
 import { shakespearePlugin } from "./shakespearePlugin";
 import { esmPlugin } from "./esmPlugin";
@@ -108,9 +109,15 @@ async function bundle(
     }
   }
 
-  // HACK: Remove existing CSP header for now.
-  // TODO: Parse CSP and ensure esm.sh is allowed.
-  doc.querySelector("meta[http-equiv=\"content-security-policy\"]")?.remove();
+  // Parse CSP and ensure esm.sh is allowed for necessary directives
+  const cspMeta = doc.querySelector("meta[http-equiv=\"content-security-policy\"]");
+  if (cspMeta) {
+    const cspContent = cspMeta.getAttribute("content");
+    if (cspContent) {
+      const updatedCSP = updateCSPForEsmSh(cspContent);
+      cspMeta.setAttribute("content", updatedCSP);
+    }
+  }
 
   const updatedHtml = "<!DOCTYPE html>\n" + doc.documentElement.outerHTML;
   dist["index.html"] = new TextEncoder().encode(updatedHtml);
@@ -200,4 +207,18 @@ async function fileExists(fs: JSRuntimeFS, path: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+/** Updates CSP to allow esm.sh for scripts, assets, fonts, and CSS */
+export function updateCSPForEsmSh(csp: string): string {
+  const esmShDirectives = [
+    'script-src',     // For JavaScript modules
+    'img-src',        // For images
+    'media-src',      // For video/audio
+    'font-src',       // For fonts
+    'style-src',      // For CSS
+    'connect-src'     // For fetch/XHR requests to esm.sh
+  ];
+
+  return addDomainToCSP(csp, 'https://esm.sh', esmShDirectives);
 }

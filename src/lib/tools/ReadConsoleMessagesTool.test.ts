@@ -4,8 +4,9 @@ import {
   addConsoleMessage,
   clearConsoleMessages,
   ProjectPreviewConsoleError,
-  addErrorListener,
-  removeErrorListener
+  addErrorStateListener,
+  removeErrorStateListener,
+  getHasConsoleErrors
 } from './ReadConsoleMessagesTool';
 
 describe('ReadConsoleMessagesTool', () => {
@@ -80,58 +81,83 @@ describe('ProjectPreviewConsoleError', () => {
   });
 });
 
-describe('Console Error Listeners', () => {
+describe('Console Error State Management', () => {
   beforeEach(() => {
     clearConsoleMessages();
   });
 
-  it('should trigger error listener when console error is added', async () => {
-    const errorListener = vi.fn();
-    addErrorListener(errorListener);
+  it('should track error state with boolean', () => {
+    expect(getHasConsoleErrors()).toBe(false);
 
-    // Add an error message
-    addConsoleMessage('error', 'Test error message');
-
-    // Wait a bit for the listener to be called
-    await new Promise(resolve => setTimeout(resolve, 10));
-
-    expect(errorListener).toHaveBeenCalledTimes(1);
-    expect(errorListener).toHaveBeenCalledWith(
-      expect.objectContaining({
-        message: 'Console error detected: Test error message',
-        logs: expect.arrayContaining([
-          expect.objectContaining({
-            level: 'error',
-            message: 'Test error message'
-          })
-        ])
-      })
-    );
-
-    removeErrorListener(errorListener);
-  });
-
-  it('should not trigger error listener for non-error messages', async () => {
-    const errorListener = vi.fn();
-    addErrorListener(errorListener);
-
-    // Add non-error messages
+    // Add non-error messages - should not change state
     addConsoleMessage('log', 'Test log message');
     addConsoleMessage('warn', 'Test warning message');
-    addConsoleMessage('info', 'Test info message');
+    expect(getHasConsoleErrors()).toBe(false);
+
+    // Add error message - should change state
+    addConsoleMessage('error', 'Test error message');
+    expect(getHasConsoleErrors()).toBe(true);
+
+    // Add another error - should remain true
+    addConsoleMessage('error', 'Another error');
+    expect(getHasConsoleErrors()).toBe(true);
+  });
+
+  it('should trigger error state listener when error state changes', async () => {
+    const errorStateListener = vi.fn();
+    addErrorStateListener(errorStateListener);
+
+    // Add non-error messages - should not trigger
+    addConsoleMessage('log', 'Test log message');
+    addConsoleMessage('warn', 'Test warning message');
 
     // Wait a bit
     await new Promise(resolve => setTimeout(resolve, 10));
+    expect(errorStateListener).not.toHaveBeenCalled();
 
-    expect(errorListener).not.toHaveBeenCalled();
+    // Add error message - should trigger with true
+    addConsoleMessage('error', 'Test error message');
 
-    removeErrorListener(errorListener);
+    // Wait a bit
+    await new Promise(resolve => setTimeout(resolve, 10));
+    expect(errorStateListener).toHaveBeenCalledTimes(1);
+    expect(errorStateListener).toHaveBeenCalledWith(true);
+
+    // Add another error - should not trigger again (already true)
+    addConsoleMessage('error', 'Another error');
+
+    // Wait a bit
+    await new Promise(resolve => setTimeout(resolve, 10));
+    expect(errorStateListener).toHaveBeenCalledTimes(1); // Still only called once
+
+    removeErrorStateListener(errorStateListener);
   });
 
-  it('should remove error listener correctly', async () => {
-    const errorListener = vi.fn();
-    addErrorListener(errorListener);
-    removeErrorListener(errorListener);
+  it('should reset error state when clearing messages', async () => {
+    const errorStateListener = vi.fn();
+    addErrorStateListener(errorStateListener);
+
+    // Add error to set state to true
+    addConsoleMessage('error', 'Test error message');
+    expect(getHasConsoleErrors()).toBe(true);
+
+    // Clear messages - should reset state and notify
+    clearConsoleMessages();
+    expect(getHasConsoleErrors()).toBe(false);
+
+    // Wait a bit
+    await new Promise(resolve => setTimeout(resolve, 10));
+    expect(errorStateListener).toHaveBeenCalledTimes(2);
+    expect(errorStateListener).toHaveBeenNthCalledWith(1, true);  // First call when error added
+    expect(errorStateListener).toHaveBeenNthCalledWith(2, false); // Second call when cleared
+
+    removeErrorStateListener(errorStateListener);
+  });
+
+  it('should remove error state listener correctly', async () => {
+    const errorStateListener = vi.fn();
+    addErrorStateListener(errorStateListener);
+    removeErrorStateListener(errorStateListener);
 
     // Add an error message
     addConsoleMessage('error', 'Test error message');
@@ -139,7 +165,7 @@ describe('Console Error Listeners', () => {
     // Wait a bit
     await new Promise(resolve => setTimeout(resolve, 10));
 
-    expect(errorListener).not.toHaveBeenCalled();
+    expect(errorStateListener).not.toHaveBeenCalled();
   });
 
   it('should handle listener errors gracefully', async () => {
@@ -148,8 +174,8 @@ describe('Console Error Listeners', () => {
     });
     const workingListener = vi.fn();
 
-    addErrorListener(faultyListener);
-    addErrorListener(workingListener);
+    addErrorStateListener(faultyListener);
+    addErrorStateListener(workingListener);
 
     // Should not throw despite faulty listener
     expect(() => {
@@ -162,7 +188,7 @@ describe('Console Error Listeners', () => {
     expect(faultyListener).toHaveBeenCalled();
     expect(workingListener).toHaveBeenCalled();
 
-    removeErrorListener(faultyListener);
-    removeErrorListener(workingListener);
+    removeErrorStateListener(faultyListener);
+    removeErrorStateListener(workingListener);
   });
 });

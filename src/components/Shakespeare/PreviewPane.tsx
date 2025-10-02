@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { useFS } from '@/hooks/useFS';
 import { addConsoleMessage, getConsoleMessages, type ConsoleMessage } from '@/lib/tools/ReadConsoleMessagesTool';
+import { useConsoleError } from '@/hooks/useConsoleError';
 import { useBuildProject } from '@/hooks/useBuildProject';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
@@ -89,6 +90,9 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const { fs } = useFS();
   const projectsManager = useProjectsManager();
+
+  // Use console error state from provider
+  const { hasErrors: hasConsoleErrors, clearErrors } = useConsoleError();
 
   const { mutate: buildProject, isPending: isBuildLoading } = useBuildProject(projectId);
 
@@ -463,7 +467,10 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
     setCurrentPath('/');
     setNavigationHistory(['/']);
     setHistoryIndex(0);
-  }, [projectId]);
+
+    // Clear console messages for new project
+    clearErrors();
+  }, [projectId, clearErrors]);
 
   useEffect(() => {
     checkForBuiltProject();
@@ -511,6 +518,14 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
   const ConsoleDropdown = () => {
     const [isOpen, setIsOpen] = useState(false);
     const [copiedMessageIndex, setCopiedMessageIndex] = useState<number | null>(null);
+    const [messages, setMessages] = useState<ConsoleMessage[]>([]);
+
+    // Only fetch messages when dropdown opens
+    useEffect(() => {
+      if (isOpen) {
+        setMessages(getConsoleMessages());
+      }
+    }, [isOpen]);
 
     const copyMessageToClipboard = async (msg: ConsoleMessage, index: number) => {
       try {
@@ -522,9 +537,13 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
       }
     };
 
-    const consoleMessages = getConsoleMessages();
-    const messageCount = consoleMessages.length;
-    const hasErrors = consoleMessages.some(msg => msg.level === 'error');
+    const handleClearMessages = () => {
+      clearErrors();
+      setMessages([]);
+      setCopiedMessageIndex(null);
+    };
+
+    const messageCount = messages.length;
 
     return (
       <Popover open={isOpen} onOpenChange={setIsOpen}>
@@ -535,7 +554,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
             className="h-8 w-8 p-0 relative"
           >
             <Bug className="h-4 w-4" />
-            {hasErrors && (
+            {hasConsoleErrors && (
               <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full border-2 border-background bg-red-500" />
             )}
           </Button>
@@ -555,7 +574,21 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
                   <p className="text-xs text-muted-foreground mt-1">Messages from your project will appear here</p>
                 </div>
               ) : (
-                consoleMessages.map((msg, index) => (
+                <>
+                  {/* Clear button when messages exist */}
+                  {messageCount > 0 && (
+                    <div className="flex justify-end pb-2 border-b border-border/50 mb-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleClearMessages}
+                        className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
+                      >
+                        Clear all
+                      </Button>
+                    </div>
+                  )}
+                  {messages.map((msg, index) => (
                   <div
                     key={index}
                     className="group relative py-0.5 px-1 hover:bg-muted/50 transition-colors duration-150 rounded cursor-pointer"
@@ -590,7 +623,8 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
                       )}
                     </Button>
                   </div>
-                ))
+                  ))}
+                </>
               )}
             </div>
           </div>

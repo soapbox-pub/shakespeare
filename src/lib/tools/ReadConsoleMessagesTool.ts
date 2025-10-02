@@ -25,7 +25,10 @@ export class ProjectPreviewConsoleError extends Error {
 
 // Simple global console messages storage
 const consoleMessages: ConsoleMessage[] = [];
-const errorListeners: Array<(error: ProjectPreviewConsoleError) => void> = [];
+
+// Boolean-based error detection system
+let hasConsoleErrors = false;
+const errorStateListeners: Array<(hasErrors: boolean) => void> = [];
 
 export const addConsoleMessage = (level: ConsoleMessage['level'], message: string) => {
   const consoleMessage: ConsoleMessage = {
@@ -35,18 +38,16 @@ export const addConsoleMessage = (level: ConsoleMessage['level'], message: strin
 
   consoleMessages.push(consoleMessage);
 
-  // If this is an error, notify listeners
-  if (level === 'error') {
-    const error = new ProjectPreviewConsoleError(
-      `Console error detected: ${message}`,
-      consoleMessages.filter(msg => msg.level === 'error')
-    );
+  // If this is an error, update boolean state
+  if (level === 'error' && !hasConsoleErrors) {
+    hasConsoleErrors = true;
 
-    errorListeners.forEach(listener => {
+    // Notify boolean state listeners
+    errorStateListeners.forEach(listener => {
       try {
-        listener(error);
+        listener(true);
       } catch (err) {
-        console.warn('Error listener failed:', err);
+        console.warn('Error state listener failed:', err);
       }
     });
   }
@@ -56,19 +57,38 @@ export const getConsoleMessages = (): ConsoleMessage[] => {
   return [...consoleMessages];
 };
 
-export const addErrorListener = (listener: (error: ProjectPreviewConsoleError) => void) => {
-  errorListeners.push(listener);
+export const addErrorStateListener = (listener: (hasErrors: boolean) => void) => {
+  errorStateListeners.push(listener);
 };
 
-export const removeErrorListener = (listener: (error: ProjectPreviewConsoleError) => void) => {
-  const index = errorListeners.indexOf(listener);
+export const removeErrorStateListener = (listener: (hasErrors: boolean) => void) => {
+  const index = errorStateListeners.indexOf(listener);
   if (index > -1) {
-    errorListeners.splice(index, 1);
+    errorStateListeners.splice(index, 1);
   }
+};
+
+export const getHasConsoleErrors = (): boolean => {
+  return hasConsoleErrors;
 };
 
 export const clearConsoleMessages = () => {
   consoleMessages.length = 0;
+
+  // Reset error state
+  const hadErrors = hasConsoleErrors;
+  hasConsoleErrors = false;
+
+  // Notify listeners if state changed
+  if (hadErrors) {
+    errorStateListeners.forEach(listener => {
+      try {
+        listener(false);
+      } catch (err) {
+        console.warn('Error state listener failed:', err);
+      }
+    });
+  }
 };
 
 export class ReadConsoleMessagesTool implements Tool<ReadConsoleMessagesParams> {

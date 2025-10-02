@@ -18,7 +18,7 @@ import { GitStatusIndicator } from '@/components/GitStatusIndicator';
 import { StarButton } from '@/components/StarButton';
 import { useBuildProject } from '@/hooks/useBuildProject';
 import { useIsProjectPreviewable } from '@/hooks/useIsProjectPreviewable';
-import { clearConsoleMessages, ProjectPreviewConsoleError, addErrorListener, removeErrorListener } from '@/lib/tools/ReadConsoleMessagesTool';
+import { useConsoleError } from '@/hooks/useConsoleError';
 
 export function ProjectView() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -29,7 +29,9 @@ export function ProjectView() {
   const [mobileView, setMobileView] = useState<'chat' | 'preview' | 'code'>('chat');
   const [isAILoading, setIsAILoading] = useState(false);
   const [isProjectDetailsOpen, setIsProjectDetailsOpen] = useState(false);
-  const [consoleError, setConsoleError] = useState<ProjectPreviewConsoleError | null>(null);
+
+  // Use console error state from provider
+  const { consoleError, dismissConsoleError, clearErrors } = useConsoleError();
 
   const projectsManager = useProjectsManager();
   const chatPaneRef = useRef<ChatPaneRef>(null);
@@ -48,14 +50,13 @@ export function ProjectView() {
       const projectData = await projectsManager.getProject(projectId);
       setProject(projectData);
       // Clear console messages and error state when switching projects
-      clearConsoleMessages();
-      setConsoleError(null);
+      clearErrors();
     } catch (error) {
       console.error('Failed to load project:', error);
     } finally {
       setIsLoading(false);
     }
-  }, [projectId, projectsManager]);
+  }, [projectId, projectsManager, clearErrors]);
 
   useEffect(() => {
     loadProject();
@@ -81,15 +82,7 @@ export function ProjectView() {
     }
   }, [isPreviewable, mobileView, activeTab]);
 
-  // Global console error listener (always active regardless of current tab)
-  useEffect(() => {
-    const handleConsoleError = (error: ProjectPreviewConsoleError) => {
-      setConsoleError(error);
-    };
-
-    addErrorListener(handleConsoleError);
-    return () => removeErrorListener(handleConsoleError);
-  }, []);
+  // Console error handling is now managed by useQuillyConsoleErrors hook
 
   const handleNewChat = () => {
     // Reset to chat view on mobile when starting new chat
@@ -113,7 +106,7 @@ export function ProjectView() {
   };
 
   const handleDismissConsoleError = () => {
-    setConsoleError(null);
+    dismissConsoleError();
   };
 
   const handleProjectDeleted = async () => {

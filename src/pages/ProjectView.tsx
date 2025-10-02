@@ -82,8 +82,6 @@ export function ProjectView() {
     }
   }, [isPreviewable, mobileView, activeTab]);
 
-  // Console error handling is now managed by useQuillyConsoleErrors hook
-
   const handleNewChat = () => {
     // Reset to chat view on mobile when starting new chat
     if (isMobile) {

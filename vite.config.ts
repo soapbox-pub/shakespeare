@@ -13,6 +13,7 @@ export default defineConfig(() => ({
     react(),
   ],
   build: {
+    sourcemap: true,
     rollupOptions: {
       output: {
         manualChunks(id) {

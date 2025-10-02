@@ -537,12 +537,6 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
       }
     };
 
-    const handleClearMessages = () => {
-      clearErrors();
-      setMessages([]);
-      setCopiedMessageIndex(null);
-    };
-
     const messageCount = messages.length;
 
     return (
@@ -574,21 +568,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
                   <p className="text-xs text-muted-foreground mt-1">Messages from your project will appear here</p>
                 </div>
               ) : (
-                <>
-                  {/* Clear button when messages exist */}
-                  {messageCount > 0 && (
-                    <div className="flex justify-end pb-2 border-b border-border/50 mb-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleClearMessages}
-                        className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
-                      >
-                        Clear all
-                      </Button>
-                    </div>
-                  )}
-                  {messages.map((msg, index) => (
+                messages.map((msg, index) => (
                   <div
                     key={index}
                     className="group relative py-0.5 px-1 hover:bg-muted/50 transition-colors duration-150 rounded cursor-pointer"
@@ -623,8 +603,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
                       )}
                     </Button>
                   </div>
-                  ))}
-                </>
+                ))
               )}
             </div>
           </div>

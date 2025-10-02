@@ -73,6 +73,10 @@ async function bundle(
     outdir: "/",
     jsx: "automatic",
     metafile: true,
+    sourcemap: true,
+    entryNames: "[name]-[hash]",
+    chunkNames: "[name]-[hash]",
+    assetNames: "[name]-[hash]",
     plugins: [
       shakespearePlugin(),
       fsPlugin(fs, `${projectPath}/src`),
@@ -87,8 +91,8 @@ async function bundle(
 
   for (const file of results.outputFiles) {
     const ext = file.path.split('.').pop();
-    const filename = `${file.path.split('/').pop()?.split('.')?.[0] || "chunk"}-${file.hash}.${ext}`;
-    const entryPoint = results.metafile.outputs[file.path.slice(1)]?.entryPoint?.replace(/^fs:/, '');
+    const filename = `${file.path.slice(1)}`;
+    const entryPoint = results.metafile.outputs[filename]?.entryPoint?.replace(/^fs:/, '');
     const script = entryPoint ? entryScripts[entryPoint] : null;
 
     if (script) {
@@ -106,6 +110,8 @@ async function bundle(
       style.setAttribute("type", "text/tailwindcss");
       style.textContent = file.text;
       doc.head.appendChild(style);
+    } else {
+      dist[filename] = file.contents;
     }
   }
 

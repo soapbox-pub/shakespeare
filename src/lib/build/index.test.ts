@@ -9,13 +9,13 @@ vi.mock('../esbuild', () => ({
     build: vi.fn(() => ({
       outputFiles: [
         {
-          path: '/stdin.js',
+          path: '/stdin-abc123.js',
           contents: new Uint8Array([1, 2, 3]),
           text: '',
           hash: 'abc123',
         },
         {
-          path: '/stdin.css',
+          path: '/stdin-def456.css',
           contents: new Uint8Array([4, 5, 6]),
           text: 'body { margin: 0; }',
           hash: 'def456',
@@ -23,10 +23,10 @@ vi.mock('../esbuild', () => ({
       ],
       metafile: {
         outputs: {
-          'stdin.js': {
+          'stdin-abc123.js': {
             entryPoint: 'fs:/test/project/src/main.tsx',
           },
-          'stdin.css': {
+          'stdin-def456.css': {
             entryPoint: undefined,
           },
         },

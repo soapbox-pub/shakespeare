@@ -457,6 +457,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
   }, [selectedFile, loadFileContent]);
 
   // Reset selected file and navigation history when projectId changes
+  const prevProjectIdRef = useRef<string>();
   useEffect(() => {
     setSelectedFile(null);
     setFileContent('');
@@ -468,8 +469,11 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
     setNavigationHistory(['/']);
     setHistoryIndex(0);
 
-    // Clear console messages for new project
-    clearErrors();
+    // Only clear console messages when projectId actually changes (not on initial mount)
+    if (prevProjectIdRef.current && prevProjectIdRef.current !== projectId) {
+      clearErrors();
+    }
+    prevProjectIdRef.current = projectId;
   }, [projectId, clearErrors]);
 
   useEffect(() => {

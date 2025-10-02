@@ -16,6 +16,7 @@ import { AISettingsProvider } from '@/components/AISettingsProvider';
 import { GitSettingsProvider } from '@/components/GitSettingsProvider';
 import { SessionManagerProvider } from '@/components/SessionManagerProvider';
 import { FSProvider } from '@/components/FSProvider';
+import { ConsoleErrorProvider } from '@/components/ConsoleErrorProvider';
 import { LightningFSAdapter } from '@/lib/LightningFSAdapter';
 import { cleanupTmpDirectory } from '@/lib/tmpCleanup';
 
@@ -73,22 +74,24 @@ export function App() {
         <AppProvider storageKey="nostr:app-config" defaultConfig={defaultConfig} presetRelays={presetRelays}>
           <FSProvider fs={fs}>
             <FSCleanupHandler />
-            <NostrLoginProvider storageKey='nostr:login'>
-              <NostrProvider>
-                <AISettingsProvider>
-                  <GitSettingsProvider>
-                    <SessionManagerProvider>
-                    <TooltipProvider>
-                      <Toaster />
-                      <Suspense>
-                        <AppRouter />
-                      </Suspense>
-                    </TooltipProvider>
-                  </SessionManagerProvider>
-                  </GitSettingsProvider>
-                </AISettingsProvider>
-              </NostrProvider>
-            </NostrLoginProvider>
+            <ConsoleErrorProvider>
+              <NostrLoginProvider storageKey='nostr:login'>
+                <NostrProvider>
+                  <AISettingsProvider>
+                    <GitSettingsProvider>
+                      <SessionManagerProvider>
+                      <TooltipProvider>
+                        <Toaster />
+                        <Suspense>
+                          <AppRouter />
+                        </Suspense>
+                      </TooltipProvider>
+                    </SessionManagerProvider>
+                    </GitSettingsProvider>
+                  </AISettingsProvider>
+                </NostrProvider>
+              </NostrLoginProvider>
+            </ConsoleErrorProvider>
           </FSProvider>
         </AppProvider>
       </QueryClientProvider>

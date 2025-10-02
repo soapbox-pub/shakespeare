@@ -1,3 +1,4 @@
+import { join } from "path-browserify";
 import { getEsbuild } from "@/lib/esbuild";
 import { copyFiles } from "@/lib/copyFiles";
 
@@ -32,25 +33,47 @@ async function bundle(
   );
 
   const doc = domParser.parseFromString(indexHtmlText, "text/html");
+  const entryPoints: string[] = [];
+  const entryScripts: Record<string, HTMLScriptElement> = {};
+
+  // Find all module scripts with relative paths in index.html
+  for (const script of doc.scripts) {
+    const scriptSrc = script.getAttribute("src");
+
+    if (scriptSrc && script.type === "module" && /^[./]/.test(scriptSrc)) {
+      const path = join(projectPath, scriptSrc);
+
+      // Files in the public directory take precedence over source files
+      if (scriptSrc.startsWith("/")) {
+        if (await fileExists(fs, join(projectPath, "public", scriptSrc))) {
+          continue;
+        }
+      }
+
+      entryPoints.push(path);
+      entryScripts[path] = script;
+    }
+  }
+
+  // Enable Tailwind CSS if a config file is present
+  for (const path of ["tailwind.config.ts", "tailwind.config.js"]) {
+    if (await fileExists(fs, join(projectPath, path))) {
+      entryPoints.push(`shakespeare:${path}`);
+      break;
+    }
+  }
 
   const results = await esbuild.build({
-    stdin: {
-      contents: `
-        import "@/main.tsx";
-        import tailwindConfig from "@/../tailwind.config.ts";
-        import "https://esm.sh/tailwindcss-cdn@3";
-        tailwind.config = tailwindConfig;
-      `,
-      loader: "tsx",
-    },
+    entryPoints,
     bundle: true,
     write: false,
     format: "esm",
     target,
     outdir: "/",
     jsx: "automatic",
+    metafile: true,
     plugins: [
-      shakespearePlugin(), // Takes precedence over esmPlugin
+      shakespearePlugin(),
       fsPlugin(fs, `${projectPath}/src`),
       esmPlugin(JSON.parse(packageLockText), target),
     ],
@@ -62,18 +85,32 @@ async function bundle(
   const dist: Record<string, Uint8Array> = {};
 
   for (const file of results.outputFiles) {
-    const relativePath = file.path.replace(/^\//, "");
-    if (relativePath === "stdin.js") {
-      dist["main.js"] = file.contents;
-    } else if (relativePath === "stdin.css") {
-      dist["main.css"] = file.contents;
-    } else {
-      dist[relativePath] = file.contents;
+    const ext = file.path.split('.').pop();
+    const filename = `${file.path.split('/').pop()?.split('.')?.[0] || "chunk"}-${file.hash}.${ext}`;
+    const entryPoint = results.metafile.outputs[file.path.slice(1)]?.entryPoint?.replace(/^fs:/, '');
+    const script = entryPoint ? entryScripts[entryPoint] : null;
+
+    if (script) {
+      script.setAttribute("src", "/" + filename);
+      dist[filename] = file.contents;
+    } else if (ext === "js") {
+      const script = document.createElement("script");
+      script.type = "module";
+      script.src = "/" + filename;
+      doc.head.appendChild(script);
+      dist[filename] = file.contents;
+    } else if (ext === "css") {
+      // Embed stylesheets as Tailwind CSS styles
+      const style = doc.createElement("style");
+      style.setAttribute("type", "text/tailwindcss");
+      style.textContent = file.text;
+      doc.head.appendChild(style);
     }
   }
 
-  // Update index.html with proper script and link tags
-  updateIndexHtml(doc, dist);
+  // HACK: Remove existing CSP header for now.
+  // TODO: Parse CSP and ensure esm.sh is allowed.
+  doc.querySelector("meta[http-equiv=\"content-security-policy\"]")?.remove();
 
   const updatedHtml = "<!DOCTYPE html>\n" + doc.documentElement.outerHTML;
   dist["index.html"] = new TextEncoder().encode(updatedHtml);
@@ -156,20 +193,11 @@ export async function buildProject(options: BuildProjectOptions): Promise<{
   };
 }
 
-function updateIndexHtml(doc: Document, dist: Record<string, Uint8Array>): void {
-  const entrypoint = doc.querySelector('script[src="/src/main.tsx"]');
-
-  if (!entrypoint) {
-    throw new Error("No entrypoint script found in index.html");
-  }
-
-  entrypoint.setAttribute("src", "/main.js");
-
-  const css = dist["main.css"];
-  if (css) {
-    const style = doc.createElement("style");
-    style.setAttribute("type", "text/tailwindcss");
-    style.textContent = new TextDecoder().decode(css);
-    doc.head.appendChild(style);
+async function fileExists(fs: JSRuntimeFS, path: string): Promise<boolean> {
+  try {
+    const stat = await fs.stat(path);
+    return stat.isFile();
+  } catch {
+    return false;
   }
 }

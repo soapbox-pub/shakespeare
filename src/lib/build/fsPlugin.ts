@@ -16,9 +16,15 @@ export function fsPlugin(fs: JSRuntimeFS, cwd: string): Plugin {
       });
 
       build.onResolve({ filter: /.*/ }, async (args) => {
-        let resolved: string;
+        // Skip resolving paths from external URLs
+        if (/^https?:\/\//.test(args.importer)) {
+          return;
+        }
 
-        if (args.path.startsWith("@/")) {
+        let resolved: string;
+        if (args.path.startsWith("/")) {
+          resolved = args.path;
+        } else if (args.path.startsWith("@/")) {
           resolved = join(cwd, args.path.slice(2));
         } else if (args.kind === "entry-point") {
           resolved = join(cwd, args.path);
@@ -26,6 +32,12 @@ export function fsPlugin(fs: JSRuntimeFS, cwd: string): Plugin {
           resolved = join(dirname(args.importer), args.path);
         } else {
           return;
+        }
+
+        // Security: prevent accessing files outside the project directory
+        const projectDir = join(cwd, "..");
+        if (resolved.startsWith("/") && !resolved.startsWith(projectDir)) {
+          throw new Error(`Access to files outside the project directory is not allowed: ${resolved}`);
         }
 
         // Vite query parameters https://vite.dev/guide/assets

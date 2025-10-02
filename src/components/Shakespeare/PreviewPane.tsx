@@ -518,14 +518,8 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
   const ConsoleDropdown = () => {
     const [isOpen, setIsOpen] = useState(false);
     const [copiedMessageIndex, setCopiedMessageIndex] = useState<number | null>(null);
-    const [messages, setMessages] = useState<ConsoleMessage[]>([]);
 
-    // Only fetch messages when dropdown opens
-    useEffect(() => {
-      if (isOpen) {
-        setMessages(getConsoleMessages());
-      }
-    }, [isOpen]);
+    const messages = isOpen ? getConsoleMessages() : [];
 
     const copyMessageToClipboard = async (msg: ConsoleMessage, index: number) => {
       try {

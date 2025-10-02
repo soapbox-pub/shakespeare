@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { renderHook, act, waitFor } from '@testing-library/react';
+import { renderHook, act } from '@testing-library/react';
 import { ReactNode } from 'react';
 import { ConsoleErrorProvider } from './ConsoleErrorProvider';
 import { useConsoleError } from '@/hooks/useConsoleError';
@@ -61,7 +61,7 @@ describe('ConsoleErrorProvider', () => {
     expect(result.current.consoleError).toBeNull();
   });
 
-  it('should update consoleError with latest error message', async () => {
+  it('should update consoleError with latest error message', () => {
     const { result } = renderHook(() => useConsoleError(), {
       wrapper: TestWrapper,
     });
@@ -78,11 +78,7 @@ describe('ConsoleErrorProvider', () => {
       addConsoleMessage('error', 'Second error');
     });
 
-    // Wait for polling to detect the new error
-    await waitFor(() => {
-      expect(result.current.consoleError?.message).toBe('Console error detected: Second error');
-    });
-
+    expect(result.current.consoleError?.message).toBe('Console error detected: Second error');
     expect(result.current.consoleError?.logs).toHaveLength(2);
   });
 
@@ -130,7 +126,7 @@ describe('ConsoleErrorProvider', () => {
     expect(result.current.hasErrors).toBe(true);
   });
 
-  it('should include all error messages in console error logs', async () => {
+  it('should include all error messages in console error logs', () => {
     const { result } = renderHook(() => useConsoleError(), {
       wrapper: TestWrapper,
     });
@@ -145,11 +141,7 @@ describe('ConsoleErrorProvider', () => {
       addConsoleMessage('error', 'Third error');
     });
 
-    // Wait for polling to detect all the new errors
-    await waitFor(() => {
-      expect(result.current.consoleError?.message).toBe('Console error detected: Third error');
-    });
-
+    expect(result.current.consoleError?.message).toBe('Console error detected: Third error');
     expect(result.current.consoleError?.logs).toHaveLength(3);
     expect(result.current.consoleError?.logs.map(log => log.message)).toEqual([
       'First error',

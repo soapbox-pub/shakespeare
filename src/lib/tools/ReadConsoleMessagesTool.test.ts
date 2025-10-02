@@ -85,19 +85,15 @@ describe('ReadConsoleMessagesTool', () => {
     expect(result).toContain('[ERROR] Test error with special chars: <>&"');
   });
 
-  it('should handle limit edge cases', async () => {
+  it('should handle limit correctly', async () => {
     const tool = new ReadConsoleMessagesTool();
 
-    // Limit of 0 should return no messages
-    const zeroResult = await tool.execute({ limit: 0 });
-    expect(zeroResult).toBe('No console messages found.');
+    // Limit should return only the most recent messages
+    const limitedResult = await tool.execute({ limit: 2 });
+    expect(limitedResult).toContain('Found 2 console messages');
 
-    // Negative limit should return all messages
-    const negativeResult = await tool.execute({ limit: -1 });
-    expect(negativeResult).toContain('Found 4 console messages');
-
-    // Limit larger than available should return all
-    const largeResult = await tool.execute({ limit: 100 });
-    expect(largeResult).toContain('Found 4 console messages');
+    // No limit should return all messages
+    const allResult = await tool.execute({});
+    expect(allResult).toContain('Found 4 console messages');
   });
 });

@@ -4,8 +4,8 @@ import {
   clearConsoleMessages,
   getConsoleMessages,
   getHasConsoleErrors,
-  addErrorStateListener,
-  removeErrorStateListener,
+  addConsoleMessageListener,
+  removeConsoleMessageListener,
   ProjectPreviewConsoleError
 } from './consoleMessages';
 
@@ -35,28 +35,27 @@ describe('Console Messages System', () => {
       expect(getHasConsoleErrors()).toBe(true);
     });
 
-    it('should only trigger error state once for multiple errors', () => {
+    it('should notify listeners when messages are added', () => {
       const listener = vi.fn();
-      addErrorStateListener(listener);
+      addConsoleMessageListener(listener);
 
       addConsoleMessage('error', 'First error');
       expect(listener).toHaveBeenCalledTimes(1);
-      expect(listener).toHaveBeenCalledWith(true);
 
       addConsoleMessage('error', 'Second error');
-      expect(listener).toHaveBeenCalledTimes(1); // Should not be called again
+      expect(listener).toHaveBeenCalledTimes(2);
 
-      removeErrorStateListener(listener);
+      removeConsoleMessageListener(listener);
     });
   });
 
   describe('getConsoleMessages', () => {
     it('should return a copy of messages array', () => {
       addConsoleMessage('info', 'Test message');
-      
+
       const messages1 = getConsoleMessages();
       const messages2 = getConsoleMessages();
-      
+
       expect(messages1).toEqual(messages2);
       expect(messages1).not.toBe(messages2); // Different array instances
     });
@@ -81,52 +80,40 @@ describe('Console Messages System', () => {
       expect(getHasConsoleErrors()).toBe(false);
     });
 
-    it('should notify listeners when error state changes', () => {
+    it('should notify listeners when messages are cleared', () => {
       const listener = vi.fn();
-      addErrorStateListener(listener);
+      addConsoleMessageListener(listener);
 
       addConsoleMessage('error', 'Error message');
-      expect(listener).toHaveBeenCalledWith(true);
+      expect(listener).toHaveBeenCalledTimes(1);
 
       clearConsoleMessages();
-      expect(listener).toHaveBeenCalledWith(false);
       expect(listener).toHaveBeenCalledTimes(2);
 
-      removeErrorStateListener(listener);
-    });
-
-    it('should not notify listeners if no error state change', () => {
-      const listener = vi.fn();
-      addErrorStateListener(listener);
-
-      // No errors added, so clearing should not trigger listener
-      clearConsoleMessages();
-      expect(listener).not.toHaveBeenCalled();
-
-      removeErrorStateListener(listener);
+      removeConsoleMessageListener(listener);
     });
   });
 
-  describe('Error State Listeners', () => {
+  describe('Message Listeners', () => {
     it('should add and remove listeners correctly', () => {
       const listener1 = vi.fn();
       const listener2 = vi.fn();
 
-      addErrorStateListener(listener1);
-      addErrorStateListener(listener2);
+      addConsoleMessageListener(listener1);
+      addConsoleMessageListener(listener2);
 
       addConsoleMessage('error', 'Test error');
 
-      expect(listener1).toHaveBeenCalledWith(true);
-      expect(listener2).toHaveBeenCalledWith(true);
+      expect(listener1).toHaveBeenCalledTimes(1);
+      expect(listener2).toHaveBeenCalledTimes(1);
 
-      removeErrorStateListener(listener1);
+      removeConsoleMessageListener(listener1);
       clearConsoleMessages();
 
       expect(listener1).toHaveBeenCalledTimes(1); // Only called once (not for clear)
       expect(listener2).toHaveBeenCalledTimes(2); // Called for both add and clear
 
-      removeErrorStateListener(listener2);
+      removeConsoleMessageListener(listener2);
     });
 
     it('should handle listener errors gracefully', () => {
@@ -135,8 +122,8 @@ describe('Console Messages System', () => {
       });
       const workingListener = vi.fn();
 
-      addErrorStateListener(faultyListener);
-      addErrorStateListener(workingListener);
+      addConsoleMessageListener(faultyListener);
+      addConsoleMessageListener(workingListener);
 
       // Should not throw despite faulty listener
       expect(() => {
@@ -146,8 +133,8 @@ describe('Console Messages System', () => {
       expect(faultyListener).toHaveBeenCalled();
       expect(workingListener).toHaveBeenCalled();
 
-      removeErrorStateListener(faultyListener);
-      removeErrorStateListener(workingListener);
+      removeConsoleMessageListener(faultyListener);
+      removeConsoleMessageListener(workingListener);
     });
   });
 

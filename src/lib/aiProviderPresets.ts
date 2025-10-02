@@ -64,6 +64,13 @@ export const AI_PROVIDER_PRESETS: PresetProvider[] = [
     apiKeysURL: "https://console.x.ai",
     tosURL: "https://x.ai/legal",
   },
+  {
+    id: "deepseek",
+    name: "Deepseek",
+    baseURL: "https://api.deepseek.com/v1",
+    apiKeysURL: "https://platform.deepseek.com/api_keys",
+    tosURL: "https://cdn.deepseek.com/policies/en-US/deepseek-open-platform-terms-of-service.html",
+  },
 ];
 
 // Helper function to get a specific preset by ID

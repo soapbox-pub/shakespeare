@@ -1,5 +1,5 @@
 import { createContext } from 'react';
-import { ProjectPreviewConsoleError } from '@/lib/tools/ReadConsoleMessagesTool';
+import { ProjectPreviewConsoleError } from '@/lib/consoleMessages';
 
 export interface ConsoleErrorContextValue {
   hasErrors: boolean;

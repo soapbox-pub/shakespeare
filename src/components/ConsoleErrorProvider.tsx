@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef, useCallback, ReactNode } from 'react';
-import { 
-  addErrorStateListener, 
+import {
+  addErrorStateListener,
   removeErrorStateListener,
   getHasConsoleErrors,
   getConsoleMessages,
   clearConsoleMessages,
   ProjectPreviewConsoleError
-} from '@/lib/tools/ReadConsoleMessagesTool';
+} from '@/lib/consoleMessages';
 import { ConsoleErrorContext } from '@/contexts/ConsoleErrorContext';
 
 interface ConsoleErrorProviderProps {
@@ -22,7 +22,7 @@ export function ConsoleErrorProvider({ children }: ConsoleErrorProviderProps) {
   const updateConsoleError = useCallback(() => {
     const messages = getConsoleMessages();
     const errorMessages = messages.filter(msg => msg.level === 'error');
-    
+
     if (errorMessages.length > 0) {
       const error = new ProjectPreviewConsoleError(
         `Console error detected: ${errorMessages[errorMessages.length - 1].message}`,
@@ -40,7 +40,7 @@ export function ConsoleErrorProvider({ children }: ConsoleErrorProviderProps) {
   useEffect(() => {
     const handleErrorStateChange = (hasErrors: boolean) => {
       setHasErrors(hasErrors);
-      
+
       if (hasErrors) {
         // Always update when we get an error state change
         updateConsoleError();
@@ -55,7 +55,7 @@ export function ConsoleErrorProvider({ children }: ConsoleErrorProviderProps) {
     const checkForNewErrors = () => {
       const messages = getConsoleMessages();
       const errorMessages = messages.filter(msg => msg.level === 'error');
-      
+
       if (errorMessages.length > lastErrorCountRef.current) {
         // New errors detected - update the console error
         updateConsoleError();
@@ -64,11 +64,11 @@ export function ConsoleErrorProvider({ children }: ConsoleErrorProviderProps) {
 
     // Listen for error state changes
     addErrorStateListener(handleErrorStateChange);
-    
+
     // Initial sync
     setHasErrors(getHasConsoleErrors());
     updateConsoleError();
-    
+
     // Poll for new errors (handles multiple errors being added)
     const interval = setInterval(checkForNewErrors, 100);
 

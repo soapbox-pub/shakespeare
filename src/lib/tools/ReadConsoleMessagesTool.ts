@@ -1,9 +1,5 @@
 import { Tool } from './Tool';
-
-export interface ConsoleMessage {
-  level: 'log' | 'warn' | 'error' | 'info' | 'debug';
-  message: string;
-}
+import { getConsoleMessages } from '@/lib/consoleMessages';
 
 export interface ReadConsoleMessagesParams {
   filter?: 'error' | 'warn' | 'info' | 'debug' | 'log' | 'all';
@@ -11,94 +7,25 @@ export interface ReadConsoleMessagesParams {
 }
 
 /**
- * Custom error class for project preview console errors
+ * AI tool for reading console messages from the project preview.
+ * This tool allows AI assistants to access console logs for debugging assistance.
  */
-export class ProjectPreviewConsoleError extends Error {
-  public readonly logs: ConsoleMessage[];
-
-  constructor(message: string, logs: ConsoleMessage[]) {
-    super(message);
-    this.name = 'ProjectPreviewConsoleError';
-    this.logs = logs;
-  }
-}
-
-// Simple global console messages storage
-const consoleMessages: ConsoleMessage[] = [];
-
-// Boolean-based error detection system
-let hasConsoleErrors = false;
-const errorStateListeners: Array<(hasErrors: boolean) => void> = [];
-
-export const addConsoleMessage = (level: ConsoleMessage['level'], message: string) => {
-  const consoleMessage: ConsoleMessage = {
-    level,
-    message,
-  };
-
-  consoleMessages.push(consoleMessage);
-
-  // If this is an error, update boolean state
-  if (level === 'error' && !hasConsoleErrors) {
-    hasConsoleErrors = true;
-
-    // Notify boolean state listeners
-    errorStateListeners.forEach(listener => {
-      try {
-        listener(true);
-      } catch (err) {
-        console.warn('Error state listener failed:', err);
-      }
-    });
-  }
-};
-
-export const getConsoleMessages = (): ConsoleMessage[] => {
-  return [...consoleMessages];
-};
-
-export const addErrorStateListener = (listener: (hasErrors: boolean) => void) => {
-  errorStateListeners.push(listener);
-};
-
-export const removeErrorStateListener = (listener: (hasErrors: boolean) => void) => {
-  const index = errorStateListeners.indexOf(listener);
-  if (index > -1) {
-    errorStateListeners.splice(index, 1);
-  }
-};
-
-export const getHasConsoleErrors = (): boolean => {
-  return hasConsoleErrors;
-};
-
-export const clearConsoleMessages = () => {
-  consoleMessages.length = 0;
-
-  // Reset error state
-  const hadErrors = hasConsoleErrors;
-  hasConsoleErrors = false;
-
-  // Notify listeners if state changed
-  if (hadErrors) {
-    errorStateListeners.forEach(listener => {
-      try {
-        listener(false);
-      } catch (err) {
-        console.warn('Error state listener failed:', err);
-      }
-    });
-  }
-};
-
 export class ReadConsoleMessagesTool implements Tool<ReadConsoleMessagesParams> {
   async execute(params: ReadConsoleMessagesParams): Promise<string> {
     const { filter = 'all', limit } = params;
 
-    // Filter and limit messages in one chain
-    const filteredMessages = getConsoleMessages()
-      .filter(msg => filter === 'all' || msg.level === filter)
-      .slice(limit && limit > 0 ? -limit : 0);
+    // Filter messages first
+    let filteredMessages = getConsoleMessages()
+      .filter(msg => filter === 'all' || msg.level === filter);
+
+    // Apply limit if specified and positive
+    if (limit !== undefined && limit >= 0) {
+      if (limit === 0) {
+        filteredMessages = [];
+      } else {
+        filteredMessages = filteredMessages.slice(-limit);
+      }
+    }
 
     if (filteredMessages.length === 0) {
       return `No console messages found${filter !== 'all' ? ` for level: ${filter}` : ''}.`;

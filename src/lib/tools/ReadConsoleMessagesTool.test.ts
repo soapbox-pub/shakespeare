@@ -1,13 +1,6 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import {
-  ReadConsoleMessagesTool,
-  addConsoleMessage,
-  clearConsoleMessages,
-  ProjectPreviewConsoleError,
-  addErrorStateListener,
-  removeErrorStateListener,
-  getHasConsoleErrors
-} from './ReadConsoleMessagesTool';
+import { describe, it, expect, beforeEach } from 'vitest';
+import { ReadConsoleMessagesTool } from './ReadConsoleMessagesTool';
+import { addConsoleMessage, clearConsoleMessages } from '@/lib/consoleMessages';
 
 describe('ReadConsoleMessagesTool', () => {
   beforeEach(() => {
@@ -64,131 +57,47 @@ describe('ReadConsoleMessagesTool', () => {
 
     expect(result).toBe('No console messages found for level: debug.');
   });
-});
 
-describe('ProjectPreviewConsoleError', () => {
-  it('should create error with console logs', () => {
-    const logs = [
-      { level: 'error' as const, message: 'Test error' }
-    ];
-    const error = new ProjectPreviewConsoleError('Test message', logs);
+  it('should handle all filter levels', async () => {
+    const tool = new ReadConsoleMessagesTool();
 
-    expect(error.message).toBe('Test message');
-    expect(error.name).toBe('ProjectPreviewConsoleError');
-    expect(error.logs).toEqual(logs);
-    expect(error instanceof Error).toBe(true);
-    expect(error instanceof ProjectPreviewConsoleError).toBe(true);
+    // Test each filter level
+    const errorResult = await tool.execute({ filter: 'error' });
+    expect(errorResult).toContain('[ERROR] Network request failed');
+
+    const warnResult = await tool.execute({ filter: 'warn' });
+    expect(warnResult).toContain('[WARN] Deprecated API used');
+
+    const logResult = await tool.execute({ filter: 'log' });
+    expect(logResult).toContain('[LOG] App started');
+
+    const infoResult = await tool.execute({ filter: 'info' });
+    expect(infoResult).toContain('[INFO] User logged in');
   });
-});
 
-describe('Console Error State Management', () => {
-  beforeEach(() => {
+  it('should format messages correctly', async () => {
     clearConsoleMessages();
+    addConsoleMessage('error', 'Test error with special chars: <>&"');
+
+    const tool = new ReadConsoleMessagesTool();
+    const result = await tool.execute({});
+
+    expect(result).toContain('[ERROR] Test error with special chars: <>&"');
   });
 
-  it('should track error state with boolean', () => {
-    expect(getHasConsoleErrors()).toBe(false);
+  it('should handle limit edge cases', async () => {
+    const tool = new ReadConsoleMessagesTool();
 
-    // Add non-error messages - should not change state
-    addConsoleMessage('log', 'Test log message');
-    addConsoleMessage('warn', 'Test warning message');
-    expect(getHasConsoleErrors()).toBe(false);
+    // Limit of 0 should return no messages
+    const zeroResult = await tool.execute({ limit: 0 });
+    expect(zeroResult).toBe('No console messages found.');
 
-    // Add error message - should change state
-    addConsoleMessage('error', 'Test error message');
-    expect(getHasConsoleErrors()).toBe(true);
+    // Negative limit should return all messages
+    const negativeResult = await tool.execute({ limit: -1 });
+    expect(negativeResult).toContain('Found 4 console messages');
 
-    // Add another error - should remain true
-    addConsoleMessage('error', 'Another error');
-    expect(getHasConsoleErrors()).toBe(true);
-  });
-
-  it('should trigger error state listener when error state changes', async () => {
-    const errorStateListener = vi.fn();
-    addErrorStateListener(errorStateListener);
-
-    // Add non-error messages - should not trigger
-    addConsoleMessage('log', 'Test log message');
-    addConsoleMessage('warn', 'Test warning message');
-
-    // Wait a bit
-    await new Promise(resolve => setTimeout(resolve, 10));
-    expect(errorStateListener).not.toHaveBeenCalled();
-
-    // Add error message - should trigger with true
-    addConsoleMessage('error', 'Test error message');
-
-    // Wait a bit
-    await new Promise(resolve => setTimeout(resolve, 10));
-    expect(errorStateListener).toHaveBeenCalledTimes(1);
-    expect(errorStateListener).toHaveBeenCalledWith(true);
-
-    // Add another error - should not trigger again (already true)
-    addConsoleMessage('error', 'Another error');
-
-    // Wait a bit
-    await new Promise(resolve => setTimeout(resolve, 10));
-    expect(errorStateListener).toHaveBeenCalledTimes(1); // Still only called once
-
-    removeErrorStateListener(errorStateListener);
-  });
-
-  it('should reset error state when clearing messages', async () => {
-    const errorStateListener = vi.fn();
-    addErrorStateListener(errorStateListener);
-
-    // Add error to set state to true
-    addConsoleMessage('error', 'Test error message');
-    expect(getHasConsoleErrors()).toBe(true);
-
-    // Clear messages - should reset state and notify
-    clearConsoleMessages();
-    expect(getHasConsoleErrors()).toBe(false);
-
-    // Wait a bit
-    await new Promise(resolve => setTimeout(resolve, 10));
-    expect(errorStateListener).toHaveBeenCalledTimes(2);
-    expect(errorStateListener).toHaveBeenNthCalledWith(1, true);  // First call when error added
-    expect(errorStateListener).toHaveBeenNthCalledWith(2, false); // Second call when cleared
-
-    removeErrorStateListener(errorStateListener);
-  });
-
-  it('should remove error state listener correctly', async () => {
-    const errorStateListener = vi.fn();
-    addErrorStateListener(errorStateListener);
-    removeErrorStateListener(errorStateListener);
-
-    // Add an error message
-    addConsoleMessage('error', 'Test error message');
-
-    // Wait a bit
-    await new Promise(resolve => setTimeout(resolve, 10));
-
-    expect(errorStateListener).not.toHaveBeenCalled();
-  });
-
-  it('should handle listener errors gracefully', async () => {
-    const faultyListener = vi.fn(() => {
-      throw new Error('Listener error');
-    });
-    const workingListener = vi.fn();
-
-    addErrorStateListener(faultyListener);
-    addErrorStateListener(workingListener);
-
-    // Should not throw despite faulty listener
-    expect(() => {
-      addConsoleMessage('error', 'Test error message');
-    }).not.toThrow();
-
-    // Wait a bit
-    await new Promise(resolve => setTimeout(resolve, 10));
-
-    expect(faultyListener).toHaveBeenCalled();
-    expect(workingListener).toHaveBeenCalled();
-
-    removeErrorStateListener(faultyListener);
-    removeErrorStateListener(workingListener);
+    // Limit larger than available should return all
+    const largeResult = await tool.execute({ limit: 100 });
+    expect(largeResult).toContain('Found 4 console messages');
   });
 });

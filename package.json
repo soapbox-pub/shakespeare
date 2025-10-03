@@ -12,9 +12,9 @@
     "android:build": "npm run android:sync && cd android && ./gradlew bundleRelease",
     "android:apk": "npm run android:sync && cd android && ./gradlew assembleRelease",
     "android:open": "npx cap open android",
-    "android:sync": "npm run build && npx cap sync android",
+    "android:sync": "npm run build && npx cap sync android && npm run android:assets",
     "android:run": "npm run android:sync && npx cap run android",
-    "android:icons": "npx -y @capacitor/assets generate --pwaManifestPath=.tmp.webmanifest && rm .tmp.webmanifest && mv icons public/icons"
+    "android:assets": "npx -y @capacitor/assets generate --pwaManifestPath=.tmp.webmanifest && rm .tmp.webmanifest && rm -rf icons"
   },
   "dependencies": {
     "@capacitor/android": "^7.4.3",

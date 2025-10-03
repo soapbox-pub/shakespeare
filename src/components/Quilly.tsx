@@ -56,92 +56,92 @@ export function Quilly({ error, onDismiss, onNewChat, onOpenModelSelector, onReq
     }
 
     switch (errorCode) {
-      // Application-specific error codes
-      case 'console_error':
-        return {
-          message: 'I noticed some console errors in your project preview. Would you like me to take a look and help fix them?',
-          action: {
-            label: 'Help fix errors',
-            onClick: () => {
-              onRequestConsoleErrorHelp?.(error as ProjectPreviewConsoleError);
-              onDismiss();
-            },
+    // Application-specific error codes
+    case 'console_error':
+      return {
+        message: 'I noticed some console errors in your project preview. Would you like me to take a look and help fix them?',
+        action: {
+          label: 'Help fix errors',
+          onClick: () => {
+            onRequestConsoleErrorHelp?.(error as ProjectPreviewConsoleError);
+            onDismiss();
           },
-        };
+        },
+      };
 
-      case 'malformed_tool_call':
-        return {
-          message: 'The AI sent an incomplete response, possibly due to a network issue or provider problem. Try sending your message again, or switch to a different model if this persists.',
-          action: {
-            label: 'Change model',
-            onClick: onOpenModelSelector,
-          },
-        };
+    case 'malformed_tool_call':
+      return {
+        message: 'The AI sent an incomplete response, possibly due to a network issue or provider problem. Try sending your message again, or switch to a different model if this persists.',
+        action: {
+          label: 'Change model',
+          onClick: onOpenModelSelector,
+        },
+      };
 
       // OpenAI API error codes
-      case 'invalid_api_key':
-      case 'invalid_request_error':
+    case 'invalid_api_key':
+    case 'invalid_request_error':
+      return {
+        message: 'Authentication error: Please check your API key in AI settings.',
+        action: {
+          label: 'Check API key',
+          onClick: () => navigate('/settings/ai'),
+        }
+      };
+
+    case 'insufficient_quota': {
+      if (credits.data) {
         return {
-          message: 'Authentication error: Please check your API key in AI settings.',
+          message: `Your account has $${credits.data.amount.toFixed(2)} credits. Please add credits to keep creating.`,
           action: {
-            label: 'Check API key',
+            label: 'Add credits',
+            onClick: () => setShowCreditsDialog(true),
+          }
+        };
+      } else {
+        return {
+          message: 'Your API key has reached its usage limit. Please check your billing or try a different provider.',
+          action: {
+            label: 'Check AI settings',
             onClick: () => navigate('/settings/ai'),
           }
         };
-
-      case 'insufficient_quota': {
-        if (credits.data) {
-          return {
-            message: `Your account has $${credits.data.amount.toFixed(2)} credits. Please add credits to keep creating.`,
-            action: {
-              label: 'Add credits',
-              onClick: () => setShowCreditsDialog(true),
-            }
-          };
-        } else {
-          return {
-            message: 'Your API key has reached its usage limit. Please check your billing or try a different provider.',
-            action: {
-              label: 'Check AI settings',
-              onClick: () => navigate('/settings/ai'),
-            }
-          };
-        }
       }
+    }
 
-      case 'rate_limit_exceeded':
-        return {
-          message: 'Rate limit exceeded. Please wait a moment before trying again.',
-        };
+    case 'rate_limit_exceeded':
+      return {
+        message: 'Rate limit exceeded. Please wait a moment before trying again.',
+      };
 
-      case 'model_not_found':
-        return {
-          message: 'The selected AI model is not available. Please choose a different model.',
-          action: {
-            label: 'Choose model',
-            onClick: onOpenModelSelector,
-          },
-        };
+    case 'model_not_found':
+      return {
+        message: 'The selected AI model is not available. Please choose a different model.',
+        action: {
+          label: 'Choose model',
+          onClick: onOpenModelSelector,
+        },
+      };
 
-      case 'context_length_exceeded':
-        return {
-          message: 'Your conversation is too long for this model. Try starting a new chat or switching to a model with a larger context window.',
-          action: {
-            label: 'New chat',
-            onClick: onNewChat,
-          },
-        };
+    case 'context_length_exceeded':
+      return {
+        message: 'Your conversation is too long for this model. Try starting a new chat or switching to a model with a larger context window.',
+        action: {
+          label: 'New chat',
+          onClick: onNewChat,
+        },
+      };
 
-      case 'server_error':
-      case 'service_unavailable':
-        return {
-          message: 'The AI service is temporarily unavailable. Please try again in a moment.',
-        };
+    case 'server_error':
+    case 'service_unavailable':
+      return {
+        message: 'The AI service is temporarily unavailable. Please try again in a moment.',
+      };
 
-      default:
-        return {
-          message: `AI service error: ${error.message}`,
-        };
+    default:
+      return {
+        message: `AI service error: ${error.message}`,
+      };
     }
   };
 

@@ -6,30 +6,30 @@ import { useSessionManager } from './useSessionManager';
  * @returns {boolean} True if any project has a running AI session
  */
 export function useAnyProjectBusy(): boolean {
-	const sessionManager = useSessionManager();
-	const [anyProjectBusy, setAnyProjectBusy] = useState(false);
+  const sessionManager = useSessionManager();
+  const [anyProjectBusy, setAnyProjectBusy] = useState(false);
 
-	useEffect(() => {
-		const updateStatus = () => {
-			const sessions = sessionManager.getAllSessions();
-			const hasBusyProject = sessions.some(session => session.isLoading);
-			setAnyProjectBusy(hasBusyProject);
-		};
+  useEffect(() => {
+    const updateStatus = () => {
+      const sessions = sessionManager.getAllSessions();
+      const hasBusyProject = sessions.some(session => session.isLoading);
+      setAnyProjectBusy(hasBusyProject);
+    };
 
-		// Initial update
-		updateStatus();
+    // Initial update
+    updateStatus();
 
-		// Subscribe to session changes
-		sessionManager.on('sessionCreated', updateStatus);
-		sessionManager.on('sessionDeleted', updateStatus);
-		sessionManager.on('loadingChanged', updateStatus);
+    // Subscribe to session changes
+    sessionManager.on('sessionCreated', updateStatus);
+    sessionManager.on('sessionDeleted', updateStatus);
+    sessionManager.on('loadingChanged', updateStatus);
 
-		return () => {
-			sessionManager.off('sessionCreated', updateStatus);
-			sessionManager.off('sessionDeleted', updateStatus);
-			sessionManager.off('loadingChanged', updateStatus);
-		};
-	}, [sessionManager]);
+    return () => {
+      sessionManager.off('sessionCreated', updateStatus);
+      sessionManager.off('sessionDeleted', updateStatus);
+      sessionManager.off('loadingChanged', updateStatus);
+    };
+  }, [sessionManager]);
 
-	return anyProjectBusy;
+  return anyProjectBusy;
 }

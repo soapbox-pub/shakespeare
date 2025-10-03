@@ -251,19 +251,6 @@
     max-height: 100dvh;
   }
 
-  /* iOS Safe Area Support */
-  .safe-area-inset-bottom {
-    padding-bottom: env(safe-area-inset-bottom);
-  }
-
-  .safe-area-inset-top {
-    padding-top: env(safe-area-inset-top);
-  }
-
-  .bottom-safe-nav {
-    bottom: calc(env(safe-area-inset-bottom) + 3.75rem);
-  }
-
   /* Mobile navigation button styles - text/icon highlighting only */
   .mobile-nav-button,
   .mobile-nav-button:hover,
@@ -303,17 +290,5 @@
   .keyboard-open {
     /* Adjust layout when keyboard is open */
     --keyboard-height: env(keyboard-height, 0px);
-  }
-
-  /* Prevent zoom on input focus on iOS */
-  input[type="text"],
-  input[type="email"],
-  input[type="password"],
-  input[type="search"],
-  input[type="tel"],
-  input[type="url"],
-  textarea,
-  select {
-    font-size: 16px;
   }
 }

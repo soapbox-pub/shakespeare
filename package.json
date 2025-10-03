@@ -93,6 +93,7 @@
     "streamdown": "~1.0.0",
     "tailwind-merge": "^2.5.2",
     "tailwindcss-animate": "^1.0.7",
+    "tailwindcss-safe-area": "^0.8.0",
     "turndown": "^7.2.1",
     "uri-templates": "^0.2.0",
     "use-stick-to-bottom": "^1.1.1",

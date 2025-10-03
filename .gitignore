@@ -13,6 +13,8 @@ dist-ssr
 *.local
 .ai-history/
 .tmp.webmanifest
+*.apk
+*.aab
 
 # Editor directories and files
 .idea

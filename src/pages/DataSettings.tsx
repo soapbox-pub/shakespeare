@@ -1,3 +1,4 @@
+import { Capacitor } from '@capacitor/core';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -337,27 +338,29 @@ export function DataSettings() {
         )}
 
         {/* Persist Data */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Shield className="h-5 w-5" />
-              {t('persistData')}
-            </CardTitle>
-            <CardDescription>
-              {t('persistDataDescription')}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-start">
-              <Switch
-                id="persistent-storage"
-                checked={isPersistent === true}
-                onCheckedChange={handlePersistentStorageToggle}
-                disabled={isRequestingPersistent || isPersistent === null}
-              />
-            </div>
-          </CardContent>
-        </Card>
+        {!Capacitor.isNativePlatform() && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="h-5 w-5" />
+                {t('persistData')}
+              </CardTitle>
+              <CardDescription>
+                {t('persistDataDescription')}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-start">
+                <Switch
+                  id="persistent-storage"
+                  checked={isPersistent === true}
+                  onCheckedChange={handlePersistentStorageToggle}
+                  disabled={isRequestingPersistent || isPersistent === null}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Export Files */}
         <Card>

@@ -1,3 +1,4 @@
+import { Capacitor } from '@capacitor/core';
 import { Decimal } from 'decimal.js';
 import { useState, useEffect, useRef } from 'react';
 import { generateSecretKey } from 'nostr-tools';
@@ -275,21 +276,23 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
             {step === 'open-source' && (
               <div className="space-y-6 py-4">
                 <div className="text-center space-y-4">
-                  <h2 className="text-2xl font-bold">Shakespeare is Open Source software that runs entirely in your web&nbsp;browser</h2>
+                  <h2 className="text-2xl font-bold">
+                    Shakespeare is Open Source software that runs entirely {Capacitor.isNativePlatform() ? 'on your device' : 'in your web browser'}
+                  </h2>
                 </div>
 
                 <div className="grid gap-1 max-w-md mx-auto">
                   <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
                     <div className="h-2 w-2 rounded-full bg-primary mt-2 flex-shrink-0" />
-                    <p className="text-sm">Your browser connects directly to third-party AI providers of your choice</p>
+                    <p className="text-sm">Your device connects directly to third-party AI providers of your choice</p>
                   </div>
                   <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
                     <div className="h-2 w-2 rounded-full bg-primary mt-2 flex-shrink-0" />
-                    <p className="text-sm">Your files are stored on your device in your browser</p>
+                    <p className="text-sm">Your files are stored on your device{Capacitor.isNativePlatform() ? '' : ' in your browser'}</p>
                   </div>
                   <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
                     <div className="h-2 w-2 rounded-full bg-primary mt-2 flex-shrink-0" />
-                    <p className="text-sm">Be careful not to delete your browser data or you may lose project files</p>
+                    <p className="text-sm">Be careful not to delete your {Capacitor.isNativePlatform() ? 'app' : 'browser'} data or you may lose project files</p>
                   </div>
                   <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
                     <div className="h-2 w-2 rounded-full bg-primary mt-2 flex-shrink-0" />
@@ -303,7 +306,7 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
 
                 <div className="space-y-3 max-w-md mx-auto">
                   <p className="text-xs text-muted-foreground max-w-xl mx-auto">
-                    Shakespeare is not a cloud service. It's Open Source software that runs in your web browser.
+                    Shakespeare is not a cloud service. It's Open Source software that runs on your device.
                     You agree to the Terms of Service of AI providers you interact with.
                     Shakespeare is provided "as is" without warranty of any kind.
                   </p>

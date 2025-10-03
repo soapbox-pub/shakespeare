@@ -37,7 +37,8 @@ import { NostrReadNipsIndexTool } from '@/lib/tools/NostrReadNipsIndexTool';
 import { NostrGenerateKindTool } from '@/lib/tools/NostrGenerateKindTool';
 import { ShellTool } from '@/lib/tools/ShellTool';
 import { TypecheckTool } from '@/lib/tools/TypecheckTool';
-import { ReadConsoleMessagesTool, ProjectPreviewConsoleError } from '@/lib/tools/ReadConsoleMessagesTool';
+import { ReadConsoleMessagesTool } from '@/lib/tools/ReadConsoleMessagesTool';
+import { ProjectPreviewConsoleError } from '@/lib/consoleMessages';
 import { toolToOpenAI } from '@/lib/tools/openai-adapter';
 import { Tool } from '@/lib/tools/Tool';
 import OpenAI from 'openai';
@@ -219,6 +220,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     isLoading: internalIsLoading,
     totalCost,
     lastInputTokens,
+    addMessage,
     sendMessage,
     startGeneration,
     stopGeneration,
@@ -232,9 +234,33 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   });
 
   // Handle console error help requests
-  const handleConsoleErrorHelp = useCallback(() => {
-    sendMessage('Read the console messages and fix any errors present.', providerModel);
-  }, [sendMessage, providerModel]);
+  const handleConsoleErrorHelp = useCallback(async () => {
+    const tool = new ReadConsoleMessagesTool();
+    const toolCallId = `call_${crypto.randomUUID().replace(/-/g, '')}`;
+
+    await addMessage({
+      role: 'assistant',
+      content: 'Let me take a look at the console messages to help diagnose the issue.',
+      tool_calls: [
+        {
+          id: toolCallId,
+          type: 'function',
+          function: {
+            name: 'read_console_messages',
+            arguments: '{}',
+          }
+        }
+      ]
+    });
+
+    await addMessage({
+      role: 'tool',
+      content: await tool.execute({ filter: 'error' }),
+      tool_call_id: toolCallId,
+    });
+
+    await startGeneration(providerModel);
+  }, [addMessage, providerModel, startGeneration]);
 
   // Handle error dismissal
   const handleErrorDismiss = useCallback(() => {
@@ -349,10 +375,12 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     setIsModelSelectorOpen(true);
   }, []);
 
-  // Scroll to bottom when AI error occurs
+  // Scroll to bottom when any error occurs (AI error or console error)
   useEffect(() => {
-    scrollToBottom();
-  }, [aiError, scrollToBottom]);
+    if (displayError) {
+      scrollToBottom();
+    }
+  }, [displayError, scrollToBottom]);
 
   // Check for autostart parameter and trigger AI generation
   useEffect(() => {
@@ -837,7 +865,6 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
                 <ModelSelector
                   value={providerModel}
                   onChange={setProviderModel}
-                  className="w-full"
                   disabled={isLoading}
                   placeholder={t('chooseModel')}
                   open={isModelSelectorOpen}

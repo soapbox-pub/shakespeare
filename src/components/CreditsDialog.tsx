@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/useToast';
 import { createAIClient } from '@/lib/ai-client';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
@@ -464,26 +464,19 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
             </div>
 
             <div className="space-y-3">
-              <Label htmlFor="payment-method" className="text-sm font-medium">Payment Method</Label>
-              <Select value={paymentMethod} onValueChange={(value: 'stripe' | 'lightning') => setPaymentMethod(value)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="stripe">
-                    <div className="flex items-center gap-2">
-                      <CreditCard className="h-4 w-4" />
-                      Credit Card
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="lightning">
-                    <div className="flex items-center gap-2">
-                      <Zap className="h-4 w-4" />
-                      Lightning
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
+              <Label className="text-sm font-medium">Payment Method</Label>
+              <Tabs value={paymentMethod} onValueChange={(value: 'stripe' | 'lightning') => setPaymentMethod(value)} className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="stripe" className="flex items-center gap-2">
+                    <CreditCard className="h-4 w-4" />
+                    Credit Card
+                  </TabsTrigger>
+                  <TabsTrigger value="lightning" className="flex items-center gap-2">
+                    <Zap className="h-4 w-4" />
+                    Lightning
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
             </div>
 
             <Button

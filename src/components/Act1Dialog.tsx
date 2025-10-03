@@ -5,9 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 
-import { useAISettings } from '@/hooks/useAISettings';
+// import { useAISettings } from '@/hooks/useAISettings';
 import { useAICredits } from '@/hooks/useAICredits';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
+// import { useLocalStorage } from '@/hooks/useLocalStorage';
 
 interface Act1DialogProps {
   open: boolean;
@@ -22,44 +22,39 @@ const SHAKESPEARE_PROVIDER = {
   nostr: true,
 };
 
-const MKSTACK_NSP_ADDR = '31999:4bcaa7b5606e3c14df05cd497e588f5d3fe559b4e9a425e8b418a43af1ffb015:mkstack';
+// const MKSTACK_NSP_ADDR = '31999:4bcaa7b5606e3c14df05cd497e588f5d3fe559b4e9a425e8b418a43af1ffb015:mkstack';
 
 export function Act1Dialog({ open, onOpenChange }: Act1DialogProps) {
   const [step, setStep] = useState<DialogStep>('welcome');
-  const [isSettingUp, setIsSettingUp] = useState(false);
-  const { setProvider, updateSettings } = useAISettings();
+  // const { setProvider, updateSettings } = useAISettings();
 
-  // Get the selectedNSPAddr from localStorage
-  const [selectedNSPAddr] = useLocalStorage<string | null>('selectedNSPAddr', null);
+  // // Get the selectedNSPAddr from localStorage
+  // const [selectedNSPAddr] = useLocalStorage<string | null>('selectedNSPAddr', null);
 
   // Get user's credits
   const { data: creditsData } = useAICredits(SHAKESPEARE_PROVIDER);
 
   const handleGetStarted = async () => {
-    setIsSettingUp(true);
-
     try {
-      // Add Shakespeare provider to their config
-      setProvider(SHAKESPEARE_PROVIDER);
+      // // Add Shakespeare provider to their config
+      // setProvider(SHAKESPEARE_PROVIDER);
 
-      // Configure recently used models based on credits or NSP
-      const hasCredits = creditsData?.amount && creditsData.amount > 0;
-      const hasMKStackNSP = selectedNSPAddr === MKSTACK_NSP_ADDR;
+      // // Configure recently used models based on credits or NSP
+      // const hasCredits = creditsData?.amount && creditsData.amount > 0;
+      // const hasMKStackNSP = selectedNSPAddr === MKSTACK_NSP_ADDR;
 
-      if (hasCredits || hasMKStackNSP) {
-        // User has credits or MKStack NSP - set to shakespeare model
-        updateSettings({ recentlyUsedModels: ['shakespeare/shakespeare'] });
-      } else {
-        // No credits - set to tybalt model (free)
-        updateSettings({ recentlyUsedModels: ['shakespeare/tybalt'] });
-      }
+      // if (hasCredits || hasMKStackNSP) {
+      //   // User has credits or MKStack NSP - set to shakespeare model
+      //   updateSettings({ recentlyUsedModels: ['shakespeare/shakespeare'] });
+      // } else {
+      //   // No credits - set to tybalt model (free)
+      //   updateSettings({ recentlyUsedModels: ['shakespeare/tybalt'] });
+      // }
 
       // Move to migration step
       setStep('migration');
     } catch (error) {
       console.error('Failed to configure Shakespeare provider:', error);
-    } finally {
-      setIsSettingUp(false);
     }
   };
 
@@ -87,7 +82,6 @@ export function Act1Dialog({ open, onOpenChange }: Act1DialogProps) {
   useEffect(() => {
     if (open) {
       setStep('welcome');
-      setIsSettingUp(false);
     }
   }, [open]);
 
@@ -126,12 +120,6 @@ export function Act1Dialog({ open, onOpenChange }: Act1DialogProps) {
                 <ArrowLeft className="h-4 w-4" />
               </Button>
             )}
-            <span className="text-xl">
-              {step === 'welcome' && 'Welcome to Shakespeare: Act 2! 🎭'}
-              {step === 'migration' && 'Migrating Your Projects'}
-              {step === 'credits' && 'Your Credits'}
-              {step === 'conclusion' && "You're All Set!"}
-            </span>
           </DialogTitle>
         </DialogHeader>
 
@@ -197,21 +185,10 @@ export function Act1Dialog({ open, onOpenChange }: Act1DialogProps) {
 
                 <Button
                   onClick={handleGetStarted}
-                  disabled={isSettingUp}
                   size="lg"
                   className="gap-2"
                 >
-                  {isSettingUp ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
-                      Setting up...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="h-4 w-4" />
-                      Configure Act 2
-                    </>
-                  )}
+                  Next
                 </Button>
               </div>
             )}
@@ -343,14 +320,7 @@ export function Act1Dialog({ open, onOpenChange }: Act1DialogProps) {
                 <div className="space-y-3">
                   <h2 className="text-2xl font-bold">Welcome to the Future!</h2>
                   <p className="text-lg text-muted-foreground max-w-md mx-auto">
-                    You're all set up with Act 2! Your AI assistant is configured
-                    and ready to help you build amazing Nostr applications.
-                  </p>
-                </div>
-
-                <div className="bg-muted/50 rounded-lg p-4 max-w-md mx-auto">
-                  <p className="text-sm text-muted-foreground italic">
-                    "Create a decentralized social media app with custom feeds and real-time messaging..."
+                    You're all up to speed with Act 2! Get ready to build amazing Nostr applications.
                   </p>
                 </div>
 

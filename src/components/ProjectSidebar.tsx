@@ -251,8 +251,6 @@ export function ProjectSidebar({
           </Button>
         </div>
       </div>
-
-
     </div>
   );
 }

@@ -101,4 +101,4 @@ app/src/main/assets/capacitor.plugins.json
 app/src/main/res/xml/config.xml
 
 # Generated assets
-android/app/src/main/res/*/*.png
+app/src/main/res/*/*.png

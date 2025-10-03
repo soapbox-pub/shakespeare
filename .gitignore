@@ -12,6 +12,8 @@ dist
 dist-ssr
 *.local
 .ai-history/
+.tmp.webmanifest
+public/icons/
 
 # Editor directories and files
 .idea

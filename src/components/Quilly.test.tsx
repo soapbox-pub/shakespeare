@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { Quilly } from './Quilly';
 import { MalformedToolCallError } from '@/lib/errors/MalformedToolCallError';
-import { ProjectPreviewConsoleError } from '@/lib/tools/ReadConsoleMessagesTool';
+import { ProjectPreviewConsoleError } from '@/lib/consoleMessages';
 
 // Mock all required hooks and components
 vi.mock('@/hooks/useAISettings', () => ({

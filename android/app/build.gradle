@@ -16,10 +16,36 @@ android {
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+
+    signingConfigs {
+        release {
+            def keystorePath = rootProject.file("../shakespeare.keystore")
+
+            // Only require keystore for release builds
+            def taskNames = gradle.startParameter.taskNames.toString()
+            def isReleaseBuild = taskNames.contains("Release") || taskNames.contains("release") || taskNames.contains("bundle")
+
+            if (!isReleaseBuild) {
+                // Skip signing config for debug builds
+                return
+            }
+
+            if (!keystorePath.exists()) {
+                throw new GradleException("shakespeare.keystore not found! Expected at: " + keystorePath.absolutePath)
+            }
+
+            storeFile keystorePath
+            keyAlias "mykey"
+            storePassword "shakespeare"
+            keyPassword "shakespeare"
+        }
+    }
+
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release
         }
     }
 }

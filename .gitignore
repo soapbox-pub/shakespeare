@@ -30,3 +30,4 @@ dist-ssr
 .env.*
 !.env.example
 .ai/
+*.keystore

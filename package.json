@@ -9,8 +9,8 @@
     "typecheck": "npm i --silent && tsc --noEmit",
     "test": "npm i --silent && eslint && vitest run --reporter=dot --silent && echo 'All tests passed!'",
     "deploy": "npm run build && npx -y nostr-deploy-cli deploy --skip-setup",
-    "android:build": "npm run build && npx cap sync android && cd android && ./gradlew bundleRelease",
-    "android:apk": "npm run android:sync && cd android && ./gradlew assembleDebug",
+    "android:build": "npm run android:sync && cd android && ./gradlew bundleRelease",
+    "android:apk": "npm run android:sync && cd android && ./gradlew assembleRelease",
     "android:open": "npx cap open android",
     "android:sync": "npm run build && npx cap sync android",
     "android:run": "npm run android:sync && npx cap run android"

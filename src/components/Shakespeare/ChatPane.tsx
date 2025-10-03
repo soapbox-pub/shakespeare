@@ -6,10 +6,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CircularProgress } from '@/components/ui/circular-progress';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { FileAttachment } from '@/components/ui/file-attachment';
 import { OnboardingDialog } from '@/components/OnboardingDialog';
-import { Square, Loader2, ChevronDown, ArrowUp, Plus, X } from 'lucide-react';
+import { Square, Loader2, ChevronDown, ArrowUp, Plus } from 'lucide-react';
 import { useAISettings } from '@/hooks/useAISettings';
 import { useFS } from '@/hooks/useFS';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
@@ -88,10 +87,8 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [isStuck, setIsStuck] = useState(false);
   const [aiError, setAIError] = useState<Error | null>(null);
-  const [showQueueModal, setShowQueueModal] = useState(false);
-
   // Message queue for handling messages while AI is working
-  const { queuedMessages, addToQueue, clearQueue, removeFromQueue, hasQueuedMessages, queueLength } = useMessageQueue(projectId);
+  const { queuedMessages, addToQueue, clearQueue, hasQueuedMessages, queueLength } = useMessageQueue(projectId);
 
   // Draft messages for preserving input across project switches
   const { getDraft, saveDraft, clearDraft } = useDraftMessages(projectId);
@@ -759,12 +756,9 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
         >
           {/* Queued Messages Indicator */}
           {hasQueuedMessages && (
-            <button
-              onClick={() => setShowQueueModal(true)}
-              className="w-full px-3 py-1 text-xs text-muted-foreground bg-muted/50 border border-input rounded-t-2xl hover:bg-muted/70 transition-colors text-left mb-0"
-            >
-              {queueLength} message{queueLength > 1 ? 's' : ''} queued • will send when AI finishes (click to manage)
-            </button>
+            <div className="w-full px-3 py-1 text-xs text-muted-foreground bg-muted/50 border border-input rounded-t-2xl text-left mb-0">
+              {queueLength} message{queueLength > 1 ? 's' : ''} queued • will send when AI finishes
+            </div>
           )}
 
           <div
@@ -899,7 +893,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
                       </TooltipTrigger>
                       {hasQueuedMessages && (
                         <TooltipContent>
-                          <p>{queueLength} message{queueLength > 1 ? 's' : ''} queued</p>
+                          <p>{queueLength} message{queueLength > 1 ? 's' : ''} will send when AI finishes</p>
                         </TooltipContent>
                       )}
                     </Tooltip>
@@ -911,59 +905,6 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
         </div>
       </div>
 
-      {/* Queue Management Modal */}
-      <Dialog open={showQueueModal} onOpenChange={setShowQueueModal}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Queued Messages</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            {queuedMessages.map((message, index) => (
-              <div key={index} className="flex items-start gap-3 p-3 bg-muted/30 rounded-lg">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-foreground break-words">
-                    {message.content || <em className="text-muted-foreground">No text content</em>}
-                  </p>
-                  {message.attachedFiles.length > 0 && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {message.attachedFiles.length} file{message.attachedFiles.length > 1 ? 's' : ''} attached
-                    </p>
-                  )}
-                </div>
-                <Button
-                  onClick={() => removeFromQueue(index)}
-                  size="sm"
-                  variant="ghost"
-                  className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
-                >
-                  <X className="h-3 w-3" />
-                </Button>
-              </div>
-            ))}
-            {queuedMessages.length === 0 && (
-              <p className="text-sm text-muted-foreground text-center py-4">No messages queued</p>
-            )}
-            <div className="flex gap-2 pt-2">
-              <Button
-                onClick={clearQueue}
-                variant="outline"
-                size="sm"
-                disabled={queuedMessages.length === 0}
-                className="flex-1"
-              >
-                Clear All
-              </Button>
-              <Button
-                onClick={() => setShowQueueModal(false)}
-                size="sm"
-                className="flex-1"
-              >
-                Close
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
 
       {/* Onboarding Dialog */}
       <OnboardingDialog

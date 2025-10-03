@@ -1,3 +1,4 @@
+import OpenAI from 'openai';
 import { useNavigate } from 'react-router-dom';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -8,6 +9,7 @@ import { useAICredits } from '@/hooks/useAICredits';
 import { CreditsDialog } from './CreditsDialog';
 import { ProjectPreviewConsoleError } from '@/lib/consoleMessages';
 import { useState } from 'react';
+import { MalformedToolCallError } from '@/lib/errors/MalformedToolCallError';
 
 export interface QuillyProps {
   error: Error;
@@ -43,33 +45,21 @@ export function Quilly({ error, onDismiss, onNewChat, onOpenModelSelector, onReq
   const [showCreditsDialog, setShowCreditsDialog] = useState(false);
 
   const renderBody = (error: Error): ErrorBody => {
-    // Handle errors with a code property (custom errors and API errors)
-    const errorCode = (error as Error & { code?: string }).code;
-
-    if (!errorCode) {
-      // Generic error fallback for errors without a code property
-      return {
-        message: error.message
-          ? `AI service error: ${error.message}`
-          : 'Sorry, I encountered an unexpected error. Please try again.',
-      };
-    }
-
-    switch (errorCode) {
-    // Application-specific error codes
-    case 'console_error':
+    // Handle Project Preview Console Errors
+    if (error instanceof ProjectPreviewConsoleError) {
       return {
         message: 'I noticed some console errors in your project preview. Would you like me to take a look and help fix them?',
         action: {
           label: 'Help fix errors',
           onClick: () => {
-            onRequestConsoleErrorHelp?.(error as ProjectPreviewConsoleError);
+            onRequestConsoleErrorHelp?.(error);
             onDismiss();
           },
         },
       };
+    }
 
-    case 'malformed_tool_call':
+    if (error instanceof MalformedToolCallError) {
       return {
         message: 'The AI sent an incomplete response, possibly due to a network issue or provider problem. Try sending your message again, or switch to a different model if this persists.',
         action: {
@@ -77,72 +67,83 @@ export function Quilly({ error, onDismiss, onNewChat, onOpenModelSelector, onReq
           onClick: onOpenModelSelector,
         },
       };
+    }
 
-      // OpenAI API error codes
-    case 'invalid_api_key':
-    case 'invalid_request_error':
-      return {
-        message: 'Authentication error: Please check your API key in AI settings.',
-        action: {
-          label: 'Check API key',
-          onClick: () => navigate('/settings/ai'),
+    // Handle OpenAI API errors with specific error codes
+    if (error instanceof OpenAI.APIError) {
+      switch (error.code) {
+        case 'invalid_api_key':
+        case 'invalid_request_error':
+          return {
+            message: 'Authentication error: Please check your API key in AI settings.',
+            action: {
+              label: 'Check API key',
+              onClick: () => navigate('/settings/ai'),
+            }
+          };
+
+        case 'insufficient_quota': {
+          if (credits.data) {
+            return {
+              message: `Your account has $${credits.data.amount.toFixed(2)} credits. Please add credits to keep creating.`,
+              action: {
+                label: 'Add credits',
+                onClick: () => setShowCreditsDialog(true),
+              }
+            };
+          } else {
+            return {
+              message: 'Your API key has reached its usage limit. Please check your billing or try a different provider.',
+              action: {
+                label: 'Check AI settings',
+                onClick: () => navigate('/settings/ai'),
+              }
+            };
+          }
         }
-      };
 
-    case 'insufficient_quota': {
-      if (credits.data) {
-        return {
-          message: `Your account has $${credits.data.amount.toFixed(2)} credits. Please add credits to keep creating.`,
-          action: {
-            label: 'Add credits',
-            onClick: () => setShowCreditsDialog(true),
-          }
-        };
-      } else {
-        return {
-          message: 'Your API key has reached its usage limit. Please check your billing or try a different provider.',
-          action: {
-            label: 'Check AI settings',
-            onClick: () => navigate('/settings/ai'),
-          }
-        };
+        case 'rate_limit_exceeded':
+          return {
+            message: 'Rate limit exceeded. Please wait a moment before trying again.',
+          };
+
+        case 'model_not_found':
+          return {
+            message: 'The selected AI model is not available. Please choose a different model.',
+            action: {
+              label: 'Choose model',
+              onClick: onOpenModelSelector,
+            },
+          };
+
+        case 'context_length_exceeded':
+          return {
+            message: 'Your conversation is too long for this model. Try starting a new chat or switching to a model with a larger context window.',
+            action: {
+              label: 'New chat',
+              onClick: onNewChat,
+            },
+          };
+
+        case 'server_error':
+        case 'service_unavailable':
+          return {
+            message: 'The AI service is temporarily unavailable. Please try again in a moment.',
+          };
+
+        default:
+          return {
+            message: `AI service error: ${error.message}`,
+          };
       }
     }
 
-    case 'rate_limit_exceeded':
-      return {
-        message: 'Rate limit exceeded. Please wait a moment before trying again.',
-      };
-
-    case 'model_not_found':
-      return {
-        message: 'The selected AI model is not available. Please choose a different model.',
-        action: {
-          label: 'Choose model',
-          onClick: onOpenModelSelector,
-        },
-      };
-
-    case 'context_length_exceeded':
-      return {
-        message: 'Your conversation is too long for this model. Try starting a new chat or switching to a model with a larger context window.',
-        action: {
-          label: 'New chat',
-          onClick: onNewChat,
-        },
-      };
-
-    case 'server_error':
-    case 'service_unavailable':
-      return {
-        message: 'The AI service is temporarily unavailable. Please try again in a moment.',
-      };
-
-    default:
-      return {
-        message: `AI service error: ${error.message}`,
-      };
-    }
+    // Default fallback
+    return {
+      message: error.message
+        ? `AI service error: ${error.message}`
+        : 'Sorry, I encountered an unexpected error. Please try again.',
+    };
   };
 
   const { message, action } = renderBody(error);

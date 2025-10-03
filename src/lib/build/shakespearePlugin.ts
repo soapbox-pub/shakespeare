@@ -10,6 +10,26 @@ export function shakespearePlugin(): Plugin {
     name: "shakespeare",
 
     setup(build) {
+      // Handle Tailwind CSS configuration files
+      build.onResolve({ filter: /^shakespeare:tailwind\.config\.(js|ts)$/ }, (args) => {
+        return {
+          path: args.path,
+          namespace: "shakespeare-tailwind",
+        };
+      });
+
+      build.onLoad({ filter: /.*/, namespace: "shakespeare-tailwind" }, async (args) => {
+        const { pathname } = new URL(args.path);
+        return {
+          contents: `
+            import tailwindConfig from "@/../${pathname}";
+            import "https://esm.sh/tailwindcss-cdn@3";
+            tailwind.config = tailwindConfig;
+          `,
+          loader: "js",
+        };
+      });
+
       // Handle "sonner" imports with a dummy API
       build.onResolve({ filter: /^sonner$/ }, (args) => {
         return {

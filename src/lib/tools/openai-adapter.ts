@@ -17,7 +17,7 @@ export function toolToOpenAI<TParams>(name: string, tool: Tool<TParams>): OpenAI
   if (tool.inputSchema) {
     functionDef.parameters = zodSchemaToJsonSchema(tool.inputSchema);
   } else {
-    functionDef.parameters = {};
+    functionDef.parameters = { type: "object" };
   }
 
   return {

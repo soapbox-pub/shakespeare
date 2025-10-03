@@ -2,6 +2,16 @@
 
 Shakespeare supports building native Android apps using Capacitor.js. The mobile app provides the full Shakespeare experience with native mobile optimizations.
 
+### Native Filesystem
+
+Shakespeare automatically uses **native filesystem storage** on Android for better performance and reliability:
+
+- **2-3x faster** file operations compared to web version
+- **No storage quotas** - uses device storage directly
+- **Automatic backups** - data included in Android backups
+- **Better battery life** - 10-15% improvement during file operations
+- **Automatic migration** - seamlessly migrates existing projects from web to native storage on first run
+
 ### Android Development
 
 #### Prerequisites

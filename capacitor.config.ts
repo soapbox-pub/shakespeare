@@ -18,6 +18,10 @@ const config: CapacitorConfig = {
     },
     StatusBar: {
       style: 'default'
+    },
+    Filesystem: {
+      // Use app data directory for all file operations
+      // This directory is included in Android backups
     }
   }
 };

@@ -20,6 +20,7 @@
     "@capacitor/android": "^7.4.3",
     "@capacitor/app": "^7.1.0",
     "@capacitor/core": "^7.4.3",
+    "@capacitor/filesystem": "^7.1.4",
     "@capacitor/keyboard": "^7.0.3",
     "@capacitor/splash-screen": "^7.0.3",
     "@capacitor/status-bar": "^7.0.3",

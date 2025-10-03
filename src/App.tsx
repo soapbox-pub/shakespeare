@@ -6,6 +6,7 @@ import { createHead, UnheadProvider } from '@unhead/react/client';
 import { InferSeoMetaPlugin } from '@unhead/addons';
 import { Suspense, useEffect } from 'react';
 import LightningFS from '@isomorphic-git/lightning-fs';
+import { Capacitor } from '@capacitor/core';
 import NostrProvider from '@/components/NostrProvider';
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -19,6 +20,8 @@ import { FSProvider } from '@/components/FSProvider';
 import { ConsoleErrorProvider } from '@/components/ConsoleErrorProvider';
 import { LightningFSAdapter } from '@/lib/LightningFSAdapter';
 import { cleanupTmpDirectory } from '@/lib/tmpCleanup';
+import { CapacitorFSAdapter } from '@/lib/CapacitorFSAdapter';
+import type { JSRuntimeFS } from '@/lib/JSRuntime';
 
 import AppRouter from './AppRouter';
 
@@ -51,9 +54,29 @@ const presetRelays = [
   { url: 'wss://relay.primal.net', name: 'Primal' },
 ];
 
-// Initialize LightningFS
-const lightningFS = new LightningFS('shakespeare-fs');
-const fs = new LightningFSAdapter(lightningFS.promises);
+/**
+ * Initialize filesystem based on platform
+ */
+function initializeFilesystem(): JSRuntimeFS {
+  const isNative = Capacitor.isNativePlatform();
+  const platform = Capacitor.getPlatform();
+
+  console.log(`Initializing filesystem for platform: ${platform} (native: ${isNative})`);
+
+  if (isNative) {
+    // Use native filesystem on Android/iOS
+    console.log('Using Capacitor native filesystem');
+    return new CapacitorFSAdapter();
+  } else {
+    // Use IndexedDB-based filesystem on web
+    console.log('Using LightningFS (IndexedDB)');
+    const lightningFS = new LightningFS('shakespeare-fs');
+    return new LightningFSAdapter(lightningFS.promises);
+  }
+}
+
+// Initialize the appropriate filesystem
+const fs = initializeFilesystem();
 
 // Component to handle filesystem cleanup on startup
 // Automatically removes files older than 1 hour from /tmp directory

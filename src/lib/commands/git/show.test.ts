@@ -57,6 +57,12 @@ describe('GitShowCommand', () => {
                   timestamp: 1600000000,
                   timezoneOffset: 0,
                 },
+                committer: {
+                  name: 'Test User',
+                  email: 'test@example.com',
+                  timestamp: 1600000000,
+                  timezoneOffset: 0,
+                },
               },
               payload: '',
             };
@@ -68,6 +74,12 @@ describe('GitShowCommand', () => {
                 parent: ['initial-commit'],
                 tree: 'simple-tree',
                 author: {
+                  name: 'Test User',
+                  email: 'test@example.com',
+                  timestamp: 1600001000,
+                  timezoneOffset: 0,
+                },
+                committer: {
                   name: 'Test User',
                   email: 'test@example.com',
                   timestamp: 1600001000,
@@ -89,6 +101,12 @@ describe('GitShowCommand', () => {
                   timestamp: 1600001500,
                   timezoneOffset: 0,
                 },
+                committer: {
+                  name: 'Test User',
+                  email: 'test@example.com',
+                  timestamp: 1600001500,
+                  timezoneOffset: 0,
+                },
               },
               payload: '',
             };
@@ -100,6 +118,12 @@ describe('GitShowCommand', () => {
                 parent: ['simple-commit', 'branch-commit'],
                 tree: 'merge-tree',
                 author: {
+                  name: 'Test User',
+                  email: 'test@example.com',
+                  timestamp: 1600002000,
+                  timezoneOffset: 0,
+                },
+                committer: {
                   name: 'Test User',
                   email: 'test@example.com',
                   timestamp: 1600002000,
@@ -129,6 +153,12 @@ describe('GitShowCommand', () => {
                   timestamp: 1600000000,
                   timezoneOffset: 0,
                 },
+                committer: {
+                  name: 'Test User',
+                  email: 'test@example.com',
+                  timestamp: 1600000000,
+                  timezoneOffset: 0,
+                },
               },
               payload: '',
             }];
@@ -140,6 +170,12 @@ describe('GitShowCommand', () => {
                 parent: ['initial-commit'],
                 tree: 'simple-tree',
                 author: {
+                  name: 'Test User',
+                  email: 'test@example.com',
+                  timestamp: 1600001000,
+                  timezoneOffset: 0,
+                },
+                committer: {
                   name: 'Test User',
                   email: 'test@example.com',
                   timestamp: 1600001000,
@@ -161,6 +197,12 @@ describe('GitShowCommand', () => {
                   timestamp: 1600001500,
                   timezoneOffset: 0,
                 },
+                committer: {
+                  name: 'Test User',
+                  email: 'test@example.com',
+                  timestamp: 1600001500,
+                  timezoneOffset: 0,
+                },
               },
               payload: '',
             }];
@@ -172,6 +214,12 @@ describe('GitShowCommand', () => {
                 parent: ['simple-commit', 'branch-commit'],
                 tree: 'merge-tree',
                 author: {
+                  name: 'Test User',
+                  email: 'test@example.com',
+                  timestamp: 1600002000,
+                  timezoneOffset: 0,
+                },
+                committer: {
                   name: 'Test User',
                   email: 'test@example.com',
                   timestamp: 1600002000,
@@ -192,36 +240,36 @@ describe('GitShowCommand', () => {
             return {
               oid,
               tree: [
-                { path: 'file1.txt', mode: '100644', oid: 'blob-initial-1' },
-                { path: 'file2.txt', mode: '100644', oid: 'blob-initial-2' },
+                { path: 'file1.txt', mode: '100644', type: 'blob', oid: 'blob-initial-1' },
+                { path: 'file2.txt', mode: '100644', type: 'blob', oid: 'blob-initial-2' },
               ],
             };
           case 'simple-tree':
             return {
               oid,
               tree: [
-                { path: 'file1.txt', mode: '100644', oid: 'blob-modified-1' },
-                { path: 'file2.txt', mode: '100644', oid: 'blob-initial-2' },
-                { path: 'file3.txt', mode: '100644', oid: 'blob-new-3' },
+                { path: 'file1.txt', mode: '100644', type: 'blob', oid: 'blob-modified-1' },
+                { path: 'file2.txt', mode: '100644', type: 'blob', oid: 'blob-initial-2' },
+                { path: 'file3.txt', mode: '100644', type: 'blob', oid: 'blob-new-3' },
               ],
             };
           case 'branch-tree':
             return {
               oid,
               tree: [
-                { path: 'file1.txt', mode: '100644', oid: 'blob-initial-1' },
-                { path: 'file2.txt', mode: '100644', oid: 'blob-branch-2' },
-                { path: 'binary.bin', mode: '100644', oid: 'blob-binary' },
+                { path: 'file1.txt', mode: '100644', type: 'blob', oid: 'blob-initial-1' },
+                { path: 'file2.txt', mode: '100644', type: 'blob', oid: 'blob-branch-2' },
+                { path: 'binary.bin', mode: '100644', type: 'blob', oid: 'blob-binary' },
               ],
             };
           case 'merge-tree':
             return {
               oid,
               tree: [
-                { path: 'file1.txt', mode: '100644', oid: 'blob-modified-1' },
-                { path: 'file2.txt', mode: '100644', oid: 'blob-branch-2' },
-                { path: 'file3.txt', mode: '100644', oid: 'blob-new-3' },
-                { path: 'binary.bin', mode: '100644', oid: 'blob-binary' },
+                { path: 'file1.txt', mode: '100644', type: 'blob', oid: 'blob-modified-1' },
+                { path: 'file2.txt', mode: '100644', type: 'blob', oid: 'blob-branch-2' },
+                { path: 'file3.txt', mode: '100644', type: 'blob', oid: 'blob-new-3' },
+                { path: 'binary.bin', mode: '100644', type: 'blob', oid: 'blob-binary' },
               ],
             };
           case 'initial-commit':
@@ -232,8 +280,8 @@ describe('GitShowCommand', () => {
             return {
               oid,
               tree: [
-                { path: 'file1.txt', mode: '100644', oid: 'blob-modified-1' },
-                { path: 'file2.txt', mode: '100644', oid: 'blob-initial-2' },
+                { path: 'file1.txt', mode: '100644', type: 'blob', oid: 'blob-modified-1' },
+                { path: 'file2.txt', mode: '100644', type: 'blob', oid: 'blob-initial-2' },
               ],
             };
           default:
@@ -346,16 +394,16 @@ describe('GitShowCommand', () => {
         return {
           oid,
           tree: [
-            { path: 'file1.txt', mode: '100644', oid: 'blob-modified-1' },
-            { path: 'file3.txt', mode: '100644', oid: 'blob-new-3' },
+            { path: 'file1.txt', mode: '100644', type: 'blob', oid: 'blob-modified-1' },
+            { path: 'file3.txt', mode: '100644', type: 'blob', oid: 'blob-new-3' },
           ],
         };
       } else if (oid === 'initial-commit' || oid === 'initial-tree') {
         return {
           oid,
           tree: [
-            { path: 'file1.txt', mode: '100644', oid: 'blob-initial-1' },
-            { path: 'file2.txt', mode: '100644', oid: 'blob-initial-2' },
+            { path: 'file1.txt', mode: '100644', type: 'blob', oid: 'blob-initial-1' },
+            { path: 'file2.txt', mode: '100644', type: 'blob', oid: 'blob-initial-2' },
           ],
         };
       }
@@ -403,6 +451,12 @@ describe('GitShowCommand', () => {
               timestamp: 1600001000,
               timezoneOffset: 0,
             },
+            committer: {
+              name: 'Test User',
+              email: 'test@example.com',
+              timestamp: 1600001000,
+              timezoneOffset: 0,
+            },
           },
           payload: '',
         }];
@@ -425,6 +479,12 @@ describe('GitShowCommand', () => {
               timestamp: 1600001000,
               timezoneOffset: 0,
             },
+            committer: {
+              name: 'Test User',
+              email: 'test@example.com',
+              timestamp: 1600001000,
+              timezoneOffset: 0,
+            },
           },
           payload: '',
         };
@@ -436,6 +496,12 @@ describe('GitShowCommand', () => {
             parent: [],
             tree: 'diff-parent-tree',
             author: {
+              name: 'Test User',
+              email: 'test@example.com',
+              timestamp: 1600000000,
+              timezoneOffset: 0,
+            },
+            committer: {
               name: 'Test User',
               email: 'test@example.com',
               timestamp: 1600000000,
@@ -454,28 +520,28 @@ describe('GitShowCommand', () => {
         return {
           oid,
           tree: [
-            { path: 'diff-test.txt', mode: '100644', oid: 'blob-new' },
+            { path: 'diff-test.txt', mode: '100644', type: 'blob', oid: 'blob-new' },
           ],
         };
       } else if (oid === 'diff-parent-tree') {
         return {
           oid,
           tree: [
-            { path: 'diff-test.txt', mode: '100644', oid: 'blob-old' },
+            { path: 'diff-test.txt', mode: '100644', type: 'blob', oid: 'blob-old' },
           ],
         };
       } else if (oid === 'diff-parent-commit') {
         return {
           oid,
           tree: [
-            { path: 'diff-test.txt', mode: '100644', oid: 'blob-old' },
+            { path: 'diff-test.txt', mode: '100644', type: 'blob', oid: 'blob-old' },
           ],
         };
       } else if (oid === 'diff-test-commit') {
         return {
           oid,
           tree: [
-            { path: 'diff-test.txt', mode: '100644', oid: 'blob-new' },
+            { path: 'diff-test.txt', mode: '100644', type: 'blob', oid: 'blob-new' },
           ],
         };
       }

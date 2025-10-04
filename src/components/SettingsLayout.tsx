@@ -120,10 +120,10 @@ export function SettingsLayout() {
 
   if (isMobile) {
     return (
-      <div className="min-h-dvh bg-background">
+      <div className="min-h-dvh pb-safe bg-background">
         {/* Mobile Header */}
-        <header className="h-12 border-b bg-background px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center space-x-2">
+        <header className="pt-safe bg-background">
+          <div className="flex items-center space-x-2 h-12 border-b px-4 py-3">
             <Button
               variant="ghost"
               size="sm"

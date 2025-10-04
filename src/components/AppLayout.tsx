@@ -72,20 +72,22 @@ export function AppLayout({
     return (
       <div className="min-h-dvh bg-gradient-to-br from-primary/5 to-accent/5">
         {/* Mobile Header */}
-        <header className="h-12 border-b bg-gradient-to-r from-primary/10 via-accent/5 to-primary/10 backdrop-blur px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            {showSidebar && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsSidebarVisible(!isSidebarVisible)}
-                aria-label="Toggle sidebar"
-              >
-                <Menu className="h-4 w-4" />
-              </Button>
-            )}
+        <header className="bg-gradient-to-r from-primary/10 via-accent/5 to-primary/10 backdrop-blur pt-safe">
+          <div className="h-12 px-4 py-3 flex items-center justify-between border-b">
+            <div className="flex items-center space-x-2">
+              {showSidebar && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsSidebarVisible(!isSidebarVisible)}
+                  aria-label="Toggle sidebar"
+                >
+                  <Menu className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+            {headerContent}
           </div>
-          {headerContent}
         </header>
 
         {/* Mobile Sidebar Overlay - show if showSidebar is true and sidebar is visible */}

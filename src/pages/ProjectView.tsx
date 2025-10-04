@@ -128,55 +128,57 @@ export function ProjectView() {
 
   if (isMobile) {
     return (
-      <div className="h-dvh flex flex-col bg-background safe-area-inset-top">
-        <header className="overflow-hidden border-b bg-gradient-to-r from-primary/10 via-accent/5 to-primary/10 backdrop-blur supports-[backdrop-filter]:bg-gradient-to-r supports-[backdrop-filter]:from-primary/10 supports-[backdrop-filter]:via-accent/5 supports-[backdrop-filter]:to-primary/10 px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center space-x-2 overflow-hidden">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsSidebarVisible(!isSidebarVisible)}
-            >
-              <Menu className="h-4 w-4" />
-            </Button>
-            <div className="flex min-w-0 flex-1">
+      <div className="h-dvh flex flex-col bg-background">
+        <header className="pt-safe bg-gradient-to-r from-primary/10 via-accent/5 to-primary/10 backdrop-blur">
+          <div className="h-12 border-b px-4 py-3 flex items-center justify-between">
+            <div className="flex items-center space-x-2 overflow-hidden">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsSidebarVisible(!isSidebarVisible)}
+              >
+                <Menu className="h-4 w-4" />
+              </Button>
+              <div className="flex min-w-0 flex-1">
+                {project ? (
+                  <Button
+                    variant="ghost"
+                    className="block p-0 h-auto text-sm font-semibold truncate hover:bg-transparent hover:text-primary"
+                    onClick={() => setIsProjectDetailsOpen(true)}
+                  >
+                    {project.name}
+                  </Button>
+                ) : (
+                  <Skeleton className="h-5 w-32" />
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
               {project ? (
-                <Button
-                  variant="ghost"
-                  className="block p-0 h-auto text-sm font-semibold truncate hover:bg-transparent hover:text-primary"
-                  onClick={() => setIsProjectDetailsOpen(true)}
-                >
-                  {project.name}
-                </Button>
+                <>
+                  <StarButton
+                    projectId={project.id}
+                    projectName={project.name}
+                    className="h-8 w-8"
+                  />
+                  <ActionsMenu
+                    projectId={project.id}
+                    projectName={project.name}
+                    onNewChat={handleNewChat}
+                    onProjectDetails={() => setIsProjectDetailsOpen(true)}
+                    isLoading={isAILoading}
+                    isBuildLoading={build.isPending}
+                    onFirstInteraction={handleFirstInteraction}
+                  />
+                </>
               ) : (
-                <Skeleton className="h-5 w-32" />
+                <>
+                  <Skeleton className="h-8 w-8 rounded" />
+                  <Skeleton className="h-8 w-8 rounded" />
+                </>
               )}
             </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {project ? (
-              <>
-                <StarButton
-                  projectId={project.id}
-                  projectName={project.name}
-                  className="h-8 w-8"
-                />
-                <ActionsMenu
-                  projectId={project.id}
-                  projectName={project.name}
-                  onNewChat={handleNewChat}
-                  onProjectDetails={() => setIsProjectDetailsOpen(true)}
-                  isLoading={isAILoading}
-                  isBuildLoading={build.isPending}
-                  onFirstInteraction={handleFirstInteraction}
-                />
-              </>
-            ) : (
-              <>
-                <Skeleton className="h-8 w-8 rounded" />
-                <Skeleton className="h-8 w-8 rounded" />
-              </>
-            )}
           </div>
         </header>
 
@@ -248,7 +250,7 @@ export function ProjectView() {
           )}
         </div>
 
-        <div className="border-t bg-gradient-to-r from-primary/5 via-background to-accent/5 backdrop-blur safe-area-inset-bottom">
+        <div className="border-t bg-gradient-to-r from-primary/5 via-background to-accent/5 backdrop-blur pb-safe">
           <div className="flex">
             <Button
               variant="ghost"

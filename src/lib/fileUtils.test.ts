@@ -13,12 +13,16 @@ class MockFS implements JSRuntimeFS {
   }
 
   async readFile(path: string): Promise<Uint8Array>;
-  async readFile(path: string, encoding: 'utf8'): Promise<string>;
-  async readFile(path: string, encoding: string): Promise<string>;
-  async readFile(path: string, encoding?: string): Promise<string | Uint8Array> {
+  async readFile(path: string, options: 'utf8'): Promise<string>;
+  async readFile(path: string, options: string): Promise<string>;
+  async readFile(path: string, options: { encoding: 'utf8' }): Promise<string>;
+  async readFile(path: string, options: { encoding: string }): Promise<string>;
+  async readFile(path: string, options?: string | { encoding?: string }): Promise<string | Uint8Array>;
+  async readFile(path: string, options?: string | { encoding?: string }): Promise<string | Uint8Array> {
     const data = this.files.get(path);
     if (!data) throw new Error(`File not found: ${path}`);
 
+    const encoding = typeof options === 'string' ? options : options?.encoding;
     if (encoding === 'utf8') {
       return typeof data === 'string' ? data : new TextDecoder().decode(data);
     }
@@ -26,7 +30,7 @@ class MockFS implements JSRuntimeFS {
     return data;
   }
 
-  async writeFile(path: string, data: string | Uint8Array): Promise<void> {
+  async writeFile(path: string, data: string | Uint8Array, _options?: string | { encoding?: string }): Promise<void> {
     this.files.set(path, data);
   }
 

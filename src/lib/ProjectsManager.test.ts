@@ -41,15 +41,19 @@ class MockFS implements JSRuntimeFS {
   private dirs: Set<string> = new Set();
 
   async readFile(path: string): Promise<Uint8Array>;
-  async readFile(path: string, encoding: "utf8"): Promise<string>;
-  async readFile(path: string, encoding: string): Promise<string | Uint8Array>;
-  async readFile(path: string, encoding?: string): Promise<string | Uint8Array> {
+  async readFile(path: string, options: 'utf8'): Promise<string>;
+  async readFile(path: string, options: string): Promise<string>;
+  async readFile(path: string, options: { encoding: 'utf8' }): Promise<string>;
+  async readFile(path: string, options: { encoding: string }): Promise<string>;
+  async readFile(path: string, options?: string | { encoding?: string }): Promise<string | Uint8Array>;
+  async readFile(path: string, options?: string | { encoding?: string }): Promise<string | Uint8Array> {
     const content = this.files.get(path);
     if (content === undefined) {
       const error = new Error(`ENOENT: no such file or directory, open '${path}'`) as NodeJS.ErrnoException;
       error.code = 'ENOENT';
       throw error;
     }
+    const encoding = typeof options === 'string' ? options : options?.encoding;
     if (encoding === 'utf8') {
       if (typeof content === 'string') {
         return content;

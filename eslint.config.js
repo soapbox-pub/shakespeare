@@ -47,6 +47,7 @@ export default tseslint.config(
         "error",
         { terms: ["fixme"] },
       ],
+      "no-control-regex": "off", // Allow ANSI escape sequences in regex
     },
   },
   {

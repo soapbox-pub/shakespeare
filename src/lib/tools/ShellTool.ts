@@ -25,6 +25,7 @@ import {
   PwdCommand,
   RmCommand,
   SedCommand,
+  ShakespeareCommand,
   SortCommand,
   TailCommand,
   TouchCommand,
@@ -85,6 +86,7 @@ export class ShellTool implements Tool<ShellToolParams> {
     this.registerCommand(new PwdCommand());
     this.registerCommand(new RmCommand(fs));
     this.registerCommand(new SedCommand(fs));
+    this.registerCommand(new ShakespeareCommand());
     this.registerCommand(new SortCommand(fs));
     this.registerCommand(new TailCommand(fs));
     this.registerCommand(new TouchCommand(fs));
@@ -493,13 +495,15 @@ export class ShellTool implements Tool<ShellToolParams> {
   }
 
   /**
-   * Get list of available commands
+   * Get list of available commands (excludes hidden easter eggs)
    */
   getAvailableCommands(): Array<{ name: string; description: string; usage: string }> {
-    return Array.from(this.commands.values()).map(cmd => ({
-      name: cmd.name,
-      description: cmd.description,
-      usage: cmd.usage,
-    }));
+    return Array.from(this.commands.values())
+      .filter(cmd => !cmd.isEasterEgg) // Hide easter egg commands from help
+      .map(cmd => ({
+        name: cmd.name,
+        description: cmd.description,
+        usage: cmd.usage,
+      }));
   }
 }

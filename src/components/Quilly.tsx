@@ -9,6 +9,7 @@ import { useAICredits } from '@/hooks/useAICredits';
 import { CreditsDialog } from './CreditsDialog';
 import { ProjectPreviewConsoleError } from '@/lib/consoleMessages';
 import { useState } from 'react';
+import { MalformedToolCallError } from '@/lib/errors/MalformedToolCallError';
 
 export interface QuillyProps {
   error: Error;
@@ -54,6 +55,16 @@ export function Quilly({ error, onDismiss, onNewChat, onOpenModelSelector, onReq
             onRequestConsoleErrorHelp?.(error);
             onDismiss();
           },
+        },
+      };
+    }
+
+    if (error instanceof MalformedToolCallError) {
+      return {
+        message: 'The AI sent an incomplete response, possibly due to a network issue or provider problem. Try sending your message again, or switch to a different model if this persists.',
+        action: {
+          label: 'Change model',
+          onClick: onOpenModelSelector,
         },
       };
     }

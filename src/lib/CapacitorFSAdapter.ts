@@ -162,21 +162,20 @@ export class CapacitorFSAdapter implements JSRuntimeFS {
   /**
    * Create directory
    */
-  async mkdir(path: string, options?: { recursive?: boolean }): Promise<void> {
+  async mkdir(path: string): Promise<void> {
     try {
       await Filesystem.mkdir({
         path: this.normalizePath(path),
         directory: this.baseDirectory,
-        recursive: options?.recursive ?? false,
+        recursive: true,
       });
     } catch (error) {
       // Ignore "directory exists" errors when recursive is true
-      if (options?.recursive && error instanceof Error) {
-        if (error.message.includes('exists') || error.message.includes('EEXIST')) {
-          return;
-        }
+      if (error instanceof Error && (error.message.includes('exists') || error.message.includes('EEXIST'))) {
+        return;
+      } else {
+        throw error;
       }
-      throw error;
     }
   }
 

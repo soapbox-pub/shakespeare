@@ -173,7 +173,7 @@ describe('CapacitorFSAdapter', () => {
       expect(Filesystem.Filesystem.mkdir).toHaveBeenCalledWith({
         path: 'test',
         directory: 'DATA',
-        recursive: false,
+        recursive: true,
       });
     });
 

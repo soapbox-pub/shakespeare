@@ -51,17 +51,25 @@ export function ModelSelector({
 
   const recentlyUsedModels = useMemo(() => settings.recentlyUsedModels || [], [settings.recentlyUsedModels]);
 
-  // Group models by provider
+  // Create a Set of recently used model IDs for efficient lookup
+  const recentlyUsedSet = useMemo(() => new Set(recentlyUsedModels), [recentlyUsedModels]);
+
+  // Group models by provider, excluding models that are in the recently used section
   const modelsByProvider = useMemo(() => {
     const groups: Record<string, typeof models> = {};
     for (const model of models) {
+      // Skip models that are already shown in recently used
+      if (recentlyUsedSet.has(model.fullId)) {
+        continue;
+      }
+
       if (!groups[model.provider]) {
         groups[model.provider] = [];
       }
       groups[model.provider].push(model);
     }
     return groups;
-  }, [models]);
+  }, [models, recentlyUsedSet]);
 
   // Determine if we should show the "Recently Used" section
   const shouldShowRecentlyUsed = useMemo(() => {

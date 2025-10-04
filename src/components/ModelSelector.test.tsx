@@ -102,11 +102,17 @@ describe('ModelSelector', () => {
 
     // Wait for the dropdown to open
     await waitFor(() => {
-      expect(screen.getByText('provider1')).toBeInTheDocument();
+      expect(screen.getByText('provider2')).toBeInTheDocument();
     });
 
     // Recently used section should NOT be visible
     expect(screen.queryByText('Recently Used')).not.toBeInTheDocument();
+
+    // provider1 should be hidden since all its models are in recently used
+    expect(screen.queryByText('provider1')).not.toBeInTheDocument();
+
+    // provider2 should still show with model3
+    expect(screen.getByText('provider2/model3')).toBeInTheDocument();
   });
 
   it('shows recently used section when less than 5 models but some recently used are not available', async () => {
@@ -198,11 +204,19 @@ describe('ModelSelector', () => {
 
     // Wait for the dropdown to open
     await waitFor(() => {
-      expect(screen.getByText('provider1')).toBeInTheDocument();
+      expect(screen.getByText('provider2')).toBeInTheDocument();
     });
 
     // Recently used section SHOULD be visible
     expect(screen.getByText('Recently Used')).toBeInTheDocument();
+
+    // provider1 should be hidden since all its models are in recently used
+    expect(screen.queryByText('provider1')).not.toBeInTheDocument();
+
+    // provider2 and provider3 should still show
+    expect(screen.getByText('provider2/model3')).toBeInTheDocument();
+    expect(screen.getByText('provider2/model4')).toBeInTheDocument();
+    expect(screen.getByText('provider3/model5')).toBeInTheDocument();
   });
 
   it('hides recently used section when no recently used models exist', async () => {

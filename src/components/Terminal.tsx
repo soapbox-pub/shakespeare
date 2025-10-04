@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { ShellTool } from '@/lib/tools/ShellTool';
 import { useFS } from '@/hooks/useFS';
 import { useGit } from '@/hooks/useGit';
+import { ansiToHtml, containsAnsiCodes } from '@/lib/ansiToHtml';
 
 interface TerminalProps {
   projectId: string;
@@ -152,7 +153,9 @@ export function Terminal({ projectId, className }: TerminalProps) {
 
   const copyToClipboard = useCallback(async (content: string) => {
     try {
-      await navigator.clipboard.writeText(content);
+      // Strip ANSI codes when copying to clipboard
+      const cleanContent = content.replace(/\u001b\[(?:\d+;)*\d+m/g, '');
+      await navigator.clipboard.writeText(cleanContent);
     } catch (error) {
       console.error('Failed to copy to clipboard:', error);
     }
@@ -187,7 +190,9 @@ export function Terminal({ projectId, className }: TerminalProps) {
                       ${' '}
                     </span>
                   ) : null}
-                  {line.content}
+                  {containsAnsiCodes(line.content) 
+                    ? <span dangerouslySetInnerHTML={{ __html: ansiToHtml(line.content) }} />
+                    : line.content}
                 </pre>
                 <Button
                   variant="ghost"

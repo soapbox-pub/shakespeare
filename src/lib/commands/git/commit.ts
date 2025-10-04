@@ -7,7 +7,7 @@ import type { Git } from "../../git";
 export class GitCommitCommand implements GitSubcommand {
   name = 'commit';
   description = 'Record changes to the repository';
-  usage = 'git commit [-m <msg>] [--amend] [--allow-empty]';
+  usage = 'git commit [-m <msg>] [-a | --all] [-am <msg>] [--amend] [--allow-empty]';
 
   private git: Git;
   private fs: JSRuntimeFS;
@@ -32,6 +32,11 @@ export class GitCommitCommand implements GitSubcommand {
 
       if (!message && !options.amend) {
         return createErrorResult('Aborting commit due to empty commit message.');
+      }
+      
+      // If -a flag is provided, stage all tracked files with modifications
+      if (options.addAll) {
+        await this.stageTrackedChanges();
       }
 
       // Get current status
@@ -169,11 +174,46 @@ export class GitCommitCommand implements GitSubcommand {
     }
   }
 
+  /**
+   * Stage all tracked files with modifications
+   * This is used when the -a flag is provided
+   */
+  private async stageTrackedChanges(): Promise<void> {
+    try {
+      // Get the status matrix
+      const statusMatrix = await this.git.statusMatrix({
+        dir: this.pwd,
+      });
+
+      // Process each file based on its status
+      for (const [filepath, headStatus, workdirStatus] of statusMatrix) {
+        // Only process tracked files (headStatus === 1) with changes
+        if (headStatus === 1 && workdirStatus !== headStatus) {
+          if (workdirStatus === 0) {
+            // File was deleted, use remove
+            await this.git.remove({
+              dir: this.pwd,
+              filepath,
+            });
+          } else {
+            // File was modified, use add
+            await this.git.add({
+              dir: this.pwd,
+              filepath,
+            });
+          }
+        }
+      }
+    } catch (error) {
+      throw new Error(`Failed to stage tracked changes: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
   private parseArgs(args: string[]): {
-    options: { amend: boolean; allowEmpty: boolean };
+    options: { amend: boolean; allowEmpty: boolean; addAll: boolean };
     message?: string
   } {
-    const options = { amend: false, allowEmpty: false };
+    const options = { amend: false, allowEmpty: false, addAll: false };
     let message: string | undefined;
 
     for (let i = 0; i < args.length; i++) {
@@ -192,6 +232,14 @@ export class GitCommitCommand implements GitSubcommand {
         options.amend = true;
       } else if (arg === '--allow-empty') {
         options.allowEmpty = true;
+      } else if (arg === '-a' || arg === '--all') {
+        options.addAll = true;
+      } else if (arg === '-am') {
+        options.addAll = true;
+        if (i + 1 < args.length) {
+          message = args[i + 1];
+          i++; // Skip next argument as it's the message
+        }
       }
     }
 

@@ -505,11 +505,11 @@ const SignupDialog: React.FC<SignupDialogProps> = ({ isOpen, onClose, onComplete
 
                 <div className='grid grid-cols-1 gap-2'>
                   {/* Download Option */}
-                   <Card className={`cursor-pointer transition-all duration-200 ${
+                  <Card className={`cursor-pointer transition-all duration-200 ${
                     keySecured === 'downloaded'
-                       ? 'ring-2 ring-green-500 bg-green-50 dark:bg-green-950/20'
-                       : 'hover:bg-primary/5 hover:border-primary/20'
-                   }`}>
+                      ? 'ring-2 ring-green-500 bg-green-50 dark:bg-green-950/20'
+                      : 'hover:bg-primary/5 hover:border-primary/20'
+                  }`}>
                     <CardContent className='p-3'>
                       <Button
                         variant="ghost"
@@ -519,39 +519,39 @@ const SignupDialog: React.FC<SignupDialogProps> = ({ isOpen, onClose, onComplete
                         <div className='flex items-center gap-3 w-full'>
                           <div className={`p-1.5 rounded-lg ${
                             keySecured === 'downloaded'
-                               ? 'bg-green-100 dark:bg-green-900'
-                               : 'bg-primary/10'
-                           }`}>
+                              ? 'bg-green-100 dark:bg-green-900'
+                              : 'bg-primary/10'
+                          }`}>
                             {keySecured === 'downloaded' ? (
-                               <CheckCircle className='w-4 h-4 text-green-600' />
-                             ) : (
-                               <Download className='w-4 h-4 text-primary' />
-                             )}
+                              <CheckCircle className='w-4 h-4 text-green-600' />
+                            ) : (
+                              <Download className='w-4 h-4 text-primary' />
+                            )}
                           </div>
                           <div className='flex-1 text-left'>
-                             <div className='font-medium text-sm'>
+                            <div className='font-medium text-sm'>
                                Download as File
-                             </div>
-                             <div className='text-xs text-muted-foreground'>
+                            </div>
+                            <div className='text-xs text-muted-foreground'>
                                Save as secret-key.txt file
-                             </div>
+                            </div>
                           </div>
                           {keySecured === 'downloaded' && (
-                             <div className='text-xs font-medium text-green-600'>
+                            <div className='text-xs font-medium text-green-600'>
                                ✓ Downloaded
-                             </div>
-                           )}
+                            </div>
+                          )}
                         </div>
                       </Button>
                     </CardContent>
                   </Card>
 
                   {/* Copy Option */}
-                   <Card className={`cursor-pointer transition-all duration-200 ${
+                  <Card className={`cursor-pointer transition-all duration-200 ${
                     keySecured === 'copied'
-                       ? 'ring-2 ring-green-500 bg-green-50 dark:bg-green-950/20'
-                       : 'hover:bg-primary/5 hover:border-primary/20'
-                   }`}>
+                      ? 'ring-2 ring-green-500 bg-green-50 dark:bg-green-950/20'
+                      : 'hover:bg-primary/5 hover:border-primary/20'
+                  }`}>
                     <CardContent className='p-3'>
                       <Button
                         variant="ghost"
@@ -561,20 +561,20 @@ const SignupDialog: React.FC<SignupDialogProps> = ({ isOpen, onClose, onComplete
                         <div className='flex items-center gap-3 w-full'>
                           <div className={`p-1.5 rounded-lg ${
                             keySecured === 'copied'
-                               ? 'bg-green-100 dark:bg-green-900'
-                               : 'bg-primary/10'
-                           }`}>
+                              ? 'bg-green-100 dark:bg-green-900'
+                              : 'bg-primary/10'
+                          }`}>
                             {keySecured === 'copied' ? (
-                               <CheckCircle className='w-4 h-4 text-green-600' />
-                             ) : (
-                               <Copy className='w-4 h-4 text-primary' />
-                             )}
+                              <CheckCircle className='w-4 h-4 text-green-600' />
+                            ) : (
+                              <Copy className='w-4 h-4 text-primary' />
+                            )}
                           </div>
                           <div className='flex-1 text-left'>
-                             <div className='font-medium text-sm'>
+                            <div className='font-medium text-sm'>
                                Copy to Clipboard
-                             </div>
-                             <div className='text-xs text-muted-foreground'>
+                            </div>
+                            <div className='text-xs text-muted-foreground'>
                                Save to password manager
                             </div>
                             <div className='text-[.7rem] text-muted-foreground'>
@@ -582,10 +582,10 @@ const SignupDialog: React.FC<SignupDialogProps> = ({ isOpen, onClose, onComplete
                             </div>
                           </div>
                           {keySecured === 'copied' && (
-                             <div className='text-xs font-medium text-green-600'>
+                            <div className='text-xs font-medium text-green-600'>
                                ✓ Copied
-                             </div>
-                           )}
+                            </div>
+                          )}
                         </div>
                       </Button>
                     </CardContent>

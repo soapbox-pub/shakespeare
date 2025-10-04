@@ -11,7 +11,7 @@ export function useTheme(): {
   systemTheme: "light" | "dark";
   displayTheme: "light" | "dark";
   setTheme: (theme: Theme) => void;
-} {
+  } {
   const { config, updateConfig } = useAppContext();
 
   const systemTheme = useSystemTheme();

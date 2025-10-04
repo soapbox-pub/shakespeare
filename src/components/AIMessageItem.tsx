@@ -69,8 +69,8 @@ export const AIMessageItem = memo(({
           case 'text_editor_view': {
             const title = args.path
               ? (args.start_line || args.end_line
-                  ? `Viewed ${args.path} (lines ${args.start_line || 1}-${args.end_line || 'end'})`
-                  : `Viewed ${args.path}`)
+                ? `Viewed ${args.path} (lines ${args.start_line || 1}-${args.end_line || 'end'})`
+                : `Viewed ${args.path}`)
               : 'Viewed File';
             return { icon: Eye, title };
           }

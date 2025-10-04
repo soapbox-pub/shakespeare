@@ -578,9 +578,9 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
                     <div className={cn(
                       "text-xs font-mono leading-tight whitespace-pre-wrap break-words",
                       msg.level === 'error' ? "text-destructive" :
-                      msg.level === 'warn' ? "text-warning" :
-                      msg.level === 'info' ? "text-primary" :
-                      "text-muted-foreground"
+                        msg.level === 'warn' ? "text-warning" :
+                          msg.level === 'info' ? "text-primary" :
+                            "text-muted-foreground"
                     )}>
                       {msg.message}
                     </div>

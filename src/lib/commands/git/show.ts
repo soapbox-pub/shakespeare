@@ -388,29 +388,29 @@ export class GitShowCommand implements GitSubcommand {
             lines.push('');
             
             // List changed files
-             if (added.length > 0) {
-               lines.push('\x1b[1mAdded files:\x1b[0m');
-               for (const change of added) {
-                 lines.push(`  \x1b[32mnew file: ${change.path}\x1b[0m`); // Green for new files
-               }
-               lines.push('');
-             }
+            if (added.length > 0) {
+              lines.push('\x1b[1mAdded files:\x1b[0m');
+              for (const change of added) {
+                lines.push(`  \x1b[32mnew file: ${change.path}\x1b[0m`); // Green for new files
+              }
+              lines.push('');
+            }
              
-             if (modified.length > 0) {
-               lines.push('\x1b[1mModified files:\x1b[0m');
-               for (const change of modified) {
-                 lines.push(`  \x1b[33mmodified: ${change.path}\x1b[0m`); // Yellow for modified files
-               }
-               lines.push('');
-             }
+            if (modified.length > 0) {
+              lines.push('\x1b[1mModified files:\x1b[0m');
+              for (const change of modified) {
+                lines.push(`  \x1b[33mmodified: ${change.path}\x1b[0m`); // Yellow for modified files
+              }
+              lines.push('');
+            }
              
-             if (deleted.length > 0) {
-               lines.push('\x1b[1mDeleted files:\x1b[0m');
-               for (const change of deleted) {
-                 lines.push(`  \x1b[31mdeleted: ${change.path}\x1b[0m`); // Red for deleted files
-               }
-               lines.push('');
-             }
+            if (deleted.length > 0) {
+              lines.push('\x1b[1mDeleted files:\x1b[0m');
+              for (const change of deleted) {
+                lines.push(`  \x1b[31mdeleted: ${change.path}\x1b[0m`); // Red for deleted files
+              }
+              lines.push('');
+            }
             
             // Show actual diffs for modified files (up to 3 files to avoid excessive output)
             if (modified.length > 0) {
@@ -426,9 +426,9 @@ export class GitShowCommand implements GitSubcommand {
               }
               
               for (const change of filesToShow) {
-              lines.push(`\x1b[1mdiff --git a/${change.path} b/${change.path}\x1b[0m`); // Bold
-              lines.push(`\x1b[1;31m--- a/${change.path}\x1b[0m`); // Bold red
-              lines.push(`\x1b[1;32m+++ b/${change.path}\x1b[0m`); // Bold green
+                lines.push(`\x1b[1mdiff --git a/${change.path} b/${change.path}\x1b[0m`); // Bold
+                lines.push(`\x1b[1;31m--- a/${change.path}\x1b[0m`); // Bold red
+                lines.push(`\x1b[1;32m+++ b/${change.path}\x1b[0m`); // Bold green
                 
                 try {
                   // Get file content from parent commit

@@ -32,36 +32,36 @@ export class UniqCommand implements ShellCommand {
       } else {
         try {
         // Handle absolute paths
-        if (file.startsWith('/') || file.startsWith('\\') || /^[A-Za-z]:[\\/]/.test(file)) {
-          return createErrorResult(`${this.name}: absolute paths are not supported: ${file}`);
-        }
-
-        const absolutePath = join(cwd, file);
-        const stats = await this.fs.stat(absolutePath);
-
-        if (stats.isDirectory()) {
-          return createErrorResult(`${this.name}: ${file}: Is a directory`);
-        }
-
-        const content = await this.fs.readFile(absolutePath, 'utf8');
-        lines = content.split('\n');
-
-        // Remove the last empty line if the file ends with a newline
-        if (lines.length > 0 && lines[lines.length - 1] === '') {
-          lines.pop();
-        }
-      } catch (error) {
-        if (error instanceof Error) {
-          if (error.message.includes('ENOENT') || error.message.includes('not found')) {
-            return createErrorResult(`${this.name}: ${file}: No such file or directory`);
-          } else if (error.message.includes('EACCES') || error.message.includes('permission')) {
-            return createErrorResult(`${this.name}: ${file}: Permission denied`);
-          } else {
-            return createErrorResult(`${this.name}: ${file}: ${error.message}`);
+          if (file.startsWith('/') || file.startsWith('\\') || /^[A-Za-z]:[\\/]/.test(file)) {
+            return createErrorResult(`${this.name}: absolute paths are not supported: ${file}`);
           }
-        } else {
-          return createErrorResult(`${this.name}: ${file}: Unknown error`);
-        }
+
+          const absolutePath = join(cwd, file);
+          const stats = await this.fs.stat(absolutePath);
+
+          if (stats.isDirectory()) {
+            return createErrorResult(`${this.name}: ${file}: Is a directory`);
+          }
+
+          const content = await this.fs.readFile(absolutePath, 'utf8');
+          lines = content.split('\n');
+
+          // Remove the last empty line if the file ends with a newline
+          if (lines.length > 0 && lines[lines.length - 1] === '') {
+            lines.pop();
+          }
+        } catch (error) {
+          if (error instanceof Error) {
+            if (error.message.includes('ENOENT') || error.message.includes('not found')) {
+              return createErrorResult(`${this.name}: ${file}: No such file or directory`);
+            } else if (error.message.includes('EACCES') || error.message.includes('permission')) {
+              return createErrorResult(`${this.name}: ${file}: Permission denied`);
+            } else {
+              return createErrorResult(`${this.name}: ${file}: ${error.message}`);
+            }
+          } else {
+            return createErrorResult(`${this.name}: ${file}: Unknown error`);
+          }
         }
       }
 

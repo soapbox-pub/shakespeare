@@ -21,6 +21,7 @@ import { GitResetCommand } from "./git/reset";
 import { GitDiffCommand } from "./git/diff";
 import { GitTagCommand } from "./git/tag";
 import { GitShowCommand } from "./git/show";
+import { GitStashCommand } from "./git/stash";
 
 export interface GitSubcommand {
   name: string;
@@ -85,6 +86,7 @@ export class GitCommand implements ShellCommand {
     this.registerSubcommand(new GitDiffCommand(subcommandOptions));
     this.registerSubcommand(new GitTagCommand(subcommandOptions));
     this.registerSubcommand(new GitShowCommand(subcommandOptions));
+    this.registerSubcommand(new GitStashCommand(subcommandOptions));
   }
 
   private registerSubcommand(subcommand: GitSubcommand): void {
@@ -132,6 +134,7 @@ start a working area (see also: git help tutorial)
 work on the current change (see also: git help everyday)
    add        Add file contents to the index
    reset      Reset current HEAD to the specified state
+   stash      Stash the changes in a dirty working directory away
 
 examine the history and state (see also: git help revisions)
    log        Show commit logs

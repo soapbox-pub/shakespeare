@@ -186,14 +186,14 @@ export class GitStashCommand implements GitSubcommand {
             // Restore deleted file from HEAD
             await this.git.checkout({
               dir: this.pwd,
-              filepath: file.filepath,
+              filepaths: [file.filepath],
               force: true,
             });
           } else if (file.status === 'modified') {
             // Restore file from HEAD using checkout
             await this.git.checkout({
               dir: this.pwd,
-              filepath: file.filepath,
+              filepaths: [file.filepath],
               force: true,
             });
           } else if (file.status === 'added') {

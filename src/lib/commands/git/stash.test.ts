@@ -126,7 +126,7 @@ describe('GitStashCommand', () => {
       expect(mockFS.writeFile).toHaveBeenCalled();
       expect(mockGit.checkout).toHaveBeenCalledWith({
         dir: testCwd,
-        filepath: 'modified.txt',
+        filepaths: ['modified.txt'],
         force: true,
       });
     });
@@ -188,7 +188,7 @@ describe('GitStashCommand', () => {
       expect(result.exitCode).toBe(0);
       expect(mockGit.checkout).toHaveBeenCalledWith({
         dir: testCwd,
-        filepath: 'deleted.txt',
+        filepaths: ['deleted.txt'],
         force: true,
       });
     });

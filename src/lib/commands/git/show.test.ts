@@ -58,6 +58,7 @@ describe('GitShowCommand', () => {
                   timezoneOffset: 0,
                 },
               },
+              payload: '',
             };
           case 'simple-commit':
             return {
@@ -73,6 +74,7 @@ describe('GitShowCommand', () => {
                   timezoneOffset: 0,
                 },
               },
+              payload: '',
             };
           case 'branch-commit':
             return {
@@ -88,6 +90,7 @@ describe('GitShowCommand', () => {
                   timezoneOffset: 0,
                 },
               },
+              payload: '',
             };
           case 'merge-commit':
             return {
@@ -103,6 +106,7 @@ describe('GitShowCommand', () => {
                   timezoneOffset: 0,
                 },
               },
+              payload: '',
             };
           default:
             throw new Error(`Commit ${oid} not found`);
@@ -126,6 +130,7 @@ describe('GitShowCommand', () => {
                   timezoneOffset: 0,
                 },
               },
+              payload: '',
             }];
           case 'simple-commit':
             return [{
@@ -141,6 +146,7 @@ describe('GitShowCommand', () => {
                   timezoneOffset: 0,
                 },
               },
+              payload: '',
             }];
           case 'branch-commit':
             return [{
@@ -156,6 +162,7 @@ describe('GitShowCommand', () => {
                   timezoneOffset: 0,
                 },
               },
+              payload: '',
             }];
           case 'merge-commit':
             return [{
@@ -171,6 +178,7 @@ describe('GitShowCommand', () => {
                   timezoneOffset: 0,
                 },
               },
+              payload: '',
             }];
           default:
             return [];
@@ -182,6 +190,7 @@ describe('GitShowCommand', () => {
         switch (oid) {
           case 'initial-tree':
             return {
+              oid,
               tree: [
                 { path: 'file1.txt', mode: '100644', oid: 'blob-initial-1' },
                 { path: 'file2.txt', mode: '100644', oid: 'blob-initial-2' },
@@ -189,6 +198,7 @@ describe('GitShowCommand', () => {
             };
           case 'simple-tree':
             return {
+              oid,
               tree: [
                 { path: 'file1.txt', mode: '100644', oid: 'blob-modified-1' },
                 { path: 'file2.txt', mode: '100644', oid: 'blob-initial-2' },
@@ -197,6 +207,7 @@ describe('GitShowCommand', () => {
             };
           case 'branch-tree':
             return {
+              oid,
               tree: [
                 { path: 'file1.txt', mode: '100644', oid: 'blob-initial-1' },
                 { path: 'file2.txt', mode: '100644', oid: 'blob-branch-2' },
@@ -205,6 +216,7 @@ describe('GitShowCommand', () => {
             };
           case 'merge-tree':
             return {
+              oid,
               tree: [
                 { path: 'file1.txt', mode: '100644', oid: 'blob-modified-1' },
                 { path: 'file2.txt', mode: '100644', oid: 'blob-branch-2' },
@@ -218,13 +230,14 @@ describe('GitShowCommand', () => {
           case 'merge-commit':
             // Handle the case when oid is actually a commit hash
             return {
+              oid,
               tree: [
                 { path: 'file1.txt', mode: '100644', oid: 'blob-modified-1' },
                 { path: 'file2.txt', mode: '100644', oid: 'blob-initial-2' },
               ],
             };
           default:
-            return { tree: [] };
+            return { oid, tree: [] };
         }
       }),
       
@@ -328,9 +341,10 @@ describe('GitShowCommand', () => {
     vi.clearAllMocks();
     
     // Force the readTree mock to return different trees for parent and current commit
-    mockGit.readTree.mockImplementation(async ({ oid }) => {
+    vi.mocked(mockGit.readTree!).mockImplementation(async ({ oid }) => {
       if (oid === 'simple-commit' || oid === 'simple-tree') {
         return {
+          oid,
           tree: [
             { path: 'file1.txt', mode: '100644', oid: 'blob-modified-1' },
             { path: 'file3.txt', mode: '100644', oid: 'blob-new-3' },
@@ -338,13 +352,14 @@ describe('GitShowCommand', () => {
         };
       } else if (oid === 'initial-commit' || oid === 'initial-tree') {
         return {
+          oid,
           tree: [
             { path: 'file1.txt', mode: '100644', oid: 'blob-initial-1' },
             { path: 'file2.txt', mode: '100644', oid: 'blob-initial-2' },
           ],
         };
       }
-      return { tree: [] };
+      return { oid, tree: [] };
     });
     
     // Execute the command
@@ -374,7 +389,7 @@ describe('GitShowCommand', () => {
     const newContent = 'line 1\nmodified line 2\nline 3\nnew line\nline 5\n';
     
     // Mock log to return a commit with a parent
-    mockGit.log.mockImplementation(async ({ ref }) => {
+    vi.mocked(mockGit.log!).mockImplementation(async ({ ref }) => {
       if (ref === 'diff-test-commit') {
         return [{
           oid: 'diff-test-commit',
@@ -389,13 +404,14 @@ describe('GitShowCommand', () => {
               timezoneOffset: 0,
             },
           },
+          payload: '',
         }];
       }
       return [];
     });
     
     // Mock readCommit for the parent commit
-    mockGit.readCommit.mockImplementation(async ({ oid }) => {
+    vi.mocked(mockGit.readCommit!).mockImplementation(async ({ oid }) => {
       if (oid === 'diff-test-commit') {
         return {
           oid: 'diff-test-commit',
@@ -410,6 +426,7 @@ describe('GitShowCommand', () => {
               timezoneOffset: 0,
             },
           },
+          payload: '',
         };
       } else if (oid === 'diff-parent-commit') {
         return {
@@ -425,43 +442,48 @@ describe('GitShowCommand', () => {
               timezoneOffset: 0,
             },
           },
+          payload: '',
         };
       }
       throw new Error(`Commit ${oid} not found`);
     });
     
     // Force the readTree mock to return trees with different content
-    mockGit.readTree.mockImplementation(async ({ oid }) => {
+    vi.mocked(mockGit.readTree!).mockImplementation(async ({ oid }) => {
       if (oid === 'diff-test-tree') {
         return {
+          oid,
           tree: [
             { path: 'diff-test.txt', mode: '100644', oid: 'blob-new' },
           ],
         };
       } else if (oid === 'diff-parent-tree') {
         return {
+          oid,
           tree: [
             { path: 'diff-test.txt', mode: '100644', oid: 'blob-old' },
           ],
         };
       } else if (oid === 'diff-parent-commit') {
         return {
+          oid,
           tree: [
             { path: 'diff-test.txt', mode: '100644', oid: 'blob-old' },
           ],
         };
       } else if (oid === 'diff-test-commit') {
         return {
+          oid,
           tree: [
             { path: 'diff-test.txt', mode: '100644', oid: 'blob-new' },
           ],
         };
       }
-      return { tree: [] };
+      return { oid, tree: [] };
     });
     
     // Mock readBlob to return our test content
-    mockGit.readBlob.mockImplementation(async ({ filepath, oid }) => {
+    vi.mocked(mockGit.readBlob!).mockImplementation(async ({ filepath, oid }) => {
       if (filepath === 'diff-test.txt') {
         if (oid === 'blob-old' || oid === 'diff-parent-commit' || oid === 'diff-parent-tree') {
           return { blob: new TextEncoder().encode(oldContent), oid: 'blob-old' };
@@ -473,7 +495,7 @@ describe('GitShowCommand', () => {
     });
     
     // Mock resolveRef to handle our test commit
-    mockGit.resolveRef.mockImplementation(async ({ ref }) => {
+    vi.mocked(mockGit.resolveRef!).mockImplementation(async ({ ref }) => {
       if (ref === 'diff-test-commit') {
         return 'diff-test-commit';
       }

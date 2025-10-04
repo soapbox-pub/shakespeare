@@ -22,12 +22,14 @@ export interface JSRuntimeFS {
   stat(path: string): Promise<{
     isDirectory(): boolean;
     isFile(): boolean;
+    isSymbolicLink(): boolean;
     size?: number;
     mtimeMs?: number;
   }>;
   lstat(path: string): Promise<{
     isDirectory(): boolean;
     isFile(): boolean;
+    isSymbolicLink(): boolean;
     size?: number;
     mtimeMs?: number;
   }>;

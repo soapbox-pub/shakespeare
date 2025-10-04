@@ -80,6 +80,7 @@ export class LightningFSAdapter implements JSRuntimeFS {
   async stat(path: string): Promise<{
     isDirectory(): boolean;
     isFile(): boolean;
+    isSymbolicLink(): boolean;
     size?: number;
     mtimeMs?: number;
   }> {
@@ -89,6 +90,7 @@ export class LightningFSAdapter implements JSRuntimeFS {
   async lstat(path: string): Promise<{
     isDirectory(): boolean;
     isFile(): boolean;
+    isSymbolicLink(): boolean;
     size?: number;
     mtimeMs?: number;
   }> {

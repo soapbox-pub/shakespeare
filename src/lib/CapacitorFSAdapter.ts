@@ -7,7 +7,7 @@
  */
 
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
-import { encodeBase64, decodeBase64 } from '@std/encoding/base64';
+import { Buffer } from 'buffer';
 import path from 'path-browserify';
 import type { JSRuntimeFS, DirectoryEntry } from './JSRuntime';
 
@@ -73,12 +73,15 @@ export class CapacitorFSAdapter implements JSRuntimeFS {
         path: normalizedPath,
         directory: this.baseDirectory,
       });
+      let base64: string;
       if (result.data instanceof Blob) {
-        const base64 = await result.data.text();
-        return decodeBase64(base64);
+        base64 = await result.data.text();
       } else {
-        return decodeBase64(result.data);
+        base64 = result.data;
       }
+
+      // Decode base64 and return as Buffer for compatibility with isomorphic-git
+      return Buffer.from(base64, 'base64');
     }
   }
 
@@ -89,8 +92,8 @@ export class CapacitorFSAdapter implements JSRuntimeFS {
     const normalizedPath = this.normalizePath(filePath);
 
     if (data instanceof Uint8Array) {
-      // Write binary data as base64 (no encoding specified)
-      const base64Data = encodeBase64(data);
+      // Write binary data as base64 using Buffer for consistency with readFile
+      const base64Data = Buffer.from(data).toString('base64');
       await Filesystem.writeFile({
         path: normalizedPath,
         directory: this.baseDirectory,
@@ -185,6 +188,7 @@ export class CapacitorFSAdapter implements JSRuntimeFS {
   async stat(path: string): Promise<{
     isDirectory(): boolean;
     isFile(): boolean;
+    isSymbolicLink(): boolean;
     size?: number;
     mtimeMs?: number;
   }> {
@@ -198,8 +202,9 @@ export class CapacitorFSAdapter implements JSRuntimeFS {
       return {
         isDirectory: () => result.type === 'directory',
         isFile: () => result.type === 'file',
+        isSymbolicLink: () => false, // Capacitor doesn't support symlinks
         size: result.size,
-        mtimeMs: result.mtime,
+        mtimeMs: result.mtime ?? Date.now(), // Default to current time if not provided
       };
     } catch {
       // Create a proper Node.js-style error
@@ -218,6 +223,7 @@ export class CapacitorFSAdapter implements JSRuntimeFS {
   async lstat(path: string): Promise<{
     isDirectory(): boolean;
     isFile(): boolean;
+    isSymbolicLink(): boolean;
     size?: number;
     mtimeMs?: number;
   }> {
@@ -231,8 +237,9 @@ export class CapacitorFSAdapter implements JSRuntimeFS {
       return {
         isDirectory: () => result.type === 'directory',
         isFile: () => result.type === 'file',
+        isSymbolicLink: () => false, // Capacitor doesn't support symlinks
         size: result.size,
-        mtimeMs: result.mtime,
+        mtimeMs: result.mtime ?? Date.now(), // Default to current time if not provided
       };
     } catch {
       // Create a proper Node.js-style error

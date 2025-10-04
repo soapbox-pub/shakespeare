@@ -30,7 +30,7 @@ export function FileTree({ projectId, onFileSelect, selectedFile }: FileTreeProp
   const [gitignoreFilter, setGitignoreFilter] = useState<{
     isIgnored: (path: string) => boolean;
     shouldShow: (path: string) => boolean;
-  } | null>(null);
+      } | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const { fs } = useFS();

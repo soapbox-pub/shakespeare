@@ -41,34 +41,34 @@ export class TrCommand implements ShellCommand {
       } else {
         // Read all files
         for (const file of files) {
-        try {
+          try {
           // Handle absolute paths
-          if (file.startsWith('/') || file.startsWith('\\') || /^[A-Za-z]:[\\/]/.test(file)) {
-            return createErrorResult(`${this.name}: absolute paths are not supported: ${file}`);
-          }
-
-          const absolutePath = join(cwd, file);
-          const stats = await this.fs.stat(absolutePath);
-
-          if (stats.isDirectory()) {
-            return createErrorResult(`${this.name}: ${file}: Is a directory`);
-          }
-
-          const fileContent = await this.fs.readFile(absolutePath, 'utf8');
-          content += fileContent;
-        } catch (error) {
-          if (error instanceof Error) {
-            if (error.message.includes('ENOENT') || error.message.includes('not found')) {
-              return createErrorResult(`${this.name}: ${file}: No such file or directory`);
-            } else if (error.message.includes('EACCES') || error.message.includes('permission')) {
-              return createErrorResult(`${this.name}: ${file}: Permission denied`);
-            } else {
-              return createErrorResult(`${this.name}: ${file}: ${error.message}`);
+            if (file.startsWith('/') || file.startsWith('\\') || /^[A-Za-z]:[\\/]/.test(file)) {
+              return createErrorResult(`${this.name}: absolute paths are not supported: ${file}`);
             }
-          } else {
-            return createErrorResult(`${this.name}: ${file}: Unknown error`);
+
+            const absolutePath = join(cwd, file);
+            const stats = await this.fs.stat(absolutePath);
+
+            if (stats.isDirectory()) {
+              return createErrorResult(`${this.name}: ${file}: Is a directory`);
+            }
+
+            const fileContent = await this.fs.readFile(absolutePath, 'utf8');
+            content += fileContent;
+          } catch (error) {
+            if (error instanceof Error) {
+              if (error.message.includes('ENOENT') || error.message.includes('not found')) {
+                return createErrorResult(`${this.name}: ${file}: No such file or directory`);
+              } else if (error.message.includes('EACCES') || error.message.includes('permission')) {
+                return createErrorResult(`${this.name}: ${file}: Permission denied`);
+              } else {
+                return createErrorResult(`${this.name}: ${file}: ${error.message}`);
+              }
+            } else {
+              return createErrorResult(`${this.name}: ${file}: Unknown error`);
+            }
           }
-        }
         }
       }
 

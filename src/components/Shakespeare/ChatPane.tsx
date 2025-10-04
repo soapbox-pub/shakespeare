@@ -674,7 +674,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
         {/* Chat Input Container */}
         <div
           className={`flex flex-col rounded-2xl border border-input bg-background shadow-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 transition-all ${isDragOver ? 'border-primary bg-primary/5 ring-2 ring-primary/20' : ''
-            }`}
+          }`}
           onDragEnter={handleDragEnter}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
@@ -690,8 +690,8 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
               !isConfigured
                 ? t('askToAddFeatures')
                 : providerModel.trim()
-                ? t('askToAddFeatures')
-                : t('selectModelFirst')
+                  ? t('askToAddFeatures')
+                  : t('selectModelFirst')
             }
             className="flex-1 resize-none border-0 bg-transparent px-4 py-3 text-sm focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground"
             disabled={isLoading || (isConfigured && !providerModel.trim())}

@@ -8,7 +8,7 @@ import htmlParser from "@html-eslint/parser";
 import customRules from "./eslint-rules/index.js";
 
 export default tseslint.config(
-  { ignores: ["dist", "android/app/build/**", "android/app/src/main/assets/**"] },
+  { ignores: ["dist"] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],
@@ -40,13 +40,18 @@ export default tseslint.config(
           "ignoreRestSiblings": true,
         },
       ],
-      "indent": ["warn", 2],
+      "indent": [
+        "warn",
+        2,
+        { SwitchCase: 1 },
+      ],
       "no-tabs": "warn",
       "custom/no-placeholder-comments": "error",
       "no-warning-comments": [
         "error",
         { terms: ["fixme"] },
       ],
+      "no-control-regex": "off", // Allow ANSI escape sequences in regex
     },
   },
   {

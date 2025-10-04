@@ -20,6 +20,7 @@ export { MvCommand } from './mv';
 export { PwdCommand } from './pwd';
 export { RmCommand } from './rm';
 export { SedCommand } from './sed';
+export { ShakespeareCommand } from './shakespeare';
 export { SortCommand } from './sort';
 export { TailCommand } from './tail';
 export { TouchCommand } from './touch';

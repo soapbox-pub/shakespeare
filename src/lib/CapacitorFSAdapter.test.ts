@@ -47,15 +47,19 @@ describe('CapacitorFSAdapter', () => {
     });
 
     it('should read binary file and convert from base64', async () => {
-      // 'hello' in base64
+      // Binary data returned as base64 when no encoding specified
       vi.mocked(Filesystem.Filesystem.readFile).mockResolvedValue({
-        data: 'aGVsbG8=',
+        data: 'aGVsbG8=', // 'hello' in base64
       });
 
       const result = await adapter.readFile('/test.bin');
 
       expect(result).toBeInstanceOf(Uint8Array);
       expect(Array.from(result as Uint8Array)).toEqual([104, 101, 108, 108, 111]);
+      expect(Filesystem.Filesystem.readFile).toHaveBeenCalledWith({
+        path: 'test.bin',
+        directory: 'DATA',
+      });
     });
 
     it('should throw error for non-existent file', async () => {
@@ -78,11 +82,10 @@ describe('CapacitorFSAdapter', () => {
         directory: 'DATA',
         data: 'hello world',
         encoding: 'utf8',
-        recursive: true,
       });
     });
 
-    it('should write binary file and convert to base64', async () => {
+    it('should write binary file as base64', async () => {
       vi.mocked(Filesystem.Filesystem.writeFile).mockResolvedValue({ uri: '' });
 
       const data = new Uint8Array([104, 101, 108, 108, 111]); // 'hello'
@@ -92,8 +95,19 @@ describe('CapacitorFSAdapter', () => {
         path: 'test.bin',
         directory: 'DATA',
         data: 'aGVsbG8=', // base64 encoded
-        encoding: undefined,
-        recursive: true,
+      });
+    });
+
+    it('should normalize paths and remove trailing slashes', async () => {
+      vi.mocked(Filesystem.Filesystem.writeFile).mockResolvedValue({ uri: '' });
+
+      const data = new Uint8Array([104, 101, 108, 108, 111]);
+      await adapter.writeFile('/test.bin/', data); // Note the trailing slash
+
+      expect(Filesystem.Filesystem.writeFile).toHaveBeenCalledWith({
+        path: 'test.bin', // Trailing slash should be removed
+        directory: 'DATA',
+        data: 'aGVsbG8=', // base64 encoded
       });
     });
   });
@@ -264,7 +278,7 @@ describe('CapacitorFSAdapter', () => {
   describe('symlink operations', () => {
     it('should create symlink by copying file', async () => {
       vi.mocked(Filesystem.Filesystem.readFile).mockResolvedValue({
-        data: 'aGVsbG8=', // 'hello' in base64
+        data: 'aGVsbG8=', // base64
       });
       vi.mocked(Filesystem.Filesystem.writeFile).mockResolvedValue({ uri: '' });
 
@@ -273,7 +287,6 @@ describe('CapacitorFSAdapter', () => {
       expect(Filesystem.Filesystem.readFile).toHaveBeenCalledWith({
         path: 'target.txt',
         directory: 'DATA',
-        encoding: undefined,
       });
 
       expect(Filesystem.Filesystem.writeFile).toHaveBeenCalledTimes(2);

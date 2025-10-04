@@ -1,12 +1,14 @@
 /**
  * Capacitor Filesystem Adapter
- * 
+ *
  * Adapts Capacitor's Filesystem plugin to work with the JSRuntimeFS interface.
  * This enables native filesystem storage on Android/iOS while maintaining
  * compatibility with existing code.
  */
 
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
+import { encodeBase64, decodeBase64 } from '@std/encoding/base64';
+import path from 'path-browserify';
 import type { JSRuntimeFS, DirectoryEntry } from './JSRuntime';
 
 export class CapacitorFSAdapter implements JSRuntimeFS {
@@ -20,115 +22,102 @@ export class CapacitorFSAdapter implements JSRuntimeFS {
    * Convert absolute paths to relative paths for Capacitor
    * Capacitor expects paths relative to the base directory
    */
-  private normalizePath(path: string): string {
+  private normalizePath(inputPath: string): string {
+    // Normalize the path using path-browserify
+    let normalized = path.normalize(inputPath);
+
     // Remove leading slash for Capacitor
-    let normalized = path.startsWith('/') ? path.slice(1) : path;
-    
+    normalized = normalized.startsWith('/') ? normalized.slice(1) : normalized;
+
+    // Remove ALL trailing slashes (important for file operations)
+    // Capacitor treats paths with trailing slashes as directories
+    // Use regex to remove all trailing slashes
+    normalized = normalized.replace(/\/+$/, '');
+
     // Ensure we don't have empty path
-    if (normalized === '') {
+    if (normalized === '' || normalized === '.') {
       normalized = '.';
     }
-    
+
     return normalized;
-  }
-
-  /**
-   * Convert base64 string to Uint8Array
-   */
-  private base64ToUint8Array(base64: string): Uint8Array {
-    const binaryString = atob(base64);
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
-    }
-    return bytes;
-  }
-
-  /**
-   * Convert Uint8Array to base64 string
-   */
-  private uint8ArrayToBase64(bytes: Uint8Array): string {
-    let binary = '';
-    for (let i = 0; i < bytes.length; i++) {
-      binary += String.fromCharCode(bytes[i]);
-    }
-    return btoa(binary);
   }
 
   /**
    * Read file as Uint8Array or string
    */
   async readFile(path: string): Promise<Uint8Array>;
-  async readFile(path: string, encoding: 'utf8'): Promise<string>;
-  async readFile(path: string, encoding: string): Promise<string>;
-  async readFile(path: string, encoding?: string): Promise<string | Uint8Array>;
-  async readFile(path: string, encoding?: string): Promise<string | Uint8Array> {
-    try {
+  async readFile(path: string, options: 'utf8'): Promise<string>;
+  async readFile(path: string, options: string): Promise<string>;
+  async readFile(path: string, options: { encoding: 'utf8' }): Promise<string>;
+  async readFile(path: string, options: { encoding: string }): Promise<string>;
+  async readFile(path: string, options?: string | { encoding?: string }): Promise<string | Uint8Array>;
+  async readFile(path: string, options?: string | { encoding?: string }): Promise<string | Uint8Array> {
+    const normalizedPath = this.normalizePath(path);
+    const encoding = typeof options === 'string' ? options : options?.encoding;
+
+    if (encoding === 'utf8') {
+      // Read as UTF-8 text
       const result = await Filesystem.readFile({
-        path: this.normalizePath(path),
+        path: normalizedPath,
         directory: this.baseDirectory,
-        encoding: encoding === 'utf8' ? Encoding.UTF8 : undefined,
+        encoding: Encoding.UTF8,
       });
-
-      if (encoding === 'utf8') {
-        return result.data as string;
+      if (result.data instanceof Blob) {
+        return await result.data.text();
+      } else {
+        return result.data;
       }
-
-      // Binary data is returned as base64, convert to Uint8Array
-      return this.base64ToUint8Array(result.data as string);
-    } catch (error) {
-      // Convert Capacitor errors to standard Node.js-style errors
-      const err = error as { message: string };
-      throw new Error(`ENOENT: no such file or directory, open '${path}': ${err.message}`);
+    } else {
+      // Read as base64 (no encoding specified)
+      const result = await Filesystem.readFile({
+        path: normalizedPath,
+        directory: this.baseDirectory,
+      });
+      if (result.data instanceof Blob) {
+        const base64 = await result.data.text();
+        return decodeBase64(base64);
+      } else {
+        return decodeBase64(result.data);
+      }
     }
   }
 
   /**
    * Write file from string or Uint8Array
    */
-  async writeFile(path: string, data: string | Uint8Array, encoding?: string): Promise<void> {
-    try {
-      // Ensure parent directory exists
-      const parentPath = path.split('/').slice(0, -1).join('/');
-      if (parentPath && parentPath !== '.') {
-        await this.mkdir(parentPath, { recursive: true });
-      }
+  async writeFile(filePath: string, data: string | Uint8Array, _options?: string | { encoding?: string }): Promise<void> {
+    const normalizedPath = this.normalizePath(filePath);
 
-      let writeData: string;
-      let writeEncoding: Encoding | undefined;
-
-      if (data instanceof Uint8Array) {
-        // Convert binary data to base64 for Capacitor
-        writeData = this.uint8ArrayToBase64(data);
-        writeEncoding = undefined; // Base64 is the default
-      } else {
-        writeData = data;
-        writeEncoding = encoding === 'utf8' ? Encoding.UTF8 : undefined;
-      }
-
+    if (data instanceof Uint8Array) {
+      // Write binary data as base64 (no encoding specified)
+      const base64Data = encodeBase64(data);
       await Filesystem.writeFile({
-        path: this.normalizePath(path),
+        path: normalizedPath,
         directory: this.baseDirectory,
-        data: writeData,
-        encoding: writeEncoding,
-        recursive: true, // Create parent directories
+        data: base64Data,
       });
-    } catch (error) {
-      const err = error as { message: string };
-      throw new Error(`Failed to write file '${path}': ${err.message}`);
+    } else {
+      // Write string data as UTF-8
+      await Filesystem.writeFile({
+        path: normalizedPath,
+        directory: this.baseDirectory,
+        data: data,
+        encoding: Encoding.UTF8,
+      });
     }
   }
 
   /**
    * Read directory contents
    */
-  async readdir(path: string): Promise<string[]>;
-  async readdir(path: string, options: { withFileTypes: true }): Promise<DirectoryEntry[]>;
-  async readdir(path: string, options?: { withFileTypes?: boolean }): Promise<string[] | DirectoryEntry[]>;
-  async readdir(path: string, options?: { withFileTypes?: boolean }): Promise<string[] | DirectoryEntry[]> {
+  async readdir(dirPath: string): Promise<string[]>;
+  async readdir(dirPath: string, options: { withFileTypes: true }): Promise<DirectoryEntry[]>;
+  async readdir(dirPath: string, options?: { withFileTypes?: boolean }): Promise<string[] | DirectoryEntry[]>;
+  async readdir(dirPath: string, options?: { withFileTypes?: boolean }): Promise<string[] | DirectoryEntry[]> {
     try {
+      const normalizedPath = this.normalizePath(dirPath);
       const result = await Filesystem.readdir({
-        path: this.normalizePath(path),
+        path: normalizedPath,
         directory: this.baseDirectory,
       });
 
@@ -137,8 +126,8 @@ export class CapacitorFSAdapter implements JSRuntimeFS {
         const entries: DirectoryEntry[] = [];
 
         for (const file of result.files) {
-          const fullPath = path === '/' ? `/${file.name}` : `${path}/${file.name}`;
-          
+          const fullPath = path.join(dirPath, file.name);
+
           try {
             const stat = await this.stat(fullPath);
             entries.push({
@@ -160,9 +149,13 @@ export class CapacitorFSAdapter implements JSRuntimeFS {
       }
 
       return result.files.map(f => f.name);
-    } catch (error) {
-      const err = error as { message: string };
-      throw new Error(`ENOENT: no such file or directory, scandir '${path}': ${err.message}`);
+    } catch {
+      const nodeError = new Error(`ENOENT: no such file or directory, scandir '${dirPath}'`) as NodeJS.ErrnoException;
+      nodeError.code = 'ENOENT';
+      nodeError.errno = -2;
+      nodeError.syscall = 'scandir';
+      nodeError.path = dirPath;
+      throw nodeError;
     }
   }
 
@@ -178,9 +171,8 @@ export class CapacitorFSAdapter implements JSRuntimeFS {
       });
     } catch (error) {
       // Ignore "directory exists" errors when recursive is true
-      if (options?.recursive) {
-        const err = error as { message: string };
-        if (err.message.includes('exists') || err.message.includes('EEXIST')) {
+      if (options?.recursive && error instanceof Error) {
+        if (error.message.includes('exists') || error.message.includes('EEXIST')) {
           return;
         }
       }
@@ -198,8 +190,9 @@ export class CapacitorFSAdapter implements JSRuntimeFS {
     mtimeMs?: number;
   }> {
     try {
+      const normalizedPath = this.normalizePath(path);
       const result = await Filesystem.stat({
-        path: this.normalizePath(path),
+        path: normalizedPath,
         directory: this.baseDirectory,
       });
 
@@ -209,9 +202,14 @@ export class CapacitorFSAdapter implements JSRuntimeFS {
         size: result.size,
         mtimeMs: result.mtime,
       };
-    } catch (error) {
-      const err = error as { message: string };
-      throw new Error(`ENOENT: no such file or directory, stat '${path}': ${err.message}`);
+    } catch {
+      // Create a proper Node.js-style error
+      const nodeError = new Error(`ENOENT: no such file or directory, stat '${path}'`) as NodeJS.ErrnoException;
+      nodeError.code = 'ENOENT';
+      nodeError.errno = -2;
+      nodeError.syscall = 'stat';
+      nodeError.path = path;
+      throw nodeError;
     }
   }
 
@@ -224,8 +222,28 @@ export class CapacitorFSAdapter implements JSRuntimeFS {
     size?: number;
     mtimeMs?: number;
   }> {
-    // Capacitor doesn't distinguish between stat and lstat
-    return this.stat(path);
+    try {
+      const normalizedPath = this.normalizePath(path);
+      const result = await Filesystem.stat({
+        path: normalizedPath,
+        directory: this.baseDirectory,
+      });
+
+      return {
+        isDirectory: () => result.type === 'directory',
+        isFile: () => result.type === 'file',
+        size: result.size,
+        mtimeMs: result.mtime,
+      };
+    } catch {
+      // Create a proper Node.js-style error
+      const nodeError = new Error(`ENOENT: no such file or directory, lstat '${path}'`) as NodeJS.ErrnoException;
+      nodeError.code = 'ENOENT';
+      nodeError.errno = -2;
+      nodeError.syscall = 'lstat';
+      nodeError.path = path;
+      throw nodeError;
+    }
   }
 
   /**
@@ -233,13 +251,18 @@ export class CapacitorFSAdapter implements JSRuntimeFS {
    */
   async unlink(path: string): Promise<void> {
     try {
+      const normalizedPath = this.normalizePath(path);
       await Filesystem.deleteFile({
-        path: this.normalizePath(path),
+        path: normalizedPath,
         directory: this.baseDirectory,
       });
-    } catch (error) {
-      const err = error as { message: string };
-      throw new Error(`ENOENT: no such file or directory, unlink '${path}': ${err.message}`);
+    } catch {
+      const nodeError = new Error(`ENOENT: no such file or directory, unlink '${path}'`) as NodeJS.ErrnoException;
+      nodeError.code = 'ENOENT';
+      nodeError.errno = -2;
+      nodeError.syscall = 'unlink';
+      nodeError.path = path;
+      throw nodeError;
     }
   }
 
@@ -247,32 +270,22 @@ export class CapacitorFSAdapter implements JSRuntimeFS {
    * Remove directory
    */
   async rmdir(path: string): Promise<void> {
-    try {
-      await Filesystem.rmdir({
-        path: this.normalizePath(path),
-        directory: this.baseDirectory,
-        recursive: false, // Only remove if empty
-      });
-    } catch (error) {
-      const err = error as { message: string };
-      throw new Error(`Failed to remove directory '${path}': ${err.message}`);
-    }
+    await Filesystem.rmdir({
+      path: this.normalizePath(path),
+      directory: this.baseDirectory,
+      recursive: false, // Only remove if empty
+    });
   }
 
   /**
    * Rename/move file or directory
    */
   async rename(oldPath: string, newPath: string): Promise<void> {
-    try {
-      await Filesystem.rename({
-        from: this.normalizePath(oldPath),
-        to: this.normalizePath(newPath),
-        directory: this.baseDirectory,
-      });
-    } catch (error) {
-      const err = error as { message: string };
-      throw new Error(`Failed to rename '${oldPath}' to '${newPath}': ${err.message}`);
-    }
+    await Filesystem.rename({
+      from: this.normalizePath(oldPath),
+      to: this.normalizePath(newPath),
+      directory: this.baseDirectory,
+    });
   }
 
   /**
@@ -297,17 +310,12 @@ export class CapacitorFSAdapter implements JSRuntimeFS {
    * by copying the file instead and storing symlink metadata
    */
   async symlink(target: string, path: string): Promise<void> {
-    try {
-      // Copy the target file to the symlink location
-      const data = await this.readFile(target);
-      await this.writeFile(path, data);
-      
-      // Store symlink metadata for readlink
-      const symlinkPath = `${path}.symlink`;
-      await this.writeFile(symlinkPath, target, 'utf8');
-    } catch (error) {
-      const err = error as { message: string };
-      throw new Error(`Failed to create symlink '${target}' -> '${path}': ${err.message}`);
-    }
+    // Copy the target file to the symlink location
+    const data = await this.readFile(target);
+    await this.writeFile(path, data);
+
+    // Store symlink metadata for readlink
+    const symlinkPath = `${path}.symlink`;
+    await this.writeFile(symlinkPath, target);
   }
 }

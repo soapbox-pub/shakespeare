@@ -17,7 +17,18 @@ export interface Project {
   name: string;
   path: string;
   lastModified: Date;
+  type: 'project';
 }
+
+export interface TextChat {
+  id: string;
+  name: string;
+  path: string;
+  lastModified: Date;
+  type: 'chat';
+}
+
+export type ChatItem = Project | TextChat;
 
 export interface ProjectsManagerOptions {
   fs: JSRuntimeFS;
@@ -28,16 +39,23 @@ export class ProjectsManager {
   fs: JSRuntimeFS;
   git: Git;
   dir: string;
+  chatsDir: string;
 
   constructor(options: ProjectsManagerOptions) {
     this.fs = options.fs;
     this.git = options.git;
     this.dir = '/projects';
+    this.chatsDir = '/chats';
   }
 
   async init() {
     try {
       await this.fs.mkdir(this.dir);
+    } catch {
+      // Directory might already exist
+    }
+    try {
+      await this.fs.mkdir(this.chatsDir);
     } catch {
       // Directory might already exist
     }
@@ -264,6 +282,7 @@ export class ProjectsManager {
         name: projectName,
         path: projectPath,
         lastModified: timestamp,
+        type: 'project' as const,
       };
     } catch (error) {
       // Clean up on error (only if this was a new project creation)
@@ -317,6 +336,7 @@ export class ProjectsManager {
         name: this.formatProjectName(id), // Use formatted directory name
         path: projectPath,
         lastModified: timestamp,
+        type: 'project' as const,
       };
     } catch (error) {
       // Clean up the directory that was created if cloning fails
@@ -348,6 +368,7 @@ export class ProjectsManager {
               name: this.formatProjectName(dir), // Convert directory name to readable format
               path: projectPath,
               lastModified: modifiedDate,
+              type: 'project' as const,
             };
 
             projects.push(project);
@@ -375,6 +396,7 @@ export class ProjectsManager {
           name: this.formatProjectName(id), // Convert directory name to readable format
           path: projectPath,
           lastModified: modifiedDate,
+          type: 'project' as const,
         };
       }
 
@@ -508,6 +530,7 @@ export class ProjectsManager {
       name: this.formatProjectName(newId),
       path: newPath,
       lastModified: timestamp,
+      type: 'project' as const,
     };
   }
 
@@ -657,5 +680,181 @@ export class ProjectsManager {
     }
 
     return '/' + normalized.join('/');
+  }
+
+  // Text Chat Methods
+
+  async createTextChat(name: string): Promise<TextChat> {
+    const id = await this.generateUniqueChatId(name);
+    const chatPath = `${this.chatsDir}/${id}`;
+
+    // Create the chat directory
+    await this.fs.mkdir(chatPath, { recursive: true });
+
+    // Create a metadata file
+    const metadata = {
+      name,
+      createdAt: new Date().toISOString(),
+    };
+    await this.fs.writeFile(`${chatPath}/metadata.json`, JSON.stringify(metadata, null, 2));
+
+    const stats = await this.fs.stat(chatPath);
+    const timestamp = stats.mtimeMs ? new Date(stats.mtimeMs) : new Date();
+
+    return {
+      id,
+      name,
+      path: chatPath,
+      lastModified: timestamp,
+      type: 'chat',
+    };
+  }
+
+  async getTextChats(): Promise<TextChat[]> {
+    try {
+      const chatDirs = await this.fs.readdir(this.chatsDir);
+      const chats: TextChat[] = [];
+
+      for (const dir of chatDirs) {
+        const chatPath = `${this.chatsDir}/${dir}`;
+
+        try {
+          const stats = await this.fs.stat(chatPath);
+          if (stats.isDirectory()) {
+            // Try to read metadata
+            let name = this.formatProjectName(dir);
+            try {
+              const metadataContent = await this.fs.readFile(`${chatPath}/metadata.json`, 'utf8');
+              const metadata = JSON.parse(metadataContent);
+              name = metadata.name || name;
+            } catch {
+              // If metadata doesn't exist, use formatted directory name
+            }
+
+            const modifiedDate = stats.mtimeMs ? new Date(stats.mtimeMs) : new Date();
+            const chat: TextChat = {
+              id: dir,
+              name,
+              path: chatPath,
+              lastModified: modifiedDate,
+              type: 'chat',
+            };
+
+            chats.push(chat);
+          }
+        } catch {
+          // Skip if we can't stat the directory
+        }
+      }
+
+      return chats.sort((a, b) => b.lastModified.getTime() - a.lastModified.getTime());
+    } catch {
+      return [];
+    }
+  }
+
+  async getTextChat(id: string): Promise<TextChat | null> {
+    try {
+      const chatPath = `${this.chatsDir}/${id}`;
+      const stats = await this.fs.stat(chatPath);
+
+      if (stats.isDirectory()) {
+        // Try to read metadata
+        let name = this.formatProjectName(id);
+        try {
+          const metadataContent = await this.fs.readFile(`${chatPath}/metadata.json`, 'utf8');
+          const metadata = JSON.parse(metadataContent);
+          name = metadata.name || name;
+        } catch {
+          // If metadata doesn't exist, use formatted directory name
+        }
+
+        const modifiedDate = stats.mtimeMs ? new Date(stats.mtimeMs) : new Date();
+        return {
+          id,
+          name,
+          path: chatPath,
+          lastModified: modifiedDate,
+          type: 'chat',
+        };
+      }
+
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  async deleteTextChat(chatId: string): Promise<void> {
+    const chatPath = `${this.chatsDir}/${chatId}`;
+    await this.deleteDirectory(chatPath);
+  }
+
+  async renameTextChat(oldId: string, newName: string): Promise<TextChat> {
+    const oldChat = await this.getTextChat(oldId);
+    if (!oldChat) {
+      throw new Error(`Chat with ID "${oldId}" does not exist`);
+    }
+
+    const chatPath = `${this.chatsDir}/${oldId}`;
+
+    // Update metadata with new name
+    const metadata = {
+      name: newName,
+      createdAt: new Date().toISOString(),
+    };
+    await this.fs.writeFile(`${chatPath}/metadata.json`, JSON.stringify(metadata, null, 2));
+
+    // Use current timestamp for modification time
+    const timestamp = new Date();
+
+    return {
+      id: oldId,
+      name: newName,
+      path: chatPath,
+      lastModified: timestamp,
+      type: 'chat',
+    };
+  }
+
+  async getAllChatItems(): Promise<ChatItem[]> {
+    const [projects, textChats] = await Promise.all([
+      this.getProjects(),
+      this.getTextChats(),
+    ]);
+
+    // Add type field to projects
+    const projectsWithType: Project[] = projects.map(p => ({ ...p, type: 'project' as const }));
+
+    // Combine and sort by lastModified
+    const allItems: ChatItem[] = [...projectsWithType, ...textChats];
+    return allItems.sort((a, b) => b.lastModified.getTime() - a.lastModified.getTime());
+  }
+
+  private async generateUniqueChatId(name: string): Promise<string> {
+    const baseSlug = name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+
+    let slug = baseSlug;
+    let counter = 1;
+
+    while (await this.chatExists(slug)) {
+      slug = `${baseSlug}-${counter}`;
+      counter++;
+    }
+
+    return slug;
+  }
+
+  private async chatExists(id: string): Promise<boolean> {
+    try {
+      const chatPath = `${this.chatsDir}/${id}`;
+      await this.fs.stat(chatPath);
+      return true;
+    } catch {
+      return false;
+    }
   }
 }

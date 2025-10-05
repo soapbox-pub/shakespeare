@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { type Project } from '@/lib/ProjectsManager';
+import { type ChatItem } from '@/lib/ProjectsManager';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { ProjectSidebar } from '@/components/ProjectSidebar';
 import { Button } from '@/components/ui/button';
@@ -9,7 +9,7 @@ import { useIsMobile } from '@/hooks/useIsMobile';
 
 interface AppLayoutProps {
   children: React.ReactNode;
-  selectedProject?: Project | null;
+  selectedProject?: ChatItem | null;
   title?: string;
   showSidebar?: boolean;
   headerContent?: React.ReactNode;
@@ -21,7 +21,7 @@ export function AppLayout({
   showSidebar = true,
   headerContent
 }: AppLayoutProps) {
-  const [_projects, setProjects] = useState<Project[]>([]);
+  const [_projects, setProjects] = useState<ChatItem[]>([]);
   const projectsManager = useProjectsManager();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
@@ -34,7 +34,7 @@ export function AppLayout({
   const loadProjects = useCallback(async () => {
     try {
       await projectsManager.init();
-      const projectList = await projectsManager.getProjects();
+      const projectList = await projectsManager.getAllChatItems();
       setProjects(projectList);
 
       // Set initial sidebar state based on projects and device type
@@ -59,10 +59,14 @@ export function AppLayout({
     loadProjects();
   }, [loadProjects]);
 
-  const handleProjectSelect = (project: Project | null) => {
-    if (project) {
+  const handleProjectSelect = (item: ChatItem | null) => {
+    if (item) {
       setIsSidebarVisible(false); // Collapse sidebar on mobile navigation
-      navigate(`/project/${project.id}`);
+      if (item.type === 'project') {
+        navigate(`/project/${item.id}`);
+      } else {
+        navigate(`/chat/${item.id}`);
+      }
     } else {
       navigate('/');
     }
@@ -101,10 +105,10 @@ export function AppLayout({
             {/* Sidebar - positioned above the backdrop */}
             <div className="relative left-0 top-0 h-full w-80 max-w-[80vw] bg-background border-r shadow-lg z-10">
               <ProjectSidebar
-                selectedProject={selectedProject}
-                onSelectProject={(project) => {
+                selectedItem={selectedProject}
+                onSelectItem={(item) => {
                   setIsSidebarVisible(false); // Always collapse sidebar on mobile navigation
-                  handleProjectSelect(project);
+                  handleProjectSelect(item);
                 }}
                 onClose={() => setIsSidebarVisible(false)}
               />
@@ -125,8 +129,8 @@ export function AppLayout({
       {showSidebar && isSidebarVisible && (
         <div className="w-80 border-r bg-sidebar transition-all duration-300">
           <ProjectSidebar
-            selectedProject={selectedProject}
-            onSelectProject={handleProjectSelect}
+            selectedItem={selectedProject}
+            onSelectItem={handleProjectSelect}
             className="h-screen sticky top-0"
             onToggleSidebar={() => setIsSidebarVisible(false)}
           />

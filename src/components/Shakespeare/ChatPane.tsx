@@ -55,6 +55,7 @@ interface ChatPaneProps {
   isBuildLoading?: boolean;
   consoleError?: ProjectPreviewConsoleError | null;
   onDismissConsoleError?: () => void;
+  isTextChat?: boolean; // Whether this is a text chat (no tools) vs a project chat
 }
 
 export interface ChatPaneRef {
@@ -70,6 +71,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   isBuildLoading: externalIsBuildLoading,
   consoleError,
   onDismissConsoleError,
+  isTextChat = false,
 }, ref) => {
   const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -132,8 +134,13 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   }, [projectId, providerModel]);
 
   // Initialize AI chat with tools
-  const cwd = `/projects/${projectId}`;
+  const cwd = isTextChat ? `/chats/${projectId}` : `/projects/${projectId}`;
   const customTools = useMemo(() => {
+    // For text chats, return empty tools object
+    if (isTextChat) {
+      return {};
+    }
+
     const baseTools = {
       git_commit: new GitCommitTool(fs, cwd, git),
       text_editor_view: new TextEditorViewTool(fs, cwd),
@@ -163,7 +170,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     }
 
     return baseTools;
-  }, [fs, git, cwd, user, projectId]);
+  }, [fs, git, cwd, user, projectId, isTextChat]);
 
   // Convert tools to OpenAI format
   const tools = useMemo(() => {
@@ -215,6 +222,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     customTools,
     onUpdateMetadata,
     onAIError,
+    isTextChat,
   });
 
   // Handle console error help requests

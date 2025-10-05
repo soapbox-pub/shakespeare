@@ -8,10 +8,10 @@ export class DotAI {
   readonly historyDir: string;
   readonly workingDir: string;
 
-  constructor(fs: JSRuntimeFS, workingDir: string = "/") {
+  constructor(fs: JSRuntimeFS, workingDir: string = "/", customHistoryDir?: string) {
     this.fs = fs;
     this.workingDir = workingDir;
-    this.historyDir = join(workingDir, ".git", "ai", "history");
+    this.historyDir = customHistoryDir || join(workingDir, ".git", "ai", "history");
   }
 
   /** Generate a unique session name based on the current date and time */

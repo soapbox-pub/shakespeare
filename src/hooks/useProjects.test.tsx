@@ -25,21 +25,24 @@ function createTestWrapper() {
 vi.mock('./useProjectsManager', () => ({
   useProjectsManager: () => ({
     init: vi.fn().mockResolvedValue(undefined),
-    getProjects: vi.fn().mockResolvedValue([
+    getAllChatItems: vi.fn().mockResolvedValue([
       {
         id: 'project-1',
         name: 'Project 1',
         lastModified: new Date('2023-01-01'),
+        type: 'project' as const,
       },
       {
         id: 'project-2',
         name: 'Project 2',
         lastModified: new Date('2023-01-02'),
+        type: 'project' as const,
       },
       {
         id: 'project-3',
         name: 'Project 3',
         lastModified: new Date('2023-01-03'),
+        type: 'project' as const,
       },
     ] as Project[]),
   }),

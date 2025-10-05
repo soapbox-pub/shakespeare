@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Plus, Folder, GitBranch, Loader2, ChevronDown, Star, Columns2, X, Settings, HelpCircle } from 'lucide-react';
+import { Plus, Folder, GitBranch, Loader2, ChevronDown, Star, Columns2, X, Settings, HelpCircle, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -9,25 +9,29 @@ import { useProjects } from '@/hooks/useProjects';
 import { useProjectSessionStatus } from '@/hooks/useProjectSessionStatus';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useIsMobile } from '@/hooks/useIsMobile';
-import type { Project } from '@/lib/ProjectsManager';
+import type { ChatItem } from '@/lib/ProjectsManager';
 import { cn } from '@/lib/utils';
 import { useQueryClient } from '@tanstack/react-query';
 import { ShakespeareLogo } from '@/components/ShakespeareLogo';
 
-interface ProjectItemProps {
-  project: Project;
+interface ChatItemProps {
+  item: ChatItem;
   isSelected: boolean;
-  onSelect: (project: Project) => void;
+  onSelect: (item: ChatItem) => void;
   isFavorite?: boolean;
 }
 
-const ProjectItem: React.FC<ProjectItemProps> = ({ project, isSelected, onSelect, isFavorite }) => {
+const ChatItemComponent: React.FC<ChatItemProps> = ({ item, isSelected, onSelect, isFavorite }) => {
   const navigate = useNavigate();
-  const { hasRunningSessions } = useProjectSessionStatus(project.id);
+  const { hasRunningSessions } = useProjectSessionStatus(item.id);
 
   const handleClick = () => {
-    onSelect(project);
-    navigate(`/project/${project.id}`);
+    onSelect(item);
+    if (item.type === 'project') {
+      navigate(`/project/${item.id}`);
+    } else {
+      navigate(`/chat/${item.id}`);
+    }
   };
 
   return (
@@ -46,6 +50,8 @@ const ProjectItem: React.FC<ProjectItemProps> = ({ project, isSelected, onSelect
           <div className="flex-shrink-0">
             {hasRunningSessions ? (
               <Loader2 className="h-4 w-4 animate-spin text-blue-600 dark:text-blue-400" />
+            ) : item.type === 'chat' ? (
+              <MessageSquare className="h-4 w-4 text-accent" />
             ) : (
               <Folder className="h-4 w-4 text-primary" />
             )}
@@ -53,7 +59,7 @@ const ProjectItem: React.FC<ProjectItemProps> = ({ project, isSelected, onSelect
           <div className="flex justify-between gap-2 flex-1 min-w-0">
             <div className="min-w-0 flex-1 flex items-center">
               <h3 className="font-medium text-sm truncate">
-                {project.name}
+                {item.name}
               </h3>
             </div>
 
@@ -72,26 +78,26 @@ const ProjectItem: React.FC<ProjectItemProps> = ({ project, isSelected, onSelect
   );
 };
 
-ProjectItem.displayName = 'ProjectItem';
+ChatItemComponent.displayName = 'ChatItemComponent';
 
 interface ProjectSidebarProps {
-  selectedProject: Project | null;
-  onSelectProject: (project: Project | null) => void;
+  selectedItem: ChatItem | null;
+  onSelectItem: (item: ChatItem | null) => void;
   className?: string;
   onToggleSidebar?: () => void;
   onClose?: () => void;
 }
 
 export function ProjectSidebar({
-  selectedProject,
-  onSelectProject,
+  selectedItem,
+  onSelectItem,
   className,
   onToggleSidebar,
   onClose
 }: ProjectSidebarProps) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const { data: projects = [], isLoading, error } = useProjects();
+  const { data: items = [], isLoading, error } = useProjects();
   const [favorites] = useLocalStorage<string[]>('project-favorites', []);
 
   const isMobile = useIsMobile();
@@ -106,8 +112,13 @@ export function ProjectSidebar({
   };
 
   const handleNewProject = () => {
-    onSelectProject(null);
+    onSelectItem(null);
     navigateAndClose('/');
+  };
+
+  const handleNewChat = () => {
+    onSelectItem(null);
+    navigateAndClose('/?mode=chat');
   };
 
   const handleToggleSidebar = () => {
@@ -166,7 +177,7 @@ export function ProjectSidebar({
 
       <div className="flex-1 overflow-y-auto">
         <div className="p-2">
-          <div className="mb-2">
+          <div className="mb-2 space-y-2">
             <div className="relative rounded-md bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 transition-all duration-200">
               <div className="flex">
                 <button
@@ -195,6 +206,14 @@ export function ProjectSidebar({
                 </DropdownMenu>
               </div>
             </div>
+            <Button
+              onClick={handleNewChat}
+              className="w-full bg-gradient-to-r from-accent to-primary hover:from-accent/90 hover:to-primary/90 transition-all duration-200"
+              size="sm"
+            >
+              <MessageSquare className="h-4 w-4 mr-2" />
+              {t('newChat')}
+            </Button>
           </div>
 
           {isLoading ? (
@@ -208,7 +227,7 @@ export function ProjectSidebar({
                 </div>
               ))}
             </div>
-          ) : projects.length === 0 ? (
+          ) : items.length === 0 ? (
             <div className="text-center p-6 text-muted-foreground">
               <Folder className="h-8 w-8 mx-auto mb-2 opacity-50" />
               <p className="text-sm">{t('noProjectsYet')}</p>
@@ -216,13 +235,13 @@ export function ProjectSidebar({
             </div>
           ) : (
             <div className="space-y-1">
-              {projects.map((project) => (
-                <ProjectItem
-                  key={project.id}
-                  project={project}
-                  isSelected={selectedProject?.id === project.id}
-                  onSelect={onSelectProject}
-                  isFavorite={favorites.includes(project.id)}
+              {items.map((item) => (
+                <ChatItemComponent
+                  key={item.id}
+                  item={item}
+                  isSelected={selectedItem?.id === item.id}
+                  onSelect={onSelectItem}
+                  isFavorite={favorites.includes(item.id)}
                 />
               ))}
             </div>

@@ -54,8 +54,8 @@ describe('ProjectSidebar', () => {
     render(
       <TestApp>
         <ProjectSidebar
-          selectedProject={null}
-          onSelectProject={vi.fn()}
+          selectedItem={null}
+          onSelectItem={vi.fn()}
         />
       </TestApp>
     );
@@ -70,8 +70,8 @@ describe('ProjectSidebar', () => {
     render(
       <TestApp>
         <ProjectSidebar
-          selectedProject={null}
-          onSelectProject={vi.fn()}
+          selectedItem={null}
+          onSelectItem={vi.fn()}
           onToggleSidebar={mockToggle}
         />
       </TestApp>
@@ -88,8 +88,8 @@ describe('ProjectSidebar', () => {
     render(
       <TestApp>
         <ProjectSidebar
-          selectedProject={null}
-          onSelectProject={vi.fn()}
+          selectedItem={null}
+          onSelectItem={vi.fn()}
         />
       </TestApp>
     );
@@ -101,8 +101,8 @@ describe('ProjectSidebar', () => {
     render(
       <TestApp>
         <ProjectSidebar
-          selectedProject={null}
-          onSelectProject={vi.fn()}
+          selectedItem={null}
+          onSelectItem={vi.fn()}
         />
       </TestApp>
     );
@@ -115,8 +115,8 @@ describe('ProjectSidebar', () => {
     render(
       <TestApp>
         <ProjectSidebar
-          selectedProject={null}
-          onSelectProject={vi.fn()}
+          selectedItem={null}
+          onSelectItem={vi.fn()}
         />
       </TestApp>
     );
@@ -128,8 +128,8 @@ describe('ProjectSidebar', () => {
     render(
       <TestApp>
         <ProjectSidebar
-          selectedProject={null}
-          onSelectProject={vi.fn()}
+          selectedItem={null}
+          onSelectItem={vi.fn()}
         />
       </TestApp>
     );

@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
-import type { Project } from '@/lib/ProjectsManager';
+import type { ChatItem } from '@/lib/ProjectsManager';
 
 export function useProjects() {
   const projectsManager = useProjectsManager();
@@ -9,12 +9,12 @@ export function useProjects() {
 
   return useQuery({
     queryKey: ['projects'],
-    queryFn: async (): Promise<Project[]> => {
+    queryFn: async (): Promise<ChatItem[]> => {
       await projectsManager.init();
-      const projects = await projectsManager.getProjects();
-      
-      // Sort projects: favorites first, then by lastModified (newest first)
-      return projects.sort((a, b) => {
+      const items = await projectsManager.getAllChatItems();
+
+      // Sort items: favorites first, then by lastModified (newest first)
+      return items.sort((a, b) => {
         const aIsFavorite = favorites.includes(a.id);
         const bIsFavorite = favorites.includes(b.id);
 

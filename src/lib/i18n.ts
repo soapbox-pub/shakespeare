@@ -84,6 +84,7 @@ const resources = {
 
       // Project Sidebar
       newProject: 'New Project',
+      newChat: 'New Chat',
       importRepository: 'Import Repository',
       noProjectsYet: 'No projects yet',
       createFirstProject: 'Create your first project to get started',
@@ -395,6 +396,7 @@ const resources = {
 
       // Project Sidebar
       newProject: 'Novo Projeto',
+      newChat: 'Nova Conversa',
       importRepository: 'Importar Repositório',
       noProjectsYet: 'Nenhum projeto ainda',
       createFirstProject: 'Crie seu primeiro projeto para começar',
@@ -706,6 +708,7 @@ const resources = {
 
       // Project Sidebar
       newProject: '新项目',
+      newChat: '新对话',
       importRepository: '导入仓库',
       noProjectsYet: '还没有项目',
       createFirstProject: '创建您的第一个项目开始使用',
@@ -1017,6 +1020,7 @@ const resources = {
 
       // Project Sidebar
       newProject: 'Sabon Aikin',
+      newChat: 'Sabuwar Hira',
       importRepository: 'Shigo da Repository',
       noProjectsYet: 'Babu ayyuka har yanzu',
       createFirstProject: 'Ƙirƙiri aikin farko don farawa',
@@ -1328,6 +1332,7 @@ const resources = {
 
       // Project Sidebar
       newProject: 'Iṣẹ akanṣe Tuntun',
+      newChat: 'Ibaraẹnisọrọ Tuntun',
       importRepository: 'Gbe Repository wọle',
       noProjectsYet: 'Ko si awọn iṣẹ akanṣe sibẹsibẹ',
       createFirstProject: 'Ṣẹda iṣẹ akanṣe akọkọ rẹ lati bẹrẹ',
@@ -1634,6 +1639,7 @@ const resources = {
 
       // Project Sidebar
       newProject: 'Ọrụ Ọhụrụ',
+      newChat: 'Mkparịta Ụka Ọhụrụ',
       importRepository: 'Bubata Repository',
       noProjectsYet: 'Enwebeghị ọrụ ọ bụla',
       createFirstProject: 'Mepụta ọrụ mbụ gị iji malite',

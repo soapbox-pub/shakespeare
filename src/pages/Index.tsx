@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { useAIProjectId } from '@/hooks/useAIProjectId';
@@ -25,6 +25,8 @@ import { ShakespeareLogo } from '@/components/ShakespeareLogo';
 
 export default function Index() {
   const { t } = useTranslation();
+  const [searchParams] = useSearchParams();
+  const mode = searchParams.get('mode'); // 'chat' for text chat, null for project
   const [prompt, setPrompt] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [storedPrompt, setStoredPrompt] = useLocalStorage('shakespeare-draft-prompt', '');
@@ -184,11 +186,76 @@ export default function Index() {
   const handleCreateProject = async () => {
     if (!prompt.trim() || !providerModel.trim()) return;
 
-    // Clear stored prompt when creating project
+    // Clear stored prompt when creating project/chat
     setStoredPrompt('');
 
     setIsCreating(true);
     try {
+      // For text chat mode, create a text chat instead of a project
+      if (mode === 'chat') {
+        // Create text chat
+        const chat = await projectsManager.createTextChat(prompt.trim());
+
+        // Build message content as text parts
+        const contentParts: Array<OpenAI.Chat.Completions.ChatCompletionContentPartText> = [];
+
+        // Add user input as text part if present
+        if (prompt.trim()) {
+          contentParts.push({
+            type: 'text',
+            text: prompt.trim()
+          });
+        }
+
+        // Process attached files and add as separate text parts
+        if (attachedFiles.length > 0) {
+          const filePromises = attachedFiles.map(async (file) => {
+            try {
+              const savedPath = await saveFileToTmp(fs, file);
+              return `Added file: ${savedPath}`;
+            } catch (error) {
+              console.error('Failed to save file:', error);
+              return `Failed to save file: ${file.name}`;
+            }
+          });
+
+          const fileResults = await Promise.all(filePromises);
+
+          // Add each file as a separate text part
+          fileResults.forEach(fileResult => {
+            contentParts.push({
+              type: 'text',
+              text: fileResult
+            });
+          });
+        }
+
+        // Store the initial message in chat history using DotAI
+        const dotAI = new DotAI(fs, chat.path);
+        const sessionName = DotAI.generateSessionName();
+
+        // Create initial message with content parts
+        const initialMessage: AIMessage = {
+          role: 'user',
+          content: contentParts.length === 1 ? contentParts[0].text : contentParts
+        };
+        await dotAI.setHistory(sessionName, [initialMessage]);
+
+        // Add model to recently used
+        addRecentlyUsedModel(providerModel.trim());
+
+        // Clear attached files after successful creation
+        setAttachedFiles([]);
+
+        // Navigate to the chat with autostart parameter and model
+        const searchParams = new URLSearchParams({
+          autostart: 'true',
+          ...(providerModel.trim() && { model: providerModel.trim() })
+        });
+        navigate(`/chat/${chat.id}?${searchParams.toString()}`);
+        return;
+      }
+
       // Use AI to generate project ID
       const projectId = await generateProjectId(providerModel, prompt.trim());
 
@@ -272,10 +339,10 @@ export default function Index() {
               <ShakespeareLogo className="w-20 h-20 md:w-24 md:h-24 mx-auto" />
             </div>
             <h1 className="text-3xl md:text-4xl font-bold mb-3 md:mb-4 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              {t('buildNostrApps')}
+              {mode === 'chat' ? 'Start a new chat' : t('buildNostrApps')}
             </h1>
             <p className="text-lg md:text-xl text-muted-foreground">
-              {t('whatToBuild')}
+              {mode === 'chat' ? 'What would you like to talk about?' : t('whatToBuild')}
             </p>
           </div>
 

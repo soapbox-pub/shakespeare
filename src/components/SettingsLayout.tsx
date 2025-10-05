@@ -7,7 +7,7 @@ import { Menu, Bot, GitBranch, Database, Wifi, Settings2, Info } from 'lucide-re
 import { ProjectSidebar } from '@/components/ProjectSidebar';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { useIsMobile } from '@/hooks/useIsMobile';
-import { type Project } from '@/lib/ProjectsManager';
+import { type ChatItem } from '@/lib/ProjectsManager';
 import { useCallback } from 'react';
 import { cn } from '@/lib/utils';
 
@@ -72,14 +72,14 @@ export function SettingsLayout() {
   const isMobile = useIsMobile();
   const projectsManager = useProjectsManager();
 
-  const [_projects, setProjects] = useState<Project[]>([]);
+  const [_projects, setProjects] = useState<ChatItem[]>([]);
   const [isSidebarVisible, setIsSidebarVisible] = useState(!isMobile);
   const [hasSetInitialState, setHasSetInitialState] = useState(false);
 
   const loadProjects = useCallback(async () => {
     try {
       await projectsManager.init();
-      const projectList = await projectsManager.getProjects();
+      const projectList = await projectsManager.getAllChatItems();
       setProjects(projectList);
 
       // Set initial sidebar state based on projects and device type
@@ -104,10 +104,14 @@ export function SettingsLayout() {
     loadProjects();
   }, [loadProjects]);
 
-  const handleProjectSelect = (project: Project | null) => {
-    if (project) {
+  const handleProjectSelect = (item: ChatItem | null) => {
+    if (item) {
       setIsSidebarVisible(false); // Collapse sidebar on mobile navigation
-      navigate(`/project/${project.id}`);
+      if (item.type === 'project') {
+        navigate(`/project/${item.id}`);
+      } else {
+        navigate(`/chat/${item.id}`);
+      }
     } else {
       navigate('/');
     }
@@ -145,10 +149,10 @@ export function SettingsLayout() {
             />
             <div className="relative left-0 top-0 h-full w-80 max-w-[80vw] bg-background border-r shadow-lg z-10">
               <ProjectSidebar
-                selectedProject={null}
-                onSelectProject={(project) => {
+                selectedItem={null}
+                onSelectItem={(item) => {
                   setIsSidebarVisible(false);
-                  handleProjectSelect(project);
+                  handleProjectSelect(item);
                 }}
                 onClose={() => setIsSidebarVisible(false)}
               />
@@ -168,8 +172,8 @@ export function SettingsLayout() {
       {isSidebarVisible && (
         <div className="w-80 border-r bg-sidebar flex-shrink-0">
           <ProjectSidebar
-            selectedProject={null}
-            onSelectProject={handleProjectSelect}
+            selectedItem={null}
+            onSelectItem={handleProjectSelect}
             className="h-full"
             onToggleSidebar={() => setIsSidebarVisible(false)}
           />

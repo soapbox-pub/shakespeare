@@ -35,6 +35,7 @@ export interface SessionState {
   abortController?: AbortController;
   totalCost?: number; // Total cost in USD for this session
   lastInputTokens?: number; // Input tokens from the last AI request
+  isTextChat?: boolean; // Whether this is a text chat (no tools) vs a project chat
 }
 
 export interface SessionManagerEvents {
@@ -72,20 +73,23 @@ export class SessionManager {
   }
 
   /**
-   * Create a new session for a project
+   * Create a new session for a project or text chat
    */
   async loadSession(
     projectId: string,
     tools: Record<string, OpenAI.Chat.Completions.ChatCompletionTool>,
     customTools: Record<string, Tool<unknown>>,
-    maxSteps?: number
+    maxSteps?: number,
+    isTextChat?: boolean
   ): Promise<SessionState> {
     let messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [];
     let sessionName = DotAI.generateSessionName();
 
     // Try to load existing history
     try {
-      const dotAI = new DotAI(this.fs, `/projects/${projectId}`);
+      const workingDir = isTextChat ? `/chats/${projectId}` : `/projects/${projectId}`;
+      const historyDir = isTextChat ? `${workingDir}/history` : undefined;
+      const dotAI = new DotAI(this.fs, workingDir, historyDir);
       const lastSession = await dotAI.readLastSessionHistory();
       if (lastSession) {
         messages = lastSession.messages;
@@ -104,6 +108,7 @@ export class SessionManager {
       lastActivity: new Date(),
       totalCost: 0,
       lastInputTokens: 0,
+      isTextChat,
       ...this.sessions.get(projectId),
       messages,
       sessionName,
@@ -226,8 +231,9 @@ export class SessionManager {
           tool_calls: undefined
         };
 
+        const cwd = session.isTextChat ? `/chats/${projectId}` : `/projects/${projectId}`;
         const systemPrompt = await makeSystemPrompt({
-          cwd: `/projects/${projectId}`,
+          cwd,
           fs: this.fs,
           mode: "agent",
           name: "Shakespeare",
@@ -549,7 +555,9 @@ export class SessionManager {
     if (!session) return;
 
     try {
-      const dotAI = new DotAI(this.fs, `/projects/${session.projectId}`);
+      const workingDir = session.isTextChat ? `/chats/${session.projectId}` : `/projects/${session.projectId}`;
+      const historyDir = session.isTextChat ? `${workingDir}/history` : undefined;
+      const dotAI = new DotAI(this.fs, workingDir, historyDir);
       await dotAI.setHistory(session.sessionName, session.messages);
     } catch (error) {
       console.warn('Failed to save session history:', error);

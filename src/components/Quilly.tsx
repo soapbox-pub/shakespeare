@@ -44,7 +44,7 @@ export function Quilly({ error, onDismiss, onNewChat, onOpenModelSelector, onReq
   const credits = useAICredits(provider || { id: '', name: '', apiKey: '', nostr: false });
   const [showCreditsDialog, setShowCreditsDialog] = useState(false);
 
-  const renderBody = (error: Error): ErrorBody => {
+  const renderBody = (error: Error | OpenAI.APIError | MalformedToolCallError | ProjectPreviewConsoleError): ErrorBody => {
     // Handle Project Preview Console Errors
     if (error instanceof ProjectPreviewConsoleError) {
       return {
@@ -62,18 +62,18 @@ export function Quilly({ error, onDismiss, onNewChat, onOpenModelSelector, onReq
     if (error instanceof MalformedToolCallError) {
       return {
         message: 'The AI sent an incomplete response, possibly due to a network issue or provider problem. Try sending your message again, or switch to a different model if this persists.',
-        action: {
+        actions: [{
           label: 'Change model',
           onClick: onOpenModelSelector,
-        },
+        }],
       };
-    }
+    } 
 
     // Handle OpenAI API errors with specific error codes
     if (error instanceof OpenAI.APIError) {
-      switch (error.code) {
-        case 'invalid_api_key':
-        case 'invalid_request_error':
+      switch (true) {
+        case error.code ==='invalid_api_key':
+        case error.code === 'invalid_request_error':
           return {
             message: 'Authentication error: Please check your API key in AI settings.',
             actions: [{
@@ -82,7 +82,7 @@ export function Quilly({ error, onDismiss, onNewChat, onOpenModelSelector, onReq
             }],
           };
 
-        case 'insufficient_quota': {
+        case error.code === 'insufficient_quota': {
           if (credits.data) {
             return {
               message: `Your account has $${credits.data.amount.toFixed(2)} credits. Please add credits to keep creating.`,
@@ -102,13 +102,13 @@ export function Quilly({ error, onDismiss, onNewChat, onOpenModelSelector, onReq
           }
         }
 
-        case 'rate_limit_exceeded':
+        case error.code === 'rate_limit_exceeded':
           return {
             message: 'Rate limit exceeded. Please wait a moment before trying again.',
             actions: [],
           };
 
-        case 'model_not_found':
+        case error.code === 'model_not_found':
           return {
             message: 'The selected AI model is not available. Please choose a different model.',
             actions: [{
@@ -117,7 +117,7 @@ export function Quilly({ error, onDismiss, onNewChat, onOpenModelSelector, onReq
             }],
           };
 
-        case 'context_length_exceeded':
+        case error.code === 'context_length_exceeded':
           return {
             message: 'Your conversation is too long for this model. Try starting a new chat or switching to a model with a larger context window.',
             actions: [{
@@ -129,7 +129,7 @@ export function Quilly({ error, onDismiss, onNewChat, onOpenModelSelector, onReq
             }],
           };
 
-        case 'key_limit_exceeded':
+        case error.status === 403:
           return {
             message: `It seems your API key has been used up. Check your API provider's settings, or try a different API key or different provider/model combo:`,
             actions: [{
@@ -141,7 +141,7 @@ export function Quilly({ error, onDismiss, onNewChat, onOpenModelSelector, onReq
             }],
           };
 
-        case 'bad_request':
+        case error.status === 400:
           return {
             message: 'The AI provider did not understand the message / data it got. If it persists, try stating a new conversation or using a different model.',
             actions: [{
@@ -153,7 +153,7 @@ export function Quilly({ error, onDismiss, onNewChat, onOpenModelSelector, onReq
             }],
           };
 
-        case 'unprocessable_entity':
+        case error.status === 422:
           return {
             message: 'Request rejected by AI provider. Try a different model.',
             actions: [{
@@ -162,8 +162,8 @@ export function Quilly({ error, onDismiss, onNewChat, onOpenModelSelector, onReq
             }],
           };
 
-        case 'server_error':
-        case 'service_unavailable':
+        case error.code === 'server_error':
+        case error.code === 'service_unavailable':
           return {
             message: 'The AI service is temporarily unavailable. Please try again in a moment.',
             actions: [],

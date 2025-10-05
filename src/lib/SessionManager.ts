@@ -433,17 +433,6 @@ export class SessionManager {
         return; // User cancelled
       }
 
-      // Convert provider errors to standard OpenAI APIError with appropriate code
-      if (error?.status === 400) {
-        error.code = 'bad_request';
-      }
-      if (error?.status === 403) {
-        error.code = 'key_limit_exceeded';
-      }
-      if (error?.status === 422) {
-        error.code = 'unprocessable_entity';
-      }
-
       // Re-throw service errors to be handled at the UI level
       throw error;
     } finally {

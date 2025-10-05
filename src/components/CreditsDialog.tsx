@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/useToast';
 import { createAIClient } from '@/lib/ai-client';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
@@ -399,7 +399,7 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg w-full max-h-[75vh] overflow-hidden flex flex-col sm:max-w-lg sm:max-h-[75vh] max-sm:w-full max-sm:h-full max-sm:max-w-none max-sm:max-h-none max-sm:m-0 max-sm:rounded-none">
+      <DialogContent onOpenAutoFocus={(e) => e.preventDefault()} className="max-w-lg w-full max-h-[75vh] overflow-hidden flex flex-col sm:max-w-lg sm:max-h-[75vh] max-sm:w-full max-sm:h-dvh-safe max-sm:max-w-none max-sm:max-h-none max-sm:m-0 max-sm:rounded-none">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2 text-lg">
             {lightningInvoice ? (
@@ -434,68 +434,61 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
           <div className="flex-1 flex flex-col min-h-0">
             {/* Add Credits Form - Fixed size section */}
             <div className="flex-shrink-0 space-y-4 px-1 -mx-1">
-            <div className="space-y-3">
-              <Label htmlFor="amount" className="text-sm font-medium">Amount (USD)</Label>
               <div className="space-y-3">
-                <Input
-                  id="amount"
-                  type="number"
-                  step="0.01"
-                  value={amount}
-                  onChange={(e) => setAmount(Number(e.target.value))}
-                  placeholder="Enter amount"
-                  className="text-center text-lg font-medium"
-                />
-                <div className="grid grid-cols-5 gap-2">
-                  {PRESET_AMOUNTS.map((preset) => (
-                    <Button
-                      key={preset}
-                      variant={amount === preset ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setAmount(preset)}
-                      className="text-xs"
-                    >
+                <Label htmlFor="amount" className="text-sm font-medium">Amount (USD)</Label>
+                <div className="space-y-3">
+                  <Input
+                    id="amount"
+                    type="number"
+                    step="0.01"
+                    value={amount}
+                    onChange={(e) => setAmount(Number(e.target.value))}
+                    placeholder="Enter amount"
+                    className="text-center text-lg font-medium"
+                  />
+                  <div className="grid grid-cols-5 gap-2">
+                    {PRESET_AMOUNTS.map((preset) => (
+                      <Button
+                        key={preset}
+                        variant={amount === preset ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setAmount(preset)}
+                        className="text-xs"
+                      >
                       ${preset}
-                    </Button>
-                  ))}
+                      </Button>
+                    ))}
+                  </div>
+
                 </div>
-
               </div>
-            </div>
 
-            <div className="space-y-3">
-              <Label htmlFor="payment-method" className="text-sm font-medium">Payment Method</Label>
-              <Select value={paymentMethod} onValueChange={(value: 'stripe' | 'lightning') => setPaymentMethod(value)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="stripe">
-                    <div className="flex items-center gap-2">
+              <div className="space-y-3">
+                <Label className="text-sm font-medium">Payment Method</Label>
+                <Tabs value={paymentMethod} onValueChange={(value: 'stripe' | 'lightning') => setPaymentMethod(value)} className="w-full">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="stripe" className="flex items-center gap-2">
                       <CreditCard className="h-4 w-4" />
-                      Credit Card
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="lightning">
-                    <div className="flex items-center gap-2">
+                    Credit Card
+                    </TabsTrigger>
+                    <TabsTrigger value="lightning" className="flex items-center gap-2">
                       <Zap className="h-4 w-4" />
-                      Lightning
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+                    Lightning
+                    </TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              </div>
 
-            <Button
-              onClick={handleAddCredits}
-              disabled={amount <= 0 || addCreditsMutation.isPending}
-              className="w-full h-12 text-base font-medium"
-              size="lg"
-            >
-              {addCreditsMutation.isPending && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
-              {paymentMethod === 'stripe' ? 'Pay with Card' : 'Generate Invoice'}
-              {amount > 0 && ` - ${formatCurrency(amount)}`}
-            </Button>
+              <Button
+                onClick={handleAddCredits}
+                disabled={amount <= 0 || addCreditsMutation.isPending}
+                className="w-full h-12 text-base font-medium"
+                size="lg"
+              >
+                {addCreditsMutation.isPending && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
+                {paymentMethod === 'stripe' ? 'Pay with Card' : 'Generate Invoice'}
+                {amount > 0 && ` - ${formatCurrency(amount)}`}
+              </Button>
             </div>
 
             <div className="flex-shrink-0 px-1 -mx-1 py-4">
@@ -528,65 +521,65 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
                 ) : (
                   <div className="space-y-2 pb-2">
                     {payments.map((payment) => (
-                  <div
-                    key={payment.id}
-                    className="p-3 border rounded-lg space-y-2 hover:bg-muted/30 transition-colors"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 min-w-0 flex-1">
-                        {getStatusIcon(payment.status)}
-                        <span className="text-sm font-medium truncate">
-                          {payment.method === 'stripe' ? 'Credit Card' : 'Lightning'}
-                        </span>
-                        <Badge variant={getStatusVariant(payment.status)} className="text-xs flex-shrink-0">
-                          {payment.status}
-                        </Badge>
-                      </div>
-                      <div className="text-right flex-shrink-0">
-                        <p className="text-sm font-medium">{formatCurrency(payment.amount)}</p>
-                        {payment.fee > 0 && (
-                          <p className="text-xs text-muted-foreground">
+                      <div
+                        key={payment.id}
+                        className="p-3 border rounded-lg space-y-2 hover:bg-muted/30 transition-colors"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                            {getStatusIcon(payment.status)}
+                            <span className="text-sm font-medium truncate">
+                              {payment.method === 'stripe' ? 'Credit Card' : 'Lightning'}
+                            </span>
+                            <Badge variant={getStatusVariant(payment.status)} className="text-xs flex-shrink-0">
+                              {payment.status}
+                            </Badge>
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            <p className="text-sm font-medium">{formatCurrency(payment.amount)}</p>
+                            {payment.fee > 0 && (
+                              <p className="text-xs text-muted-foreground">
                             +{formatCurrency(payment.fee)}
-                          </p>
-                        )}
-                      </div>
-                    </div>
+                              </p>
+                            )}
+                          </div>
+                        </div>
 
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>{formatDate(payment.created_at)}</span>
-                      {payment.status === 'pending' && (
-                        <div className="flex items-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => checkPaymentMutation.mutate(payment.id)}
-                            disabled={refreshingPayments.has(payment.id)}
-                            className="h-6 px-2 text-xs"
-                            title="Refresh payment status"
-                          >
-                            <RotateCcw className={`h-3 w-3 ${refreshingPayments.has(payment.id) ? 'animate-spin' : ''}`} />
-                          </Button>
-                          {payment.url && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                if (payment.method === 'lightning') {
-                                  setLightningInvoice(payment.url);
-                                } else {
-                                  window.open(payment.url, '_blank');
-                                }
-                              }}
-                              className="h-6 px-2 text-xs"
-                            >
-                              <ExternalLink className="h-3 w-3 mr-1" />
-                              {payment.method === 'lightning' ? 'Pay' : 'Pay'}
-                            </Button>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                          <span>{formatDate(payment.created_at)}</span>
+                          {payment.status === 'pending' && (
+                            <div className="flex items-center gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => checkPaymentMutation.mutate(payment.id)}
+                                disabled={refreshingPayments.has(payment.id)}
+                                className="h-6 px-2 text-xs"
+                                title="Refresh payment status"
+                              >
+                                <RotateCcw className={`h-3 w-3 ${refreshingPayments.has(payment.id) ? 'animate-spin' : ''}`} />
+                              </Button>
+                              {payment.url && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    if (payment.method === 'lightning') {
+                                      setLightningInvoice(payment.url);
+                                    } else {
+                                      window.open(payment.url, '_blank');
+                                    }
+                                  }}
+                                  className="h-6 px-2 text-xs"
+                                >
+                                  <ExternalLink className="h-3 w-3 mr-1" />
+                                  {payment.method === 'lightning' ? 'Pay' : 'Pay'}
+                                </Button>
+                              )}
+                            </div>
                           )}
                         </div>
-                      )}
-                    </div>
-                  </div>
+                      </div>
                     ))}
                   </div>
                 )}

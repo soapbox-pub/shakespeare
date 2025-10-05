@@ -1,59 +1,100 @@
 import { Decimal } from 'decimal.js';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { generateSecretKey } from 'nostr-tools';
 import { nip19 } from 'nostr-tools';
-import { Bot, Check, Sparkles, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Bot, Check, Sparkles, ArrowRight, ArrowLeft, ExternalLink } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { Checkbox } from '@/components/ui/checkbox';
+import { PasswordInput } from '@/components/ui/password-input';
 import { useAISettings } from '@/hooks/useAISettings';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useLoginActions } from '@/hooks/useLoginActions';
 import { useProviderModels } from '@/hooks/useProviderModels';
 import { CreditsDialog } from '@/components/CreditsDialog';
+import { OnboardingCreditsBadge } from '@/components/OnboardingCreditsBadge';
+import { ShakespeareLogo } from '@/components/ShakespeareLogo';
+import { AI_PROVIDER_PRESETS, type PresetProvider } from '@/lib/aiProviderPresets';
+import { cn } from '@/lib/utils';
+
 interface OnboardingDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-type OnboardingStep = 'welcome' | 'model-selection' | 'conclusion';
-
-const SHAKESPEARE_PROVIDER = {
-  id: "shakespeare",
-  baseURL: "https://ai.shakespeare.diy/v1",
-  nostr: true,
-};
+type OnboardingStep = 'welcome' | 'open-source' | 'provider-selection' | 'model-selection' | 'conclusion';
 
 export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) {
   const [step, setStep] = useState<OnboardingStep>('welcome');
+  const [selectedProvider, setSelectedProvider] = useState<PresetProvider | null>(null);
+  const [providerApiKey, setProviderApiKey] = useState<string>('');
   const [selectedModel, setSelectedModel] = useState<string>('');
   const [isSettingUp, setIsSettingUp] = useState(false);
   const [showCreditsDialog, setShowCreditsDialog] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [agreedToProviderTerms, setAgreedToProviderTerms] = useState(false);
+
+  // Ref for the scrollable content area
+  const scrollableContentRef = useRef<HTMLDivElement>(null);
 
   const { setProvider, addRecentlyUsedModel } = useAISettings();
   const { user } = useCurrentUser();
   const login = useLoginActions();
   const { models, isLoading: isLoadingModels } = useProviderModels();
 
-  // Filter models to only show Shakespeare provider models
-  const shakespeareModels = models.filter(model => model.provider === 'shakespeare');
+  // Filter models to only show selected provider models
+  const providerModels = selectedProvider
+    ? models.filter(model => model.provider === selectedProvider.id)
+    : [];
 
-  const handleGetStarted = async () => {
+  const handleGetStarted = () => {
+    setStep('open-source');
+  };
+
+  const handleContinueFromOpenSource = () => {
+    if (!agreedToTerms) return;
+    setStep('provider-selection');
+  };
+
+  const handleProviderSelect = (provider: PresetProvider) => {
+    setSelectedProvider(provider);
+    // Clear API key when switching providers
+    setProviderApiKey('');
+    // Reset provider terms agreement when switching providers
+    setAgreedToProviderTerms(false);
+  };
+
+  const handleContinueFromProviderSelection = async () => {
+    if (!selectedProvider) return;
+
+    // Check if user agreed to provider terms
+    if (!agreedToProviderTerms) return;
+
+    // Check if provider requires API key and if it's provided
+    const requiresApiKey = selectedProvider.apiKeysURL && !selectedProvider.nostr;
+    if (requiresApiKey && !providerApiKey.trim()) return;
+
     setIsSettingUp(true);
 
     try {
-      // If user is not logged in, generate and login with secret key
-      if (!user) {
+      // If user is not logged in and provider uses Nostr auth, generate and login with secret key
+      if (!user && selectedProvider.nostr) {
         const secretKey = generateSecretKey();
         const nsec = nip19.nsecEncode(secretKey);
         login.nsec(nsec);
       }
 
-      // Add Shakespeare provider to their config
-      setProvider(SHAKESPEARE_PROVIDER);
+      // Add selected provider to their config
+      const providerConfig = {
+        id: selectedProvider.id,
+        baseURL: selectedProvider.baseURL,
+        nostr: selectedProvider.nostr || undefined,
+        apiKey: requiresApiKey ? providerApiKey.trim() : undefined,
+      };
+      setProvider(providerConfig);
 
       // Move to model selection
       setStep('model-selection');
@@ -75,7 +116,7 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
     addRecentlyUsedModel(selectedModel);
 
     // Find the selected model to check if it's free
-    const model = shakespeareModels.find(m => m.fullId === selectedModel);
+    const model = providerModels.find(m => m.fullId === selectedModel);
     const isFreeModel = !model?.pricing || (
       model.pricing.prompt.equals(0) && model.pricing.completion.equals(0)
     );
@@ -110,19 +151,30 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
   useEffect(() => {
     if (open) {
       setStep('welcome');
+      setSelectedProvider(null);
+      setProviderApiKey('');
       setSelectedModel('');
       setIsSettingUp(false);
       setShowCreditsDialog(false);
+      setAgreedToTerms(false);
+      setAgreedToProviderTerms(false);
     }
   }, [open]);
+
+  // Scroll to top when step changes
+  useEffect(() => {
+    if (scrollableContentRef.current) {
+      scrollableContentRef.current.scrollTop = 0;
+    }
+  }, [step]);
 
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden">
-          <DialogHeader>
+        <DialogContent className="max-w-2xl h-dvh-safe sm:h-auto sm:max-h-[90vh] flex flex-col">
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle className="flex items-center gap-2">
-              {step === 'model-selection' && (
+              {step === 'open-source' && (
                 <Button
                   variant="ghost"
                   size="sm"
@@ -132,18 +184,48 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
                   <ArrowLeft className="h-4 w-4" />
                 </Button>
               )}
+              {step === 'provider-selection' && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setStep('open-source')}
+                  className="mr-2 p-1 h-auto"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+              )}
+              {step === 'model-selection' && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setStep('provider-selection')}
+                  className="mr-2 p-1 h-auto"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+              )}
+              {step === 'conclusion' && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setStep('model-selection')}
+                  className="mr-2 p-1 h-auto"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+              )}
               <span className="text-xl">
-                {step === 'welcome' && 'Welcome to Shakespeare!'}
                 {step === 'model-selection' && 'Choose Your AI Model'}
-                {step === 'conclusion' && "You're All Set!"}
               </span>
             </DialogTitle>
           </DialogHeader>
 
-          <div className="flex-1 overflow-hidden">
+          <div ref={scrollableContentRef} className="flex-1 overflow-y-auto min-h-0">
             {step === 'welcome' && (
               <div className="text-center space-y-6 py-4">
-                <div className="text-6xl mb-4">🎭</div>
+                <div className="mb-4">
+                  <ShakespeareLogo className="w-16 h-16 mx-auto" />
+                </div>
                 <div className="space-y-3">
                   <h2 className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
                     Welcome to Shakespeare!
@@ -190,16 +272,215 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
               </div>
             )}
 
-            {step === 'model-selection' && (
-              <div className="space-y-4">
-                <div className="text-center space-y-2">
-                  <p className="text-muted-foreground">
-                    Choose an AI model to power your development experience.
-                    Different models offer various capabilities and pricing.
+            {step === 'open-source' && (
+              <div className="space-y-6 py-4">
+                <div className="text-center space-y-4">
+                  <h2 className="text-2xl font-bold">
+                    Shakespeare is Open Source software that runs entirely in your web&nbsp;browser
+                  </h2>
+                </div>
+
+                <div className="grid gap-1 max-w-md mx-auto">
+                  <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                    <div className="h-2 w-2 rounded-full bg-primary mt-2 flex-shrink-0" />
+                    <p className="text-sm">Your device connects directly to third-party AI providers of your choice</p>
+                  </div>
+                  <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                    <div className="h-2 w-2 rounded-full bg-primary mt-2 flex-shrink-0" />
+                    <p className="text-sm">Your files are stored on your device in your browser</p>
+                  </div>
+                  <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                    <div className="h-2 w-2 rounded-full bg-primary mt-2 flex-shrink-0" />
+                    <p className="text-sm">Be careful not to delete your browser data or you may lose project files</p>
+                  </div>
+                  <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                    <div className="h-2 w-2 rounded-full bg-primary mt-2 flex-shrink-0" />
+                    <p className="text-sm">You are responsible for taking backups or syncing to git</p>
+                  </div>
+                  <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                    <div className="h-2 w-2 rounded-full bg-primary mt-2 flex-shrink-0" />
+                    <p className="text-sm">Quality of output depends on quality of input and models used, and is not guaranteed</p>
+                  </div>
+                </div>
+
+                <div className="space-y-3 max-w-md mx-auto">
+                  <p className="text-xs text-muted-foreground max-w-xl mx-auto">
+                    Shakespeare is not a cloud service. It's Open Source software that runs on your device.
+                    You agree to the Terms of Service of AI providers you interact with.
+                    Shakespeare is provided "as is" without warranty of any kind.
+                  </p>
+
+                  <div className="flex items-center justify-center gap-2">
+                    <Checkbox
+                      id="agree-terms"
+                      checked={agreedToTerms}
+                      onCheckedChange={(checked) => setAgreedToTerms(checked === true)}
+                    />
+                    <label
+                      htmlFor="agree-terms"
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                    >
+                      I agree
+                    </label>
+                  </div>
+                </div>
+
+                <div className="flex justify-center">
+                  <Button
+                    onClick={handleContinueFromOpenSource}
+                    disabled={!agreedToTerms}
+                    className="gap-2 rounded-full w-full max-w-md"
+                  >
+                    Continue
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {step === 'provider-selection' && (
+              <div className="space-y-6 py-4">
+                <div className="text-center space-y-4">
+                  <h2 className="text-2xl font-bold">Choose your AI provider</h2>
+                  <p className="text-muted-foreground max-w-md mx-auto">
+                    Select an AI provider to power your development assistant. You can add more providers later in settings.
                   </p>
                 </div>
 
-                <ScrollArea className="h-96">
+                <div className="grid grid-cols-1 md:grid-cols-2 p-1 gap-3 max-w-4xl mx-auto">
+                  {AI_PROVIDER_PRESETS.map((provider) => {
+                    const isSelected = selectedProvider?.id === provider.id;
+                    const isShakespeare = provider.id === 'shakespeare';
+
+                    return (
+                      <Card
+                        key={provider.id}
+                        className={cn('cursor-pointer transition-all hover:shadow-md', {
+                          'ring-2 ring-primary': isSelected,
+                        })}
+                        onClick={() => handleProviderSelect(provider)}
+                      >
+                        <div className="flex items-center justify-between p-3">
+                          <div className="flex-1">
+                            <CardTitle className={cn('text-lg font-semibold', {
+                              'bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent': isShakespeare,
+                            })}>
+                              {provider.name}
+                            </CardTitle>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <OnboardingCreditsBadge provider={provider} />
+                            {isSelected && (
+                              <div className="h-5 w-5 rounded-full bg-primary flex items-center justify-center">
+                                <Check className="h-3 w-3 text-primary-foreground" />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </Card>
+                    );
+                  })}
+                </div>
+
+                {/* API Key Input Section */}
+                {selectedProvider && selectedProvider.apiKeysURL && !selectedProvider.nostr && (
+                  <div className="space-y-3 max-w-md mx-auto">
+                    <div className="text-center">
+                      <h3 className="text-lg font-semibold">
+                        {selectedProvider.id === 'routstr' ? 'Enter Cashu Token' : 'Enter API Key'}
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        {selectedProvider.id === 'routstr' ? (
+                          <>{selectedProvider.name} requires a Cashu token</>
+                        ) : (
+                          <>
+                            {selectedProvider.name} requires an {selectedProvider.apiKeysURL ? (
+                              <a className="text-foreground underline" href={selectedProvider.apiKeysURL} target="_blank">
+                                API key
+                                <ExternalLink className="inline-block h-4 w-4 ml-1" />
+                              </a>
+                            ) : (
+                              <>API key</>
+                            )}
+                          </>
+                        )}
+                      </p>
+                    </div>
+                    <PasswordInput
+                      placeholder={selectedProvider.id === 'routstr' ? 'Enter a Cashu Token' : 'Enter your API key'}
+                      value={providerApiKey}
+                      onChange={(e) => setProviderApiKey(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && providerApiKey.trim()) {
+                          handleContinueFromProviderSelection();
+                        }
+                      }}
+                    />
+                  </div>
+                )}
+
+                {/* Terms of Service Agreement */}
+                {selectedProvider && (
+                  <div className="space-y-3 max-w-md mx-auto">
+                    <div className="flex items-center justify-center gap-2">
+                      <Checkbox
+                        id="agree-provider-terms"
+                        checked={agreedToProviderTerms}
+                        onCheckedChange={(checked) => setAgreedToProviderTerms(checked === true)}
+                      />
+                      <label
+                        htmlFor="agree-provider-terms"
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                      >
+                        I agree to {selectedProvider.name}'s{' '}
+                        {selectedProvider.tosURL ? (
+                          <a
+                            href={selectedProvider.tosURL}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-primary underline hover:no-underline"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            Terms of Service
+                          </a>
+                        ) : (
+                          'Terms of Service'
+                        )}
+                      </label>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex justify-center">
+                  <Button
+                    onClick={handleContinueFromProviderSelection}
+                    disabled={
+                      !selectedProvider ||
+                      isSettingUp ||
+                      !agreedToProviderTerms ||
+                      !!(selectedProvider?.apiKeysURL && !selectedProvider?.nostr && !providerApiKey.trim())
+                    }
+                    className="gap-2 rounded-full w-full max-w-md"
+                  >
+                    {isSettingUp ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                        Setting up...
+                      </>
+                    ) : (
+                      <>
+                        Continue
+                        <ArrowRight className="h-4 w-4" />
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {step === 'model-selection' && (
+              <div className="flex flex-col h-full">
+                <div className="flex-1 overflow-y-auto min-h-0 my-4">
                   <div className="space-y-3 p-1">
                     {isLoadingModels ? (
                       <>
@@ -219,7 +500,7 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
                           </Card>
                         ))}
                       </>
-                    ) : shakespeareModels.length === 0 ? (
+                    ) : providerModels.length === 0 ? (
                       <Card className="p-6 text-center">
                         <div className="space-y-2">
                           <Bot className="h-8 w-8 mx-auto text-muted-foreground" />
@@ -229,9 +510,11 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
                         </div>
                       </Card>
                     ) : (
-                      shakespeareModels.map((model) => {
+                      providerModels.map((model) => {
                         const isSelected = selectedModel === model.fullId;
                         const isFree = model.pricing?.prompt.equals(0) && model.pricing?.completion.equals(0);
+                        const isPremium = !!model.pricing && !isFree;
+                        const modelName = model.name || model.id;
 
                         return (
                           <Card
@@ -241,15 +524,19 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
                             }`}
                             onClick={() => handleModelSelect(model.fullId)}
                           >
-                            <CardHeader className="pb-3">
+                            <CardHeader>
                               <div className="flex items-center justify-between">
                                 <div className="flex-1">
-                                  <CardTitle className="text-base font-semibold">
-                                    {model.description || model.name || model.id}
+                                  <CardTitle className={cn('text-xl font-semibold', {
+                                    'bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent': isPremium,
+                                  })}>
+                                    {modelName}
                                   </CardTitle>
                                   {model.description && (
                                     <p className="text-sm text-muted-foreground mt-1">
-                                      {model.name || model.id}
+                                      {model.description.length > 70
+                                        ? model.description.slice(0, 70) + '...'
+                                        : model.description}
                                     </p>
                                   )}
                                 </div>
@@ -257,6 +544,11 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
                                   {isFree && (
                                     <Badge variant="secondary" className="text-xs">
                                       Free
+                                    </Badge>
+                                  )}
+                                  {isPremium && (
+                                    <Badge className="text-xs bg-primary text-white border-0">
+                                      Premium
                                     </Badge>
                                   )}
                                   {isSelected && (
@@ -267,27 +559,29 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
                                 </div>
                               </div>
                             </CardHeader>
-                            <CardContent className="pt-0">
-                              <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                                {model.pricing && (
-                                  <>
-                                    <span>Input: {formatPrice(model.pricing.prompt)}</span>
-                                    <span>Output: {formatPrice(model.pricing.completion)}</span>
-                                  </>
-                                )}
-                                {model.contextLength && (
-                                  <span>Context: {model.contextLength.toLocaleString()} tokens</span>
-                                )}
-                              </div>
-                            </CardContent>
+                            {(model.pricing || model.contextLength) && (
+                              <CardContent className="pt-0">
+                                <div className="flex items-end justify-end gap-4 text-xs text-muted-foreground">
+                                  {model.pricing && (
+                                    <div className="text-right">
+                                      <div>Input: {formatPrice(model.pricing.prompt)}</div>
+                                      <div>Output: {formatPrice(model.pricing.completion)}</div>
+                                    </div>
+                                  )}
+                                  {model.contextLength && (
+                                    <span>Context: {model.contextLength.toLocaleString()} tokens</span>
+                                  )}
+                                </div>
+                              </CardContent>
+                            )}
                           </Card>
                         );
                       })
                     )}
                   </div>
-                </ScrollArea>
+                </div>
 
-                <div className="flex justify-end gap-2 pt-4 border-t">
+                <div className="flex justify-end gap-2 pt-4 flex-shrink-0">
                   <Button
                     onClick={handleContinue}
                     disabled={!selectedModel}
@@ -310,11 +604,6 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
                     Just enter your prompt to start building amazing Nostr applications.
                   </p>
                 </div>
-                <div className="bg-muted/50 rounded-lg p-4 max-w-md mx-auto">
-                  <p className="text-sm text-muted-foreground italic">
-                    "Create a farming equipment marketplace for local farmers to buy and sell tractors, tools, and supplies..."
-                  </p>
-                </div>
                 <Button onClick={handleFinish} size="lg" className="gap-2">
                   <Sparkles className="h-4 w-4" />
                   Start Building
@@ -326,7 +615,7 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
       </Dialog>
 
       {/* Credits Dialog */}
-      {showCreditsDialog && selectedModel && (
+      {showCreditsDialog && selectedModel && selectedProvider && (
         <CreditsDialog
           open={showCreditsDialog}
           onOpenChange={(open) => {
@@ -334,7 +623,11 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
               handleCreditsDialogClose();
             }
           }}
-          provider={SHAKESPEARE_PROVIDER}
+          provider={{
+            id: selectedProvider.id,
+            baseURL: selectedProvider.baseURL,
+            nostr: selectedProvider.nostr || undefined,
+          }}
         />
       )}
     </>

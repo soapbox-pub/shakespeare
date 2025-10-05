@@ -1,6 +1,6 @@
 import { memo, useState } from 'react';
 import { Streamdown } from 'streamdown';
-import { Wrench, Eye, FileText, Edit, Package, PackageMinus, GitCommit, BookOpen, Download, Hash, Tag, Network, List, Plus, Terminal, Globe, CheckCircle, Lightbulb, Loader2 } from 'lucide-react';
+import { Wrench, Eye, FileText, Edit, Package, PackageMinus, GitCommit, BookOpen, Download, Hash, Tag, Network, List, Plus, Terminal, Globe, CheckCircle, Lightbulb, Loader2, Logs } from 'lucide-react';
 import type { AIMessage } from '@/lib/SessionManager';
 import { cn } from '@/lib/utils';
 import { UserMessage } from '@/components/UserMessage';
@@ -69,8 +69,8 @@ export const AIMessageItem = memo(({
           case 'text_editor_view': {
             const title = args.path
               ? (args.start_line || args.end_line
-                  ? `Viewed ${args.path} (lines ${args.start_line || 1}-${args.end_line || 'end'})`
-                  : `Viewed ${args.path}`)
+                ? `Viewed ${args.path} (lines ${args.start_line || 1}-${args.end_line || 'end'})`
+                : `Viewed ${args.path}`)
               : 'Viewed File';
             return { icon: Eye, title };
           }
@@ -149,6 +149,11 @@ export const AIMessageItem = memo(({
             return {
               icon: CheckCircle,
               title: 'TypeScript'
+            };
+          case 'read_console_messages':
+            return {
+              icon: Logs,
+              title: 'Read Console'
             };
           default:
             return {

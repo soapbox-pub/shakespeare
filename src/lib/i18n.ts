@@ -81,9 +81,6 @@ const resources = {
       dataSettingsDescription: 'Export files and manage local data',
       emailUpdates: 'Email Updates',
       emailUpdatesDescription: 'Subscribe to Shakespeare updates and resources',
-      emailUpdatesDescriptionLong: 'Stay updated with the latest Shakespeare features, tutorials, and resources.',
-      aboutShakespeareSettings: 'About Shakespeare',
-      aboutShakespeareSettingsDescription: 'Information about Shakespeare',
 
       // Project Sidebar
       newProject: 'New Project',
@@ -186,6 +183,8 @@ const resources = {
       authentication: 'Authentication',
       addCustomProviderButton: 'Add Custom Provider',
       providerExists: 'Provider with this name already exists',
+      agreeToTermsOfService: 'I agree to {{providerName}}’s',
+      termsOfService: 'Terms of Service',
       custom: 'Custom',
       connecting: 'Connecting...',
       connectToGitHub: 'Connect to GitHub',
@@ -393,9 +392,6 @@ const resources = {
       dataSettingsDescription: 'Exporte arquivos e gerencie dados locais',
       emailUpdates: 'Atualizações por Email',
       emailUpdatesDescription: 'Inscreva-se para receber atualizações e recursos do Shakespeare',
-      emailUpdatesDescriptionLong: 'Mantenha-se atualizado com os recursos mais recentes do Shakespeare, tutoriais e recursos. Enviamos apenas atualizações ocasionais e você pode cancelar a inscrição a qualquer momento.',
-      aboutShakespeareSettings: 'Sobre o Shakespeare',
-      aboutShakespeareSettingsDescription: 'Informações sobre o Shakespeare',
 
       // Project Sidebar
       newProject: 'Novo Projeto',
@@ -498,6 +494,8 @@ const resources = {
       authentication: 'Autenticação',
       addCustomProviderButton: 'Adicionar Provedor Personalizado',
       providerExists: 'Provedor com este nome já existe',
+      agreeToTermsOfService: 'Concordo com {{providerName}}',
+      termsOfService: 'Termos de Serviço',
       custom: 'Personalizado',
       connecting: 'Conectando...',
       connectToGitHub: 'Conectar ao GitHub',
@@ -705,9 +703,6 @@ const resources = {
       dataSettingsDescription: '导出文件和管理本地数据',
       emailUpdates: '邮件更新',
       emailUpdatesDescription: '订阅Shakespeare更新和资源',
-      emailUpdatesDescriptionLong: '及时了解最新的Shakespeare功能、教程和资源。我们只会偶尔发送更新，您可以随时取消订阅。',
-      aboutShakespeareSettings: '关于Shakespeare',
-      aboutShakespeareSettingsDescription: '关于Shakespeare的信息',
 
       // Project Sidebar
       newProject: '新项目',
@@ -810,6 +805,8 @@ const resources = {
       authentication: '身份验证',
       addCustomProviderButton: '添加自定义提供商',
       providerExists: '此名称的提供商已存在',
+      agreeToTermsOfService: '我同意{{providerName}}',
+      termsOfService: '服务条款',
       custom: '自定义',
       connecting: '连接中...',
       connectToGitHub: '连接到GitHub',
@@ -1017,9 +1014,6 @@ const resources = {
       dataSettingsDescription: 'Fitar da fayiloli da sarrafa bayanan gida',
       emailUpdates: 'Sabuntawar Imel',
       emailUpdatesDescription: 'Yi rajista don karbar sabuntawar Shakespeare da albarkatu',
-      emailUpdatesDescriptionLong: 'Kasance da sabuntawa game da sabbin fasalolin Shakespeare, koyarwa, da albarkatu. Muna aika sabuntawa lokaci-lokaci kawai kuma kuna iya dakatar da rajista koyaushe.',
-      aboutShakespeareSettings: 'Game da Shakespeare',
-      aboutShakespeareSettingsDescription: 'Bayani game da Shakespeare',
 
       // Project Sidebar
       newProject: 'Sabon Aikin',
@@ -1122,6 +1116,8 @@ const resources = {
       authentication: 'Tabbatarwa',
       addCustomProviderButton: 'Ƙara Mai Samarwa na Musamman',
       providerExists: 'Mai samarwa da wannan suna ya riga ya wanzu',
+      agreeToTermsOfService: 'Na yarda da {{providerName}}',
+      termsOfService: 'Sharuɗɗan Sabis',
       custom: 'Na Musamman',
       connecting: 'Ana haɗawa...',
       connectToGitHub: 'Haɗu da GitHub',
@@ -1329,9 +1325,6 @@ const resources = {
       dataSettingsDescription: 'Gbe awọn faili jade ati ṣakoso data agbegbe',
       emailUpdates: 'Awọn Imudojuiwọn Imeeli',
       emailUpdatesDescription: 'Forukọsilẹ fun awọn imudojuiwọn Shakespeare ati awọn ohun elo',
-      emailUpdatesDescriptionLong: 'Wa pẹlu imudojuiwọn pẹlu awọn ẹya Shakespeare tuntun, awọn ikẹkọ, ati awọn ohun elo. A nfi awọn imudojuiwọn lọọrọọ nikan ranṣẹ ati pe o le da forukọsilẹ duro nigbakugba.',
-      aboutShakespeareSettings: 'Nipa Shakespeare',
-      aboutShakespeareSettingsDescription: 'Alaye nipa Shakespeare',
 
       // Project Sidebar
       newProject: 'Iṣẹ akanṣe Tuntun',
@@ -1434,6 +1427,8 @@ const resources = {
       authentication: 'Ijẹrisi',
       addCustomProviderButton: 'Fi Olupese Aṣa kun',
       providerExists: 'Olupese pẹlu orukọ yii ti wa tẹlẹ',
+      agreeToTermsOfService: 'Mo gba {{providerName}}',
+      termsOfService: 'Awọn Ofin Iṣẹ',
       custom: 'Aṣa',
       connecting: 'N so...',
       connectToGitHub: 'So si GitHub',
@@ -1636,9 +1631,6 @@ const resources = {
       dataSettingsDescription: 'Bupụta faịlụ na jikwaa data mpaghara',
       emailUpdates: 'Nmelite Email',
       emailUpdatesDescription: 'Debanye aha maka nmelite Shakespeare na akụrụngwa',
-      emailUpdatesDescriptionLong: 'Nọrọ na-emelite na atụmatụ Shakespeare ọhụrụ, nkuzi, na akụrụngwa. Anyị na-eziga naanị nmelite mgbe ụfọdụ ma ị nwere ike ịkwụsị ndebanye aha mgbe ọ bụla.',
-      aboutShakespeareSettings: 'Gbasara Shakespeare',
-      aboutShakespeareSettingsDescription: 'Ozi gbasara Shakespeare',
 
       // Project Sidebar
       newProject: 'Ọrụ Ọhụrụ',
@@ -1741,6 +1733,8 @@ const resources = {
       authentication: 'Nkwenye',
       addCustomProviderButton: 'Tinye Onye Na-enye Omenala',
       providerExists: 'Onye na-enye nwere aha a adịlarị',
+      agreeToTermsOfService: 'Ekwenyere m na {{providerName}}',
+      termsOfService: 'Usoro Ọrụ',
       custom: 'Omenala',
       connecting: 'Na-ejikọ...',
       connectToGitHub: 'Jikọọ na GitHub',

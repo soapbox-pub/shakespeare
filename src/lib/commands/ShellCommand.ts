@@ -11,6 +11,9 @@ export interface ShellCommand {
   /** Usage syntax for the command */
   usage: string;
 
+  /** If true, this command is hidden from help and command listings (for easter eggs) */
+  isEasterEgg?: boolean;
+
   /**
    * Execute the command with the given arguments
    * @param args Array of command arguments (excluding the command name itself)

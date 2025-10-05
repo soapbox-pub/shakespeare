@@ -46,13 +46,13 @@ export function TestApp({ children }: TestAppProps) {
             <AISettingsProvider>
               <GitSettingsProvider>
                 <NostrLoginProvider storageKey='test-login'>
-                <NostrProvider>
-                  <SessionManagerProvider>
-                    <BrowserRouter>
-                      {children}
-                    </BrowserRouter>
-                  </SessionManagerProvider>
-                </NostrProvider>
+                  <NostrProvider>
+                    <SessionManagerProvider>
+                      <BrowserRouter>
+                        {children}
+                      </BrowserRouter>
+                    </SessionManagerProvider>
+                  </NostrProvider>
                 </NostrLoginProvider>
               </GitSettingsProvider>
             </AISettingsProvider>

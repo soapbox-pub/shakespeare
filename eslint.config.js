@@ -40,11 +40,18 @@ export default tseslint.config(
           "ignoreRestSiblings": true,
         },
       ],
+      "indent": [
+        "warn",
+        2,
+        { SwitchCase: 1 },
+      ],
+      "no-tabs": "warn",
       "custom/no-placeholder-comments": "error",
       "no-warning-comments": [
         "error",
         { terms: ["fixme"] },
       ],
+      "no-control-regex": "off", // Allow ANSI escape sequences in regex
     },
   },
   {

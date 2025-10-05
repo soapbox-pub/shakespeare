@@ -73,8 +73,8 @@ export function useWallet() {
   const preferredMethod: WalletStatus['preferredMethod'] = activeNWC
     ? 'nwc'
     : webln
-    ? 'webln'
-    : 'manual';
+      ? 'webln'
+      : 'manual';
 
   const status: WalletStatus = {
     hasWebLN: !!webln,

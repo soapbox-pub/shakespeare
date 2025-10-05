@@ -199,9 +199,9 @@ This reverts the codebase back to the state at commit ${targetCommit.oid.substri
 
 Reverted ${commitsToRevert.length} commit(s):
 ${commitsToRevert.map(c => {
-  const commitFirstLine = getCommitMessageLines(c.commit.message).firstLine;
-  return `- ${c.oid.substring(0, 7)}: ${commitFirstLine}`;
-}).join('\n')}`;
+    const commitFirstLine = getCommitMessageLines(c.commit.message).firstLine;
+    return `- ${c.oid.substring(0, 7)}: ${commitFirstLine}`;
+  }).join('\n')}`;
 
       await git.commit({
         dir: projectPath,

@@ -1,85 +1,38 @@
-# Shakespeare - AI-Powered Nostr Website Builder
+# Shakespeare 🎭
 
-Shakespeare is an AI chat application that allows users to build custom Nostr websites through natural language conversation. Simply describe what you want to build, and AI will help you create it.
+[![Edit with Shakespeare](https://shakespeare.diy/badge.svg)](https://shakespeare.diy/clone?url=https://gitlab.com/soapbox-pub/shakespeare.git)
+
+AI-powered Nostr website builder. Describe what you want to build, and AI helps you create it.
+
+https://shakespeare.diy
 
 ## Features
 
-- **AI-Powered Development**: Chat with an AI assistant to build your Nostr website
-- **File Attachments**: Attach files directly to chat messages with structured text parts, visual badges, and deduplication. Supports both file selection and clipboard image pasting
-- **Project Management**: Create and manage multiple projects with sidebar navigation
-- **Real-time Editing**: Edit files directly in the browser with syntax highlighting
-- **File Explorer**: Browse and manage your project files
-- **Project Preview**: Preview your website as you build it
-- **Template Cloning**: Start from a pre-configured Nostr template
+- **AI Chat**: Build websites through natural conversation
+- **File Attachments**: Drag & drop files or paste images
+- **Live Preview**: See changes in real-time
+- **Code Editor**: Edit files with syntax highlighting
+- **Git Integration**: Full version control with credential management
+- **Nostr Ready**: Built-in Nostr protocol support
+
+## Quick Start
+
+1. **Describe** your project in the textarea
+2. **Chat** with AI to build features
+3. **Preview** your website instantly
+4. **Deploy** with one click
+
+## Tech Stack
+
+- React 18 + TypeScript
+- Vite + TailwindCSS
+- shadcn/ui + Nostrify
+- LightningFS + isomorphic-git
 
 ## Getting Started
 
-1. **Create a Project**: Enter a description of what you want to build in the prompt textarea
-2. **Chat with AI**: Use the AI assistant to add features, edit files, and build your website
-3. **Attach Files**: Click the paperclip icon to attach files or paste images directly from your clipboard - they'll show as "Added file: /path/filename"
-4. **Edit Code**: Switch to the code view to manually edit files if needed
-5. **Preview**: View your website in the preview pane
+Visit the homepage, enter your project idea, and start building with AI assistance.
 
-## Project Structure
+## License
 
-Each project includes:
-- React 18 with TypeScript
-- Vite for building
-- TailwindCSS for styling
-- Nostrify for Nostr integration
-- shadcn/ui components
-
-## AI Capabilities
-
-The AI assistant can:
-- Read and write project files
-- Add new components and pages
-- Configure Nostr functionality
-- Build the project
-- Search through files
-- Provide project structure overview
-- Add and remove npm packages
-- Install dependencies and dev dependencies
-
-## Usage
-
-1. **Homepage**: Enter a project description in the textarea to create new projects, with existing projects listed in the sidebar
-2. **Project View**: Split-pane interface with AI chat on the left and preview/code on the right
-3. **File Explorer**: Navigate your project files in the code view
-4. **File Editor**: Edit files with syntax highlighting and save changes
-
-## Git Integration
-
-Shakespeare includes full Git functionality with credential management:
-
-### Features
-- **Version Control**: Full Git repository support with commit history and branch management
-- **Global Credentials**: Configure Git credentials once and use them across all projects
-- **Automatic Matching**: Credentials are automatically matched to repository origins
-- **Popular Providers**: Built-in support for GitHub, GitLab, and custom Git providers
-- **Secure Storage**: Credentials are stored locally in your browser using IndexedDB
-
-### Setting Up Git Credentials
-
-1. **Access Git Settings**: Click the gear icon in any Git dialog or use the Git Settings option
-2. **Add Provider**: Choose from GitHub, GitLab, or add a custom Git provider
-3. **Enter Token**: Use your username and personal access token for authentication
-4. **Automatic Usage**: Credentials are automatically used for push/pull operations in matching repositories
-
-### Repository Operations
-
-- **Push/Pull**: Sync changes with remote repositories using configured credentials
-- **Status Monitoring**: Real-time Git status with file changes and sync information
-- **Commit History**: View commit history and repository information
-- **Branch Management**: Work with different branches and track remote changes
-
-## Development
-
-Built with:
-- React 18
-- TypeScript
-- Vite
-- TailwindCSS
-- shadcn/ui
-- LightningFS for filesystem
-- isomorphic-git for template cloning
+AGPLv3

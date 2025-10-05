@@ -41,15 +41,19 @@ class MockFS implements JSRuntimeFS {
   private dirs: Set<string> = new Set();
 
   async readFile(path: string): Promise<Uint8Array>;
-  async readFile(path: string, encoding: "utf8"): Promise<string>;
-  async readFile(path: string, encoding: string): Promise<string | Uint8Array>;
-  async readFile(path: string, encoding?: string): Promise<string | Uint8Array> {
+  async readFile(path: string, options: 'utf8'): Promise<string>;
+  async readFile(path: string, options: string): Promise<string>;
+  async readFile(path: string, options: { encoding: 'utf8' }): Promise<string>;
+  async readFile(path: string, options: { encoding: string }): Promise<string>;
+  async readFile(path: string, options?: string | { encoding?: string }): Promise<string | Uint8Array>;
+  async readFile(path: string, options?: string | { encoding?: string }): Promise<string | Uint8Array> {
     const content = this.files.get(path);
     if (content === undefined) {
       const error = new Error(`ENOENT: no such file or directory, open '${path}'`) as NodeJS.ErrnoException;
       error.code = 'ENOENT';
       throw error;
     }
+    const encoding = typeof options === 'string' ? options : options?.encoding;
     if (encoding === 'utf8') {
       if (typeof content === 'string') {
         return content;
@@ -436,6 +440,67 @@ describe('ProjectsManager', () => {
         // Restore mocks
         consoleSpy.mockRestore();
         vi.restoreAllMocks();
+      }
+    });
+  });
+
+  describe('cloneProject', () => {
+    it('should clean up project directory when clone fails', async () => {
+      await projectsManager.init();
+
+      // Mock git.clone to fail
+      const mockGit = {
+        clone: vi.fn().mockRejectedValue(new Error('Clone failed')),
+      } as Partial<import('./git').Git>;
+
+      // Replace git instance
+      Object.assign(projectsManager, { git: mockGit });
+
+      // Attempt to clone a project
+      await expect(projectsManager.cloneProject('test-project', 'https://github.com/test/repo.git'))
+        .rejects.toThrow('Clone failed');
+
+      // Verify that the project directory was cleaned up
+      const project = await projectsManager.getProject('test-project');
+      expect(project).toBeNull();
+
+      // Verify directory doesn't exist in filesystem
+      await expect(fs.stat('/projects/test-project')).rejects.toThrow('ENOENT');
+    });
+
+    it('should handle cleanup errors gracefully', async () => {
+      await projectsManager.init();
+
+      // Mock git.clone to fail
+      const mockGit = {
+        clone: vi.fn().mockRejectedValue(new Error('Clone failed')),
+      } as Partial<import('./git').Git>;
+
+      // Replace git instance
+      Object.assign(projectsManager, { git: mockGit });
+
+      // Spy on console.warn to check for cleanup warnings
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      // Mock fs.rmdir to fail (simulate cleanup error)
+      const originalRmdir = fs.rmdir;
+      fs.rmdir = vi.fn().mockRejectedValue(new Error('Cleanup failed'));
+
+      try {
+        // Attempt to clone a project
+        await expect(projectsManager.cloneProject('test-project', 'https://github.com/test/repo.git'))
+          .rejects.toThrow('Clone failed');
+
+        // Should have logged a cleanup warning
+        expect(consoleSpy).toHaveBeenCalledWith(
+          'Failed to clean up directory after clone failure:',
+          expect.any(Error)
+        );
+
+      } finally {
+        // Restore mocks
+        consoleSpy.mockRestore();
+        fs.rmdir = originalRmdir;
       }
     });
   });

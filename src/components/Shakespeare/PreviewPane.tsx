@@ -3,7 +3,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { useFS } from '@/hooks/useFS';
-import { addConsoleMessage, getConsoleMessages, type ConsoleMessage } from '@/lib/tools/ReadConsoleMessagesTool';
+import { addConsoleMessage, getConsoleMessages, type ConsoleMessage } from '@/lib/consoleMessages';
+import { useConsoleError } from '@/hooks/useConsoleError';
 import { useBuildProject } from '@/hooks/useBuildProject';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
@@ -89,6 +90,9 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const { fs } = useFS();
   const projectsManager = useProjectsManager();
+
+  // Use console error state from provider
+  const { hasErrors: hasConsoleErrors, clearErrors } = useConsoleError();
 
   const { mutate: buildProject, isPending: isBuildLoading } = useBuildProject(projectId);
 
@@ -453,6 +457,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
   }, [selectedFile, loadFileContent]);
 
   // Reset selected file and navigation history when projectId changes
+  const prevProjectIdRef = useRef<string>();
   useEffect(() => {
     setSelectedFile(null);
     setFileContent('');
@@ -463,7 +468,13 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
     setCurrentPath('/');
     setNavigationHistory(['/']);
     setHistoryIndex(0);
-  }, [projectId]);
+
+    // Only clear console messages when projectId actually changes (not on initial mount)
+    if (prevProjectIdRef.current && prevProjectIdRef.current !== projectId) {
+      clearErrors();
+    }
+    prevProjectIdRef.current = projectId;
+  }, [projectId, clearErrors]);
 
   useEffect(() => {
     checkForBuiltProject();
@@ -497,6 +508,12 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
     try {
       await fs.writeFile(`/projects/${projectId}/${selectedFile}`, content);
       setFileContent(content);
+
+      // Automatically trigger a rebuild after saving a file
+      if (isPreviewable) {
+        console.log('File saved, triggering rebuild...');
+        handleBuildProject();
+      }
     } catch (error) {
       console.error('Failed to save file:', error);
     }
@@ -505,6 +522,8 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
   const ConsoleDropdown = () => {
     const [isOpen, setIsOpen] = useState(false);
     const [copiedMessageIndex, setCopiedMessageIndex] = useState<number | null>(null);
+
+    const messages = isOpen ? getConsoleMessages() : [];
 
     const copyMessageToClipboard = async (msg: ConsoleMessage, index: number) => {
       try {
@@ -516,9 +535,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
       }
     };
 
-    const consoleMessages = getConsoleMessages();
-    const messageCount = consoleMessages.length;
-    const hasErrors = consoleMessages.some(msg => msg.level === 'error');
+    const messageCount = messages.length;
 
     return (
       <Popover open={isOpen} onOpenChange={setIsOpen}>
@@ -526,10 +543,10 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
           <Button
             variant="ghost"
             size="sm"
-            className="h-8 w-8 p-0 relative hover:bg-accent hover:text-accent-foreground transition-colors"
+            className="h-8 w-8 p-0 relative"
           >
             <Bug className="h-4 w-4" />
-            {hasErrors && (
+            {hasConsoleErrors && (
               <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full border-2 border-background bg-red-500" />
             )}
           </Button>
@@ -549,7 +566,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
                   <p className="text-xs text-muted-foreground mt-1">Messages from your project will appear here</p>
                 </div>
               ) : (
-                consoleMessages.map((msg, index) => (
+                messages.map((msg, index) => (
                   <div
                     key={index}
                     className="group relative py-0.5 px-1 hover:bg-muted/50 transition-colors duration-150 rounded cursor-pointer"
@@ -561,9 +578,9 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
                     <div className={cn(
                       "text-xs font-mono leading-tight whitespace-pre-wrap break-words",
                       msg.level === 'error' ? "text-destructive" :
-                      msg.level === 'warn' ? "text-warning" :
-                      msg.level === 'info' ? "text-primary" :
-                      "text-muted-foreground"
+                        msg.level === 'warn' ? "text-warning" :
+                          msg.level === 'info' ? "text-primary" :
+                            "text-muted-foreground"
                     )}>
                       {msg.message}
                     </div>
@@ -647,94 +664,94 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
       <Tabs value={activeTab} className="h-full">
         {isPreviewable && (
           <TabsContent value="preview" className="h-full mt-0">
-          <div className="h-full w-full flex flex-col relative">
-            {/* Always show browser address bar */}
-            <div className="h-12 flex items-center w-full">
-              <BrowserAddressBar
-                currentPath={currentPath}
-                onNavigate={hasBuiltProject ? navigateIframe : undefined}
-                onRefresh={hasBuiltProject ? refreshIframe : undefined}
-                onBack={hasBuiltProject ? goBackIframe : undefined}
-                onForward={hasBuiltProject ? goForwardIframe : undefined}
-                canGoBack={hasBuiltProject && historyIndex > 0}
-                canGoForward={hasBuiltProject && historyIndex < navigationHistory.length - 1}
-                extraContent={(
-                  <div className="flex items-center">
-                    {(!isMobile && onToggleView && isPreviewable) && (
+            <div className="h-full w-full flex flex-col relative">
+              {/* Always show browser address bar */}
+              <div className="h-12 flex items-center w-full">
+                <BrowserAddressBar
+                  currentPath={currentPath}
+                  onNavigate={hasBuiltProject ? navigateIframe : undefined}
+                  onRefresh={hasBuiltProject ? refreshIframe : undefined}
+                  onBack={hasBuiltProject ? goBackIframe : undefined}
+                  onForward={hasBuiltProject ? goForwardIframe : undefined}
+                  canGoBack={hasBuiltProject && historyIndex > 0}
+                  canGoForward={hasBuiltProject && historyIndex < navigationHistory.length - 1}
+                  extraContent={(
+                    <div className="flex items-center">
+                      {(!isMobile && onToggleView && isPreviewable) && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={onToggleView}
+                          className="h-8 gap-2"
+                        >
+                          <Code className="h-4 w-4" />
+                        </Button>
+                      )}
+                      <ConsoleDropdown />
+                      <Menu />
+                    </div>
+                  )}
+                />
+              </div>
+
+              {/* Content area */}
+              <div className="flex-1">
+                {hasBuiltProject ? (
+                  <iframe
+                    ref={iframeRef}
+                    src={`https://${projectId}.${IFRAME_DOMAIN}/`}
+                    className="w-full h-full border-0"
+                    title="Project Preview"
+                    sandbox="allow-scripts allow-same-origin"
+                  />
+                ) : (
+                  <div className="h-full flex items-center justify-center bg-muted">
+                    <div className="text-center">
+                      <h3 className="text-lg font-semibold mb-2">{t('projectPreview')}</h3>
+                      <p className="text-muted-foreground mb-4">
+                        {t('buildProjectToSeePreview')}
+                      </p>
                       <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={onToggleView}
-                        className="h-8 gap-2"
+                        onClick={handleBuildProject}
+                        disabled={isBuildLoading}
+                        variant="outline"
+                        className="gap-2"
                       >
-                        <Code className="h-4 w-4" />
+                        {isBuildLoading ? (
+                          <>
+                            <Loader2 className="h-5 w-5 animate-spin" />
+                            Building...
+                          </>
+                        ) : (
+                          <>
+                            <Play className="h-5 w-5" />
+                            Build Project
+                          </>
+                        )}
                       </Button>
-                    )}
-                    <ConsoleDropdown />
-                    <Menu />
+                    </div>
                   </div>
                 )}
-              />
-            </div>
+              </div>
 
-            {/* Content area */}
-            <div className="flex-1">
-              {hasBuiltProject ? (
-                <iframe
-                  ref={iframeRef}
-                  src={`https://${projectId}.${IFRAME_DOMAIN}/`}
-                  className="w-full h-full border-0"
-                  title="Project Preview"
-                  sandbox="allow-scripts allow-same-origin"
-                />
-              ) : (
-                <div className="h-full flex items-center justify-center bg-muted">
-                  <div className="text-center">
-                    <h3 className="text-lg font-semibold mb-2">{t('projectPreview')}</h3>
-                    <p className="text-muted-foreground mb-4">
-                      {t('buildProjectToSeePreview')}
-                    </p>
-                    <Button
-                      onClick={handleBuildProject}
-                      disabled={isBuildLoading}
-                      variant="outline"
-                      className="gap-2"
-                    >
-                      {isBuildLoading ? (
-                        <>
-                          <Loader2 className="h-5 w-5 animate-spin" />
-                          Building...
-                        </>
-                      ) : (
-                        <>
-                          <Play className="h-5 w-5" />
-                          Build Project
-                        </>
-                      )}
-                    </Button>
+              {/* Build loading overlay */}
+              {isBuildLoading && (
+                <div className="absolute inset-0 bg-background/50 backdrop-blur-sm flex items-center justify-center z-10">
+                  <div className="bg-background/90 border rounded-lg p-4 shadow-lg flex items-center gap-3">
+                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                    <span className="text-sm font-medium">Building project...</span>
                   </div>
                 </div>
               )}
             </div>
-
-            {/* Build loading overlay */}
-            {isBuildLoading && (
-              <div className="absolute inset-0 bg-background/50 backdrop-blur-sm flex items-center justify-center z-10">
-                <div className="bg-background/90 border rounded-lg p-4 shadow-lg flex items-center gap-3">
-                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                  <span className="text-sm font-medium">Building project...</span>
-                </div>
-              </div>
-            )}
-          </div>
-        </TabsContent>
+          </TabsContent>
         )}
 
         <TabsContent value="code" className="h-full mt-0">
           {isMobile ? (
-            <div className="h-full flex flex-col">
+            <div className="h-full flex flex-col min-h-0">
               {mobileCodeView === 'explorer' ? (
-                <div className="flex-1 relative">
+                <div className="flex-1 relative min-h-0">
                   <ScrollArea className="h-full">
                     <ScrollBar orientation="horizontal" />
                     <div className="min-w-max">
@@ -750,7 +767,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
                     variant="outline"
                     size="sm"
                     onClick={() => setMobileCodeView('terminal')}
-                    className="fixed bottom-12 right-4 h-12 w-12 p-0 rounded-full shadow-lg bg-background border-2"
+                    className="fixed right-4 bottom-14 mb-safe z-20 size-12 p-0 rounded-full shadow-lg bg-background border-2"
                   >
                     <Terminal className="h-6 w-6" />
                   </Button>

@@ -92,15 +92,13 @@ export function NostrSettings() {
             {isLoading ? (
               <div className="border rounded-lg overflow-hidden">
                 {/* Loading skeleton for accounts */}
-                {[...Array(2)].map((_, i) => (
-                  <div key={i} className="flex items-center gap-3 p-3 border-b last:border-b-0">
-                    <Skeleton className="h-10 w-10 rounded-full" />
-                    <div className="flex-1 space-y-1">
-                      <Skeleton className="h-4 w-32" />
-                    </div>
-                    <Skeleton className="h-8 w-8 rounded" />
+                <div className="flex items-center gap-3 p-3 border-b last:border-b-0">
+                  <Skeleton className="h-10 w-10 rounded-full" />
+                  <div className="flex-1 space-y-1">
+                    <Skeleton className="h-4 w-32" />
                   </div>
-                ))}
+                  <Skeleton className="h-8 w-8 rounded" />
+                </div>
                 {/* Add account button skeleton */}
                 <div className="flex items-center gap-3 p-3">
                   <Skeleton className="h-10 w-10 rounded-full" />

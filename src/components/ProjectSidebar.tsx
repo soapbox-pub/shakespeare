@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Plus, Folder, GitBranch, Loader2, ChevronDown, Star, Columns2, X, Settings, HelpCircle, FileArchive } from 'lucide-react';
+import { Plus, Folder, GitBranch, Loader2, ChevronDown, Star, Columns2, X, Settings, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -9,12 +9,10 @@ import { useProjects } from '@/hooks/useProjects';
 import { useProjectSessionStatus } from '@/hooks/useProjectSessionStatus';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useIsMobile } from '@/hooks/useIsMobile';
-import { ZipImportDialog } from '@/components/ZipImportDialog';
-import { useProjectsManager } from '@/hooks/useProjectsManager';
-import { useToast } from '@/hooks/useToast';
 import type { Project } from '@/lib/ProjectsManager';
 import { cn } from '@/lib/utils';
 import { useQueryClient } from '@tanstack/react-query';
+import { ShakespeareLogo } from '@/components/ShakespeareLogo';
 
 interface ProjectItemProps {
   project: Project;
@@ -95,9 +93,6 @@ export function ProjectSidebar({
   const queryClient = useQueryClient();
   const { data: projects = [], isLoading, error } = useProjects();
   const [favorites] = useLocalStorage<string[]>('project-favorites', []);
-  const projectsManager = useProjectsManager();
-  const { toast } = useToast();
-  const [isZipDialogOpen, setIsZipDialogOpen] = useState(false);
 
   const isMobile = useIsMobile();
   const navigate = useNavigate();
@@ -123,24 +118,7 @@ export function ProjectSidebar({
     }
   };
 
-  const handleImportZip = async (file: File, overwrite = false, projectId?: string) => {
-    try {
-      // Import project from zip file
-      const project = await projectsManager.importProjectFromZip(file, projectId, overwrite);
 
-      // Show success toast
-      toast({
-        title: overwrite ? "Project Overwritten Successfully" : "Project Imported Successfully",
-        description: `"${project.name}" has been ${overwrite ? 'overwritten' : 'imported'} and is ready to use.`,
-      });
-
-      // Navigate to the imported project
-      navigate(`/project/${project.id}`);
-    } catch (error) {
-      console.error('Failed to import project:', error);
-      throw error; // Re-throw to let the dialog handle the error display
-    }
-  };
 
   useEffect(() => {
     queryClient.invalidateQueries({ queryKey: ['projects'] });
@@ -153,34 +131,36 @@ export function ProjectSidebar({
   return (
     <div className={cn("flex flex-col h-full bg-gradient-to-b from-sidebar to-sidebar/95", className)}>
       {/* Header with Logo */}
-      <div className="flex px-4 h-12 border-b border-sidebar-border bg-gradient-to-r from-primary/10 via-accent/5 to-primary/10">
-        <div className="flex items-center justify-between w-full">
-          <button
-            onClick={() => navigateAndClose('/')}
-            className="flex items-center gap-3 hover:opacity-80 transition-opacity text-left"
-          >
-            <span className="text-2xl">🎭</span>
-            <h1 className="text-xl font-semibold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              Shakespeare
-            </h1>
-          </button>
-          {(onToggleSidebar || (onClose && isMobile)) && (
-            <div className="flex items-center gap-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 w-8 p-0 hover:bg-primary/10 -mr-2"
-                onClick={handleToggleSidebar}
-                aria-label={(onClose && isMobile) ? t('closeSidebar') : t('collapseSidebar')}
-              >
-                {(onClose && isMobile) ? (
-                  <X className="h-4 w-4 text-primary/60 hover:text-primary" />
-                ) : (
-                  <Columns2 className="h-4 w-4 text-primary/60 hover:text-primary" />
-                )}
-              </Button>
-            </div>
-          )}
+      <div className="pt-safe bg-gradient-to-r from-primary/10 via-accent/5 to-primary/10">
+        <div className="flex px-4 h-12 border-b border-sidebar-border">
+          <div className="flex items-center justify-between w-full">
+            <button
+              onClick={() => navigateAndClose('/')}
+              className="flex items-center gap-3 hover:opacity-80 transition-opacity text-left"
+            >
+              <ShakespeareLogo className="w-6 h-6" />
+              <h1 className="text-xl font-semibold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                Shakespeare
+              </h1>
+            </button>
+            {(onToggleSidebar || (onClose && isMobile)) && (
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0 hover:bg-primary/10 -mr-2"
+                  onClick={handleToggleSidebar}
+                  aria-label={(onClose && isMobile) ? t('closeSidebar') : t('collapseSidebar')}
+                >
+                  {(onClose && isMobile) ? (
+                    <X className="h-4 w-4 text-primary/60 hover:text-primary" />
+                  ) : (
+                    <Columns2 className="h-4 w-4 text-primary/60 hover:text-primary" />
+                  )}
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -210,13 +190,6 @@ export function ProjectSidebar({
                     >
                       <GitBranch className="h-4 w-4" />
                       {t('importRepository')}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => setIsZipDialogOpen(true)}
-                      className="flex items-center gap-2 w-full"
-                    >
-                      <FileArchive className="h-4 w-4" />
-                      Import ZIP File
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -258,8 +231,8 @@ export function ProjectSidebar({
       </div>
 
       {/* Settings and Help at Bottom */}
-      <div className="p-2 border-t border-sidebar-border bg-gradient-to-r from-primary/5 to-accent/5 mt-auto">
-        <div className="flex items-center gap-2">
+      <div className="border-t border-sidebar-border bg-gradient-to-r from-primary/5 to-accent/5 mt-auto pb-safe">
+        <div className="p-2 flex items-center gap-2">
           <Button
             variant="ghost"
             size="sm"
@@ -280,13 +253,6 @@ export function ProjectSidebar({
           </Button>
         </div>
       </div>
-
-      {/* ZIP Import Dialog */}
-      <ZipImportDialog
-        onImport={handleImportZip}
-        open={isZipDialogOpen}
-        onOpenChange={setIsZipDialogOpen}
-      />
     </div>
   );
 }

@@ -186,9 +186,9 @@ const LoginDialog: React.FC<LoginDialogProps> = ({ isOpen, onClose, onLogin, onS
       >
         <DialogHeader className={cn('px-6 pt-6 pb-1 relative')}>
 
-            <DialogDescription className="text-center">
+          <DialogDescription className="text-center">
               Sign up or log in to continue
-            </DialogDescription>
+          </DialogDescription>
         </DialogHeader>
         <div className='px-6 pt-2 pb-4 space-y-4 overflow-y-auto flex-1'>
           {/* Prominent Sign Up Section */}
@@ -370,7 +370,7 @@ const LoginDialog: React.FC<LoginDialogProps> = ({ isOpen, onClose, onLogin, onS
         </div>
       </DialogContent>
     </Dialog>
-    );
-  };
+  );
+};
 
 export default LoginDialog;

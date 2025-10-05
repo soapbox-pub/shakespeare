@@ -3,7 +3,7 @@ import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Menu, Bot, GitBranch, Database, Wifi, Settings2, Info, Mail } from 'lucide-react';
+import { Menu, Bot, GitBranch, Database, Wifi, Settings2, Info } from 'lucide-react';
 import { ProjectSidebar } from '@/components/ProjectSidebar';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { useIsMobile } from '@/hooks/useIsMobile';
@@ -55,13 +55,6 @@ const getSettingsItems = (t: (key: string) => string): SettingsItem[] => [
     description: t('dataSettingsDescription'),
     icon: Database,
     href: '/settings/data',
-  },
-  {
-    id: 'email',
-    title: t('emailUpdates'),
-    description: t('emailUpdatesDescription'),
-    icon: Mail,
-    href: '/settings/email',
   },
   {
     id: 'about',
@@ -127,10 +120,10 @@ export function SettingsLayout() {
 
   if (isMobile) {
     return (
-      <div className="min-h-dvh bg-background">
+      <div className="min-h-dvh pb-safe bg-background">
         {/* Mobile Header */}
-        <header className="h-12 border-b bg-background px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center space-x-2">
+        <header className="pt-safe bg-background">
+          <div className="flex items-center space-x-2 h-12 border-b px-4 py-3">
             <Button
               variant="ghost"
               size="sm"

@@ -8,6 +8,7 @@ import type { NUser } from '@nostrify/react/login';
 import type { AIProvider } from '@/contexts/AISettingsContext';
 import { makeSystemPrompt } from './system';
 import { NostrMetadata } from '@nostrify/nostrify';
+import { MalformedToolCallError } from './errors/MalformedToolCallError';
 
 export type AIMessage = OpenAI.Chat.Completions.ChatCompletionMessageParam | {
   role: 'assistant';
@@ -188,10 +189,6 @@ export class SessionManager {
       throw new Error('No messages in session');
     }
 
-    // Check if last message is from user
-    const lastMessage = session.messages[session.messages.length - 1];
-    if (lastMessage.role !== 'user') return;
-
     session.isLoading = true;
     session.abortController = new AbortController();
     session.lastActivity = new Date();
@@ -340,10 +337,20 @@ export class SessionManager {
           }
         }
 
-        // Fix tool calls with empty arguments
+        // Fix tool calls with empty arguments or names
         for (const toolCall of accumulatedToolCalls) {
           if (toolCall.type === 'function') {
             toolCall.function.arguments = toolCall.function.arguments || '{}';
+
+            // Log and handle empty tool names (malformed AI response)
+            if (!toolCall.function.name || toolCall.function.name.trim() === '') {
+              console.error('Malformed tool call detected: missing function name', {
+                projectId,
+                providerModel,
+                toolCallId: toolCall.id,
+                toolCall: JSON.stringify(toolCall),
+              });
+            }
           }
         }
 
@@ -370,10 +377,28 @@ export class SessionManager {
 
             const functionToolCall = toolCall as OpenAI.Chat.Completions.ChatCompletionMessageFunctionToolCall;
             const toolName = functionToolCall.function.name;
+
+            // Check for missing/empty tool name (malformed AI response)
+            if (!toolName || toolName.trim() === '') {
+              // Add detailed technical error to tool message for debugging
+              await this.addToolMessage(
+                projectId,
+                functionToolCall.id,
+                `Error: Malformed tool call received from AI provider (missing function name). This is likely a provider-specific issue. Tool call ID: ${functionToolCall.id}`
+              );
+
+              // Throw custom error to trigger Quilly UI with user-friendly message
+              throw new MalformedToolCallError(
+                'The AI provider sent an incomplete response. This may be due to a network interruption or provider issue.',
+                functionToolCall.id,
+                providerModel
+              );
+            }
+
             const tool = session.customTools[toolName];
 
             if (!tool) {
-              await this.addToolMessage(projectId, functionToolCall.id, `Tool ${toolName} not found`);
+              await this.addToolMessage(projectId, functionToolCall.id, `Tool "${toolName}" not found`);
               continue;
             }
 

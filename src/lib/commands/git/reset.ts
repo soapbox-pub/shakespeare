@@ -29,10 +29,10 @@ export class GitResetCommand implements GitSubcommand {
         return createErrorResult('fatal: not a git repository (or any of the parent directories): .git');
       }
 
-      const { mode, target, files } = this.parseArgs(args);
+      const { mode, target, files, isFileReset } = this.parseArgs(args);
 
-      if (files.length > 0) {
-        // Reset specific files (unstage)
+      if (isFileReset) {
+        // Reset specific files or all files (unstage)
         return await this.resetFiles(files);
       } else {
         // Reset to commit
@@ -47,22 +47,27 @@ export class GitResetCommand implements GitSubcommand {
   private parseArgs(args: string[]): {
     mode: 'soft' | 'mixed' | 'hard';
     target: string;
-    files: string[]
+    files: string[];
+    isFileReset: boolean;
   } {
     let mode: 'soft' | 'mixed' | 'hard' = 'mixed'; // Default mode
     let target = 'HEAD'; // Default target
     const files: string[] = [];
     let foundTarget = false;
+    let hasMode = false;
 
     for (const arg of args) {
       if (arg === '--soft') {
         mode = 'soft';
+        hasMode = true;
       } else if (arg === '--mixed') {
         mode = 'mixed';
+        hasMode = true;
       } else if (arg === '--hard') {
         mode = 'hard';
+        hasMode = true;
       } else if (!arg.startsWith('-')) {
-        if (!foundTarget && (arg === 'HEAD' || arg.match(/^[a-f0-9]{7,40}$/))) {
+        if (!foundTarget && (arg === 'HEAD' || arg.match(/^[a-f0-9]{7,40}$/) || arg.match(/^HEAD[~^]\d*$/))) {
           target = arg;
           foundTarget = true;
         } else {
@@ -71,7 +76,17 @@ export class GitResetCommand implements GitSubcommand {
       }
     }
 
-    return { mode, target, files };
+    // Determine if this is a file reset operation
+    // git reset without arguments = unstage all files
+    // git reset HEAD = unstage all files
+    // git reset HEAD <files> = unstage specific files
+    // git reset <commit> = reset to commit
+    // git reset --mode <commit> = reset to commit with mode
+    const isFileReset = (args.length === 0) ||
+                       (target === 'HEAD' && !hasMode && files.length === 0) ||
+                       (files.length > 0);
+
+    return { mode, target, files, isFileReset };
   }
 
   private async resetFiles(files: string[]): Promise<ShellCommandResult> {
@@ -79,17 +94,53 @@ export class GitResetCommand implements GitSubcommand {
       const resetFiles: string[] = [];
       const errors: string[] = [];
 
-      for (const file of files) {
+      if (files.length === 0) {
+        // Reset all staged files (git reset or git reset HEAD)
         try {
-          // Remove from staging area (reset to HEAD)
-          await this.git.resetIndex({
-            
+          // Get the status matrix to find all staged files
+          const statusMatrix = await this.git.statusMatrix({
             dir: this.pwd,
-            filepath: file,
           });
-          resetFiles.push(file);
-        } catch {
-          errors.push(`error: pathspec '${file}' did not match any file(s) known to git`);
+
+          // Find files that are staged (differ from HEAD)
+          const stagedFiles = statusMatrix
+            .filter(([, headStatus, , stageStatus]) => {
+              return headStatus !== stageStatus;
+            })
+            .map(([filepath]) => filepath);
+
+          if (stagedFiles.length === 0) {
+            return createSuccessResult('');
+          }
+
+          // Reset each staged file
+          for (const file of stagedFiles) {
+            try {
+              await this.git.resetIndex({
+                dir: this.pwd,
+                filepath: file,
+              });
+              resetFiles.push(file);
+            } catch (error) {
+              errors.push(`error: failed to reset '${file}': ${error instanceof Error ? error.message : 'Unknown error'}`);
+            }
+          }
+        } catch (error) {
+          return createErrorResult(`Failed to get repository status: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+      } else {
+        // Reset specific files
+        for (const file of files) {
+          try {
+            // Remove from staging area (reset to HEAD)
+            await this.git.resetIndex({
+              dir: this.pwd,
+              filepath: file,
+            });
+            resetFiles.push(file);
+          } catch {
+            errors.push(`error: pathspec '${file}' did not match any file(s) known to git`);
+          }
         }
       }
 
@@ -114,7 +165,7 @@ export class GitResetCommand implements GitSubcommand {
       let targetOid: string;
       try {
         targetOid = await this.git.resolveRef({
-          
+
           dir: this.pwd,
           ref: target,
         });
@@ -126,7 +177,7 @@ export class GitResetCommand implements GitSubcommand {
       let currentOid: string;
       try {
         currentOid = await this.git.resolveRef({
-          
+
           dir: this.pwd,
           ref: 'HEAD',
         });
@@ -152,7 +203,7 @@ export class GitResetCommand implements GitSubcommand {
           // Reset the index to match the target commit
           try {
             await this.git.checkout({
-              
+
               dir: this.pwd,
               ref: target,
               noCheckout: true, // Only update the index, not the working directory
@@ -172,14 +223,14 @@ export class GitResetCommand implements GitSubcommand {
 
             // Get the commit object to ensure it exists
             await this.git.readCommit({
-              
+
               dir: this.pwd,
               oid: targetOid,
             });
 
             // Update HEAD to point to the target commit
             await this.git.writeRef({
-              
+
               dir: this.pwd,
               ref: 'HEAD',
               value: targetOid,
@@ -188,7 +239,7 @@ export class GitResetCommand implements GitSubcommand {
             // Reset the working directory by checking out all files from the target commit
             // Use force to overwrite any local changes
             await this.git.checkout({
-              
+
               dir: this.pwd,
               ref: targetOid,
               force: true,

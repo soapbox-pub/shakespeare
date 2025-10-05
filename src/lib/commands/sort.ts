@@ -32,41 +32,41 @@ export class SortCommand implements ShellCommand {
       } else {
         // Read all files
         for (const file of files) {
-        try {
+          try {
           // Handle absolute paths
-          if (file.startsWith('/') || file.startsWith('\\') || /^[A-Za-z]:[\\/]/.test(file)) {
-            return createErrorResult(`${this.name}: absolute paths are not supported: ${file}`);
-          }
-
-          const absolutePath = join(cwd, file);
-          const stats = await this.fs.stat(absolutePath);
-
-          if (stats.isDirectory()) {
-            return createErrorResult(`${this.name}: read error: ${file}: Is a directory`);
-          }
-
-          const content = await this.fs.readFile(absolutePath, 'utf8');
-          const fileLines = content.split('\n');
-
-          // Remove the last empty line if the file ends with a newline
-          if (fileLines.length > 0 && fileLines[fileLines.length - 1] === '') {
-            fileLines.pop();
-          }
-
-          lines.push(...fileLines);
-        } catch (error) {
-          if (error instanceof Error) {
-            if (error.message.includes('ENOENT') || error.message.includes('not found')) {
-              return createErrorResult(`${this.name}: open failed: ${file}: No such file or directory`);
-            } else if (error.message.includes('EACCES') || error.message.includes('permission')) {
-              return createErrorResult(`${this.name}: open failed: ${file}: Permission denied`);
-            } else {
-              return createErrorResult(`${this.name}: open failed: ${file}: ${error.message}`);
+            if (file.startsWith('/') || file.startsWith('\\') || /^[A-Za-z]:[\\/]/.test(file)) {
+              return createErrorResult(`${this.name}: absolute paths are not supported: ${file}`);
             }
-          } else {
-            return createErrorResult(`${this.name}: open failed: ${file}: Unknown error`);
+
+            const absolutePath = join(cwd, file);
+            const stats = await this.fs.stat(absolutePath);
+
+            if (stats.isDirectory()) {
+              return createErrorResult(`${this.name}: read error: ${file}: Is a directory`);
+            }
+
+            const content = await this.fs.readFile(absolutePath, 'utf8');
+            const fileLines = content.split('\n');
+
+            // Remove the last empty line if the file ends with a newline
+            if (fileLines.length > 0 && fileLines[fileLines.length - 1] === '') {
+              fileLines.pop();
+            }
+
+            lines.push(...fileLines);
+          } catch (error) {
+            if (error instanceof Error) {
+              if (error.message.includes('ENOENT') || error.message.includes('not found')) {
+                return createErrorResult(`${this.name}: open failed: ${file}: No such file or directory`);
+              } else if (error.message.includes('EACCES') || error.message.includes('permission')) {
+                return createErrorResult(`${this.name}: open failed: ${file}: Permission denied`);
+              } else {
+                return createErrorResult(`${this.name}: open failed: ${file}: ${error.message}`);
+              }
+            } else {
+              return createErrorResult(`${this.name}: open failed: ${file}: Unknown error`);
+            }
           }
-        }
         }
       }
 

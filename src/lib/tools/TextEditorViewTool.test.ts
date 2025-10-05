@@ -9,15 +9,29 @@ class MockFS implements JSRuntimeFS {
 
   constructor() {
     // Set up a basic project structure
+    this.dirs.add('/projects');
+    this.dirs.add('/projects/project1');
+    this.dirs.add('/projects/project1/src');
+    this.dirs.add('/projects/project1/.git');
+    this.dirs.add('/projects/project2');
+    this.dirs.add('/projects/project2/src');
     this.dirs.add('/project');
     this.dirs.add('/project/.git');
     this.dirs.add('/project/src');
     this.dirs.add('/project/node_modules');
     this.dirs.add('/tmp');
 
+    this.files.set('/projects/project1/package.json', '{"name": "project1"}');
+    this.files.set('/projects/project1/src/index.ts', 'console.log("project1");');
+    this.files.set('/projects/project1/.git/config', '[core]\nrepositoryformatversion = 0');
+    this.files.set('/projects/project1/.git/HEAD', 'ref: refs/heads/main');
+    this.files.set('/projects/project2/package.json', '{"name": "project2"}');
+    this.files.set('/projects/project2/src/main.ts', 'console.log("project2");');
     this.files.set('/project/package.json', '{"name": "test"}');
     this.files.set('/project/src/index.ts', 'console.log("hello");');
     this.files.set('/project/.gitignore', 'node_modules\n.git\n');
+    this.files.set('/project/.git/config', '[core]\nrepositoryformatversion = 0');
+    this.files.set('/project/.git/HEAD', 'ref: refs/heads/main');
     this.files.set('/tmp/uploaded-file.txt', 'This is an uploaded file');
 
     // Add binary files for testing
@@ -27,15 +41,18 @@ class MockFS implements JSRuntimeFS {
   }
 
   async readFile(path: string): Promise<Uint8Array>;
-  async readFile(path: string, encoding: 'utf8'): Promise<string>;
-  async readFile(path: string, encoding: string): Promise<string>;
-  async readFile(path: string, encoding?: string): Promise<string | Uint8Array>;
-  async readFile(path: string, encoding?: string): Promise<string | Uint8Array> {
+  async readFile(path: string, options: 'utf8'): Promise<string>;
+  async readFile(path: string, options: string): Promise<string>;
+  async readFile(path: string, options: { encoding: 'utf8' }): Promise<string>;
+  async readFile(path: string, options: { encoding: string }): Promise<string>;
+  async readFile(path: string, options?: string | { encoding?: string }): Promise<string | Uint8Array>;
+  async readFile(path: string, options?: string | { encoding?: string }): Promise<string | Uint8Array> {
     const content = this.files.get(path);
     if (content === undefined) {
       throw new Error(`File not found: ${path}`);
     }
 
+    const encoding = typeof options === 'string' ? options : options?.encoding;
     // If no encoding specified, return Uint8Array
     if (!encoding) {
       // For binary files, return mock binary data with null bytes
@@ -56,7 +73,7 @@ class MockFS implements JSRuntimeFS {
     return content;
   }
 
-  async writeFile(path: string, data: string | Uint8Array, _encoding?: string): Promise<void> {
+  async writeFile(path: string, data: string | Uint8Array, _options?: string | { encoding?: string }): Promise<void> {
     const content = typeof data === 'string' ? data : new TextDecoder().decode(data);
     this.files.set(path, content);
   }
@@ -65,12 +82,14 @@ class MockFS implements JSRuntimeFS {
   async readdir(path: string, options: { withFileTypes: true }): Promise<DirectoryEntry[]>;
   async readdir(path: string, options?: { withFileTypes?: boolean }): Promise<string[] | DirectoryEntry[]>;
   async readdir(path: string, options?: { withFileTypes?: boolean }): Promise<string[] | DirectoryEntry[]> {
+    // Normalize path by removing trailing slash
+    const normalizedPath = path.replace(/\/$/, '') || '/';
     const entries: string[] = [];
 
     // Find all files and directories that are direct children of this path
     for (const filePath of this.files.keys()) {
-      if (filePath.startsWith(path + '/')) {
-        const relativePath = filePath.slice(path.length + 1);
+      if (filePath.startsWith(normalizedPath + '/')) {
+        const relativePath = filePath.slice(normalizedPath.length + 1);
         const parts = relativePath.split('/');
         if (parts.length === 1) {
           entries.push(parts[0]);
@@ -79,8 +98,8 @@ class MockFS implements JSRuntimeFS {
     }
 
     for (const dirPath of this.dirs) {
-      if (dirPath.startsWith(path + '/')) {
-        const relativePath = dirPath.slice(path.length + 1);
+      if (dirPath.startsWith(normalizedPath + '/')) {
+        const relativePath = dirPath.slice(normalizedPath.length + 1);
         const parts = relativePath.split('/');
         if (parts.length === 1) {
           entries.push(parts[0]);
@@ -91,8 +110,8 @@ class MockFS implements JSRuntimeFS {
     if (options?.withFileTypes) {
       return entries.map(name => ({
         name,
-        isDirectory: () => this.dirs.has(`${path}/${name}`),
-        isFile: () => this.files.has(`${path}/${name}`)
+        isDirectory: () => this.dirs.has(`${normalizedPath}/${name}`),
+        isFile: () => this.files.has(`${normalizedPath}/${name}`)
       }));
     }
 
@@ -109,7 +128,10 @@ class MockFS implements JSRuntimeFS {
     size?: number;
     mtimeMs?: number;
   }> {
-    if (this.dirs.has(path)) {
+    // Normalize path by removing trailing slash for directories
+    const normalizedPath = path.replace(/\/$/, '') || '/';
+
+    if (this.dirs.has(normalizedPath)) {
       return {
         isDirectory: () => true,
         isFile: () => false,
@@ -118,11 +140,11 @@ class MockFS implements JSRuntimeFS {
       };
     }
 
-    if (this.files.has(path)) {
+    if (this.files.has(normalizedPath)) {
       return {
         isDirectory: () => false,
         isFile: () => true,
-        size: this.files.get(path)!.length,
+        size: this.files.get(normalizedPath)!.length,
         mtimeMs: Date.now()
       };
     }
@@ -167,14 +189,13 @@ describe('TextEditorViewTool', () => {
     tool = new TextEditorViewTool(mockFS, '/project');
   });
 
-  it('should handle viewing current directory without ignore library errors', async () => {
+  it('should handle viewing current directory', async () => {
     const result = await tool.execute({ path: '.' });
 
     expect(result).toContain('src/');
     expect(result).toContain('package.json');
-    // .git should be filtered out by gitignore, but .gitignore should be present
     expect(result).toContain('.gitignore');
-    expect(result).not.toContain('.git/'); // Check for .git directory specifically
+    expect(result).toContain('.git/'); // .git directory should now be visible
   });
 
   it('should handle viewing subdirectory', async () => {
@@ -241,5 +262,74 @@ describe('TextEditorViewTool', () => {
 
     expect(result).toContain('[Binary file: JPG file');
     expect(result).toContain('This appears to be a binary file and cannot be displayed as text.');
+  });
+
+  it('should show only project directories when viewing /projects', async () => {
+    const result = await tool.execute({ path: '/projects' });
+
+    // Should show the project directories
+    expect(result).toContain('project1/');
+    expect(result).toContain('project2/');
+
+    // Should NOT show the contents of the project directories (depth 1 only)
+    expect(result).not.toContain('package.json');
+    expect(result).not.toContain('src/');
+    expect(result).not.toContain('index.ts');
+    expect(result).not.toContain('main.ts');
+  });
+
+  it('should show only project directories when viewing /projects/', async () => {
+    const result = await tool.execute({ path: '/projects/' });
+
+    // Should show the project directories
+    expect(result).toContain('project1/');
+    expect(result).toContain('project2/');
+
+    // Should NOT show the contents of the project directories (depth 1 only)
+    expect(result).not.toContain('package.json');
+    expect(result).not.toContain('src/');
+    expect(result).not.toContain('index.ts');
+    expect(result).not.toContain('main.ts');
+  });
+
+  it('should show .git directory but not traverse its contents when viewing project root', async () => {
+    const result = await tool.execute({ path: '/project' });
+
+    // Should show the .git directory
+    expect(result).toContain('.git/');
+
+    // Should show "..." under .git instead of its contents
+    expect(result).toContain('...');
+
+    // Should NOT show .git file contents
+    expect(result).not.toContain('config');
+    expect(result).not.toContain('HEAD');
+    expect(result).not.toContain('repositoryformatversion');
+
+    // Should still show other directory contents normally
+    expect(result).toContain('src/');
+    expect(result).toContain('package.json');
+  });
+
+  it('should show .git contents when explicitly viewing .git directory', async () => {
+    const result = await tool.execute({ path: '/project/.git' });
+
+    // Should show the .git file contents when explicitly requested
+    expect(result).toContain('config');
+    expect(result).toContain('HEAD');
+
+    // Should NOT show "..." when explicitly viewing .git
+    expect(result).not.toContain('...');
+  });
+
+  it('should show .git contents when explicitly viewing .git with relative path', async () => {
+    const result = await tool.execute({ path: '.git' });
+
+    // Should show the .git file contents when explicitly requested
+    expect(result).toContain('config');
+    expect(result).toContain('HEAD');
+
+    // Should NOT show "..." when explicitly viewing .git
+    expect(result).not.toContain('...');
   });
 });

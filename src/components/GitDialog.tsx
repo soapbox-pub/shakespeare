@@ -47,7 +47,7 @@ import { cn } from '@/lib/utils';
 import { findCredentialsForRepo } from '@/lib/gitCredentials';
 import { nip19 } from 'nostr-tools';
 
-const GRASP_SERVERS = ["git.shakespeare.diy", "relay.ngit.dev", "gitnostr.com"];
+const GRASP_SERVERS = ["git.shakespeare.diy", "relay.ngit.dev"];
 
 interface GitDialogProps {
   projectId: string;
@@ -335,6 +335,7 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
         title: "Push to Nostr failed",
         description: errorMessage,
         variant: "destructive",
+        duration: Infinity,
       });
     } finally {
       setIsPushingToNostr(false);
@@ -396,6 +397,7 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
         title: "Push failed",
         description: errorMessage,
         variant: "destructive",
+        duration: Infinity,
       });
     } finally {
       setIsPushing(false);
@@ -474,6 +476,7 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
         title: "Pull failed",
         description: errorMessage,
         variant: "destructive",
+        duration: Infinity,
       });
     } finally {
       setIsPulling(false);

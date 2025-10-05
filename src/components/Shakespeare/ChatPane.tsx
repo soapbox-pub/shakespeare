@@ -34,13 +34,15 @@ import { NostrReadNipsIndexTool } from '@/lib/tools/NostrReadNipsIndexTool';
 import { NostrGenerateKindTool } from '@/lib/tools/NostrGenerateKindTool';
 import { ShellTool } from '@/lib/tools/ShellTool';
 import { TypecheckTool } from '@/lib/tools/TypecheckTool';
-import { ReadConsoleMessagesTool, ProjectPreviewConsoleError, addErrorListener, removeErrorListener } from '@/lib/tools/ReadConsoleMessagesTool';
+import { ReadConsoleMessagesTool } from '@/lib/tools/ReadConsoleMessagesTool';
+import { ProjectPreviewConsoleError } from '@/lib/consoleMessages';
 import { toolToOpenAI } from '@/lib/tools/openai-adapter';
 import { Tool } from '@/lib/tools/Tool';
 import OpenAI from 'openai';
 import { saveFileToTmp } from '@/lib/fileUtils';
 import { useGit } from '@/hooks/useGit';
 import { Quilly } from '@/components/Quilly';
+import { ShakespeareLogo } from '@/components/ShakespeareLogo';
 
 // Clean interfaces now handled by proper hooks
 
@@ -51,6 +53,8 @@ interface ChatPaneProps {
   onLoadingChange?: (isLoading: boolean) => void;
   isLoading?: boolean;
   isBuildLoading?: boolean;
+  consoleError?: ProjectPreviewConsoleError | null;
+  onDismissConsoleError?: () => void;
 }
 
 export interface ChatPaneRef {
@@ -64,6 +68,8 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   onLoadingChange,
   isLoading: externalIsLoading,
   isBuildLoading: externalIsBuildLoading,
+  consoleError,
+  onDismissConsoleError,
 }, ref) => {
   const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -80,18 +86,8 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   const [isStuck, setIsStuck] = useState(false);
   const [aiError, setAIError] = useState<Error | null>(null);
 
-  // Console error handling
-  useEffect(() => {
-    const handleConsoleError = (error: ProjectPreviewConsoleError) => {
-      // Only show console errors if there's no existing AI error
-      if (!aiError) {
-        setAIError(error);
-      }
-    };
-
-    addErrorListener(handleConsoleError);
-    return () => removeErrorListener(handleConsoleError);
-  }, [aiError]);
+  // Determine which error to show - console error takes priority over AI errors
+  const displayError = consoleError || aiError;
 
   // Use external state if provided, otherwise default to false
   const isBuildLoading = externalIsBuildLoading || false;
@@ -185,7 +181,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     artist: `Working on ${projectId}...`,
     artwork: [
       {
-        src: '/favicon.png',
+        src: '/shakespeare.png',
         sizes: '512x512',
         type: 'image/png'
       }
@@ -208,6 +204,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     isLoading: internalIsLoading,
     totalCost,
     lastInputTokens,
+    addMessage,
     sendMessage,
     startGeneration,
     stopGeneration,
@@ -221,9 +218,42 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   });
 
   // Handle console error help requests
-  const handleConsoleErrorHelp = useCallback(() => {
-    sendMessage('Read the console messages and fix any errors present.', providerModel);
-  }, [sendMessage, providerModel]);
+  const handleConsoleErrorHelp = useCallback(async () => {
+    const tool = new ReadConsoleMessagesTool();
+    const toolCallId = `call_${crypto.randomUUID().replace(/-/g, '')}`;
+
+    await addMessage({
+      role: 'assistant',
+      content: 'Let me take a look at the console messages to help diagnose the issue.',
+      tool_calls: [
+        {
+          id: toolCallId,
+          type: 'function',
+          function: {
+            name: 'read_console_messages',
+            arguments: '{}',
+          }
+        }
+      ]
+    });
+
+    await addMessage({
+      role: 'tool',
+      content: await tool.execute({ filter: 'error' }),
+      tool_call_id: toolCallId,
+    });
+
+    await startGeneration(providerModel);
+  }, [addMessage, providerModel, startGeneration]);
+
+  // Handle error dismissal
+  const handleErrorDismiss = useCallback(() => {
+    if (consoleError && onDismissConsoleError) {
+      onDismissConsoleError();
+    } else {
+      setAIError(null);
+    }
+  }, [consoleError, onDismissConsoleError]);
 
   // Use external loading state if provided, otherwise use internal state
   const isLoading = externalIsLoading !== undefined ? externalIsLoading : internalIsLoading;
@@ -271,10 +301,12 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     setIsModelSelectorOpen(true);
   }, []);
 
-  // Scroll to bottom when AI error occurs
+  // Scroll to bottom when any error occurs (AI error or console error)
   useEffect(() => {
-    scrollToBottom();
-  }, [aiError, scrollToBottom]);
+    if (displayError) {
+      scrollToBottom();
+    }
+  }, [displayError, scrollToBottom]);
 
   // Check for autostart parameter and trigger AI generation
   useEffect(() => {
@@ -525,7 +557,9 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
           {messages.length === 0 && !streamingMessage && !isLoading && (
             <div className="flex-1 flex items-center justify-center min-h-[400px]">
               <div className="text-center space-y-4 max-w-md mx-auto">
-                <div className="text-6xl mb-6">🎭</div>
+                <div className="mb-6">
+                  <ShakespeareLogo className="w-16 h-16 mx-auto" />
+                </div>
                 <div>
                   <h3 className="text-xl font-semibold mb-2 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
                     {t('welcomeToShakespeare')}
@@ -608,11 +642,11 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
             </div>
           )}
 
-          {/* AI Error Alert */}
-          {aiError && (
+          {/* Error Alert (Console or AI) */}
+          {displayError && (
             <Quilly
-              error={aiError}
-              onDismiss={() => setAIError(null)}
+              error={displayError}
+              onDismiss={handleErrorDismiss}
               onNewChat={onNewChat}
               onOpenModelSelector={openModelSelector}
               onRequestConsoleErrorHelp={handleConsoleErrorHelp}
@@ -640,7 +674,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
         {/* Chat Input Container */}
         <div
           className={`flex flex-col rounded-2xl border border-input bg-background shadow-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 transition-all ${isDragOver ? 'border-primary bg-primary/5 ring-2 ring-primary/20' : ''
-            }`}
+          }`}
           onDragEnter={handleDragEnter}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
@@ -656,8 +690,8 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
               !isConfigured
                 ? t('askToAddFeatures')
                 : providerModel.trim()
-                ? t('askToAddFeatures')
-                : t('selectModelFirst')
+                  ? t('askToAddFeatures')
+                  : t('selectModelFirst')
             }
             className="flex-1 resize-none border-0 bg-transparent px-4 py-3 text-sm focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground"
             disabled={isLoading || (isConfigured && !providerModel.trim())}
@@ -730,7 +764,6 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
               <ModelSelector
                 value={providerModel}
                 onChange={setProviderModel}
-                className="w-full"
                 disabled={isLoading}
                 placeholder={t('chooseModel')}
                 open={isModelSelectorOpen}

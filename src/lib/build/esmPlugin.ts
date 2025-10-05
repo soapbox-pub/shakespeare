@@ -133,14 +133,23 @@ export function esmPlugin(packageLock: PackageLock, target?: string): Plugin {
         const root = `node_modules/${name}`;
         return has(root) ? root : undefined;
       }
+
+      // First, check for nested node_modules directly inside the importer's package
+      const nested = `${base}/node_modules/${name}`;
+      if (has(nested)) return nested;
+
+      // Then walk up the tree looking for hoisted versions
       let current: string | undefined = base;
       while (current && current.length) {
-        const candidate = `${current}/node_modules/${name}`;
-        if (has(candidate)) return candidate;
-        const next = current.replace(/\/node_modules\/[^/]+$/, "");
+        // Remove the last package from the path (handling scoped packages like @scope/name)
+        const next = current.replace(/\/node_modules\/(@[^/]+\/)?[^/]+$/, "");
         if (next === current) break;
         current = next;
+        const candidate = `${current}/node_modules/${name}`;
+        if (has(candidate)) return candidate;
       }
+
+      // Finally check root
       const root = `node_modules/${name}`;
       return has(root) ? root : undefined;
     };

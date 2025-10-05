@@ -227,6 +227,11 @@ export function esmPlugin(packageLock: PackageLock, target?: string): Plugin {
 
       // Handle bare imports like "react"
       build.onResolve({ filter: /^[^./].*/ }, (args) => {
+        // HACK: https://github.com/esm-dev/esm.sh/issues/1217
+        if (args.path === "yet-another-react-lightbox/styles.css") {
+          args.path = "yet-another-react-lightbox/dist/styles.css";
+        }
+
         const packageName = args.path.startsWith("@")
           ? args.path.split("/").slice(0, 2).join("/")
           : args.path.split("/")[0];
@@ -302,6 +307,14 @@ export function esmPlugin(packageLock: PackageLock, target?: string): Plugin {
 
         const urlStr = url.toString();
         setUrlLockPath(urlStr, childLockPath);
+
+        // HACK: https://github.com/esm-dev/esm.sh/issues/1218
+        if (specifier === "@lightninglabs/lnc-web@0.3.4-alpha") {
+          return {
+            path: urlStr,
+            external: true,
+          };
+        }
 
         return {
           path: urlStr,

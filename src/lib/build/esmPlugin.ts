@@ -1,3 +1,4 @@
+import { extname } from "path-browserify";
 import type { Loader, Plugin } from "esbuild-wasm";
 
 interface PackageLock {
@@ -334,8 +335,9 @@ export function esmPlugin(packageLock: PackageLock, target?: string): Plugin {
           // ignore
         }
 
-        // Skip static assets
-        if (/\.(woff2?|ttf|otf|eot)$/.test(fullURL.pathname)) {
+        // Externalize static assets
+        const ext = extname(fullURL.pathname).slice(1);
+        if (ext && !["ts", "tsx", "js", "jsx", "mjs", "cjs", "css", "json"].includes(ext)) {
           return {
             path: fullURL.toString(),
             external: true,

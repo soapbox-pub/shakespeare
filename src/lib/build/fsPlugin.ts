@@ -71,8 +71,12 @@ export function fsPlugin(fs: JSRuntimeFS, cwd: string): Plugin {
 
           const ext = extname(path).slice(1);
 
-          if (!["ts", "tsx", "js", "jsx", "css", "json"].includes(ext)) {
-            return;
+          // Handle static assets
+          if (!["ts", "tsx", "js", "jsx", "mjs", "cjs", "css", "json"].includes(ext)) {
+            return {
+              contents: await fs.readFile(path),
+              loader: "file",
+            };
           }
 
           return {

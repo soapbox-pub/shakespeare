@@ -1,4 +1,4 @@
-import OpenAI from 'openai';
+import { APIError } from 'openai';
 import { useNavigate } from 'react-router-dom';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -44,7 +44,7 @@ export function Quilly({ error, onDismiss, onNewChat, onOpenModelSelector, onReq
   const credits = useAICredits(provider || { id: '', name: '', apiKey: '', nostr: false });
   const [showCreditsDialog, setShowCreditsDialog] = useState(false);
 
-  const renderBody = (error: Error | OpenAI.APIError | MalformedToolCallError | ProjectPreviewConsoleError): ErrorBody => {
+  const renderBody = (error: Error | APIError | MalformedToolCallError | ProjectPreviewConsoleError): ErrorBody => {
     // Handle Project Preview Console Errors
     if (error instanceof ProjectPreviewConsoleError) {
       return {
@@ -70,7 +70,7 @@ export function Quilly({ error, onDismiss, onNewChat, onOpenModelSelector, onReq
     } 
 
     // Handle OpenAI API errors with specific error codes
-    if (error instanceof OpenAI.APIError) {
+    if (error instanceof APIError) {
       switch (true) {
         case error.code ==='invalid_api_key':
         case error.code === 'invalid_request_error':

@@ -245,19 +245,31 @@ export function esmPlugin(packageLock: PackageLock, target?: string): Plugin {
         const importerInfo = importerLockPath ? packageLock.packages?.[importerLockPath] : undefined;
         const importerDeps = importerInfo?.dependencies ?? undefined;
 
-        // Prefer CDN name derived from lock path when it is a JSR install
+        // Determine CDN package name
         let cdnName: string | undefined;
-        if (childLockPath?.startsWith("node_modules/@jsr/")) {
-          // Derive @jsr/<alias> directly from path
-          const alias = childLockPath.replace(/^node_modules\//, "");
-          cdnName = alias;
+
+        // If the lock path is a JSR install, extract the @jsr/alias from the path
+        if (childLockPath) {
+          // Extract the deepest package segment under node_modules to avoid including parent paths
+          // e.g. node_modules/@jsr/nostrify__nostrify/node_modules/@jsr/std__encoding
+          //  -> take the last node_modules segment "@jsr/std__encoding"
+          const lastNm = childLockPath.split("node_modules/").filter(Boolean).pop();
+          if (lastNm && lastNm.startsWith("@jsr/")) {
+            const segs = lastNm.split("/");
+            // Ensure only the package folder is used (scope + name)
+            if (segs.length >= 2) {
+              cdnName = `${segs[0]}/${segs[1]}`;
+            }
+          }
         }
+
+        // If not a JSR install in the lock, use the package name as-is or from childInfo
         if (!cdnName) {
-          cdnName = (childInfo?.name)
-            ?? (packageName.startsWith("@jsr/") ? packageName : normalizeNameForLock(packageName));
+          cdnName = childInfo?.name ?? packageName;
         }
 
         // If the importer declared a @jsr alias for this dependency, prefer that alias
+        // This handles cases where the same package can be installed via JSR or npm
         const canonical = normalizeNameForLock(packageName);
         if (importerDeps && canonical.startsWith("@")) {
           const [scope, name] = canonical.slice(1).split("/");

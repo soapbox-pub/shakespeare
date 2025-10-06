@@ -13,7 +13,20 @@ interface PackageLock {
   };
 }
 
-export function esmPlugin(packageLock: PackageLock, target?: string): Plugin {
+interface PackageJson {
+  dependencies?: { [key: string]: string };
+  devDependencies?: { [key: string]: string };
+  peerDependencies?: { [key: string]: string };
+}
+
+interface EsmPluginOptions {
+  packageJson: PackageJson;
+  packageLock?: PackageLock;
+  target?: string;
+}
+
+export function esmPlugin(options: EsmPluginOptions): Plugin {
+  const { packageJson, packageLock, target } = options;
   /** Cache of URL redirects */
   const redirectedURLs = new Map<string, string>();
 
@@ -21,9 +34,11 @@ export function esmPlugin(packageLock: PackageLock, target?: string): Plugin {
   const urlLockPath = new Map<string, string>();
 
   /** Build quick indexes from the lockfile */
-  const packagesEntries = Object.entries(packageLock.packages || {}).filter(
-    (e): e is [string, NonNullable<PackageLock["packages"][string]>] => Boolean(e[1])
-  );
+  const packagesEntries = packageLock
+    ? Object.entries(packageLock.packages || {}).filter(
+      (e): e is [string, NonNullable<PackageLock["packages"][string]>] => Boolean(e[1])
+    )
+    : [];
 
   // Map of `${name}@${version}` -> array of lock paths where that exact install exists
   const nameVersionToPaths = new Map<string, string[]>();
@@ -101,10 +116,10 @@ export function esmPlugin(packageLock: PackageLock, target?: string): Plugin {
   const resolveFrom = (lockPath: string | undefined, depName: string): string | undefined => {
     const dep = normalizeNameForLock(depName);
 
-    const has = (p: string): boolean => Boolean(packageLock.packages?.[p]);
+    const has = (p: string): boolean => Boolean(packageLock?.packages?.[p]);
 
     // Self-import: if the importer package name matches the requested dep, return the same lock path
-    if (lockPath) {
+    if (lockPath && packageLock) {
       const importerInfo = packageLock.packages?.[lockPath];
       const importerNameFromInfo = importerInfo?.name ? normalizeNameForLock(importerInfo.name) : undefined;
       const importerNameFromPath = lockPath.replace(/^.*\bnode_modules\//, "");
@@ -161,7 +176,7 @@ export function esmPlugin(packageLock: PackageLock, target?: string): Plugin {
       if (m) {
         const jsrAlias = `@jsr/${m[1]}__${m[2]}`;
         // Read importer deps from lockPath
-        const importerDeps = lockPath ? packageLock.packages?.[lockPath]?.dependencies : undefined;
+        const importerDeps = lockPath && packageLock ? packageLock.packages?.[lockPath]?.dependencies : undefined;
         if (importerDeps && Object.prototype.hasOwnProperty.call(importerDeps, jsrAlias)) {
           searchOrder = [jsrAlias, dep];
         } else {
@@ -253,11 +268,18 @@ export function esmPlugin(packageLock: PackageLock, target?: string): Plugin {
         const childLockPath = resolveFrom(importerLockPath, packageName);
 
         // Determine CDN name and version
-        const childInfo = childLockPath ? packageLock.packages?.[childLockPath] : undefined;
-        const version = childInfo?.version; // exact installed version from lock
+        const childInfo = childLockPath && packageLock ? packageLock.packages?.[childLockPath] : undefined;
+        let version = childInfo?.version; // exact installed version from lock
+
+        // If no version found in lock file, fall back to package.json
+        if (!version) {
+          version = packageJson.dependencies?.[packageName]
+            ?? packageJson.devDependencies?.[packageName]
+            ?? packageJson.peerDependencies?.[packageName];
+        }
 
         // Decide CDN package name. Prefer explicit @jsr alias, then installed name, then canonical normalized name.
-        const importerInfo = importerLockPath ? packageLock.packages?.[importerLockPath] : undefined;
+        const importerInfo = importerLockPath && packageLock ? packageLock.packages?.[importerLockPath] : undefined;
         const importerDeps = importerInfo?.dependencies ?? undefined;
 
         // Determine CDN package name

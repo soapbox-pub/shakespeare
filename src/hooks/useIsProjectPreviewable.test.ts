@@ -31,7 +31,6 @@ describe('useIsProjectPreviewable', () => {
     expect(result.current.data).toBe(true);
     expect(mockFileExists).toHaveBeenCalledWith('test-project', 'index.html');
     expect(mockFileExists).toHaveBeenCalledWith('test-project', 'package.json');
-    expect(mockFileExists).toHaveBeenCalledWith('test-project', 'package-lock.json');
   });
 
   it('returns false when index.html is missing', async () => {
@@ -70,7 +69,7 @@ describe('useIsProjectPreviewable', () => {
     expect(result.current.data).toBe(false);
   });
 
-  it('returns false when package-lock.json is missing', async () => {
+  it('returns true even when package-lock.json is missing (yarn.lock or no lock file is acceptable)', async () => {
     mockFileExists.mockImplementation((projectId: string, filePath: string) => {
       if (filePath === 'package-lock.json') return Promise.resolve(false);
       return Promise.resolve(true);
@@ -85,7 +84,9 @@ describe('useIsProjectPreviewable', () => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(result.current.data).toBe(false);
+    // Should still be previewable since package-lock.json is not required
+    // (projects can use yarn.lock or no lock file)
+    expect(result.current.data).toBe(true);
   });
 
   it('returns false when projectId is empty', async () => {

@@ -1,3 +1,4 @@
+import * as JSONC from "jsonc-parser";
 import { join } from "path-browserify";
 import { getEsbuild } from "@/lib/esbuild";
 import { copyFiles } from "@/lib/copyFiles";
@@ -6,6 +7,7 @@ import { addDomainToCSP } from "@/lib/csp";
 import { shakespearePlugin } from "./shakespearePlugin";
 import { esmPlugin } from "./esmPlugin";
 import { fsPlugin } from "./fsPlugin";
+import { convertYarnLockToPackageLock } from "./yarnLockConverter";
 
 import type { JSRuntimeFS } from '@/lib/JSRuntime';
 
@@ -28,10 +30,54 @@ async function bundle(
     `${projectPath}/index.html`,
     "utf8",
   );
-  const packageLockText = await fs.readFile(
-    `${projectPath}/package-lock.json`,
+
+  // Read package.json
+  const packageJsonText = await fs.readFile(
+    `${projectPath}/package.json`,
     "utf8",
   );
+  const packageJson = JSON.parse(packageJsonText);
+
+  // Try to read tsconfig.json
+  let tsconfig;
+  try {
+    const tsconfigText = await fs.readFile(
+      `${projectPath}/tsconfig.json`,
+      "utf8",
+    );
+    tsconfig = JSONC.parse(tsconfigText);
+  } catch {
+    // tsconfig.json is optional
+    tsconfig = undefined;
+  }
+
+  // Try to read package-lock.json first, fall back to yarn.lock
+  let packageLock;
+  let buildMode: string;
+  try {
+    const packageLockText = await fs.readFile(
+      `${projectPath}/package-lock.json`,
+      "utf8",
+    );
+    packageLock = JSON.parse(packageLockText);
+    buildMode = "npm (package-lock.json)";
+  } catch {
+    // If package-lock.json doesn't exist, try yarn.lock
+    try {
+      const yarnLockText = await fs.readFile(
+        `${projectPath}/yarn.lock`,
+        "utf8",
+      );
+      packageLock = convertYarnLockToPackageLock(yarnLockText);
+      buildMode = "yarn (yarn.lock)";
+    } catch {
+      // If neither exists, use empty packages object
+      packageLock = { packages: {} };
+      buildMode = "package.json only (no lock file)";
+    }
+  }
+
+  console.log(`Building with ${buildMode}`);
 
   const doc = domParser.parseFromString(indexHtmlText, "text/html");
   const entryPoints: string[] = [];
@@ -79,8 +125,8 @@ async function bundle(
     assetNames: "[name]-[hash]",
     plugins: [
       shakespearePlugin(),
-      fsPlugin(fs, `${projectPath}/src`),
-      esmPlugin(JSON.parse(packageLockText), target),
+      fsPlugin({ fs, cwd: projectPath, tsconfig }),
+      esmPlugin({ packageJson, packageLock, target }),
     ],
     define: {
       "import.meta.env": JSON.stringify({}),

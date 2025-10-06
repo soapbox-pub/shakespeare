@@ -3,7 +3,7 @@ import { useProjectsManager } from './useProjectsManager';
 
 /**
  * Hook to check if a project is previewable
- * A project is previewable if it has index.html, package.json, and package-lock.json
+ * A project is previewable if it has index.html and package.json
  */
 export function useIsProjectPreviewable(projectId: string) {
   const projectsManager = useProjectsManager();
@@ -13,13 +13,12 @@ export function useIsProjectPreviewable(projectId: string) {
     queryFn: async () => {
       try {
         // Check for required files
-        const [hasIndexHtml, hasPackageJson, hasPackageLock] = await Promise.all([
+        const [hasIndexHtml, hasPackageJson] = await Promise.all([
           projectsManager.fileExists(projectId, 'index.html'),
           projectsManager.fileExists(projectId, 'package.json'),
-          projectsManager.fileExists(projectId, 'package-lock.json'),
         ]);
 
-        return hasIndexHtml && hasPackageJson && hasPackageLock;
+        return hasIndexHtml && hasPackageJson;
       } catch (error) {
         console.error('Failed to check if project is previewable:', error);
         return false;

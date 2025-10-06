@@ -1,3 +1,4 @@
+import * as JSONC from "jsonc-parser";
 import { join } from "path-browserify";
 import { getEsbuild } from "@/lib/esbuild";
 import { copyFiles } from "@/lib/copyFiles";
@@ -36,6 +37,19 @@ async function bundle(
     "utf8",
   );
   const packageJson = JSON.parse(packageJsonText);
+
+  // Try to read tsconfig.json
+  let tsconfig;
+  try {
+    const tsconfigText = await fs.readFile(
+      `${projectPath}/tsconfig.json`,
+      "utf8",
+    );
+    tsconfig = JSONC.parse(tsconfigText);
+  } catch {
+    // tsconfig.json is optional
+    tsconfig = undefined;
+  }
 
   // Try to read package-lock.json first, fall back to yarn.lock
   let packageLock;
@@ -111,7 +125,7 @@ async function bundle(
     assetNames: "[name]-[hash]",
     plugins: [
       shakespearePlugin(),
-      fsPlugin(fs, `${projectPath}/src`),
+      fsPlugin({ fs, cwd: projectPath, tsconfig }),
       esmPlugin({ packageJson, packageLock, target }),
     ],
     define: {

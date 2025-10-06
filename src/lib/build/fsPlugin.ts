@@ -3,7 +3,21 @@ import { join, dirname, extname } from "path-browserify";
 import type { Loader, Plugin } from "esbuild-wasm";
 import type { JSRuntimeFS } from '@/lib/JSRuntime';
 
-export function fsPlugin(fs: JSRuntimeFS, cwd: string): Plugin {
+interface TsConfig {
+  compilerOptions?: {
+    baseUrl?: string;
+    paths?: Record<string, string[]>;
+  };
+}
+
+interface FsPluginOptions {
+  fs: JSRuntimeFS;
+  cwd: string;
+  tsconfig?: TsConfig;
+}
+
+export function fsPlugin(options: FsPluginOptions): Plugin {
+  const { fs, cwd, tsconfig } = options;
   return {
     name: "fs",
 
@@ -25,18 +39,17 @@ export function fsPlugin(fs: JSRuntimeFS, cwd: string): Plugin {
         if (args.path.startsWith("/")) {
           resolved = args.path;
         } else if (args.path.startsWith("@/")) {
-          resolved = join(cwd, args.path.slice(2));
-        } else if (args.kind === "entry-point") {
-          resolved = join(cwd, args.path);
-        } else if (args.importer) {
+          resolved = join(cwd, "src", args.path.slice(2));
+        } else if (args.importer && (args.path.startsWith("./") || args.path.startsWith("../"))) {
           resolved = join(dirname(args.importer), args.path);
+        } else if (args.importer && tsconfig?.compilerOptions?.baseUrl) {
+          resolved = join(cwd, tsconfig.compilerOptions.baseUrl, args.path);
         } else {
           return;
         }
 
         // Security: prevent accessing files outside the project directory
-        const projectDir = join(cwd, "..");
-        if (resolved.startsWith("/") && !resolved.startsWith(projectDir)) {
+        if (resolved.startsWith("/") && !resolved.startsWith(cwd)) {
           throw new Error(`Access to files outside the project directory is not allowed: ${resolved}`);
         }
 

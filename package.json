@@ -63,6 +63,7 @@
     "ignore": "^7.0.5",
     "input-otp": "^1.2.4",
     "isomorphic-git": "^1.32.1",
+    "jsonc-parser": "^3.3.1",
     "jszip": "^3.10.1",
     "lucide-react": "^0.525.0",
     "nostr-tools": "^2.15.2",

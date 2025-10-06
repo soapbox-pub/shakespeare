@@ -293,4 +293,119 @@ describe('buildProject', () => {
     // Should try to copy public files but directory is empty
     expect(copyFiles).toHaveBeenCalledWith(mockFS, mockFS, '/test/project/public', '/test/project/dist');
   });
+
+  it('should support yarn.lock when package-lock.json is missing', async () => {
+    const yarnLock = `
+# yarn lockfile v1
+
+react@^18.0.0:
+  version "18.2.0"
+  resolved "https://registry.yarnpkg.com/react/-/react-18.2.0.tgz"
+  integrity sha512-...
+  dependencies:
+    loose-envify "^1.1.0"
+`;
+
+    // Mock required files
+    vi.mocked(mockFS.readFile)
+      .mockImplementation(async (path: string) => {
+        if (path.endsWith('package.json')) {
+          return '{"name": "test-project"}';
+        }
+        if (path.endsWith('index.html')) {
+          return '<html><head></head><body><script src="/src/main.tsx"></script></body></html>';
+        }
+        if (path.endsWith('package-lock.json')) {
+          throw new Error('File not found: package-lock.json');
+        }
+        if (path.endsWith('yarn.lock')) {
+          return yarnLock;
+        }
+        throw new Error(`File not found: ${path}`);
+      });
+
+    // Mock stat to indicate no public directory
+    vi.mocked(mockFS.stat)
+      .mockImplementation(async (path: string) => {
+        if (path === '/test/project/public') {
+          throw new Error('Directory not found');
+        }
+        return { isDirectory: () => false, isFile: () => true };
+      });
+
+    // Mock additional filesystem operations for buildProject
+    vi.mocked(mockFS.readdir).mockImplementation(async (path: string) => {
+      if (path === '/test/project/dist') {
+        return [];
+      }
+      return [];
+    });
+
+    vi.mocked(mockFS.mkdir).mockResolvedValue(undefined);
+    vi.mocked(mockFS.writeFile).mockResolvedValue(undefined);
+
+    const result = await buildProject({
+      fs: mockFS,
+      projectPath: '/test/project',
+      domParser: mockDOMParser,
+    });
+
+    // Should successfully build with yarn.lock
+    expect(result.files['stdin-abc123.js']).toEqual(new Uint8Array([1, 2, 3]));
+    expect(result.files['index.html']).toBeDefined();
+
+    // Verify yarn.lock was read
+    expect(mockFS.readFile).toHaveBeenCalledWith('/test/project/yarn.lock', 'utf8');
+  });
+
+  it('should work with no lock file at all', async () => {
+    // Mock required files
+    vi.mocked(mockFS.readFile)
+      .mockImplementation(async (path: string) => {
+        if (path.endsWith('package.json')) {
+          return '{"name": "test-project"}';
+        }
+        if (path.endsWith('index.html')) {
+          return '<html><head></head><body><script src="/src/main.tsx"></script></body></html>';
+        }
+        if (path.endsWith('package-lock.json') || path.endsWith('yarn.lock')) {
+          throw new Error('File not found');
+        }
+        throw new Error(`File not found: ${path}`);
+      });
+
+    // Mock stat to indicate no public directory
+    vi.mocked(mockFS.stat)
+      .mockImplementation(async (path: string) => {
+        if (path === '/test/project/public') {
+          throw new Error('Directory not found');
+        }
+        return { isDirectory: () => false, isFile: () => true };
+      });
+
+    // Mock additional filesystem operations for buildProject
+    vi.mocked(mockFS.readdir).mockImplementation(async (path: string) => {
+      if (path === '/test/project/dist') {
+        return [];
+      }
+      return [];
+    });
+
+    vi.mocked(mockFS.mkdir).mockResolvedValue(undefined);
+    vi.mocked(mockFS.writeFile).mockResolvedValue(undefined);
+
+    const result = await buildProject({
+      fs: mockFS,
+      projectPath: '/test/project',
+      domParser: mockDOMParser,
+    });
+
+    // Should successfully build with empty packages object
+    expect(result.files['stdin-abc123.js']).toEqual(new Uint8Array([1, 2, 3]));
+    expect(result.files['index.html']).toBeDefined();
+
+    // Verify both lock files were attempted to be read
+    expect(mockFS.readFile).toHaveBeenCalledWith('/test/project/package-lock.json', 'utf8');
+    expect(mockFS.readFile).toHaveBeenCalledWith('/test/project/yarn.lock', 'utf8');
+  });
 });

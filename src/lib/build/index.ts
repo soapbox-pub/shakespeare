@@ -6,6 +6,7 @@ import { addDomainToCSP } from "@/lib/csp";
 import { shakespearePlugin } from "./shakespearePlugin";
 import { esmPlugin } from "./esmPlugin";
 import { fsPlugin } from "./fsPlugin";
+import { convertYarnLockToPackageLock } from "./yarnLockConverter";
 
 import type { JSRuntimeFS } from '@/lib/JSRuntime';
 
@@ -28,10 +29,28 @@ async function bundle(
     `${projectPath}/index.html`,
     "utf8",
   );
-  const packageLockText = await fs.readFile(
-    `${projectPath}/package-lock.json`,
-    "utf8",
-  );
+
+  // Try to read package-lock.json first, fall back to yarn.lock
+  let packageLock;
+  try {
+    const packageLockText = await fs.readFile(
+      `${projectPath}/package-lock.json`,
+      "utf8",
+    );
+    packageLock = JSON.parse(packageLockText);
+  } catch {
+    // If package-lock.json doesn't exist, try yarn.lock
+    try {
+      const yarnLockText = await fs.readFile(
+        `${projectPath}/yarn.lock`,
+        "utf8",
+      );
+      packageLock = convertYarnLockToPackageLock(yarnLockText);
+    } catch {
+      // If neither exists, use empty packages object
+      packageLock = { packages: {} };
+    }
+  }
 
   const doc = domParser.parseFromString(indexHtmlText, "text/html");
   const entryPoints: string[] = [];
@@ -80,7 +99,7 @@ async function bundle(
     plugins: [
       shakespearePlugin(),
       fsPlugin(fs, `${projectPath}/src`),
-      esmPlugin(JSON.parse(packageLockText), target),
+      esmPlugin(packageLock, target),
     ],
     define: {
       "import.meta.env": JSON.stringify({}),

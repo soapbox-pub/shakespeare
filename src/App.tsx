@@ -43,6 +43,7 @@ const defaultConfig: AppConfig = {
   theme: "system",
   relayUrl: "wss://relay.primal.net",
   deployServer: "shakespeare.wtf",
+  esmUrl: "https://esm.shakespeare.diy",
 };
 
 const presetRelays = [

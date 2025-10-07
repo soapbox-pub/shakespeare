@@ -161,6 +161,7 @@ describe('buildProject', () => {
       fs: mockFS,
       projectPath: '/test/project',
       domParser: mockDOMParser,
+      esmUrl: 'https://esm.shakespeare.diy',
     });
 
     // Should include built files with hashed names
@@ -220,6 +221,7 @@ describe('buildProject', () => {
       fs: mockFS,
       projectPath: '/test/project',
       domParser: mockDOMParser,
+      esmUrl: 'https://esm.shakespeare.diy',
     });
 
     // Should still include built files with hashed names
@@ -278,6 +280,7 @@ describe('buildProject', () => {
       fs: mockFS,
       projectPath: '/test/project',
       domParser: mockDOMParser,
+      esmUrl: 'https://esm.shakespeare.diy',
     });
 
     // Should include built files with hashed names
@@ -348,6 +351,7 @@ react@^18.0.0:
       fs: mockFS,
       projectPath: '/test/project',
       domParser: mockDOMParser,
+      esmUrl: 'https://esm.shakespeare.diy',
     });
 
     // Should successfully build with yarn.lock
@@ -398,6 +402,7 @@ react@^18.0.0:
       fs: mockFS,
       projectPath: '/test/project',
       domParser: mockDOMParser,
+      esmUrl: 'https://esm.shakespeare.diy',
     });
 
     // Should successfully build with empty packages object
@@ -457,6 +462,7 @@ react@^18.0.0:
       fs: mockFS,
       projectPath: '/test/project',
       domParser: mockDOMParser,
+      esmUrl: 'https://esm.shakespeare.diy',
     });
 
     // Should successfully build using package.json dependencies
@@ -519,6 +525,7 @@ react@^18.0.0:
       fs: mockFS,
       projectPath: '/test/project',
       domParser: mockDOMParser,
+      esmUrl: 'https://esm.shakespeare.diy',
     });
 
     // Should successfully build with tsconfig.json

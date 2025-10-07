@@ -27,6 +27,12 @@ const resources = {
       language: 'Language',
       languageDescription: 'Select your preferred language for the interface.',
 
+      // System Settings Section
+      systemSettings: 'System Settings',
+      systemSettingsDescription: 'Configure system-level settings and advanced options.',
+      esmUrl: 'ESM CDN URL',
+      esmUrlDescription: 'Configure the ESM CDN URL for package imports. Default: https://esm.shakespeare.diy',
+
       // Language Options
       english: 'English',
       portuguese: 'Portuguese',
@@ -337,6 +343,12 @@ const resources = {
       // Language Section
       language: 'Idioma',
       languageDescription: 'Selecione seu idioma preferido para a interface.',
+
+      // System Settings Section
+      systemSettings: 'Configurações do Sistema',
+      systemSettingsDescription: 'Configure configurações de nível de sistema e opções avançadas.',
+      esmUrl: 'URL do CDN ESM',
+      esmUrlDescription: 'Configure a URL do CDN ESM para importações de pacotes. Padrão: https://esm.shakespeare.diy',
 
       // Language Options
       english: 'Inglês',
@@ -649,6 +661,12 @@ const resources = {
       language: '语言',
       languageDescription: '选择您的界面首选语言。',
 
+      // System Settings Section
+      systemSettings: '系统设置',
+      systemSettingsDescription: '配置系统级设置和高级选项。',
+      esmUrl: 'ESM CDN URL',
+      esmUrlDescription: '配置包导入的 ESM CDN URL。默认：https://esm.shakespeare.diy',
+
       // Language Options
       english: 'English',
       portuguese: 'Português',
@@ -959,6 +977,12 @@ const resources = {
       // Language Section
       language: 'Harshe',
       languageDescription: 'Zaɓi harshen da kuke so don dubawa.',
+
+      // System Settings Section
+      systemSettings: 'Saitunan Tsarin',
+      systemSettingsDescription: 'Saita saitunan matakin tsari da zaɓuɓɓuka na ci gaba.',
+      esmUrl: 'URL na CDN ESM',
+      esmUrlDescription: 'Saita URL na CDN ESM don shigo da fakitin. Tsoho: https://esm.shakespeare.diy',
 
       // Language Options
       english: 'Turanci',
@@ -1271,6 +1295,12 @@ const resources = {
       language: 'Ede',
       languageDescription: 'Yan ede ti o fẹran fun wiwo.',
 
+      // System Settings Section
+      systemSettings: 'Saitunan Eto',
+      systemSettingsDescription: 'Tunto awọn saitan eto ati awọn ayanfẹ ti o pọju.',
+      esmUrl: 'URL CDN ESM',
+      esmUrlDescription: 'Tunto URL CDN ESM fun gbigbe awọn package. Aiyipada: https://esm.shakespeare.diy',
+
       // Language Options
       english: 'Gẹẹsi',
       portuguese: 'Potogisi',
@@ -1576,6 +1606,12 @@ const resources = {
       // Language Section
       language: 'Asụsụ',
       languageDescription: 'Họrọ asụsụ ị chọrọ maka interface.',
+
+      // System Settings Section
+      systemSettings: 'Ntọala Sistemu',
+      systemSettingsDescription: 'Hazie ntọala ọkwa sistemu na nhọrọ ndị ọganihu.',
+      esmUrl: 'URL CDN ESM',
+      esmUrlDescription: 'Hazie URL CDN ESM maka mbubata ngwugwu. Default: https://esm.shakespeare.diy',
 
       // Language Options
       english: 'Bekee',

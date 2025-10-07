@@ -1,11 +1,15 @@
 import type { Plugin } from "esbuild-wasm";
 
+interface ShakespearePluginOptions {
+  esmUrl: string;
+}
+
 /**
  * Shakespeare plugin for dependency polyfills and workarounds.
  * This plugin handles specific dependencies that need custom implementations
  * or dummy APIs to work correctly in the browser environment.
  */
-export function shakespearePlugin(): Plugin {
+export function shakespearePlugin(options?: ShakespearePluginOptions): Plugin {
   return {
     name: "shakespeare",
 
@@ -23,7 +27,7 @@ export function shakespearePlugin(): Plugin {
         return {
           contents: `
             import tailwindConfig from "@/../${pathname}";
-            import "https://esm.sh/tailwindcss-cdn@3";
+            import "${options?.esmUrl}/tailwindcss-cdn@3";
             tailwind.config = tailwindConfig;
           `,
           loader: "js",

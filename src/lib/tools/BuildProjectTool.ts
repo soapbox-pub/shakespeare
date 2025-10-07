@@ -17,6 +17,7 @@ export class BuildProjectTool implements Tool<void> {
     try {
       // Build and write the project files
       const result = await buildProject({
+        esmUrl: 'https://esm.shakespeare.diy',
         fs: this.fs,
         projectPath: this.cwd,
         domParser: new DOMParser(),

@@ -19,6 +19,7 @@ const AppConfigSchema: z.ZodType<AppConfig, z.ZodTypeDef, unknown> = z.object({
   theme: z.enum(['dark', 'light', 'system']),
   relayUrl: z.string().url(),
   deployServer: z.string().min(1),
+  esmUrl: z.string().url(),
   language: z.string().optional(),
 });
 

@@ -1,4 +1,3 @@
-import { Decimal } from 'decimal.js';
 import { useState, useEffect, useRef } from 'react';
 import { generateSecretKey } from 'nostr-tools';
 import { nip19 } from 'nostr-tools';
@@ -16,6 +15,7 @@ import { useProviderModels } from '@/hooks/useProviderModels';
 import { CreditsDialog } from '@/components/CreditsDialog';
 import { OnboardingCreditsBadge } from '@/components/OnboardingCreditsBadge';
 import { ShakespeareLogo } from '@/components/ShakespeareLogo';
+import { ModelPricing } from '@/components/ModelPricing';
 import { AI_PROVIDER_PRESETS, type PresetProvider } from '@/lib/aiProviderPresets';
 import { cn } from '@/lib/utils';
 
@@ -137,21 +137,6 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
   const handleFinish = () => {
     onOpenChange(false);
   };
-
-  const renderPrice = (pricing: { prompt: Decimal; completion: Decimal }) => {
-    const normalizedPrice = getNormalizedModelPrice(pricing).times(1_000_000).toNumber();
-    if (normalizedPrice === 0) {
-      return <span className="text-green-600 font-semibold">Free</span>;
-    } else if (normalizedPrice < 10) {
-      return <span className="text-green-600 font-semibold">$</span>;
-    } else if (normalizedPrice >= 10 && normalizedPrice < 15) {
-      return <span className="text-yellow-600 font-semibold">$$</span>;
-    } else if (normalizedPrice >= 15 && normalizedPrice < 50) {
-      return <span className="text-red-600 font-semibold">$$$</span>;
-    } else if (normalizedPrice >= 50) {
-      return <span className="text-red-800 font-semibold">$$$$</span>;
-    }
-  }
 
   // Reset state when dialog opens/closes
   useEffect(() => {
@@ -533,7 +518,7 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
                                 <div className="flex-1">
                                   <CardTitle className="text-sm font-semibold flex gap-1">
                                     <span>{modelName}</span>
-                                    {model.pricing && renderPrice(model.pricing)}
+                                    {model.pricing && <ModelPricing pricing={model.pricing} />}
                                   </CardTitle>
                                   {model.description && (
                                     <p className="text-lg text-muted-foreground mt-1">
@@ -608,29 +593,4 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
       )}
     </>
   );
-}
-
-/**
- * Get a single normalized "price per token" for a model,
- * combining input and output pricing with agentic-coding-aware weights.
- *
- * Default behavior:
- *   - Uses inputWeight = 0.20 (based on typical 3–5x output premium seen in practice).
- *
- * Optional behavior:
- *   - If you pass observed token usage, the function will compute the weight
- *     as the observed share of spend from inputs over total spend.
- */
-function getNormalizedModelPrice(
-  pricing: { prompt: Decimal; completion: Decimal },
-  inputWeight = 0.2,
-): Decimal {
-  if (!(inputWeight >= 0 && inputWeight <= 1)) {
-    throw new Error("Computed inputWeight is out of range [0,1]. Check inputs.");
-  }
-  if (pricing.prompt.equals(0) && pricing.completion.equals(0)) {
-    return new Decimal(0);
-  }
-  const outputWeight = 1 - inputWeight;
-  return pricing.prompt.times(inputWeight).plus(pricing.completion.times(outputWeight));
 }

@@ -11,6 +11,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { useAISettings } from '@/hooks/useAISettings';
 import { useProviderModels } from '@/hooks/useProviderModels';
 import { useIsMobile } from '@/hooks/useIsMobile';
+import { ModelPricing } from '@/components/ModelPricing';
 import { cn } from '@/lib/utils';
 
 interface ModelSelectorProps {
@@ -277,7 +278,7 @@ export function ModelSelector({
               role="combobox"
               aria-expanded={open}
               className={cn(
-                "h-8 p-0 gap-0.5 text-xs border-0 bg-transparent hover:bg-transparent hover:text-foreground focus-visible:ring-0 focus-visible:ring-offset-0 text-muted-foreground text-right min-w-0"
+                "h-8 p-0 gap-0.5 text-xs border-0 bg-transparent hover:bg-transparent hover:text-foreground focus-visible:ring-0 focus-visible:ring-offset-0 text-muted-foreground text-right min-w-0 max-w-[280px]"
               )}
               disabled={disabled}
             >
@@ -287,12 +288,12 @@ export function ModelSelector({
               <ChevronDown className="size-3 shrink-0 opacity-50" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="p-0" align="end">
+          <PopoverContent className="p-0 w-80" align="end">
             <Command>
               {(isConfigured && models.length >= 5) && (
                 <CommandInput placeholder={t('searchModels')} className="h-9" />
               )}
-              <CommandList className="max-h-[300px]">
+              <CommandList>
                 <CommandEmpty>
                   <div className="py-6 text-center text-sm text-muted-foreground">
                     <p>{t('noModelsFound')}</p>
@@ -302,22 +303,28 @@ export function ModelSelector({
 
                 {shouldShowRecentlyUsed && (
                   <CommandGroup heading={t('recentlyUsed')}>
-                    {recentlyUsedModels.map((model) => (
-                      <CommandItem
-                        key={model}
-                        value={model}
-                        onSelect={() => handleSelect(model)}
-                        className="cursor-pointer"
-                      >
-                        <Check
-                          className={cn(
-                            "mr-2 h-4 w-4",
-                            value === model ? "opacity-100" : "opacity-0"
+                    {recentlyUsedModels.map((modelId) => {
+                      const modelData = models.find(m => m.fullId === modelId);
+                      return (
+                        <CommandItem
+                          key={modelId}
+                          value={modelId}
+                          onSelect={() => handleSelect(modelId)}
+                          className="cursor-pointer"
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              value === modelId ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          <span className="truncate flex-1">{modelId}</span>
+                          {modelData?.pricing && (
+                            <ModelPricing pricing={modelData.pricing} className="ml-2" />
                           )}
-                        />
-                        <span className="truncate">{model}</span>
-                      </CommandItem>
-                    ))}
+                        </CommandItem>
+                      );
+                    })}
                   </CommandGroup>
                 )}
 
@@ -377,7 +384,10 @@ export function ModelSelector({
                               value === model.fullId ? "opacity-100" : "opacity-0"
                             )}
                           />
-                          <span className="truncate">{model.fullId}</span>
+                          <span className="truncate flex-1">{model.fullId}</span>
+                          {model.pricing && (
+                            <ModelPricing pricing={model.pricing} className="ml-2" />
+                          )}
                         </CommandItem>
                       ))}
                     </CommandGroup>

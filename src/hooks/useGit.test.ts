@@ -37,6 +37,7 @@ function createWrapper(corsProxy: string) {
       deployServer: 'test.com',
       esmUrl: 'https://esm.test',
       corsProxy,
+      previewDomain: 'local-test.dev',
     };
 
     return createElement(
@@ -44,8 +45,7 @@ function createWrapper(corsProxy: string) {
       null,
       createElement(
         AppProvider,
-        { storageKey: 'test-app-config', defaultConfig },
-        children
+        { storageKey: 'test-app-config', defaultConfig, children }
       )
     );
   };

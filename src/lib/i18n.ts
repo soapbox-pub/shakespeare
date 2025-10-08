@@ -32,6 +32,10 @@ const resources = {
       systemSettingsDescription: 'Configure system-level settings and advanced options.',
       esmUrl: 'Javascript CDN',
       esmUrlDescription: 'Javascript CDN URL for package imports.',
+      previewDomain: 'Preview Domain',
+      previewDomainDescription: 'Domain used for iframe preview sandboxing.',
+      corsProxy: 'CORS Proxy',
+      corsProxyDescription: 'HTTP proxy URL for bypassing CORS restrictions. Use {href} as a placeholder for the target URL.',
 
       // Language Options
       english: 'English',
@@ -205,8 +209,6 @@ const resources = {
       password: 'Password',
       enterPassword: 'Enter your password/token',
       credentialsExist: 'Credentials for this origin already exist',
-      corsProxy: 'CORS Proxy',
-      corsProxyDescription: 'Proxy used to bypass CORS for AI and Git operations.',
 
       // About Settings
       aboutShakespeare: 'About Shakespeare',

@@ -32,6 +32,8 @@ export function TestApp({ children }: TestAppProps) {
     relayUrl: 'wss://relay.nostr.band',
     deployServer: 'shakespeare.wtf',
     esmUrl: 'https://esm.shakespeare.diy',
+    corsProxy: 'https://proxy.shakespeare.diy/?url={href}',
+    previewDomain: 'local-shakespeare.dev',
     language: 'en',
   };
 

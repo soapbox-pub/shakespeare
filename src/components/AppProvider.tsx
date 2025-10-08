@@ -21,6 +21,7 @@ const AppConfigSchema = z.object({
   deployServer: z.string().min(1),
   esmUrl: z.string().url(),
   corsProxy: z.string().url(),
+  previewDomain: z.string().min(1),
   language: z.string(),
 }) satisfies z.ZodType<AppConfig>;
 

@@ -18,6 +18,7 @@ function Wrapper({ children }: { children: React.ReactNode }) {
     deployServer: 'test.com',
     esmUrl: 'https://esm.test',
     corsProxy: 'https://proxy.shakespeare.diy/?url={href}',
+    previewDomain: 'local-test.dev',
   };
 
   return createElement(
@@ -25,8 +26,7 @@ function Wrapper({ children }: { children: React.ReactNode }) {
     null,
     createElement(
       AppProvider,
-      { storageKey: 'test-app-config', defaultConfig },
-      children
+      { storageKey: 'test-app-config', defaultConfig, children }
     )
   );
 }

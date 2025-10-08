@@ -13,6 +13,8 @@ export interface AppConfig {
   esmUrl: string;
   /** HTTP proxy used to bypass CORS for AI and Git operations */
   corsProxy: string;
+  /** Preview domain for iframe sandboxing (e.g., "local-shakespeare.dev") */
+  previewDomain: string;
   /** Selected language */
   language?: string;
 }

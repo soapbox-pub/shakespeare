@@ -30,9 +30,7 @@ import { FileEditor } from './FileEditor';
 import { DeployDialog } from '@/components/DeployDialog';
 import { Terminal as TerminalComponent } from '@/components/Terminal';
 import { useSearchParams } from 'react-router-dom';
-
-// Get iframe domain from environment variable
-const IFRAME_DOMAIN = import.meta.env.VITE_IFRAME_DOMAIN || 'local-shakespeare.dev';
+import { useAppContext } from '@/hooks/useAppContext';
 
 interface PreviewPaneProps {
   projectId: string;
@@ -75,6 +73,8 @@ interface JSONRPCResponse {
 
 export function PreviewPane({ projectId, activeTab, onToggleView, projectName, onFirstInteraction, isPreviewable = true }: PreviewPaneProps) {
   const { t } = useTranslation();
+  const { config } = useAppContext();
+  const { previewDomain } = config;
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [fileContent, setFileContent] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
@@ -184,26 +184,26 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
       // Use a small timeout to ensure the src is cleared before setting it back
       setTimeout(() => {
         if (iframeRef.current) {
-          iframeRef.current.src = `https://${projectId}.${IFRAME_DOMAIN}/`;
+          iframeRef.current.src = `https://${projectId}.${previewDomain}/`;
         }
       }, 10);
     }
-  }, [projectId]);
+  }, [projectId, previewDomain]);
 
   const sendResponse = useCallback((message: JSONRPCResponse) => {
     if (iframeRef.current?.contentWindow) {
 
-      const targetOrigin = `https://${projectId}.${IFRAME_DOMAIN}`;
+      const targetOrigin = `https://${projectId}.${previewDomain}`;
       iframeRef.current.contentWindow.postMessage(message, targetOrigin);
     }
-  }, [projectId]);
+  }, [projectId, previewDomain]);
 
   const sendError = useCallback((message: JSONRPCResponse) => {
     if (iframeRef.current?.contentWindow) {
-      const targetOrigin = `https://${projectId}.${IFRAME_DOMAIN}`;
+      const targetOrigin = `https://${projectId}.${previewDomain}`;
       iframeRef.current.contentWindow.postMessage(message, targetOrigin);
     }
-  }, [projectId]);
+  }, [projectId, previewDomain]);
 
   const handleConsoleMessage = useCallback((message: {
     jsonrpc: '2.0';
@@ -266,10 +266,10 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
         params: params || {},
         id: Date.now()
       };
-      const targetOrigin = `https://${projectId}.${IFRAME_DOMAIN}`;
+      const targetOrigin = `https://${projectId}.${previewDomain}`;
       iframeRef.current.contentWindow.postMessage(message, targetOrigin);
     }
-  }, [projectId]);
+  }, [projectId, previewDomain]);
 
   const navigateIframe = useCallback((url: string) => {
     // Send semantic path directly (e.g., "/about", "/contact")
@@ -316,7 +316,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
     try {
       // Parse the URL and validate origin
       const url = new URL(fetchRequest.url);
-      const expectedOrigin = `https://${projectId}.${IFRAME_DOMAIN}`;
+      const expectedOrigin = `https://${projectId}.${previewDomain}`;
 
       if (url.origin !== expectedOrigin) {
         console.log(`Invalid origin: ${url.origin}, expected: ${expectedOrigin}`);
@@ -423,13 +423,13 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
         id
       });
     }
-  }, [projectId, projectsManager, sendResponse, sendError]);
+  }, [projectId, projectsManager, sendResponse, sendError, previewDomain]);
 
   // Setup messaging protocol for iframe communication
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       // Verify origin for security
-      const expectedOrigin = `https://${projectId}.${IFRAME_DOMAIN}`;
+      const expectedOrigin = `https://${projectId}.${previewDomain}`;
       if (event.origin !== expectedOrigin) {
         console.log(`Ignoring message from unexpected origin: ${event.origin}, expected: ${expectedOrigin}`);
         return;
@@ -448,7 +448,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [handleFetch, handleConsoleMessage, handleUpdateNavigationState, projectId]);
+  }, [handleFetch, handleConsoleMessage, handleUpdateNavigationState, projectId, previewDomain]);
 
   useEffect(() => {
     if (selectedFile) {
@@ -699,7 +699,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
                 {hasBuiltProject ? (
                   <iframe
                     ref={iframeRef}
-                    src={`https://${projectId}.${IFRAME_DOMAIN}/`}
+                    src={`https://${projectId}.${previewDomain}/`}
                     className="w-full h-full border-0"
                     title="Project Preview"
                     sandbox="allow-scripts allow-same-origin"

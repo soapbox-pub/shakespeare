@@ -45,6 +45,7 @@ const defaultConfig: AppConfig = {
   deployServer: "shakespeare.wtf",
   esmUrl: "https://esm.shakespeare.diy",
   corsProxy: "https://proxy.shakespeare.diy/?url={href}",
+  previewDomain: "local-shakespeare.dev",
 };
 
 const presetRelays = [

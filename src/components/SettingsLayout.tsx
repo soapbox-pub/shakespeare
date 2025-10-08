@@ -3,7 +3,7 @@ import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Menu, Bot, GitBranch, Database, Wifi, Settings2, Info } from 'lucide-react';
+import { Menu, Bot, GitBranch, Database, Wifi, Settings2, Info, Cog } from 'lucide-react';
 import { ProjectSidebar } from '@/components/ProjectSidebar';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { useIsMobile } from '@/hooks/useIsMobile';
@@ -48,6 +48,13 @@ const getSettingsItems = (t: (key: string) => string): SettingsItem[] => [
     description: t('nostrSettingsDescription'),
     icon: Wifi,
     href: '/settings/nostr',
+  },
+  {
+    id: 'system',
+    title: t('systemSettings'),
+    description: t('systemSettingsDescription'),
+    icon: Cog,
+    href: '/settings/system',
   },
   {
     id: 'data',

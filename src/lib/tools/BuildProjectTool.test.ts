@@ -24,7 +24,7 @@ describe('BuildProjectTool', () => {
       mkdir: vi.fn(),
     } as unknown as JSRuntimeFS;
 
-    tool = new BuildProjectTool(mockFS, '/test/project');
+    tool = new BuildProjectTool(mockFS, '/test/project', 'https://esm.shakespeare.diy');
   });
 
   it('should have correct description', () => {
@@ -69,6 +69,7 @@ describe('BuildProjectTool', () => {
     const result = await tool.execute();
 
     expect(buildProject).toHaveBeenCalledWith({
+      esmUrl: 'https://esm.shakespeare.diy',
       fs: mockFS,
       projectPath: '/test/project',
       domParser: expect.any(DOMParser),
@@ -81,8 +82,6 @@ describe('BuildProjectTool', () => {
     expect(result).toContain('📄 main.js');
     expect(result).toContain('📄 main.css');
   });
-
-
 
   it('should clean existing dist directory before building', async () => {
     const mockFiles = {
@@ -100,6 +99,7 @@ describe('BuildProjectTool', () => {
     await tool.execute();
 
     expect(buildProject).toHaveBeenCalledWith({
+      esmUrl: 'https://esm.shakespeare.diy',
       fs: mockFS,
       projectPath: '/test/project',
       domParser: expect.any(DOMParser),

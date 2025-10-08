@@ -17,14 +17,14 @@ export interface BuildProjectOptions {
   domParser: DOMParser;
   target?: string;
   outputPath?: string;
+  esmUrl: string;
 }
 
 async function bundle(
   options: BuildProjectOptions,
 ): Promise<Record<string, Uint8Array>> {
-  const esbuild = await getEsbuild();
-
-  const { fs, projectPath, domParser, target = "esnext" } = options;
+  const { fs, projectPath, domParser, target = "esnext", esmUrl } = options;
+  const esbuild = await getEsbuild(esmUrl);
 
   const indexHtmlText = await fs.readFile(
     `${projectPath}/index.html`,
@@ -124,9 +124,9 @@ async function bundle(
     chunkNames: "[name]-[hash]",
     assetNames: "[name]-[hash]",
     plugins: [
-      shakespearePlugin(),
+      shakespearePlugin({ esmUrl }),
       fsPlugin({ fs, cwd: projectPath, tsconfig }),
-      esmPlugin({ packageJson, packageLock, target }),
+      esmPlugin({ packageJson, packageLock, target, esmUrl }),
     ],
     define: {
       "import.meta.env": JSON.stringify({}),
@@ -161,12 +161,12 @@ async function bundle(
     }
   }
 
-  // Parse CSP and ensure esm.sh is allowed for necessary directives
+  // Parse CSP and ensure ESM CDN is allowed for necessary directives
   const cspMeta = doc.querySelector("meta[http-equiv=\"content-security-policy\"]");
   if (cspMeta) {
     const cspContent = cspMeta.getAttribute("content");
     if (cspContent) {
-      const updatedCSP = updateCSPForEsmSh(cspContent);
+      const updatedCSP = updateCSPForEsmSh(cspContent, esmUrl);
       cspMeta.setAttribute("content", updatedCSP);
     }
   }
@@ -261,16 +261,16 @@ async function fileExists(fs: JSRuntimeFS, path: string): Promise<boolean> {
   }
 }
 
-/** Updates CSP to allow esm.sh for scripts, assets, fonts, and CSS */
-export function updateCSPForEsmSh(csp: string): string {
-  const esmShDirectives = [
+/** Updates CSP to allow ESM CDN for scripts, assets, fonts, and CSS */
+export function updateCSPForEsmSh(csp: string, esmUrl: string): string {
+  const esmDirectives = [
     'script-src',     // For JavaScript modules
     'img-src',        // For images
     'media-src',      // For video/audio
     'font-src',       // For fonts
     'style-src',      // For CSS
-    'connect-src'     // For fetch/XHR requests to esm.sh
+    'connect-src'     // For fetch/XHR requests to ESM CDN
   ];
 
-  return addDomainToCSP(csp, 'https://esm.sh', esmShDirectives);
+  return addDomainToCSP(csp, esmUrl, esmDirectives);
 }

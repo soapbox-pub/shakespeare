@@ -31,6 +31,7 @@ export function TestApp({ children }: TestAppProps) {
     theme: 'light',
     relayUrl: 'wss://relay.nostr.band',
     deployServer: 'shakespeare.wtf',
+    esmUrl: 'https://esm.shakespeare.diy',
     language: 'en',
   };
 

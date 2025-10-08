@@ -9,6 +9,7 @@ import Preferences from "./pages/Preferences";
 import NostrSettings from "./pages/NostrSettings";
 import AISettings from "./pages/AISettings";
 import GitSettings from "./pages/GitSettings";
+import SystemSettings from "./pages/SystemSettings";
 import DataSettings from "./pages/DataSettings";
 import AboutSettings from "./pages/AboutSettings";
 
@@ -33,6 +34,7 @@ export function AppRouter() {
           <Route path="nostr" element={<NostrSettings />} />
           <Route path="ai" element={<AISettings />} />
           <Route path="git" element={<GitSettings />} />
+          <Route path="system" element={<SystemSettings />} />
           <Route path="data" element={<DataSettings />} />
           <Route path="about" element={<AboutSettings />} />
         </Route>

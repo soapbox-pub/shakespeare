@@ -13,6 +13,7 @@ import { useAISettings } from '@/hooks/useAISettings';
 import { useFS } from '@/hooks/useFS';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useKeepAlive } from '@/hooks/useKeepAlive';
+import { useAppContext } from '@/hooks/useAppContext';
 import { useAIChat } from '@/hooks/useAIChat';
 import { useProviderModels } from '@/hooks/useProviderModels';
 import { ModelSelector } from '@/components/ModelSelector';
@@ -77,6 +78,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   const { git } = useGit();
   const { user } = useCurrentUser();
   const { models } = useProviderModels();
+  const { config } = useAppContext();
   const [input, setInput] = useState('');
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
@@ -133,6 +135,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
 
   // Initialize AI chat with tools
   const cwd = `/projects/${projectId}`;
+  const esmUrlRef = useRef(config.esmUrl);
   const customTools = useMemo(() => {
     const baseTools = {
       git_commit: new GitCommitTool(fs, cwd, git),
@@ -141,7 +144,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
       text_editor_str_replace: new TextEditorStrReplaceTool(fs, cwd),
       npm_add_package: new NpmAddPackageTool(fs, cwd),
       npm_remove_package: new NpmRemovePackageTool(fs, cwd),
-      build_project: new BuildProjectTool(fs, cwd),
+      build_project: new BuildProjectTool(fs, cwd, esmUrlRef.current),
       typecheck: new TypecheckTool(fs, cwd),
       nostr_read_nip: new NostrReadNipTool(),
       nostr_fetch_event: new NostrFetchEventTool(),

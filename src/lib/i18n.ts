@@ -27,6 +27,12 @@ const resources = {
       language: 'Language',
       languageDescription: 'Select your preferred language for the interface.',
 
+      // System Settings Section
+      systemSettings: 'System Settings',
+      systemSettingsDescription: 'Configure system-level settings and advanced options.',
+      esmUrl: 'Javascript CDN',
+      esmUrlDescription: 'Configure the Javascript CDN URL for package imports.',
+
       // Language Options
       english: 'English',
       portuguese: 'Portuguese',
@@ -337,6 +343,12 @@ const resources = {
       // Language Section
       language: 'Idioma',
       languageDescription: 'Selecione seu idioma preferido para a interface.',
+
+      // System Settings Section
+      systemSettings: 'Configurações do Sistema',
+      systemSettingsDescription: 'Configure configurações de nível de sistema e opções avançadas.',
+      esmUrl: 'URL do CDN Javascript',
+      esmUrlDescription: 'Configure a URL do CDN Javascript para importações de pacotes.',
 
       // Language Options
       english: 'Inglês',
@@ -649,6 +661,12 @@ const resources = {
       language: '语言',
       languageDescription: '选择您的界面首选语言。',
 
+      // System Settings Section
+      systemSettings: '系统设置',
+      systemSettingsDescription: '配置系统级设置和高级选项。',
+      esmUrl: 'Javascript CDN URL',
+      esmUrlDescription: '配置包导入的 Javascript CDN URL。',
+
       // Language Options
       english: 'English',
       portuguese: 'Português',
@@ -959,6 +977,12 @@ const resources = {
       // Language Section
       language: 'Harshe',
       languageDescription: 'Zaɓi harshen da kuke so don dubawa.',
+
+      // System Settings Section
+      systemSettings: 'Saitunan Tsarin',
+      systemSettingsDescription: 'Saita saitunan matakin tsari da zaɓuɓɓuka na ci gaba.',
+      esmUrl: 'URL na CDN Javascript',
+      esmUrlDescription: 'Saita URL na CDN Javascript don shigo da fakitin.',
 
       // Language Options
       english: 'Turanci',
@@ -1271,6 +1295,12 @@ const resources = {
       language: 'Ede',
       languageDescription: 'Yan ede ti o fẹran fun wiwo.',
 
+      // System Settings Section
+      systemSettings: 'Saitunan Eto',
+      systemSettingsDescription: 'Tunto awọn saitan eto ati awọn ayanfẹ ti o pọju.',
+      esmUrl: 'URL CDN Javascript',
+      esmUrlDescription: 'Tunto URL CDN Javascript fun gbigbe awọn package.',
+
       // Language Options
       english: 'Gẹẹsi',
       portuguese: 'Potogisi',
@@ -1576,6 +1606,12 @@ const resources = {
       // Language Section
       language: 'Asụsụ',
       languageDescription: 'Họrọ asụsụ ị chọrọ maka interface.',
+
+      // System Settings Section
+      systemSettings: 'Ntọala Sistemu',
+      systemSettingsDescription: 'Hazie ntọala ọkwa sistemu na nhọrọ ndị ọganihu.',
+      esmUrl: 'URL CDN Javascript',
+      esmUrlDescription: 'Hazie URL CDN Javascript maka mbubata ngwugwu.',
 
       // Language Options
       english: 'Bekee',

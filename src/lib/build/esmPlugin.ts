@@ -23,10 +23,11 @@ interface EsmPluginOptions {
   packageJson: PackageJson;
   packageLock?: PackageLock;
   target?: string;
+  esmUrl: string;
 }
 
 export function esmPlugin(options: EsmPluginOptions): Plugin {
-  const { packageJson, packageLock, target } = options;
+  const { packageJson, packageLock, target, esmUrl } = options;
   /** Cache of URL redirects */
   const redirectedURLs = new Map<string, string>();
 
@@ -222,7 +223,7 @@ export function esmPlugin(options: EsmPluginOptions): Plugin {
         switch (moduleName) {
           case "buffer":
             return {
-              path: `https://esm.sh/${moduleName}?target=${target ?? "esnext"}`,
+              path: `${esmUrl}/${moduleName}?target=${target ?? "esnext"}`,
               namespace: "esm",
             };
           default:
@@ -323,7 +324,7 @@ export function esmPlugin(options: EsmPluginOptions): Plugin {
           ? `${cdnName}@${version}${packagePath}`
           : `${cdnName}${packagePath}`;
 
-        const url = new URL(`https://esm.sh/*${specifier}`);
+        const url = new URL(`${esmUrl}/*${specifier}`);
         if (target) url.searchParams.set("target", target);
         if (childLockPath) url.searchParams.set("lp", encodeURIComponent(childLockPath));
 
@@ -441,9 +442,9 @@ export function esmPlugin(options: EsmPluginOptions): Plugin {
   };
 }
 
-/** Extract package name from esm.sh-style URL */
-function extractPackageName(esmShURL: string): { pkg?: string; version?: string } {
-  const full = new URL(esmShURL)
+/** Extract package name from ESM CDN-style URL */
+function extractPackageName(esmURL: string): { pkg?: string; version?: string } {
+  const full = new URL(esmURL)
     .pathname
     .slice(1)
     .replace(/^\*/, "");

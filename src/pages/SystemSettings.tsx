@@ -1,4 +1,4 @@
-import { Settings2, ArrowLeft, Globe } from "lucide-react";
+import { Settings, ArrowLeft } from "lucide-react";
 import { useTranslation } from 'react-i18next';
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -31,7 +31,7 @@ export function SystemSettings() {
           </Button>
           <div className="space-y-2">
             <h1 className="text-2xl font-bold flex items-center gap-3">
-              <Settings2 className="h-6 w-6 text-primary" />
+              <Settings className="h-6 w-6 text-primary" />
               {t('systemSettings')}
             </h1>
             <p className="text-muted-foreground">
@@ -44,7 +44,7 @@ export function SystemSettings() {
       {!isMobile && (
         <div className="space-y-2">
           <h1 className="text-2xl font-bold flex items-center gap-3">
-            <Settings2 className="h-6 w-6 text-primary" />
+            <Settings className="h-6 w-6 text-primary" />
             {t('systemSettings')}
           </h1>
           <p className="text-muted-foreground">
@@ -56,7 +56,6 @@ export function SystemSettings() {
       <div className="space-y-6">
         <div className="space-y-2">
           <Label htmlFor="esm-url" className="flex items-center gap-2">
-            <Globe className="h-4 w-4" />
             {t('esmUrl')}
           </Label>
           <Input

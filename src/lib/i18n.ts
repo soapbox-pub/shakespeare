@@ -30,8 +30,8 @@ const resources = {
       // System Settings Section
       systemSettings: 'System Settings',
       systemSettingsDescription: 'Configure system-level settings and advanced options.',
-      esmUrl: 'ESM CDN URL',
-      esmUrlDescription: 'Configure the ESM CDN URL for package imports. Default: https://esm.shakespeare.diy',
+      esmUrl: 'Javascript CDN',
+      esmUrlDescription: 'Configure the Javascript CDN URL for package imports.',
 
       // Language Options
       english: 'English',
@@ -347,8 +347,8 @@ const resources = {
       // System Settings Section
       systemSettings: 'Configurações do Sistema',
       systemSettingsDescription: 'Configure configurações de nível de sistema e opções avançadas.',
-      esmUrl: 'URL do CDN ESM',
-      esmUrlDescription: 'Configure a URL do CDN ESM para importações de pacotes. Padrão: https://esm.shakespeare.diy',
+      esmUrl: 'URL do CDN Javascript',
+      esmUrlDescription: 'Configure a URL do CDN Javascript para importações de pacotes.',
 
       // Language Options
       english: 'Inglês',
@@ -664,8 +664,8 @@ const resources = {
       // System Settings Section
       systemSettings: '系统设置',
       systemSettingsDescription: '配置系统级设置和高级选项。',
-      esmUrl: 'ESM CDN URL',
-      esmUrlDescription: '配置包导入的 ESM CDN URL。默认：https://esm.shakespeare.diy',
+      esmUrl: 'Javascript CDN URL',
+      esmUrlDescription: '配置包导入的 Javascript CDN URL。',
 
       // Language Options
       english: 'English',
@@ -981,8 +981,8 @@ const resources = {
       // System Settings Section
       systemSettings: 'Saitunan Tsarin',
       systemSettingsDescription: 'Saita saitunan matakin tsari da zaɓuɓɓuka na ci gaba.',
-      esmUrl: 'URL na CDN ESM',
-      esmUrlDescription: 'Saita URL na CDN ESM don shigo da fakitin. Tsoho: https://esm.shakespeare.diy',
+      esmUrl: 'URL na CDN Javascript',
+      esmUrlDescription: 'Saita URL na CDN Javascript don shigo da fakitin.',
 
       // Language Options
       english: 'Turanci',
@@ -1298,8 +1298,8 @@ const resources = {
       // System Settings Section
       systemSettings: 'Saitunan Eto',
       systemSettingsDescription: 'Tunto awọn saitan eto ati awọn ayanfẹ ti o pọju.',
-      esmUrl: 'URL CDN ESM',
-      esmUrlDescription: 'Tunto URL CDN ESM fun gbigbe awọn package. Aiyipada: https://esm.shakespeare.diy',
+      esmUrl: 'URL CDN Javascript',
+      esmUrlDescription: 'Tunto URL CDN Javascript fun gbigbe awọn package.',
 
       // Language Options
       english: 'Gẹẹsi',
@@ -1610,8 +1610,8 @@ const resources = {
       // System Settings Section
       systemSettings: 'Ntọala Sistemu',
       systemSettingsDescription: 'Hazie ntọala ọkwa sistemu na nhọrọ ndị ọganihu.',
-      esmUrl: 'URL CDN ESM',
-      esmUrlDescription: 'Hazie URL CDN ESM maka mbubata ngwugwu. Default: https://esm.shakespeare.diy',
+      esmUrl: 'URL CDN Javascript',
+      esmUrlDescription: 'Hazie URL CDN Javascript maka mbubata ngwugwu.',
 
       // Language Options
       english: 'Bekee',

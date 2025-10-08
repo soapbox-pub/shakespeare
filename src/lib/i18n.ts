@@ -37,7 +37,7 @@ const resources = {
       previewDomain: 'Preview Domain',
       previewDomainDescription: 'Domain used for iframe preview sandboxing.',
       corsProxy: 'CORS Proxy',
-      corsProxyDescription: 'HTTP proxy URL for bypassing CORS restrictions. Use {href} as a placeholder for the target URL.',
+      corsProxyDescription: 'HTTP proxy URL for bypassing CORS restrictions.',
 
       // Language Options
       english: 'English',

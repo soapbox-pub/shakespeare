@@ -24,8 +24,6 @@ describe('BuildProjectTool', () => {
       mkdir: vi.fn(),
     } as unknown as JSRuntimeFS;
 
-
-
     tool = new BuildProjectTool(mockFS, '/test/project', 'https://esm.shakespeare.diy');
   });
 
@@ -84,8 +82,6 @@ describe('BuildProjectTool', () => {
     expect(result).toContain('📄 main.js');
     expect(result).toContain('📄 main.css');
   });
-
-
 
   it('should clean existing dist directory before building', async () => {
     const mockFiles = {

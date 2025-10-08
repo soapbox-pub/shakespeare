@@ -9,6 +9,7 @@ import type { AIProvider } from '@/contexts/AISettingsContext';
 import { makeSystemPrompt } from './system';
 import { NostrMetadata } from '@nostrify/nostrify';
 import { MalformedToolCallError } from './errors/MalformedToolCallError';
+import { summarizeMessages } from './summarizeMessages';
 
 export type AIMessage = OpenAI.Chat.Completions.ChatCompletionMessageParam | {
   role: 'assistant';
@@ -35,6 +36,8 @@ export interface SessionState {
   abortController?: AbortController;
   totalCost?: number; // Total cost in USD for this session
   lastInputTokens?: number; // Input tokens from the last AI request
+  lastUserMessageIndex?: number; // Index of the last user message for compression detection
+  isCompressing?: boolean; // Flag to indicate compression is in progress
 }
 
 export interface SessionManagerEvents {
@@ -192,6 +195,16 @@ export class SessionManager {
     session.isLoading = true;
     session.abortController = new AbortController();
     session.lastActivity = new Date();
+
+    // Track the index of the last user message for compression detection
+    // Find the last user message index
+    for (let i = session.messages.length - 1; i >= 0; i--) {
+      if (session.messages[i].role === 'user') {
+        session.lastUserMessageIndex = i;
+        break;
+      }
+    }
+
     this.sessions.set(projectId, session);
 
     this.emit('loadingChanged', projectId, true);
@@ -208,6 +221,7 @@ export class SessionManager {
 
       let stepCount = 0;
       const maxSteps = session.maxSteps || 50;
+      let isFirstResponse = true; // Track if this is the first AI response in this generation
 
       // Main AI generation loop
       while (stepCount < maxSteps && session.isLoading) {
@@ -370,6 +384,30 @@ export class SessionManager {
           this.updateSessionCost(projectId, usage, providerModel);
         }
 
+        // Check if we should trigger compression
+        // Compression happens when:
+        // 1. This is the first response in this generation (isFirstResponse)
+        // 2. The assistant message contains tool calls
+        // 3. This is not the first user message in the session (lastUserMessageIndex > 0)
+        // 4. We're not already compressing
+        const currentSession = this.sessions.get(projectId);
+        if (
+          isFirstResponse &&
+          accumulatedToolCalls.length > 0 &&
+          currentSession &&
+          currentSession.lastUserMessageIndex !== undefined &&
+          currentSession.lastUserMessageIndex > 0 &&
+          !currentSession.isCompressing
+        ) {
+          // Trigger compression asynchronously (don't block the generation)
+          this.compressSessionContext(projectId, currentSession.lastUserMessageIndex, providerModel).catch(error => {
+            console.warn('Failed to compress session context:', error);
+          });
+        }
+
+        // Mark that we've processed the first response
+        isFirstResponse = false;
+
         // Handle tool calls
         if (accumulatedToolCalls?.length) {
           for (const toolCall of accumulatedToolCalls) {
@@ -436,10 +474,11 @@ export class SessionManager {
       // Re-throw service errors to be handled at the UI level
       throw error;
     } finally {
-      if (session) {
-        session.isLoading = false;
-        session.streamingMessage = undefined;
-        session.abortController = undefined;
+      const finalSession = this.sessions.get(projectId);
+      if (finalSession) {
+        finalSession.isLoading = false;
+        finalSession.streamingMessage = undefined;
+        finalSession.abortController = undefined;
       }
 
       this.emit('loadingChanged', projectId, false);
@@ -576,6 +615,67 @@ export class SessionManager {
         console.error('Event listener error:', error);
       }
     });
+  }
+
+  /**
+   * Compress session context by summarizing old messages
+   * This happens in the background and only affects the filesystem, not the UI
+   */
+  private async compressSessionContext(
+    projectId: string,
+    lastUserMessageIndex: number,
+    providerModel: string
+  ): Promise<void> {
+    const session = this.sessions.get(projectId);
+    if (!session || session.isCompressing) return;
+
+    // Mark as compressing to prevent duplicate compression
+    session.isCompressing = true;
+
+    try {
+      // Get messages up to (but excluding) the last user message
+      const messagesToSummarize = session.messages.slice(0, lastUserMessageIndex);
+
+      if (messagesToSummarize.length === 0) {
+        return; // Nothing to summarize
+      }
+
+      console.log(`Compressing ${messagesToSummarize.length} messages for project ${projectId}...`);
+
+      // Generate summary
+      const { user } = this.getCurrentUser?.() ?? {};
+      const summary = await summarizeMessages(
+        messagesToSummarize,
+        providerModel,
+        this.aiSettings,
+        user
+      );
+
+      // Create a system message with the summary
+      const summaryMessage: AIMessage = {
+        role: 'system',
+        content: `Previous conversation summary:\n\n${summary}`
+      };
+
+      // Get messages from the last user message onwards (these stay as-is)
+      const recentMessages = session.messages.slice(lastUserMessageIndex);
+
+      // Create new compressed message array: summary + recent messages
+      const compressedMessages = [summaryMessage, ...recentMessages];
+
+      // Save to filesystem only (this won't affect the UI until reload)
+      const dotAI = new DotAI(this.fs, `/projects/${projectId}`);
+      await dotAI.setHistory(session.sessionName, compressedMessages);
+
+      console.log(`Successfully compressed session context for project ${projectId}. Reduced from ${messagesToSummarize.length} to 1 summary message.`);
+    } catch (error) {
+      console.error('Failed to compress session context:', error);
+    } finally {
+      // Clear compression flag
+      if (session) {
+        session.isCompressing = false;
+      }
+    }
   }
 
   /**

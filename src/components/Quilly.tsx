@@ -74,16 +74,16 @@ export function Quilly({ error, onDismiss, onNewChat, onOpenModelSelector, onTry
     if (error instanceof EmptyMessageError) {
       return {
         message: 'The AI generated an empty response. This may be due to a provider issue or model configuration problem. Try generating again, or switch to a different model.',
-        action: onTryAgain ? {
+        actions: onTryAgain ? [{
           label: 'Try again',
           onClick: () => {
             onTryAgain();
             onDismiss();
           },
-        } : {
+        }] : [{
           label: 'Change model',
           onClick: onOpenModelSelector,
-        },
+        }],
       };
     }
 

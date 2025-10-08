@@ -42,6 +42,7 @@ const queryClient = new QueryClient({
 const defaultConfig: AppConfig = {
   theme: "system",
   relayUrl: "wss://relay.primal.net",
+  projectTemplate: "https://gitlab.com/soapbox-pub/mkstack.git",
   deployServer: "shakespeare.wtf",
   esmUrl: "https://esm.shakespeare.diy",
   corsProxy: "https://proxy.shakespeare.diy/?url={href}",

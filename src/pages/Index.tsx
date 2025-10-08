@@ -7,6 +7,7 @@ import { useFS } from '@/hooks/useFS';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { useAISettings } from '@/hooks/useAISettings';
+import { useAppContext } from '@/hooks/useAppContext';
 import { AppLayout } from '@/components/AppLayout';
 import { OnboardingDialog } from '@/components/OnboardingDialog';
 import { Act1Dialog } from '@/components/Act1Dialog';
@@ -35,6 +36,7 @@ export default function Index() {
   const { fs } = useFS();
   const { generateProjectId, isLoading: isGeneratingId } = useAIProjectId();
   const { settings, addRecentlyUsedModel } = useAISettings();
+  const { config } = useAppContext();
   const [providerModel, setProviderModel] = useState(() => {
     // Initialize with first recently used model if available, otherwise empty
     return settings.recentlyUsedModels?.[0] || '';
@@ -196,7 +198,7 @@ export default function Index() {
       addRecentlyUsedModel(providerModel.trim());
 
       // Create project with AI-generated ID
-      const project = await projectsManager.createProject(prompt.trim(), projectId);
+      const project = await projectsManager.createProject(prompt.trim(), config.projectTemplate, projectId);
 
       // Build message content as text parts (same as ChatPane)
       const contentParts: Array<OpenAI.Chat.Completions.ChatCompletionContentPartText> = [];

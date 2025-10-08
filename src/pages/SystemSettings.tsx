@@ -13,6 +13,7 @@ export function SystemSettings() {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const { config, updateConfig } = useAppContext();
+  const [projectTemplateInput, setProjectTemplateInput] = useState(config.projectTemplate);
   const [esmUrlInput, setEsmUrlInput] = useState(config.esmUrl);
   const [corsProxyInput, setCorsProxyInput] = useState(config.corsProxy);
   const [previewDomainInput, setPreviewDomainInput] = useState(config.previewDomain);
@@ -55,6 +56,36 @@ export function SystemSettings() {
       )}
 
       <div className="space-y-3 max-w-xl">
+        {/* Project Template Configuration */}
+        <Accordion type="single" collapsible className="w-full">
+          <AccordionItem value="project-template" className="border rounded-lg">
+            <AccordionTrigger className="px-4 py-3 hover:no-underline">
+              <h4 className="text-sm font-medium">{t('projectTemplate')}</h4>
+            </AccordionTrigger>
+            <AccordionContent className="px-4 pb-4">
+              <div className="py-1 space-y-2">
+                <Input
+                  id="project-template"
+                  type="url"
+                  placeholder="https://gitlab.com/soapbox-pub/mkstack.git"
+                  value={projectTemplateInput}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setProjectTemplateInput(value);
+                    updateConfig((current) => ({
+                      ...current,
+                      projectTemplate: value,
+                    }));
+                  }}
+                />
+                <p className="text-xs text-muted-foreground">
+                  {t('projectTemplateDescription')}
+                </p>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+
         {/* CORS Proxy Configuration */}
         <Accordion type="single" collapsible className="w-full">
           <AccordionItem value="cors-proxy" className="border rounded-lg">

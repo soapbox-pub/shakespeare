@@ -32,6 +32,8 @@ const resources = {
       systemSettingsDescription: 'Configure system-level settings and advanced options.',
       esmUrl: 'Javascript CDN',
       esmUrlDescription: 'Javascript CDN URL for package imports.',
+      projectTemplate: 'Project Template',
+      projectTemplateDescription: 'Git repository URL to use as the starting template for new projects.',
       previewDomain: 'Preview Domain',
       previewDomainDescription: 'Domain used for iframe preview sandboxing.',
       corsProxy: 'CORS Proxy',
@@ -524,6 +526,8 @@ const resources = {
       password: 'Senha',
       enterPassword: 'Digite sua senha/token',
       credentialsExist: 'Credenciais para esta origem já existem',
+      projectTemplate: 'Modelo de Projeto',
+      projectTemplateDescription: 'URL do repositório Git a ser usado como modelo inicial para novos projetos.',
       corsProxy: 'Proxy CORS',
       corsProxyDescription: 'Proxy usado para contornar CORS para operações de IA e Git.',
 
@@ -841,6 +845,8 @@ const resources = {
       password: '密码',
       enterPassword: '输入您的密码/令牌',
       credentialsExist: '此源的凭据已存在',
+      projectTemplate: '项目模板',
+      projectTemplateDescription: '用作新项目起始模板的Git仓库URL。',
       corsProxy: 'CORS代理',
       corsProxyDescription: '用于绕过CORS的代理,适用于AI和Git操作。',
 
@@ -1158,6 +1164,8 @@ const resources = {
       password: 'Kalmar sirri',
       enterPassword: 'Shigar da kalmar sirri/alamar ku',
       credentialsExist: 'Bayanan shaidar wannan asali sun riga sun wanzu',
+      projectTemplate: 'Samfurin Aikin',
+      projectTemplateDescription: 'URL ɗin ma\'ajin Git da za a yi amfani da shi azaman samfurin farawa don sababbin ayyuka.',
       corsProxy: 'CORS Proxy',
       corsProxyDescription: 'Proxy da ake amfani da shi don ketare CORS don ayyukan AI da Git.',
 
@@ -1475,6 +1483,8 @@ const resources = {
       password: 'Ọrọ igbaniwọle',
       enterPassword: 'Tẹ ọrọ igbaniwọle/token rẹ sinu',
       credentialsExist: 'Awọn ẹri fun ipilẹṣẹ yii ti wa tẹlẹ',
+      projectTemplate: 'Awoṣe Iṣẹ akanṣe',
+      projectTemplateDescription: 'URL ibi ipamọ Git lati lo bi awoṣe ibẹrẹ fun awọn iṣẹ akanṣe tuntun.',
       corsProxy: 'CORS Proxy',
       corsProxyDescription: 'Olupin proxy ti a lo lati kọja CORS fun awọn iṣẹ AI ati Git.',
 
@@ -1787,6 +1797,8 @@ const resources = {
       password: 'Okwuntughe',
       enterPassword: 'Tinye okwuntughe/token gị',
       credentialsExist: 'Nzere maka mmalite a adịlarị',
+      projectTemplate: 'Ụdịdị Ọrụ',
+      projectTemplateDescription: 'URL nchekwa Git iji mee ka ụdịdị mmalite maka ọrụ ọhụrụ.',
       corsProxy: 'CORS Proxy',
       corsProxyDescription: 'Sava proxy ejiri gafere CORS maka ọrụ AI na Git.',
 

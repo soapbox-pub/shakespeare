@@ -18,6 +18,7 @@ interface AppProviderProps {
 const AppConfigSchema = z.object({
   theme: z.enum(['dark', 'light', 'system']),
   relayUrl: z.string().url(),
+  projectTemplate: z.string().url(),
   deployServer: z.string().min(1),
   esmUrl: z.string().url(),
   corsProxy: z.string().url(),

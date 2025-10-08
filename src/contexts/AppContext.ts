@@ -7,6 +7,8 @@ export interface AppConfig {
   theme: Theme;
   /** Selected relay URL */
   relayUrl: string;
+  /** Git repository URL to use as project template */
+  projectTemplate: string;
   /** Deploy server domain (e.g., "shakespeare.wtf") */
   deployServer: string;
   /** ESM CDN URL for package imports */

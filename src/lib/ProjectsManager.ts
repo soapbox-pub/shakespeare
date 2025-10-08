@@ -9,9 +9,6 @@ if (typeof window !== 'undefined') {
   (window as { Buffer?: typeof Buffer }).Buffer = Buffer;
 }
 
-// const GIT_TEMPLATE_URL = 'https://relay.ngit.dev/npub1q3sle0kvfsehgsuexttt3ugjd8xdklxfwwkh559wxckmzddywnws6cd26p/mkstack.git';
-const GIT_TEMPLATE_URL = 'https://gitlab.com/soapbox-pub/mkstack.git';
-
 export interface Project {
   id: string;
   name: string;
@@ -43,8 +40,8 @@ export class ProjectsManager {
     }
   }
 
-  async createProject(name: string, customId?: string): Promise<Project> {
-    const project = await this.cloneProject(name, GIT_TEMPLATE_URL, customId, { depth: 1 });
+  async createProject(name: string, templateUrl: string, customId?: string): Promise<Project> {
+    const project = await this.cloneProject(name, templateUrl, customId, { depth: 1 });
 
     // Delete README.md if it exists
     try {

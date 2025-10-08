@@ -13,6 +13,7 @@ const aiProviderSchema: z.ZodType<AIProvider> = z.object({
   baseURL: z.string().url(),
   apiKey: z.string().optional(),
   nostr: z.boolean().optional(),
+  proxy: z.boolean().optional(),
 });
 
 const providerModelSchema = z.string().regex(

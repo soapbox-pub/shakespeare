@@ -5,6 +5,7 @@ export interface AIProvider {
   baseURL: string;
   apiKey?: string;
   nostr?: boolean;
+  proxy?: boolean;
 }
 
 export interface AISettings {

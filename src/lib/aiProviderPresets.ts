@@ -5,6 +5,7 @@ export interface PresetProvider {
   apiKeysURL?: string;
   nostr?: boolean;
   tosURL?: string;
+  proxy?: boolean;
 }
 
 export const AI_PROVIDER_PRESETS: PresetProvider[] = [
@@ -70,6 +71,14 @@ export const AI_PROVIDER_PRESETS: PresetProvider[] = [
     baseURL: "https://api.deepseek.com/v1",
     apiKeysURL: "https://platform.deepseek.com/api_keys",
     tosURL: "https://cdn.deepseek.com/policies/en-US/deepseek-open-platform-terms-of-service.html",
+  },
+  {
+    id: "moonshot",
+    name: "Moonshot AI",
+    baseURL: "https://api.moonshot.ai/v1",
+    apiKeysURL: "https://platform.moonshot.ai/console/api-keys",
+    tosURL: "https://platform.moonshot.ai/docs/agreement/modeluse",
+    proxy: true,
   },
 ];
 

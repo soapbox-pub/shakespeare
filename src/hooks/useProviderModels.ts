@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAISettings } from '@/hooks/useAISettings';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useAppContext } from '@/hooks/useAppContext';
 import { createAIClient } from '@/lib/ai-client';
 
 interface ProviderModel {
@@ -32,6 +33,7 @@ interface ModelFetchResult {
 export function useProviderModels(): ModelFetchResult {
   const { settings } = useAISettings();
   const { user } = useCurrentUser();
+  const { config } = useAppContext();
   const [error, setError] = useState<string | null>(null);
 
   const {
@@ -46,7 +48,7 @@ export function useProviderModels(): ModelFetchResult {
       // Fetch models from each configured provider in parallel
       const providerPromises = settings.providers.map(async (provider) => {
         try {
-          const openai = createAIClient(provider, user);
+          const openai = createAIClient(provider, user, config.corsProxy);
 
           // Fetch models with timeout
           try {

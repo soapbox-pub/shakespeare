@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useAISettings } from '@/hooks/useAISettings';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useAppContext } from '@/hooks/useAppContext';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { createAIClient } from '@/lib/ai-client';
 import { parseProviderModel } from '@/lib/parseProviderModel';
@@ -13,6 +14,7 @@ export function useAIProjectId({ onError }: UseAIProjectIdOptions = {}) {
   const [isLoading, setIsLoading] = useState(false);
   const { settings, isConfigured } = useAISettings();
   const { user } = useCurrentUser();
+  const { config } = useAppContext();
   const projectsManager = useProjectsManager();
 
   const generateProjectId = useCallback(async (providerModel: string, prompt: string): Promise<string> => {
@@ -29,7 +31,7 @@ export function useAIProjectId({ onError }: UseAIProjectIdOptions = {}) {
     try {
       // Initialize OpenAI client
       const { model, provider } = parseProviderModel(providerModel, settings.providers);
-      const openai = createAIClient(provider, user);
+      const openai = createAIClient(provider, user, config.corsProxy);
 
       const systemPrompt = `You are a product expert. Given the user's project description, come up with a short, unique, and memorable name for their product or brand. Generate only the name without any additional text or punctuation. The name should be lowercase, use hyphens instead of spaces, and contain only alphanumeric characters and hyphens. Avoid using special characters or underscores.`;
 
@@ -84,7 +86,7 @@ export function useAIProjectId({ onError }: UseAIProjectIdOptions = {}) {
     } finally {
       setIsLoading(false);
     }
-  }, [isConfigured, settings, onError, user, projectsManager]);
+  }, [isConfigured, settings, onError, user, projectsManager, config.corsProxy]);
 
   return {
     generateProjectId,

@@ -145,6 +145,19 @@ function SortableProviderItem({ provider, preset, onRemove, onSetProvider, onOpe
               />
             </div>
           )}
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id={`${provider.id}-proxy`}
+              checked={provider.proxy || false}
+              onCheckedChange={(checked) => onSetProvider({
+                ...provider,
+                proxy: checked === true || undefined
+              })}
+            />
+            <Label htmlFor={`${provider.id}-proxy`} className="cursor-pointer">
+              {t('useCorsProxy')}
+            </Label>
+          </div>
         </div>
       </AccordionContent>
     </AccordionItem>
@@ -161,6 +174,7 @@ export function AISettings() {
   const [customBaseURL, setCustomBaseURL] = useState('');
   const [customApiKey, setCustomApiKey] = useState('');
   const [customAuthMethod, setCustomAuthMethod] = useState<'api-key' | 'nostr'>('api-key');
+  const [customProxy, setCustomProxy] = useState(false);
   const [presetApiKeys, setPresetApiKeys] = useState<Record<string, string>>({});
   const [presetTermsAgreements, setPresetTermsAgreements] = useState<Record<string, boolean>>({});
   const [activeCreditsDialog, setActiveCreditsDialog] = useState<string | null>(null);
@@ -189,6 +203,9 @@ export function AISettings() {
     if (typeof preset.nostr === 'boolean') {
       newProvider.nostr = preset.nostr;
     }
+    if (typeof preset.proxy === 'boolean') {
+      newProvider.proxy = preset.proxy;
+    }
 
     // Auto-save: Add provider immediately to persistent storage
     setProvider(newProvider);
@@ -212,6 +229,7 @@ export function AISettings() {
       baseURL: customBaseURL.trim(),
       apiKey: customAuthMethod === 'nostr' ? undefined : customApiKey.trim(),
       nostr: customAuthMethod === 'nostr' || undefined,
+      proxy: customProxy || undefined,
     };
 
     // Auto-save: Add provider immediately to persistent storage
@@ -221,6 +239,7 @@ export function AISettings() {
     setCustomBaseURL('');
     setCustomApiKey('');
     setCustomAuthMethod('api-key');
+    setCustomProxy(false);
   };
 
   const handleRemoveProvider = (id: string) => {
@@ -501,6 +520,16 @@ export function AISettings() {
                       />
                     </div>
                   )}
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="custom-proxy"
+                      checked={customProxy}
+                      onCheckedChange={(checked) => setCustomProxy(checked === true)}
+                    />
+                    <Label htmlFor="custom-proxy" className="cursor-pointer">
+                      {t('useCorsProxy')}
+                    </Label>
+                  </div>
                   <Button
                     onClick={handleAddCustomProvider}
                     disabled={

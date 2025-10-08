@@ -13,6 +13,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/useToast';
 import { createAIClient } from '@/lib/ai-client';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useAppContext } from '@/hooks/useAppContext';
 import { AIProvider } from '@/contexts/AISettingsContext';
 
 interface CreditsDialogProps {
@@ -183,6 +184,7 @@ function LightningPayment({ invoice, amount, onClose }: LightningPaymentProps) {
 
 export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogProps) {
   const { user } = useCurrentUser();
+  const { config } = useAppContext();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -195,7 +197,7 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
   const { data: payments, isLoading: isLoadingPayments } = useQuery({
     queryKey: ['ai-payments', provider.nostr ? user?.pubkey ?? '' : '', provider.id],
     queryFn: async (): Promise<Payment[]> => {
-      const ai = createAIClient(provider, user);
+      const ai = createAIClient(provider, user, config.corsProxy);
       const data = await ai.get('/credits/payments?limit=50') as PaymentsResponse;
       return data.data;
     },
@@ -207,7 +209,7 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
   // Mutation for adding credits
   const addCreditsMutation = useMutation({
     mutationFn: async (request: AddCreditsRequest): Promise<Payment> => {
-      const ai = createAIClient(provider, user);
+      const ai = createAIClient(provider, user, config.corsProxy);
       return await ai.post('/credits/add', {
         body: request,
       }) as Payment;
@@ -248,7 +250,7 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
   // Mutation for checking payment status
   const checkPaymentMutation = useMutation({
     mutationFn: async (paymentId: string): Promise<Payment> => {
-      const ai = createAIClient(provider, user);
+      const ai = createAIClient(provider, user, config.corsProxy);
       return await ai.get(`/credits/payments/${paymentId}`) as Payment;
     },
     onMutate: async (paymentId: string) => {

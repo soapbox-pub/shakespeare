@@ -3,6 +3,7 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { useAIProjectId } from './useAIProjectId';
 import { useAISettings } from './useAISettings';
 import { useCurrentUser } from './useCurrentUser';
+import { useAppContext } from './useAppContext';
 import { useProjectsManager } from './useProjectsManager';
 import { createAIClient } from '@/lib/ai-client';
 import { parseProviderModel } from '@/lib/parseProviderModel';
@@ -11,6 +12,7 @@ import type { ProjectsManager } from '@/lib/ProjectsManager';
 // Mock the hooks and dependencies
 vi.mock('./useAISettings');
 vi.mock('./useCurrentUser');
+vi.mock('./useAppContext');
 vi.mock('./useProjectsManager');
 vi.mock('@/lib/ai-client');
 vi.mock('@/lib/parseProviderModel');
@@ -18,6 +20,7 @@ vi.mock('@/lib/parseProviderModel');
 describe('useAIProjectId', () => {
   const mockUseAISettings = vi.mocked(useAISettings);
   const mockUseCurrentUser = vi.mocked(useCurrentUser);
+  const mockUseAppContext = vi.mocked(useAppContext);
   const mockUseProjectsManager = vi.mocked(useProjectsManager);
   const mockCreateAIClient = vi.mocked(createAIClient);
   const mockParseProviderModel = vi.mocked(parseProviderModel);
@@ -32,6 +35,20 @@ describe('useAIProjectId', () => {
     mockUseCurrentUser.mockReturnValue({
       user: undefined,
       users: [],
+    });
+
+    // Mock useAppContext
+    mockUseAppContext.mockReturnValue({
+      config: {
+        theme: 'dark',
+        relayUrl: 'wss://relay.damus.io',
+        projectTemplate: 'https://github.com/example/template',
+        deployServer: 'shakespeare.wtf',
+        esmUrl: 'https://esm.sh',
+        corsProxy: 'https://proxy.example.com/{href}',
+        previewDomain: 'local-shakespeare.dev',
+      },
+      updateConfig: vi.fn(),
     });
 
     // Mock useProjectsManager
@@ -170,7 +187,8 @@ describe('useAIProjectId', () => {
     ]);
     expect(mockCreateAIClient).toHaveBeenCalledWith(
       { id: 'openai', apiKey: 'test-key', baseURL: 'https://api.openai.com/v1' },
-      undefined
+      undefined,
+      'https://proxy.example.com/{href}'
     );
   });
 

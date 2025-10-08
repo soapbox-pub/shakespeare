@@ -1,39 +1,58 @@
 import OpenAI from 'openai';
-import { NIP98Client } from '@nostrify/nostrify';
+import { NIP98 } from '@nostrify/nostrify';
+import { N64 } from '@nostrify/nostrify/utils';
 import type { NUser } from '@nostrify/react/login';
 import type { AIProvider } from '@/contexts/AISettingsContext';
+import { proxyUrl } from './proxyUrl';
 
 /**
  * Create an OpenAI client instance with the appropriate configuration.
  * If the connection requires Nostr authentication (NIP-98), it will use
  * the NIP98Client for authenticated requests.
+ * If the provider has proxy enabled, requests will be proxied through the corsProxy.
  */
-export function createAIClient(provider: AIProvider, user?: NUser): OpenAI {
+export function createAIClient(provider: AIProvider, user?: NUser, corsProxy?: string): OpenAI {
   const baseConfig: ConstructorParameters<typeof OpenAI>[0] = {
     baseURL: provider.baseURL,
     apiKey: provider.apiKey ?? '',
     dangerouslyAllowBrowser: true,
-    defaultHeaders: provider.id === 'openrouter' ? {
-      // https://openrouter.ai/docs/app-attribution
-      'HTTP-Referer': 'https://shakespeare.diy',
-      'X-Title': 'Shakespeare',
-    } : {},
   };
 
-  let openai: OpenAI;
+  const openai = new OpenAI({
+    ...baseConfig,
+    fetch: async (input, init) => {
+      let request = new Request(input, init);
 
-  // If Nostr authentication is required and we have a user, use NIP-98
-  if (provider.nostr && user?.signer) {
-    const nip98Client = new NIP98Client({ signer: user.signer });
+      // Add OpenRouter headers
+      // https://openrouter.ai/docs/app-attribution
+      if (provider.id === 'openrouter') {
+        const headers = new Headers(request.headers);
+        headers.set('HTTP-Referer', 'https://shakespeare.diy');
+        headers.set('X-Title', 'Shakespeare');
+        request = new Request(request, { headers });
+      }
 
-    openai = new OpenAI({
-      ...baseConfig,
-      fetch: (input, init) => nip98Client.fetch(input, init),
-    });
-  } else {
-    // Standard OpenAI client
-    openai = new OpenAI(baseConfig);
-  }
+      // If Nostr authentication is required and we have a user, use NIP-98
+      if (provider.nostr && user?.signer) {
+        // Create the NIP98 token
+        const template = await NIP98.template(request);
+        const event = await user.signer.signEvent(template);
+        const token = N64.encodeEvent(event);
+
+        // Add the Authorization header
+        const headers = new Headers(request.headers);
+        headers.set('Authorization', `Nostr ${token}`);
+        request = new Request(request, { headers });
+      }
+
+      // If proxy is enabled and we have a CORS proxy URL, modify the request URL
+      if (provider.proxy && corsProxy) {
+        request = new Request(proxyUrl(corsProxy, request.url), request);
+      }
+
+      return fetch(request);
+    },
+  });
 
   const createCompletion: typeof openai.chat.completions.create
     = openai.chat.completions.create.bind(openai.chat.completions);

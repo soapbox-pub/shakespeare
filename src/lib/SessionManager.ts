@@ -60,17 +60,20 @@ export class SessionManager {
   private aiSettings: { providers: AIProvider[] };
   private getProviderModels?: () => Array<{ id: string; provider: string; contextLength?: number; pricing?: { prompt: import('decimal.js').Decimal; completion: import('decimal.js').Decimal } }>;
   private getCurrentUser?: () => { user?: NUser; metadata?: NostrMetadata };
+  private corsProxy?: string;
 
   constructor(
     fs: JSRuntimeFS,
     aiSettings: { providers: AIProvider[] },
     getProviderModels?: () => Array<{ id: string; provider: string; contextLength?: number; pricing?: { prompt: import('decimal.js').Decimal; completion: import('decimal.js').Decimal } }>,
     getCurrentUser?: () => { user?: NUser; metadata?: NostrMetadata },
+    corsProxy?: string,
   ) {
     this.fs = fs;
     this.aiSettings = aiSettings;
     this.getProviderModels = getProviderModels;
     this.getCurrentUser = getCurrentUser;
+    this.corsProxy = corsProxy;
   }
 
   /**
@@ -206,7 +209,7 @@ export class SessionManager {
 
       // Initialize OpenAI client
       const { user, metadata } = this.getCurrentUser?.() ?? {};
-      const openai = createAIClient(provider, user);
+      const openai = createAIClient(provider, user, this.corsProxy);
 
       let stepCount = 0;
       const maxSteps = session.maxSteps || 50;

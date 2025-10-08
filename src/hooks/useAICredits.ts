@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { z } from 'zod';
 import { createAIClient } from '@/lib/ai-client';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useAppContext } from '@/hooks/useAppContext';
 import { AIProvider } from '@/contexts/AISettingsContext';
 
 const creditsResponseSchema = z.object({
@@ -18,12 +19,13 @@ export interface CreditsResponse {
 /** Custom hook to fetch AI provider credits */
 export function useAICredits(provider: AIProvider) {
   const { user } = useCurrentUser();
+  const { config } = useAppContext();
 
   return useQuery({
     queryKey: ['ai-credits', provider.nostr ? user?.pubkey ?? '' : '', provider.id],
     queryFn: async (): Promise<CreditsResponse> => {
       try {
-        const ai = createAIClient(provider, user);
+        const ai = createAIClient(provider, user, config.corsProxy);
         const data = await ai.get('/credits');
         return creditsResponseSchema.parse(data);
       } catch (error) {

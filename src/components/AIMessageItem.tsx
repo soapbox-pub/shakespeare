@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { UserMessage } from '@/components/UserMessage';
 import OpenAI from 'openai';
 import { useTheme } from '@/hooks/useTheme';
+import { isEmptyMessage } from '@/lib/isEmptyMessage';
 
 // Type guard to check if message has reasoning content
 function hasReasoningContent(message: AIMessage): message is AIMessage & { reasoning_content: string } {
@@ -299,8 +300,12 @@ export const AIMessageItem = memo(({
     );
   }
 
-  // If there's no reasoning content and the main content is empty, render nothing
-  if (!hasReasoningContent(message) && !getContent().trim()) {
+  if (message.role !== 'assistant') {
+    return null; // Only render assistant and user messages
+  }
+
+  // If the message is empty (no content or reasoning), render nothing
+  if (isEmptyMessage({ ...message, tool_calls: [] })) {
     return null;
   }
 

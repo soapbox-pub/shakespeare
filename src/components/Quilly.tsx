@@ -10,12 +10,14 @@ import { CreditsDialog } from './CreditsDialog';
 import { ProjectPreviewConsoleError } from '@/lib/consoleMessages';
 import { useState } from 'react';
 import { MalformedToolCallError } from '@/lib/errors/MalformedToolCallError';
+import { EmptyMessageError } from '@/lib/errors/EmptyMessageError';
 
 export interface QuillyProps {
   error: Error;
   onDismiss: () => void;
   onNewChat: () => void;
   onOpenModelSelector: () => void;
+  onTryAgain?: () => void;
   onRequestConsoleErrorHelp?: (error: ProjectPreviewConsoleError) => void;
   providerModel: string;
 }
@@ -28,7 +30,7 @@ interface ErrorBody {
   };
 }
 
-export function Quilly({ error, onDismiss, onNewChat, onOpenModelSelector, onRequestConsoleErrorHelp, providerModel }: QuillyProps) {
+export function Quilly({ error, onDismiss, onNewChat, onOpenModelSelector, onTryAgain, onRequestConsoleErrorHelp, providerModel }: QuillyProps) {
   const navigate = useNavigate();
   const { settings } = useAISettings();
 
@@ -63,6 +65,22 @@ export function Quilly({ error, onDismiss, onNewChat, onOpenModelSelector, onReq
       return {
         message: 'The AI sent an incomplete response, possibly due to a network issue or provider problem. Try sending your message again, or switch to a different model if this persists.',
         action: {
+          label: 'Change model',
+          onClick: onOpenModelSelector,
+        },
+      };
+    }
+
+    if (error instanceof EmptyMessageError) {
+      return {
+        message: 'The AI generated an empty response. This may be due to a provider issue or model configuration problem. Try generating again, or switch to a different model.',
+        action: onTryAgain ? {
+          label: 'Try again',
+          onClick: () => {
+            onTryAgain();
+            onDismiss();
+          },
+        } : {
           label: 'Change model',
           onClick: onOpenModelSelector,
         },

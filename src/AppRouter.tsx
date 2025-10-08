@@ -10,7 +10,7 @@ import NostrSettings from "./pages/NostrSettings";
 import AISettings from "./pages/AISettings";
 import GitSettings from "./pages/GitSettings";
 import SystemSettings from "./pages/SystemSettings";
-import DataSettings from "./pages/DataSettings";
+import StorageSettings from "./pages/StorageSettings";
 import AboutSettings from "./pages/AboutSettings";
 
 import GitHubOAuth from "./pages/GitHubOAuth";
@@ -35,7 +35,7 @@ export function AppRouter() {
           <Route path="ai" element={<AISettings />} />
           <Route path="git" element={<GitSettings />} />
           <Route path="system" element={<SystemSettings />} />
-          <Route path="data" element={<DataSettings />} />
+          <Route path="storage" element={<StorageSettings />} />
           <Route path="about" element={<AboutSettings />} />
         </Route>
         <Route path="/project/:projectId" element={<ProjectView />} />

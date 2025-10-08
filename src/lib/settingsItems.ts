@@ -43,11 +43,11 @@ export const getSettingsItems = (t: (key: string) => string): SettingsItem[] => 
     href: '/settings/nostr',
   },
   {
-    id: 'data',
-    title: t('dataSettings'),
-    description: t('dataSettingsDescription'),
+    id: 'storage',
+    title: t('storageSettings'),
+    description: t('storageSettingsDescription'),
     icon: Database,
-    href: '/settings/data',
+    href: '/settings/storage',
   },
   {
     id: 'system',

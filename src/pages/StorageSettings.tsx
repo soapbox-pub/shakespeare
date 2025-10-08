@@ -31,7 +31,7 @@ interface StorageInfo {
   usageDetails?: StorageUsageDetails;
 }
 
-export function DataSettings() {
+export function StorageSettings() {
   const { t } = useTranslation();
   const [isExporting, setIsExporting] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
@@ -280,7 +280,7 @@ export function DataSettings() {
           <div className="space-y-2">
             <h1 className="text-2xl font-bold flex items-center gap-3">
               <Database className="h-6 w-6 text-primary" />
-              {t('dataSettings')}
+              {t('storageSettings')}
             </h1>
             <p className="text-muted-foreground">
               {t('dataSettingsDescriptionLong')}
@@ -293,7 +293,7 @@ export function DataSettings() {
         <div className="space-y-2">
           <h1 className="text-2xl font-bold flex items-center gap-3">
             <Database className="h-6 w-6 text-primary" />
-            {t('dataSettings')}
+            {t('storageSettings')}
           </h1>
           <p className="text-muted-foreground">
             {t('dataSettingsDescriptionLong')}
@@ -463,4 +463,4 @@ export function DataSettings() {
   );
 }
 
-export default DataSettings;
+export default StorageSettings;

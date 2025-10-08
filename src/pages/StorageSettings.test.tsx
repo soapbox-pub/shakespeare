@@ -1,18 +1,18 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { TestApp } from '@/test/TestApp';
-import DataSettings from './DataSettings';
+import StorageSettings from './StorageSettings';
 
-describe('DataSettings', () => {
-  it('renders the data settings page correctly', () => {
+describe('StorageSettings', () => {
+  it('renders the storage settings page correctly', () => {
     render(
       <TestApp>
-        <DataSettings />
+        <StorageSettings />
       </TestApp>
     );
 
     // Check for main heading
-    expect(screen.getByText('Data')).toBeInTheDocument();
+    expect(screen.getByText('Storage')).toBeInTheDocument();
 
     // Check for description
     expect(screen.getByText('Export files and manage local data.')).toBeInTheDocument();
@@ -32,7 +32,7 @@ describe('DataSettings', () => {
   it('shows persist data toggle, export and clear buttons', () => {
     render(
       <TestApp>
-        <DataSettings />
+        <StorageSettings />
       </TestApp>
     );
 

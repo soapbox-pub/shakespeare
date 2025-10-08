@@ -55,36 +55,6 @@ export function SystemSettings() {
       )}
 
       <div className="space-y-3 max-w-xl">
-        {/* Preview Domain Configuration */}
-        <Accordion type="single" collapsible className="w-full">
-          <AccordionItem value="preview-domain" className="border rounded-lg">
-            <AccordionTrigger className="px-4 py-3 hover:no-underline">
-              <h4 className="text-sm font-medium">{t('previewDomain')}</h4>
-            </AccordionTrigger>
-            <AccordionContent className="px-4 pb-4">
-              <div className="py-1 space-y-2">
-                <Input
-                  id="preview-domain"
-                  type="text"
-                  placeholder="local-shakespeare.dev"
-                  value={previewDomainInput}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    setPreviewDomainInput(value);
-                    updateConfig((current) => ({
-                      ...current,
-                      previewDomain: value,
-                    }));
-                  }}
-                />
-                <p className="text-xs text-muted-foreground">
-                  {t('previewDomainDescription')}
-                </p>
-              </div>
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
-
         {/* CORS Proxy Configuration */}
         <Accordion type="single" collapsible className="w-full">
           <AccordionItem value="cors-proxy" className="border rounded-lg">
@@ -140,6 +110,36 @@ export function SystemSettings() {
                 />
                 <p className="text-xs text-muted-foreground">
                   {t('esmUrlDescription')}
+                </p>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+
+        {/* Preview Domain Configuration */}
+        <Accordion type="single" collapsible className="w-full">
+          <AccordionItem value="preview-domain" className="border rounded-lg">
+            <AccordionTrigger className="px-4 py-3 hover:no-underline">
+              <h4 className="text-sm font-medium">{t('previewDomain')}</h4>
+            </AccordionTrigger>
+            <AccordionContent className="px-4 pb-4">
+              <div className="py-1 space-y-2">
+                <Input
+                  id="preview-domain"
+                  type="text"
+                  placeholder="local-shakespeare.dev"
+                  value={previewDomainInput}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setPreviewDomainInput(value);
+                    updateConfig((current) => ({
+                      ...current,
+                      previewDomain: value,
+                    }));
+                  }}
+                />
+                <p className="text-xs text-muted-foreground">
+                  {t('previewDomainDescription')}
                 </p>
               </div>
             </AccordionContent>

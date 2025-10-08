@@ -4,10 +4,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-
-// import { useAISettings } from '@/hooks/useAISettings';
 import { useAICredits } from '@/hooks/useAICredits';
-// import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { getShakespeareProvider } from '@/lib/aiProviderPresets';
 
 interface Act1DialogProps {
   open: boolean;
@@ -16,42 +14,12 @@ interface Act1DialogProps {
 
 type DialogStep = 'welcome' | 'migration' | 'credits' | 'conclusion';
 
-const SHAKESPEARE_PROVIDER = {
-  id: "shakespeare",
-  baseURL: "https://ai.shakespeare.diy/v1",
-  nostr: true,
-};
-
-// const MKSTACK_NSP_ADDR = '31999:4bcaa7b5606e3c14df05cd497e588f5d3fe559b4e9a425e8b418a43af1ffb015:mkstack';
-
 export function Act1Dialog({ open, onOpenChange }: Act1DialogProps) {
   const [step, setStep] = useState<DialogStep>('welcome');
-  // const { setProvider, updateSettings } = useAISettings();
-
-  // // Get the selectedNSPAddr from localStorage
-  // const [selectedNSPAddr] = useLocalStorage<string | null>('selectedNSPAddr', null);
-
-  // Get user's credits
-  const { data: creditsData } = useAICredits(SHAKESPEARE_PROVIDER);
+  const { data: creditsData } = useAICredits(getShakespeareProvider());
 
   const handleGetStarted = async () => {
     try {
-      // // Add Shakespeare provider to their config
-      // setProvider(SHAKESPEARE_PROVIDER);
-
-      // // Configure recently used models based on credits or NSP
-      // const hasCredits = creditsData?.amount && creditsData.amount > 0;
-      // const hasMKStackNSP = selectedNSPAddr === MKSTACK_NSP_ADDR;
-
-      // if (hasCredits || hasMKStackNSP) {
-      //   // User has credits or MKStack NSP - set to shakespeare model
-      //   updateSettings({ recentlyUsedModels: ['shakespeare/shakespeare'] });
-      // } else {
-      //   // No credits - set to tybalt model (free)
-      //   updateSettings({ recentlyUsedModels: ['shakespeare/tybalt'] });
-      // }
-
-      // Move to migration step
       setStep('migration');
     } catch (error) {
       console.error('Failed to configure Shakespeare provider:', error);
@@ -269,36 +237,21 @@ export function Act1Dialog({ open, onOpenChange }: Act1DialogProps) {
 
                 <Card className="max-w-md mx-auto">
                   <CardContent className="pt-6">
-                    {creditsData?.amount && creditsData.amount > 0 ? (
-                      <div className="text-center space-y-4">
-                        <div className="space-y-2">
-                          <div className="text-3xl font-bold text-green-600 dark:text-green-400">
-                            ${creditsData.amount.toFixed(2)}
-                          </div>
-                          <p className="text-sm text-muted-foreground">
-                            Available credits
-                          </p>
+                    <div className="text-center space-y-4">
+                      <div className="space-y-2">
+                        <div className="text-3xl font-bold text-green-600 dark:text-green-400">
+                          ${(creditsData?.amount ?? 0).toFixed(2)}
                         </div>
-                        <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg p-3">
-                          <p className="text-sm text-green-800 dark:text-green-200">
-                            ✅ You're all set! We've configured the premium Shakespeare model for you.
-                          </p>
-                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          Available credits
+                        </p>
                       </div>
-                    ) : (
-                      <div className="text-center space-y-4">
-                        <div className="space-y-2">
-                          <div className="text-2xl">🆓</div>
-                          <p className="font-medium">Free Access</p>
-                        </div>
-                        <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
-                          <p className="text-sm text-blue-800 dark:text-blue-200">
-                            You can continue using Shakespeare for free with the Tybalt model.
-                            It's perfect for learning and building amazing projects!
-                          </p>
-                        </div>
+                      <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg p-3">
+                        <p className="text-sm text-green-800 dark:text-green-200">
+                          ✅ You're all set! We've configured the premium Shakespeare model for you.
+                        </p>
                       </div>
-                    )}
+                    </div>
                   </CardContent>
                 </Card>
 

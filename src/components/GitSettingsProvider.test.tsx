@@ -14,7 +14,7 @@ vi.mock('@/lib/configUtils', () => ({
 
 // Test component that uses the hook
 function TestComponent() {
-  const { settings, updateSettings, addCredential, removeCredential, updateCredential, isConfigured } = useGitSettings();
+  const { settings, addCredential, removeCredential, updateCredential, isConfigured } = useGitSettings();
 
   const handleAdd = () => {
     const credential: GitCredential = {
@@ -32,21 +32,13 @@ function TestComponent() {
     removeCredential('https://github.com');
   };
 
-  const handleUpdateCorsProxy = () => {
-    updateSettings({ corsProxy: 'https://custom-cors.example.com' });
-  };
-
-
-
   return (
     <div>
       <div data-testid="configured">{isConfigured ? 'configured' : 'not-configured'}</div>
       <div data-testid="count">{Object.keys(settings.credentials).length}</div>
-      <div data-testid="cors-proxy">{settings.corsProxy}</div>
       <button onClick={handleAdd}>Add GitHub</button>
       <button onClick={handleUpdate}>Update GitHub</button>
       <button onClick={handleRemove}>Remove GitHub</button>
-      <button onClick={handleUpdateCorsProxy}>Update CORS Proxy</button>
       {settings.credentials['https://github.com'] && (
         <div data-testid="github-creds">
           {settings.credentials['https://github.com'].username}:
@@ -76,7 +68,6 @@ describe('GitSettingsProvider', () => {
     const { readGitSettings } = await import('@/lib/configUtils');
     vi.mocked(readGitSettings).mockResolvedValue({
       credentials: {},
-      corsProxy: 'https://cors.isomorphic-git.org',
     });
   });
 
@@ -178,8 +169,7 @@ describe('GitSettingsProvider', () => {
               username: 'git',
               password: 'test-token',
             }
-          },
-          corsProxy: 'https://proxy.shakespeare.diy/?url={href}'
+          }
         })
       );
     });
@@ -193,7 +183,6 @@ describe('GitSettingsProvider', () => {
           password: 'gitlab-token',
         },
       },
-      corsProxy: 'https://custom-cors.example.com',
     };
 
     const { readGitSettings } = await import('@/lib/configUtils');
@@ -208,36 +197,7 @@ describe('GitSettingsProvider', () => {
     await waitFor(() => {
       expect(screen.getByTestId('configured')).toHaveTextContent('configured');
       expect(screen.getByTestId('count')).toHaveTextContent('1');
-      expect(screen.getByTestId('cors-proxy')).toHaveTextContent('https://custom-cors.example.com');
     });
-  });
-
-  it('provides default CORS proxy', async () => {
-    render(
-      <TestWrapper>
-        <TestComponent />
-      </TestWrapper>
-    );
-
-    await waitFor(() => {
-      expect(screen.getByTestId('cors-proxy')).toHaveTextContent('https://proxy.shakespeare.diy/?url={href}');
-    });
-  });
-
-  it('can update CORS proxy', async () => {
-    render(
-      <TestWrapper>
-        <TestComponent />
-      </TestWrapper>
-    );
-
-    await waitFor(() => {
-      expect(screen.getByTestId('cors-proxy')).toHaveTextContent('https://proxy.shakespeare.diy/?url={href}');
-    });
-
-    fireEvent.click(screen.getByText('Update CORS Proxy'));
-
-    expect(screen.getByTestId('cors-proxy')).toHaveTextContent('https://custom-cors.example.com');
   });
 
 

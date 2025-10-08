@@ -44,6 +44,7 @@ const defaultConfig: AppConfig = {
   relayUrl: "wss://relay.primal.net",
   deployServer: "shakespeare.wtf",
   esmUrl: "https://esm.shakespeare.diy",
+  corsProxy: "https://proxy.shakespeare.diy/?url={href}",
 };
 
 const presetRelays = [

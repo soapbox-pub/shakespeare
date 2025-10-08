@@ -32,7 +32,6 @@ const gitCredentialSchema = z.object({
 
 const gitSettingsSchema = z.object({
   credentials: z.record(z.string(), gitCredentialSchema),
-  corsProxy: z.string().url().catch('https://proxy.shakespeare.diy/?url={href}')
 });
 
 /**
@@ -47,7 +46,7 @@ async function ensureConfigDir(fs: JSRuntimeFS): Promise<void> {
 }
 
 /**
- * Read AI settings from VFS (with automatic migration from localStorage)
+ * Read AI settings from VFS
  */
 export async function readAISettings(fs: JSRuntimeFS): Promise<AISettings> {
   const defaultSettings: AISettings = {
@@ -76,12 +75,11 @@ export async function writeAISettings(fs: JSRuntimeFS, settings: AISettings): Pr
 }
 
 /**
- * Read Git settings from VFS (with automatic migration from localStorage)
+ * Read Git settings from VFS
  */
 export async function readGitSettings(fs: JSRuntimeFS): Promise<GitSettings> {
   const defaultSettings: GitSettings = {
     credentials: {},
-    corsProxy: 'https://proxy.shakespeare.diy/?url={href}',
   };
 
   // Try to read from VFS first

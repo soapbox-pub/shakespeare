@@ -40,7 +40,7 @@ const PRESET_PROVIDERS: PresetProvider[] = [
 
 export function GitSettings() {
   const { t } = useTranslation();
-  const { settings, addCredential, removeCredential, updateCredential, updateSettings } = useGitSettings();
+  const { settings, addCredential, removeCredential, updateCredential } = useGitSettings();
   const { initiateOAuth, isLoading: isOAuthLoading, error: oauthError, isOAuthConfigured } = useGitHubOAuth();
   const isMobile = useIsMobile();
   const navigate = useNavigate();
@@ -370,28 +370,6 @@ export function GitSettings() {
                       {t('credentialsExist')}
                     </p>
                   )}
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
-
-          {/* CORS Proxy Configuration */}
-          <Accordion type="single" collapsible className="w-full">
-            <AccordionItem value="cors-proxy" className="border rounded-lg">
-              <AccordionTrigger className="px-4 py-3 hover:no-underline">
-                <h4 className="text-sm font-medium">{t('corsProxy')}</h4>
-              </AccordionTrigger>
-              <AccordionContent className="px-4 pb-4">
-                <div className="py-1 space-y-2">
-                  <Input
-                    id="cors-proxy"
-                    placeholder="https://proxy.shakespeare.diy/?url={href}"
-                    value={settings.corsProxy}
-                    onChange={(e) => updateSettings({ corsProxy: e.target.value })}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    {t('corsProxyDescription')}
-                  </p>
                 </div>
               </AccordionContent>
             </AccordionItem>

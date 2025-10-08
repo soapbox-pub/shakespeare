@@ -31,7 +31,7 @@ const resources = {
       systemSettings: 'System Settings',
       systemSettingsDescription: 'Configure system-level settings and advanced options.',
       esmUrl: 'Javascript CDN',
-      esmUrlDescription: 'Configure the Javascript CDN URL for package imports.',
+      esmUrlDescription: 'Javascript CDN URL for package imports.',
 
       // Language Options
       english: 'English',
@@ -206,7 +206,7 @@ const resources = {
       enterPassword: 'Enter your password/token',
       credentialsExist: 'Credentials for this origin already exist',
       corsProxy: 'CORS Proxy',
-      corsProxyDescription: 'CORS proxy server used for all Git operations with remote repositories. Required for browser-based Git operations.',
+      corsProxyDescription: 'Proxy used to bypass CORS for AI and Git operations.',
 
       // About Settings
       aboutShakespeare: 'About Shakespeare',
@@ -348,7 +348,7 @@ const resources = {
       systemSettings: 'Configurações do Sistema',
       systemSettingsDescription: 'Configure configurações de nível de sistema e opções avançadas.',
       esmUrl: 'URL do CDN Javascript',
-      esmUrlDescription: 'Configure a URL do CDN Javascript para importações de pacotes.',
+      esmUrlDescription: 'URL do CDN Javascript para importações de pacotes.',
 
       // Language Options
       english: 'Inglês',
@@ -523,7 +523,7 @@ const resources = {
       enterPassword: 'Digite sua senha/token',
       credentialsExist: 'Credenciais para esta origem já existem',
       corsProxy: 'Proxy CORS',
-      corsProxyDescription: 'Servidor proxy CORS usado para todas as operações Git com repositórios remotos. Necessário para operações Git baseadas no navegador.',
+      corsProxyDescription: 'Proxy usado para contornar CORS para operações de IA e Git.',
 
       // Data Settings
       dataSettingsDescriptionLong: 'Exporte arquivos e gerencie dados locais.',
@@ -665,7 +665,7 @@ const resources = {
       systemSettings: '系统设置',
       systemSettingsDescription: '配置系统级设置和高级选项。',
       esmUrl: 'Javascript CDN URL',
-      esmUrlDescription: '配置包导入的 Javascript CDN URL。',
+      esmUrlDescription: '包导入的 Javascript CDN URL。',
 
       // Language Options
       english: 'English',
@@ -840,7 +840,7 @@ const resources = {
       enterPassword: '输入您的密码/令牌',
       credentialsExist: '此源的凭据已存在',
       corsProxy: 'CORS代理',
-      corsProxyDescription: '用于所有与远程仓库的Git操作的CORS代理服务器。浏览器基于的Git操作必需。',
+      corsProxyDescription: '用于绕过CORS的代理,适用于AI和Git操作。',
 
       // Data Settings
       dataSettingsDescriptionLong: '导出文件和管理本地数据。',
@@ -982,7 +982,7 @@ const resources = {
       systemSettings: 'Saitunan Tsarin',
       systemSettingsDescription: 'Saita saitunan matakin tsari da zaɓuɓɓuka na ci gaba.',
       esmUrl: 'URL na CDN Javascript',
-      esmUrlDescription: 'Saita URL na CDN Javascript don shigo da fakitin.',
+      esmUrlDescription: 'URL na CDN Javascript don shigo da fakitin.',
 
       // Language Options
       english: 'Turanci',
@@ -1157,7 +1157,7 @@ const resources = {
       enterPassword: 'Shigar da kalmar sirri/alamar ku',
       credentialsExist: 'Bayanan shaidar wannan asali sun riga sun wanzu',
       corsProxy: 'CORS Proxy',
-      corsProxyDescription: 'Sabar proxy na CORS da ake amfani da ita don duk ayyukan Git da repositories na nesa. Ana bukata don ayyukan Git na burauzar.',
+      corsProxyDescription: 'Proxy da ake amfani da shi don ketare CORS don ayyukan AI da Git.',
 
       // Data Settings
       dataSettingsDescriptionLong: 'Fitar da fayiloli da sarrafa bayanan gida.',
@@ -1299,7 +1299,7 @@ const resources = {
       systemSettings: 'Saitunan Eto',
       systemSettingsDescription: 'Tunto awọn saitan eto ati awọn ayanfẹ ti o pọju.',
       esmUrl: 'URL CDN Javascript',
-      esmUrlDescription: 'Tunto URL CDN Javascript fun gbigbe awọn package.',
+      esmUrlDescription: 'URL CDN Javascript fun gbigbe awọn package.',
 
       // Language Options
       english: 'Gẹẹsi',
@@ -1474,7 +1474,7 @@ const resources = {
       enterPassword: 'Tẹ ọrọ igbaniwọle/token rẹ sinu',
       credentialsExist: 'Awọn ẹri fun ipilẹṣẹ yii ti wa tẹlẹ',
       corsProxy: 'CORS Proxy',
-      corsProxyDescription: 'Olupin proxy CORS ti a lo fun gbogbo awọn iṣẹ Git pẹlu awọn repository latọna jijin. Ti nilo fun awọn iṣẹ Git ti o da lori aṣawakiri.',
+      corsProxyDescription: 'Olupin proxy ti a lo lati kọja CORS fun awọn iṣẹ AI ati Git.',
 
       // Data Settings
       dataSettingsDescriptionLong: 'Gbe awọn faili jade ati ṣakoso data agbegbe.',
@@ -1611,7 +1611,7 @@ const resources = {
       systemSettings: 'Ntọala Sistemu',
       systemSettingsDescription: 'Hazie ntọala ọkwa sistemu na nhọrọ ndị ọganihu.',
       esmUrl: 'URL CDN Javascript',
-      esmUrlDescription: 'Hazie URL CDN Javascript maka mbubata ngwugwu.',
+      esmUrlDescription: 'URL CDN Javascript maka mbubata ngwugwu.',
 
       // Language Options
       english: 'Bekee',
@@ -1786,7 +1786,7 @@ const resources = {
       enterPassword: 'Tinye okwuntughe/token gị',
       credentialsExist: 'Nzere maka mmalite a adịlarị',
       corsProxy: 'CORS Proxy',
-      corsProxyDescription: 'Sava proxy CORS ejiri maka ọrụ Git niile na repositories dị anya. Achọrọ maka ọrụ Git dabere na browser.',
+      corsProxyDescription: 'Sava proxy ejiri gafere CORS maka ọrụ AI na Git.',
 
       // Data Settings
       dataSettingsDescriptionLong: 'Bupụta faịlụ ma jikwaa data mpaghara.',

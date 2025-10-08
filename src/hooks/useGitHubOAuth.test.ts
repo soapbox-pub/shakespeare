@@ -1,11 +1,35 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
+import { createElement } from 'react';
 import { useGitHubOAuth } from './useGitHubOAuth';
 import { TestApp } from '@/test/TestApp';
+import { AppProvider } from '@/components/AppProvider';
+import type { AppConfig } from '@/contexts/AppContext';
 
 // Mock environment variables for testing
 vi.stubEnv('VITE_GITHUB_OAUTH_CLIENT_ID', '********************');
 vi.stubEnv('VITE_GITHUB_OAUTH_CLIENT_SECRET', '****************************************');
+
+// Wrapper component to provide AppContext
+function Wrapper({ children }: { children: React.ReactNode }) {
+  const defaultConfig: AppConfig = {
+    theme: 'light',
+    relayUrl: 'wss://relay.test',
+    deployServer: 'test.com',
+    esmUrl: 'https://esm.test',
+    corsProxy: 'https://proxy.shakespeare.diy/?url={href}',
+  };
+
+  return createElement(
+    TestApp,
+    null,
+    createElement(
+      AppProvider,
+      { storageKey: 'test-app-config', defaultConfig },
+      children
+    )
+  );
+}
 
 // Mock crypto.subtle for PKCE testing
 const mockCryptoSubtle = {
@@ -58,7 +82,7 @@ describe('useGitHubOAuth PKCE', () => {
     localStorage.setItem('github_oauth_code_verifier', 'test-verifier');
 
     const { result } = renderHook(() => useGitHubOAuth(), {
-      wrapper: TestApp,
+      wrapper: Wrapper,
     });
 
     // Mock fetch for token exchange and user info (using proxy URLs)
@@ -89,7 +113,7 @@ describe('useGitHubOAuth PKCE', () => {
     localStorage.setItem('github_oauth_code_verifier', 'test-verifier');
 
     const { result } = renderHook(() => useGitHubOAuth(), {
-      wrapper: TestApp,
+      wrapper: Wrapper,
     });
 
     let success: boolean | undefined;
@@ -109,7 +133,7 @@ describe('useGitHubOAuth PKCE', () => {
     // Don't set code verifier
 
     const { result } = renderHook(() => useGitHubOAuth(), {
-      wrapper: TestApp,
+      wrapper: Wrapper,
     });
 
     let success: boolean | undefined;
@@ -126,7 +150,7 @@ describe('useGitHubOAuth PKCE', () => {
     localStorage.setItem('github_oauth_code_verifier', 'test-verifier');
 
     const { result } = renderHook(() => useGitHubOAuth(), {
-      wrapper: TestApp,
+      wrapper: Wrapper,
     });
 
     const mockFetch = vi.fn()

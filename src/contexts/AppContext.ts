@@ -11,6 +11,8 @@ export interface AppConfig {
   deployServer: string;
   /** ESM CDN URL for package imports */
   esmUrl: string;
+  /** HTTP proxy used to bypass CORS for AI and Git operations */
+  corsProxy: string;
   /** Selected language */
   language?: string;
 }

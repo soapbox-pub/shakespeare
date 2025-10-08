@@ -144,7 +144,6 @@ describe('configUtils', () => {
           password: 'token123',
         },
       },
-      corsProxy: 'https://cors.isomorphic-git.org',
     };
 
     describe('readGitSettings', () => {
@@ -165,7 +164,6 @@ describe('configUtils', () => {
 
         expect(result).toEqual({
           credentials: {},
-          corsProxy: 'https://proxy.shakespeare.diy/?url={href}',
         });
       });
     });

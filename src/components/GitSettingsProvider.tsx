@@ -9,7 +9,6 @@ interface GitSettingsProviderProps {
 
 const DEFAULT_SETTINGS: GitSettings = {
   credentials: {},
-  corsProxy: 'https://proxy.shakespeare.diy/?url={href}',
 };
 
 export function GitSettingsProvider({ children }: GitSettingsProviderProps) {
@@ -22,10 +21,6 @@ export function GitSettingsProvider({ children }: GitSettingsProviderProps) {
     const initializeSettings = async () => {
       try {
         const settings = await readGitSettings(fs);
-        // Migrate old CORS proxy format
-        if (settings.corsProxy === 'https://cors.isomorphic-git.org') {
-          settings.corsProxy = DEFAULT_SETTINGS.corsProxy;
-        }
         setSettings(settings);
       } catch (error) {
         console.error('Failed to initialize Git settings:', error);

@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useGitSettings } from './useGitSettings';
+import { useAppContext } from './useAppContext';
 import { proxyUrl } from '@/lib/proxyUrl';
 
 interface GitHubOAuthState {
@@ -18,8 +19,9 @@ export function useGitHubOAuth() {
     isLoading: false,
     error: null,
   });
-  const { settings, addCredential } = useGitSettings();
-  const { corsProxy } = settings;
+  const { addCredential } = useGitSettings();
+  const { config } = useAppContext();
+  const { corsProxy } = config;
 
   // Check if OAuth is configured
   const isOAuthConfigured = !!(

@@ -3,8 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-
-import { Label } from "@/components/ui/label";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useNavigate } from "react-router-dom";
 import { useAppContext } from "@/hooks/useAppContext";
@@ -15,6 +14,7 @@ export function SystemSettings() {
   const navigate = useNavigate();
   const { config, updateConfig } = useAppContext();
   const [esmUrlInput, setEsmUrlInput] = useState(config.esmUrl);
+  const [corsProxyInput, setCorsProxyInput] = useState(config.corsProxy);
 
   return (
     <div className="p-6 space-y-6">
@@ -53,31 +53,67 @@ export function SystemSettings() {
         </div>
       )}
 
-      <div className="space-y-6">
-        <div className="space-y-2">
-          <Label htmlFor="esm-url" className="flex items-center gap-2">
-            {t('esmUrl')}
-          </Label>
-          <Input
-            id="esm-url"
-            type="url"
-            value={esmUrlInput}
-            onChange={(e) => {
-              // Strip trailing slash on save.
-              const value = e.target.value;
-              setEsmUrlInput(value);
-              updateConfig((current) => ({
-                ...current,
-                esmUrl: value.replace(/\/+$/, ''),
-              }));
-            }}
-            className="w-full max-w-xs"
-            placeholder="https://esm.shakespeare.diy"
-          />
-          <p className="text-sm text-muted-foreground">
-            {t('esmUrlDescription')}
-          </p>
-        </div>
+      <div className="space-y-3 max-w-xl">
+        {/* CORS Proxy Configuration */}
+        <Accordion type="single" collapsible className="w-full">
+          <AccordionItem value="cors-proxy" className="border rounded-lg">
+            <AccordionTrigger className="px-4 py-3 hover:no-underline">
+              <h4 className="text-sm font-medium">{t('corsProxy')}</h4>
+            </AccordionTrigger>
+            <AccordionContent className="px-4 pb-4">
+              <div className="py-1 space-y-2">
+                <Input
+                  id="cors-proxy"
+                  type="url"
+                  placeholder="https://proxy.shakespeare.diy/?url={href}"
+                  value={corsProxyInput}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setCorsProxyInput(value);
+                    updateConfig((current) => ({
+                      ...current,
+                      corsProxy: value,
+                    }));
+                  }}
+                />
+                <p className="text-xs text-muted-foreground">
+                  {t('corsProxyDescription')}
+                </p>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+
+        {/* JavaScript CDN Configuration */}
+        <Accordion type="single" collapsible className="w-full">
+          <AccordionItem value="esm-url" className="border rounded-lg">
+            <AccordionTrigger className="px-4 py-3 hover:no-underline">
+              <h4 className="text-sm font-medium">{t('esmUrl')}</h4>
+            </AccordionTrigger>
+            <AccordionContent className="px-4 pb-4">
+              <div className="py-1 space-y-2">
+                <Input
+                  id="esm-url"
+                  type="url"
+                  placeholder="https://esm.shakespeare.diy"
+                  value={esmUrlInput}
+                  onChange={(e) => {
+                    // Strip trailing slash on save.
+                    const value = e.target.value;
+                    setEsmUrlInput(value);
+                    updateConfig((current) => ({
+                      ...current,
+                      esmUrl: value.replace(/\/+$/, ''),
+                    }));
+                  }}
+                />
+                <p className="text-xs text-muted-foreground">
+                  {t('esmUrlDescription')}
+                </p>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
       </div>
     </div>
   );

@@ -6,7 +6,6 @@ import { Bot, Check, Sparkles, ArrowRight, ArrowLeft, ExternalLink } from 'lucid
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
 import { PasswordInput } from '@/components/ui/password-input';
@@ -139,12 +138,12 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
     onOpenChange(false);
   };
 
-  const formatPrice = (price: Decimal | undefined) => {
-    if (!price) return 'unknown';
-    if (price.equals(0)) return 'Free';
-    // Convert from per-token to per-1M tokens and format with $ prefix
-    const pricePerMillion = price.times(1_000_000);
-    return '$' + pricePerMillion.toFixed(2).toString().replace(/\.00$/, '') + '/M tokens';
+  const formatPrice = (pricing: { prompt: Decimal; completion: Decimal }) => {
+    if (!pricing) return 'unknown';
+    if (pricing.prompt.equals(0) && pricing.completion.equals(0)) return 'Free';
+    const prompt = pricing.prompt.times(1_000_000).toFixed(2).toString().replace(/\.00$/, '');
+    const completion = pricing.completion.times(1_000_000).toFixed(2).toString().replace(/\.00$/, '');
+    return `$${prompt}/M↑ $${completion}/M↓`;
   };
 
   // Reset state when dialog opens/closes
@@ -512,14 +511,12 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
                     ) : (
                       providerModels.map((model) => {
                         const isSelected = selectedModel === model.fullId;
-                        const isFree = model.pricing?.prompt.equals(0) && model.pricing?.completion.equals(0);
-                        const isPremium = !!model.pricing && !isFree;
                         const modelName = model.name || model.id;
 
                         return (
                           <Card
                             key={model.fullId}
-                            className={`cursor-pointer transition-all hover:shadow-md ${
+                            className={`relative cursor-pointer transition-all hover:shadow-md ${
                               isSelected ? 'ring-2 ring-primary' : ''
                             }`}
                             onClick={() => handleModelSelect(model.fullId)}
@@ -527,46 +524,29 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
                             <CardHeader>
                               <div className="flex items-center justify-between">
                                 <div className="flex-1">
-                                  <CardTitle className={cn('text-xl font-semibold', {
-                                    'bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent': isPremium,
-                                  })}>
+                                  <CardTitle className="text-sm font-semibold">
                                     {modelName}
                                   </CardTitle>
                                   {model.description && (
-                                    <p className="text-sm text-muted-foreground mt-1">
-                                      {model.description.length > 70
-                                        ? model.description.slice(0, 70) + '...'
+                                    <p className="text-lg text-muted-foreground mt-1">
+                                      {model.description.length > 500
+                                        ? model.description.slice(0, 500) + '...'
                                         : model.description}
                                     </p>
                                   )}
                                 </div>
-                                <div className="flex items-center gap-2">
-                                  {isFree && (
-                                    <Badge variant="secondary" className="text-xs">
-                                      Free
-                                    </Badge>
-                                  )}
-                                  {isPremium && (
-                                    <Badge className="text-xs bg-primary text-white border-0">
-                                      Premium
-                                    </Badge>
-                                  )}
-                                  {isSelected && (
-                                    <div className="h-5 w-5 rounded-full bg-primary flex items-center justify-center">
-                                      <Check className="h-3 w-3 text-primary-foreground" />
-                                    </div>
-                                  )}
-                                </div>
+                                {isSelected && (
+                                  <div className="absolute top-5 right-5 h-5 w-5 rounded-full bg-primary flex items-center justify-center">
+                                    <Check className="h-3 w-3 text-primary-foreground" />
+                                  </div>
+                                )}
                               </div>
                             </CardHeader>
                             {(model.pricing || model.contextLength) && (
                               <CardContent className="pt-0">
                                 <div className="flex items-end justify-end gap-4 text-xs text-muted-foreground">
                                   {model.pricing && (
-                                    <div className="text-right">
-                                      <div>Input: {formatPrice(model.pricing.prompt)}</div>
-                                      <div>Output: {formatPrice(model.pricing.completion)}</div>
-                                    </div>
+                                    <span>{formatPrice(model.pricing)}</span>
                                   )}
                                   {model.contextLength && (
                                     <span>Context: {model.contextLength.toLocaleString()} tokens</span>

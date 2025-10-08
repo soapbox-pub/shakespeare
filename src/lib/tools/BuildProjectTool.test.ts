@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { BuildProjectTool } from './BuildProjectTool';
 import type { JSRuntimeFS } from '../JSRuntime';
+import type { AppConfig } from '../../contexts/AppContext';
 
 // Mock the build functions
 vi.mock('../build', () => ({
@@ -11,6 +12,7 @@ import { buildProject } from '../build';
 
 describe('BuildProjectTool', () => {
   let mockFS: JSRuntimeFS;
+  let mockConfig: AppConfig;
   let tool: BuildProjectTool;
 
   beforeEach(() => {
@@ -24,7 +26,15 @@ describe('BuildProjectTool', () => {
       mkdir: vi.fn(),
     } as unknown as JSRuntimeFS;
 
-    tool = new BuildProjectTool(mockFS, '/test/project');
+    mockConfig = {
+      theme: 'light',
+      relayUrl: 'wss://relay.nostr.band',
+      deployServer: 'shakespeare.wtf',
+      esmUrl: 'https://esm.shakespeare.diy',
+      language: 'en',
+    };
+
+    tool = new BuildProjectTool(mockFS, '/test/project', mockConfig);
   });
 
   it('should have correct description', () => {
@@ -69,6 +79,7 @@ describe('BuildProjectTool', () => {
     const result = await tool.execute();
 
     expect(buildProject).toHaveBeenCalledWith({
+      esmUrl: 'https://esm.shakespeare.diy',
       fs: mockFS,
       projectPath: '/test/project',
       domParser: expect.any(DOMParser),
@@ -100,6 +111,7 @@ describe('BuildProjectTool', () => {
     await tool.execute();
 
     expect(buildProject).toHaveBeenCalledWith({
+      esmUrl: 'https://esm.shakespeare.diy',
       fs: mockFS,
       projectPath: '/test/project',
       domParser: expect.any(DOMParser),

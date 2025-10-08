@@ -9,7 +9,7 @@ interface ShakespearePluginOptions {
  * This plugin handles specific dependencies that need custom implementations
  * or dummy APIs to work correctly in the browser environment.
  */
-export function shakespearePlugin(options?: ShakespearePluginOptions): Plugin {
+export function shakespearePlugin(options: ShakespearePluginOptions): Plugin {
   return {
     name: "shakespeare",
 
@@ -27,7 +27,7 @@ export function shakespearePlugin(options?: ShakespearePluginOptions): Plugin {
         return {
           contents: `
             import tailwindConfig from "@/../${pathname}";
-            import "${options?.esmUrl}/tailwindcss-cdn@3";
+            import "${options.esmUrl}/tailwindcss-cdn@3";
             tailwind.config = tailwindConfig;
           `,
           loader: "js",

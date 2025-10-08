@@ -15,13 +15,13 @@ interface AppProviderProps {
 }
 
 // Zod schema for AppConfig validation
-const AppConfigSchema: z.ZodType<AppConfig, z.ZodTypeDef, unknown> = z.object({
+const AppConfigSchema = z.object({
   theme: z.enum(['dark', 'light', 'system']),
   relayUrl: z.string().url(),
   deployServer: z.string().min(1),
   esmUrl: z.string().url(),
-  language: z.string().optional(),
-});
+  language: z.string(),
+}) satisfies z.ZodType<AppConfig>;
 
 export function AppProvider(props: AppProviderProps) {
   const {
@@ -32,22 +32,24 @@ export function AppProvider(props: AppProviderProps) {
   } = props;
 
   // App configuration state with localStorage persistence
-  const [config, setConfig] = useLocalStorage<AppConfig>(
+  const [rawConfig, setConfig] = useLocalStorage<Partial<AppConfig>>(
     storageKey,
-    defaultConfig,
+    {},
     {
       serialize: JSON.stringify,
       deserialize: (value: string) => {
         const parsed = JSON.parse(value);
-        return AppConfigSchema.parse(parsed);
+        return AppConfigSchema.partial().parse(parsed);
       }
     }
   );
 
   // Generic config updater with callback pattern
-  const updateConfig = (updater: (currentConfig: AppConfig) => AppConfig) => {
+  const updateConfig = (updater: (currentConfig: Partial<AppConfig>) => Partial<AppConfig>) => {
     setConfig(updater);
   };
+
+  const config = { ...defaultConfig, ...rawConfig };
 
   const appContextValue: AppContextType = {
     config,

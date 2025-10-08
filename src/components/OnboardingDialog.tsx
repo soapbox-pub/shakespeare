@@ -5,7 +5,7 @@ import { nip19 } from 'nostr-tools';
 import { Bot, Check, Sparkles, ArrowRight, ArrowLeft, ExternalLink } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
 import { PasswordInput } from '@/components/ui/password-input';
@@ -138,13 +138,20 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
     onOpenChange(false);
   };
 
-  const formatPrice = (pricing: { prompt: Decimal; completion: Decimal }) => {
-    if (!pricing) return 'unknown';
-    if (pricing.prompt.equals(0) && pricing.completion.equals(0)) return 'Free';
-    const prompt = pricing.prompt.times(1_000_000).toFixed(2).toString().replace(/\.00$/, '');
-    const completion = pricing.completion.times(1_000_000).toFixed(2).toString().replace(/\.00$/, '');
-    return `$${prompt}/M↑ $${completion}/M↓`;
-  };
+  const renderPrice = (pricing: { prompt: Decimal; completion: Decimal }) => {
+    const normalizedPrice = getNormalizedModelPrice(pricing).times(1_000_000).toNumber();
+    if (normalizedPrice === 0) {
+      return <span className="text-green-600 font-semibold">Free</span>;
+    } else if (normalizedPrice < 10) {
+      return <span className="text-green-600 font-semibold">$</span>;
+    } else if (normalizedPrice >= 10 && normalizedPrice < 15) {
+      return <span className="text-yellow-600 font-semibold">$$</span>;
+    } else if (normalizedPrice >= 15 && normalizedPrice < 50) {
+      return <span className="text-red-600 font-semibold">$$$</span>;
+    } else if (normalizedPrice >= 50) {
+      return <span className="text-red-800 font-semibold">$$$$</span>;
+    }
+  }
 
   // Reset state when dialog opens/closes
   useEffect(() => {
@@ -524,8 +531,9 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
                             <CardHeader>
                               <div className="flex items-center justify-between">
                                 <div className="flex-1">
-                                  <CardTitle className="text-sm font-semibold">
-                                    {modelName}
+                                  <CardTitle className="text-sm font-semibold flex gap-1">
+                                    <span>{modelName}</span>
+                                    {model.pricing && renderPrice(model.pricing)}
                                   </CardTitle>
                                   {model.description && (
                                     <p className="text-lg text-muted-foreground mt-1">
@@ -542,18 +550,6 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
                                 )}
                               </div>
                             </CardHeader>
-                            {(model.pricing || model.contextLength) && (
-                              <CardContent className="pt-0">
-                                <div className="flex items-end justify-end gap-4 text-xs text-muted-foreground">
-                                  {model.pricing && (
-                                    <span>{formatPrice(model.pricing)}</span>
-                                  )}
-                                  {model.contextLength && (
-                                    <span>Context: {model.contextLength.toLocaleString()} tokens</span>
-                                  )}
-                                </div>
-                              </CardContent>
-                            )}
                           </Card>
                         );
                       })
@@ -612,4 +608,29 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
       )}
     </>
   );
+}
+
+/**
+ * Get a single normalized "price per token" for a model,
+ * combining input and output pricing with agentic-coding-aware weights.
+ *
+ * Default behavior:
+ *   - Uses inputWeight = 0.20 (based on typical 3–5x output premium seen in practice).
+ *
+ * Optional behavior:
+ *   - If you pass observed token usage, the function will compute the weight
+ *     as the observed share of spend from inputs over total spend.
+ */
+function getNormalizedModelPrice(
+  pricing: { prompt: Decimal; completion: Decimal },
+  inputWeight = 0.2,
+): Decimal {
+  if (!(inputWeight >= 0 && inputWeight <= 1)) {
+    throw new Error("Computed inputWeight is out of range [0,1]. Check inputs.");
+  }
+  if (pricing.prompt.equals(0) && pricing.completion.equals(0)) {
+    return new Decimal(0);
+  }
+  const outputWeight = 1 - inputWeight;
+  return pricing.prompt.times(inputWeight).plus(pricing.completion.times(outputWeight));
 }

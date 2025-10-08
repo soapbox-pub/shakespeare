@@ -38,6 +38,8 @@ const resources = {
       previewDomainDescription: 'Domain used for iframe preview sandboxing.',
       corsProxy: 'CORS Proxy',
       corsProxyDescription: 'HTTP proxy URL for bypassing CORS restrictions.',
+      deployServer: 'Deploy Server',
+      deployServerDescription: 'Server domain where projects will be deployed.',
 
       // Language Options
       english: 'English',
@@ -530,6 +532,8 @@ const resources = {
       projectTemplateDescription: 'URL do repositório Git a ser usado como modelo inicial para novos projetos.',
       corsProxy: 'Proxy CORS',
       corsProxyDescription: 'Proxy usado para contornar CORS para operações de IA e Git.',
+      deployServer: 'Servidor de Deploy',
+      deployServerDescription: 'Domínio do servidor onde os projetos serão implantados.',
 
       // Data Settings
       dataSettingsDescriptionLong: 'Exporte arquivos e gerencie dados locais.',
@@ -849,6 +853,8 @@ const resources = {
       projectTemplateDescription: '用作新项目起始模板的Git仓库URL。',
       corsProxy: 'CORS代理',
       corsProxyDescription: '用于绕过CORS的代理,适用于AI和Git操作。',
+      deployServer: '部署服务器',
+      deployServerDescription: '项目将部署到的服务器域名。',
 
       // Data Settings
       dataSettingsDescriptionLong: '导出文件和管理本地数据。',
@@ -1168,6 +1174,8 @@ const resources = {
       projectTemplateDescription: 'URL ɗin ma\'ajin Git da za a yi amfani da shi azaman samfurin farawa don sababbin ayyuka.',
       corsProxy: 'CORS Proxy',
       corsProxyDescription: 'Proxy da ake amfani da shi don ketare CORS don ayyukan AI da Git.',
+      deployServer: 'Sabar Turawa',
+      deployServerDescription: 'Wurin sabar da za a tura ayyuka zuwa.',
 
       // Data Settings
       dataSettingsDescriptionLong: 'Fitar da fayiloli da sarrafa bayanan gida.',
@@ -1487,6 +1495,8 @@ const resources = {
       projectTemplateDescription: 'URL ibi ipamọ Git lati lo bi awoṣe ibẹrẹ fun awọn iṣẹ akanṣe tuntun.',
       corsProxy: 'CORS Proxy',
       corsProxyDescription: 'Olupin proxy ti a lo lati kọja CORS fun awọn iṣẹ AI ati Git.',
+      deployServer: 'Olupin Ifilọlẹ',
+      deployServerDescription: 'Aaye olupin nibiti a o fi awọn iṣẹ akanṣe ranṣẹ si.',
 
       // Data Settings
       dataSettingsDescriptionLong: 'Gbe awọn faili jade ati ṣakoso data agbegbe.',
@@ -1801,6 +1811,8 @@ const resources = {
       projectTemplateDescription: 'URL nchekwa Git iji mee ka ụdịdị mmalite maka ọrụ ọhụrụ.',
       corsProxy: 'CORS Proxy',
       corsProxyDescription: 'Sava proxy ejiri gafere CORS maka ọrụ AI na Git.',
+      deployServer: 'Sava Nnyefe',
+      deployServerDescription: 'Ngalaba sava ebe a ga-eziga ọrụ.',
 
       // Data Settings
       dataSettingsDescriptionLong: 'Bupụta faịlụ ma jikwaa data mpaghara.',

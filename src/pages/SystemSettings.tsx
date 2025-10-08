@@ -17,6 +17,7 @@ export function SystemSettings() {
   const [esmUrlInput, setEsmUrlInput] = useState(config.esmUrl);
   const [corsProxyInput, setCorsProxyInput] = useState(config.corsProxy);
   const [previewDomainInput, setPreviewDomainInput] = useState(config.previewDomain);
+  const [deployServerInput, setDeployServerInput] = useState(config.deployServer);
 
   return (
     <div className="p-6 space-y-6">
@@ -171,6 +172,36 @@ export function SystemSettings() {
                 />
                 <p className="text-xs text-muted-foreground">
                   {t('previewDomainDescription')}
+                </p>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+
+        {/* Deploy Server Configuration */}
+        <Accordion type="single" collapsible className="w-full">
+          <AccordionItem value="deploy-server" className="border rounded-lg">
+            <AccordionTrigger className="px-4 py-3 hover:no-underline">
+              <h4 className="text-sm font-medium">{t('deployServer')}</h4>
+            </AccordionTrigger>
+            <AccordionContent className="px-4 pb-4">
+              <div className="py-1 space-y-2">
+                <Input
+                  id="deploy-server"
+                  type="text"
+                  placeholder="shakespeare.wtf"
+                  value={deployServerInput}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setDeployServerInput(value);
+                    updateConfig((current) => ({
+                      ...current,
+                      deployServer: value,
+                    }));
+                  }}
+                />
+                <p className="text-xs text-muted-foreground">
+                  {t('deployServerDescription')}
                 </p>
               </div>
             </AccordionContent>

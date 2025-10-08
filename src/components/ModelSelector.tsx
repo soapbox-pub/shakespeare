@@ -104,6 +104,30 @@ export function ModelSelector({
     return currentModel.pricing.prompt.equals(0) && currentModel.pricing.completion.equals(0);
   }, [value, models]);
 
+  // Check if the current model is not in the provider's model list
+  const isCurrentModelNotInList = useMemo(() => {
+    if (!value) return false;
+    if (isLoading) return false; // Don't show warning while loading
+    if (models.length === 0) return false; // Don't show warning if no models loaded
+
+    const currentModel = models.find(model => model.fullId === value);
+    return !currentModel;
+  }, [value, models, isLoading]);
+
+  // Determine if we should show the warning icon
+  const shouldShowWarning = isCurrentModelFree || isCurrentModelNotInList;
+
+  // Get the warning message
+  const warningMessage = useMemo(() => {
+    if (isCurrentModelNotInList) {
+      return "This model is not available in your provider's model list. It may not work or may have been deprecated.";
+    }
+    if (isCurrentModelFree) {
+      return "You are using a free model. For better results, switch to a paid model.";
+    }
+    return "";
+  }, [isCurrentModelNotInList, isCurrentModelFree]);
+
   // Don't auto-initialize with recently used models
   // Let the parent component handle initialization
 
@@ -198,7 +222,7 @@ export function ModelSelector({
   return (
     <TooltipProvider>
       <div className={cn("flex justify-end gap-0.5", className)}>
-        {isCurrentModelFree && (
+        {shouldShowWarning && (
           <Tooltip
             open={isMobile ? isTooltipOpen : undefined}
             onOpenChange={isMobile ? setIsTooltipOpen : undefined}
@@ -209,7 +233,7 @@ export function ModelSelector({
               <button
                 type="button"
                 className="inline-flex items-center p-0 rounded-none border-0 bg-transparent hover:bg-transparent focus:bg-transparent active:bg-transparent focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 focus:border-0 active:outline-none"
-                aria-label="Free model warning"
+                aria-label="Model warning"
                 tabIndex={isMobile ? 0 : -1}
                 onClick={isMobile ? (e) => {
                   e.preventDefault();
@@ -242,7 +266,7 @@ export function ModelSelector({
               avoidCollisions={true}
               collisionPadding={8}
             >
-              <p>You are using a free model. For better results, switch to a paid model.</p>
+              <p>{warningMessage}</p>
             </TooltipContent>
           </Tooltip>
         )}

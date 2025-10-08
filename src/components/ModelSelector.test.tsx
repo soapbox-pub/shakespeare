@@ -429,7 +429,7 @@ describe('ModelSelector', () => {
       </TestApp>
     );
 
-    const cautionButton = screen.getByRole('button', { name: 'Free model warning' });
+    const cautionButton = screen.getByRole('button', { name: 'Model warning' });
     expect(cautionButton).toBeInTheDocument();
     expect(cautionButton).toHaveAttribute('tabIndex', '0'); // Should be tappable on mobile
 
@@ -472,8 +472,163 @@ describe('ModelSelector', () => {
       </TestApp>
     );
 
-    const cautionButton = screen.getByRole('button', { name: 'Free model warning' });
+    const cautionButton = screen.getByRole('button', { name: 'Model warning' });
     expect(cautionButton).toBeInTheDocument();
     expect(cautionButton).toHaveAttribute('tabIndex', '-1'); // Should not be focusable on desktop
+  });
+
+  it('shows warning icon when selected model is not in provider models list', () => {
+    const availableModels = [
+      { fullId: 'provider1/model1', provider: 'provider1', id: 'model1' },
+      { fullId: 'provider1/model2', provider: 'provider1', id: 'model2' },
+    ];
+
+    mockUseProviderModels.mockReturnValue({
+      models: availableModels,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    render(
+      <TestApp>
+        <ModelSelector value="provider1/unknown-model" onChange={mockOnChange} />
+      </TestApp>
+    );
+
+    // Should show warning icon for model not in list
+    expect(screen.getByTestId('triangle-alert')).toBeInTheDocument();
+  });
+
+  it('does not show warning icon when selected model is in provider models list', () => {
+    const availableModels = [
+      { fullId: 'provider1/model1', provider: 'provider1', id: 'model1' },
+      { fullId: 'provider1/model2', provider: 'provider1', id: 'model2' },
+    ];
+
+    mockUseProviderModels.mockReturnValue({
+      models: availableModels,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    render(
+      <TestApp>
+        <ModelSelector value="provider1/model1" onChange={mockOnChange} />
+      </TestApp>
+    );
+
+    // Should not show warning icon when model is in list
+    expect(screen.queryByTestId('triangle-alert')).not.toBeInTheDocument();
+  });
+
+  it('does not show warning icon while models are loading', () => {
+    mockUseProviderModels.mockReturnValue({
+      models: [],
+      isLoading: true,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    render(
+      <TestApp>
+        <ModelSelector value="provider1/unknown-model" onChange={mockOnChange} />
+      </TestApp>
+    );
+
+    // Should not show warning icon while loading
+    expect(screen.queryByTestId('triangle-alert')).not.toBeInTheDocument();
+  });
+
+  it('does not show warning icon when no models are loaded', () => {
+    mockUseProviderModels.mockReturnValue({
+      models: [],
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    render(
+      <TestApp>
+        <ModelSelector value="provider1/some-model" onChange={mockOnChange} />
+      </TestApp>
+    );
+
+    // Should not show warning icon when no models loaded
+    expect(screen.queryByTestId('triangle-alert')).not.toBeInTheDocument();
+  });
+
+  it('shows correct tooltip message for model not in list', async () => {
+    const user = userEvent.setup();
+
+    const availableModels = [
+      { fullId: 'provider1/model1', provider: 'provider1', id: 'model1' },
+    ];
+
+    mockUseProviderModels.mockReturnValue({
+      models: availableModels,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    render(
+      <TestApp>
+        <ModelSelector value="provider1/unknown-model" onChange={mockOnChange} />
+      </TestApp>
+    );
+
+    const warningIcon = screen.getByTestId('triangle-alert');
+    expect(warningIcon).toBeInTheDocument();
+
+    // Hover over the warning icon
+    await user.hover(warningIcon);
+
+    // Wait for tooltip to appear
+    await waitFor(() => {
+      expect(screen.getAllByText("This model is not available in your provider's model list. It may not work or may have been deprecated.").length).toBeGreaterThan(0);
+    });
+  });
+
+  it('prioritizes "not in list" warning over "free model" warning in tooltip', async () => {
+    const user = userEvent.setup();
+
+    const freeModel = {
+      fullId: 'provider1/free-model',
+      provider: 'provider1',
+      id: 'free-model',
+      pricing: {
+        prompt: new Decimal('0'),
+        completion: new Decimal('0'),
+      },
+    };
+
+    mockUseProviderModels.mockReturnValue({
+      models: [freeModel],
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    render(
+      <TestApp>
+        <ModelSelector value="provider1/unknown-free-model" onChange={mockOnChange} />
+      </TestApp>
+    );
+
+    const warningIcon = screen.getByTestId('triangle-alert');
+    expect(warningIcon).toBeInTheDocument();
+
+    // Hover over the warning icon
+    await user.hover(warningIcon);
+
+    // Wait for tooltip to appear - should show "not in list" message, not "free model" message
+    await waitFor(() => {
+      expect(screen.getAllByText("This model is not available in your provider's model list. It may not work or may have been deprecated.").length).toBeGreaterThan(0);
+    });
+
+    // Should not show the free model message
+    expect(screen.queryByText('You are using a free model. For better results, switch to a paid model.')).not.toBeInTheDocument();
   });
 });

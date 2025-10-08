@@ -9,6 +9,8 @@ import type { AIProvider } from '@/contexts/AISettingsContext';
 import { makeSystemPrompt } from './system';
 import { NostrMetadata } from '@nostrify/nostrify';
 import { MalformedToolCallError } from './errors/MalformedToolCallError';
+import { EmptyMessageError } from './errors/EmptyMessageError';
+import { isEmptyMessage } from './isEmptyMessage';
 
 export type AIMessage = OpenAI.Chat.Completions.ChatCompletionMessageParam | {
   role: 'assistant';
@@ -361,6 +363,20 @@ export class SessionManager {
           ...(accumulatedReasoningContent && { reasoning_content: accumulatedReasoningContent }),
           ...(accumulatedToolCalls.length > 0 && { tool_calls: accumulatedToolCalls })
         };
+
+        // Check if the assistant message is empty (no content, reasoning, or tool calls)
+        if (isEmptyMessage(assistantMessage)) {
+          console.error('Empty assistant message detected', {
+            projectId,
+            providerModel,
+            finishReason,
+          });
+
+          throw new EmptyMessageError(
+            'The AI generated an empty response. This may be due to a provider issue or model configuration problem.',
+            providerModel,
+          );
+        }
 
         // Add final message but keep streaming message until finally block
         await this.addMessage(projectId, assistantMessage);

@@ -1,4 +1,4 @@
-import OpenAI from 'openai';
+import { APIError } from 'openai';
 import { useNavigate } from 'react-router-dom';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -10,25 +10,27 @@ import { CreditsDialog } from './CreditsDialog';
 import { ProjectPreviewConsoleError } from '@/lib/consoleMessages';
 import { useState } from 'react';
 import { MalformedToolCallError } from '@/lib/errors/MalformedToolCallError';
+import { EmptyMessageError } from '@/lib/errors/EmptyMessageError';
 
 export interface QuillyProps {
   error: Error;
   onDismiss: () => void;
   onNewChat: () => void;
   onOpenModelSelector: () => void;
+  onTryAgain?: () => void;
   onRequestConsoleErrorHelp?: (error: ProjectPreviewConsoleError) => void;
   providerModel: string;
 }
 
 interface ErrorBody {
   message: string;
-  action?: {
+  actions?: Array<{
     label: string;
     onClick: () => void;
-  };
+  }>;
 }
 
-export function Quilly({ error, onDismiss, onNewChat, onOpenModelSelector, onRequestConsoleErrorHelp, providerModel }: QuillyProps) {
+export function Quilly({ error, onDismiss, onNewChat, onOpenModelSelector, onTryAgain, onRequestConsoleErrorHelp, providerModel }: QuillyProps) {
   const navigate = useNavigate();
   const { settings } = useAISettings();
 
@@ -44,96 +46,151 @@ export function Quilly({ error, onDismiss, onNewChat, onOpenModelSelector, onReq
   const credits = useAICredits(provider || { id: '', name: '', apiKey: '', nostr: false });
   const [showCreditsDialog, setShowCreditsDialog] = useState(false);
 
-  const renderBody = (error: Error): ErrorBody => {
+  const renderBody = (error: Error | APIError | MalformedToolCallError | ProjectPreviewConsoleError): ErrorBody => {
     // Handle Project Preview Console Errors
     if (error instanceof ProjectPreviewConsoleError) {
       return {
         message: 'I noticed some console errors in your project preview. Would you like me to take a look and help fix them?',
-        action: {
+        actions: [{
           label: 'Help fix errors',
           onClick: () => {
             onRequestConsoleErrorHelp?.(error);
             onDismiss();
           },
-        },
+        }],
       };
     }
 
     if (error instanceof MalformedToolCallError) {
       return {
         message: 'The AI sent an incomplete response, possibly due to a network issue or provider problem. Try sending your message again, or switch to a different model if this persists.',
-        action: {
+        actions: [{
           label: 'Change model',
           onClick: onOpenModelSelector,
-        },
+        }],
+      };
+    } 
+
+    if (error instanceof EmptyMessageError) {
+      return {
+        message: 'The AI generated an empty response. This may be due to a provider issue or model configuration problem. Try generating again, or switch to a different model.',
+        actions: onTryAgain ? [{
+          label: 'Try again',
+          onClick: () => {
+            onTryAgain();
+            onDismiss();
+          },
+        }] : [{
+          label: 'Change model',
+          onClick: onOpenModelSelector,
+        }],
       };
     }
 
     // Handle OpenAI API errors with specific error codes
-    if (error instanceof OpenAI.APIError) {
-      switch (error.code) {
-        case 'invalid_api_key':
-        case 'invalid_request_error':
+    if (error instanceof APIError) {
+      switch (true) {
+        case error.code ==='invalid_api_key':
+        case error.code === 'invalid_request_error':
           return {
             message: 'Authentication error: Please check your API key in AI settings.',
-            action: {
+            actions: [{
               label: 'Check API key',
               onClick: () => navigate('/settings/ai'),
-            }
+            }],
           };
 
-        case 'insufficient_quota': {
+        case error.code === 'insufficient_quota': {
           if (credits.data) {
             return {
               message: `Your account has $${credits.data.amount.toFixed(2)} credits. Please add credits to keep creating.`,
-              action: {
+              actions: [{
                 label: 'Add credits',
                 onClick: () => setShowCreditsDialog(true),
-              }
+              }],
             };
           } else {
             return {
               message: 'Your API key has reached its usage limit. Please check your billing or try a different provider.',
-              action: {
+              actions: [{
                 label: 'Check AI settings',
                 onClick: () => navigate('/settings/ai'),
-              }
+              }],
             };
           }
         }
 
-        case 'rate_limit_exceeded':
+        case error.code === 'rate_limit_exceeded':
           return {
             message: 'Rate limit exceeded. Please wait a moment before trying again.',
+            actions: [],
           };
 
-        case 'model_not_found':
+        case error.code === 'model_not_found':
           return {
             message: 'The selected AI model is not available. Please choose a different model.',
-            action: {
+            actions: [{
               label: 'Choose model',
               onClick: onOpenModelSelector,
-            },
+            }],
           };
 
-        case 'context_length_exceeded':
+        case error.code === 'context_length_exceeded':
           return {
             message: 'Your conversation is too long for this model. Try starting a new chat or switching to a model with a larger context window.',
-            action: {
+            actions: [{
               label: 'New chat',
               onClick: onNewChat,
-            },
+            }, {
+              label: 'Change model',
+              onClick: onOpenModelSelector,
+            }],
           };
 
-        case 'server_error':
-        case 'service_unavailable':
+        case error.status === 403:
+          return {
+            message: `It seems your API key has been used up. Check your API provider's settings, or try a different API key or different provider/model combo:`,
+            actions: [{
+              label: 'Check API settings',
+              onClick: () => navigate('/settings/ai'),
+            }, {
+              label: 'Change model',
+              onClick: onOpenModelSelector,
+            }],
+          };
+
+        case error.status === 400:
+          return {
+            message: 'The AI provider did not understand the message / data it got. If it persists, try stating a new conversation or using a different model.',
+            actions: [{
+              label: 'New chat',
+              onClick: onNewChat,
+            }, {
+              label: 'Change model',
+              onClick: onOpenModelSelector,
+            }],
+          };
+
+        case error.status === 422:
+          return {
+            message: 'Request rejected by AI provider. Try a different model.',
+            actions: [{
+              label: 'Choose model',
+              onClick: onOpenModelSelector,
+            }],
+          };
+
+        case error.code === 'server_error':
+        case error.code === 'service_unavailable':
           return {
             message: 'The AI service is temporarily unavailable. Please try again in a moment.',
+            actions: [],
           };
 
         default:
           return {
             message: `AI service error: ${error.message}`,
+            actions: [],
           };
       }
     }
@@ -143,10 +200,11 @@ export function Quilly({ error, onDismiss, onNewChat, onOpenModelSelector, onReq
       message: error.message
         ? `AI service error: ${error.message}`
         : 'Sorry, I encountered an unexpected error. Please try again.',
+      actions: [],
     };
   };
 
-  const { message, action } = renderBody(error);
+  const { message, actions = [] } = renderBody(error);
 
   return (
     <div className="py-2 px-3 bg-primary/5 border border-primary/20 rounded-lg">
@@ -159,11 +217,18 @@ export function Quilly({ error, onDismiss, onNewChat, onOpenModelSelector, onReq
             </h4>
             <p className="text-sm text-muted-foreground">
               {message}
-              {' '}
-              {action && (
-                <button className="text-primary underline" onClick={action.onClick}>
-                  {action.label}
-                </button>
+              {actions.length > 0 && (
+                <>
+                  {' '}
+                  {actions.map((action, i) => (
+                    <span key={action.label}>
+                      <button className="text-primary underline" onClick={action.onClick}>
+                        {action.label}
+                      </button>
+                      {i < actions.length - 1 && <> or </>}
+                    </span>
+                  ))}
+                </>
               )}
             </p>
           </div>

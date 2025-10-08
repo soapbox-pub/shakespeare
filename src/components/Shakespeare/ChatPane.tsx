@@ -649,6 +649,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
               onDismiss={handleErrorDismiss}
               onNewChat={onNewChat}
               onOpenModelSelector={openModelSelector}
+              onTryAgain={() => startGeneration(providerModel)}
               onRequestConsoleErrorHelp={handleConsoleErrorHelp}
               providerModel={providerModel}
             />

@@ -1,26 +1,25 @@
 import type { Tool } from "./Tool";
 import type { JSRuntimeFS } from "../JSRuntime";
-import type { AppConfig } from "../../contexts/AppContext";
 import { buildProject } from "../build";
 
 export class BuildProjectTool implements Tool<void> {
   private fs: JSRuntimeFS;
   private cwd: string;
-  private config: AppConfig;
+  private esmUrl: string;
 
   readonly description = "Build the project using esbuild. Creates optimized production files in the dist directory.";
 
-  constructor(fs: JSRuntimeFS, cwd: string, config: AppConfig) {
+  constructor(fs: JSRuntimeFS, cwd: string, esmUrl: string) {
     this.fs = fs;
     this.cwd = cwd;
-    this.config = config;
+    this.esmUrl = esmUrl;
   }
 
   async execute(): Promise<string> {
     try {
       // Build and write the project files
       const result = await buildProject({
-        esmUrl: this.config.esmUrl,
+        esmUrl: this.esmUrl,
         fs: this.fs,
         projectPath: this.cwd,
         domParser: new DOMParser(),

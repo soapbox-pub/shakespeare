@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { BuildProjectTool } from './BuildProjectTool';
 import type { JSRuntimeFS } from '../JSRuntime';
-import type { AppConfig } from '../../contexts/AppContext';
 
 // Mock the build functions
 vi.mock('../build', () => ({
@@ -12,7 +11,6 @@ import { buildProject } from '../build';
 
 describe('BuildProjectTool', () => {
   let mockFS: JSRuntimeFS;
-  let mockConfig: AppConfig;
   let tool: BuildProjectTool;
 
   beforeEach(() => {
@@ -26,15 +24,9 @@ describe('BuildProjectTool', () => {
       mkdir: vi.fn(),
     } as unknown as JSRuntimeFS;
 
-    mockConfig = {
-      theme: 'light',
-      relayUrl: 'wss://relay.nostr.band',
-      deployServer: 'shakespeare.wtf',
-      esmUrl: 'https://esm.shakespeare.diy',
-      language: 'en',
-    };
 
-    tool = new BuildProjectTool(mockFS, '/test/project', mockConfig);
+
+    tool = new BuildProjectTool(mockFS, '/test/project', 'https://esm.shakespeare.diy');
   });
 
   it('should have correct description', () => {

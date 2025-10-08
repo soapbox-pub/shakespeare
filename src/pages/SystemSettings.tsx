@@ -1,5 +1,6 @@
 import { Settings2, ArrowLeft, Globe } from "lucide-react";
 import { useTranslation } from 'react-i18next';
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -13,6 +14,7 @@ export function SystemSettings() {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const { config, updateConfig } = useAppContext();
+  const [esmUrlInput, setEsmUrlInput] = useState(config.esmUrl);
 
   return (
     <div className="p-6 space-y-6">
@@ -60,11 +62,16 @@ export function SystemSettings() {
           <Input
             id="esm-url"
             type="url"
-            value={config.esmUrl}
-            onChange={(e) => updateConfig((current) => ({
-              ...current,
-              esmUrl: e.target.value,
-            }))}
+            value={esmUrlInput}
+            onChange={(e) => {
+              // Strip trailing slash on save.
+              const value = e.target.value;
+              setEsmUrlInput(value);
+              updateConfig((current) => ({
+                ...current,
+                esmUrl: value.replace(/\/+$/, ''),
+              }));
+            }}
             className="w-full max-w-xs"
             placeholder="https://esm.shakespeare.diy"
           />

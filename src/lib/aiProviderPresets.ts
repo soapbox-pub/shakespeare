@@ -80,6 +80,14 @@ export const AI_PROVIDER_PRESETS: PresetProvider[] = [
     tosURL: "https://platform.moonshot.ai/docs/agreement/modeluse",
     proxy: true,
   },
+  {
+    id: "google",
+    name: "Google",
+    baseURL: "https://generativelanguage.googleapis.com/v1beta/openai",
+    apiKeysURL: "https://console.cloud.google.com/apis/credentials",
+    tosURL: "https://ai.google.dev/gemini-api/terms",
+    proxy: true,
+  },
 ];
 
 // Helper function to get a specific preset by ID

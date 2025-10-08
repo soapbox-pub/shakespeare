@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Bot, GitBranch, Database, Wifi, Settings2, Info, Cog } from 'lucide-react';
+import { Bot, GitBranch, Database, Wifi, Settings2, Info } from 'lucide-react';
 import { useIsMobile } from '@/hooks/useIsMobile';
 
 interface SettingsItem {
@@ -42,18 +42,18 @@ const getSettingsItems = (t: (key: string) => string): SettingsItem[] => [
     href: '/settings/nostr',
   },
   {
-    id: 'system',
-    title: t('systemSettings'),
-    description: t('systemSettingsDescription'),
-    icon: Cog,
-    href: '/settings/system',
-  },
-  {
     id: 'data',
     title: t('dataSettings'),
     description: t('dataSettingsDescription'),
     icon: Database,
     href: '/settings/data',
+  },
+  {
+    id: 'system',
+    title: t('systemSettings'),
+    description: t('systemSettingsDescription'),
+    icon: Settings,
+    href: '/settings/system',
   },
   {
     id: 'about',

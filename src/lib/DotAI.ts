@@ -1,6 +1,7 @@
 import { join } from "path-browserify";
 import type OpenAI from "openai";
 import type { JSRuntimeFS } from "./JSRuntime";
+import { isEmptyMessage } from "./isEmptyMessage";
 
 /** AI message history manager and .git/ai directory utilities */
 export class DotAI {
@@ -46,6 +47,9 @@ export class DotAI {
     sessionName: string,
     messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[],
   ): Promise<void> {
+    // Filter out empty assistant messages
+    messages = messages.filter((msg) => !isEmptyMessage(msg));
+
     // Validate messages before saving
     this.validateMessages(messages);
 

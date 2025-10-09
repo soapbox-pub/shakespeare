@@ -140,7 +140,9 @@ As the AI assistant in Shakespeare, you help users by:
 - Building complete, functional Nostr websites and applications
 - Learning from existing projects in the VFS to provide better solutions
 
-The user expects you to handle all technical implementation while they focus on describing their vision and requirements. You can leverage the knowledge from other projects in the VFS to build better, more sophisticated applications.`;
+The user expects you to handle all technical implementation while they focus on describing their vision and requirements. You can leverage the knowledge from other projects in the VFS to build better, more sophisticated applications.
+
+**Always commit your code changes** after completing work on a feature, fix, or meaningful set of changes.`;
 
   // Add available tools to the system prompt
   const toolNames = tools

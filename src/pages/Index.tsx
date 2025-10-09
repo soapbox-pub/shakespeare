@@ -20,7 +20,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ModelSelector } from '@/components/ModelSelector';
 import { FileAttachment } from '@/components/ui/file-attachment';
-import { Plus } from 'lucide-react';
+import { ArrowUp } from 'lucide-react';
 import { useSeoMeta } from '@unhead/react';
 import { ShakespeareLogo } from '@/components/ShakespeareLogo';
 
@@ -331,7 +331,7 @@ export default function Index() {
               />
 
               {/* Bottom Controls Row */}
-              <div className="absolute bottom-3 left-3 right-3 flex items-center justify-end gap-2 overflow-hidden">
+              <div className="absolute bottom-3 left-3 right-3 flex items-center justify-end gap-4 overflow-hidden">
                 {/* File Attachment */}
                 <FileAttachment
                   className="mr-auto"
@@ -363,18 +363,12 @@ export default function Index() {
                     (hasProvidersConfigured && !providerModel.trim())
                   }
                   size="sm"
-                  className="h-8 rounded-lg"
+                  className="size-8 [&_svg]:size-5 rounded-full p-0"
                 >
                   {isCreating || isGeneratingId ? (
-                    <>
-                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
-                      {isGeneratingId ? t('generating') : t('creating')}
-                    </>
+                    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2" />
                   ) : (
-                    <>
-                      <Plus className="mr-2 h-3 w-3" />
-                      {t('createProject')}
-                    </>
+                    <ArrowUp />
                   )}
                 </Button>
               </div>

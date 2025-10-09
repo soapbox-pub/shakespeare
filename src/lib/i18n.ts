@@ -76,9 +76,6 @@ const resources = {
       // Shakespeare Main Page
       buildNostrApps: 'Build Nostr apps with AI',
       whatToBuild: 'What would you like to build?',
-      createProject: 'Create Project',
-      generating: 'Generating...',
-      creating: 'Creating...',
       chooseModel: 'Choose a model...',
       selectModelToDescribe: "Please select a model below, then describe what you'd like to build...",
       examplePrompt: "e.g., Create a farming equipment marketplace for local farmers to buy and sell tractors, tools, and supplies...",
@@ -392,9 +389,6 @@ const resources = {
       // Shakespeare Main Page
       buildNostrApps: 'Construa aplicativos Nostr com IA',
       whatToBuild: 'O que você gostaria de construir?',
-      createProject: 'Criar Projeto',
-      generating: 'Gerando...',
-      creating: 'Criando...',
       chooseModel: 'Escolha um modelo...',
       selectModelToDescribe: "Por favor, selecione um modelo abaixo e depois descreva o que gostaria de construir...",
       examplePrompt: "ex., Criar um marketplace de equipamentos agrícolas para fazendeiros locais comprarem e venderem tratores, ferramentas e suprimentos...",
@@ -714,9 +708,6 @@ const resources = {
       // Shakespeare Main Page
       buildNostrApps: '使用AI构建Nostr应用',
       whatToBuild: '您想构建什么？',
-      createProject: '创建项目',
-      generating: '生成中...',
-      creating: '创建中...',
       chooseModel: '选择模型...',
       selectModelToDescribe: "请在下方选择一个模型，然后描述您想要构建的内容...",
       examplePrompt: "例如：为当地农民创建一个农业设备市场，用于买卖拖拉机、工具和用品...",
@@ -1036,9 +1027,6 @@ const resources = {
       // Shakespeare Main Page
       buildNostrApps: 'Gina aikace-aikacen Nostr da AI',
       whatToBuild: 'Me kuke son ginawa?',
-      createProject: 'Ƙirƙiri Aikin',
-      generating: 'Ana samarwa...',
-      creating: 'Ana ƙirƙirawa...',
       chooseModel: 'Zaɓi samfuri...',
       selectModelToDescribe: "Da fatan za a zaɓi samfuri a ƙasa, sannan a bayyana abin da kuke son ginawa...",
       examplePrompt: "misali, Ƙirƙiri kasuwar kayan aikin noma don manoma na yankin su sayi da sayar da taraktoci, kayan aiki, da kayayyaki...",
@@ -1358,9 +1346,6 @@ const resources = {
       // Shakespeare Main Page
       buildNostrApps: 'Kọ awọn ohun elo Nostr pẹlu AI',
       whatToBuild: 'Kini o fẹ kọ?',
-      createProject: 'Ṣẹda Iṣẹ akanṣe',
-      generating: 'N ṣẹda...',
-      creating: 'N ṣẹda...',
       chooseModel: 'Yan awoṣe...',
       selectModelToDescribe: "Jọwọ yan awoṣe ni isalẹ, lẹhinna ṣapejuwe ohun ti o fẹ kọ...",
       examplePrompt: "apeere, Ṣẹda ọja ẹrọ ogbin fun awọn agbe agbegbe lati ra ati ta awọn traktọ, awọn irinṣẹ, ati awọn ipese...",
@@ -1675,9 +1660,6 @@ const resources = {
       // Shakespeare Main Page
       buildNostrApps: 'Wuo ngwa Nostr na AI',
       whatToBuild: 'Gịnị ka ị chọrọ iwu?',
-      createProject: 'Mepụta Ọrụ',
-      generating: 'Na-emepụta...',
-      creating: 'Na-emepụta...',
       chooseModel: 'Họrọ ụdịdị...',
       selectModelToDescribe: "Biko họrọ ụdịdị n'okpuru, wee kọwaa ihe ị chọrọ iwu...",
       examplePrompt: "ọmụmaatụ, Mepụta ahịa ngwá ọrụ ugbo maka ndị ọrụ ugbo mpaghara ịzụta na ire traktọ, ngwá ọrụ, na ngwa...",

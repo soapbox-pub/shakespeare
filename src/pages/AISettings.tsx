@@ -354,7 +354,7 @@ export function AISettings() {
         {availablePresets.length > 0 && (
           <div className="space-y-3">
             <h4 className="text-sm font-medium">{t('addProvider')}</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(min(280px,100%),1fr))] gap-3">
               {availablePresets.map((preset) => {
                 const isNostrPreset = preset.nostr;
                 const isLoggedIntoNostr = !!user;

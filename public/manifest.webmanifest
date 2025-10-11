@@ -1,4 +1,5 @@
 {
+  "$schema": "https://json.schemastore.org/web-manifest-combined.json",
   "name": "Shakespeare - AI-Powered Nostr Development",
   "short_name": "Shakespeare",
   "description": "Build custom Nostr websites with AI assistance using Shakespeare, an AI-powered development environment",
@@ -24,19 +25,32 @@
   ],
   "screenshots": [
     {
-      "src": "/screenshot-home.png",
+      "label": "Home",
+      "src": "/screenshot-mobile-home.png",
       "sizes": "1179x2556",
-      "type": "image/png"
+      "type": "image/png",
+      "form_factor": "narrow"
     },
     {
-      "src": "/screenshot-project.png",
+      "label": "Project",
+      "src": "/screenshot-mobile-project.png",
       "sizes": "1179x2556",
-      "type": "image/png"
+      "type": "image/png",
+      "form_factor": "narrow"
     },
-        {
-      "src": "/screenshot-preview.png",
+    {
+      "label": "Preview",
+      "src": "/screenshot-mobile-preview.png",
       "sizes": "1179x2556",
-      "type": "image/png"
+      "type": "image/png",
+      "form_factor": "narrow"
+    },
+    {
+      "label": "Desktop",
+      "src": "/screenshot-desktop.png",
+      "sizes": "1920x1080",
+      "type": "image/png",
+      "form_factor": "wide"
     }
   ]
 }

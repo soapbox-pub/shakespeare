@@ -2,6 +2,8 @@
   "name": "Shakespeare - AI-Powered Nostr Development",
   "short_name": "Shakespeare",
   "description": "Build custom Nostr websites with AI assistance using Shakespeare, an AI-powered development environment",
+  "id": "/",
+  "scope": "/",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
@@ -10,14 +12,12 @@
     {
       "src": "/shakespeare.png",
       "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "type": "image/png"
     },
     {
       "src": "/shakespeare.png",
       "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "type": "image/png"
     }
   ]
 }

@@ -2,6 +2,7 @@
   "name": "Shakespeare - AI-Powered Nostr Development",
   "short_name": "Shakespeare",
   "description": "Build custom Nostr websites with AI assistance using Shakespeare, an AI-powered development environment",
+  "categories": ["productivity", "devtools"],
   "id": "/",
   "scope": "/",
   "start_url": "/",

@@ -6,6 +6,7 @@
   "scope": "/",
   "start_url": "/",
   "display": "standalone",
+  "orientation": "any",
   "background_color": "#ffffff",
   "theme_color": "#9333ea",
   "icons": [
@@ -17,6 +18,23 @@
     {
       "src": "/shakespeare.png",
       "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshot-home.png",
+      "sizes": "1179x2556",
+      "type": "image/png"
+    },
+    {
+      "src": "/screenshot-project.png",
+      "sizes": "1179x2556",
+      "type": "image/png"
+    },
+        {
+      "src": "/screenshot-preview.png",
+      "sizes": "1179x2556",
       "type": "image/png"
     }
   ]

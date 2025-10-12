@@ -380,10 +380,10 @@ export function StorageSettings() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Download className="h-5 w-5" />
-              {t('exportFiles')}
+              {t('exportSystem')}
             </CardTitle>
             <CardDescription>
-              {t('exportFilesDescription')}
+              {t('exportSystemDescription')}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -412,10 +412,10 @@ export function StorageSettings() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
               <HardDrive className="h-5 w-5" />
-              {t('importFullSystem')}
+              {t('importSystem')}
             </CardTitle>
             <CardDescription>
-              {t('importFullSystemDescription')}
+              {t('importSystemDescription')}
             </CardDescription>
           </CardHeader>
           <CardContent>

@@ -1,14 +1,15 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Upload, AlertTriangle, Trash2, CheckCircle, XCircle, Loader2, HardDrive } from 'lucide-react';
+import { AlertTriangle, Trash2, CheckCircle, Loader2, HardDrive } from 'lucide-react';
 import { useToast } from '@/hooks/useToast';
 import { useFS } from '@/hooks/useFS';
 import { cn } from '@/lib/utils';
 import { importFullSystem, validateExportFile, type ImportProgress, type ImportValidation } from '@/lib/fullSystemImport';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { FileUploadArea } from '@/components/ui/file-upload-area';
 
 interface FullSystemImportDialogProps {
   onImport?: () => void;
@@ -53,7 +54,7 @@ export function FullSystemImportDialog({
     importComplete: false
   });
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const { toast } = useToast();
   const { fs } = useFS();
 
@@ -115,10 +116,6 @@ export function FullSystemImportDialog({
       });
     }
   }, []);
-
-  const handleClickUpload = () => {
-    fileInputRef.current?.click();
-  };
 
   const handleFileRemove = () => {
     updateState({ selectedFile: null, validation: null, error: null, importComplete: false });
@@ -204,7 +201,7 @@ export function FullSystemImportDialog({
               className={cn("gap-2 text-destructive border-destructive hover:bg-destructive hover:text-destructive-foreground", className)}
             >
               <HardDrive className="h-4 w-4" />
-              Import Full System
+              Import System
             </Button>
           </DialogTrigger>
         )}
@@ -213,59 +210,49 @@ export function FullSystemImportDialog({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <HardDrive className="h-5 w-5 text-destructive" />
-              Import Complete System
+              Import System
             </DialogTitle>
             <DialogDescription>
-              Replace your entire workspace with a backup. This will permanently delete all current data.
+              Select a Shakespeare export file to replace your entire workspace.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
-            <Alert className="border-destructive/50 bg-destructive/5">
-              <AlertTriangle className="h-4 w-4 text-destructive" />
-              <AlertDescription className="text-destructive">
-                <strong>Warning:</strong> This will completely wipe your current workspace and replace it with imported data.
-              </AlertDescription>
-            </Alert>
+            {!state.isImporting && (
+              <Alert className="border-destructive/50 bg-destructive/5">
+                <AlertTriangle className="h-4 w-4 text-destructive" />
+                <AlertDescription className="text-destructive">
+                  <strong>Warning:</strong> This action will <strong>completely replace</strong> your Shakespeare workspace with the imported data.
+                  All current projects, AI settings, Git credentials, and preferences will be <strong>permanently deleted</strong>.
+                </AlertDescription>
+              </Alert>
+            )}
 
             {!state.isImporting && !state.importComplete && (
               <>
-                <div
-                  className={cn(
-                    "relative border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer",
-                    state.isDragOver ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-primary/50",
-                    state.selectedFile && state.validation?.isValid && "border-green-500/50 bg-green-500/5",
-                    state.selectedFile && state.validation && !state.validation.isValid && "border-destructive/50 bg-destructive/5"
-                  )}
-                  onClick={handleClickUpload}
+                <FileUploadArea
+                  selectedFile={state.selectedFile}
+                  isDragOver={state.isDragOver}
+                  isValid={state.validation?.isValid ?? false}
+                  onFileSelect={handleFileSelect}
+                  onFileRemove={handleFileRemove}
                   onDragOver={handleDragOver}
                   onDragLeave={handleDragLeave}
                   onDrop={handleDrop}
+                  disabled={state.isImporting}
+                  accept=".zip"
+                  className="mb-4"
                 >
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    onChange={(e) => {
-                      const files = e.target.files;
-                      if (files && files.length > 0) {
-                        handleFileSelect(files[0]);
-                      }
-                    }}
-                    accept=".zip"
-                    className="hidden"
-                    disabled={state.isImporting}
-                  />
-
                   <div className="space-y-3">
                     <div className="flex justify-center">
                       {state.selectedFile ? (
                         state.validation?.isValid ? (
                           <CheckCircle className="h-8 w-8 text-green-600" />
                         ) : (
-                          <XCircle className="h-8 w-8 text-destructive" />
+                          <Trash2 className="h-8 w-8 text-destructive" />
                         )
                       ) : (
-                        <Upload className="h-8 w-8 text-muted-foreground" />
+                        <HardDrive className="h-8 w-8 text-muted-foreground" />
                       )}
                     </div>
 
@@ -298,7 +285,7 @@ export function FullSystemImportDialog({
                       )}
                     </div>
                   </div>
-                </div>
+                </FileUploadArea>
 
                 {state.validation && (
                   <div className="text-sm space-y-2 p-3 bg-muted rounded">
@@ -309,12 +296,6 @@ export function FullSystemImportDialog({
                     <div className="flex justify-between">
                       <span>Files:</span>
                       <span className="font-medium">{state.validation.totalFiles}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Valid:</span>
-                      <span className={cn("font-medium", state.validation.isValid ? "text-green-600" : "text-destructive")}>
-                        {state.validation.isValid ? 'Yes' : 'No'}
-                      </span>
                     </div>
                     {state.validation.errors.length > 0 && (
                       <div className="text-xs text-destructive">
@@ -341,7 +322,7 @@ export function FullSystemImportDialog({
                     variant="destructive"
                   >
                     <Trash2 className="mr-2 h-4 w-4" />
-                    Replace System
+                    Replace Entire System
                   </Button>
                 </div>
               </>
@@ -387,7 +368,7 @@ export function FullSystemImportDialog({
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-destructive" />
-              Confirm System Replacement
+              Confirm Complete System Replacement
             </AlertDialogTitle>
             <AlertDialogDescription className="space-y-3">
               <p>
@@ -397,23 +378,27 @@ export function FullSystemImportDialog({
               <div className="bg-destructive/10 border border-destructive/20 rounded p-3">
                 <p className="text-sm font-medium text-destructive mb-2">This will permanently delete:</p>
                 <ul className="list-disc list-inside text-sm text-destructive space-y-1">
-                  <li>All current projects and files</li>
-                  <li>AI settings and API keys</li>
-                  <li>Git credentials and preferences</li>
-                  <li>All cached data</li>
+                  <li>All current projects and their files</li>
+                  <li>AI provider settings and API keys</li>
+                  <li>Git credentials and repository settings</li>
+                  <li>User preferences and theme settings</li>
+                  <li>All cached data and temporary files</li>
                 </ul>
               </div>
 
               {state.validation && (
                 <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded p-3">
-                  <p className="text-sm font-medium text-green-800 dark:text-green-200">
-                    Import will restore {state.validation.projectCount} projects and {state.validation.totalFiles} files
-                  </p>
+                  <p className="text-sm font-medium text-green-800 dark:text-green-200 mb-2">Import will restore:</p>
+                  <ul className="list-disc list-inside text-sm text-green-700 dark:text-green-300 space-y-1">
+                    <li>{state.validation.projectCount} projects</li>
+                    <li>{state.validation.totalFiles} total files</li>
+                    {state.validation.hasConfig && <li>Settings, themes, and preferences</li>}
+                  </ul>
                 </div>
               )}
 
               <p className="text-destructive font-medium">
-                This action cannot be undone. Are you sure?
+                This action cannot be undone. Are you absolutely sure?
               </p>
             </AlertDialogDescription>
           </AlertDialogHeader>

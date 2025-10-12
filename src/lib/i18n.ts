@@ -236,10 +236,10 @@ const resources = {
 
       // Data Settings
       dataSettingsDescriptionLong: 'Export files and manage local data.',
-      exportFiles: 'Export Files',
-      exportFilesDescription: 'Download all your projects and files as a ZIP archive. This includes all project files, settings, and data stored locally.',
-      importFullSystem: 'Import Full System',
-      importFullSystemDescription: 'Replace your entire Shakespeare workspace with a previously exported backup. This will permanently delete all current data.',
+      exportSystem: 'Export System',
+      exportSystemDescription: 'Download your complete Shakespeare workspace as a ZIP archive. This includes all projects, settings, and data.',
+      importSystem: 'Import System',
+      importSystemDescription: 'Replace your entire Shakespeare workspace with a previously exported backup. This will permanently delete all current data.',
       exportAllFiles: 'Export All Files',
       exporting: 'Exporting...',
       clearAllData: 'Clear All Data',
@@ -565,10 +565,10 @@ const resources = {
 
       // Data Settings
       dataSettingsDescriptionLong: 'Exporte arquivos e gerencie dados locais.',
-      exportFiles: 'Exportar Arquivos',
-      exportFilesDescription: 'Baixe todos os seus projetos e arquivos como um arquivo ZIP. Isso inclui todos os arquivos de projeto, configurações e dados armazenados localmente.',
-      importFullSystem: 'Importar Sistema Completo',
-      importFullSystemDescription: 'Substitua todo o seu espaço de trabalho do Shakespeare por um backup exportado anteriormente. Isso excluirá permanentemente todos os dados atuais.',
+      exportSystem: 'Exportar Sistema',
+      exportSystemDescription: 'Baixe seu espaço de trabalho completo do Shakespeare como um arquivo ZIP. Isso inclui todos os projetos, configurações e dados.',
+      importSystem: 'Importar Sistema',
+      importSystemDescription: 'Substitua todo o seu espaço de trabalho do Shakespeare por um backup exportado anteriormente. Isso excluirá permanentemente todos os dados atuais.',
       exportAllFiles: 'Exportar Todos os Arquivos',
       exporting: 'Exportando...',
       clearAllData: 'Limpar Todos os Dados',
@@ -903,10 +903,10 @@ const resources = {
 
       // Data Settings
       dataSettingsDescriptionLong: '导出文件和管理本地数据。',
-      exportFiles: '导出文件',
-      exportFilesDescription: '将您的所有项目和文件下载为ZIP存档。这包括所有项目文件、设置和本地存储的数据。',
-      importFullSystem: '导入完整系统',
-      importFullSystemDescription: '用之前导出的备份替换整个Shakespeare工作空间。这将永久删除所有当前数据。',
+      exportSystem: '导出系统',
+      exportSystemDescription: '将您的完整Shakespeare工作空间下载为ZIP存档。这包括所有项目、设置和数据。',
+      importSystem: '导入系统',
+      importSystemDescription: '用之前导出的备份替换整个Shakespeare工作空间。这将永久删除所有当前数据。',
       exportAllFiles: '导出所有文件',
       exporting: '导出中...',
       clearAllData: '清除所有数据',
@@ -1238,10 +1238,10 @@ const resources = {
 
       // Data Settings
       dataSettingsDescriptionLong: 'Fitar da fayiloli da sarrafa bayanan gida.',
-      exportFiles: 'Fitar da Fayiloli',
-      exportFilesDescription: 'Sauke duk ayyukanku da fayiloli azaman ajiyar ZIP. Wannan ya haɗa da duk fayilolin aikin, saitunan, da bayanan da aka adana a gida.',
-      importFullSystem: 'Shigo da Cikakken Tsarin',
-      importFullSystemDescription: 'Maye gurbin dukkan wurin aikin Shakespeare ɗinku da backup da aka fitar a baya. Wannan zai share duk bayanan yanzu har abada.',
+      exportSystem: 'Fitar da Tsarin',
+      exportSystemDescription: 'Sauke cikakken wurin aikin Shakespeare ɗinka azaman ajiyar ZIP. Wannan ya haɗa da duk ayyuka, saituna, da bayanai.',
+      importSystem: 'Shigo da Tsarin',
+      importSystemDescription: 'Maye gurbin cikakken wurin aikin Shakespeare ɗinka da backup da aka fitar a baya. Wannan zai share duk bayanan yanzu har abada.',
       exportAllFiles: 'Fitar da Duk Fayiloli',
       exporting: 'Ana fitarwa...',
       clearAllData: 'Share Duk Bayanai',

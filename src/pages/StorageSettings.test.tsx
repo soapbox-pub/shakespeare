@@ -20,8 +20,8 @@ describe('StorageSettings', () => {
     // Check for Persist Data section
     expect(screen.getByText('Persist Data')).toBeInTheDocument();
 
-    // Check for Export Files section
-    expect(screen.getByText('Export Files')).toBeInTheDocument();
+    // Check for Export System section
+    expect(screen.getByText('Export System')).toBeInTheDocument();
     expect(screen.getByText('Export All Files')).toBeInTheDocument();
 
     // Check for Clear All Data section

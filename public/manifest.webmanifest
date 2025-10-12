@@ -10,7 +10,7 @@
   "display": "standalone",
   "orientation": "any",
   "background_color": "#ffffff",
-  "theme_color": "#9333ea",
+  "theme_color": "#2b0037",
   "icons": [
     {
       "src": "/shakespeare-192x192.png",

@@ -32,7 +32,7 @@ export function DynamicFavicon() {
     if (!originalImageRef.current) {
       const img = new Image();
       img.crossOrigin = 'anonymous';
-      img.src = originalFaviconRef.current || '/shakespeare.png';
+      img.src = originalFaviconRef.current || '/shakespeare-192x192.png';
       img.onload = () => {
         originalImageRef.current = img;
       };

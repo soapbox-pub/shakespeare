@@ -184,7 +184,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     artist: `Working on ${projectId}...`,
     artwork: [
       {
-        src: '/shakespeare.png',
+        src: '/shakespeare-512x512.png',
         sizes: '512x512',
         type: 'image/png'
       }

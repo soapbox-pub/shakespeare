@@ -1,10 +1,8 @@
 import React, { useState } from 'react';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
   ExternalLink,
-  GitBranch,
   Edit,
   Star,
   StarOff,
@@ -15,8 +13,7 @@ import {
   XCircle,
   User,
   Home,
-  Contact,
-  Copy
+  Contact
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -400,28 +397,6 @@ export function AppShowcaseCard({ app, onEdit, showModerationControls, hideAppro
           )}
         </a>
 
-        {/* Status Badges */}
-        <div className="absolute top-3 left-3 flex flex-col gap-1">
-          {app.isFeatured && (
-            <Badge className="bg-yellow-500 text-yellow-50">
-              <Star className="w-3 h-3 mr-1" />
-              Featured
-            </Badge>
-          )}
-          {app.isHomepage && isModerator && (
-            <Badge className="bg-blue-500 text-blue-50">
-              <Home className="w-3 h-3 mr-1" />
-              Homepage
-            </Badge>
-          )}
-          {!app.isApproved && !hideApprovalStatus && (
-            <Badge variant="secondary" className="bg-orange-100 text-orange-700 border-orange-200">
-              <span className="w-2 h-2 bg-orange-500 rounded-full mr-1"></span>
-              Pending
-            </Badge>
-          )}
-        </div>
-
         {/* Actions Menu */}
         {(isOwner || showModerationControls) && (
           <div className="absolute top-3 right-3">
@@ -580,22 +555,6 @@ export function AppShowcaseCard({ app, onEdit, showModerationControls, hideAppro
           </span>
         </div>
 
-        {/* Tags */}
-        {app.appTags.length > 0 && (
-          <div className="flex flex-wrap gap-1 mb-4">
-            {app.appTags.slice(0, 3).map((tag) => (
-              <Badge key={tag} variant="secondary" className="text-xs">
-                {tag}
-              </Badge>
-            ))}
-            {app.appTags.length > 3 && (
-              <Badge variant="secondary" className="text-xs">
-                +{app.appTags.length - 3} more
-              </Badge>
-            )}
-          </div>
-        )}
-
         {/* Spacer to push action links to bottom */}
         <div className="flex-1"></div>
 
@@ -623,33 +582,6 @@ export function AppShowcaseCard({ app, onEdit, showModerationControls, hideAppro
               <ExternalLink className="w-4 h-4" />
             </a>
           </Button>
-          {app.repositoryUrl.startsWith('nostr://') ? (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                navigator.clipboard.writeText(app.repositoryUrl);
-                toast({
-                  title: 'Copied!',
-                  description: 'Nostr git URL copied to clipboard'
-                });
-              }}
-              title="Copy Nostr git URL"
-            >
-              <GitBranch className="w-4 h-4" />
-            </Button>
-          ) : (
-            <Button variant="outline" size="sm" asChild>
-              <a
-                href={app.repositoryUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                title="View repository"
-              >
-                <GitBranch className="w-4 h-4" />
-              </a>
-            </Button>
-          )}
         </div>
       </CardContent>
     </Card>

@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useAppSubmissions } from "@/hooks/useAppSubmissions";
 import { AppShowcaseCard } from "@/components/AppShowcaseCard";

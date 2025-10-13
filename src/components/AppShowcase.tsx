@@ -68,7 +68,7 @@ export function AppShowcase() {
   // Don't show showcase if no apps exist
   if (isLoading) {
     return (
-      <div className="mt-16 max-w-4xl mx-auto">
+      <div className="mt-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {Array.from({ length: 6 }).map((_, i) => (
             <Card key={i} className="h-full flex flex-col">
@@ -104,7 +104,7 @@ export function AppShowcase() {
 
   if (!submissions.length) {
     return (
-      <div className="mt-16 max-w-4xl mx-auto">
+      <div className="mt-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <Card className="border-dashed">
           <CardContent className="py-12 px-8 text-center">
             <div className="max-w-sm mx-auto space-y-6">
@@ -120,7 +120,7 @@ export function AppShowcase() {
   }
 
   return (
-    <div className="mt-16 max-w-4xl mx-auto">
+    <div className="mt-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       {/* Apps Grid */}
       <div className="space-y-12">
         {/* Featured Apps */}

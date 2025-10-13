@@ -377,7 +377,7 @@ export function AppShowcaseCard({ app, onEdit, showModerationControls, hideAppro
           href={app.websiteUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="block aspect-video bg-gradient-to-br from-gray-50 to-gray-100 rounded-t-lg overflow-hidden cursor-pointer"
+          className="block aspect-video bg-gradient-to-br from-muted/50 to-muted rounded-t-lg overflow-hidden cursor-pointer"
         >
           {!imageError ? (
             <img
@@ -387,9 +387,9 @@ export function AppShowcaseCard({ app, onEdit, showModerationControls, hideAppro
               onError={() => setImageError(true)}
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-gray-400">
+            <div className="w-full h-full flex items-center justify-center text-muted-foreground">
               <div className="text-center">
-                <div className="w-16 h-16 mx-auto mb-2 bg-gray-200 rounded-lg flex items-center justify-center">
+                <div className="w-16 h-16 mx-auto mb-2 bg-muted rounded-lg flex items-center justify-center">
                   <ExternalLink className="w-8 h-8" />
                 </div>
                 <p className="text-sm">Screenshot unavailable</p>
@@ -502,7 +502,7 @@ export function AppShowcaseCard({ app, onEdit, showModerationControls, hideAppro
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-3">
             {/* App Icon */}
-            <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+            <div className="w-12 h-12 rounded-lg overflow-hidden bg-muted flex-shrink-0">
               <img
                 src={app.appIconUrl}
                 alt={`${app.appName} icon`}
@@ -514,18 +514,18 @@ export function AppShowcaseCard({ app, onEdit, showModerationControls, hideAppro
               />
             </div>
             <div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-1" title={app.appName}>
+              <h3 className="text-xl font-semibold text-foreground mb-1" title={app.appName}>
                 {app.appName.length > 50 ? `${app.appName.slice(0, 50)}...` : app.appName}
               </h3>
             </div>
           </div>
         </div>
 
-        <p className="text-gray-600 mb-3 line-clamp-3">{app.description}</p>
+        <p className="text-muted-foreground mb-3 line-clamp-3">{app.description}</p>
 
         {/* Author Information */}
         <div className="flex items-center gap-2 mb-4">
-          <div className="w-6 h-6 rounded-full overflow-hidden bg-gray-100 flex-shrink-0">
+          <div className="w-6 h-6 rounded-full overflow-hidden bg-muted flex-shrink-0">
             {authorData?.metadata?.picture ? (
               <img
                 src={authorData.metadata.picture}
@@ -539,11 +539,11 @@ export function AppShowcaseCard({ app, onEdit, showModerationControls, hideAppro
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center">
-                <User className="w-3 h-3 text-gray-400" />
+                <User className="w-3 h-3 text-muted-foreground" />
               </div>
             )}
           </div>
-          <span className="text-sm text-gray-600">
+          <span className="text-sm text-muted-foreground">
             by{' '}
             <a
               href={`https://ditto.pub/${app.authorNpub || nip19.npubEncode(authorPubkey)}`}

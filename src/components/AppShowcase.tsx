@@ -173,43 +173,6 @@ export function AppShowcase() {
           </div>
         )}
 
-        {/* All Apps (Approved) - Collapsible */}
-        {approvedApps.length > 0 && (
-          <div>
-            <Collapsible open={showAllApps} onOpenChange={setShowAllApps}>
-              <CollapsibleTrigger asChild>
-                <Button variant="ghost" className="p-0 h-auto mb-6 hover:bg-transparent">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                      <span className="text-sm">📱</span>
-                    </div>
-                    <div className="text-left">
-                      <h3 className="text-xl font-bold text-gray-900">
-                        All Apps ({approvedApps.length})
-                      </h3>
-                      <p className="text-sm text-gray-600">
-                        {showAllApps ? 'Click to collapse' : 'Click to view all approved community apps'}
-                      </p>
-                    </div>
-                  </div>
-                </Button>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {approvedApps.map((app) => (
-                    <AppShowcaseCard
-                      key={app.id}
-                      app={app}
-                      showModerationControls={isModerator}
-                      hideApprovalStatus={true}
-                    />
-                  ))}
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
-          </div>
-        )}
-
         {/* Templates Section */}
         {templateApps.length > 0 && (
           <div>
@@ -232,6 +195,43 @@ export function AppShowcase() {
                 />
               ))}
             </div>
+          </div>
+        )}
+
+        {/* More Apps (Approved) - Collapsible */}
+        {approvedApps.length > 0 && (
+          <div>
+            <Collapsible open={showAllApps} onOpenChange={setShowAllApps}>
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" className="p-0 h-auto mb-6 hover:bg-transparent">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                      <span className="text-sm">📱</span>
+                    </div>
+                    <div className="text-left">
+                      <h3 className="text-xl font-bold text-gray-900">
+                        More Apps ({approvedApps.length})
+                      </h3>
+                      <p className="text-sm text-gray-600">
+                        {showAllApps ? 'Click to collapse' : 'Click to view more community apps'}
+                      </p>
+                    </div>
+                  </div>
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {approvedApps.map((app) => (
+                    <AppShowcaseCard
+                      key={app.id}
+                      app={app}
+                      showModerationControls={isModerator}
+                      hideApprovalStatus={true}
+                    />
+                  ))}
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
           </div>
         )}
       </div>

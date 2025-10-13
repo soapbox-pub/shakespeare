@@ -74,7 +74,7 @@ const resources = {
       retry: 'Retry',
 
       // Shakespeare Main Page
-      buildNostrApps: 'Build Nostr apps with AI',
+      buildNostrApps: 'Build apps with AI',
       whatToBuild: 'What would you like to build?',
       chooseModel: 'Choose a model...',
       selectModelToDescribe: "Please select a model below, then describe what you'd like to build...",
@@ -387,7 +387,7 @@ const resources = {
       retry: 'Tentar novamente',
 
       // Shakespeare Main Page
-      buildNostrApps: 'Construa aplicativos Nostr com IA',
+      buildNostrApps: 'Construa aplicativos com IA',
       whatToBuild: 'O que você gostaria de construir?',
       chooseModel: 'Escolha um modelo...',
       selectModelToDescribe: "Por favor, selecione um modelo abaixo e depois descreva o que gostaria de construir...",
@@ -706,7 +706,7 @@ const resources = {
       retry: '重试',
 
       // Shakespeare Main Page
-      buildNostrApps: '使用AI构建Nostr应用',
+      buildNostrApps: '使用AI构建应用',
       whatToBuild: '您想构建什么？',
       chooseModel: '选择模型...',
       selectModelToDescribe: "请在下方选择一个模型，然后描述您想要构建的内容...",
@@ -1025,7 +1025,7 @@ const resources = {
       retry: 'Sake gwadawa',
 
       // Shakespeare Main Page
-      buildNostrApps: 'Gina aikace-aikacen Nostr da AI',
+      buildNostrApps: 'Gina aikace-aikace da AI',
       whatToBuild: 'Me kuke son ginawa?',
       chooseModel: 'Zaɓi samfuri...',
       selectModelToDescribe: "Da fatan za a zaɓi samfuri a ƙasa, sannan a bayyana abin da kuke son ginawa...",
@@ -1344,7 +1344,7 @@ const resources = {
       retry: 'Tun gbiyanju',
 
       // Shakespeare Main Page
-      buildNostrApps: 'Kọ awọn ohun elo Nostr pẹlu AI',
+      buildNostrApps: 'Kọ awọn ohun elo pẹlu AI',
       whatToBuild: 'Kini o fẹ kọ?',
       chooseModel: 'Yan awoṣe...',
       selectModelToDescribe: "Jọwọ yan awoṣe ni isalẹ, lẹhinna ṣapejuwe ohun ti o fẹ kọ...",
@@ -1658,7 +1658,7 @@ const resources = {
       retry: 'Nwaa ọzọ',
 
       // Shakespeare Main Page
-      buildNostrApps: 'Wuo ngwa Nostr na AI',
+      buildNostrApps: 'Wuo ngwa na AI',
       whatToBuild: 'Gịnị ka ị chọrọ iwu?',
       chooseModel: 'Họrọ ụdịdị...',
       selectModelToDescribe: "Biko họrọ ụdịdị n'okpuru, wee kọwaa ihe ị chọrọ iwu...",

@@ -1,8 +1,8 @@
 {
   "$schema": "https://json.schemastore.org/web-manifest-combined.json",
-  "name": "Shakespeare - AI-Powered Nostr Development",
+  "name": "Shakespeare - Open Source AI Builder",
   "short_name": "Shakespeare",
-  "description": "Build custom Nostr websites with AI assistance using Shakespeare, an AI-powered development environment",
+  "description": "Build custom apps with AI assistance using Shakespeare, an open-source development environment",
   "categories": ["productivity", "devtools"],
   "id": "/",
   "scope": "/",

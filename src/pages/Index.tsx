@@ -23,6 +23,7 @@ import { FileAttachment } from '@/components/ui/file-attachment';
 import { ArrowUp } from 'lucide-react';
 import { useSeoMeta } from '@unhead/react';
 import { ShakespeareLogo } from '@/components/ShakespeareLogo';
+import { AppShowcase } from '@/components/AppShowcase';
 
 export default function Index() {
   const { t } = useTranslation();
@@ -375,6 +376,9 @@ export default function Index() {
             </div>
           </div>
         </div>
+
+        {/* App Showcase */}
+        <AppShowcase />
       </AppLayout>
 
       {/* Onboarding Dialog */}

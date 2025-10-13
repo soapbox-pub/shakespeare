@@ -1,6 +1,7 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { ScrollToTop } from "./components/ScrollToTop";
 import { SessionMonitor } from "./components/SessionMonitor";
+import { URLFragmentHandler } from "./components/URLFragmentHandler";
 
 import Index from "./pages/Index";
 import Clone from "./pages/Clone";
@@ -24,6 +25,7 @@ export function AppRouter() {
     <BrowserRouter>
       <ScrollToTop />
       <SessionMonitor />
+      <URLFragmentHandler />
       <Routes>
         <Route path="/" element={<Index />} />
         <Route path="/clone" element={<Clone />} />

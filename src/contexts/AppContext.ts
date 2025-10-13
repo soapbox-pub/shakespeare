@@ -19,6 +19,10 @@ export interface AppConfig {
   previewDomain: string;
   /** Selected language */
   language?: string;
+  /** Whether to show the showcase section */
+  showcaseEnabled: boolean;
+  /** Npub of the showcase moderator */
+  showcaseModerator: string;
 }
 
 export interface AppContextType {

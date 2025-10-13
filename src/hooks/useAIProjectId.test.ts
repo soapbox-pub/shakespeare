@@ -47,6 +47,8 @@ describe('useAIProjectId', () => {
         esmUrl: 'https://esm.sh',
         corsProxy: 'https://proxy.example.com/{href}',
         previewDomain: 'local-shakespeare.dev',
+        showcaseEnabled: true,
+        showcaseModerator: 'npub1jvnpg4c6ljadf5t6ry0w9q0rnm4mksde87kglkrc993z46c39axsgq89sc',
       },
       updateConfig: vi.fn(),
     });

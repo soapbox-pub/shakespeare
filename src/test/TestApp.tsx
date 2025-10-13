@@ -36,6 +36,8 @@ export function TestApp({ children }: TestAppProps) {
     corsProxy: 'https://proxy.shakespeare.diy/?url={href}',
     previewDomain: 'local-shakespeare.dev',
     language: 'en',
+    showcaseEnabled: true,
+    showcaseModerator: 'npub1jvnpg4c6ljadf5t6ry0w9q0rnm4mksde87kglkrc993z46c39axsgq89sc',
   };
 
   // Initialize LightningFS for testing

@@ -47,6 +47,8 @@ const defaultConfig: AppConfig = {
   esmUrl: "https://esm.shakespeare.diy",
   corsProxy: "https://proxy.shakespeare.diy/?url={href}",
   previewDomain: "local-shakespeare.dev",
+  showcaseEnabled: true,
+  showcaseModerator: "npub1jvnpg4c6ljadf5t6ry0w9q0rnm4mksde87kglkrc993z46c39axsgq89sc",
 };
 
 const presetRelays = [

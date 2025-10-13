@@ -24,6 +24,8 @@ const AppConfigSchema = z.object({
   corsProxy: z.string().url(),
   previewDomain: z.string().min(1),
   language: z.string(),
+  showcaseEnabled: z.boolean(),
+  showcaseModerator: z.string(),
 }) satisfies z.ZodType<AppConfig>;
 
 export function AppProvider(props: AppProviderProps) {

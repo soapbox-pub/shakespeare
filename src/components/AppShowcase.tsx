@@ -13,21 +13,23 @@ import { shuffleArray } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
 import { RelaySelector } from "@/components/RelaySelector";
+import { useAppContext } from "@/hooks/useAppContext";
 
 export function AppShowcase() {
   const { user } = useCurrentUser();
+  const { config } = useAppContext();
   const { data: submissions = [], isLoading } = useAppSubmissions();
   const [showAllApps, setShowAllApps] = useState(false);
 
-  const MODERATOR_NPUB = 'npub1jvnpg4c6ljadf5t6ry0w9q0rnm4mksde87kglkrc993z46c39axsgq89sc';
-  const MODERATOR_HEX = (() => {
+  // Get moderator hex from config
+  const MODERATOR_HEX = useMemo(() => {
     try {
-      const decoded = nip19.decode(MODERATOR_NPUB);
+      const decoded = nip19.decode(config.showcaseModerator);
       return decoded.type === 'npub' ? decoded.data : '';
     } catch {
       return '';
     }
-  })();
+  }, [config.showcaseModerator]);
   const isModerator = user?.pubkey === MODERATOR_HEX;
 
   // Filter submissions
@@ -62,6 +64,11 @@ export function AppShowcase() {
     shuffleArray(nonHalloweenSubmissions.filter(app => app.isApproved && !app.isFeatured)),
   [nonHalloweenSubmissions]
   );
+
+  // Don't show showcase if disabled in settings
+  if (!config.showcaseEnabled) {
+    return null;
+  }
 
   // Don't show showcase if no apps exist
   if (isLoading) {

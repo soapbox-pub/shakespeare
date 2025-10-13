@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useNavigate } from "react-router-dom";
@@ -18,6 +20,7 @@ export function SystemSettings() {
   const [corsProxyInput, setCorsProxyInput] = useState(config.corsProxy);
   const [previewDomainInput, setPreviewDomainInput] = useState(config.previewDomain);
   const [deployServerInput, setDeployServerInput] = useState(config.deployServer);
+  const [showcaseModeratorInput, setShowcaseModeratorInput] = useState(config.showcaseModerator);
 
   return (
     <div className="p-6 space-y-6">
@@ -203,6 +206,60 @@ export function SystemSettings() {
                 <p className="text-xs text-muted-foreground">
                   {t('deployServerDescription')}
                 </p>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+
+        {/* Showcase Configuration */}
+        <Accordion type="single" collapsible className="w-full">
+          <AccordionItem value="showcase" className="border rounded-lg">
+            <AccordionTrigger className="px-4 py-3 hover:no-underline">
+              <h4 className="text-sm font-medium">Showcase</h4>
+            </AccordionTrigger>
+            <AccordionContent className="px-4 pb-4">
+              <div className="py-1 space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="showcase-enabled" className="text-sm font-medium">
+                    Showcase Enabled
+                  </Label>
+                  <Switch
+                    id="showcase-enabled"
+                    checked={config.showcaseEnabled}
+                    onCheckedChange={(checked) => {
+                      updateConfig((current) => ({
+                        ...current,
+                        showcaseEnabled: checked,
+                      }));
+                    }}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Display the app showcase section on the home page
+                </p>
+
+                <div className="space-y-2">
+                  <Label htmlFor="showcase-moderator" className="text-sm font-medium">
+                    Showcase Moderator
+                  </Label>
+                  <Input
+                    id="showcase-moderator"
+                    type="text"
+                    placeholder="npub1..."
+                    value={showcaseModeratorInput}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setShowcaseModeratorInput(value);
+                      updateConfig((current) => ({
+                        ...current,
+                        showcaseModerator: value,
+                      }));
+                    }}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Nostr public key (npub) of the user who can moderate showcase submissions
+                  </p>
+                </div>
               </div>
             </AccordionContent>
           </AccordionItem>

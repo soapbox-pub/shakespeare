@@ -567,7 +567,7 @@ export function AppShowcaseCard({ app, onEdit, showModerationControls, hideAppro
             className="flex-1"
           >
             <img
-              src="https://shakespeare.diy/badge.svg"
+              src="/badge.svg"
               alt="Edit with Shakespeare"
               className="h-6 hover:opacity-80 transition-opacity"
             />

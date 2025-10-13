@@ -29,6 +29,7 @@ import { useAuthor } from '@/hooks/useAuthor';
 import { nip19 } from 'nostr-tools';
 import { useToast } from '@/hooks/useToast';
 import { useQueryClient } from '@tanstack/react-query';
+import type { NostrEvent } from '@nostrify/nostrify';
 
 interface AppShowcaseCardProps {
   app: AppSubmission;
@@ -37,7 +38,7 @@ interface AppShowcaseCardProps {
   hideApprovalStatus?: boolean; // Hide pending/approval badges
 }
 
-export function AppShowcaseCard({ app, onEdit, showModerationControls, hideApprovalStatus }: AppShowcaseCardProps) {
+export function AppShowcaseCard({ app, onEdit, showModerationControls, hideApprovalStatus: _hideApprovalStatus }: AppShowcaseCardProps) {
   const { user } = useCurrentUser();
   const { nostr } = useNostr();
   const { mutate: publishEvent, isPending } = useNostrPublish();
@@ -132,9 +133,9 @@ export function AppShowcaseCard({ app, onEdit, showModerationControls, hideAppro
           limit: 1
         }]);
 
-        const currentHomepageList = currentHomepageLists.reduce((latest: any, current: any) =>
+        const currentHomepageList = currentHomepageLists.reduce((latest: NostrEvent | null, current: NostrEvent) =>
           !latest || current.created_at > latest.created_at ? current : latest,
-          null
+          null as NostrEvent | null
         );
 
         // Get current homepage app coordinates
@@ -175,9 +176,9 @@ export function AppShowcaseCard({ app, onEdit, showModerationControls, hideAppro
             limit: 1
           }]);
 
-          const currentApprovedList = currentApprovedLists.reduce((latest: any, current: any) =>
+          const currentApprovedList = currentApprovedLists.reduce((latest: NostrEvent | null, current: NostrEvent) =>
             !latest || current.created_at > latest.created_at ? current : latest,
-            null
+            null as NostrEvent | null
           );
 
           // Get current approved app coordinates
@@ -214,9 +215,9 @@ export function AppShowcaseCard({ app, onEdit, showModerationControls, hideAppro
           limit: 1
         }]);
 
-        const currentFeaturedList = currentFeaturedLists.reduce((latest: any, current: any) =>
+        const currentFeaturedList = currentFeaturedLists.reduce((latest: NostrEvent | null, current: NostrEvent) =>
           !latest || current.created_at > latest.created_at ? current : latest,
-          null
+          null as NostrEvent | null
         );
 
         // Get current featured app coordinates
@@ -257,9 +258,9 @@ export function AppShowcaseCard({ app, onEdit, showModerationControls, hideAppro
             limit: 1
           }]);
 
-          const currentApprovedList = currentApprovedLists.reduce((latest: any, current: any) =>
+          const currentApprovedList = currentApprovedLists.reduce((latest: NostrEvent | null, current: NostrEvent) =>
             !latest || current.created_at > latest.created_at ? current : latest,
-            null
+            null as NostrEvent | null
           );
 
           // Get current approved app coordinates
@@ -296,9 +297,9 @@ export function AppShowcaseCard({ app, onEdit, showModerationControls, hideAppro
           limit: 1
         }]);
 
-        const currentApprovedList = currentApprovedLists.reduce((latest: any, current: any) =>
+        const currentApprovedList = currentApprovedLists.reduce((latest: NostrEvent | null, current: NostrEvent) =>
           !latest || current.created_at > latest.created_at ? current : latest,
-          null
+          null as NostrEvent | null
         );
 
         // Get current approved app coordinates

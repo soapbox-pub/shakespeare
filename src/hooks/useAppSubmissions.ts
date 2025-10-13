@@ -42,7 +42,7 @@ export function useAppSubmissions() {
     queryKey: ['app-submissions'],
     queryFn: async (): Promise<AppSubmission[]> => {
       // Get Soapbox team follow pack for auto-approval
-      let teamPubkeys = new Set<string>();
+      const teamPubkeys = new Set<string>();
       try {
         const decoded = nip19.decode(SOAPBOX_TEAM_NADDR);
         if (decoded.type === 'naddr') {

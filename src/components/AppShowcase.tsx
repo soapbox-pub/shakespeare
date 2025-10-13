@@ -1,5 +1,4 @@
 import React, { useState, useMemo } from "react";
-import { Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useAppSubmissions } from "@/hooks/useAppSubmissions";
@@ -11,7 +10,6 @@ import {
 } from "@/components/ui/collapsible";
 import { nip19 } from 'nostr-tools';
 import { shuffleArray } from "@/lib/utils";
-import type { AppSubmission } from "@/hooks/useAppSubmissions";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
 import { RelaySelector } from "@/components/RelaySelector";
@@ -37,32 +35,32 @@ export function AppShowcase() {
 
   // Separate template apps from other apps
   const templateApps = useMemo(() =>
-    shuffleArray(visibleSubmissions.filter(app => app.appTags.includes('Template'))),
-    [visibleSubmissions]
+  shuffleArray(visibleSubmissions.filter(app => app.appTags.includes('Template'))),
+  [visibleSubmissions]
   );
   const nonTemplateSubmissions = visibleSubmissions.filter(app => !app.appTags.includes('Template'));
 
   // Get Halloween Hackathon 2025 apps that are featured (for main showcase)
   const halloweenApps = useMemo(() =>
-    shuffleArray(nonTemplateSubmissions.filter(app =>
-      app.appTags.includes('Halloween Hackathon 2025') && app.isFeatured
-    )),
-    [nonTemplateSubmissions]
+  shuffleArray(nonTemplateSubmissions.filter(app =>
+    app.appTags.includes('Halloween Hackathon 2025') && app.isFeatured
+  )),
+  [nonTemplateSubmissions]
   );
 
   // Filter out Halloween Hackathon 2025 apps from other sections (unless featured, they go in Halloween section)
   const nonHalloweenSubmissions = nonTemplateSubmissions.filter(app =>
-    !app.appTags.includes('Halloween Hackathon 2025')
+  !app.appTags.includes('Halloween Hackathon 2025')
   );
 
   // Shuffle featured and approved apps on each component mount/render for random display order
   const featuredApps = useMemo(() =>
-    shuffleArray(nonHalloweenSubmissions.filter(app => app.isFeatured)),
-    [nonHalloweenSubmissions]
+  shuffleArray(nonHalloweenSubmissions.filter(app => app.isFeatured)),
+  [nonHalloweenSubmissions]
   );
   const approvedApps = useMemo(() =>
-    shuffleArray(nonHalloweenSubmissions.filter(app => app.isApproved && !app.isFeatured)),
-    [nonHalloweenSubmissions]
+  shuffleArray(nonHalloweenSubmissions.filter(app => app.isApproved && !app.isFeatured)),
+  [nonHalloweenSubmissions]
   );
 
   // Don't show showcase if no apps exist

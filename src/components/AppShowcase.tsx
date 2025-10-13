@@ -129,8 +129,8 @@ export function AppShowcase() {
                 <span className="text-sm">⭐</span>
               </div>
               <div>
-                <h3 className="text-xl font-bold text-gray-900">Featured Apps</h3>
-                <p className="text-sm text-gray-600">Handpicked applications showcasing the best of our community</p>
+                <h3 className="text-xl font-bold text-foreground">Featured Apps</h3>
+                <p className="text-sm text-muted-foreground">Handpicked applications showcasing the best of our community</p>
               </div>
             </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -154,8 +154,8 @@ export function AppShowcase() {
                 <span className="text-sm">🎃</span>
               </div>
               <div>
-                <h3 className="text-xl font-bold text-gray-900">Halloween Hackathon 2025</h3>
-                <p className="text-sm text-gray-600">Featured spooky creations from our Halloween hackathon</p>
+                <h3 className="text-xl font-bold text-foreground">Halloween Hackathon 2025</h3>
+                <p className="text-sm text-muted-foreground">Featured spooky creations from our Halloween hackathon</p>
               </div>
             </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -179,8 +179,8 @@ export function AppShowcase() {
                 <span className="text-sm">📋</span>
               </div>
               <div>
-                <h3 className="text-xl font-bold text-gray-900">Templates</h3>
-                <p className="text-sm text-gray-600">Ready-to-use templates to kickstart your project</p>
+                <h3 className="text-xl font-bold text-foreground">Templates</h3>
+                <p className="text-sm text-muted-foreground">Ready-to-use templates to kickstart your project</p>
               </div>
             </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -207,10 +207,10 @@ export function AppShowcase() {
                       <span className="text-sm">📱</span>
                     </div>
                     <div className="text-left">
-                      <h3 className="text-xl font-bold text-gray-900">
+                      <h3 className="text-xl font-bold text-foreground">
                         More Apps ({approvedApps.length})
                       </h3>
-                      <p className="text-sm text-gray-600">
+                      <p className="text-sm text-muted-foreground">
                         {showAllApps ? 'Click to collapse' : 'Click to view more community apps'}
                       </p>
                     </div>

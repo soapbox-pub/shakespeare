@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -561,10 +562,8 @@ export function AppShowcaseCard({ app, onEdit, showModerationControls, hideAppro
 
         {/* Action Links */}
         <div className="flex items-center gap-2 mt-auto">
-          <a
-            href={`https://shakespeare.diy/clone?url=${encodeURIComponent(app.repositoryUrl)}`}
-            target="_blank"
-            rel="noopener noreferrer"
+          <Link
+            to={`/clone?url=${encodeURIComponent(app.repositoryUrl)}`}
             className="flex-1"
           >
             <img
@@ -572,7 +571,7 @@ export function AppShowcaseCard({ app, onEdit, showModerationControls, hideAppro
               alt="Edit with Shakespeare"
               className="h-6 hover:opacity-80 transition-opacity"
             />
-          </a>
+          </Link>
           <Button variant="outline" size="sm" asChild>
             <a
               href={app.websiteUrl}

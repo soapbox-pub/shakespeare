@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -20,14 +20,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import {
   GitBranch,
   Plus,
   Trash2,
-  GitMerge,
-  GitCompare,
   Check,
   Loader2,
   ArrowUpRight,
@@ -65,11 +62,7 @@ export function BranchManager({ projectId, currentBranch, onBranchChange }: Bran
   const { toast } = useToast();
   const projectPath = `/projects/${projectId}`;
 
-  useEffect(() => {
-    loadBranches();
-  }, [projectId, currentBranch]);
-
-  const loadBranches = async () => {
+  const loadBranches = useCallback(async () => {
     setIsLoading(true);
     try {
       // Get local branches
@@ -150,7 +143,11 @@ export function BranchManager({ projectId, currentBranch, onBranchChange }: Bran
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [git, projectPath, toast]);
+
+  useEffect(() => {
+    loadBranches();
+  }, [projectId, currentBranch, loadBranches]);
 
   const handleCreateBranch = async () => {
     if (!newBranchName.trim()) {

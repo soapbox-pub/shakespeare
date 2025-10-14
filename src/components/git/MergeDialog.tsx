@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -26,13 +26,11 @@ import {
   AlertCircle,
   CheckCircle,
   GitCommit,
-  FileIcon,
   AlertTriangle,
 } from 'lucide-react';
 import { useGit } from '@/hooks/useGit';
 import { useToast } from '@/hooks/useToast';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { cn } from '@/lib/utils';
+import { useSearchParams } from 'react-router-dom';
 
 interface MergeDialogProps {
   projectId: string;
@@ -76,7 +74,6 @@ export function MergeDialog({
 
   const { git } = useGit();
   const { toast } = useToast();
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const projectPath = `/projects/${projectId}`;
 
@@ -86,21 +83,7 @@ export function MergeDialog({
     }
   }, [open]);
 
-  useEffect(() => {
-    if (isOpen) {
-      loadBranches();
-    }
-  }, [isOpen]);
-
-  useEffect(() => {
-    if (sourceBranch && currentBranch && sourceBranch !== currentBranch) {
-      loadMergePreview();
-    } else {
-      setMergePreview(null);
-    }
-  }, [sourceBranch, currentBranch]);
-
-  const loadBranches = async () => {
+  const loadBranches = useCallback(async () => {
     setIsLoadingBranches(true);
     try {
       const localBranches = await git.listBranches({ dir: projectPath });
@@ -122,9 +105,9 @@ export function MergeDialog({
     } finally {
       setIsLoadingBranches(false);
     }
-  };
+  }, [git, projectPath, currentBranch, toast]);
 
-  const loadMergePreview = async () => {
+  const loadMergePreview = useCallback(async () => {
     if (!sourceBranch || !currentBranch) return;
 
     setIsLoadingPreview(true);
@@ -200,7 +183,21 @@ export function MergeDialog({
     } finally {
       setIsLoadingPreview(false);
     }
-  };
+  }, [sourceBranch, currentBranch, git, projectPath]);
+
+  useEffect(() => {
+    if (isOpen) {
+      loadBranches();
+    }
+  }, [isOpen, loadBranches]);
+
+  useEffect(() => {
+    if (sourceBranch && currentBranch && sourceBranch !== currentBranch) {
+      loadMergePreview();
+    } else {
+      setMergePreview(null);
+    }
+  }, [sourceBranch, currentBranch, loadMergePreview]);
 
   const performMerge = async () => {
     if (!sourceBranch || !currentBranch) return;

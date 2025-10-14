@@ -1,5 +1,4 @@
-import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Select,
   SelectContent,
@@ -8,13 +7,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { GitCompare, Loader2, GitCommit, FileIcon } from 'lucide-react';
 import { useGit } from '@/hooks/useGit';
 import { useToast } from '@/hooks/useToast';
 import { DiffViewer } from './DiffViewer';
-import { cn } from '@/lib/utils';
 
 interface CompareViewProps {
   projectId: string;
@@ -44,17 +41,7 @@ export function CompareView({ projectId }: CompareViewProps) {
   const { toast } = useToast();
   const projectPath = `/projects/${projectId}`;
 
-  useEffect(() => {
-    loadReferences();
-  }, [projectId]);
-
-  useEffect(() => {
-    if (baseRef && compareRef && baseRef !== compareRef) {
-      performComparison();
-    }
-  }, [baseRef, compareRef]);
-
-  const loadReferences = async () => {
+  const loadReferences = useCallback(async () => {
     setIsLoading(true);
     try {
       // Get all branches
@@ -85,9 +72,9 @@ export function CompareView({ projectId }: CompareViewProps) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [git, projectPath, toast]);
 
-  const performComparison = async () => {
+  const performComparison = useCallback(async () => {
     if (!baseRef || !compareRef) return;
 
     setIsComparing(true);
@@ -158,7 +145,17 @@ export function CompareView({ projectId }: CompareViewProps) {
     } finally {
       setIsComparing(false);
     }
-  };
+  }, [baseRef, compareRef, git, projectPath, toast]);
+
+  useEffect(() => {
+    loadReferences();
+  }, [projectId, loadReferences]);
+
+  useEffect(() => {
+    if (baseRef && compareRef && baseRef !== compareRef) {
+      performComparison();
+    }
+  }, [baseRef, compareRef, performComparison]);
 
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp * 1000);

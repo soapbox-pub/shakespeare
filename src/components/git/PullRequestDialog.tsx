@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -33,7 +33,6 @@ import {
 import { useGit } from '@/hooks/useGit';
 import { useGitSettings } from '@/hooks/useGitSettings';
 import { useToast } from '@/hooks/useToast';
-import { cn } from '@/lib/utils';
 import { findCredentialsForRepo } from '@/lib/gitCredentials';
 
 interface PullRequestDialogProps {
@@ -80,12 +79,38 @@ export function PullRequestDialog({
     }
   }, [open]);
 
+  const loadRemoteBranches = useCallback(async () => {
+    setIsLoadingBranches(true);
+    try {
+      const branches = await git.listBranches({
+        dir: projectPath,
+        remote: 'origin',
+      });
+      setRemoteBranches(branches);
+
+      // Set default target branch
+      if (branches.includes('main')) {
+        setTargetBranch('main');
+      } else if (branches.includes('master')) {
+        setTargetBranch('master');
+      } else if (branches.length > 0) {
+        setTargetBranch(branches[0]);
+      }
+    } catch (err) {
+      console.warn('Failed to load remote branches:', err);
+      // Set default branches if we can't fetch
+      setRemoteBranches(['main', 'master', 'develop']);
+    } finally {
+      setIsLoadingBranches(false);
+    }
+  }, [git, projectPath]);
+
   useEffect(() => {
     if (isOpen && remoteUrl) {
       parseRemoteUrl(remoteUrl);
       loadRemoteBranches();
     }
-  }, [isOpen, remoteUrl]);
+  }, [isOpen, remoteUrl, loadRemoteBranches]);
 
   const parseRemoteUrl = (url: string) => {
     setError(null);
@@ -158,32 +183,6 @@ export function PullRequestDialog({
     } catch (err) {
       console.error('Error parsing remote URL:', err);
       setError('Failed to parse remote URL: ' + (err instanceof Error ? err.message : 'Unknown error'));
-    }
-  };
-
-  const loadRemoteBranches = async () => {
-    setIsLoadingBranches(true);
-    try {
-      const branches = await git.listBranches({
-        dir: projectPath,
-        remote: 'origin',
-      });
-      setRemoteBranches(branches);
-
-      // Set default target branch
-      if (branches.includes('main')) {
-        setTargetBranch('main');
-      } else if (branches.includes('master')) {
-        setTargetBranch('master');
-      } else if (branches.length > 0) {
-        setTargetBranch(branches[0]);
-      }
-    } catch (err) {
-      console.warn('Failed to load remote branches:', err);
-      // Set default branches if we can't fetch
-      setRemoteBranches(['main', 'master', 'develop']);
-    } finally {
-      setIsLoadingBranches(false);
     }
   };
 

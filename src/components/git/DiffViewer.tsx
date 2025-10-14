@@ -1,15 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   FileIcon,
   Plus,
@@ -25,14 +18,6 @@ import { useGit } from '@/hooks/useGit';
 import { useFS } from '@/hooks/useFS';
 import { useToast } from '@/hooks/useToast';
 import { cn } from '@/lib/utils';
-import Prism from 'prismjs';
-import 'prismjs/components/prism-typescript';
-import 'prismjs/components/prism-javascript';
-import 'prismjs/components/prism-jsx';
-import 'prismjs/components/prism-tsx';
-import 'prismjs/components/prism-css';
-import 'prismjs/components/prism-json';
-import 'prismjs/components/prism-markdown';
 
 interface DiffHunk {
   oldStart: number;
@@ -76,58 +61,7 @@ export function DiffViewer({ projectId, compareFrom = 'HEAD', compareTo, filepat
   const { toast } = useToast();
   const projectPath = `/projects/${projectId}`;
 
-  useEffect(() => {
-    loadDiffs();
-  }, [projectId, compareFrom, compareTo, filepath]);
-
-  const loadDiffs = async () => {
-    setIsLoading(true);
-    try {
-      let files: string[] = [];
-
-      if (filepath) {
-        files = [filepath];
-      } else if (compareTo) {
-        // Compare two commits/branches
-        files = await getChangedFilesBetweenRefs(compareFrom, compareTo);
-      } else {
-        // Compare against working directory
-        const statusMatrix = await git.statusMatrix({ dir: projectPath });
-        files = statusMatrix
-          .filter(([, head, workdir]) => head !== workdir)
-          .map(([file]) => file);
-      }
-
-      const fileDiffs: FileDiff[] = [];
-
-      for (const file of files) {
-        try {
-          const diff = await generateFileDiff(file, compareFrom, compareTo);
-          if (diff) {
-            fileDiffs.push(diff);
-          }
-        } catch (error) {
-          console.warn(`Failed to generate diff for ${file}:`, error);
-        }
-      }
-
-      setDiffs(fileDiffs);
-      if (fileDiffs.length > 0 && !selectedFile) {
-        setSelectedFile(fileDiffs[0].filepath);
-      }
-    } catch (error) {
-      console.error('Failed to load diffs:', error);
-      toast({
-        title: 'Failed to load diffs',
-        description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const getChangedFilesBetweenRefs = async (from: string, to: string): Promise<string[]> => {
+  const getChangedFilesBetweenRefs = useCallback(async (from: string, to: string): Promise<string[]> => {
     // Get list of files from both refs and find differences
     const filesFrom = await git.listFiles({ dir: projectPath, ref: from });
     const filesTo = await git.listFiles({ dir: projectPath, ref: to });
@@ -158,9 +92,9 @@ export function DiffViewer({ projectId, compareFrom = 'HEAD', compareTo, filepat
     }
 
     return Array.from(changedFiles);
-  };
+  }, [git, projectPath]);
 
-  const generateFileDiff = async (
+  const generateFileDiff = useCallback(async (
     file: string,
     from: string,
     to?: string
@@ -210,7 +144,7 @@ export function DiffViewer({ projectId, compareFrom = 'HEAD', compareTo, filepat
       console.error(`Error generating diff for ${file}:`, error);
       return null;
     }
-  };
+  }, [git, projectPath, fs]);
 
   const generateDiffHunks = (oldContent: string, newContent: string): DiffHunk[] => {
     const oldLines = oldContent.split('\n');
@@ -342,28 +276,56 @@ export function DiffViewer({ projectId, compareFrom = 'HEAD', compareTo, filepat
     return hunks;
   };
 
-  const getLanguageFromFilepath = (filepath: string): string => {
-    const ext = filepath.split('.').pop()?.toLowerCase();
-    const languageMap: Record<string, string> = {
-      ts: 'typescript',
-      tsx: 'tsx',
-      js: 'javascript',
-      jsx: 'jsx',
-      css: 'css',
-      json: 'json',
-      md: 'markdown',
-    };
-    return languageMap[ext || ''] || 'javascript';
-  };
-
-  const highlightCode = (code: string, filepath: string): string => {
+  const loadDiffs = useCallback(async () => {
+    setIsLoading(true);
     try {
-      const language = getLanguageFromFilepath(filepath);
-      return Prism.highlight(code, Prism.languages[language] || Prism.languages.javascript, language);
-    } catch {
-      return code;
+      let files: string[] = [];
+
+      if (filepath) {
+        files = [filepath];
+      } else if (compareTo) {
+        // Compare two commits/branches
+        files = await getChangedFilesBetweenRefs(compareFrom, compareTo);
+      } else {
+        // Compare against working directory
+        const statusMatrix = await git.statusMatrix({ dir: projectPath });
+        files = statusMatrix
+          .filter(([, head, workdir]) => head !== workdir)
+          .map(([file]) => file);
+      }
+
+      const fileDiffs: FileDiff[] = [];
+
+      for (const file of files) {
+        try {
+          const diff = await generateFileDiff(file, compareFrom, compareTo);
+          if (diff) {
+            fileDiffs.push(diff);
+          }
+        } catch (error) {
+          console.warn(`Failed to generate diff for ${file}:`, error);
+        }
+      }
+
+      setDiffs(fileDiffs);
+      if (fileDiffs.length > 0 && !selectedFile) {
+        setSelectedFile(fileDiffs[0].filepath);
+      }
+    } catch (error) {
+      console.error('Failed to load diffs:', error);
+      toast({
+        title: 'Failed to load diffs',
+        description: error instanceof Error ? error.message : 'Unknown error',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
     }
-  };
+  }, [compareFrom, compareTo, filepath, git, projectPath, selectedFile, toast, getChangedFilesBetweenRefs, generateFileDiff]);
+
+  useEffect(() => {
+    loadDiffs();
+  }, [projectId, compareFrom, compareTo, filepath, loadDiffs]);
 
   const copyHunkToClipboard = async (hunk: DiffHunk, index: number) => {
     const hunkText = hunk.lines.map(line => line.content).join('\n');
@@ -504,7 +466,7 @@ export function DiffViewer({ projectId, compareFrom = 'HEAD', compareTo, filepat
   );
 }
 
-function SplitDiffView({ hunk, filepath }: { hunk: DiffHunk; filepath: string }) {
+function SplitDiffView({ hunk }: { hunk: DiffHunk; filepath: string }) {
   return (
     <div className="grid grid-cols-2 divide-x font-mono text-sm">
       {/* Old (left) side */}
@@ -560,7 +522,7 @@ function SplitDiffView({ hunk, filepath }: { hunk: DiffHunk; filepath: string })
   );
 }
 
-function UnifiedDiffView({ hunk, filepath }: { hunk: DiffHunk; filepath: string }) {
+function UnifiedDiffView({ hunk }: { hunk: DiffHunk; filepath: string }) {
   return (
     <div className="font-mono text-sm">
       {hunk.lines.map((line, i) => (

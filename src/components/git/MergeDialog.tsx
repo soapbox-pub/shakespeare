@@ -220,11 +220,12 @@ export function MergeDialog({
       }).catch(() => false);
 
       if (canFastForward) {
-        // Fast-forward merge: just update the current branch ref
-        await git.fastForward({
+        // Fast-forward merge: update the current branch to point to source branch commit
+        await git.writeRef({
           dir: projectPath,
-          ref: currentBranch,
-          singleBranch: true,
+          ref: `refs/heads/${currentBranch}`,
+          value: sourceOid,
+          force: true,
         });
 
         // Update working directory to match the new HEAD

@@ -963,9 +963,9 @@ export class Git {
     }
 
     // Collect valid clone URLs from the repo event tags
-    const cloneUrls = new Set(getCloneURLs(repo));
+    const cloneUrls = getCloneURLs(repo);
 
-    if (cloneUrls.size === 0) {
+    if (cloneUrls.length === 0) {
       throw new Error('No valid clone URLs found in repository announcement');
     }
 
@@ -1493,9 +1493,9 @@ export class Git {
 
   private async fetchFromGitRemotes(repo: NostrEvent, dir: string): Promise<{ fetchHead?: string; fetchHeadDescription?: string }> {
     // Get clone URLs from the repository announcement
-    const cloneUrls = new Set(getCloneURLs(repo));
+    const cloneUrls = getCloneURLs(repo);
 
-    if (cloneUrls.size === 0) {
+    if (cloneUrls.length === 0) {
       throw new Error('No Git clone URLs available for fetching');
     }
 

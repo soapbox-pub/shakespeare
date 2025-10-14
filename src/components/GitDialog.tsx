@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -21,6 +22,13 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   GitBranch,
   Upload,
@@ -70,6 +78,14 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
 
+  // Branch management state
+  const [branches, setBranches] = useState<string[]>([]);
+  const [isLoadingBranches, setIsLoadingBranches] = useState(false);
+  const [isSwitchingBranch, setIsSwitchingBranch] = useState(false);
+  const [isCreatingBranch, setIsCreatingBranch] = useState(false);
+  const [newBranchName, setNewBranchName] = useState('');
+  const [isCreateBranchDialogOpen, setIsCreateBranchDialogOpen] = useState(false);
+
   const { data: gitStatus, refetch: refetchGitStatus } = useGitStatus(projectId);
   const { settings } = useGitSettings();
   const { git } = useGit();
@@ -87,6 +103,111 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
       setOriginUrl(originRemote?.url || '');
     }
   }, [gitStatus?.remotes]);
+
+  // Load branches when dialog opens
+  useEffect(() => {
+    if (open && gitStatus?.isGitRepo) {
+      loadBranches();
+    }
+  }, [open, gitStatus?.isGitRepo]);
+
+  const loadBranches = async () => {
+    setIsLoadingBranches(true);
+    try {
+      const localBranches = await git.listBranches({ dir: projectPath });
+      setBranches(localBranches);
+    } catch (error) {
+      console.error('Failed to load branches:', error);
+    } finally {
+      setIsLoadingBranches(false);
+    }
+  };
+
+  const handleSwitchBranch = async (branchName: string) => {
+    setIsSwitchingBranch(true);
+    try {
+      await git.checkout({
+        dir: projectPath,
+        ref: branchName,
+      });
+
+      toast({
+        title: 'Branch switched',
+        description: `Switched to branch "${branchName}"`,
+      });
+
+      await refetchGitStatus();
+
+      // Trigger rebuild
+      const newSearchParams = new URLSearchParams(searchParams);
+      newSearchParams.set('build', '');
+      setSearchParams(newSearchParams);
+    } catch (error) {
+      toast({
+        title: 'Failed to switch branch',
+        description: error instanceof Error ? error.message : 'Unknown error',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSwitchingBranch(false);
+    }
+  };
+
+  const handleCreateBranch = async () => {
+    if (!newBranchName.trim()) {
+      toast({
+        title: 'Invalid branch name',
+        description: 'Please enter a branch name',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Validate branch name
+    const invalidChars = /[~^: \\?*[\]]/;
+    if (invalidChars.test(newBranchName)) {
+      toast({
+        title: 'Invalid branch name',
+        description: 'Branch name contains invalid characters',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsCreatingBranch(true);
+    try {
+      // Get current HEAD to base the new branch on
+      const currentRef = await git.resolveRef({
+        dir: projectPath,
+        ref: 'HEAD',
+      });
+
+      // Create the new branch
+      await git.branch({
+        dir: projectPath,
+        ref: newBranchName.trim(),
+        object: currentRef,
+      });
+
+      toast({
+        title: 'Branch created',
+        description: `Created branch "${newBranchName}"`,
+      });
+
+      setNewBranchName('');
+      setIsCreateBranchDialogOpen(false);
+      await loadBranches();
+      await refetchGitStatus();
+    } catch (error) {
+      toast({
+        title: 'Failed to create branch',
+        description: error instanceof Error ? error.message : 'Unknown error',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsCreatingBranch(false);
+    }
+  };
 
   const handleSaveOrigin = async () => {
     if (!gitStatus?.isGitRepo) {
@@ -703,6 +824,62 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
         <ScrollArea className="max-h-[60vh]">
           <div className="space-y-4">
 
+            {/* Branch Selector */}
+            {gitStatus?.isGitRepo && gitStatus.currentBranch && (
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm">Current Branch</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex gap-2">
+                    <Select
+                      value={gitStatus.currentBranch}
+                      onValueChange={handleSwitchBranch}
+                      disabled={isSwitchingBranch || isLoadingBranches}
+                    >
+                      <SelectTrigger className="flex-1">
+                        <SelectValue>
+                          {isSwitchingBranch ? (
+                            <span className="flex items-center gap-2">
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              Switching...
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-2">
+                              <GitBranch className="h-4 w-4" />
+                              {gitStatus.currentBranch}
+                            </span>
+                          )}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {branches.map((branch) => (
+                          <SelectItem key={branch} value={branch}>
+                            <span className="flex items-center gap-2">
+                              {branch === gitStatus.currentBranch && (
+                                <CheckCircle className="h-4 w-4 text-primary" />
+                              )}
+                              {branch}
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="shrink-0"
+                      onClick={() => setIsCreateBranchDialogOpen(true)}
+                      disabled={isSwitchingBranch}
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      New
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Sync Status */}
             {gitStatus?.isGitRepo && (
               <Card>
@@ -853,6 +1030,65 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
       open={isGitManagementOpen}
       onOpenChange={setIsGitManagementOpen}
     />
+
+    {/* Create Branch Dialog */}
+    <Dialog open={isCreateBranchDialogOpen} onOpenChange={setIsCreateBranchDialogOpen}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Create New Branch</DialogTitle>
+          <DialogDescription>
+            Create a new branch from {gitStatus?.currentBranch || 'current HEAD'}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="new-branch-name">Branch Name</Label>
+            <Input
+              id="new-branch-name"
+              placeholder="feature/my-new-feature"
+              value={newBranchName}
+              onChange={(e) => setNewBranchName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !isCreatingBranch) {
+                  handleCreateBranch();
+                }
+              }}
+              autoFocus
+            />
+          </div>
+          {gitStatus?.currentBranch && (
+            <div className="text-sm text-muted-foreground">
+              Creating from: <span className="font-medium">{gitStatus.currentBranch}</span>
+            </div>
+          )}
+        </div>
+        <div className="flex justify-end gap-2">
+          <Button
+            variant="outline"
+            onClick={() => {
+              setIsCreateBranchDialogOpen(false);
+              setNewBranchName('');
+            }}
+            disabled={isCreatingBranch}
+          >
+            Cancel
+          </Button>
+          <Button onClick={handleCreateBranch} disabled={isCreatingBranch}>
+            {isCreatingBranch ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Creating...
+              </>
+            ) : (
+              <>
+                <Plus className="h-4 w-4 mr-2" />
+                Create Branch
+              </>
+            )}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   </>
   );
 }

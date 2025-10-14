@@ -593,19 +593,7 @@ export class Git {
       }
     } else {
       // No state event, try to get info from the first available clone URL
-      const cloneUrls: string[] = [];
-      for (const [name, value] of repo.tags) {
-        if (name === 'clone') {
-          try {
-            const url = new URL(value);
-            if (url.protocol === 'http:' || url.protocol === 'https:') {
-              cloneUrls.push(url.href);
-            }
-          } catch {
-            // Ignore invalid URLs
-          }
-        }
-      }
+      const cloneUrls = getCloneURLs(repo);
 
       if (cloneUrls.length > 0) {
         // Try to get remote info from the first clone URL
@@ -975,19 +963,7 @@ export class Git {
     }
 
     // Collect valid clone URLs from the repo event tags
-    const cloneUrls = new Set<string>();
-    for (const [name, value] of repo.tags) {
-      if (name === 'clone') {
-        try {
-          const url = new URL(value);
-          if (url.protocol === 'http:' || url.protocol === 'https:') {
-            cloneUrls.add(url.href);
-          }
-        } catch {
-          // Ignore invalid URLs
-        }
-      }
-    }
+    const cloneUrls = new Set(getCloneURLs(repo));
 
     if (cloneUrls.size === 0) {
       throw new Error('No valid clone URLs found in repository announcement');
@@ -1360,9 +1336,8 @@ export class Git {
       throw new Error('Repository announcement not found on Nostr network');
     }
 
-    // Extract relay URLs from the repository announcement
+    // Extract relay URLs and clone URLs from the repository announcement
     const relayUrls: string[] = [];
-    const cloneUrls: string[] = [];
 
     for (const [name, ...values] of repo.tags) {
       if (name === 'relays' && values.length > 0) {
@@ -1376,19 +1351,12 @@ export class Git {
             // Ignore invalid URLs
           }
         }
-      } else if (name === 'clone' && values.length > 0) {
-        for (const value of values) {
-          try {
-            const url = new URL(value);
-            if (url.protocol === 'https:') {
-              cloneUrls.push(url.href);
-            }
-          } catch {
-            // Ignore invalid URLs
-          }
-        }
       }
     }
+
+    // Get clone URLs using shared function (only https for push)
+    const allCloneUrls = getCloneURLs(repo);
+    const cloneUrls = allCloneUrls.filter(url => url.startsWith('https:'));
 
     // If no relays specified in announcement, use default git-focused relays
     if (relayUrls.length === 0) {
@@ -1470,21 +1438,9 @@ export class Git {
 
   private async fetchMissingCommitsFromGitRemotes(repo: NostrEvent, dir: string, refs: Record<string, string>): Promise<void> {
     // Get clone URLs from the repository announcement
-    const cloneUrls = new Set<string>();
-    for (const [name, value] of repo.tags) {
-      if (name === 'clone') {
-        try {
-          const url = new URL(value);
-          if (url.protocol === 'http:' || url.protocol === 'https:') {
-            cloneUrls.add(url.href);
-          }
-        } catch {
-          // Ignore invalid URLs
-        }
-      }
-    }
+    const cloneUrls = getCloneURLs(repo);
 
-    if (cloneUrls.size === 0) {
+    if (cloneUrls.length === 0) {
       console.warn('No Git clone URLs available to fetch missing commits');
       return;
     }
@@ -1537,19 +1493,7 @@ export class Git {
 
   private async fetchFromGitRemotes(repo: NostrEvent, dir: string): Promise<{ fetchHead?: string; fetchHeadDescription?: string }> {
     // Get clone URLs from the repository announcement
-    const cloneUrls = new Set<string>();
-    for (const [name, value] of repo.tags) {
-      if (name === 'clone') {
-        try {
-          const url = new URL(value);
-          if (url.protocol === 'http:' || url.protocol === 'https:') {
-            cloneUrls.add(url.href);
-          }
-        } catch {
-          // Ignore invalid URLs
-        }
-      }
-    }
+    const cloneUrls = new Set(getCloneURLs(repo));
 
     if (cloneUrls.size === 0) {
       throw new Error('No Git clone URLs available for fetching');
@@ -1651,6 +1595,33 @@ class GitHttp implements HttpClient {
       headers,
     };
   }
+}
+
+/**
+ * Extract clone URLs from a Nostr repository event (kind 30617).
+ * Collects all values from 'clone' tags and validates they are http/https URLs.
+ */
+function getCloneURLs(event: NostrEvent): string[] {
+  const urls = new Set<string>();
+
+  for (const [name, ...values] of event.tags) {
+    if (name === 'clone') {
+      for (const value of values) {
+        if (value) {
+          try {
+            const url = new URL(value);
+            if (url.protocol === 'http:' || url.protocol === 'https:') {
+              urls.add(url.href);
+            }
+          } catch {
+            // Ignore invalid URLs
+          }
+        }
+      }
+    }
+  }
+
+  return [...urls];
 }
 
 // Drain an async iterable of Uint8Array into one Uint8Array

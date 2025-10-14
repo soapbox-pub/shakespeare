@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -11,15 +10,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   GitBranch,
   GitCompare,
-  GitMerge,
-  GitPullRequest,
   Settings,
-  History,
 } from 'lucide-react';
 import { BranchManager } from './BranchManager';
 import { CompareView } from './CompareView';
-import { MergeDialog } from './MergeDialog';
-import { PullRequestDialog } from './PullRequestDialog';
 import { DiffViewer } from './DiffViewer';
 import { useGitStatus } from '@/hooks/useGitStatus';
 
@@ -39,8 +33,6 @@ export function GitManagementDialog({
   defaultTab = 'branches',
 }: GitManagementDialogProps) {
   const [activeTab, setActiveTab] = useState(defaultTab);
-  const [isMergeDialogOpen, setIsMergeDialogOpen] = useState(false);
-  const [isPRDialogOpen, setIsPRDialogOpen] = useState(false);
 
   const { data: gitStatus, refetch: refetchGitStatus } = useGitStatus(projectId);
 
@@ -48,14 +40,6 @@ export function GitManagementDialog({
     // Refetch git status when branches change
     refetchGitStatus();
   };
-
-  const handleMergeComplete = () => {
-    setIsMergeDialogOpen(false);
-    refetchGitStatus();
-  };
-
-  // Get remote URL for PR creation
-  const remoteUrl = gitStatus?.remotes.find(r => r.name === 'origin')?.url;
 
   return (
     <>
@@ -98,40 +82,11 @@ export function GitManagementDialog({
 
             {/* Branches Tab */}
             <TabsContent value="branches" className="mt-0 p-6">
-              <div className="space-y-6">
-                <div className="flex items-center gap-2">
-                  {gitStatus?.currentBranch && (
-                    <>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="gap-2"
-                        onClick={() => setIsMergeDialogOpen(true)}
-                      >
-                        <GitMerge className="h-4 w-4" />
-                        Merge
-                      </Button>
-                      {remoteUrl && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="gap-2"
-                          onClick={() => setIsPRDialogOpen(true)}
-                        >
-                          <GitPullRequest className="h-4 w-4" />
-                          Pull Request
-                        </Button>
-                      )}
-                    </>
-                  )}
-                </div>
-
-                <BranchManager
-                  projectId={projectId}
-                  currentBranch={gitStatus?.currentBranch || null}
-                  onBranchChange={handleBranchChange}
-                />
-              </div>
+              <BranchManager
+                projectId={projectId}
+                currentBranch={gitStatus?.currentBranch || null}
+                onBranchChange={handleBranchChange}
+              />
             </TabsContent>
 
             {/* Changes Tab */}
@@ -149,26 +104,6 @@ export function GitManagementDialog({
           </Tabs>
         </DialogContent>
       </Dialog>
-
-      {/* Merge Dialog */}
-      <MergeDialog
-        projectId={projectId}
-        currentBranch={gitStatus?.currentBranch || null}
-        open={isMergeDialogOpen}
-        onOpenChange={setIsMergeDialogOpen}
-        onMergeComplete={handleMergeComplete}
-      />
-
-      {/* Pull Request Dialog */}
-      {remoteUrl && (
-        <PullRequestDialog
-          projectId={projectId}
-          currentBranch={gitStatus?.currentBranch || null}
-          remoteUrl={remoteUrl}
-          open={isPRDialogOpen}
-          onOpenChange={setIsPRDialogOpen}
-        />
-      )}
     </>
   );
 }

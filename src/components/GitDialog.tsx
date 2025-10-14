@@ -49,6 +49,8 @@ import { cn } from '@/lib/utils';
 import { findCredentialsForRepo } from '@/lib/gitCredentials';
 import { nip19 } from 'nostr-tools';
 import { GitManagementDialog } from '@/components/git/GitManagementDialog';
+import { MergeDialog } from '@/components/git/MergeDialog';
+import { PullRequestDialog } from '@/components/git/PullRequestDialog';
 
 const GRASP_SERVERS = ["git.shakespeare.diy", "relay.ngit.dev"];
 
@@ -768,8 +770,29 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
                       </Button>
                     </div>
                   )}
+                </CardContent>
+              </Card>
+            )}
 
-
+            {/* Branch Operations */}
+            {gitStatus?.isGitRepo && gitStatus.currentBranch && (
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm">Branch Operations</CardTitle>
+                </CardHeader>
+                <CardContent className="flex gap-2">
+                  <MergeDialog
+                    projectId={projectId}
+                    currentBranch={gitStatus.currentBranch}
+                    onMergeComplete={() => refetchGitStatus()}
+                  />
+                  {gitStatus.remotes.length > 0 && originUrl && (
+                    <PullRequestDialog
+                      projectId={projectId}
+                      currentBranch={gitStatus.currentBranch}
+                      remoteUrl={originUrl}
+                    />
+                  )}
                 </CardContent>
               </Card>
             )}

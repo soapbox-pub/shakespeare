@@ -242,7 +242,6 @@ export function MergeDialog({
       } else {
         // Three-way merge
         const result = await git.merge({
-          fs: git['fs'],
           dir: projectPath,
           ours: currentBranch,
           theirs: sourceBranch,

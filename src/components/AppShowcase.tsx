@@ -32,38 +32,36 @@ export function AppShowcase() {
   }, [config.showcaseModerator]);
   const isModerator = user?.pubkey === MODERATOR_HEX;
 
-  // Filter submissions
-  const visibleSubmissions = submissions.filter(app => !app.isHidden);
+  // Filter and shuffle submissions - memoized with stable dependency
+  const { templateApps, halloweenApps, featuredApps, approvedApps } = useMemo(() => {
+    // Filter visible submissions
+    const visibleSubmissions = submissions.filter(app => !app.isHidden);
 
-  // Separate template apps from other apps
-  const templateApps = useMemo(() =>
-    shuffleArray(visibleSubmissions.filter(app => app.appTags.includes('Template'))),
-  [visibleSubmissions]
-  );
-  const nonTemplateSubmissions = visibleSubmissions.filter(app => !app.appTags.includes('Template'));
+    // Separate template apps from other apps
+    const templates = shuffleArray(visibleSubmissions.filter(app => app.appTags.includes('Template')));
+    const nonTemplateSubmissions = visibleSubmissions.filter(app => !app.appTags.includes('Template'));
 
-  // Get Halloween Hackathon 2025 apps that are featured (for main showcase)
-  const halloweenApps = useMemo(() =>
-    shuffleArray(nonTemplateSubmissions.filter(app =>
+    // Get Halloween Hackathon 2025 apps that are featured (for main showcase)
+    const halloween = shuffleArray(nonTemplateSubmissions.filter(app =>
       app.appTags.includes('Halloween Hackathon 2025') && app.isFeatured
-    )),
-  [nonTemplateSubmissions]
-  );
+    ));
 
-  // Filter out Halloween Hackathon 2025 apps from other sections (unless featured, they go in Halloween section)
-  const nonHalloweenSubmissions = nonTemplateSubmissions.filter(app =>
-    !app.appTags.includes('Halloween Hackathon 2025')
-  );
+    // Filter out Halloween Hackathon 2025 apps from other sections (unless featured, they go in Halloween section)
+    const nonHalloweenSubmissions = nonTemplateSubmissions.filter(app =>
+      !app.appTags.includes('Halloween Hackathon 2025')
+    );
 
-  // Shuffle featured and approved apps on each component mount/render for random display order
-  const featuredApps = useMemo(() =>
-    shuffleArray(nonHalloweenSubmissions.filter(app => app.isFeatured)),
-  [nonHalloweenSubmissions]
-  );
-  const approvedApps = useMemo(() =>
-    shuffleArray(nonHalloweenSubmissions.filter(app => app.isApproved && !app.isFeatured)),
-  [nonHalloweenSubmissions]
-  );
+    // Shuffle featured and approved apps for random display order
+    const featured = shuffleArray(nonHalloweenSubmissions.filter(app => app.isFeatured));
+    const approved = shuffleArray(nonHalloweenSubmissions.filter(app => app.isApproved && !app.isFeatured));
+
+    return {
+      templateApps: templates,
+      halloweenApps: halloween,
+      featuredApps: featured,
+      approvedApps: approved,
+    };
+  }, [submissions]); // Only depend on submissions, not intermediate filtered arrays
 
   // Don't show showcase if disabled in settings
   if (!config.showcaseEnabled) {

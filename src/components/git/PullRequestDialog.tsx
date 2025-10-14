@@ -209,6 +209,12 @@ export function PullRequestDialog({
       // Get credentials
       const credentials = findCredentialsForRepo(remoteUrl || '', settings.credentials);
       console.log('Found credentials:', credentials ? 'Yes' : 'No');
+      console.log('Available credential origins:', Object.keys(settings.credentials));
+
+      if (credentials) {
+        console.log('Credential username:', credentials.username);
+        console.log('Credential password length:', credentials.password?.length || 0);
+      }
 
       if (!credentials) {
         throw new Error(
@@ -216,13 +222,19 @@ export function PullRequestDialog({
         );
       }
 
+      if (!credentials.password || credentials.password.trim() === '') {
+        throw new Error(
+          `Credentials found but token is empty. Please check your ${remoteInfo.platform === 'github' ? 'GitHub' : 'GitLab'} token in Settings > Git`
+        );
+      }
+
       // Create PR based on platform
       console.log(`Creating ${remoteInfo.platform} PR...`);
       if (remoteInfo.platform === 'github') {
-        const prUrl = await createGitHubPR(remoteInfo, credentials.token);
+        const prUrl = await createGitHubPR(remoteInfo, credentials.password);
         setCreatedPrUrl(prUrl);
       } else if (remoteInfo.platform === 'gitlab') {
-        const prUrl = await createGitLabMR(remoteInfo, credentials.token);
+        const prUrl = await createGitLabMR(remoteInfo, credentials.password);
         setCreatedPrUrl(prUrl);
       }
 
@@ -288,10 +300,11 @@ export function PullRequestDialog({
     // Get project ID first
     const projectUrl = `${info.apiUrl}/projects/${encodeURIComponent(`${info.owner}/${info.repo}`)}`;
     console.log('GitLab project URL:', projectUrl);
+    console.log('Using token (first 10 chars):', token.substring(0, 10) + '...');
 
     const projectResponse = await fetch(projectUrl, {
       headers: {
-        'Authorization': `Bearer ${token}`,
+        'PRIVATE-TOKEN': token,
         'Content-Type': 'application/json',
       },
     });
@@ -315,7 +328,7 @@ export function PullRequestDialog({
     const response = await fetch(mrUrl, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${token}`,
+        'PRIVATE-TOKEN': token,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({

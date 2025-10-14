@@ -12,6 +12,9 @@ import './index.css';
 // Using Inter Variable font for modern, clean typography
 import '@fontsource-variable/inter';
 
+// Prism syntax highlighting
+import 'prismjs/themes/prism.css';
+
 createRoot(document.getElementById("root")!).render(<App />);
 
 // Register service worker

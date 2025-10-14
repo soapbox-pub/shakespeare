@@ -20,6 +20,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   GitBranch,
   Upload,
@@ -35,6 +36,7 @@ import {
   AlertTriangle,
   Zap,
   Save,
+  Settings2,
 } from 'lucide-react';
 import { useGitStatus } from '@/hooks/useGitStatus';
 import { useGitSettings } from '@/hooks/useGitSettings';
@@ -46,6 +48,7 @@ import { useNostrPublish } from '@/hooks/useNostrPublish';
 import { cn } from '@/lib/utils';
 import { findCredentialsForRepo } from '@/lib/gitCredentials';
 import { nip19 } from 'nostr-tools';
+import { GitManagementDialog } from '@/components/git/GitManagementDialog';
 
 const GRASP_SERVERS = ["git.shakespeare.diy", "relay.ngit.dev"];
 
@@ -550,16 +553,35 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
 
   const syncStatus = getSyncStatus();
 
+  const [isGitManagementOpen, setIsGitManagementOpen] = useState(false);
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      {children && <DialogTrigger asChild>{children}</DialogTrigger>}
-      <DialogContent className="max-w-2xl max-h-[80vh]" onOpenAutoFocus={(e) => e.preventDefault()}>
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <GitBranch className="h-5 w-5" />
-            Repository
-          </DialogTitle>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        {children && <DialogTrigger asChild>{children}</DialogTrigger>}
+        <DialogContent className="max-w-2xl max-h-[80vh]" onOpenAutoFocus={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <div className="flex items-center justify-between">
+              <DialogTitle className="flex items-center gap-2">
+                <GitBranch className="h-5 w-5" />
+                Repository
+              </DialogTitle>
+              {gitStatus?.isGitRepo && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-2"
+                  onClick={() => {
+                    setIsGitManagementOpen(true);
+                    onOpenChange?.(false);
+                  }}
+                >
+                  <Settings2 className="h-4 w-4" />
+                  Advanced
+                </Button>
+              )}
+            </div>
+          </DialogHeader>
 
         {/* URL Configuration */}
         {gitStatus?.isGitRepo && (
@@ -801,5 +823,13 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
         </ScrollArea>
       </DialogContent>
     </Dialog>
+
+    {/* Advanced Git Management Dialog */}
+    <GitManagementDialog
+      projectId={projectId}
+      open={isGitManagementOpen}
+      onOpenChange={setIsGitManagementOpen}
+    />
+  </>
   );
 }

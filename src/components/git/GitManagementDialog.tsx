@@ -45,16 +45,16 @@ export function GitManagementDialog({
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         {children && <DialogTrigger asChild>{children}</DialogTrigger>}
-        <DialogContent className="max-w-6xl max-h-[90vh] p-0">
-          <DialogHeader className="px-6 pt-6 pb-4">
+        <DialogContent className="max-w-6xl max-h-[90vh] p-0 flex flex-col">
+          <DialogHeader className="px-6 pt-6 pb-4 shrink-0">
             <DialogTitle className="flex items-center gap-2">
               <GitBranch className="h-5 w-5" />
               Git Management
             </DialogTitle>
           </DialogHeader>
 
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
-            <div className="border-b px-6">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
+            <div className="border-b px-6 shrink-0">
               <TabsList className="h-auto p-0 bg-transparent">
                 <TabsTrigger
                   value="branches"
@@ -81,7 +81,7 @@ export function GitManagementDialog({
             </div>
 
             {/* Branches Tab */}
-            <TabsContent value="branches" className="mt-0 p-6">
+            <TabsContent value="branches" className="mt-0 p-6 overflow-y-auto flex-1">
               <BranchManager
                 projectId={projectId}
                 currentBranch={gitStatus?.currentBranch || null}
@@ -90,7 +90,7 @@ export function GitManagementDialog({
             </TabsContent>
 
             {/* Changes Tab */}
-            <TabsContent value="changes" className="mt-0 h-[600px]">
+            <TabsContent value="changes" className="mt-0 overflow-y-auto flex-1">
               <DiffViewer
                 projectId={projectId}
                 compareFrom="HEAD"
@@ -98,7 +98,7 @@ export function GitManagementDialog({
             </TabsContent>
 
             {/* Compare Tab */}
-            <TabsContent value="compare" className="mt-0 p-6">
+            <TabsContent value="compare" className="mt-0 p-6 overflow-y-auto flex-1">
               <CompareView projectId={projectId} />
             </TabsContent>
           </Tabs>

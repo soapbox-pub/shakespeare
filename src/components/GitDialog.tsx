@@ -682,8 +682,8 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         {children && <DialogTrigger asChild>{children}</DialogTrigger>}
-        <DialogContent className="max-w-2xl max-h-[80vh]" onOpenAutoFocus={(e) => e.preventDefault()}>
-          <DialogHeader>
+        <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col overflow-hidden" onOpenAutoFocus={(e) => e.preventDefault()}>
+          <DialogHeader className="flex-shrink-0">
             <div className="flex items-center justify-between">
               <DialogTitle className="flex items-center gap-2">
                 <GitBranch className="h-5 w-5" />
@@ -706,123 +706,122 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
             </div>
           </DialogHeader>
 
-        {/* URL Configuration */}
-        {gitStatus?.isGitRepo && (
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm">Git URL</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex gap-2">
-                <div className="flex-1">
-                  <Label htmlFor="origin-url" className="sr-only">
-                    URL
-                  </Label>
-                  <Input
-                    id="origin-url"
-                    placeholder="https://github.com/username/repository.git"
-                    value={originUrl}
-                    onChange={(e) => setOriginUrl(e.target.value)}
-                    disabled={isSavingOrigin}
-                  />
-                </div>
-                <Button
-                  onClick={handleSaveOrigin}
-                  disabled={isSavingOrigin}
-                  variant="outline"
-                  size="sm"
-                  className="h-10 shrink-0"
-                >
-                  {isSavingOrigin ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <Save className="h-4 w-4 mr-2" />
+        <ScrollArea className="flex-1 -mx-6 px-6">
+          <div className="space-y-4 pr-4">
+            {/* URL Configuration */}
+            {gitStatus?.isGitRepo && (
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm">Git URL</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <Label htmlFor="origin-url" className="sr-only">
+                        URL
+                      </Label>
+                      <Input
+                        id="origin-url"
+                        placeholder="https://github.com/username/repository.git"
+                        value={originUrl}
+                        onChange={(e) => setOriginUrl(e.target.value)}
+                        disabled={isSavingOrigin}
+                      />
+                    </div>
+                    <Button
+                      onClick={handleSaveOrigin}
+                      disabled={isSavingOrigin}
+                      variant="outline"
+                      size="sm"
+                      className="h-10 shrink-0"
+                    >
+                      {isSavingOrigin ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Save className="h-4 w-4 mr-2" />
+                      )}
+                      {isSavingOrigin ? 'Saving...' : 'Save'}
+                    </Button>
+                  </div>
+
+                  {/* Credentials Warning */}
+                  {gitStatus.remotes.length > 0 && (
+                    (() => {
+                      const remoteWithoutCredentials = gitStatus.remotes.find((remote) => !findCredentialsForRepo(remote.url, settings.credentials));
+                      if (!remoteWithoutCredentials) return null;
+
+                      let protocol = '';
+                      let hostname = 'the remote host';
+                      try {
+                        const url = new URL(remoteWithoutCredentials.url);
+                        protocol = url.protocol;
+                        hostname = url.hostname;
+                      } catch {
+                        // Invalid URL
+                        return (
+                          <Alert className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/50">
+                            <AlertTriangle className="h-4 w-4" />
+                            <AlertDescription className="text-sm">
+                              Invalid URL format. Enter an https URL.
+                            </AlertDescription>
+                          </Alert>
+                        );
+                      }
+
+                      // Check for unsupported protocols
+                      if (protocol !== 'https:' && protocol !== 'nostr:') {
+                        return (
+                          <Alert className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/50">
+                            <AlertTriangle className="h-4 w-4" />
+                            <AlertDescription className="text-sm">
+                              The {protocol.replace(':', '')} URL type is not supported. Enter an https URL.
+                            </AlertDescription>
+                          </Alert>
+                        );
+                      }
+
+                      // For nostr protocol, only show warning if user is not logged in
+                      if (protocol === 'nostr:' && !user) {
+                        return (
+                          <Alert className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/50">
+                            <AlertTriangle className="h-4 w-4" />
+                            <AlertDescription className="text-sm">
+                              You are not logged into Nostr. Push & pull might not work unless you{' '}
+                              <button
+                                onClick={() => navigate('/settings/nostr')}
+                                className="underline hover:no-underline font-medium text-amber-700 dark:text-amber-300"
+                              >
+                                log in
+                              </button>.
+                            </AlertDescription>
+                          </Alert>
+                        );
+                      }
+
+                      // For https protocol, show warning if no credentials
+                      if (protocol === 'https:') {
+                        return (
+                          <Alert className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/50">
+                            <AlertTriangle className="h-4 w-4" />
+                            <AlertDescription className="text-sm">
+                              You are not logged into {hostname}. Push & pull might not work unless you{' '}
+                              <button
+                                onClick={() => navigate('/settings/git')}
+                                className="underline hover:no-underline font-medium text-amber-700 dark:text-amber-300"
+                              >
+                                log in
+                              </button>.
+                            </AlertDescription>
+                          </Alert>
+                        );
+                      }
+
+                      return null;
+                    })()
                   )}
-                  {isSavingOrigin ? 'Saving...' : 'Save'}
-                </Button>
-              </div>
-
-              {/* Credentials Warning */}
-              {gitStatus.remotes.length > 0 && (
-                (() => {
-                  const remoteWithoutCredentials = gitStatus.remotes.find((remote) => !findCredentialsForRepo(remote.url, settings.credentials));
-                  if (!remoteWithoutCredentials) return null;
-
-                  let protocol = '';
-                  let hostname = 'the remote host';
-                  try {
-                    const url = new URL(remoteWithoutCredentials.url);
-                    protocol = url.protocol;
-                    hostname = url.hostname;
-                  } catch {
-                    // Invalid URL
-                    return (
-                      <Alert className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/50">
-                        <AlertTriangle className="h-4 w-4" />
-                        <AlertDescription className="text-sm">
-                          Invalid URL format. Enter an https URL.
-                        </AlertDescription>
-                      </Alert>
-                    );
-                  }
-
-                  // Check for unsupported protocols
-                  if (protocol !== 'https:' && protocol !== 'nostr:') {
-                    return (
-                      <Alert className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/50">
-                        <AlertTriangle className="h-4 w-4" />
-                        <AlertDescription className="text-sm">
-                          The {protocol.replace(':', '')} URL type is not supported. Enter an https URL.
-                        </AlertDescription>
-                      </Alert>
-                    );
-                  }
-
-                  // For nostr protocol, only show warning if user is not logged in
-                  if (protocol === 'nostr:' && !user) {
-                    return (
-                      <Alert className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/50">
-                        <AlertTriangle className="h-4 w-4" />
-                        <AlertDescription className="text-sm">
-                          You are not logged into Nostr. Push & pull might not work unless you{' '}
-                          <button
-                            onClick={() => navigate('/settings/nostr')}
-                            className="underline hover:no-underline font-medium text-amber-700 dark:text-amber-300"
-                          >
-                            log in
-                          </button>.
-                        </AlertDescription>
-                      </Alert>
-                    );
-                  }
-
-                  // For https protocol, show warning if no credentials
-                  if (protocol === 'https:') {
-                    return (
-                      <Alert className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/50">
-                        <AlertTriangle className="h-4 w-4" />
-                        <AlertDescription className="text-sm">
-                          You are not logged into {hostname}. Push & pull might not work unless you{' '}
-                          <button
-                            onClick={() => navigate('/settings/git')}
-                            className="underline hover:no-underline font-medium text-amber-700 dark:text-amber-300"
-                          >
-                            log in
-                          </button>.
-                        </AlertDescription>
-                      </Alert>
-                    );
-                  }
-
-                  return null;
-                })()
-              )}
-            </CardContent>
-          </Card>
-        )}
-
-        <ScrollArea className="max-h-[60vh]">
-          <div className="space-y-4">
+                </CardContent>
+              </Card>
+            )}
 
             {/* Branch Selector */}
             {gitStatus?.isGitRepo && gitStatus.currentBranch && (
@@ -1021,8 +1020,8 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
             )}
           </div>
         </ScrollArea>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
 
     {/* Advanced Git Management Dialog */}
     <GitManagementDialog

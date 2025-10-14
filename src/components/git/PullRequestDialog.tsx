@@ -97,55 +97,67 @@ export function PullRequestDialog({
       let platform: 'github' | 'gitlab' = 'github';
       let apiUrl = '';
 
-      // GitHub SSH: git@github.com:owner/repo.git
-      match = url.match(/git@github\.com:([^/]+)\/(.+?)(\.git)?$/);
+      console.log('Parsing remote URL:', url);
+
+      // Normalize URL - remove .git suffix if present
+      const normalizedUrl = url.replace(/\.git$/, '');
+
+      // GitHub SSH: git@github.com:owner/repo
+      match = normalizedUrl.match(/git@github\.com:([^/]+)\/(.+)$/);
       if (match) {
         owner = match[1];
         repo = match[2];
         platform = 'github';
         apiUrl = 'https://api.github.com';
+        console.log('Detected GitHub SSH:', { owner, repo });
       }
 
-      // GitHub HTTPS: https://github.com/owner/repo.git
+      // GitHub HTTPS: https://github.com/owner/repo
       if (!match) {
-        match = url.match(/https:\/\/github\.com\/([^/]+)\/(.+?)(\.git)?$/);
+        match = normalizedUrl.match(/https?:\/\/github\.com\/([^/]+)\/(.+)$/);
         if (match) {
           owner = match[1];
           repo = match[2];
           platform = 'github';
           apiUrl = 'https://api.github.com';
+          console.log('Detected GitHub HTTPS:', { owner, repo });
         }
       }
 
-      // GitLab SSH: git@gitlab.com:owner/repo.git
+      // GitLab SSH: git@gitlab.com:owner/repo
       if (!match) {
-        match = url.match(/git@gitlab\.com:([^/]+)\/(.+?)(\.git)?$/);
+        match = normalizedUrl.match(/git@gitlab\.com:([^/]+)\/(.+)$/);
         if (match) {
           owner = match[1];
           repo = match[2];
           platform = 'gitlab';
           apiUrl = 'https://gitlab.com/api/v4';
+          console.log('Detected GitLab SSH:', { owner, repo });
         }
       }
 
-      // GitLab HTTPS: https://gitlab.com/owner/repo.git
+      // GitLab HTTPS: https://gitlab.com/owner/repo
       if (!match) {
-        match = url.match(/https:\/\/gitlab\.com\/([^/]+)\/(.+?)(\.git)?$/);
+        match = normalizedUrl.match(/https?:\/\/gitlab\.com\/([^/]+)\/(.+)$/);
         if (match) {
           owner = match[1];
           repo = match[2];
           platform = 'gitlab';
           apiUrl = 'https://gitlab.com/api/v4';
+          console.log('Detected GitLab HTTPS:', { owner, repo });
         }
       }
 
       if (owner && repo) {
+        console.log('Remote info set:', { owner, repo, platform, apiUrl });
         setRemoteInfo({ owner, repo, platform, apiUrl });
       } else {
-        setError('Unsupported remote URL. Only GitHub and GitLab are supported.');
+        console.error('Failed to parse URL - no owner/repo found:', url);
+        setError('Unsupported remote URL format. Only GitHub and GitLab URLs are supported (e.g., https://github.com/user/repo.git)');
       }
     } catch (err) {
-      setError('Failed to parse remote URL');
+      console.error('Error parsing remote URL:', err);
+      setError('Failed to parse remote URL: ' + (err instanceof Error ? err.message : 'Unknown error'));
     }
   };
 
@@ -191,15 +203,21 @@ export function PullRequestDialog({
     setError(null);
 
     try {
+      console.log('Creating PR for:', remoteInfo);
+      console.log('Remote URL:', remoteUrl);
+
       // Get credentials
       const credentials = findCredentialsForRepo(remoteUrl || '', settings.credentials);
+      console.log('Found credentials:', credentials ? 'Yes' : 'No');
+
       if (!credentials) {
         throw new Error(
-          `No credentials found for ${remoteInfo.platform}. Please add credentials in Settings > Git.`
+          `No credentials found for ${remoteInfo.platform === 'github' ? 'GitHub' : 'GitLab'}. Please add credentials in Settings > Git for ${remoteUrl}`
         );
       }
 
       // Create PR based on platform
+      console.log(`Creating ${remoteInfo.platform} PR...`);
       if (remoteInfo.platform === 'github') {
         const prUrl = await createGitHubPR(remoteInfo, credentials.token);
         setCreatedPrUrl(prUrl);
@@ -226,7 +244,11 @@ export function PullRequestDialog({
   };
 
   const createGitHubPR = async (info: RemoteInfo, token: string): Promise<string> => {
-    const response = await fetch(`${info.apiUrl}/repos/${info.owner}/${info.repo}/pulls`, {
+    const url = `${info.apiUrl}/repos/${info.owner}/${info.repo}/pulls`;
+    console.log('GitHub PR URL:', url);
+    console.log('GitHub PR data:', { title, body: description, head: currentBranch, base: targetBranch });
+
+    const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Authorization': `token ${token}`,
@@ -241,35 +263,56 @@ export function PullRequestDialog({
       }),
     });
 
+    console.log('GitHub response status:', response.status);
+
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: 'Unknown error' }));
-      throw new Error(error.message || `GitHub API error: ${response.status}`);
+      const errorText = await response.text();
+      console.error('GitHub API error response:', errorText);
+
+      let error;
+      try {
+        error = JSON.parse(errorText);
+      } catch {
+        error = { message: errorText || 'Unknown error' };
+      }
+
+      throw new Error(error.message || `GitHub API error: ${response.status} - ${response.statusText}`);
     }
 
     const data = await response.json();
+    console.log('GitHub PR created:', data.html_url);
     return data.html_url;
   };
 
   const createGitLabMR = async (info: RemoteInfo, token: string): Promise<string> => {
     // Get project ID first
-    const projectResponse = await fetch(
-      `${info.apiUrl}/projects/${encodeURIComponent(`${info.owner}/${info.repo}`)}`,
-      {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
+    const projectUrl = `${info.apiUrl}/projects/${encodeURIComponent(`${info.owner}/${info.repo}`)}`;
+    console.log('GitLab project URL:', projectUrl);
+
+    const projectResponse = await fetch(projectUrl, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    console.log('GitLab project response status:', projectResponse.status);
 
     if (!projectResponse.ok) {
-      throw new Error(`Failed to get GitLab project: ${projectResponse.status}`);
+      const errorText = await projectResponse.text();
+      console.error('GitLab project error response:', errorText);
+      throw new Error(`Failed to get GitLab project: ${projectResponse.status} - ${errorText}`);
     }
 
     const project = await projectResponse.json();
+    console.log('GitLab project ID:', project.id);
 
     // Create merge request
-    const response = await fetch(`${info.apiUrl}/projects/${project.id}/merge_requests`, {
+    const mrUrl = `${info.apiUrl}/projects/${project.id}/merge_requests`;
+    console.log('GitLab MR URL:', mrUrl);
+    console.log('GitLab MR data:', { source_branch: currentBranch, target_branch: targetBranch, title, description });
+
+    const response = await fetch(mrUrl, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -283,12 +326,24 @@ export function PullRequestDialog({
       }),
     });
 
+    console.log('GitLab MR response status:', response.status);
+
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: 'Unknown error' }));
-      throw new Error(error.message || `GitLab API error: ${response.status}`);
+      const errorText = await response.text();
+      console.error('GitLab MR error response:', errorText);
+
+      let error;
+      try {
+        error = JSON.parse(errorText);
+      } catch {
+        error = { message: errorText || 'Unknown error' };
+      }
+
+      throw new Error(error.message || `GitLab API error: ${response.status} - ${response.statusText}`);
     }
 
     const data = await response.json();
+    console.log('GitLab MR created:', data.web_url);
     return data.web_url;
   };
 

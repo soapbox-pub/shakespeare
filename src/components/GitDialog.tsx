@@ -682,8 +682,8 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         {children && <DialogTrigger asChild>{children}</DialogTrigger>}
-        <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col overflow-hidden" onOpenAutoFocus={(e) => e.preventDefault()}>
-          <DialogHeader className="flex-shrink-0">
+        <DialogContent className="max-w-2xl h-[90vh] flex flex-col p-0 overflow-hidden" onOpenAutoFocus={(e) => e.preventDefault()}>
+          <DialogHeader className="flex-shrink-0 px-6 pt-6">
             <div className="flex items-center justify-between">
               <DialogTitle className="flex items-center gap-2">
                 <GitBranch className="h-5 w-5" />
@@ -706,8 +706,9 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
             </div>
           </DialogHeader>
 
-        <ScrollArea className="flex-1 -mx-6 px-6">
-          <div className="space-y-4 pr-4">
+        <div className="flex-1 min-h-0 overflow-hidden px-6 pb-6">
+          <ScrollArea className="h-full">
+            <div className="space-y-4 pr-4">
             {/* URL Configuration */}
             {gitStatus?.isGitRepo && (
               <Card>
@@ -1018,8 +1019,9 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
                 </CardContent>
               </Card>
             )}
-          </div>
-        </ScrollArea>
+            </div>
+          </ScrollArea>
+        </div>
         </DialogContent>
       </Dialog>
 

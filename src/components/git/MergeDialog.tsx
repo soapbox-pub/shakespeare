@@ -209,48 +209,100 @@ export function MergeDialog({
     setError(null);
 
     try {
-      // Get commit IDs
+      // Check if can fast-forward
       const sourceOid = await git.resolveRef({ dir: projectPath, ref: sourceBranch });
       const targetOid = await git.resolveRef({ dir: projectPath, ref: currentBranch });
 
-      // Perform the merge
-      const result = await git.merge({
-        fs: git['fs'],
+      const canFastForward = await git.isDescendent({
         dir: projectPath,
-        ours: targetOid,
-        theirs: sourceOid,
-        author: {
-          name: 'shakespeare.diy',
-          email: 'assistant@shakespeare.diy',
-        },
-        message: `Merge branch '${sourceBranch}' into ${currentBranch}`,
-      });
+        oid: sourceOid,
+        ancestor: targetOid,
+      }).catch(() => false);
 
-      if (result.alreadyMerged) {
+      if (canFastForward) {
+        // Fast-forward merge: just update the current branch ref
+        await git.fastForward({
+          dir: projectPath,
+          ref: currentBranch,
+          singleBranch: true,
+        });
+
+        // Update working directory to match the new HEAD
+        await git.checkout({
+          dir: projectPath,
+          ref: currentBranch,
+          force: true,
+        });
+
         toast({
-          title: 'Already merged',
-          description: 'The branches are already merged',
+          title: 'Fast-forward merge successful',
+          description: `Successfully fast-forwarded ${currentBranch} to ${sourceBranch}`,
         });
       } else {
+        // Three-way merge
+        const result = await git.merge({
+          fs: git['fs'],
+          dir: projectPath,
+          ours: currentBranch,
+          theirs: sourceBranch,
+          author: {
+            name: 'shakespeare.diy',
+            email: 'assistant@shakespeare.diy',
+          },
+          message: `Merge branch '${sourceBranch}' into ${currentBranch}`,
+        });
+
+        if (result.alreadyMerged) {
+          toast({
+            title: 'Already merged',
+            description: 'The branches are already merged',
+          });
+          setMergeComplete(true);
+          onMergeComplete?.();
+          return;
+        }
+
+        // The merge result contains the new tree OID
+        // We need to create a commit with this tree
+        const mergeCommitOid = await git.commit({
+          dir: projectPath,
+          message: `Merge branch '${sourceBranch}' into ${currentBranch}`,
+          author: {
+            name: 'shakespeare.diy',
+            email: 'assistant@shakespeare.diy',
+          },
+          parent: [targetOid, sourceOid], // Two parents for merge commit
+          tree: result.tree,
+        });
+
+        console.log('Created merge commit:', mergeCommitOid);
+
+        // Update working directory to match the merge
+        await git.checkout({
+          dir: projectPath,
+          ref: currentBranch,
+          force: true,
+        });
+
         toast({
           title: 'Merge successful',
           description: `Successfully merged ${sourceBranch} into ${currentBranch}`,
         });
-
-        setMergeComplete(true);
-
-        // Trigger rebuild
-        setTimeout(() => {
-          const newSearchParams = new URLSearchParams(searchParams);
-          newSearchParams.set('build', '');
-          setSearchParams(newSearchParams);
-        }, 500);
       }
+
+      setMergeComplete(true);
+
+      // Trigger rebuild
+      setTimeout(() => {
+        const newSearchParams = new URLSearchParams(searchParams);
+        newSearchParams.set('build', '');
+        setSearchParams(newSearchParams);
+      }, 500);
 
       onMergeComplete?.();
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-      
+
       if (errorMessage.includes('conflict') || errorMessage.includes('CONFLICT')) {
         setError('Merge conflicts detected. Please resolve conflicts manually using the terminal.');
       } else {
@@ -261,6 +313,7 @@ export function MergeDialog({
         title: 'Merge failed',
         description: errorMessage,
         variant: 'destructive',
+        duration: Infinity,
       });
     } finally {
       setIsMerging(false);

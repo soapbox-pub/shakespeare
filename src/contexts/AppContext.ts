@@ -23,6 +23,8 @@ export interface AppConfig {
   showcaseEnabled: boolean;
   /** Npub of the showcase moderator */
   showcaseModerator: string;
+  /** Nostr Git Servers (hostnames) */
+  ngitServers: string[];
 }
 
 export interface AppContextType {

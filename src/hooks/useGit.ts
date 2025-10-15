@@ -12,11 +12,11 @@ export function useGit(): { git: Git } {
   const { fs } = useFS();
   const { nostr } = useNostr();
   const { config } = useAppContext();
-  const { corsProxy } = config;
+  const { corsProxy, ngitServers } = config;
 
   const git = useMemo(() => {
-    return new Git({ fs, nostr, corsProxy });
-  }, [fs, nostr, corsProxy]);
+    return new Git({ fs, nostr, corsProxy, ngitServers });
+  }, [fs, nostr, corsProxy, ngitServers]);
 
   return { git };
 }

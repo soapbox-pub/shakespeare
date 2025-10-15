@@ -312,6 +312,10 @@ const resources = {
       addAccount: 'Add Account',
       relayConfiguration: 'Relay Configuration',
       selectedRelay: 'Selected Relay',
+      nostrGitServers: 'Nostr Git Servers',
+      addServer: 'Add Server',
+      serverHostname: 'Server Hostname',
+      enterHostname: 'Enter hostname (e.g., git.shakespeare.diy)',
 
       // Clone Page
       cloneGitRepository: 'Clone a Git repository into your Shakespeare workspace',
@@ -638,6 +642,10 @@ const resources = {
       addAccount: 'Adicionar Conta',
       relayConfiguration: 'Configuração de Relay',
       selectedRelay: 'Relay Selecionado',
+      nostrGitServers: 'Servidores Git Nostr',
+      addServer: 'Adicionar Servidor',
+      serverHostname: 'Nome do Servidor',
+      enterHostname: 'Digite o nome do host (ex: git.shakespeare.diy)',
 
       // Clone Page
       cloneGitRepository: 'Clone um repositório Git para seu workspace Shakespeare',
@@ -964,6 +972,10 @@ const resources = {
       addAccount: '添加账户',
       relayConfiguration: '中继配置',
       selectedRelay: '选定的中继',
+      nostrGitServers: 'Nostr Git服务器',
+      addServer: '添加服务器',
+      serverHostname: '服务器主机名',
+      enterHostname: '输入主机名（例如：git.shakespeare.diy）',
 
       // Clone Page
       cloneGitRepository: '将Git仓库克隆到您的Shakespeare工作空间',
@@ -1290,6 +1302,10 @@ const resources = {
       addAccount: 'Ƙara Asusu',
       relayConfiguration: 'Saitunan Relay',
       selectedRelay: 'Relay da aka zaɓa',
+      nostrGitServers: 'Sabar Git na Nostr',
+      addServer: 'Ƙara Sabar',
+      serverHostname: 'Sunan Sabar',
+      enterHostname: 'Shigar da sunan mai masaukin baki (misali: git.shakespeare.diy)',
 
       // Clone Page
       cloneGitRepository: 'Clone repository na Git zuwa wurin aikin Shakespeare',
@@ -1611,6 +1627,10 @@ const resources = {
       addAccount: 'Fi Akọọlẹ kun',
       relayConfiguration: 'Iṣeto Relay',
       selectedRelay: 'Relay Ti a Yan',
+      nostrGitServers: 'Awọn olupin Git Nostr',
+      addServer: 'Fi Olupin kun',
+      serverHostname: 'Orukọ Olupin',
+      enterHostname: 'Tẹ orukọ ile-ipamọ sii (fun apẹẹrẹ: git.shakespeare.diy)',
 
       // Clone Page
       cloneGitRepository: 'Clone repository Git si aaye iṣẹ Shakespeare rẹ',
@@ -1932,6 +1952,10 @@ const resources = {
       addAccount: 'Tinye Akaụntụ',
       relayConfiguration: 'Nhazi Relay',
       selectedRelay: 'Relay Ahọrọ',
+      nostrGitServers: 'Ndị sava Git Nostr',
+      addServer: 'Tinye Sava',
+      serverHostname: 'Aha Sava',
+      enterHostname: 'Tinye aha ọbịa (ọmụmaatụ: git.shakespeare.diy)',
 
       // Clone Page
       cloneGitRepository: 'Clone repository Git n\'ogige ọrụ Shakespeare gị',

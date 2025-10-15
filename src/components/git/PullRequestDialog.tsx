@@ -217,12 +217,12 @@ export function PullRequestDialog({
           // Convert npub to hex if needed
           if (pubkeyOrNpub.startsWith('npub1')) {
             try {
-              const decoded = nip19.decode(pubkeyOrNpub);
-              // Type guard: ensure we have an npub
-              if (decoded.type === 'npub' && typeof decoded.data === 'string') {
-                owner = decoded.data; // hex pubkey
+              const result = nip19.decode(pubkeyOrNpub) as { type: string; data: string };
+              // Validate that we got an npub (public key)
+              if (result.type === 'npub') {
+                owner = result.data;
               } else {
-                throw new Error('Expected npub but got ' + decoded.type);
+                throw new Error('Invalid npub - expected public key but got: ' + result.type);
               }
             } catch (err) {
               console.error('Failed to decode npub:', err);

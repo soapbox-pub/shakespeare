@@ -21,10 +21,14 @@ Nostr git repositories use a special URL format:
 nostr://<pubkey>/<repo-id>
 ```
 
-- `<pubkey>`: The repository maintainer's Nostr public key (hex format)
+- `<pubkey>`: The repository maintainer's Nostr public key (hex format or npub)
 - `<repo-id>`: The repository identifier (d tag, usually kebab-case)
 
-Example: `nostr://abc123.../my-project`
+**Important**: The system expects hex pubkeys but will automatically convert npub to hex if provided.
+
+Examples:
+- `nostr://abc123def456.../my-project` (hex pubkey)
+- `nostr://npub1abc123.../my-project` (will be converted to hex)
 
 ### 2. Creating Patches (Pull Requests)
 
@@ -68,13 +72,13 @@ Nostr git is implemented as a `NostrGitProvider` that implements the `GitHostPro
 class NostrGitProvider implements GitHostProvider {
   // Query repository announcements (kind 30617)
   async getRepository(owner: string, repo: string): Promise<GitRepository>
-  
+
   // Check if user is a maintainer
   async canUserPush(owner: string, repo: string): Promise<boolean>
-  
+
   // Create patch event (kind 1617)
   async createPullRequest(options: CreatePullRequestOptions): Promise<PullRequest>
-  
+
   // ... other methods
 }
 ```

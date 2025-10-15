@@ -38,6 +38,7 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useNostr } from '@/hooks/useNostr';
 import { findCredentialsForRepo } from '@/lib/gitCredentials';
 import { createGitHostProvider, detectGitHost, parseRepoUrl } from '@/lib/git-hosts';
+import { nip19 } from 'nostr-tools';
 
 interface PullRequestDialogProps {
   projectId: string;
@@ -207,8 +208,27 @@ export function PullRequestDialog({
       if (url.startsWith('nostr://')) {
         match = url.match(/^nostr:\/\/([^/]+)\/(.+)$/);
         if (match) {
-          owner = match[1]; // pubkey in hex
+          let pubkeyOrNpub = match[1];
           repo = match[2];  // repo-id (d tag)
+
+          // Convert npub to hex if needed
+          if (pubkeyOrNpub.startsWith('npub1')) {
+            try {
+              const decoded = nip19.decode(pubkeyOrNpub);
+              if (decoded.type === 'npub') {
+                owner = decoded.data; // hex pubkey
+              } else {
+                throw new Error('Invalid npub');
+              }
+            } catch (err) {
+              console.error('Failed to decode npub:', err);
+              setError('Invalid npub in Nostr URL');
+              return;
+            }
+          } else {
+            owner = pubkeyOrNpub; // Already in hex format
+          }
+
           platform = 'nostr';
           apiUrl = ''; // Not applicable for Nostr
           console.log('Detected Nostr git:', { owner, repo });

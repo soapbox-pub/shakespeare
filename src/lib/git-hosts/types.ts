@@ -1,3 +1,5 @@
+import { nip19 } from 'nostr-tools';
+
 /**
  * Git host provider abstraction for PR/MR operations
  */
@@ -131,9 +133,25 @@ export function parseRepoUrl(url: string): { owner: string; repo: string } | nul
     if (url.startsWith('nostr://')) {
       const match = url.match(/^nostr:\/\/([^/]+)\/(.+)$/);
       if (match) {
+        let owner = match[1]; // pubkey in hex or npub
+        const repo = match[2];  // repo-id (d tag)
+
+        // Convert npub to hex if needed
+        if (owner.startsWith('npub1')) {
+          try {
+            const decoded = nip19.decode(owner);
+            if (decoded.type === 'npub') {
+              owner = decoded.data;
+            }
+          } catch (err) {
+            console.error('Failed to decode npub:', err);
+            return null;
+          }
+        }
+
         return {
-          owner: match[1], // pubkey in hex
-          repo: match[2],  // repo-id (d tag)
+          owner, // pubkey in hex
+          repo,  // repo-id (d tag)
         };
       }
     }

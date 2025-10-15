@@ -203,30 +203,29 @@ export function BranchManager({ projectId, currentBranch, onBranchChange }: Bran
         return true;
       });
 
-      if (!hasUncommittedChanges) {
-        // No uncommitted changes, automatically switch to the new branch
-        try {
-          await git.checkout({
-            dir: projectPath,
-            ref: branchName,
-          });
+      // Always try to switch to the new branch
+      try {
+        await git.checkout({
+          dir: projectPath,
+          ref: branchName,
+        });
 
+        if (hasUncommittedChanges) {
+          toast({
+            title: 'Branch created and switched',
+            description: `Switched to "${branchName}" with uncommitted changes`,
+          });
+        } else {
           toast({
             title: 'Branch created and switched',
             description: `Created and switched to branch "${branchName}"`,
           });
-        } catch (checkoutError) {
-          // Branch created but checkout failed
-          toast({
-            title: 'Branch created',
-            description: `Created branch "${branchName}" but failed to switch to it`,
-          });
         }
-      } else {
-        // Has uncommitted changes, don't switch automatically
+      } catch (checkoutError) {
+        // Branch created but checkout failed
         toast({
           title: 'Branch created',
-          description: `Created branch "${branchName}". Commit your changes to switch to it.`,
+          description: `Created "${branchName}" but could not switch: ${checkoutError instanceof Error ? checkoutError.message : 'Unknown error'}`,
         });
       }
 

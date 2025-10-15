@@ -206,7 +206,11 @@ export function PullRequestForm({ projectId, currentBranch, remoteUrl }: PullReq
         console.log(`Creating feature branch: ${featureBranchName}`);
 
         try {
-          // Create branch first
+          // Check for uncommitted changes BEFORE creating branch
+          const statusMatrix = await git.statusMatrix({ dir: projectPath });
+          const hasUncommittedChanges = statusMatrix.some(([, head, workdir]) => head !== workdir);
+
+          // Create and checkout branch first
           await git.branch({
             dir: projectPath,
             ref: featureBranchName,
@@ -216,10 +220,7 @@ export function PullRequestForm({ projectId, currentBranch, remoteUrl }: PullReq
           branchToUse = featureBranchName;
           console.log(`Successfully created and checked out branch: ${featureBranchName}`);
 
-          // Check if there are uncommitted changes to commit to this branch
-          const statusMatrix = await git.statusMatrix({ dir: projectPath });
-          const hasUncommittedChanges = statusMatrix.some(([, head, workdir]) => head !== workdir);
-
+          // If there were uncommitted changes, commit them to the new branch
           if (hasUncommittedChanges) {
             console.log('Committing changes to new branch');
 

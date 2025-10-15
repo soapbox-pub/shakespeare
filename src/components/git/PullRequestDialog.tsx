@@ -276,6 +276,10 @@ export function PullRequestDialog({
           // IMPORTANT: Create branch FIRST, then commit to it
           // This ensures main and feature-branch have different commits
 
+          // Check if there are uncommitted changes BEFORE branching
+          const statusMatrix = await git.statusMatrix({ dir: projectPath });
+          const hasUncommittedChanges = statusMatrix.some(([, head, workdir]) => head !== workdir);
+
           // Create and checkout the new branch from current HEAD
           await git.branch({
             dir: projectPath,
@@ -286,10 +290,7 @@ export function PullRequestDialog({
           branchToUse = featureBranchName;
           console.log(`Successfully created and checked out branch: ${featureBranchName}`);
 
-          // Check if there are uncommitted changes that need to be committed to this branch
-          const statusMatrix = await git.statusMatrix({ dir: projectPath });
-          const hasUncommittedChanges = statusMatrix.some(([, head, workdir]) => head !== workdir);
-
+          // If there were uncommitted changes, commit them now to the new branch
           if (hasUncommittedChanges) {
             console.log('Found uncommitted changes, committing to new branch');
 
@@ -315,17 +316,9 @@ export function PullRequestDialog({
               description: `Created '${featureBranchName}' with your changes committed`,
             });
           } else {
-            // No uncommitted changes - check if this branch differs from main
-            const mainCommit = await git.resolveRef({ dir: projectPath, ref: `refs/heads/${currentBranch}` });
-            const branchCommit = await git.resolveRef({ dir: projectPath, ref: 'HEAD' });
-
-            if (mainCommit === branchCommit) {
-              throw new Error(
-                `No changes to submit.\n\n` +
-                `You need to have committed changes that differ from the '${currentBranch}' branch.\n\n` +
-                `Please make some changes and commit them before creating a PR.`
-              );
-            }
+            // No uncommitted changes - the branch should already differ from main
+            // (user must have committed changes to main already)
+            console.log('No uncommitted changes, branch created from existing commits');
 
             toast({
               title: 'Feature branch created',

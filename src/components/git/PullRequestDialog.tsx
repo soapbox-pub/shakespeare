@@ -218,11 +218,10 @@ export function PullRequestDialog({
           if (pubkeyOrNpub.startsWith('npub1')) {
             try {
               const decoded = nip19.decode(pubkeyOrNpub);
-              if (decoded.type === 'npub') {
-                owner = decoded.data as string; // hex pubkey
-              } else {
-                throw new Error('Invalid npub');
+              if (decoded.type !== 'npub') {
+                throw new Error('Expected npub but got ' + decoded.type);
               }
+              owner = decoded.data; // hex pubkey
             } catch (err) {
               console.error('Failed to decode npub:', err);
               setError('Invalid npub in Nostr URL');

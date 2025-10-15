@@ -201,10 +201,12 @@ export function PullRequestForm({ projectId, currentBranch, remoteUrl }: PullReq
           .replace(/^-|-$/g, '')
           .substring(0, 50);
 
-        const featureBranchName = `${sanitizedTitle}-${Date.now().toString(36).slice(-4)}`;
+        const baseName = sanitizedTitle || 'feature';
+        const featureBranchName = `${baseName}-${Date.now().toString(36).slice(-4)}`;
         console.log(`Creating feature branch: ${featureBranchName}`);
 
         try {
+          // Create branch first
           await git.branch({
             dir: projectPath,
             ref: featureBranchName,
@@ -213,6 +215,29 @@ export function PullRequestForm({ projectId, currentBranch, remoteUrl }: PullReq
 
           branchToUse = featureBranchName;
           console.log(`Successfully created and checked out branch: ${featureBranchName}`);
+
+          // Check if there are uncommitted changes to commit to this branch
+          const statusMatrix = await git.statusMatrix({ dir: projectPath });
+          const hasUncommittedChanges = statusMatrix.some(([, head, workdir]) => head !== workdir);
+
+          if (hasUncommittedChanges) {
+            console.log('Committing changes to new branch');
+
+            for (const [filepath, , workdir] of statusMatrix) {
+              if (workdir === 0) {
+                await git.remove({ dir: projectPath, filepath });
+              } else if (workdir !== 0) {
+                await git.add({ dir: projectPath, filepath });
+              }
+            }
+
+            await git.commit({
+              dir: projectPath,
+              message: title,
+            });
+
+            console.log('Committed changes to new branch');
+          }
 
           toast({
             title: 'Feature branch created',
@@ -233,6 +258,9 @@ export function PullRequestForm({ projectId, currentBranch, remoteUrl }: PullReq
       const headRef = forkInfo.needsFork && forkInfo.forkOwner
         ? `${forkInfo.forkOwner}:${branchToUse}`
         : branchToUse;
+
+      console.log('PR head ref will be:', headRef);
+      console.log('PR base ref will be:', targetBranch);
 
       if (forkInfo.needsFork && forkInfo.forkUrl) {
         console.log(`Pushing branch ${branchToUse} to fork ${forkInfo.forkUrl}`);
@@ -279,19 +307,24 @@ export function PullRequestForm({ projectId, currentBranch, remoteUrl }: PullReq
       }
 
       const url = `${remoteInfo.apiUrl}/repos/${remoteInfo.owner}/${remoteInfo.repo}/pulls`;
+
+      const prData = {
+        title,
+        body: description,
+        head: headRef,
+        base: targetBranch,
+        maintainer_can_modify: true,
+      };
+
+      console.log('Creating PR with data:', prData);
+
       const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Authorization': `token ${credentials.password}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          title,
-          body: description,
-          head: headRef,
-          base: targetBranch,
-          maintainer_can_modify: true,
-        }),
+        body: JSON.stringify(prData),
       });
 
       if (!response.ok) {

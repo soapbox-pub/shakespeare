@@ -267,11 +267,16 @@ export function PullRequestDialog({
           .replace(/^-|-$/g, '') // Remove leading/trailing hyphens
           .substring(0, 50); // Limit length
 
-        const featureBranchName = `${sanitizedTitle}-${Date.now().toString(36).slice(-4)}`;
+        // Ensure we have a valid base name
+        const baseName = sanitizedTitle || 'feature';
+        const featureBranchName = `${baseName}-${Date.now().toString(36).slice(-4)}`;
         console.log(`Creating feature branch: ${featureBranchName}`);
 
         try {
-          // Create and checkout the new branch
+          // IMPORTANT: Create branch FIRST, then commit to it
+          // This ensures main and feature-branch have different commits
+
+          // Create and checkout the new branch from current HEAD
           await git.branch({
             dir: projectPath,
             ref: featureBranchName,
@@ -281,10 +286,52 @@ export function PullRequestDialog({
           branchToUse = featureBranchName;
           console.log(`Successfully created and checked out branch: ${featureBranchName}`);
 
-          toast({
-            title: 'Feature branch created',
-            description: `Created branch '${featureBranchName}' for your changes`,
-          });
+          // Check if there are uncommitted changes that need to be committed to this branch
+          const statusMatrix = await git.statusMatrix({ dir: projectPath });
+          const hasUncommittedChanges = statusMatrix.some(([, head, workdir]) => head !== workdir);
+
+          if (hasUncommittedChanges) {
+            console.log('Found uncommitted changes, committing to new branch');
+
+            // Stage all changes
+            for (const [filepath, , workdir] of statusMatrix) {
+              if (workdir === 0) {
+                await git.remove({ dir: projectPath, filepath });
+              } else if (workdir !== 0) {
+                await git.add({ dir: projectPath, filepath });
+              }
+            }
+
+            // Commit with the PR title as message
+            await git.commit({
+              dir: projectPath,
+              message: title,
+            });
+
+            console.log('Committed changes to new branch');
+
+            toast({
+              title: 'Feature branch created',
+              description: `Created '${featureBranchName}' with your changes committed`,
+            });
+          } else {
+            // No uncommitted changes - check if this branch differs from main
+            const mainCommit = await git.resolveRef({ dir: projectPath, ref: `refs/heads/${currentBranch}` });
+            const branchCommit = await git.resolveRef({ dir: projectPath, ref: 'HEAD' });
+
+            if (mainCommit === branchCommit) {
+              throw new Error(
+                `No changes to submit.\n\n` +
+                `You need to have committed changes that differ from the '${currentBranch}' branch.\n\n` +
+                `Please make some changes and commit them before creating a PR.`
+              );
+            }
+
+            toast({
+              title: 'Feature branch created',
+              description: `Created branch '${featureBranchName}'`,
+            });
+          }
         } catch (branchError) {
           console.error('Failed to create feature branch:', branchError);
           throw new Error(
@@ -322,9 +369,10 @@ export function PullRequestDialog({
       let headRef = branchToUse;
       if (forkInfo.needsFork && forkInfo.forkOwner && forkInfo.forkUrl) {
         // For cross-fork PRs, head ref format is "owner:branch"
-        headRef = `${forkInfo.forkOwner}:${currentBranch}`;
+        headRef = `${forkInfo.forkOwner}:${branchToUse}`;
 
         console.log(`Setting up fork workflow for ${forkInfo.forkOwner}/${forkInfo.forkRepo}`);
+        console.log(`Head ref will be: ${headRef}`);
 
         // Check current remotes
         const remotes = await git.listRemotes({ dir: projectPath });
@@ -540,8 +588,12 @@ export function PullRequestDialog({
 
   const createGitHubPR = async (info: RemoteInfo, token: string, headRef: string): Promise<string> => {
     const url = `${info.apiUrl}/repos/${info.owner}/${info.repo}/pulls`;
-    console.log('GitHub PR URL:', url);
-    console.log('GitHub PR data:', { title, body: description, head: headRef, base: targetBranch });
+    console.log('Creating GitHub PR:');
+    console.log('  URL:', url);
+    console.log('  Head:', headRef);
+    console.log('  Base:', targetBranch);
+    console.log('  Title:', title);
+    console.log('  Body length:', description?.length || 0);
 
     const response = await fetch(url, {
       method: 'POST',
@@ -748,28 +800,23 @@ export function PullRequestDialog({
                 <div className="bg-muted/30 rounded-lg p-4">
                   <div className="flex items-center gap-2 text-sm">
                     <Badge variant="outline" className="font-mono">
-                      {forkInfo.needsFork && forkInfo.forkOwner
-                        ? `${remoteInfo?.owner}/${remoteInfo?.repo}:${targetBranch}`
-                        : targetBranch
-                      }
+                      {targetBranch}
                     </Badge>
                     <GitCompare className="h-4 w-4 text-muted-foreground" />
                     <Badge variant="outline" className="font-mono">
-                      {forkInfo.needsFork && forkInfo.forkOwner
-                        ? `${forkInfo.forkOwner}/${forkInfo.forkRepo}:${currentBranch}`
-                        : currentBranch
-                      }
+                      {currentBranch}
+                      {(currentBranch === 'main' || currentBranch === 'master') && ' (will create new branch)'}
                     </Badge>
                   </div>
                   <p className="text-xs text-muted-foreground mt-2">
                     {forkInfo.needsFork
-                      ? `Merge ${currentBranch} from your fork into ${targetBranch} in ${remoteInfo?.owner}/${remoteInfo?.repo}`
+                      ? `From your fork to ${remoteInfo?.owner}/${remoteInfo?.repo}:${targetBranch}`
                       : `Merge ${currentBranch} into ${targetBranch}`
                     }
                   </p>
                   {(currentBranch === 'main' || currentBranch === 'master') && (
                     <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                      Note: A new branch will be created automatically
+                      ℹ️ Feature branch will be auto-generated from PR title
                     </p>
                   )}
                 </div>

@@ -35,6 +35,8 @@ import { useSearchParams } from 'react-router-dom';
 interface MergeDialogProps {
   projectId: string;
   currentBranch: string | null;
+  sourceBranch?: string;
+  targetBranch?: string;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   onMergeComplete?: () => void;
@@ -58,13 +60,15 @@ interface MergePreview {
 export function MergeDialog({
   projectId,
   currentBranch,
+  sourceBranch: initialSourceBranch,
+  targetBranch: _initialTargetBranch,
   open,
   onOpenChange,
   onMergeComplete,
 }: MergeDialogProps) {
   const [isOpen, setIsOpen] = useState(open ?? false);
   const [branches, setBranches] = useState<string[]>([]);
-  const [sourceBranch, setSourceBranch] = useState<string>('');
+  const [sourceBranch, setSourceBranch] = useState<string>(initialSourceBranch || '');
   const [isLoadingBranches, setIsLoadingBranches] = useState(false);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [isMerging, setIsMerging] = useState(false);

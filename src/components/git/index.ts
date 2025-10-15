@@ -1,3 +1,4 @@
+export { AnnounceRepositoryDialog } from './AnnounceRepositoryDialog';
 export { BranchManager } from './BranchManager';
 export { CompareView } from './CompareView';
 export { DiffViewer } from './DiffViewer';

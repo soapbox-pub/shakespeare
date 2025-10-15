@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -12,11 +12,14 @@ import {
   GitBranch,
   GitCompare,
   Settings,
+  GitPullRequest,
 } from 'lucide-react';
 import { BranchManager } from './BranchManager';
 import { CompareView } from './CompareView';
 import { DiffViewer } from './DiffViewer';
+import { PullRequestForm } from './PullRequestForm';
 import { useGitStatus } from '@/hooks/useGitStatus';
+import { useGit } from '@/hooks/useGit';
 
 interface GitManagementDialogProps {
   projectId: string;
@@ -34,8 +37,25 @@ export function GitManagementDialog({
   defaultTab = 'branches',
 }: GitManagementDialogProps) {
   const [activeTab, setActiveTab] = useState(defaultTab);
+  const [remoteUrl, setRemoteUrl] = useState<string | null>(null);
+  const { git } = useGit();
+  const projectPath = `/projects/${projectId}`;
 
   const { data: gitStatus, refetch: refetchGitStatus } = useGitStatus(projectId);
+
+  useEffect(() => {
+    const loadRemoteUrl = async () => {
+      try {
+        const url = await git.getRemoteURL(projectPath, 'origin');
+        setRemoteUrl(url);
+      } catch {
+        setRemoteUrl(null);
+      }
+    };
+    if (open) {
+      loadRemoteUrl();
+    }
+  }, [open, git, projectPath]);
 
   const handleBranchChange = () => {
     // Refetch git status when branches change
@@ -82,6 +102,15 @@ export function GitManagementDialog({
                     <GitCompare className="h-4 w-4" />
                     Compare
                   </TabsTrigger>
+                  {remoteUrl && (
+                    <TabsTrigger
+                      value="pr"
+                      className="gap-2 data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none"
+                    >
+                      <GitPullRequest className="h-4 w-4" />
+                      Pull Request
+                    </TabsTrigger>
+                  )}
                 </TabsList>
               </div>
 
@@ -114,6 +143,20 @@ export function GitManagementDialog({
                   </div>
                 </ScrollArea>
               </TabsContent>
+
+              {remoteUrl && (
+                <TabsContent value="pr" className="flex-1 m-0 data-[state=active]:flex data-[state=active]:flex-col">
+                  <ScrollArea className="flex-1">
+                    <div className="p-6">
+                      <PullRequestForm
+                        projectId={projectId}
+                        currentBranch={gitStatus?.currentBranch || null}
+                        remoteUrl={remoteUrl}
+                      />
+                    </div>
+                  </ScrollArea>
+                </TabsContent>
+              )}
             </Tabs>
           </div>
         </DialogContent>

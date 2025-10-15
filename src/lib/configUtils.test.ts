@@ -144,6 +144,7 @@ describe('configUtils', () => {
           password: 'token123',
         },
       },
+      hostTokens: {},
     };
 
     describe('readGitSettings', () => {
@@ -164,6 +165,7 @@ describe('configUtils', () => {
 
         expect(result).toEqual({
           credentials: {},
+          hostTokens: {},
           coAuthorEnabled: true,
         });
       });

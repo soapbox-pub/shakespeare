@@ -15,15 +15,11 @@ const GIT_KINDS = [
   1621, // NIP-34 Issue
 ];
 
-const GIT_RELAYS = [
-  'wss://git.shakespeare.diy/',
-  'wss://relay.ngit.dev/',
-];
-
 const NostrProvider: React.FC<NostrProviderProps> = (props) => {
   const { children } = props;
   const { config, presetRelays } = useAppContext();
 
+  const gitRelays = config.ngitServers.map(server => `wss://${server}/`);
   const queryClient = useQueryClient();
 
   // Create NPool instance only once
@@ -50,7 +46,7 @@ const NostrProvider: React.FC<NostrProviderProps> = (props) => {
 
         if (filters.every((f) => f.kinds?.every((k) => GIT_KINDS.includes(k)))) {
           // If all filters are git-related, route to all git relays
-          for (const url of GIT_RELAYS) {
+          for (const url of gitRelays) {
             routes.set(url, filters);
           }
         }
@@ -62,7 +58,7 @@ const NostrProvider: React.FC<NostrProviderProps> = (props) => {
 
         // If it's a git-related event, also publish to the git relays
         if (GIT_KINDS.includes(event.kind)) {
-          for (const url of GIT_RELAYS) {
+          for (const url of gitRelays) {
             allRelays.add(url);
           }
         }

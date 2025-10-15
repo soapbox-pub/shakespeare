@@ -41,6 +41,7 @@ function createWrapper(corsProxy: string) {
       previewDomain: 'local-test.dev',
       showcaseEnabled: true,
       showcaseModerator: 'npub1jvnpg4c6ljadf5t6ry0w9q0rnm4mksde87kglkrc993z46c39axsgq89sc',
+      ngitServers: ['git.shakespeare.diy', 'relay.ngit.dev'],
     };
 
     return createElement(
@@ -81,6 +82,7 @@ describe('useGit', () => {
       fs: mockFS,
       nostr: mockNostr,
       corsProxy: 'https://cors.isomorphic-git.org',
+      ngitServers: ['git.shakespeare.diy', 'relay.ngit.dev'],
     });
     expect(result.current).toEqual({ git: expect.any(Object) });
   });
@@ -94,6 +96,7 @@ describe('useGit', () => {
       fs: mockFS,
       nostr: mockNostr,
       corsProxy: 'https://custom-cors.example.com',
+      ngitServers: ['git.shakespeare.diy', 'relay.ngit.dev'],
     });
     expect(result.current).toEqual({ git: expect.any(Object) });
   });
@@ -107,6 +110,7 @@ describe('useGit', () => {
       fs: mockFS,
       nostr: mockNostr,
       corsProxy: 'https://cors.isomorphic-git.org',
+      ngitServers: ['git.shakespeare.diy', 'relay.ngit.dev'],
     });
 
     // Rerender with a different wrapper (different CORS proxy)

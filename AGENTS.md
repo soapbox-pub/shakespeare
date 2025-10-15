@@ -1,6 +1,6 @@
-# Shakespeare - AI-Powered Nostr Website Builder
+# Shakespeare - AI-Powered App Builder
 
-Shakespeare is a browser-based AI chat application that allows users to build custom Nostr websites through natural language conversation. All operations including AI chat and Git operations are executed in client-side JavaScript, with API keys stored in browser storage. Simply describe what you want to build, and AI will help you create it.
+Shakespeare is a browser-based AI chat application that allows users to build custom web applications through natural language conversation. All operations including AI chat and Git operations are executed in client-side JavaScript, with API keys stored in browser storage. Simply describe what you want to build, and AI will help you create it.
 
 ### Virtual Filesystem Layout
 

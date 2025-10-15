@@ -55,14 +55,13 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useNostr } from '@nostrify/react';
 import { useNostrPublish } from '@/hooks/useNostrPublish';
 import { usePullRequests } from '@/hooks/usePullRequests';
+import { useAppContext } from '@/hooks/useAppContext';
 import { cn } from '@/lib/utils';
 import { findCredentialsForRepo } from '@/lib/gitCredentials';
 import { nip19 } from 'nostr-tools';
 import { GitManagementDialog } from '@/components/git/GitManagementDialog';
 import { MergeDialog } from '@/components/git/MergeDialog';
 import { PullRequestDialog } from '@/components/git/PullRequestDialog';
-
-const GRASP_SERVERS = ["git.shakespeare.diy", "relay.ngit.dev"];
 
 interface GitDialogProps {
   projectId: string;
@@ -96,6 +95,7 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
   const { nostr } = useNostr();
   const { mutateAsync: publishEvent } = useNostrPublish();
   const { data: pullRequests, isLoading: isLoadingPRs } = usePullRequests(originUrl);
+  const { config } = useAppContext();
 
   const projectPath = `/projects/${projectId}`;
 
@@ -303,10 +303,10 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
       }
 
       // Create repo announcement event (NIP-34 kind 30617)
-      const cloneUrls = GRASP_SERVERS.map(server =>
+      const cloneUrls = config.ngitServers.map(server =>
         `https://${server}/${nip19.npubEncode(user.pubkey)}/${projectId}.git`
       );
-      const relayUrls = GRASP_SERVERS.map(server => `wss://${server}`);
+      const relayUrls = config.ngitServers.map(server => `wss://${server}`);
 
       await publishEvent({
         kind: 30617,

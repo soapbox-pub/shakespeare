@@ -38,6 +38,7 @@ export function TestApp({ children }: TestAppProps) {
     language: 'en',
     showcaseEnabled: true,
     showcaseModerator: 'npub1jvnpg4c6ljadf5t6ry0w9q0rnm4mksde87kglkrc993z46c39axsgq89sc',
+    ngitServers: ['git.shakespeare.diy', 'relay.ngit.dev'],
   };
 
   // Initialize LightningFS for testing

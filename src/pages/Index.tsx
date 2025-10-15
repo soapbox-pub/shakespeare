@@ -57,8 +57,8 @@ export default function Index() {
   }, [providerModel, settings.recentlyUsedModels]);
 
   useSeoMeta({
-    title: 'Shakespeare - AI-Powered Nostr Development',
-    description: 'Build custom Nostr websites with AI assistance using Shakespeare, an AI-powered development environment.',
+    title: 'Shakespeare - Open Source AI Builder',
+    description: 'Build custom apps with AI assistance using Shakespeare, an AI-powered development environment.',
   });
 
   // Restore prompt from local storage on mount

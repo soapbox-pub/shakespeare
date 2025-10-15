@@ -10,6 +10,7 @@ export interface GitOptions {
   fs: JSRuntimeFS;
   nostr: NPool;
   corsProxy?: string;
+  ngitServers?: string[];
 }
 
 interface NostrCloneURI {
@@ -28,11 +29,13 @@ export class Git {
   private fs: JSRuntimeFS;
   private http: HttpClient;
   private nostr: NPool;
+  private ngitServers: string[];
 
   constructor(options: GitOptions) {
     this.fs = options.fs;
     this.http = new GitHttp(options.corsProxy);
     this.nostr = options.nostr;
+    this.ngitServers = options.ngitServers ?? ['git.shakespeare.diy', 'relay.ngit.dev'];
   }
 
   // Repository initialization and configuration
@@ -938,11 +941,7 @@ export class Git {
       '#d': [nostrURI.d],
     };
 
-    const gitRelays = new Set<string>([
-      'wss://git.shakespeare.diy/',
-      'wss://relay.ngit.dev/',
-      'wss://relay.nostr.band/', // General purpose relay as fallback
-    ]);
+    const gitRelays = this.ngitServers.map(server => `wss://${server}/`);
 
     let events: NostrEvent[] = [];
 
@@ -956,7 +955,7 @@ export class Git {
     }
     if (!events.length) {
       try {
-        events = await this.nostr.group([...gitRelays]).query([filter], { signal: AbortSignal.timeout(5000) });
+        events = await this.nostr.group(gitRelays).query([filter], { signal: AbortSignal.timeout(5000) });
       } catch (error) {
         console.error(`Error querying group relays: ${error}`);
       }

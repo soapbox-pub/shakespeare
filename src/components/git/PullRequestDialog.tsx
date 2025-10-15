@@ -119,27 +119,45 @@ export function PullRequestDialog({
     if (isOpen && remoteUrl) {
       parseRemoteUrl(remoteUrl);
       loadRemoteBranches();
-      checkPermissionsAndFork();
     }
   }, [isOpen, remoteUrl, loadRemoteBranches]);
 
+  // Check permissions after remoteInfo is set
+  useEffect(() => {
+    if (remoteInfo && remoteUrl) {
+      checkPermissionsAndFork();
+    }
+  }, [remoteInfo, remoteUrl, checkPermissionsAndFork]);
+
   const checkPermissionsAndFork = useCallback(async () => {
-    if (!remoteInfo || !remoteUrl) return;
+    if (!remoteInfo || !remoteUrl) {
+      console.log('checkPermissionsAndFork: No remoteInfo or remoteUrl');
+      return;
+    }
+
+    console.log('=== CHECK PERMISSIONS AND FORK ===');
+    console.log('Remote info:', remoteInfo);
 
     setIsCheckingPermissions(true);
     try {
       const credentials = findCredentialsForRepo(remoteUrl, settings.credentials);
       if (!credentials) {
+        console.log('No credentials found, skipping fork check');
         setForkInfo({ needsFork: false });
         return;
       }
 
+      console.log('Credentials found, checking push permissions...');
+
       // Check if user can push to the repo
       const canPush = await checkPushPermissions(remoteInfo, credentials.password);
+      console.log('Can push to repo:', canPush);
 
       if (!canPush) {
+        console.log('User cannot push, need to fork');
         // User needs to fork - check if fork exists or create one
         const fork = await ensureFork(remoteInfo, credentials.password);
+        console.log('Fork ensured, setting fork info:', fork);
         setForkInfo({
           needsFork: true,
           forkOwner: fork.owner,
@@ -147,6 +165,7 @@ export function PullRequestDialog({
           forkUrl: fork.url,
         });
       } else {
+        console.log('User can push directly, no fork needed');
         setForkInfo({ needsFork: false });
       }
     } catch (err) {
@@ -360,6 +379,12 @@ export function PullRequestDialog({
 
       // If fork is needed, we need to push the branch to the fork first
       let headRef = branchToUse;
+
+      console.log('=== PR HEAD REF DEBUG ===');
+      console.log('branchToUse:', branchToUse);
+      console.log('forkInfo:', JSON.stringify(forkInfo, null, 2));
+      console.log('remoteInfo:', JSON.stringify(remoteInfo, null, 2));
+
       if (forkInfo.needsFork && forkInfo.forkOwner && forkInfo.forkUrl) {
         // For cross-fork PRs, head ref format is "owner:branch"
         headRef = `${forkInfo.forkOwner}:${branchToUse}`;
@@ -483,18 +508,27 @@ export function PullRequestDialog({
   };
 
   const ensureFork = async (info: RemoteInfo, token: string): Promise<{ owner: string; repo: string; url: string }> => {
+    console.log('=== ENSURE FORK ===');
+    console.log('Repository:', `${info.owner}/${info.repo}`);
+
     // First check if fork already exists
     const user = await getCurrentUser(info, token);
+    console.log('Current user:', user.username);
+
     const existingFork = await checkForkExists(info, token, user.username);
 
     if (existingFork) {
+      console.log('Found existing fork:', existingFork);
       return existingFork;
     }
 
     // Create fork
+    console.log('No existing fork found, creating new fork...');
     const fork = await createFork(info, token);
+    console.log('Fork created:', fork);
 
     // Wait a bit for fork to be ready
+    console.log('Waiting 2 seconds for fork to be ready...');
     await new Promise(resolve => setTimeout(resolve, 2000));
 
     return fork;
@@ -581,12 +615,19 @@ export function PullRequestDialog({
 
   const createGitHubPR = async (info: RemoteInfo, token: string, headRef: string): Promise<string> => {
     const url = `${info.apiUrl}/repos/${info.owner}/${info.repo}/pulls`;
-    console.log('Creating GitHub PR:');
-    console.log('  URL:', url);
-    console.log('  Head:', headRef);
-    console.log('  Base:', targetBranch);
-    console.log('  Title:', title);
-    console.log('  Body length:', description?.length || 0);
+
+    const requestBody = {
+      title,
+      body: description,
+      head: headRef,
+      base: targetBranch,
+      maintainer_can_modify: true,
+    };
+
+    console.log('=== CREATING GITHUB PR ===');
+    console.log('URL:', url);
+    console.log('Request body:', JSON.stringify(requestBody, null, 2));
+    console.log('Token length:', token?.length);
 
     const response = await fetch(url, {
       method: 'POST',
@@ -595,13 +636,7 @@ export function PullRequestDialog({
         'Content-Type': 'application/json',
         'Accept': 'application/vnd.github.v3+json',
       },
-      body: JSON.stringify({
-        title,
-        body: description,
-        head: headRef,
-        base: targetBranch,
-        maintainer_can_modify: true,
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     console.log('GitHub response status:', response.status);

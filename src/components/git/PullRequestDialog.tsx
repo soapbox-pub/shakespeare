@@ -115,20 +115,6 @@ export function PullRequestDialog({
     }
   }, [git, projectPath]);
 
-  useEffect(() => {
-    if (isOpen && remoteUrl) {
-      parseRemoteUrl(remoteUrl);
-      loadRemoteBranches();
-    }
-  }, [isOpen, remoteUrl, loadRemoteBranches]);
-
-  // Check permissions after remoteInfo is set
-  useEffect(() => {
-    if (remoteInfo && remoteUrl) {
-      checkPermissionsAndFork();
-    }
-  }, [remoteInfo, remoteUrl, checkPermissionsAndFork]);
-
   const checkPermissionsAndFork = useCallback(async () => {
     if (!remoteInfo || !remoteUrl) {
       console.log('checkPermissionsAndFork: No remoteInfo or remoteUrl');
@@ -176,6 +162,20 @@ export function PullRequestDialog({
       setIsCheckingPermissions(false);
     }
   }, [remoteInfo, remoteUrl, settings.credentials]);
+
+  useEffect(() => {
+    if (isOpen && remoteUrl) {
+      parseRemoteUrl(remoteUrl);
+      loadRemoteBranches();
+    }
+  }, [isOpen, remoteUrl, loadRemoteBranches]);
+
+  // Check permissions after remoteInfo is set
+  useEffect(() => {
+    if (remoteInfo && remoteUrl) {
+      checkPermissionsAndFork();
+    }
+  }, [remoteInfo, remoteUrl, checkPermissionsAndFork]);
 
   const parseRemoteUrl = (url: string) => {
     setError(null);

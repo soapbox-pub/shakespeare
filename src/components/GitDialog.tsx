@@ -1019,33 +1019,35 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
                                 <div className="flex items-center gap-2 pl-7">
                                   {!pr.isOwner && pr.state === 'open' && (
                                     <>
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="h-8 text-xs"
-                                        onClick={async () => {
-                                          try {
-                                            await git.checkout({
-                                              dir: projectPath,
-                                              ref: pr.sourceBranch,
-                                            });
-                                            await refetchGitStatus();
-                                            toast({
-                                              title: 'Branch checked out',
-                                              description: `Switched to ${pr.sourceBranch}`,
-                                            });
-                                          } catch (err) {
-                                            toast({
-                                              title: 'Checkout failed',
-                                              description: err instanceof Error ? err.message : 'Unknown error',
-                                              variant: 'destructive',
-                                            });
-                                          }
-                                        }}
-                                      >
-                                        <GitBranch className="h-3 w-3 mr-1" />
-                                        Review
-                                      </Button>
+                                      {!originUrl.startsWith('nostr://') && (
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          className="h-8 text-xs"
+                                          onClick={async () => {
+                                            try {
+                                              await git.checkout({
+                                                dir: projectPath,
+                                                ref: pr.sourceBranch,
+                                              });
+                                              await refetchGitStatus();
+                                              toast({
+                                                title: 'Branch checked out',
+                                                description: `Switched to ${pr.sourceBranch}`,
+                                              });
+                                            } catch (err) {
+                                              toast({
+                                                title: 'Checkout failed',
+                                                description: err instanceof Error ? err.message : 'Unknown error',
+                                                variant: 'destructive',
+                                              });
+                                            }
+                                          }}
+                                        >
+                                          <GitBranch className="h-3 w-3 mr-1" />
+                                          Review
+                                        </Button>
+                                      )}
                                       <MergeDialog
                                         projectId={projectId}
                                         currentBranch={gitStatus.currentBranch}

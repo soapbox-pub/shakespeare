@@ -251,6 +251,51 @@ export function PullRequestDialog({
       console.log('Creating PR for:', remoteInfo);
       console.log('Remote URL:', remoteUrl);
 
+      // Check if user is on main/master - if so, create a feature branch
+      let branchToUse = currentBranch;
+      const isOnDefaultBranch = currentBranch === 'main' || currentBranch === 'master';
+
+      if (isOnDefaultBranch) {
+        console.log(`User is on default branch '${currentBranch}', creating feature branch`);
+
+        // Generate branch name from PR title
+        const sanitizedTitle = title
+          .toLowerCase()
+          .replace(/[^a-z0-9\s-]/g, '') // Remove special chars
+          .replace(/\s+/g, '-') // Replace spaces with hyphens
+          .replace(/-+/g, '-') // Replace multiple hyphens with single
+          .replace(/^-|-$/g, '') // Remove leading/trailing hyphens
+          .substring(0, 50); // Limit length
+
+        const featureBranchName = `${sanitizedTitle}-${Date.now().toString(36).slice(-4)}`;
+        console.log(`Creating feature branch: ${featureBranchName}`);
+
+        try {
+          // Create and checkout the new branch
+          await git.branch({
+            dir: projectPath,
+            ref: featureBranchName,
+            checkout: true,
+          });
+
+          branchToUse = featureBranchName;
+          console.log(`Successfully created and checked out branch: ${featureBranchName}`);
+
+          toast({
+            title: 'Feature branch created',
+            description: `Created branch '${featureBranchName}' for your changes`,
+          });
+        } catch (branchError) {
+          console.error('Failed to create feature branch:', branchError);
+          throw new Error(
+            `Cannot create PR from '${currentBranch}' branch.\n\n` +
+            `Failed to create a feature branch automatically.\n` +
+            `Please create a new branch manually in the Branches tab first.\n\n` +
+            `Error: ${branchError instanceof Error ? branchError.message : 'Unknown error'}`
+          );
+        }
+      }
+
       // Get credentials
       const credentials = findCredentialsForRepo(remoteUrl || '', settings.credentials);
       console.log('Found credentials:', credentials ? 'Yes' : 'No');
@@ -274,7 +319,7 @@ export function PullRequestDialog({
       }
 
       // If fork is needed, we need to push the branch to the fork first
-      let headRef = currentBranch;
+      let headRef = branchToUse;
       if (forkInfo.needsFork && forkInfo.forkOwner && forkInfo.forkUrl) {
         // For cross-fork PRs, head ref format is "owner:branch"
         headRef = `${forkInfo.forkOwner}:${currentBranch}`;
@@ -317,13 +362,13 @@ export function PullRequestDialog({
         }
 
         // Push the current branch to the fork
-        console.log(`Pushing branch ${currentBranch} to ${pushRemote} (${forkInfo.forkUrl})`);
+        console.log(`Pushing branch ${branchToUse} to ${pushRemote} (${forkInfo.forkUrl})`);
 
         try {
           await git.push({
             dir: projectPath,
             remote: pushRemote,
-            ref: currentBranch,
+            ref: branchToUse,
             onAuth: () => credentials,
           });
           console.log('Successfully pushed to fork');
@@ -331,7 +376,7 @@ export function PullRequestDialog({
           console.error('Failed to push to fork:', pushError);
           const errorMsg = pushError instanceof Error ? pushError.message : 'Unknown error';
           throw new Error(
-            `Failed to push branch '${currentBranch}' to your fork at ${forkInfo.forkUrl}.\n\n` +
+            `Failed to push branch '${branchToUse}' to your fork at ${forkInfo.forkUrl}.\n\n` +
             `This usually means:\n` +
             `1. The branch hasn't been committed yet\n` +
             `2. Network/authentication issues\n` +
@@ -689,6 +734,15 @@ export function PullRequestDialog({
                 </Alert>
               )}
 
+              {/* Auto-branch creation notice */}
+              {currentBranch && (currentBranch === 'main' || currentBranch === 'master') && (
+                <Alert>
+                  <AlertDescription>
+                    You're on the <strong>{currentBranch}</strong> branch. A feature branch will be automatically created from your PR title for this contribution.
+                  </AlertDescription>
+                </Alert>
+              )}
+
               {/* Branch comparison */}
               {currentBranch && (
                 <div className="bg-muted/30 rounded-lg p-4">
@@ -713,6 +767,11 @@ export function PullRequestDialog({
                       : `Merge ${currentBranch} into ${targetBranch}`
                     }
                   </p>
+                  {(currentBranch === 'main' || currentBranch === 'master') && (
+                    <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                      Note: A new branch will be created automatically
+                    </p>
+                  )}
                 </div>
               )}
 

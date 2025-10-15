@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -20,7 +20,6 @@ import { DiffViewer } from './DiffViewer';
 import { PullRequestForm } from './PullRequestForm';
 import { useGitStatus } from '@/hooks/useGitStatus';
 import { useGit } from '@/hooks/useGit';
-import { useState, useEffect } from 'react';
 
 interface GitManagementDialogProps {
   projectId: string;

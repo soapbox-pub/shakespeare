@@ -306,6 +306,7 @@ describe('Git', () => {
       const { readGitSettings } = await import('./configUtils');
       vi.mocked(readGitSettings).mockResolvedValue({
         credentials: {},
+        hostTokens: {},
         coAuthorEnabled: true,
       });
 
@@ -333,6 +334,7 @@ describe('Git', () => {
       const { readGitSettings } = await import('./configUtils');
       vi.mocked(readGitSettings).mockResolvedValue({
         credentials: {},
+        hostTokens: {},
         name: 'John Doe',
         email: 'john@example.com',
         coAuthorEnabled: true,
@@ -362,6 +364,7 @@ describe('Git', () => {
       const { readGitSettings } = await import('./configUtils');
       vi.mocked(readGitSettings).mockResolvedValue({
         credentials: {},
+        hostTokens: {},
         name: 'John Doe',
         email: 'john@example.com',
         coAuthorEnabled: false,
@@ -391,6 +394,7 @@ describe('Git', () => {
       const { readGitSettings } = await import('./configUtils');
       vi.mocked(readGitSettings).mockResolvedValue({
         credentials: {},
+        hostTokens: {},
         name: 'John Doe',
         email: 'john@example.com',
         coAuthorEnabled: true,

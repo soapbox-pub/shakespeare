@@ -144,6 +144,7 @@ describe('configUtils', () => {
           password: 'token123',
         },
       },
+      hostTokens: {},
     };
 
     describe('readGitSettings', () => {

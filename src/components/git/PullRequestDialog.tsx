@@ -40,6 +40,7 @@ import { useAppContext } from '@/hooks/useAppContext';
 import { findCredentialsForRepo } from '@/lib/gitCredentials';
 import { createGitHostProvider, detectGitHost, parseRepoUrl } from '@/lib/git-hosts';
 import { nip19 } from 'nostr-tools';
+import type { GitCredential } from '@/contexts/GitSettingsContext';
 
 interface PullRequestDialogProps {
   projectId: string;
@@ -218,7 +219,7 @@ export function PullRequestDialog({
             try {
               const decoded = nip19.decode(pubkeyOrNpub);
               if (decoded.type === 'npub') {
-                owner = decoded.data; // hex pubkey
+                owner = decoded.data as string; // hex pubkey
               } else {
                 throw new Error('Invalid npub');
               }
@@ -365,9 +366,9 @@ export function PullRequestDialog({
 
             // Stage all changes
             for (const [filepath, , workdir] of statusMatrix) {
-              if (workdir === 0) {
+              if ((workdir as number) === 0) {
                 await git.remove({ dir: projectPath, filepath });
-              } else if (workdir !== 0) {
+              } else if ((workdir as number) !== 0) {
                 await git.add({ dir: projectPath, filepath });
               }
             }
@@ -406,7 +407,7 @@ export function PullRequestDialog({
       }
 
       // Get credentials (not needed for Nostr git)
-      let credentials = null;
+      let credentials: GitCredential | undefined = undefined;
 
       if (remoteInfo.platform !== 'nostr') {
         credentials = findCredentialsForRepo(remoteUrl || '', settings.credentials);
@@ -424,7 +425,8 @@ export function PullRequestDialog({
           );
         }
 
-        if (!credentials.password || credentials.password.trim() === '') {
+        const password = credentials.password;
+        if (!password || password.trim() === '') {
           throw new Error(
             `Credentials found but token is empty. Please check your ${remoteInfo.platform === 'github' ? 'GitHub' : 'GitLab'} token in Settings > Git`
           );
@@ -490,7 +492,7 @@ export function PullRequestDialog({
             dir: projectPath,
             remote: pushRemote,
             ref: branchToUse,
-            onAuth: () => credentials,
+            onAuth: credentials ? () => credentials : undefined,
           });
           console.log('Successfully pushed to fork');
         } catch (pushError) {
@@ -511,10 +513,10 @@ export function PullRequestDialog({
       // Create PR based on platform
       console.log(`Creating ${remoteInfo.platform} PR...`);
       if (remoteInfo.platform === 'github' && credentials) {
-        const prUrl = await createGitHubPR(remoteInfo, credentials.password, headRef);
+        const prUrl = await createGitHubPR(remoteInfo, credentials.password || '', headRef);
         setCreatedPrUrl(prUrl);
       } else if (remoteInfo.platform === 'gitlab' && credentials) {
-        const prUrl = await createGitLabMR(remoteInfo, credentials.password);
+        const prUrl = await createGitLabMR(remoteInfo, credentials.password || '');
         setCreatedPrUrl(prUrl);
       } else if (remoteInfo.platform === 'nostr') {
         const prUrl = await createNostrPatch(remoteInfo, branchToUse, targetBranch);
@@ -546,7 +548,7 @@ export function PullRequestDialog({
         ? `${info.apiUrl}/repos/${info.owner}/${info.repo}`
         : `${info.apiUrl}/projects/${encodeURIComponent(`${info.owner}/${info.repo}`)}`;
 
-      const headers = info.platform === 'github'
+      const headers: Record<string, string> = info.platform === 'github'
         ? { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json' }
         : { 'PRIVATE-TOKEN': token };
 
@@ -596,7 +598,7 @@ export function PullRequestDialog({
 
   const getCurrentUser = async (info: RemoteInfo, token: string): Promise<{ username: string }> => {
     const url = info.platform === 'github' ? `${info.apiUrl}/user` : `${info.apiUrl}/user`;
-    const headers = info.platform === 'github'
+    const headers: Record<string, string> = info.platform === 'github'
       ? { 'Authorization': `token ${token}` }
       : { 'PRIVATE-TOKEN': token };
 
@@ -617,7 +619,7 @@ export function PullRequestDialog({
         ? `${info.apiUrl}/repos/${username}/${info.repo}`
         : `${info.apiUrl}/projects/${encodeURIComponent(`${username}/${info.repo}`)}`;
 
-      const headers = info.platform === 'github'
+      const headers: Record<string, string> = info.platform === 'github'
         ? { 'Authorization': `token ${token}` }
         : { 'PRIVATE-TOKEN': token };
 
@@ -649,7 +651,7 @@ export function PullRequestDialog({
       ? `${info.apiUrl}/repos/${info.owner}/${info.repo}/forks`
       : `${info.apiUrl}/projects/${encodeURIComponent(`${info.owner}/${info.repo}`)}/fork`;
 
-    const headers = info.platform === 'github'
+    const headers: Record<string, string> = info.platform === 'github'
       ? { 'Authorization': `token ${token}`, 'Content-Type': 'application/json' }
       : { 'PRIVATE-TOKEN': token, 'Content-Type': 'application/json' };
 
@@ -846,7 +848,7 @@ export function PullRequestDialog({
       }
 
       // Build patch content following git format-patch format
-      const patchLines = [];
+      const patchLines: string[] = [];
       patchLines.push(`From ${currentCommitId} Mon Sep 17 00:00:00 2001`);
       patchLines.push(`From: ${commit.commit.author.name} <${commit.commit.author.email}>`);
       patchLines.push(`Date: ${new Date(commit.commit.author.timestamp * 1000).toUTCString()}`);

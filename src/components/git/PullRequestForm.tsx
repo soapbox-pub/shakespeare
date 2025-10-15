@@ -225,9 +225,9 @@ export function PullRequestForm({ projectId, currentBranch, remoteUrl }: PullReq
             console.log('Committing changes to new branch');
 
             for (const [filepath, , workdir] of statusMatrix) {
-              if (workdir === 0) {
+              if ((workdir as number) === 0) {
                 await git.remove({ dir: projectPath, filepath });
-              } else if (workdir !== 0) {
+              } else if ((workdir as number) !== 0) {
                 await git.add({ dir: projectPath, filepath });
               }
             }

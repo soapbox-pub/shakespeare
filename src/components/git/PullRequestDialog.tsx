@@ -683,6 +683,13 @@ export function PullRequestDialog({
     }
 
     // Query for the repository announcement to get earliest unique commit (euc)
+    console.log('Querying for repository announcement with filter:', {
+      kinds: [30617],
+      authors: [info.owner],
+      '#d': [info.repo],
+      limit: 1,
+    });
+
     const repoEvents = await nostr.query([
       {
         kinds: [30617],
@@ -692,17 +699,22 @@ export function PullRequestDialog({
       }
     ]);
 
+    console.log(`Repository announcement query returned ${repoEvents.length} events`);
+
     let earliestUniqueCommit: string | null = null;
     let publishRelays = ['wss://relay.nostr.band']; // Default relay
 
     if (repoEvents.length > 0) {
       const repoEvent = repoEvents[0];
+      console.log('Found repository announcement event:', repoEvent);
 
       // Get earliest unique commit from repository announcement
       const eucTag = repoEvent.tags.find((t: string[]) => t[0] === 'r' && t[2] === 'euc');
       if (eucTag) {
         earliestUniqueCommit = eucTag[1];
         console.log('Found earliest unique commit:', earliestUniqueCommit);
+      } else {
+        console.warn('No euc tag found in repository announcement');
       }
 
       // Get relay hints from repository announcement
@@ -710,9 +722,13 @@ export function PullRequestDialog({
       if (relayTags.length > 0) {
         publishRelays = relayTags.map((t: string[]) => t[1]);
         console.log('Publishing to repository relays:', publishRelays);
+      } else {
+        console.log('No relay hints in repository announcement, using default relay');
       }
     } else {
       console.warn('Repository announcement not found - patch may not be discoverable');
+      console.warn('Make sure to use "Announce Repository" button first to create kind 30617 event');
+      console.warn('The announcement must be on the same relay you are currently connected to');
     }
 
     // Generate git format-patch style content

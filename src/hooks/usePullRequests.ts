@@ -1,10 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
 import { useGitSettings } from '@/hooks/useGitSettings';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useNostr } from '@nostrify/react';
 import { findCredentialsForRepo } from '@/lib/gitCredentials';
+import { nip19 } from 'nostr-tools';
+import type { NostrEvent } from '@nostrify/nostrify';
 
 interface PullRequest {
-  id: number;
-  number: number;
+  id: number | string;
+  number: number | string;
   title: string;
   state: 'open' | 'closed' | 'merged';
   author: string;
@@ -17,12 +21,37 @@ interface PullRequest {
 interface RemoteInfo {
   owner: string;
   repo: string;
-  platform: 'github' | 'gitlab';
+  platform: 'github' | 'gitlab' | 'nostr';
   apiUrl: string;
 }
 
 function parseRemoteUrl(url: string): RemoteInfo | null {
   try {
+    // Nostr git: nostr://<pubkey>/<repo-id>
+    if (url.startsWith('nostr://')) {
+      const match = url.match(/^nostr:\/\/([^/]+)\/(.+)$/);
+      if (match) {
+        let pubkeyOrNpub = match[1];
+        const repo = match[2];
+
+        // Convert npub to hex if needed
+        let owner = pubkeyOrNpub;
+        if (pubkeyOrNpub.startsWith('npub1')) {
+          try {
+            const decoded = nip19.decode(pubkeyOrNpub);
+            if (decoded.type === 'npub') {
+              owner = decoded.data; // hex pubkey
+            }
+          } catch (err) {
+            console.error('Failed to decode npub:', err);
+            return null;
+          }
+        }
+
+        return { owner, repo, platform: 'nostr', apiUrl: '' };
+      }
+    }
+
     // Normalize URL - remove .git suffix if present
     const normalizedUrl = url.replace(/\.git$/, '');
     let match;
@@ -217,11 +246,98 @@ async function fetchGitLabMRs(info: RemoteInfo, token?: string): Promise<PullReq
   return [];
 }
 
+async function fetchNostrPatches(
+  info: RemoteInfo,
+  currentUserPubkey: string | undefined,
+  nostr: any,
+  signal: AbortSignal
+): Promise<PullRequest[]> {
+  console.log('=== FETCHING NOSTR PATCHES ===');
+  console.log('Repository:', `${info.owner}/${info.repo}`);
+  console.log('Current user pubkey:', currentUserPubkey);
+
+  if (!currentUserPubkey) {
+    console.log('No current user, returning empty array');
+    return [];
+  }
+
+  try {
+    // Query for patches (kind 1617) for this repository created by current user
+    console.log('Querying patches with filter:', {
+      kinds: [1617],
+      authors: [currentUserPubkey],
+      '#a': [`30617:${info.owner}:${info.repo}`],
+    });
+
+    const patches = await nostr.query([
+      {
+        kinds: [1617],
+        authors: [currentUserPubkey],
+        '#a': [`30617:${info.owner}:${info.repo}`],
+        limit: 50,
+      }
+    ], { signal });
+
+    console.log(`Found ${patches.length} patches for current user`);
+
+    if (patches.length > 0) {
+      console.log('Sample patch:', patches[0]);
+    }
+
+    // Convert Nostr patches to PullRequest format
+    const pullRequests: PullRequest[] = patches.map((patch: NostrEvent) => {
+      const subject = patch.tags.find(t => t[0] === 'subject')?.[1] || 'Untitled patch';
+
+      // Check if it's a root patch (unmerged/open)
+      const isRoot = patch.tags.some(t => t[0] === 't' && t[1] === 'root');
+
+      // For now, assume all patches are open (we'd need to query status events to know if merged/closed)
+      const state = 'open';
+
+      // Extract source/target branches from content if available
+      // Patch content format: "From: <branch>\nTo: <branch>..."
+      const contentLines = patch.content.split('\n');
+      let sourceBranch = 'unknown';
+      let targetBranch = 'main';
+
+      for (const line of contentLines) {
+        if (line.startsWith('From:')) {
+          sourceBranch = line.replace('From:', '').trim();
+        }
+        if (line.startsWith('To:')) {
+          targetBranch = line.replace('To:', '').trim();
+        }
+      }
+
+      return {
+        id: patch.id,
+        number: patch.id.slice(0, 8), // Use first 8 chars of event ID as number
+        title: subject,
+        state: state as 'open' | 'closed' | 'merged',
+        author: nip19.npubEncode(patch.pubkey),
+        url: `nostr:${patch.id}`, // Event reference
+        createdAt: new Date(patch.created_at * 1000).toISOString(),
+        sourceBranch,
+        targetBranch,
+      };
+    });
+
+    console.log('Converted patches to PRs:', pullRequests);
+
+    return pullRequests;
+  } catch (error) {
+    console.error('Failed to fetch Nostr patches:', error);
+    throw error;
+  }
+}
+
 export function usePullRequests(remoteUrl?: string) {
   const { settings } = useGitSettings();
+  const { user } = useCurrentUser();
+  const { nostr } = useNostr();
 
   return useQuery({
-    queryKey: ['pull-requests', remoteUrl],
+    queryKey: ['pull-requests', remoteUrl, user?.pubkey],
     queryFn: async ({ signal }) => {
       if (!remoteUrl) {
         return [];
@@ -232,14 +348,18 @@ export function usePullRequests(remoteUrl?: string) {
         throw new Error('Invalid remote URL format');
       }
 
-      // Get credentials if available
-      const credentials = findCredentialsForRepo(remoteUrl, settings.credentials);
-      const token = credentials?.password;
-
       // Fetch PRs based on platform
-      if (remoteInfo.platform === 'github') {
+      if (remoteInfo.platform === 'nostr') {
+        return await fetchNostrPatches(remoteInfo, user?.pubkey, nostr, signal);
+      } else if (remoteInfo.platform === 'github') {
+        // Get credentials if available
+        const credentials = findCredentialsForRepo(remoteUrl, settings.credentials);
+        const token = credentials?.password;
         return await fetchGitHubPRs(remoteInfo, token);
       } else {
+        // GitLab
+        const credentials = findCredentialsForRepo(remoteUrl, settings.credentials);
+        const token = credentials?.password;
         return await fetchGitLabMRs(remoteInfo, token);
       }
     },

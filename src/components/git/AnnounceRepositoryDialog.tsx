@@ -221,17 +221,22 @@ export function AnnounceRepositoryDialog({
         created_at: Math.floor(Date.now() / 1000),
       };
 
-      console.log('Creating repository announcement:', repoEvent);
+      console.log('=== ANNOUNCING REPOSITORY ===');
+      console.log('Repository ID:', repoId.trim());
+      console.log('Owner pubkey:', user.pubkey);
+      console.log('Creating repository announcement event:', repoEvent);
 
       // Sign the event
       const signedEvent = await user.signer.signEvent(repoEvent);
 
       console.log('Signed repository announcement:', signedEvent);
+      console.log('Event coordinate:', `30617:${user.pubkey}:${repoId.trim()}`);
 
       // Publish to Nostr relays
       await nostr.event(signedEvent);
 
-      console.log('Published repository announcement to Nostr');
+      console.log('Published repository announcement to Nostr relays');
+      console.log('To verify: Query for kind 30617 with authors=[' + user.pubkey + '] and #d=[' + repoId.trim() + ']');
 
       // Create naddr for the repository
       const naddr = nip19.naddrEncode({

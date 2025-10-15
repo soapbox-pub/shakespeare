@@ -980,9 +980,11 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
                           Loading pull requests...
                         </div>
                       )}
-                      {!originUrl.startsWith('nostr://') && !isLoadingPRs && pullRequests && pullRequests.length > 0 && (
+                      {!isLoadingPRs && pullRequests && pullRequests.length > 0 && (
                         <div className="space-y-2 mb-3">
-                          <div className="text-xs font-medium text-muted-foreground mb-2">Your Open PRs</div>
+                          <div className="text-xs font-medium text-muted-foreground mb-2">
+                            {originUrl.startsWith('nostr://') ? 'Your Patches' : 'Your Open PRs'}
+                          </div>
                           {pullRequests.map((pr) => (
                             <div
                               key={pr.id}
@@ -996,17 +998,19 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
                                       {pr.title}
                                     </h4>
                                     <p className="text-xs text-muted-foreground mt-1">
-                                      #{pr.number} by {pr.author} • {pr.sourceBranch} → {pr.targetBranch}
+                                      #{pr.number} • {pr.sourceBranch} → {pr.targetBranch}
                                     </p>
                                   </div>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-8 shrink-0"
-                                    onClick={() => window.open(pr.url, '_blank')}
-                                  >
-                                    <ExternalLink className="h-3 w-3" />
-                                  </Button>
+                                  {!originUrl.startsWith('nostr://') && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-8 shrink-0"
+                                      onClick={() => window.open(pr.url, '_blank')}
+                                    >
+                                      <ExternalLink className="h-3 w-3" />
+                                    </Button>
+                                  )}
                                 </div>
                               </div>
                             </div>

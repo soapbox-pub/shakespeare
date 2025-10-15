@@ -29,6 +29,7 @@ import {
   CheckCircle,
   ExternalLink,
   GitCompare,
+  GitFork,
 } from 'lucide-react';
 import { useGit } from '@/hooks/useGit';
 import { useGitSettings } from '@/hooks/useGitSettings';
@@ -50,6 +51,13 @@ interface RemoteInfo {
   apiUrl: string;
 }
 
+interface ForkInfo {
+  needsFork: boolean;
+  forkOwner?: string;
+  forkRepo?: string;
+  forkUrl?: string;
+}
+
 export function PullRequestDialog({
   projectId,
   currentBranch,
@@ -65,6 +73,8 @@ export function PullRequestDialog({
   const [isLoadingBranches, setIsLoadingBranches] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [remoteInfo, setRemoteInfo] = useState<RemoteInfo | null>(null);
+  const [forkInfo, setForkInfo] = useState<ForkInfo>({ needsFork: false });
+  const [isCheckingPermissions, setIsCheckingPermissions] = useState(false);
   const [createdPrUrl, setCreatedPrUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -109,8 +119,44 @@ export function PullRequestDialog({
     if (isOpen && remoteUrl) {
       parseRemoteUrl(remoteUrl);
       loadRemoteBranches();
+      checkPermissionsAndFork();
     }
   }, [isOpen, remoteUrl, loadRemoteBranches]);
+
+  const checkPermissionsAndFork = useCallback(async () => {
+    if (!remoteInfo || !remoteUrl) return;
+
+    setIsCheckingPermissions(true);
+    try {
+      const credentials = findCredentialsForRepo(remoteUrl, settings.credentials);
+      if (!credentials) {
+        setForkInfo({ needsFork: false });
+        return;
+      }
+
+      // Check if user can push to the repo
+      const canPush = await checkPushPermissions(remoteInfo, credentials.password);
+
+      if (!canPush) {
+        // User needs to fork - check if fork exists or create one
+        const fork = await ensureFork(remoteInfo, credentials.password);
+        setForkInfo({
+          needsFork: true,
+          forkOwner: fork.owner,
+          forkRepo: fork.repo,
+          forkUrl: fork.url,
+        });
+      } else {
+        setForkInfo({ needsFork: false });
+      }
+    } catch (err) {
+      console.error('Error checking permissions:', err);
+      // If we can't check, assume direct push (existing behavior)
+      setForkInfo({ needsFork: false });
+    } finally {
+      setIsCheckingPermissions(false);
+    }
+  }, [remoteInfo, remoteUrl, settings.credentials]);
 
   const parseRemoteUrl = (url: string) => {
     setError(null);
@@ -227,10 +273,17 @@ export function PullRequestDialog({
         );
       }
 
+      // If fork is needed, ensure we have it set up
+      let headRef = currentBranch;
+      if (forkInfo.needsFork && forkInfo.forkOwner) {
+        // For cross-fork PRs, head ref format is "owner:branch"
+        headRef = `${forkInfo.forkOwner}:${currentBranch}`;
+      }
+
       // Create PR based on platform
       console.log(`Creating ${remoteInfo.platform} PR...`);
       if (remoteInfo.platform === 'github') {
-        const prUrl = await createGitHubPR(remoteInfo, credentials.password);
+        const prUrl = await createGitHubPR(remoteInfo, credentials.password, headRef);
         setCreatedPrUrl(prUrl);
       } else if (remoteInfo.platform === 'gitlab') {
         const prUrl = await createGitLabMR(remoteInfo, credentials.password);
@@ -254,10 +307,134 @@ export function PullRequestDialog({
     }
   };
 
-  const createGitHubPR = async (info: RemoteInfo, token: string): Promise<string> => {
+  const checkPushPermissions = async (info: RemoteInfo, token: string): Promise<boolean> => {
+    try {
+      const url = info.platform === 'github'
+        ? `${info.apiUrl}/repos/${info.owner}/${info.repo}`
+        : `${info.apiUrl}/projects/${encodeURIComponent(`${info.owner}/${info.repo}`)}`;
+
+      const headers = info.platform === 'github'
+        ? { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json' }
+        : { 'PRIVATE-TOKEN': token };
+
+      const response = await fetch(url, { headers });
+      if (!response.ok) return false;
+
+      const data = await response.json();
+
+      if (info.platform === 'github') {
+        return data.permissions?.push === true || data.permissions?.admin === true;
+      } else {
+        // GitLab uses access levels
+        const accessLevel = data.permissions?.project_access?.access_level || 0;
+        return accessLevel >= 30; // Developer (30), Maintainer (40), or Owner (50)
+      }
+    } catch {
+      return false;
+    }
+  };
+
+  const ensureFork = async (info: RemoteInfo, token: string): Promise<{ owner: string; repo: string; url: string }> => {
+    // First check if fork already exists
+    const user = await getCurrentUser(info, token);
+    const existingFork = await checkForkExists(info, token, user.username);
+
+    if (existingFork) {
+      return existingFork;
+    }
+
+    // Create fork
+    const fork = await createFork(info, token);
+
+    // Wait a bit for fork to be ready
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    return fork;
+  };
+
+  const getCurrentUser = async (info: RemoteInfo, token: string): Promise<{ username: string }> => {
+    const url = info.platform === 'github' ? `${info.apiUrl}/user` : `${info.apiUrl}/user`;
+    const headers = info.platform === 'github'
+      ? { 'Authorization': `token ${token}` }
+      : { 'PRIVATE-TOKEN': token };
+
+    const response = await fetch(url, { headers });
+    if (!response.ok) throw new Error('Failed to get current user');
+
+    const data = await response.json();
+    return { username: info.platform === 'github' ? data.login : data.username };
+  };
+
+  const checkForkExists = async (
+    info: RemoteInfo,
+    token: string,
+    username: string
+  ): Promise<{ owner: string; repo: string; url: string } | null> => {
+    try {
+      const url = info.platform === 'github'
+        ? `${info.apiUrl}/repos/${username}/${info.repo}`
+        : `${info.apiUrl}/projects/${encodeURIComponent(`${username}/${info.repo}`)}`;
+
+      const headers = info.platform === 'github'
+        ? { 'Authorization': `token ${token}` }
+        : { 'PRIVATE-TOKEN': token };
+
+      const response = await fetch(url, { headers });
+      if (!response.ok) return null;
+
+      const data = await response.json();
+
+      // Verify it's actually a fork of the upstream repo
+      const isFork = info.platform === 'github'
+        ? data.fork && data.parent?.full_name === `${info.owner}/${info.repo}`
+        : data.forked_from_project?.path_with_namespace === `${info.owner}/${info.repo}`;
+
+      if (isFork) {
+        return {
+          owner: username,
+          repo: info.repo,
+          url: data.clone_url || data.http_url_to_repo,
+        };
+      }
+    } catch {
+      return null;
+    }
+    return null;
+  };
+
+  const createFork = async (info: RemoteInfo, token: string): Promise<{ owner: string; repo: string; url: string }> => {
+    const url = info.platform === 'github'
+      ? `${info.apiUrl}/repos/${info.owner}/${info.repo}/forks`
+      : `${info.apiUrl}/projects/${encodeURIComponent(`${info.owner}/${info.repo}`)}/fork`;
+
+    const headers = info.platform === 'github'
+      ? { 'Authorization': `token ${token}`, 'Content-Type': 'application/json' }
+      : { 'PRIVATE-TOKEN': token, 'Content-Type': 'application/json' };
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to create fork: ${errorText}`);
+    }
+
+    const data = await response.json();
+    const owner = info.platform === 'github' ? data.owner.login : data.namespace.path;
+
+    return {
+      owner,
+      repo: info.repo,
+      url: data.clone_url || data.http_url_to_repo,
+    };
+  };
+
+  const createGitHubPR = async (info: RemoteInfo, token: string, headRef: string): Promise<string> => {
     const url = `${info.apiUrl}/repos/${info.owner}/${info.repo}/pulls`;
     console.log('GitHub PR URL:', url);
-    console.log('GitHub PR data:', { title, body: description, head: currentBranch, base: targetBranch });
+    console.log('GitHub PR data:', { title, body: description, head: headRef, base: targetBranch });
 
     const response = await fetch(url, {
       method: 'POST',
@@ -269,8 +446,9 @@ export function PullRequestDialog({
       body: JSON.stringify({
         title,
         body: description,
-        head: currentBranch,
+        head: headRef,
         base: targetBranch,
+        maintainer_can_modify: true,
       }),
     });
 
@@ -417,20 +595,45 @@ export function PullRequestDialog({
           // Form
           <ScrollArea className="max-h-[60vh]">
             <div className="space-y-6 pr-4">
+              {/* Fork info */}
+              {isCheckingPermissions && (
+                <Alert>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <AlertDescription>Checking repository permissions...</AlertDescription>
+                </Alert>
+              )}
+
+              {forkInfo.needsFork && forkInfo.forkOwner && (
+                <Alert>
+                  <AlertDescription>
+                    You don't have push access to this repository. Your changes will be pushed to your fork at <strong>{forkInfo.forkOwner}/{forkInfo.forkRepo}</strong> and a pull request will be created from there.
+                  </AlertDescription>
+                </Alert>
+              )}
+
               {/* Branch comparison */}
               {currentBranch && (
                 <div className="bg-muted/30 rounded-lg p-4">
                   <div className="flex items-center gap-2 text-sm">
                     <Badge variant="outline" className="font-mono">
-                      {targetBranch}
+                      {forkInfo.needsFork && forkInfo.forkOwner
+                        ? `${remoteInfo?.owner}/${remoteInfo?.repo}:${targetBranch}`
+                        : targetBranch
+                      }
                     </Badge>
                     <GitCompare className="h-4 w-4 text-muted-foreground" />
                     <Badge variant="outline" className="font-mono">
-                      {currentBranch}
+                      {forkInfo.needsFork && forkInfo.forkOwner
+                        ? `${forkInfo.forkOwner}/${forkInfo.forkRepo}:${currentBranch}`
+                        : currentBranch
+                      }
                     </Badge>
                   </div>
                   <p className="text-xs text-muted-foreground mt-2">
-                    Merge {currentBranch} into {targetBranch}
+                    {forkInfo.needsFork
+                      ? `Merge ${currentBranch} from your fork into ${targetBranch} in ${remoteInfo?.owner}/${remoteInfo?.repo}`
+                      : `Merge ${currentBranch} into ${targetBranch}`
+                    }
                   </p>
                 </div>
               )}
@@ -528,16 +731,25 @@ export function PullRequestDialog({
             >
               Cancel
             </Button>
-            <Button onClick={createPullRequest} disabled={isCreating || !currentBranch}>
+            <Button onClick={createPullRequest} disabled={isCreating || !currentBranch || isCheckingPermissions}>
               {isCreating ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Creating...
+                  {forkInfo.needsFork ? 'Creating fork & PR...' : 'Creating...'}
                 </>
               ) : (
                 <>
-                  <GitPullRequest className="h-4 w-4 mr-2" />
-                  Create Pull Request
+                  {forkInfo.needsFork ? (
+                    <>
+                      <GitFork className="h-4 w-4 mr-2" />
+                      Fork & Create PR
+                    </>
+                  ) : (
+                    <>
+                      <GitPullRequest className="h-4 w-4 mr-2" />
+                      Create Pull Request
+                    </>
+                  )}
                 </>
               )}
             </Button>

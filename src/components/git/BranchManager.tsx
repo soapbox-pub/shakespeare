@@ -30,6 +30,7 @@ import {
   ArrowUpRight,
 } from 'lucide-react';
 import { useGit } from '@/hooks/useGit';
+import { useGitStatus } from '@/hooks/useGitStatus';
 import { useToast } from '@/hooks/useToast';
 import { cn } from '@/lib/utils';
 
@@ -60,6 +61,7 @@ export function BranchManager({ projectId, currentBranch, onBranchChange }: Bran
 
   const { git } = useGit();
   const { toast } = useToast();
+  const { data: gitStatus } = useGitStatus(projectId);
   const projectPath = `/projects/${projectId}`;
 
   const loadBranches = useCallback(async () => {
@@ -179,16 +181,42 @@ export function BranchManager({ projectId, currentBranch, onBranchChange }: Bran
       });
 
       // Create the new branch
+      const branchName = newBranchName.trim();
       await git.branch({
         dir: projectPath,
-        ref: newBranchName.trim(),
+        ref: branchName,
         object: currentRef,
       });
 
-      toast({
-        title: 'Branch created',
-        description: `Created branch "${newBranchName}"`,
-      });
+      // Check if we can automatically switch to the new branch
+      const hasUncommittedChanges = gitStatus?.hasUncommittedChanges ?? false;
+
+      if (!hasUncommittedChanges) {
+        // No uncommitted changes, automatically switch to the new branch
+        try {
+          await git.checkout({
+            dir: projectPath,
+            ref: branchName,
+          });
+
+          toast({
+            title: 'Branch created and switched',
+            description: `Created and switched to branch "${branchName}"`,
+          });
+        } catch (checkoutError) {
+          // Branch created but checkout failed
+          toast({
+            title: 'Branch created',
+            description: `Created branch "${branchName}" but failed to switch to it`,
+          });
+        }
+      } else {
+        // Has uncommitted changes, don't switch automatically
+        toast({
+          title: 'Branch created',
+          description: `Created branch "${branchName}". Commit your changes to switch to it.`,
+        });
+      }
 
       setNewBranchName('');
       setIsCreateDialogOpen(false);

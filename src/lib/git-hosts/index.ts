@@ -2,10 +2,12 @@ export * from './types';
 export { GitHubProvider } from './GitHubProvider';
 export { GitLabProvider } from './GitLabProvider';
 export { GiteaProvider } from './GiteaProvider';
+export { NostrGitProvider } from './NostrGitProvider';
 
 import { GitHubProvider } from './GitHubProvider';
 import { GitLabProvider } from './GitLabProvider';
 import { GiteaProvider } from './GiteaProvider';
+import { NostrGitProvider } from './NostrGitProvider';
 import { detectGitHost } from './types';
 import type { GitHostProvider, GitHostConfig } from './types';
 
@@ -14,7 +16,7 @@ import type { GitHostProvider, GitHostConfig } from './types';
  */
 export function createGitHostProvider(
   url: string,
-  config: GitHostConfig,
+  config: GitHostConfig & { signer?: any; pubkey?: string; relayUrls?: string[] },
   corsProxy?: string
 ): GitHostProvider | null {
   const hostType = detectGitHost(url);
@@ -22,13 +24,13 @@ export function createGitHostProvider(
   switch (hostType) {
     case 'github':
       return new GitHubProvider(config, corsProxy);
-    
+
     case 'gitlab':
       return new GitLabProvider(config, corsProxy);
-    
+
     case 'codeberg':
       return new GiteaProvider(config, 'https://codeberg.org/api/v1', 'Codeberg', corsProxy);
-    
+
     case 'gitea':
       // Extract API URL from repository URL
       try {
@@ -38,7 +40,19 @@ export function createGitHostProvider(
       } catch {
         return null;
       }
-    
+
+    case 'nostr':
+      // Nostr git requires signer and pubkey
+      if (!config.signer || !config.pubkey) {
+        throw new Error('Nostr git requires signer and pubkey in config');
+      }
+      return new NostrGitProvider({
+        token: config.token,
+        signer: config.signer,
+        pubkey: config.pubkey,
+        relayUrls: config.relayUrls || ['wss://relay.nostr.band'],
+      });
+
     default:
       return null;
   }

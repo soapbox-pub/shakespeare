@@ -101,8 +101,13 @@ export interface GitHostProvider {
 /**
  * Detect Git host from repository URL
  */
-export function detectGitHost(url: string): 'github' | 'gitlab' | 'gitea' | 'codeberg' | 'unknown' {
+export function detectGitHost(url: string): 'github' | 'gitlab' | 'gitea' | 'codeberg' | 'nostr' | 'unknown' {
   try {
+    // Check for Nostr git URLs (format: nostr://<pubkey>/<repo-id>)
+    if (url.startsWith('nostr://')) {
+      return 'nostr';
+    }
+
     const parsed = new URL(url.replace(/^git@/, 'https://').replace(/\.git$/, ''));
     const hostname = parsed.hostname.toLowerCase();
 
@@ -122,6 +127,17 @@ export function detectGitHost(url: string): 'github' | 'gitlab' | 'gitea' | 'cod
  */
 export function parseRepoUrl(url: string): { owner: string; repo: string } | null {
   try {
+    // Handle Nostr git URLs (format: nostr://<pubkey>/<repo-id>)
+    if (url.startsWith('nostr://')) {
+      const match = url.match(/^nostr:\/\/([^/]+)\/(.+)$/);
+      if (match) {
+        return {
+          owner: match[1], // pubkey in hex
+          repo: match[2],  // repo-id (d tag)
+        };
+      }
+    }
+
     // Handle git@ URLs
     const normalized = url.replace(/^git@([^:]+):/, 'https://$1/').replace(/\.git$/, '');
     const parsed = new URL(normalized);

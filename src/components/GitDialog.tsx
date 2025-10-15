@@ -957,22 +957,28 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
                 )}
 
                 {/* Pull Requests Card */}
-                {gitStatus?.isGitRepo && gitStatus.remotes.length > 0 && originUrl && !originUrl.startsWith('nostr://') && (
+                {gitStatus?.isGitRepo && gitStatus.remotes.length > 0 && originUrl && (
                   <Card>
                     <CardHeader className="pb-3">
-                      <CardTitle className="text-sm">Pull Requests</CardTitle>
+                      <CardTitle className="text-sm">
+                        {originUrl.startsWith('nostr://') ? 'Patches' : 'Pull Requests'}
+                      </CardTitle>
                       <CardDescription className="text-xs">
-                        Manage pull requests for this repository
+                        {originUrl.startsWith('nostr://')
+                          ? 'Submit patches to the repository'
+                          : 'Manage pull requests for this repository'
+                        }
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-3">
-                      {/* Open Pull Requests List */}
-                      {isLoadingPRs ? (
+                      {/* Open Pull Requests List (only for non-Nostr repos) */}
+                      {!originUrl.startsWith('nostr://') && isLoadingPRs && (
                         <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
                           <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                           Loading pull requests...
                         </div>
-                      ) : pullRequests && pullRequests.length > 0 ? (
+                      )}
+                      {!originUrl.startsWith('nostr://') && !isLoadingPRs && pullRequests && pullRequests.length > 0 && (
                         <div className="space-y-2">
                           {pullRequests.map((pr) => (
                             <div
@@ -1003,13 +1009,14 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
                             </div>
                           ))}
                         </div>
-                      ) : (
+                      )}
+                      {!originUrl.startsWith('nostr://') && !isLoadingPRs && (!pullRequests || pullRequests.length === 0) && (
                         <div className="text-sm text-muted-foreground text-center py-2">
                           You have no open pull requests
                         </div>
                       )}
 
-                      {/* Create PR Button */}
+                      {/* Create PR Button - Works for all repo types */}
                       <PullRequestDialog
                         projectId={projectId}
                         currentBranch={gitStatus.currentBranch}
@@ -1031,20 +1038,6 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
                         currentBranch={gitStatus.currentBranch}
                         onMergeComplete={() => refetchGitStatus()}
                       />
-                      {gitStatus.remotes.length > 0 && originUrl?.startsWith('nostr://') && (
-                        <Button
-                          variant="outline"
-                          className="gap-2"
-                          onClick={() => {
-                            setGitManagementDefaultTab('nostr');
-                            setIsGitManagementOpen(true);
-                            onOpenChange?.(false);
-                          }}
-                        >
-                          <GitPullRequest className="h-4 w-4" />
-                          Create Nostr Patch
-                        </Button>
-                      )}
                     </CardContent>
                   </Card>
                 )}

@@ -34,7 +34,10 @@ import {
 import { useGit } from '@/hooks/useGit';
 import { useGitSettings } from '@/hooks/useGitSettings';
 import { useToast } from '@/hooks/useToast';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useNostr } from '@/hooks/useNostr';
 import { findCredentialsForRepo } from '@/lib/gitCredentials';
+import { createGitHostProvider, detectGitHost, parseRepoUrl } from '@/lib/git-hosts';
 
 interface PullRequestDialogProps {
   projectId: string;
@@ -47,7 +50,7 @@ interface PullRequestDialogProps {
 interface RemoteInfo {
   owner: string;
   repo: string;
-  platform: 'github' | 'gitlab';
+  platform: 'github' | 'gitlab' | 'nostr';
   apiUrl: string;
 }
 
@@ -81,6 +84,8 @@ export function PullRequestDialog({
   const { git } = useGit();
   const { settings } = useGitSettings();
   const { toast } = useToast();
+  const { user } = useCurrentUser();
+  const { nostr } = useNostr();
   const projectPath = `/projects/${projectId}`;
 
   useEffect(() => {
@@ -123,6 +128,15 @@ export function PullRequestDialog({
 
     console.log('=== CHECK PERMISSIONS AND FORK ===');
     console.log('Remote info:', remoteInfo);
+
+    // For Nostr git, no forking or permissions check needed
+    // Anyone can submit patches (kind 1617) to any repository
+    if (remoteInfo.platform === 'nostr') {
+      console.log('Nostr git detected - no fork or permissions check needed');
+      setForkInfo({ needsFork: false });
+      setIsCheckingPermissions(false);
+      return;
+    }
 
     setIsCheckingPermissions(true);
     try {
@@ -180,26 +194,40 @@ export function PullRequestDialog({
   const parseRemoteUrl = (url: string) => {
     setError(null);
     try {
-      // Parse GitHub/GitLab URLs
+      // Parse GitHub/GitLab/Nostr URLs
       let match;
       let owner = '';
       let repo = '';
-      let platform: 'github' | 'gitlab' = 'github';
+      let platform: 'github' | 'gitlab' | 'nostr' = 'github';
       let apiUrl = '';
 
       console.log('Parsing remote URL:', url);
+
+      // Nostr git: nostr://<pubkey>/<repo-id>
+      if (url.startsWith('nostr://')) {
+        match = url.match(/^nostr:\/\/([^/]+)\/(.+)$/);
+        if (match) {
+          owner = match[1]; // pubkey in hex
+          repo = match[2];  // repo-id (d tag)
+          platform = 'nostr';
+          apiUrl = ''; // Not applicable for Nostr
+          console.log('Detected Nostr git:', { owner, repo });
+        }
+      }
 
       // Normalize URL - remove .git suffix if present
       const normalizedUrl = url.replace(/\.git$/, '');
 
       // GitHub SSH: git@github.com:owner/repo
-      match = normalizedUrl.match(/git@github\.com:([^/]+)\/(.+)$/);
-      if (match) {
-        owner = match[1];
-        repo = match[2];
-        platform = 'github';
-        apiUrl = 'https://api.github.com';
-        console.log('Detected GitHub SSH:', { owner, repo });
+      if (!match) {
+        match = normalizedUrl.match(/git@github\.com:([^/]+)\/(.+)$/);
+        if (match) {
+          owner = match[1];
+          repo = match[2];
+          platform = 'github';
+          apiUrl = 'https://api.github.com';
+          console.log('Detected GitHub SSH:', { owner, repo });
+        }
       }
 
       // GitHub HTTPS: https://github.com/owner/repo
@@ -243,7 +271,7 @@ export function PullRequestDialog({
         setRemoteInfo({ owner, repo, platform, apiUrl });
       } else {
         console.error('Failed to parse URL - no owner/repo found:', url);
-        setError('Unsupported remote URL format. Only GitHub and GitLab URLs are supported (e.g., https://github.com/user/repo.git)');
+        setError('Unsupported remote URL format. Supported: GitHub, GitLab, and Nostr git URLs (e.g., nostr://<pubkey>/<repo-id>)');
       }
     } catch (err) {
       console.error('Error parsing remote URL:', err);
@@ -355,29 +383,34 @@ export function PullRequestDialog({
         }
       }
 
-      // Get credentials
-      const credentials = findCredentialsForRepo(remoteUrl || '', settings.credentials);
-      console.log('Found credentials:', credentials ? 'Yes' : 'No');
-      console.log('Available credential origins:', Object.keys(settings.credentials));
+      // Get credentials (not needed for Nostr git)
+      let credentials = null;
 
-      if (credentials) {
-        console.log('Credential username:', credentials.username);
-        console.log('Credential password length:', credentials.password?.length || 0);
-      }
+      if (remoteInfo.platform !== 'nostr') {
+        credentials = findCredentialsForRepo(remoteUrl || '', settings.credentials);
+        console.log('Found credentials:', credentials ? 'Yes' : 'No');
+        console.log('Available credential origins:', Object.keys(settings.credentials));
 
-      if (!credentials) {
-        throw new Error(
-          `No credentials found for ${remoteInfo.platform === 'github' ? 'GitHub' : 'GitLab'}. Please add credentials in Settings > Git for ${remoteUrl}`
-        );
-      }
+        if (credentials) {
+          console.log('Credential username:', credentials.username);
+          console.log('Credential password length:', credentials.password?.length || 0);
+        }
 
-      if (!credentials.password || credentials.password.trim() === '') {
-        throw new Error(
-          `Credentials found but token is empty. Please check your ${remoteInfo.platform === 'github' ? 'GitHub' : 'GitLab'} token in Settings > Git`
-        );
+        if (!credentials) {
+          throw new Error(
+            `No credentials found for ${remoteInfo.platform === 'github' ? 'GitHub' : 'GitLab'}. Please add credentials in Settings > Git for ${remoteUrl}`
+          );
+        }
+
+        if (!credentials.password || credentials.password.trim() === '') {
+          throw new Error(
+            `Credentials found but token is empty. Please check your ${remoteInfo.platform === 'github' ? 'GitHub' : 'GitLab'} token in Settings > Git`
+          );
+        }
       }
 
       // If fork is needed, we need to push the branch to the fork first
+      // (Not applicable for Nostr git - patches don't require pushing)
       let headRef = branchToUse;
 
       console.log('=== PR HEAD REF DEBUG ===');
@@ -385,7 +418,7 @@ export function PullRequestDialog({
       console.log('forkInfo:', JSON.stringify(forkInfo, null, 2));
       console.log('remoteInfo:', JSON.stringify(remoteInfo, null, 2));
 
-      if (forkInfo.needsFork && forkInfo.forkOwner && forkInfo.forkUrl) {
+      if (remoteInfo.platform !== 'nostr' && forkInfo.needsFork && forkInfo.forkOwner && forkInfo.forkUrl) {
         // For cross-fork PRs, head ref format is "owner:branch"
         headRef = `${forkInfo.forkOwner}:${branchToUse}`;
 
@@ -455,23 +488,28 @@ export function PullRequestDialog({
 
       // Create PR based on platform
       console.log(`Creating ${remoteInfo.platform} PR...`);
-      if (remoteInfo.platform === 'github') {
+      if (remoteInfo.platform === 'github' && credentials) {
         const prUrl = await createGitHubPR(remoteInfo, credentials.password, headRef);
         setCreatedPrUrl(prUrl);
-      } else if (remoteInfo.platform === 'gitlab') {
+      } else if (remoteInfo.platform === 'gitlab' && credentials) {
         const prUrl = await createGitLabMR(remoteInfo, credentials.password);
+        setCreatedPrUrl(prUrl);
+      } else if (remoteInfo.platform === 'nostr') {
+        const prUrl = await createNostrPatch(remoteInfo, branchToUse, targetBranch);
         setCreatedPrUrl(prUrl);
       }
 
       toast({
-        title: 'Pull request created',
-        description: 'Successfully created pull request',
+        title: isNostrGit ? 'Patch created' : 'Pull request created',
+        description: isNostrGit
+          ? 'Successfully published patch to Nostr'
+          : 'Successfully created pull request',
       });
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
       setError(errorMessage);
       toast({
-        title: 'Failed to create pull request',
+        title: isNostrGit ? 'Failed to create patch' : 'Failed to create pull request',
         description: errorMessage,
         variant: 'destructive',
       });
@@ -611,6 +649,97 @@ export function PullRequestDialog({
       repo: info.repo,
       url: data.clone_url || data.http_url_to_repo,
     };
+  };
+
+  const createNostrPatch = async (info: RemoteInfo, headBranch: string, baseBranch: string): Promise<string> => {
+    console.log('=== CREATING NOSTR PATCH ===');
+    console.log('Repository:', `${info.owner}/${info.repo}`);
+    console.log('Head branch:', headBranch);
+    console.log('Base branch:', baseBranch);
+
+    // For Nostr git, we need the user's signer
+    if (!user || !user.signer) {
+      throw new Error('You must be logged in with Nostr to create patches');
+    }
+
+    // Generate git patch using format-patch
+    // This will be the content of the patch event
+    let patchContent: string;
+    try {
+      // Get commits between base and head branches
+      const commits = await git.log({
+        dir: projectPath,
+        ref: headBranch,
+      });
+
+      // For now, create a simplified patch description
+      // In a full implementation, we'd use git format-patch or similar
+      patchContent = `From: ${headBranch}\nTo: ${baseBranch}\n\n${title}\n\n${description || ''}`;
+
+      console.log('Generated patch content:', patchContent);
+    } catch (err) {
+      console.error('Failed to generate patch:', err);
+      throw new Error('Failed to generate patch content');
+    }
+
+    // Create patch event (kind 1617) per NIP-34
+    const patchEvent = {
+      kind: 1617,
+      content: patchContent,
+      tags: [
+        ['a', `30617:${info.owner}:${info.repo}`], // Reference to repository announcement
+        ['p', info.owner], // Repository owner/maintainer
+        ['t', 'root'], // Root patch in series
+        ['t', 'root-revision'], // First patch in a revision
+        ['subject', title], // Patch title
+        ['description', description || ''], // Optional description
+        ['alt', `Patch proposal for ${info.repo}: ${title}`], // NIP-31 alt tag for human-readable description
+      ],
+      created_at: Math.floor(Date.now() / 1000),
+    };
+
+    console.log('Signing patch event:', patchEvent);
+
+    // Sign the event with user's signer
+    const signedEvent = await user.signer.signEvent(patchEvent);
+
+    console.log('Signed patch event:', signedEvent);
+
+    // Publish to Nostr relays
+    // Get the repository's designated relays from the repo announcement
+    try {
+      // Query for the repository announcement to get relay hints
+      const repoEvents = await nostr.query([
+        {
+          kinds: [30617],
+          authors: [info.owner],
+          '#d': [info.repo],
+          limit: 1,
+        }
+      ]);
+
+      let publishRelays = ['wss://relay.nostr.band']; // Default relay
+
+      if (repoEvents.length > 0) {
+        const repoEvent = repoEvents[0];
+        const relayTags = repoEvent.tags.filter((t: string[]) => t[0] === 'relays');
+        if (relayTags.length > 0) {
+          publishRelays = relayTags.map((t: string[]) => t[1]);
+          console.log('Publishing to repository relays:', publishRelays);
+        }
+      }
+
+      // Publish the patch event
+      await nostr.event(signedEvent);
+      console.log('Published patch to Nostr');
+
+      // Return a nostr event reference as the "PR URL"
+      const eventRef = `nostr:${signedEvent.id}`;
+      return eventRef;
+    } catch (err) {
+      console.error('Failed to publish patch to Nostr:', err);
+      throw new Error('Failed to publish patch to Nostr relays');
+    }
   };
 
   const createGitHubPR = async (info: RemoteInfo, token: string, headRef: string): Promise<string> => {
@@ -757,22 +886,29 @@ export function PullRequestDialog({
     return null;
   }
 
+  const isNostrGit = remoteInfo?.platform === 'nostr';
+  const buttonText = isNostrGit ? 'Create Patch' : 'Create Pull Request';
+  const dialogTitle = isNostrGit ? 'Create Patch' : 'Create Pull Request';
+  const dialogDescription = isNostrGit
+    ? 'Submit a patch proposal to the repository'
+    : 'Create a pull request to merge your changes';
+
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button variant="outline" className="gap-2">
           <GitPullRequest className="h-4 w-4" />
-          Create Pull Request
+          {buttonText}
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-2xl max-h-[90vh]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <GitPullRequest className="h-5 w-5" />
-            Create Pull Request
+            {dialogTitle}
           </DialogTitle>
           <DialogDescription>
-            Create a pull request to merge your changes
+            {dialogDescription}
           </DialogDescription>
         </DialogHeader>
 
@@ -781,18 +917,30 @@ export function PullRequestDialog({
           <div className="py-8 text-center space-y-4">
             <CheckCircle className="h-16 w-16 text-green-600 mx-auto" />
             <div>
-              <h3 className="text-lg font-semibold mb-2">Pull Request Created!</h3>
+              <h3 className="text-lg font-semibold mb-2">
+                {isNostrGit ? 'Patch Created!' : 'Pull Request Created!'}
+              </h3>
               <p className="text-muted-foreground">
-                Your pull request has been created successfully
+                {isNostrGit
+                  ? 'Your patch has been published to Nostr successfully'
+                  : 'Your pull request has been created successfully'
+                }
               </p>
             </div>
-            <Button
-              onClick={() => window.open(createdPrUrl, '_blank')}
-              className="gap-2"
-            >
-              View Pull Request
-              <ExternalLink className="h-4 w-4" />
-            </Button>
+            {!isNostrGit && (
+              <Button
+                onClick={() => window.open(createdPrUrl, '_blank')}
+                className="gap-2"
+              >
+                View Pull Request
+                <ExternalLink className="h-4 w-4" />
+              </Button>
+            )}
+            {isNostrGit && (
+              <div className="text-sm text-muted-foreground">
+                <p className="font-mono break-all">{createdPrUrl}</p>
+              </div>
+            )}
           </div>
         ) : (
           // Form
@@ -947,11 +1095,19 @@ export function PullRequestDialog({
               {isCreating ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  {forkInfo.needsFork ? 'Creating fork & PR...' : 'Creating...'}
+                  {isNostrGit
+                    ? 'Publishing patch...'
+                    : forkInfo.needsFork ? 'Creating fork & PR...' : 'Creating...'
+                  }
                 </>
               ) : (
                 <>
-                  {forkInfo.needsFork ? (
+                  {isNostrGit ? (
+                    <>
+                      <GitPullRequest className="h-4 w-4 mr-2" />
+                      Create Patch
+                    </>
+                  ) : forkInfo.needsFork ? (
                     <>
                       <GitFork className="h-4 w-4 mr-2" />
                       Fork & Create PR

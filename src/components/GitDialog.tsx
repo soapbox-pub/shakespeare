@@ -990,81 +990,84 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
                           {pullRequests.map((pr) => (
                             <div
                               key={pr.id}
-                              className="flex items-start gap-3 p-3 rounded-md border bg-muted/20 hover:bg-muted/40 transition-colors"
+                              className="p-3 rounded-md border bg-muted/20 hover:bg-muted/40 transition-colors space-y-2"
                             >
-                              <GitPullRequest className={cn(
-                                "h-4 w-4 mt-0.5 shrink-0",
-                                pr.state === 'merged' ? 'text-purple-600' : 'text-green-600'
-                              )} />
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-start justify-between gap-2">
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2">
-                                      <h4 className="text-sm font-medium truncate">
-                                        {pr.title}
-                                      </h4>
-                                      {pr.state === 'merged' && (
-                                        <Badge variant="secondary" className="text-xs">
-                                          Merged
-                                        </Badge>
-                                      )}
-                                    </div>
-                                    <p className="text-xs text-muted-foreground mt-1">
-                                      #{pr.number} by {pr.isOwner ? 'you' : pr.author} • {pr.sourceBranch} → {pr.targetBranch}
-                                    </p>
-                                  </div>
-                                  <div className="flex items-center gap-1">
-                                    {!pr.isOwner && pr.state === 'open' && (
-                                      <>
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          className="h-8"
-                                          onClick={async () => {
-                                            try {
-                                              await git.checkout({
-                                                dir: projectPath,
-                                                ref: pr.sourceBranch,
-                                              });
-                                              await refetchGitStatus();
-                                              toast({
-                                                title: 'Branch checked out',
-                                                description: `Switched to ${pr.sourceBranch}`,
-                                              });
-                                            } catch (err) {
-                                              toast({
-                                                title: 'Checkout failed',
-                                                description: err instanceof Error ? err.message : 'Unknown error',
-                                                variant: 'destructive',
-                                              });
-                                            }
-                                          }}
-                                        >
-                                          <GitBranch className="h-3 w-3 mr-1" />
-                                          Review
-                                        </Button>
-                                        <MergeDialog
-                                          projectId={projectId}
-                                          currentBranch={gitStatus.currentBranch}
-                                          sourceBranch={pr.sourceBranch}
-                                          targetBranch={pr.targetBranch}
-                                          onMergeComplete={refetchGitStatus}
-                                        />
-                                      </>
-                                    )}
-                                    {!originUrl.startsWith('nostr://') && (
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-8 shrink-0"
-                                        onClick={() => window.open(pr.url, '_blank')}
-                                      >
-                                        <ExternalLink className="h-3 w-3" />
-                                      </Button>
+                              <div className="flex items-start gap-3">
+                                <GitPullRequest className={cn(
+                                  "h-4 w-4 mt-0.5 shrink-0",
+                                  pr.state === 'merged' ? 'text-purple-600' : 'text-green-600'
+                                )} />
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <h4 className="text-sm font-medium truncate">
+                                      {pr.title}
+                                    </h4>
+                                    {pr.state === 'merged' && (
+                                      <Badge variant="secondary" className="text-xs shrink-0">
+                                        Merged
+                                      </Badge>
                                     )}
                                   </div>
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    #{pr.number} by {pr.isOwner ? 'you' : pr.author} • {pr.sourceBranch} → {pr.targetBranch}
+                                  </p>
                                 </div>
                               </div>
+
+                              {/* Actions row */}
+                              {(!pr.isOwner && pr.state === 'open') || !originUrl.startsWith('nostr://') ? (
+                                <div className="flex items-center gap-2 pl-7">
+                                  {!pr.isOwner && pr.state === 'open' && (
+                                    <>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-8 text-xs"
+                                        onClick={async () => {
+                                          try {
+                                            await git.checkout({
+                                              dir: projectPath,
+                                              ref: pr.sourceBranch,
+                                            });
+                                            await refetchGitStatus();
+                                            toast({
+                                              title: 'Branch checked out',
+                                              description: `Switched to ${pr.sourceBranch}`,
+                                            });
+                                          } catch (err) {
+                                            toast({
+                                              title: 'Checkout failed',
+                                              description: err instanceof Error ? err.message : 'Unknown error',
+                                              variant: 'destructive',
+                                            });
+                                          }
+                                        }}
+                                      >
+                                        <GitBranch className="h-3 w-3 mr-1" />
+                                        Review
+                                      </Button>
+                                      <MergeDialog
+                                        projectId={projectId}
+                                        currentBranch={gitStatus.currentBranch}
+                                        sourceBranch={pr.sourceBranch}
+                                        targetBranch={pr.targetBranch}
+                                        onMergeComplete={refetchGitStatus}
+                                      />
+                                    </>
+                                  )}
+                                  {!originUrl.startsWith('nostr://') && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-8 text-xs ml-auto"
+                                      onClick={() => window.open(pr.url, '_blank')}
+                                    >
+                                      <ExternalLink className="h-3 w-3 mr-1" />
+                                      View
+                                    </Button>
+                                  )}
+                                </div>
+                              ) : null}
                             </div>
                           ))}
                         </div>

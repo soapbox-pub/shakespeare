@@ -33,7 +33,7 @@ function parseRemoteUrl(url: string): RemoteInfo | null {
     if (url.startsWith('nostr://')) {
       const match = url.match(/^nostr:\/\/([^/]+)\/(.+)$/);
       if (match) {
-        let pubkeyOrNpub = match[1];
+        const pubkeyOrNpub = match[1];
         const repo = match[2];
 
         // Convert npub to hex if needed
@@ -132,7 +132,20 @@ async function fetchGitHubPRs(info: RemoteInfo, token?: string, currentUsername?
 
   const data = await response.json();
 
-  const allPRs = data.map((pr: any) => ({
+  interface GitHubPR {
+    id: number;
+    number: number;
+    title: string;
+    state: string;
+    user: { login: string };
+    html_url: string;
+    created_at: string;
+    head: { ref: string };
+    base: { ref: string };
+    body?: string;
+  }
+
+  const allPRs = data.map((pr: GitHubPR) => ({
     id: pr.id,
     number: pr.number,
     title: pr.title,
@@ -188,7 +201,20 @@ async function fetchGitLabMRs(info: RemoteInfo, token?: string, currentUsername?
 
   const data = await response.json();
 
-  const allMRs = data.map((mr: any) => ({
+  interface GitLabMR {
+    id: number;
+    iid: number;
+    title: string;
+    state: string;
+    author: { username: string };
+    web_url: string;
+    created_at: string;
+    source_branch: string;
+    target_branch: string;
+    description?: string;
+  }
+
+  const allMRs = data.map((mr: GitLabMR) => ({
     id: mr.id,
     number: mr.iid,
     title: mr.title,
@@ -211,10 +237,14 @@ async function fetchGitLabMRs(info: RemoteInfo, token?: string, currentUsername?
   return [];
 }
 
+interface NostrInterface {
+  query: (filters: unknown[], options?: { signal?: AbortSignal }) => Promise<unknown[]>;
+}
+
 async function fetchNostrPatches(
   info: RemoteInfo,
   currentUserPubkey: string | undefined,
-  nostr: any,
+  nostr: NostrInterface,
   signal: AbortSignal,
   isRepoOwner?: boolean
 ): Promise<PullRequest[]> {

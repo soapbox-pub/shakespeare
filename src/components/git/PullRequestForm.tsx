@@ -51,7 +51,6 @@ export function PullRequestForm({ projectId, currentBranch, remoteUrl }: PullReq
   const [description, setDescription] = useState('');
   const [targetBranch, setTargetBranch] = useState('main');
   const [remoteBranches, setRemoteBranches] = useState<string[]>([]);
-  const [isLoadingBranches, setIsLoadingBranches] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [remoteInfo, setRemoteInfo] = useState<RemoteInfo | null>(null);
   const [forkInfo, setForkInfo] = useState<ForkInfo>({ needsFork: false });
@@ -68,15 +67,7 @@ export function PullRequestForm({ projectId, currentBranch, remoteUrl }: PullReq
   // (parseRemoteUrl, checkPushPermissions, ensureFork, etc.)
   // For brevity, I'll import them or duplicate the core logic
 
-  useEffect(() => {
-    if (remoteUrl) {
-      parseRemoteUrl(remoteUrl);
-      loadRemoteBranches();
-      checkPermissionsAndFork();
-    }
-  }, [remoteUrl]);
-
-  const parseRemoteUrl = (url: string) => {
+  const parseRemoteUrl = useCallback((url: string) => {
     // Same implementation as PullRequestDialog
     setError(null);
     try {
@@ -118,7 +109,7 @@ export function PullRequestForm({ projectId, currentBranch, remoteUrl }: PullReq
     } catch (err) {
       setError('Failed to parse remote URL');
     }
-  };
+  }, []);
 
   const loadRemoteBranches = useCallback(async () => {
     setIsLoadingBranches(true);
@@ -163,6 +154,14 @@ export function PullRequestForm({ projectId, currentBranch, remoteUrl }: PullReq
       setIsCheckingPermissions(false);
     }
   }, [remoteInfo, remoteUrl, settings.credentials]);
+
+  useEffect(() => {
+    if (remoteUrl) {
+      parseRemoteUrl(remoteUrl);
+      loadRemoteBranches();
+      checkPermissionsAndFork();
+    }
+  }, [remoteUrl, parseRemoteUrl, loadRemoteBranches, checkPermissionsAndFork]);
 
   const createPullRequest = async () => {
     if (!remoteInfo || !currentBranch) return;
@@ -343,7 +342,7 @@ export function PullRequestForm({ projectId, currentBranch, remoteUrl }: PullReq
         let errorMessage = error.message || `API error: ${response.status} - ${response.statusText}`;
 
         if (error.errors && Array.isArray(error.errors)) {
-          const errorDetails = error.errors.map((e: any) => {
+          const errorDetails = error.errors.map((e: { message?: string; field?: string; code?: string }) => {
             if (e.message) return e.message;
             if (e.field && e.code) return `${e.field}: ${e.code}`;
             return JSON.stringify(e);

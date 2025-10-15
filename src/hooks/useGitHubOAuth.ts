@@ -193,7 +193,7 @@ export function useGitHubOAuth() {
       }));
       return false;
     }
-  }, [addCredential, corsProxy]);
+  }, [addCredential, addHostToken, corsProxy]);
 
   return {
     ...state,

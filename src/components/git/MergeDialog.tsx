@@ -61,7 +61,7 @@ export function MergeDialog({
   projectId,
   currentBranch,
   sourceBranch: initialSourceBranch,
-  targetBranch: initialTargetBranch,
+  targetBranch: _initialTargetBranch,
   open,
   onOpenChange,
   onMergeComplete,

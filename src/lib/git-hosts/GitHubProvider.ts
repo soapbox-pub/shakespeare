@@ -7,8 +7,23 @@ import type {
   PullRequest,
   CreatePullRequestOptions,
   GitHostUser,
-  PullRequestCheck,
 } from './types';
+
+interface GitHubPRResponse {
+  id: number;
+  number: number;
+  state: string;
+  title: string;
+  body: string;
+  html_url: string;
+  created_at: string;
+  updated_at: string;
+  user: { login: string };
+  head: { ref: string; repo: { full_name: string } };
+  base: { ref: string; repo: { full_name: string } };
+  mergeable?: boolean;
+  merged?: boolean;
+}
 
 export class GitHubProvider implements GitHostProvider {
   readonly name = 'GitHub';
@@ -44,7 +59,18 @@ export class GitHubProvider implements GitHostProvider {
   }
 
   async getRepository(owner: string, repo: string): Promise<GitRepository> {
-    const data = await this.fetch<any>(`/repos/${owner}/${repo}`);
+    interface GitHubRepo {
+      owner: { login: string };
+      name: string;
+      full_name: string;
+      default_branch: string;
+      clone_url: string;
+      html_url: string;
+      description: string;
+      private: boolean;
+    }
+
+    const data = await this.fetch<GitHubRepo>(`/repos/${owner}/${repo}`);
 
     return {
       owner: data.owner.login,
@@ -60,33 +86,54 @@ export class GitHubProvider implements GitHostProvider {
 
   async canUserPush(owner: string, repo: string): Promise<boolean> {
     try {
-      const data = await this.fetch<any>(`/repos/${owner}/${repo}`);
+      interface GitHubRepoWithPermissions {
+        permissions?: { push?: boolean; admin?: boolean };
+      }
+
+      const data = await this.fetch<GitHubRepoWithPermissions>(`/repos/${owner}/${repo}`);
       return data.permissions?.push === true || data.permissions?.admin === true;
-    } catch (error) {
+    } catch {
       // If we can't check permissions, assume no push access
       return false;
     }
   }
 
   async createFork(owner: string, repo: string): Promise<GitFork> {
-    const data = await this.fetch<any>(`/repos/${owner}/${repo}/forks`, {
+    interface GitHubFork {
+      owner: { login: string };
+      name: string;
+      clone_url: string;
+      html_url: string;
+    }
+
+    const data = await this.fetch<GitHubFork>(`/repos/${owner}/${repo}/forks`, {
       method: 'POST',
     });
 
     return {
       owner: data.owner.login,
       name: data.name,
-      fullName: data.full_name,
+      fullName: `${data.owner.login}/${data.name}`,
       cloneUrl: data.clone_url,
       webUrl: data.html_url,
-      parentFullName: data.parent.full_name,
+      parentFullName: `${owner}/${repo}`,
     };
   }
 
   async getFork(upstreamOwner: string, upstreamRepo: string, username: string): Promise<GitFork | null> {
     try {
+      interface GitHubForkCheck {
+        fork: boolean;
+        owner: { login: string };
+        name: string;
+        full_name: string;
+        clone_url: string;
+        html_url: string;
+        parent?: { full_name: string };
+      }
+
       // Check if the fork already exists
-      const data = await this.fetch<any>(`/repos/${username}/${upstreamRepo}`);
+      const data = await this.fetch<GitHubForkCheck>(`/repos/${username}/${upstreamRepo}`);
 
       // Verify it's actually a fork of the upstream repo
       if (data.fork && data.parent?.full_name === `${upstreamOwner}/${upstreamRepo}`) {
@@ -135,7 +182,7 @@ export class GitHubProvider implements GitHostProvider {
       ? `${headOwner}:${options.headBranch}`
       : options.headBranch;
 
-    const data = await this.fetch<any>(`/repos/${baseOwner}/${baseRepo}/pulls`, {
+    const data = await this.fetch<GitHubPRResponse>(`/repos/${baseOwner}/${baseRepo}/pulls`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -151,7 +198,7 @@ export class GitHubProvider implements GitHostProvider {
   }
 
   async getPullRequest(owner: string, repo: string, number: number): Promise<PullRequest> {
-    const data = await this.fetch<any>(`/repos/${owner}/${repo}/pulls/${number}`);
+    const data = await this.fetch<GitHubPRResponse>(`/repos/${owner}/${repo}/pulls/${number}`);
     return this.transformPullRequest(data);
   }
 
@@ -160,7 +207,7 @@ export class GitHubProvider implements GitHostProvider {
     repo: string,
     state: 'open' | 'closed' | 'all' = 'open'
   ): Promise<PullRequest[]> {
-    const data = await this.fetch<any[]>(`/repos/${owner}/${repo}/pulls?state=${state}`);
+    const data = await this.fetch<GitHubPRResponse[]>(`/repos/${owner}/${repo}/pulls?state=${state}`);
     return data.map(pr => this.transformPullRequest(pr));
   }
 
@@ -170,7 +217,7 @@ export class GitHubProvider implements GitHostProvider {
     number: number,
     options: { title?: string; body?: string }
   ): Promise<PullRequest> {
-    const data = await this.fetch<any>(`/repos/${owner}/${repo}/pulls/${number}`, {
+    const data = await this.fetch<GitHubPRResponse>(`/repos/${owner}/${repo}/pulls/${number}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(options),
@@ -180,7 +227,7 @@ export class GitHubProvider implements GitHostProvider {
   }
 
   async closePullRequest(owner: string, repo: string, number: number): Promise<PullRequest> {
-    const data = await this.fetch<any>(`/repos/${owner}/${repo}/pulls/${number}`, {
+    const data = await this.fetch<GitHubPRResponse>(`/repos/${owner}/${repo}/pulls/${number}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ state: 'closed' }),
@@ -190,7 +237,14 @@ export class GitHubProvider implements GitHostProvider {
   }
 
   async getCurrentUser(): Promise<GitHostUser> {
-    const data = await this.fetch<any>('/user');
+    interface GitHubUser {
+      login: string;
+      name: string;
+      email: string;
+      avatar_url: string;
+    }
+
+    const data = await this.fetch<GitHubUser>('/user');
 
     return {
       username: data.login,
@@ -205,9 +259,23 @@ export class GitHubProvider implements GitHostProvider {
     return `https://github.com/${baseRepo}/compare/${baseBranch}...${headOwner}:${headRepoName}:${headBranch}?expand=1`;
   }
 
-  private transformPullRequest(data: any): PullRequest {
+  private transformPullRequest(data: {
+    id: number;
+    number: number;
+    state: string;
+    title: string;
+    body: string;
+    html_url: string;
+    created_at: string;
+    updated_at: string;
+    user: { login: string };
+    head: { ref: string; repo: { full_name: string } };
+    base: { ref: string; repo: { full_name: string } };
+    mergeable?: boolean;
+    merged?: boolean;
+  }): PullRequest {
     const state = data.merged ? 'merged' : data.state;
-    
+
     return {
       number: data.number,
       title: data.title,

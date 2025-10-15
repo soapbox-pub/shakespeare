@@ -14,9 +14,13 @@ import type { GitHostProvider, GitHostConfig } from './types';
 /**
  * Create a Git host provider instance based on the repository URL
  */
+interface NostrSigner {
+  signEvent: (event: { kind: number; content: string; tags: string[][]; created_at: number }) => Promise<unknown>;
+}
+
 export function createGitHostProvider(
   url: string,
-  config: GitHostConfig & { signer?: any; pubkey?: string; relayUrls?: string[] },
+  config: GitHostConfig & { signer?: NostrSigner; pubkey?: string; relayUrls?: string[] },
   corsProxy?: string
 ): GitHostProvider | null {
   const hostType = detectGitHost(url);

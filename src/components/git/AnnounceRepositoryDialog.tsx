@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,7 +14,6 @@ import {
 } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Badge } from '@/components/ui/badge';
 import {
   GitBranch,
   Loader2,
@@ -79,9 +78,9 @@ export function AnnounceRepositoryDialog({
       // Get earliest commit
       getEarliestCommit();
     }
-  }, [isOpen, remoteUrl]);
+  }, [isOpen, remoteUrl, parseRemoteUrl, getEarliestCommit]);
 
-  const parseRemoteUrl = (url: string) => {
+  const parseRemoteUrl = useCallback((url: string) => {
     // Extract repo ID from Nostr URL
     if (url.startsWith('nostr://')) {
       const match = url.match(/^nostr:\/\/[^/]+\/(.+)$/);
@@ -96,9 +95,9 @@ export function AnnounceRepositoryDialog({
     if (url && !cloneUrls.includes(url)) {
       setCloneUrls([url]);
     }
-  };
+  }, [cloneUrls]);
 
-  const getEarliestCommit = async () => {
+  const getEarliestCommit = useCallback(async () => {
     try {
       const commits = await git.log({
         dir: projectPath,
@@ -113,7 +112,7 @@ export function AnnounceRepositoryDialog({
     } catch (err) {
       console.warn('Failed to get earliest commit:', err);
     }
-  };
+  }, [git, projectPath]);
 
   const addWebUrl = () => {
     if (newWebUrl.trim() && !webUrls.includes(newWebUrl.trim())) {

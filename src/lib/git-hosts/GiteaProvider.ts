@@ -7,8 +7,23 @@ import type {
   PullRequest,
   CreatePullRequestOptions,
   GitHostUser,
-  PullRequestCheck,
 } from './types';
+
+interface GiteaPRResponse {
+  id: number;
+  number: number;
+  state: string;
+  title: string;
+  body: string;
+  html_url: string;
+  created_at: string;
+  updated_at: string;
+  user: { login: string };
+  head: { ref: string; repo: { full_name: string } };
+  base: { ref: string; repo: { full_name: string } };
+  mergeable?: boolean;
+  merged?: boolean;
+}
 
 export class GiteaProvider implements GitHostProvider {
   readonly name: string;
@@ -46,7 +61,18 @@ export class GiteaProvider implements GitHostProvider {
   }
 
   async getRepository(owner: string, repo: string): Promise<GitRepository> {
-    const data = await this.fetch<any>(`/repos/${owner}/${repo}`);
+    interface GiteaRepo {
+      owner: { login: string };
+      name: string;
+      full_name: string;
+      default_branch: string;
+      clone_url: string;
+      html_url: string;
+      description: string;
+      private: boolean;
+    }
+
+    const data = await this.fetch<GiteaRepo>(`/repos/${owner}/${repo}`);
 
     return {
       owner: data.owner.login,
@@ -62,7 +88,11 @@ export class GiteaProvider implements GitHostProvider {
 
   async canUserPush(owner: string, repo: string): Promise<boolean> {
     try {
-      const data = await this.fetch<any>(`/repos/${owner}/${repo}`);
+      interface GiteaRepoWithPermissions {
+        permissions?: { push?: boolean; admin?: boolean };
+      }
+
+      const data = await this.fetch<GiteaRepoWithPermissions>(`/repos/${owner}/${repo}`);
       return data.permissions?.push === true || data.permissions?.admin === true;
     } catch {
       return false;
@@ -70,7 +100,16 @@ export class GiteaProvider implements GitHostProvider {
   }
 
   async createFork(owner: string, repo: string): Promise<GitFork> {
-    const data = await this.fetch<any>(`/repos/${owner}/${repo}/forks`, {
+    interface GiteaFork {
+      owner: { login: string };
+      name: string;
+      full_name: string;
+      clone_url: string;
+      html_url: string;
+      parent?: { full_name: string };
+    }
+
+    const data = await this.fetch<GiteaFork>(`/repos/${owner}/${repo}/forks`, {
       method: 'POST',
     });
 
@@ -86,7 +125,17 @@ export class GiteaProvider implements GitHostProvider {
 
   async getFork(upstreamOwner: string, upstreamRepo: string, username: string): Promise<GitFork | null> {
     try {
-      const data = await this.fetch<any>(`/repos/${username}/${upstreamRepo}`);
+      interface GiteaForkCheck {
+        fork: boolean;
+        owner: { login: string };
+        name: string;
+        full_name: string;
+        clone_url: string;
+        html_url: string;
+        parent?: { full_name: string };
+      }
+
+      const data = await this.fetch<GiteaForkCheck>(`/repos/${username}/${upstreamRepo}`);
 
       if (data.fork && data.parent?.full_name === `${upstreamOwner}/${upstreamRepo}`) {
         return {
@@ -134,7 +183,7 @@ export class GiteaProvider implements GitHostProvider {
       ? `${headOwner}:${options.headBranch}`
       : options.headBranch;
 
-    const data = await this.fetch<any>(`/repos/${baseOwner}/${baseRepo}/pulls`, {
+    const data = await this.fetch<GiteaPRResponse>(`/repos/${baseOwner}/${baseRepo}/pulls`, {
       method: 'POST',
       body: JSON.stringify({
         title: options.title,
@@ -148,7 +197,7 @@ export class GiteaProvider implements GitHostProvider {
   }
 
   async getPullRequest(owner: string, repo: string, number: number): Promise<PullRequest> {
-    const data = await this.fetch<any>(`/repos/${owner}/${repo}/pulls/${number}`);
+    const data = await this.fetch<GiteaPRResponse>(`/repos/${owner}/${repo}/pulls/${number}`);
     return this.transformPullRequest(data);
   }
 
@@ -157,7 +206,7 @@ export class GiteaProvider implements GitHostProvider {
     repo: string,
     state: 'open' | 'closed' | 'all' = 'open'
   ): Promise<PullRequest[]> {
-    const data = await this.fetch<any[]>(`/repos/${owner}/${repo}/pulls?state=${state}`);
+    const data = await this.fetch<GiteaPRResponse[]>(`/repos/${owner}/${repo}/pulls?state=${state}`);
     return data.map(pr => this.transformPullRequest(pr));
   }
 
@@ -167,7 +216,7 @@ export class GiteaProvider implements GitHostProvider {
     number: number,
     options: { title?: string; body?: string }
   ): Promise<PullRequest> {
-    const data = await this.fetch<any>(`/repos/${owner}/${repo}/pulls/${number}`, {
+    const data = await this.fetch<GiteaPRResponse>(`/repos/${owner}/${repo}/pulls/${number}`, {
       method: 'PATCH',
       body: JSON.stringify(options),
     });
@@ -176,7 +225,7 @@ export class GiteaProvider implements GitHostProvider {
   }
 
   async closePullRequest(owner: string, repo: string, number: number): Promise<PullRequest> {
-    const data = await this.fetch<any>(`/repos/${owner}/${repo}/pulls/${number}`, {
+    const data = await this.fetch<GiteaPRResponse>(`/repos/${owner}/${repo}/pulls/${number}`, {
       method: 'PATCH',
       body: JSON.stringify({ state: 'closed' }),
     });
@@ -185,7 +234,14 @@ export class GiteaProvider implements GitHostProvider {
   }
 
   async getCurrentUser(): Promise<GitHostUser> {
-    const data = await this.fetch<any>('/user');
+    interface GiteaUser {
+      login: string;
+      full_name: string;
+      email: string;
+      avatar_url: string;
+    }
+
+    const data = await this.fetch<GiteaUser>('/user');
 
     return {
       username: data.login,
@@ -201,7 +257,21 @@ export class GiteaProvider implements GitHostProvider {
     return `${baseUrl}/${baseRepo}/compare/${baseBranch}...${headOwner}:${headRepoName}:${headBranch}`;
   }
 
-  private transformPullRequest(data: any): PullRequest {
+  private transformPullRequest(data: {
+    id: number;
+    number: number;
+    state: string;
+    title: string;
+    body: string;
+    html_url: string;
+    created_at: string;
+    updated_at: string;
+    user: { login: string };
+    head: { ref: string; repo: { full_name: string } };
+    base: { ref: string; repo: { full_name: string } };
+    mergeable?: boolean;
+    merged?: boolean;
+  }): PullRequest {
     const state = data.merged ? 'merged' : data.state;
 
     return {

@@ -7,8 +7,25 @@ import type {
   PullRequest,
   CreatePullRequestOptions,
   GitHostUser,
-  PullRequestCheck,
 } from './types';
+
+interface GitLabMRResponse {
+  id: number;
+  iid: number;
+  state: string;
+  title: string;
+  description: string;
+  web_url: string;
+  created_at: string;
+  updated_at: string;
+  author: { username: string };
+  source_branch: string;
+  target_branch: string;
+  source_project_id: number;
+  target_project_id: number;
+  merge_status?: string;
+  merged_at?: string;
+}
 
 export class GitLabProvider implements GitHostProvider {
   readonly name = 'GitLab';
@@ -48,8 +65,19 @@ export class GitLabProvider implements GitHostProvider {
   }
 
   async getRepository(owner: string, repo: string): Promise<GitRepository> {
+    interface GitLabProject {
+      namespace: { path: string };
+      path: string;
+      path_with_namespace: string;
+      default_branch: string;
+      http_url_to_repo: string;
+      web_url: string;
+      description: string;
+      visibility: string;
+    }
+
     const projectPath = this.encodeProjectPath(owner, repo);
-    const data = await this.fetch<any>(`/projects/${projectPath}`);
+    const data = await this.fetch<GitLabProject>(`/projects/${projectPath}`);
 
     return {
       owner: data.namespace.path,
@@ -65,9 +93,15 @@ export class GitLabProvider implements GitHostProvider {
 
   async canUserPush(owner: string, repo: string): Promise<boolean> {
     try {
+      interface GitLabProjectWithPermissions {
+        permissions?: {
+          project_access?: { access_level?: number };
+        };
+      }
+
       const projectPath = this.encodeProjectPath(owner, repo);
-      const data = await this.fetch<any>(`/projects/${projectPath}`);
-      
+      const data = await this.fetch<GitLabProjectWithPermissions>(`/projects/${projectPath}`);
+
       // GitLab permissions are more granular
       // developer (30), maintainer (40), or owner (50) can push
       const accessLevel = data.permissions?.project_access?.access_level || 0;
@@ -78,8 +112,17 @@ export class GitLabProvider implements GitHostProvider {
   }
 
   async createFork(owner: string, repo: string): Promise<GitFork> {
+    interface GitLabFork {
+      namespace: { path: string };
+      path: string;
+      path_with_namespace: string;
+      http_url_to_repo: string;
+      web_url: string;
+      forked_from_project?: { path_with_namespace: string };
+    }
+
     const projectPath = this.encodeProjectPath(owner, repo);
-    const data = await this.fetch<any>(`/projects/${projectPath}/fork`, {
+    const data = await this.fetch<GitLabFork>(`/projects/${projectPath}/fork`, {
       method: 'POST',
     });
 
@@ -95,8 +138,17 @@ export class GitLabProvider implements GitHostProvider {
 
   async getFork(upstreamOwner: string, upstreamRepo: string, username: string): Promise<GitFork | null> {
     try {
+      interface GitLabForkCheck {
+        namespace: { path: string };
+        path: string;
+        path_with_namespace: string;
+        http_url_to_repo: string;
+        web_url: string;
+        forked_from_project?: { path_with_namespace: string };
+      }
+
       const forkPath = this.encodeProjectPath(username, upstreamRepo);
-      const data = await this.fetch<any>(`/projects/${forkPath}`);
+      const data = await this.fetch<GitLabForkCheck>(`/projects/${forkPath}`);
 
       // Check if it's a fork of the upstream
       if (data.forked_from_project?.path_with_namespace === `${upstreamOwner}/${upstreamRepo}`) {
@@ -141,7 +193,7 @@ export class GitLabProvider implements GitHostProvider {
     const sourceProjectPath = this.encodeProjectPath(options.headRepo.split('/')[0], options.headRepo.split('/')[1]);
     const [targetOwner, targetRepo] = options.baseRepo.split('/');
 
-    const data = await this.fetch<any>(`/projects/${sourceProjectPath}/merge_requests`, {
+    const data = await this.fetch<GitLabMRResponse>(`/projects/${sourceProjectPath}/merge_requests`, {
       method: 'POST',
       body: JSON.stringify({
         source_branch: options.headBranch,
@@ -158,7 +210,7 @@ export class GitLabProvider implements GitHostProvider {
 
   async getPullRequest(owner: string, repo: string, number: number): Promise<PullRequest> {
     const projectPath = this.encodeProjectPath(owner, repo);
-    const data = await this.fetch<any>(`/projects/${projectPath}/merge_requests/${number}`);
+    const data = await this.fetch<GitLabMRResponse>(`/projects/${projectPath}/merge_requests/${number}`);
     return this.transformMergeRequest(data);
   }
 
@@ -169,7 +221,7 @@ export class GitLabProvider implements GitHostProvider {
   ): Promise<PullRequest[]> {
     const projectPath = this.encodeProjectPath(owner, repo);
     const stateParam = state === 'all' ? 'all' : state === 'open' ? 'opened' : 'closed';
-    const data = await this.fetch<any[]>(`/projects/${projectPath}/merge_requests?state=${stateParam}`);
+    const data = await this.fetch<GitLabMRResponse[]>(`/projects/${projectPath}/merge_requests?state=${stateParam}`);
     return data.map(mr => this.transformMergeRequest(mr));
   }
 
@@ -180,7 +232,7 @@ export class GitLabProvider implements GitHostProvider {
     options: { title?: string; body?: string }
   ): Promise<PullRequest> {
     const projectPath = this.encodeProjectPath(owner, repo);
-    const data = await this.fetch<any>(`/projects/${projectPath}/merge_requests/${number}`, {
+    const data = await this.fetch<GitLabMRResponse>(`/projects/${projectPath}/merge_requests/${number}`, {
       method: 'PUT',
       body: JSON.stringify({
         title: options.title,
@@ -204,7 +256,14 @@ export class GitLabProvider implements GitHostProvider {
   }
 
   async getCurrentUser(): Promise<GitHostUser> {
-    const data = await this.fetch<any>('/user');
+    interface GitLabUser {
+      username: string;
+      name: string;
+      email: string;
+      avatar_url: string;
+    }
+
+    const data = await this.fetch<GitLabUser>('/user');
 
     return {
       username: data.username,
@@ -219,7 +278,23 @@ export class GitLabProvider implements GitHostProvider {
     return `https://gitlab.com/${baseRepo}/-/merge_requests/new?merge_request[source_branch]=${headBranch}&merge_request[source_project]=${headOwner}/${headRepoName}&merge_request[target_branch]=${baseBranch}`;
   }
 
-  private transformMergeRequest(data: any): PullRequest {
+  private transformMergeRequest(data: {
+    id: number;
+    iid: number;
+    state: string;
+    title: string;
+    description: string;
+    web_url: string;
+    created_at: string;
+    updated_at: string;
+    author: { username: string };
+    source_branch: string;
+    target_branch: string;
+    source_project_id: number;
+    target_project_id: number;
+    merge_status?: string;
+    merged_at?: string;
+  }): PullRequest {
     const state = data.state === 'merged' ? 'merged' : data.state === 'opened' ? 'open' : 'closed';
 
     return {
@@ -245,7 +320,7 @@ export class GitLabProvider implements GitHostProvider {
 
     return [{
       name: 'Pipeline',
-      status: data.pipeline.status === 'running' ? 'pending' : 
+      status: data.pipeline.status === 'running' ? 'pending' :
               data.pipeline.status === 'success' ? 'success' : 'failure',
       conclusion: data.pipeline.status,
       detailsUrl: data.pipeline.web_url,

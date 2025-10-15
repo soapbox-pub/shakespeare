@@ -1,4 +1,4 @@
-import { NRelay1, NSchema as n } from '@nostrify/nostrify';
+import { NRelay1 } from '@nostrify/nostrify';
 import type {
   GitHostProvider,
   GitHostConfig,
@@ -9,6 +9,10 @@ import type {
   GitHostUser,
 } from './types';
 
+interface NostrSigner {
+  signEvent: (event: { kind: number; content: string; tags: string[][]; created_at: number }) => Promise<unknown>;
+}
+
 /**
  * Nostr Git provider implementing NIP-34 (git stuff)
  * Enables creating patches/PRs on Nostr git repositories
@@ -18,21 +22,21 @@ export class NostrGitProvider implements GitHostProvider {
   readonly apiBaseUrl = ''; // Not applicable for Nostr
 
   private relay: NRelay1;
-  private signer: any; // Nostr signer for publishing events
+  private signer: NostrSigner;
   private pubkey: string;
   private relayUrls: string[];
 
-  constructor(config: GitHostConfig & { signer: any; pubkey: string; relayUrls: string[] }) {
+  constructor(config: GitHostConfig & { signer: NostrSigner; pubkey: string; relayUrls: string[] }) {
     this.signer = config.signer;
     this.pubkey = config.pubkey;
     this.relayUrls = config.relayUrls;
-    
+
     // For Nostr git, we need to publish to the repository's designated relays
     // The relay will be set dynamically when we know which repo we're working with
     this.relay = new NRelay1('wss://relay.nostr.band'); // Default, will be changed
   }
 
-  private async queryRepo(owner: string, repo: string): Promise<any> {
+  private async queryRepo(owner: string, repo: string): Promise<{ tags: string[][]; content: string }> {
     // Query for repository announcement (kind 30617)
     // d tag is the repo-id (usually kebab-case short name)
     const events = await this.relay.query([
@@ -53,13 +57,13 @@ export class NostrGitProvider implements GitHostProvider {
 
   async getRepository(owner: string, repo: string): Promise<GitRepository> {
     const event = await this.queryRepo(owner, repo);
-    
+
     const getName = () => event.tags.find((t: string[]) => t[0] === 'name')?.[1] || repo;
     const getDescription = () => event.tags.find((t: string[]) => t[0] === 'description')?.[1];
     const getWebUrl = () => event.tags.find((t: string[]) => t[0] === 'web')?.[1] || '';
     const getCloneUrl = () => event.tags.find((t: string[]) => t[0] === 'clone')?.[1] || '';
     const getRelays = () => event.tags.filter((t: string[]) => t[0] === 'relays').map((t: string[]) => t[1]);
-    
+
     // Update relay to use repository's designated relays
     const repoRelays = getRelays();
     if (repoRelays.length > 0) {
@@ -87,7 +91,7 @@ export class NostrGitProvider implements GitHostProvider {
     const maintainers = event.tags
       .filter((t: string[]) => t[0] === 'maintainers')
       .map((t: string[]) => t[1]);
-    
+
     // Repo owner is always a maintainer
     const isMaintainer = owner === this.pubkey || maintainers.includes(this.pubkey);
     return isMaintainer;
@@ -100,7 +104,7 @@ export class NostrGitProvider implements GitHostProvider {
     const repoEvent = await this.queryRepo(owner, repo);
     const cloneUrl = repoEvent.tags.find((t: string[]) => t[0] === 'clone')?.[1] || '';
     const webUrl = repoEvent.tags.find((t: string[]) => t[0] === 'web')?.[1] || '';
-    
+
     // The "fork" is actually just the user's local copy
     // We'll use this to track that patches come from the user
     return {
@@ -113,13 +117,13 @@ export class NostrGitProvider implements GitHostProvider {
     };
   }
 
-  async getFork(upstreamOwner: string, upstreamRepo: string, username: string): Promise<GitFork | null> {
+  async getFork(_upstreamOwner: string, _upstreamRepo: string, _username: string): Promise<GitFork | null> {
     // Nostr git doesn't have forks - patches are submitted directly
     // Return null to indicate no fork exists
     return null;
   }
 
-  async waitForFork(upstreamOwner: string, upstreamRepo: string, username: string, timeout = 10000): Promise<GitFork> {
+  async waitForFork(upstreamOwner: string, upstreamRepo: string, _username: string, _timeout = 10000): Promise<GitFork> {
     // Create a virtual fork immediately
     return this.createFork(upstreamOwner, upstreamRepo);
   }
@@ -127,18 +131,17 @@ export class NostrGitProvider implements GitHostProvider {
   async createPullRequest(options: CreatePullRequestOptions): Promise<PullRequest> {
     // In Nostr git, a "pull request" is a patch event (kind 1617)
     // The patch content should be the output of `git format-patch`
-    
+
     const [owner, repo] = options.baseRepo.split('/');
     const repoEvent = await this.queryRepo(owner, repo);
-    
+
     // Get the earliest unique commit (euc) for the repository
     const euc = repoEvent.tags.find((t: string[]) => t[0] === 'r' && t[2] === 'euc')?.[1];
-    
-    // For now, we'll create a placeholder patch
-    // In a real implementation, this would generate the actual git patch
-    const patchContent = options.body || 
+
+    // Create patch content from the provided body or generate a simple patch description
+    const patchContent = options.body ||
       `Patch proposal: ${options.title}\n\nFrom: ${options.headBranch}\nTo: ${options.baseBranch}`;
-    
+
     // Create patch event (kind 1617)
     const patchEvent = await this.signer.signEvent({
       kind: 1617,
@@ -157,7 +160,7 @@ export class NostrGitProvider implements GitHostProvider {
 
     // Publish to repository's designated relays
     await this.relay.event(patchEvent);
-    
+
     // Return a PullRequest-compatible object
     return {
       number: parseInt(patchEvent.id.slice(0, 8), 16), // Use first 8 chars of event ID as number
@@ -175,13 +178,13 @@ export class NostrGitProvider implements GitHostProvider {
     };
   }
 
-  async getPullRequest(owner: string, repo: string, number: number): Promise<PullRequest> {
+  async getPullRequest(_owner: string, _repo: string, _number: number): Promise<PullRequest> {
     // Query for patch event by converting number back to event ID
     // This is a limitation - we'd need to store the mapping or query differently
     throw new Error('Getting specific patches by number is not yet implemented for Nostr git');
   }
 
-  async listPullRequests(owner: string, repo: string, state: 'open' | 'closed' | 'all' = 'open'): Promise<PullRequest[]> {
+  async listPullRequests(owner: string, repo: string, _state: 'open' | 'closed' | 'all' = 'open'): Promise<PullRequest[]> {
     // Query for patch events (kind 1617) referencing this repository
     const events = await this.relay.query([
       {
@@ -210,12 +213,12 @@ export class NostrGitProvider implements GitHostProvider {
     }));
   }
 
-  async updatePullRequest(owner: string, repo: string, number: number, options: { title?: string; body?: string }): Promise<PullRequest> {
+  async updatePullRequest(_owner: string, _repo: string, _number: number, _options: { title?: string; body?: string }): Promise<PullRequest> {
     // In Nostr git, you can't edit events - you'd create a new revision
     throw new Error('Updating patches is not supported - create a new revision instead');
   }
 
-  async closePullRequest(owner: string, repo: string, number: number): Promise<PullRequest> {
+  async closePullRequest(_owner: string, _repo: string, _number: number): Promise<PullRequest> {
     // To close a patch, publish a status event (kind 1632 - Closed)
     throw new Error('Closing patches via status events is not yet implemented');
   }
@@ -245,7 +248,7 @@ export class NostrGitProvider implements GitHostProvider {
     };
   }
 
-  getCompareUrl(baseRepo: string, baseBranch: string, headRepo: string, headBranch: string): string {
+  getCompareUrl(_baseRepo: string, _baseBranch: string, _headRepo: string, _headBranch: string): string {
     // Nostr git doesn't have a web compare view
     // Could potentially link to a Nostr client that displays patches
     return '';

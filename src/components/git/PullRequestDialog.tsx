@@ -38,7 +38,6 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useNostr } from '@/hooks/useNostr';
 import { useAppContext } from '@/hooks/useAppContext';
 import { findCredentialsForRepo } from '@/lib/gitCredentials';
-import { createGitHostProvider, detectGitHost, parseRepoUrl } from '@/lib/git-hosts';
 import { nip19 } from 'nostr-tools';
 import type { GitCredential } from '@/contexts/GitSettingsContext';
 
@@ -179,7 +178,7 @@ export function PullRequestDialog({
     } finally {
       setIsCheckingPermissions(false);
     }
-  }, [remoteInfo, remoteUrl, settings.credentials]);
+  }, [remoteInfo, remoteUrl, settings.credentials, ensureFork]);
 
   useEffect(() => {
     if (isOpen && remoteUrl) {
@@ -211,7 +210,7 @@ export function PullRequestDialog({
       if (url.startsWith('nostr://')) {
         match = url.match(/^nostr:\/\/([^/]+)\/(.+)$/);
         if (match) {
-          let pubkeyOrNpub = match[1];
+          const pubkeyOrNpub = match[1];
           repo = match[2];  // repo-id (d tag)
 
           // Convert npub to hex if needed
@@ -827,7 +826,7 @@ export function PullRequestDialog({
         });
         baseRef = `origin/${baseBranch}`;
         console.log(`Using remote tracking branch: ${baseRef}`);
-      } catch (err) {
+      } catch {
         // Fall back to local branch if remote doesn't exist
         console.log(`Remote tracking branch origin/${baseBranch} not found, using local ${baseBranch}`);
       }
@@ -1001,7 +1000,7 @@ export function PullRequestDialog({
       let errorMessage = error.message || `GitHub API error: ${response.status} - ${response.statusText}`;
 
       if (error.errors && Array.isArray(error.errors)) {
-        const errorDetails = error.errors.map((e: any) => {
+        const errorDetails = error.errors.map((e: { message?: string; field?: string; code?: string }) => {
           if (e.message) return e.message;
           if (e.field && e.code) return `${e.field}: ${e.code}`;
           return JSON.stringify(e);

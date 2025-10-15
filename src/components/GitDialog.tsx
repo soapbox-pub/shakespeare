@@ -676,6 +676,7 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
   const syncStatus = getSyncStatus();
 
   const [isGitManagementOpen, setIsGitManagementOpen] = useState(false);
+  const [gitManagementDefaultTab, setGitManagementDefaultTab] = useState<string>('branches');
 
   return (
     <>
@@ -694,6 +695,7 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
                   size="sm"
                   className="gap-2"
                   onClick={() => {
+                    setGitManagementDefaultTab('branches');
                     setIsGitManagementOpen(true);
                     onOpenChange?.(false);
                   }}
@@ -962,12 +964,26 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
                         currentBranch={gitStatus.currentBranch}
                         onMergeComplete={() => refetchGitStatus()}
                       />
-                      {gitStatus.remotes.length > 0 && originUrl && (
+                      {gitStatus.remotes.length > 0 && originUrl && !originUrl.startsWith('nostr://') && (
                         <PullRequestDialog
                           projectId={projectId}
                           currentBranch={gitStatus.currentBranch}
                           remoteUrl={originUrl}
                         />
+                      )}
+                      {gitStatus.remotes.length > 0 && originUrl?.startsWith('nostr://') && (
+                        <Button
+                          variant="outline"
+                          className="gap-2"
+                          onClick={() => {
+                            setGitManagementDefaultTab('nostr');
+                            setIsGitManagementOpen(true);
+                            onOpenChange?.(false);
+                          }}
+                        >
+                          <GitPullRequest className="h-4 w-4" />
+                          Create Nostr Patch
+                        </Button>
                       )}
                     </CardContent>
                   </Card>
@@ -1029,6 +1045,7 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
         projectId={projectId}
         open={isGitManagementOpen}
         onOpenChange={setIsGitManagementOpen}
+        defaultTab={gitManagementDefaultTab}
       />
 
       {/* Create Branch Dialog */}

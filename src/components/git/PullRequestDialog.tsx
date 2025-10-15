@@ -682,76 +682,182 @@ export function PullRequestDialog({
       throw new Error('You must be logged in with Nostr to create patches');
     }
 
-    // Generate git patch using format-patch
-    // This will be the content of the patch event
+    // Query for the repository announcement to get earliest unique commit (euc)
+    const repoEvents = await nostr.query([
+      {
+        kinds: [30617],
+        authors: [info.owner],
+        '#d': [info.repo],
+        limit: 1,
+      }
+    ]);
+
+    let earliestUniqueCommit: string | null = null;
+    let publishRelays = ['wss://relay.nostr.band']; // Default relay
+
+    if (repoEvents.length > 0) {
+      const repoEvent = repoEvents[0];
+
+      // Get earliest unique commit from repository announcement
+      const eucTag = repoEvent.tags.find((t: string[]) => t[0] === 'r' && t[2] === 'euc');
+      if (eucTag) {
+        earliestUniqueCommit = eucTag[1];
+        console.log('Found earliest unique commit:', earliestUniqueCommit);
+      }
+
+      // Get relay hints from repository announcement
+      const relayTags = repoEvent.tags.filter((t: string[]) => t[0] === 'relays');
+      if (relayTags.length > 0) {
+        publishRelays = relayTags.map((t: string[]) => t[1]);
+        console.log('Publishing to repository relays:', publishRelays);
+      }
+    } else {
+      console.warn('Repository announcement not found - patch may not be discoverable');
+    }
+
+    // Generate git format-patch style content
     let patchContent: string;
+    let currentCommitId: string | null = null;
+    let parentCommitId: string | null = null;
+
     try {
-      // Get commits between base and head branches
-      const commits = await git.log({
+      // Get the current HEAD commit
+      const headCommit = await git.resolveRef({
+        dir: projectPath,
+        ref: headBranch,
+      });
+      currentCommitId = headCommit;
+
+      // Get commit details
+      const commit = await git.readCommit({
+        dir: projectPath,
+        oid: headCommit,
+      });
+
+      parentCommitId = commit.commit.parent[0] || null;
+
+      // Get all commits in the branch that aren't in base
+      const headCommits = await git.log({
         dir: projectPath,
         ref: headBranch,
       });
 
-      // For now, create a simplified patch description
-      // In a full implementation, we'd use git format-patch or similar
-      patchContent = `From: ${headBranch}\nTo: ${baseBranch}\n\n${title}\n\n${description || ''}`;
+      const baseCommits = await git.log({
+        dir: projectPath,
+        ref: baseBranch,
+      });
+
+      // Find commits unique to head branch
+      const baseCommitIds = new Set(baseCommits.map(c => c.oid));
+      const uniqueCommits = headCommits.filter(c => !baseCommitIds.has(c.oid));
+
+      console.log(`Found ${uniqueCommits.length} unique commits in ${headBranch}`);
+
+      // Generate patch in git format-patch style
+      if (uniqueCommits.length === 0) {
+        throw new Error('No commits to create patch from - branches are identical');
+      }
+
+      // Build patch content following git format-patch format
+      const patchLines = [];
+      patchLines.push(`From ${currentCommitId} Mon Sep 17 00:00:00 2001`);
+      patchLines.push(`From: ${commit.commit.author.name} <${commit.commit.author.email}>`);
+      patchLines.push(`Date: ${new Date(commit.commit.author.timestamp * 1000).toUTCString()}`);
+      patchLines.push(`Subject: [PATCH] ${title}`);
+      patchLines.push('');
+
+      if (description) {
+        patchLines.push(description);
+        patchLines.push('');
+      }
+
+      patchLines.push('---');
+      patchLines.push('');
+
+      // Add commit messages
+      for (const c of uniqueCommits) {
+        patchLines.push(`commit ${c.oid}`);
+        patchLines.push(`Author: ${c.commit.author.name} <${c.commit.author.email}>`);
+        patchLines.push(`Date: ${new Date(c.commit.author.timestamp * 1000).toUTCString()}`);
+        patchLines.push('');
+        patchLines.push(`    ${c.commit.message}`);
+        patchLines.push('');
+      }
+
+      patchContent = patchLines.join('\n');
 
       console.log('Generated patch content:', patchContent);
     } catch (err) {
       console.error('Failed to generate patch:', err);
-      throw new Error('Failed to generate patch content');
+      throw new Error('Failed to generate patch content: ' + (err instanceof Error ? err.message : 'Unknown error'));
+    }
+
+    // Build tags array for patch event
+    const tags: string[][] = [
+      ['a', `30617:${info.owner}:${info.repo}`], // Reference to repository announcement
+      ['p', info.owner], // Repository owner/maintainer
+      ['t', 'root'], // Root patch in series
+      ['t', 'root-revision'], // First patch in a revision
+      ['subject', title], // Patch title
+      ['alt', `Patch proposal for ${info.repo}: ${title}`], // NIP-31 alt tag
+    ];
+
+    // Add description if provided
+    if (description) {
+      tags.push(['description', description]);
+    }
+
+    // Add earliest unique commit for subscription filtering (NIP-34 requirement)
+    if (earliestUniqueCommit) {
+      tags.push(['r', earliestUniqueCommit]);
+    }
+
+    // Add current commit ID and parent for stable commit IDs
+    if (currentCommitId) {
+      tags.push(['commit', currentCommitId]);
+      tags.push(['r', currentCommitId]); // Also as 'r' tag for filtering
+    }
+
+    if (parentCommitId) {
+      tags.push(['parent-commit', parentCommitId]);
+    }
+
+    // Add committer information
+    try {
+      const commit = await git.readCommit({
+        dir: projectPath,
+        oid: currentCommitId!,
+      });
+
+      const committerName = commit.commit.committer.name;
+      const committerEmail = commit.commit.committer.email;
+      const timestamp = commit.commit.committer.timestamp.toString();
+      const timezoneOffset = commit.commit.committer.timezoneOffset.toString();
+
+      tags.push(['committer', committerName, committerEmail, timestamp, timezoneOffset]);
+    } catch (err) {
+      console.warn('Could not add committer tag:', err);
     }
 
     // Create patch event (kind 1617) per NIP-34
     const patchEvent = {
       kind: 1617,
       content: patchContent,
-      tags: [
-        ['a', `30617:${info.owner}:${info.repo}`], // Reference to repository announcement
-        ['p', info.owner], // Repository owner/maintainer
-        ['t', 'root'], // Root patch in series
-        ['t', 'root-revision'], // First patch in a revision
-        ['subject', title], // Patch title
-        ['description', description || ''], // Optional description
-        ['alt', `Patch proposal for ${info.repo}: ${title}`], // NIP-31 alt tag for human-readable description
-      ],
+      tags,
       created_at: Math.floor(Date.now() / 1000),
     };
 
-    console.log('Signing patch event:', patchEvent);
+    console.log('Signing patch event with tags:', tags);
 
     // Sign the event with user's signer
     const signedEvent = await user.signer.signEvent(patchEvent);
 
     console.log('Signed patch event:', signedEvent);
 
-    // Publish to Nostr relays
-    // Get the repository's designated relays from the repo announcement
+    // Publish the patch event to designated relays
     try {
-      // Query for the repository announcement to get relay hints
-      const repoEvents = await nostr.query([
-        {
-          kinds: [30617],
-          authors: [info.owner],
-          '#d': [info.repo],
-          limit: 1,
-        }
-      ]);
-
-      let publishRelays = ['wss://relay.nostr.band']; // Default relay
-
-      if (repoEvents.length > 0) {
-        const repoEvent = repoEvents[0];
-        const relayTags = repoEvent.tags.filter((t: string[]) => t[0] === 'relays');
-        if (relayTags.length > 0) {
-          publishRelays = relayTags.map((t: string[]) => t[1]);
-          console.log('Publishing to repository relays:', publishRelays);
-        }
-      }
-
-      // Publish the patch event
       await nostr.event(signedEvent);
-      console.log('Published patch to Nostr');
+      console.log('Published patch to Nostr relays');
 
       // Return a nostr event reference as the "PR URL"
       const eventRef = `nostr:${signedEvent.id}`;

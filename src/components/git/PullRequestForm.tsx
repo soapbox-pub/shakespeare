@@ -185,10 +185,54 @@ export function PullRequestForm({ projectId, currentBranch, remoteUrl }: PullReq
         throw new Error('No credentials found. Please add credentials in Settings > Git');
       }
 
-      // Create PR (simplified - full implementation in PullRequestDialog)
-      const headRef = forkInfo.needsFork && forkInfo.forkOwner 
+      // If fork is needed, push the branch first
+      const headRef = forkInfo.needsFork && forkInfo.forkOwner
         ? `${forkInfo.forkOwner}:${currentBranch}`
         : currentBranch;
+
+      if (forkInfo.needsFork && forkInfo.forkUrl) {
+        console.log(`Pushing branch ${currentBranch} to fork ${forkInfo.forkUrl}`);
+
+        // Check current remotes
+        const remotes = await git.listRemotes({ dir: projectPath });
+        const originRemote = remotes.find(r => r.remote === 'origin');
+        const forkRemote = remotes.find(r => r.url === forkInfo.forkUrl);
+
+        let pushRemote = 'origin';
+
+        if (originRemote?.url !== forkInfo.forkUrl) {
+          if (forkRemote) {
+            pushRemote = forkRemote.remote;
+          } else {
+            await git.addRemote({
+              dir: projectPath,
+              remote: 'fork',
+              url: forkInfo.forkUrl,
+            });
+            pushRemote = 'fork';
+          }
+        }
+
+        try {
+          await git.push({
+            dir: projectPath,
+            remote: pushRemote,
+            ref: currentBranch,
+            onAuth: () => credentials,
+          });
+          console.log('Successfully pushed to fork');
+        } catch (pushError) {
+          const errorMsg = pushError instanceof Error ? pushError.message : 'Unknown error';
+          throw new Error(
+            `Failed to push branch '${currentBranch}' to your fork.\n\n` +
+            `This usually means:\n` +
+            `1. The branch hasn't been committed yet\n` +
+            `2. Network/authentication issues\n\n` +
+            `Error: ${errorMsg}\n\n` +
+            `Try committing and pushing manually first.`
+          );
+        }
+      }
 
       const url = `${remoteInfo.apiUrl}/repos/${remoteInfo.owner}/${remoteInfo.repo}/pulls`;
       const response = await fetch(url, {
@@ -208,7 +252,32 @@ export function PullRequestForm({ projectId, currentBranch, remoteUrl }: PullReq
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(errorText || 'Failed to create PR');
+        console.error('PR creation failed:', errorText);
+
+        let error;
+        try {
+          error = JSON.parse(errorText);
+        } catch {
+          error = { message: errorText || 'Unknown error' };
+        }
+
+        // Extract detailed error messages
+        let errorMessage = error.message || `API error: ${response.status} - ${response.statusText}`;
+
+        if (error.errors && Array.isArray(error.errors)) {
+          const errorDetails = error.errors.map((e: any) => {
+            if (e.message) return e.message;
+            if (e.field && e.code) return `${e.field}: ${e.code}`;
+            return JSON.stringify(e);
+          }).join('; ');
+          errorMessage = `${errorMessage}\n\nDetails: ${errorDetails}`;
+        }
+
+        if (error.documentation_url) {
+          errorMessage = `${errorMessage}\n\nSee: ${error.documentation_url}`;
+        }
+
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
@@ -311,7 +380,7 @@ export function PullRequestForm({ projectId, currentBranch, remoteUrl }: PullReq
       {error && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
+          <AlertDescription className="whitespace-pre-wrap">{error}</AlertDescription>
         </Alert>
       )}
 

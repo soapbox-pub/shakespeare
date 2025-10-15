@@ -273,11 +273,73 @@ export function PullRequestDialog({
         );
       }
 
-      // If fork is needed, ensure we have it set up
+      // If fork is needed, we need to push the branch to the fork first
       let headRef = currentBranch;
-      if (forkInfo.needsFork && forkInfo.forkOwner) {
+      if (forkInfo.needsFork && forkInfo.forkOwner && forkInfo.forkUrl) {
         // For cross-fork PRs, head ref format is "owner:branch"
         headRef = `${forkInfo.forkOwner}:${currentBranch}`;
+
+        console.log(`Setting up fork workflow for ${forkInfo.forkOwner}/${forkInfo.forkRepo}`);
+
+        // Check current remotes
+        const remotes = await git.listRemotes({ dir: projectPath });
+        console.log('Current remotes:', remotes);
+
+        const originRemote = remotes.find(r => r.remote === 'origin');
+        const forkRemote = remotes.find(r => r.url === forkInfo.forkUrl);
+
+        // Determine which remote to use for pushing
+        let pushRemote = 'origin';
+
+        if (originRemote?.url !== forkInfo.forkUrl) {
+          // Origin doesn't point to the fork - need to set it up
+          console.log('Origin does not point to fork, checking for fork remote');
+
+          if (forkRemote) {
+            pushRemote = forkRemote.remote;
+            console.log(`Using existing remote '${pushRemote}' for fork`);
+          } else {
+            // Add fork as a new remote
+            console.log('Adding fork as new remote: fork');
+            try {
+              await git.addRemote({
+                dir: projectPath,
+                remote: 'fork',
+                url: forkInfo.forkUrl,
+              });
+              pushRemote = 'fork';
+            } catch (addRemoteError) {
+              console.error('Failed to add fork remote:', addRemoteError);
+              // Continue anyway, might already exist
+              pushRemote = 'fork';
+            }
+          }
+        }
+
+        // Push the current branch to the fork
+        console.log(`Pushing branch ${currentBranch} to ${pushRemote} (${forkInfo.forkUrl})`);
+
+        try {
+          await git.push({
+            dir: projectPath,
+            remote: pushRemote,
+            ref: currentBranch,
+            onAuth: () => credentials,
+          });
+          console.log('Successfully pushed to fork');
+        } catch (pushError) {
+          console.error('Failed to push to fork:', pushError);
+          const errorMsg = pushError instanceof Error ? pushError.message : 'Unknown error';
+          throw new Error(
+            `Failed to push branch '${currentBranch}' to your fork at ${forkInfo.forkUrl}.\n\n` +
+            `This usually means:\n` +
+            `1. The branch hasn't been committed yet\n` +
+            `2. Network/authentication issues\n` +
+            `3. The fork URL is incorrect\n\n` +
+            `Error details: ${errorMsg}\n\n` +
+            `Try pushing manually first, then create the PR.`
+          );
+        }
       }
 
       // Create PR based on platform
@@ -465,7 +527,23 @@ export function PullRequestDialog({
         error = { message: errorText || 'Unknown error' };
       }
 
-      throw new Error(error.message || `GitHub API error: ${response.status} - ${response.statusText}`);
+      // GitHub validation errors often include detailed field-specific messages
+      let errorMessage = error.message || `GitHub API error: ${response.status} - ${response.statusText}`;
+
+      if (error.errors && Array.isArray(error.errors)) {
+        const errorDetails = error.errors.map((e: any) => {
+          if (e.message) return e.message;
+          if (e.field && e.code) return `${e.field}: ${e.code}`;
+          return JSON.stringify(e);
+        }).join('; ');
+        errorMessage = `${errorMessage}\nDetails: ${errorDetails}`;
+      }
+
+      if (error.documentation_url) {
+        errorMessage = `${errorMessage}\nSee: ${error.documentation_url}`;
+      }
+
+      throw new Error(errorMessage);
     }
 
     const data = await response.json();
@@ -642,7 +720,7 @@ export function PullRequestDialog({
               {error && (
                 <Alert variant="destructive">
                   <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>{error}</AlertDescription>
+                  <AlertDescription className="whitespace-pre-wrap">{error}</AlertDescription>
                 </Alert>
               )}
 

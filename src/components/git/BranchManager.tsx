@@ -188,8 +188,20 @@ export function BranchManager({ projectId, currentBranch, onBranchChange }: Bran
         object: currentRef,
       });
 
-      // Check if we can automatically switch to the new branch
-      const hasUncommittedChanges = gitStatus?.hasUncommittedChanges ?? false;
+      // Check if we have uncommitted changes by getting status directly
+      const statusMatrix = await git.statusMatrix({
+        dir: projectPath,
+      });
+
+      // Check if any files have changes (modified, added, deleted, or untracked)
+      const hasUncommittedChanges = statusMatrix.some(([, headStatus, workdirStatus, stageStatus]) => {
+        // No changes if all statuses match and file exists in HEAD
+        if (headStatus === workdirStatus && workdirStatus === stageStatus) {
+          return false;
+        }
+        // File has changes
+        return true;
+      });
 
       if (!hasUncommittedChanges) {
         // No uncommitted changes, automatically switch to the new branch

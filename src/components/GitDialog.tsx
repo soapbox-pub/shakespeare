@@ -44,6 +44,7 @@ import {
   Zap,
   Save,
   Settings2,
+  GitPullRequest,
 } from 'lucide-react';
 import { useGitStatus } from '@/hooks/useGitStatus';
 import { useGitSettings } from '@/hooks/useGitSettings';

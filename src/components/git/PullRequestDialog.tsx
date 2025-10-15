@@ -36,6 +36,7 @@ import { useGitSettings } from '@/hooks/useGitSettings';
 import { useToast } from '@/hooks/useToast';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useNostr } from '@/hooks/useNostr';
+import { useAppContext } from '@/hooks/useAppContext';
 import { findCredentialsForRepo } from '@/lib/gitCredentials';
 import { createGitHostProvider, detectGitHost, parseRepoUrl } from '@/lib/git-hosts';
 import { nip19 } from 'nostr-tools';
@@ -87,6 +88,7 @@ export function PullRequestDialog({
   const { toast } = useToast();
   const { user } = useCurrentUser();
   const { nostr } = useNostr();
+  const { config } = useAppConfig();
   const projectPath = `/projects/${projectId}`;
 
   useEffect(() => {
@@ -702,7 +704,7 @@ export function PullRequestDialog({
     console.log(`Repository announcement query returned ${repoEvents.length} events`);
 
     let earliestUniqueCommit: string | null = null;
-    let publishRelays = ['wss://relay.nostr.band']; // Default relay
+    let publishRelays = [config.relayUrl]; // Use configured relay
 
     if (repoEvents.length > 0) {
       const repoEvent = repoEvents[0];
@@ -723,12 +725,66 @@ export function PullRequestDialog({
         publishRelays = relayTags.map((t: string[]) => t[1]);
         console.log('Publishing to repository relays:', publishRelays);
       } else {
-        console.log('No relay hints in repository announcement, using default relay');
+        console.log('No relay hints in repository announcement, using configured relay');
       }
     } else {
-      console.warn('Repository announcement not found - patch may not be discoverable');
-      console.warn('Make sure to use "Announce Repository" button first to create kind 30617 event');
-      console.warn('The announcement must be on the same relay you are currently connected to');
+      console.log('Repository announcement not found - creating one automatically');
+
+      // Auto-announce repository
+      try {
+        // Get earliest commit for euc tag
+        const commits = await git.log({
+          dir: projectPath,
+          ref: 'HEAD',
+        });
+
+        let euc: string | null = null;
+        if (commits.length > 0) {
+          euc = commits[commits.length - 1].oid;
+        }
+
+        // Build repository announcement event
+        const repoTags: string[][] = [
+          ['d', info.repo],
+          ['name', info.repo.split('/').pop() || info.repo],
+          ['clone', remoteUrl || ''],
+          ['relays', config.relayUrl],
+        ];
+
+        if (euc) {
+          repoTags.push(['r', euc, 'euc']);
+          earliestUniqueCommit = euc;
+        }
+
+        const repoAnnouncement = {
+          kind: 30617,
+          content: '',
+          tags: repoTags,
+          created_at: Math.floor(Date.now() / 1000),
+        };
+
+        console.log('Auto-creating repository announcement:', repoAnnouncement);
+
+        const signedRepoEvent = await user.signer.signEvent(repoAnnouncement);
+
+        console.log('Signed repository announcement:', signedRepoEvent);
+
+        await nostr.event(signedRepoEvent);
+
+        console.log('Successfully auto-announced repository');
+
+        toast({
+          title: 'Repository announced',
+          description: 'Automatically created repository announcement for patch submission',
+        });
+      } catch (announceError) {
+        console.error('Failed to auto-announce repository:', announceError);
+        throw new Error(
+          'Repository announcement not found and failed to create one automatically.\n\n' +
+          `Error: ${announceError instanceof Error ? announceError.message : 'Unknown error'}\n\n` +
+          'Please try using the "Announce Repository" button manually.'
+        );
+      }
     }
 
     // Generate git format-patch style content

@@ -79,10 +79,6 @@ export class ProjectsManager {
     await this.git.commit({
       dir: project.path,
       message: 'New project created with Shakespeare',
-      author: {
-        name: 'shakespeare.diy',
-        email: 'assistant@shakespeare.diy',
-      },
     });
 
     // Automatically request persistent storage after project creation
@@ -220,10 +216,6 @@ export class ProjectsManager {
           await this.git.commit({
             dir: projectPath,
             message: `Overwrite project from ${zipFile.name}`,
-            author: {
-              name: 'shakespeare.diy',
-              email: 'assistant@shakespeare.diy',
-            },
           });
         }
       } catch {
@@ -249,10 +241,6 @@ export class ProjectsManager {
         await this.git.commit({
           dir: projectPath,
           message: `Import project from ${zipFile.name}`,
-          author: {
-            name: 'shakespeare.diy',
-            email: 'assistant@shakespeare.diy',
-          },
         });
       }
 

@@ -7,6 +7,9 @@ export interface GitCredential {
 
 export interface GitSettings {
   credentials: Record<string, GitCredential>; // keyed by origin
+  name?: string;
+  email?: string;
+  coAuthorEnabled?: boolean;
 }
 
 export interface GitSettingsContextType {

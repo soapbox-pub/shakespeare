@@ -164,6 +164,7 @@ describe('configUtils', () => {
 
         expect(result).toEqual({
           credentials: {},
+          coAuthorEnabled: true,
         });
       });
     });

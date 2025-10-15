@@ -19,6 +19,9 @@ vi.mock('@nostrify/nostrify', () => ({
     lookup: vi.fn(),
   },
 }));
+vi.mock('./configUtils', () => ({
+  readGitSettings: vi.fn(),
+}));
 
 const mockGit = vi.mocked(git);
 
@@ -290,6 +293,134 @@ describe('Git', () => {
         dir: '/test',
         remote: 'upstream',
         url: 'nostr://npub1abc123/my-repo',
+      });
+    });
+  });
+
+  describe('commit with Git identity settings', () => {
+    beforeEach(() => {
+      mockGit.commit = vi.fn().mockResolvedValue('abc123');
+    });
+
+    it('uses shakespeare.diy as default author when no Git identity is configured', async () => {
+      const { readGitSettings } = await import('./configUtils');
+      vi.mocked(readGitSettings).mockResolvedValue({
+        credentials: {},
+        coAuthorEnabled: true,
+      });
+
+      await gitInstance.commit({
+        dir: '/test',
+        message: 'Test commit',
+      });
+
+      expect(mockGit.commit).toHaveBeenCalledWith({
+        fs,
+        dir: '/test',
+        message: 'Test commit',
+        author: {
+          name: 'shakespeare.diy',
+          email: 'assistant@shakespeare.diy',
+        },
+        committer: {
+          name: 'shakespeare.diy',
+          email: 'assistant@shakespeare.diy',
+        },
+      });
+    });
+
+    it('uses custom identity when both name and email are configured', async () => {
+      const { readGitSettings } = await import('./configUtils');
+      vi.mocked(readGitSettings).mockResolvedValue({
+        credentials: {},
+        name: 'John Doe',
+        email: 'john@example.com',
+        coAuthorEnabled: true,
+      });
+
+      await gitInstance.commit({
+        dir: '/test',
+        message: 'Test commit',
+      });
+
+      expect(mockGit.commit).toHaveBeenCalledWith({
+        fs,
+        dir: '/test',
+        message: 'Test commit\n\nCo-authored-by: shakespeare.diy <assistant@shakespeare.diy>',
+        author: {
+          name: 'John Doe',
+          email: 'john@example.com',
+        },
+        committer: {
+          name: 'John Doe',
+          email: 'john@example.com',
+        },
+      });
+    });
+
+    it('does not add co-author when coAuthorEnabled is false', async () => {
+      const { readGitSettings } = await import('./configUtils');
+      vi.mocked(readGitSettings).mockResolvedValue({
+        credentials: {},
+        name: 'John Doe',
+        email: 'john@example.com',
+        coAuthorEnabled: false,
+      });
+
+      await gitInstance.commit({
+        dir: '/test',
+        message: 'Test commit',
+      });
+
+      expect(mockGit.commit).toHaveBeenCalledWith({
+        fs,
+        dir: '/test',
+        message: 'Test commit',
+        author: {
+          name: 'John Doe',
+          email: 'john@example.com',
+        },
+        committer: {
+          name: 'John Doe',
+          email: 'john@example.com',
+        },
+      });
+    });
+
+    it('respects provided author when explicitly passed', async () => {
+      const { readGitSettings } = await import('./configUtils');
+      vi.mocked(readGitSettings).mockResolvedValue({
+        credentials: {},
+        name: 'John Doe',
+        email: 'john@example.com',
+        coAuthorEnabled: true,
+      });
+
+      await gitInstance.commit({
+        dir: '/test',
+        message: 'Test commit',
+        author: {
+          name: 'Custom Author',
+          email: 'custom@example.com',
+        },
+        committer: {
+          name: 'Custom Committer',
+          email: 'committer@example.com',
+        },
+      });
+
+      expect(mockGit.commit).toHaveBeenCalledWith({
+        fs,
+        dir: '/test',
+        message: 'Test commit',
+        author: {
+          name: 'Custom Author',
+          email: 'custom@example.com',
+        },
+        committer: {
+          name: 'Custom Committer',
+          email: 'committer@example.com',
+        },
       });
     });
   });

@@ -264,10 +264,6 @@ export function MergeDialog({
         const mergeCommitOid = await git.commit({
           dir: projectPath,
           message: `Merge branch '${sourceBranch}' into ${currentBranch}`,
-          author: {
-            name: 'shakespeare.diy',
-            email: 'assistant@shakespeare.diy',
-          },
           parent: [targetOid, sourceOid], // Two parents for merge commit
           tree: result.tree,
         });

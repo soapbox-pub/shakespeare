@@ -33,6 +33,9 @@ const gitCredentialSchema = z.object({
 
 const gitSettingsSchema = z.object({
   credentials: z.record(z.string(), gitCredentialSchema),
+  name: z.string().optional(),
+  email: z.string().optional(),
+  coAuthorEnabled: z.boolean().optional(),
 });
 
 /**
@@ -81,6 +84,7 @@ export async function writeAISettings(fs: JSRuntimeFS, settings: AISettings): Pr
 export async function readGitSettings(fs: JSRuntimeFS): Promise<GitSettings> {
   const defaultSettings: GitSettings = {
     credentials: {},
+    coAuthorEnabled: true,
   };
 
   // Try to read from VFS first

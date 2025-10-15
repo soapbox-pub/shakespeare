@@ -206,10 +206,6 @@ ${commitsToRevert.map(c => {
       await git.commit({
         dir: projectPath,
         message: revertMessage,
-        author: {
-          name: 'shakespeare.diy',
-          email: 'assistant@shakespeare.diy',
-        },
       });
 
       toast({

@@ -75,14 +75,6 @@ describe('GitCommitTool', () => {
     expect(mockGitInstance.commit).toHaveBeenCalledWith({
       dir: '/test/project',
       message: 'Add new feature',
-      author: {
-        name: 'shakespeare.diy',
-        email: 'assistant@shakespeare.diy',
-      },
-      committer: {
-        name: 'shakespeare.diy',
-        email: 'assistant@shakespeare.diy',
-      },
     });
     expect(result).toContain('✅ Successfully committed 2 files (abcd123)');
     expect(result).toContain('Add new feature');
@@ -179,34 +171,7 @@ describe('GitCommitTool', () => {
     expect(result).toContain('📊 Changes:');
   });
 
-  it('should use git config when available', async () => {
-    // Mock .git directory exists
-    vi.mocked(mockFS.stat).mockResolvedValue({
-      isDirectory: () => true,
-      isFile: () => false,
-    });
 
-    // Mock git config
-    vi.mocked(mockGitInstance.getConfig)
-      .mockResolvedValueOnce('John Doe') // user.name
-      .mockResolvedValueOnce('john@example.com'); // user.email
-
-    const result = await tool.execute({ message: 'Test commit' });
-
-    expect(mockGitInstance.commit).toHaveBeenCalledWith({
-      dir: '/test/project',
-      message: 'Test commit',
-      author: {
-        name: 'John Doe',
-        email: 'john@example.com',
-      },
-      committer: {
-        name: 'John Doe',
-        email: 'john@example.com',
-      },
-    });
-    expect(result).toContain('✅ Successfully committed');
-  });
 
   it('should handle very long commit message', async () => {
     // Mock .git directory exists

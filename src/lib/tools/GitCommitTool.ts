@@ -89,34 +89,10 @@ export class GitCommitTool implements Tool<GitCommitParams> {
         // Default to 'main' if we can't get the current branch
       }
 
-      // Get author info (use default if not configured)
-      const author = {
-        name: 'shakespeare.diy',
-        email: 'assistant@shakespeare.diy',
-      };
-
-      // Try to get configured author from git config
-      try {
-        const configName = await this.git.getConfig({
-          dir: this.cwd,
-          path: 'user.name',
-        });
-        const configEmail = await this.git.getConfig({
-          dir: this.cwd,
-          path: 'user.email',
-        });
-        if (configName) author.name = configName;
-        if (configEmail) author.email = configEmail;
-      } catch {
-        // Use defaults if config is not set
-      }
-
-      // Commit the changes
+      // Commit the changes (author/committer will be set automatically by Git class)
       const commitSha = await this.git.commit({
         dir: this.cwd,
         message: message.trim(),
-        author,
-        committer: author,
       });
 
       // Get short hash (first 7 characters)

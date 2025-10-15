@@ -53,29 +53,6 @@ export class GitCommitCommand implements GitSubcommand {
         return createErrorResult('nothing to commit, working tree clean');
       }
 
-      // Get author info
-      const author = {
-        name: 'shakespeare.diy',
-        email: 'assistant@shakespeare.diy',
-      };
-
-      try {
-        const configName = await this.git.getConfig({
-
-          dir: this.pwd,
-          path: 'user.name',
-        });
-        const configEmail = await this.git.getConfig({
-
-          dir: this.pwd,
-          path: 'user.email',
-        });
-        if (configName) author.name = configName;
-        if (configEmail) author.email = configEmail;
-      } catch {
-        // Use defaults
-      }
-
       let commitMessage = message;
       if (options.amend) {
         // Get the last commit message if amending
@@ -111,14 +88,10 @@ export class GitCommitCommand implements GitSubcommand {
       const commitOptions: {
         dir: string;
         message: string;
-        author: { name: string; email: string };
-        committer: { name: string; email: string };
         parent?: string[];
       } = {
         dir: this.pwd,
         message: commitMessage || 'Empty commit',
-        author,
-        committer: author,
       };
 
       if (options.amend) {

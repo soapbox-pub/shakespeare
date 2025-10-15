@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Switch } from '@/components/ui/switch';
 import { useGitSettings } from '@/hooks/useGitSettings';
 import { useGitHubOAuth } from '@/hooks/useGitHubOAuth';
 import { useIsMobile } from '@/hooks/useIsMobile';
@@ -40,7 +41,7 @@ const PRESET_PROVIDERS: PresetProvider[] = [
 
 export function GitSettings() {
   const { t } = useTranslation();
-  const { settings, addCredential, removeCredential, updateCredential } = useGitSettings();
+  const { settings, addCredential, removeCredential, updateCredential, updateSettings } = useGitSettings();
   const { initiateOAuth, isLoading: isOAuthLoading, error: oauthError, isOAuthConfigured } = useGitHubOAuth();
   const isMobile = useIsMobile();
   const navigate = useNavigate();
@@ -370,6 +371,50 @@ export function GitSettings() {
                       {t('credentialsExist')}
                     </p>
                   )}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </div>
+
+        {/* Git Identity */}
+        <div className="space-y-3">
+          <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="git-identity" className="border rounded-lg">
+              <AccordionTrigger className="px-4 py-3 hover:no-underline">
+                <h4 className="text-sm font-medium">{t('gitIdentity')}</h4>
+              </AccordionTrigger>
+              <AccordionContent className="px-4 pb-4">
+                <div className="space-y-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="git-name">{t('name')}</Label>
+                    <Input
+                      id="git-name"
+                      placeholder="Your Name"
+                      value={settings.name || ''}
+                      onChange={(e) => updateSettings({ name: e.target.value })}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="git-email">{t('email')}</Label>
+                    <Input
+                      id="git-email"
+                      type="email"
+                      placeholder="your.email@example.com"
+                      value={settings.email || ''}
+                      onChange={(e) => updateSettings({ email: e.target.value })}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between space-x-2">
+                    <Label htmlFor="co-author" className="flex-1 cursor-pointer">
+                      {t('coAuthoredByShakespeare')}
+                    </Label>
+                    <Switch
+                      id="co-author"
+                      checked={settings.coAuthorEnabled ?? true}
+                      onCheckedChange={(checked) => updateSettings({ coAuthorEnabled: checked })}
+                    />
+                  </div>
                 </div>
               </AccordionContent>
             </AccordionItem>

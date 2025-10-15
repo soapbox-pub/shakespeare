@@ -2,6 +2,7 @@ import git, { GitHttpRequest, GitHttpResponse, HttpClient } from 'isomorphic-git
 import { NIP05 } from '@nostrify/nostrify';
 import { nip19 } from 'nostr-tools';
 import { proxyUrl } from './proxyUrl';
+import { readGitSettings } from './configUtils';
 import type { NostrEvent, NostrSigner, NPool } from '@nostrify/nostrify';
 import type { JSRuntimeFS } from './JSRuntime';
 
@@ -92,9 +93,50 @@ export class Git {
 
   // Commits and history
   async commit(options: Omit<Parameters<typeof git.commit>[0], 'fs'>) {
+    // If author is not provided, use Git identity settings
+    let author = options.author;
+    let committer = options.committer;
+    let message = options.message;
+
+    if (!author || !committer) {
+      // Read Git identity settings from config
+      const gitSettings = await readGitSettings(this.fs);
+
+      // Determine author based on Git identity settings
+      const defaultAuthor = {
+        name: 'shakespeare.diy',
+        email: 'assistant@shakespeare.diy',
+      };
+
+      const hasCustomIdentity = gitSettings.name && gitSettings.email;
+
+      if (hasCustomIdentity) {
+        const customAuthor = {
+          name: gitSettings.name!,
+          email: gitSettings.email!,
+        };
+
+        // Use custom identity
+        if (!author) author = customAuthor;
+        if (!committer) committer = customAuthor;
+
+        // Add Shakespeare as co-author if enabled
+        if (gitSettings.coAuthorEnabled ?? true) {
+          message = `${message}\n\nCo-authored-by: shakespeare.diy <assistant@shakespeare.diy>`;
+        }
+      } else {
+        // Use Shakespeare as default author
+        if (!author) author = defaultAuthor;
+        if (!committer) committer = defaultAuthor;
+      }
+    }
+
     return git.commit({
       fs: this.fs,
       ...options,
+      author,
+      committer,
+      message,
     });
   }
 

@@ -72,6 +72,8 @@ const resources = {
       add: 'Add',
       remove: 'Remove',
       retry: 'Retry',
+      name: 'Name',
+      email: 'Email',
 
       // Shakespeare Main Page
       buildNostrApps: 'Build apps with AI',
@@ -211,6 +213,11 @@ const resources = {
       password: 'Password',
       enterPassword: 'Enter your password/token',
       credentialsExist: 'Credentials for this origin already exist',
+      gitIdentity: 'Git Identity',
+      gitName: 'Git Name',
+      gitEmail: 'Git Email',
+      coAuthoredByShakespeare: 'Co-authored by Shakespeare',
+      gitIdentityDescription: 'If both name and email are configured, they will be used as the commit author. Otherwise, shakespeare.diy will be used. When co-author is enabled, Shakespeare will be added as a co-author.',
 
       // About Settings
       aboutShakespeare: 'About Shakespeare',
@@ -385,6 +392,8 @@ const resources = {
       add: 'Adicionar',
       remove: 'Remover',
       retry: 'Tentar novamente',
+      name: 'Nome',
+      email: 'Email',
 
       // Shakespeare Main Page
       buildNostrApps: 'Construa aplicativos com IA',
@@ -524,6 +533,11 @@ const resources = {
       password: 'Senha',
       enterPassword: 'Digite sua senha/token',
       credentialsExist: 'Credenciais para esta origem já existem',
+      gitIdentity: 'Identidade Git',
+      gitName: 'Nome Git',
+      gitEmail: 'Email Git',
+      coAuthoredByShakespeare: 'Co-autoria de Shakespeare',
+      gitIdentityDescription: 'Se nome e email estiverem configurados, eles serão usados como autor do commit. Caso contrário, shakespeare.diy será usado. Quando co-autoria estiver ativada, Shakespeare será adicionado como co-autor.',
       projectTemplate: 'Modelo de Projeto',
       projectTemplateDescription: 'URL do repositório Git a ser usado como modelo inicial para novos projetos.',
       corsProxy: 'Proxy CORS',
@@ -704,6 +718,8 @@ const resources = {
       add: '添加',
       remove: '移除',
       retry: '重试',
+      name: '名称',
+      email: '邮箱',
 
       // Shakespeare Main Page
       buildNostrApps: '使用AI构建应用',
@@ -843,6 +859,11 @@ const resources = {
       password: '密码',
       enterPassword: '输入您的密码/令牌',
       credentialsExist: '此源的凭据已存在',
+      gitIdentity: 'Git身份',
+      gitName: 'Git名称',
+      gitEmail: 'Git邮箱',
+      coAuthoredByShakespeare: 'Shakespeare共同作者',
+      gitIdentityDescription: '如果配置了名称和邮箱，它们将用作提交作者。否则，将使用shakespeare.diy。启用共同作者时，Shakespeare将被添加为共同作者。',
       projectTemplate: '项目模板',
       projectTemplateDescription: '用作新项目起始模板的Git仓库URL。',
       corsProxy: 'CORS代理',
@@ -1023,6 +1044,8 @@ const resources = {
       add: 'Ƙara',
       remove: 'Cire',
       retry: 'Sake gwadawa',
+      name: 'Suna',
+      email: 'Imel',
 
       // Shakespeare Main Page
       buildNostrApps: 'Gina aikace-aikace da AI',
@@ -1162,6 +1185,11 @@ const resources = {
       password: 'Kalmar sirri',
       enterPassword: 'Shigar da kalmar sirri/alamar ku',
       credentialsExist: 'Bayanan shaidar wannan asali sun riga sun wanzu',
+      gitIdentity: 'Shaida Git',
+      gitName: 'Sunan Git',
+      gitEmail: 'Imel Git',
+      coAuthoredByShakespeare: 'Haɗin marubuta da Shakespeare',
+      gitIdentityDescription: 'Idan an saita suna da imel, za a yi amfani da su azaman marubucin aikin. In ba haka ba, za a yi amfani da shakespeare.diy. Lokacin da aka kunna haɗin marubuta, za a ƙara Shakespeare azaman haɗin marubuta.',
       projectTemplate: 'Samfurin Aikin',
       projectTemplateDescription: 'URL ɗin ma\'ajin Git da za a yi amfani da shi azaman samfurin farawa don sababbin ayyuka.',
       corsProxy: 'CORS Proxy',
@@ -1342,6 +1370,8 @@ const resources = {
       add: 'Fi kun',
       remove: 'Yọ kuro',
       retry: 'Tun gbiyanju',
+      name: 'Orukọ',
+      email: 'Imeeli',
 
       // Shakespeare Main Page
       buildNostrApps: 'Kọ awọn ohun elo pẹlu AI',
@@ -1481,6 +1511,11 @@ const resources = {
       password: 'Ọrọ igbaniwọle',
       enterPassword: 'Tẹ ọrọ igbaniwọle/token rẹ sinu',
       credentialsExist: 'Awọn ẹri fun ipilẹṣẹ yii ti wa tẹlẹ',
+      gitIdentity: 'Idanimọ Git',
+      gitName: 'Orukọ Git',
+      gitEmail: 'Imeeli Git',
+      coAuthoredByShakespeare: 'Ajọpọ onkọwe pẹlu Shakespeare',
+      gitIdentityDescription: 'Ti a ba tunto orukọ ati imeeli, wọn yoo jẹ lilo bi onkọwe. Bibẹẹkọ, shakespeare.diy yoo jẹ lilo. Nigbati a ba mu ajọpọ onkọwe ṣiṣẹ, Shakespeare yoo jẹ fifikun bi ajọpọ onkọwe.',
       projectTemplate: 'Awoṣe Iṣẹ akanṣe',
       projectTemplateDescription: 'URL ibi ipamọ Git lati lo bi awoṣe ibẹrẹ fun awọn iṣẹ akanṣe tuntun.',
       corsProxy: 'CORS Proxy',
@@ -1656,6 +1691,8 @@ const resources = {
       add: 'Tinye',
       remove: 'Wepụ',
       retry: 'Nwaa ọzọ',
+      name: 'Aha',
+      email: 'Ozi-eletrọniki',
 
       // Shakespeare Main Page
       buildNostrApps: 'Wuo ngwa na AI',
@@ -1795,6 +1832,11 @@ const resources = {
       password: 'Okwuntughe',
       enterPassword: 'Tinye okwuntughe/token gị',
       credentialsExist: 'Nzere maka mmalite a adịlarị',
+      gitIdentity: 'Njirimara Git',
+      gitName: 'Aha Git',
+      gitEmail: 'Ozi-eletrọniki Git',
+      coAuthoredByShakespeare: 'Ndekọ ọnụ na Shakespeare',
+      gitIdentityDescription: 'Ọ bụrụ na ahaziri aha na ozi-eletrọniki, a ga-eji ha dị ka onye dere ya. Ma ọ bụghị, a ga-eji shakespeare.diy. Mgbe emere ndekọ ọnụ, a ga-etinye Shakespeare dị ka ndekọ ọnụ.',
       projectTemplate: 'Ụdịdị Ọrụ',
       projectTemplateDescription: 'URL nchekwa Git iji mee ka ụdịdị mmalite maka ọrụ ọhụrụ.',
       corsProxy: 'CORS Proxy',

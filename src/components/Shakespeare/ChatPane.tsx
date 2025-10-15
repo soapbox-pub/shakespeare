@@ -645,8 +645,8 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
             </div>
           )}
 
-          {/* Error Alert (Console or AI) */}
-          {displayError && (
+          {/* Error Alert (Console or AI) - Don't show while assistant is loading */}
+          {displayError && !isLoading && (
             <Quilly
               error={displayError}
               onDismiss={handleErrorDismiss}

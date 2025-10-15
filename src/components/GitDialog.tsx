@@ -54,6 +54,7 @@ import { useToast } from '@/hooks/useToast';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useNostr } from '@nostrify/react';
 import { useNostrPublish } from '@/hooks/useNostrPublish';
+import { usePullRequests } from '@/hooks/usePullRequests';
 import { cn } from '@/lib/utils';
 import { findCredentialsForRepo } from '@/lib/gitCredentials';
 import { nip19 } from 'nostr-tools';
@@ -94,6 +95,7 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
   const { user } = useCurrentUser();
   const { nostr } = useNostr();
   const { mutateAsync: publishEvent } = useNostrPublish();
+  const { data: pullRequests, isLoading: isLoadingPRs } = usePullRequests(originUrl);
 
   const projectPath = `/projects/${projectId}`;
 

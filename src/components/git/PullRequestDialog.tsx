@@ -217,7 +217,7 @@ export function PullRequestDialog({
           // Convert npub to hex if needed
           if (pubkeyOrNpub.startsWith('npub1')) {
             try {
-              const result = nip19.decode(pubkeyOrNpub) as { type: string; data: string };
+              const result = nip19.decode(pubkeyOrNpub) as unknown as { type: string; data: string };
               // Validate that we got an npub (public key)
               if (result.type === 'npub') {
                 owner = result.data;

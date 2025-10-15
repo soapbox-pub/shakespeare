@@ -88,7 +88,7 @@ export function PullRequestDialog({
   const { toast } = useToast();
   const { user } = useCurrentUser();
   const { nostr } = useNostr();
-  const { config } = useAppConfig();
+  const { config } = useAppContext();
   const projectPath = `/projects/${projectId}`;
 
   useEffect(() => {

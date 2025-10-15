@@ -58,7 +58,6 @@ import { usePullRequests } from '@/hooks/usePullRequests';
 import { cn } from '@/lib/utils';
 import { findCredentialsForRepo } from '@/lib/gitCredentials';
 import { nip19 } from 'nostr-tools';
-import { AnnounceRepositoryDialog } from '@/components/git/AnnounceRepositoryDialog';
 import { GitManagementDialog } from '@/components/git/GitManagementDialog';
 import { MergeDialog } from '@/components/git/MergeDialog';
 import { PullRequestDialog } from '@/components/git/PullRequestDialog';
@@ -1018,29 +1017,12 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
                         </div>
                       )}
 
-                      {/* Nostr Git Actions */}
-                      {originUrl.startsWith('nostr://') && (
-                        <div className="flex gap-2">
-                          <AnnounceRepositoryDialog
-                            projectId={projectId}
-                            remoteUrl={originUrl}
-                          />
-                          <PullRequestDialog
-                            projectId={projectId}
-                            currentBranch={gitStatus.currentBranch}
-                            remoteUrl={originUrl}
-                          />
-                        </div>
-                      )}
-
-                      {/* Create PR Button for non-Nostr remotes */}
-                      {!originUrl.startsWith('nostr://') && (
-                        <PullRequestDialog
-                          projectId={projectId}
-                          currentBranch={gitStatus.currentBranch}
-                          remoteUrl={originUrl}
-                        />
-                      )}
+                      {/* Create PR/Patch Button */}
+                      <PullRequestDialog
+                        projectId={projectId}
+                        currentBranch={gitStatus.currentBranch}
+                        remoteUrl={originUrl}
+                      />
                     </CardContent>
                   </Card>
                 )}

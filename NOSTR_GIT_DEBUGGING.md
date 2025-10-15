@@ -7,9 +7,9 @@ Patches are being published successfully but not showing up in NostrHub or other
 ## How Nostr Git Discovery Works
 
 1. **Repository Announcement (Kind 30617)**
-   - Published once per repository
+   - Published once per repository (auto-announced on first patch)
    - Contains metadata: name, description, clone URLs, relays
-   - Includes `r` tag with earliest unique commit (euc) 
+   - Includes `r` tag with earliest unique commit (euc)
    - Has `d` tag with repository identifier
    - Coordinate: `30617:<pubkey>:<repo-id>`
 
@@ -22,6 +22,12 @@ Patches are being published successfully but not showing up in NostrHub or other
    - Client queries for repositories (kind 30617)
    - User selects a repository
    - Client queries for patches using `#a` filter: `#a: ["30617:<pubkey>:<repo-id>"]`
+
+4. **Auto-Announcement (Shakespeare Feature)**
+   - When creating first patch, repository is auto-announced
+   - Uses configured relay from settings
+   - Ensures announcement and patch on same relay
+   - Eliminates manual "Announce Repository" step
 
 ## The Relay Problem
 
@@ -65,17 +71,25 @@ To verify: Query for kind 30617 with authors=[...] and #d=[...]
 
 When creating a patch, check console logs:
 
+**If repository exists:**
 ```
 Querying for repository announcement with filter: {...}
 Repository announcement query returned 1 events  ✅ GOOD
 Found repository announcement event: {...}
 ```
 
-Or:
-
+**If repository doesn't exist (auto-announce):**
 ```
-Repository announcement query returned 0 events  ❌ BAD
-Repository announcement not found - patch may not be discoverable
+Repository announcement query returned 0 events
+Repository announcement not found - creating one automatically
+Auto-creating repository announcement: {...}
+Successfully auto-announced repository  ✅ GOOD
+```
+
+**If auto-announce fails:**
+```
+Repository announcement query returned 0 events
+Failed to auto-announce repository: <error>  ❌ BAD
 ```
 
 ### Step 4: Check NostrHub's Relay
@@ -99,7 +113,7 @@ Repository announcement not found - patch may not be discoverable
 
 When announcing repository, add multiple relays:
 - `wss://relay.primal.net`
-- `wss://relay.nostr.band`  
+- `wss://relay.nostr.band`
 - `wss://relay.damus.io`
 
 The announcement event will be published to all of these, and patches will follow.
@@ -130,19 +144,19 @@ Proper solution would be to:
 ## Common Issues
 
 ### Issue: "Repository announcement not found"
-**Cause**: Announcement not on current relay  
+**Cause**: Announcement not on current relay
 **Fix**: Re-announce on current relay
 
 ### Issue: Patches published but not visible
-**Cause**: Patches on different relay than announcement  
+**Cause**: Patches on different relay than announcement
 **Fix**: Ensure both announcement and patches on same relay
 
 ### Issue: Works in Shakespeare but not NostrHub
-**Cause**: Different relays  
+**Cause**: Different relays
 **Fix**: Use same relay in both clients
 
 ### Issue: Relay hints not working
-**Explanation**: Relay hints are suggestions only - clients may ignore them  
+**Explanation**: Relay hints are suggestions only - clients may ignore them
 **Fix**: Ensure announcement is on relay the client uses
 
 ## Event Format Reference
@@ -199,7 +213,7 @@ To test if events are on a relay:
      "#d": ["your-repo-id"],
      limit: 1
    }]);
-   
+
    // Check patches
    await nostr.query([{
      kinds: [1617],
@@ -210,9 +224,28 @@ To test if events are on a relay:
 
 ## Recommended Workflow
 
+### Simplified (Auto-Announce Enabled)
+
+1. **Configure relay** (one time):
+   - Settings → Select relay (e.g., `wss://relay.nostr.band`)
+   - This relay will be used for all Nostr git operations
+
+2. **Create patches** (automatic announcement):
+   - Click "Create Patch"
+   - System automatically announces repository if needed
+   - Patch is published with proper references
+   - Check "Your Patches" section to verify
+
+3. **View in NostrHub:**
+   - Ensure NostrHub uses same relay
+   - Browse to Repositories → Find your repository
+   - View patches in Patches tab
+
+### Manual (If Auto-Announce Fails)
+
 1. **First time setup:**
    - Switch to `wss://relay.nostr.band` (widely used)
-   - Announce repository
+   - Click "Announce Repository" button
    - Verify announcement succeeded
 
 2. **Creating patches:**

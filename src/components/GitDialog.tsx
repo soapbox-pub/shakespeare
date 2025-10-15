@@ -45,6 +45,7 @@ import {
   Save,
   Settings2,
   GitPullRequest,
+  ExternalLink,
 } from 'lucide-react';
 import { useGitStatus } from '@/hooks/useGitStatus';
 import { useGitSettings } from '@/hooks/useGitSettings';
@@ -953,6 +954,69 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
                   </Card>
                 )}
 
+                {/* Pull Requests Card */}
+                {gitStatus?.isGitRepo && gitStatus.remotes.length > 0 && originUrl && !originUrl.startsWith('nostr://') && (
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm">Pull Requests</CardTitle>
+                      <CardDescription className="text-xs">
+                        Manage pull requests for this repository
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {/* Open Pull Requests List */}
+                      {isLoadingPRs ? (
+                        <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Loading pull requests...
+                        </div>
+                      ) : pullRequests && pullRequests.length > 0 ? (
+                        <div className="space-y-2">
+                          {pullRequests.map((pr) => (
+                            <div
+                              key={pr.id}
+                              className="flex items-start gap-3 p-3 rounded-md border bg-muted/20 hover:bg-muted/40 transition-colors"
+                            >
+                              <GitPullRequest className="h-4 w-4 text-green-600 mt-0.5 shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="flex-1 min-w-0">
+                                    <h4 className="text-sm font-medium truncate">
+                                      {pr.title}
+                                    </h4>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                      #{pr.number} by {pr.author} • {pr.sourceBranch} → {pr.targetBranch}
+                                    </p>
+                                  </div>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-8 shrink-0"
+                                    onClick={() => window.open(pr.url, '_blank')}
+                                  >
+                                    <ExternalLink className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-sm text-muted-foreground text-center py-2">
+                          You have no open pull requests
+                        </div>
+                      )}
+
+                      {/* Create PR Button */}
+                      <PullRequestDialog
+                        projectId={projectId}
+                        currentBranch={gitStatus.currentBranch}
+                        remoteUrl={originUrl}
+                      />
+                    </CardContent>
+                  </Card>
+                )}
+
                 {/* Branch Operations */}
                 {gitStatus?.isGitRepo && gitStatus.currentBranch && (
                   <Card>
@@ -965,13 +1029,6 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
                         currentBranch={gitStatus.currentBranch}
                         onMergeComplete={() => refetchGitStatus()}
                       />
-                      {gitStatus.remotes.length > 0 && originUrl && !originUrl.startsWith('nostr://') && (
-                        <PullRequestDialog
-                          projectId={projectId}
-                          currentBranch={gitStatus.currentBranch}
-                          remoteUrl={originUrl}
-                        />
-                      )}
                       {gitStatus.remotes.length > 0 && originUrl?.startsWith('nostr://') && (
                         <Button
                           variant="outline"

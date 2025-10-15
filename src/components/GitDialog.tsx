@@ -715,234 +715,223 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
           <div className="flex-1 min-h-0 overflow-hidden px-6 pb-6">
             <ScrollArea className="h-full">
               <div className="space-y-4 pr-4">
-                {/* URL Configuration */}
+                {/* Section 1: Git URL, Current Branch, Sync Status, Merge Branch */}
                 {gitStatus?.isGitRepo && (
                   <Card>
                     <CardHeader className="pb-3">
-                      <CardTitle className="text-sm">Git URL</CardTitle>
+                      <CardTitle className="text-sm">Repository Info</CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div className="flex gap-2">
-                        <div className="flex-1">
-                          <Label htmlFor="origin-url" className="sr-only">
-                        URL
-                          </Label>
+                    <CardContent className="space-y-4">
+                      {/* Git URL */}
+                      <div className="space-y-2">
+                        <Label htmlFor="origin-url" className="text-xs font-medium text-muted-foreground">
+                          Git URL
+                        </Label>
+                        <div className="flex gap-2">
                           <Input
                             id="origin-url"
                             placeholder="https://github.com/username/repository.git"
                             value={originUrl}
                             onChange={(e) => setOriginUrl(e.target.value)}
                             disabled={isSavingOrigin}
+                            className="flex-1"
                           />
+                          <Button
+                            onClick={handleSaveOrigin}
+                            disabled={isSavingOrigin}
+                            variant="outline"
+                            size="sm"
+                            className="h-10 shrink-0"
+                          >
+                            {isSavingOrigin ? (
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                              <Save className="h-4 w-4 mr-2" />
+                            )}
+                            {isSavingOrigin ? 'Saving...' : 'Save'}
+                          </Button>
                         </div>
-                        <Button
-                          onClick={handleSaveOrigin}
-                          disabled={isSavingOrigin}
-                          variant="outline"
-                          size="sm"
-                          className="h-10 shrink-0"
-                        >
-                          {isSavingOrigin ? (
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          ) : (
-                            <Save className="h-4 w-4 mr-2" />
-                          )}
-                          {isSavingOrigin ? 'Saving...' : 'Save'}
-                        </Button>
+
+                        {/* Credentials Warning */}
+                        {gitStatus.remotes.length > 0 && (
+                          (() => {
+                            const remoteWithoutCredentials = gitStatus.remotes.find((remote) => !findCredentialsForRepo(remote.url, settings.credentials));
+                            if (!remoteWithoutCredentials) return null;
+
+                            let protocol = '';
+                            let hostname = 'the remote host';
+                            try {
+                              const url = new URL(remoteWithoutCredentials.url);
+                              protocol = url.protocol;
+                              hostname = url.hostname;
+                            } catch {
+                              return (
+                                <Alert className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/50 mt-2">
+                                  <AlertTriangle className="h-4 w-4" />
+                                  <AlertDescription className="text-sm">
+                                    Invalid URL format. Enter an https URL.
+                                  </AlertDescription>
+                                </Alert>
+                              );
+                            }
+
+                            if (protocol !== 'https:' && protocol !== 'nostr:') {
+                              return (
+                                <Alert className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/50 mt-2">
+                                  <AlertTriangle className="h-4 w-4" />
+                                  <AlertDescription className="text-sm">
+                                    The {protocol.replace(':', '')} URL type is not supported. Enter an https URL.
+                                  </AlertDescription>
+                                </Alert>
+                              );
+                            }
+
+                            if (protocol === 'nostr:' && !user) {
+                              return (
+                                <Alert className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/50 mt-2">
+                                  <AlertTriangle className="h-4 w-4" />
+                                  <AlertDescription className="text-sm">
+                                    You are not logged into Nostr. Push & pull might not work unless you{' '}
+                                    <button
+                                      onClick={() => navigate('/settings/nostr')}
+                                      className="underline hover:no-underline font-medium text-amber-700 dark:text-amber-300"
+                                    >
+                                      log in
+                                    </button>.
+                                  </AlertDescription>
+                                </Alert>
+                              );
+                            }
+
+                            if (protocol === 'https:') {
+                              return (
+                                <Alert className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/50 mt-2">
+                                  <AlertTriangle className="h-4 w-4" />
+                                  <AlertDescription className="text-sm">
+                                    You are not logged into {hostname}. Push & pull might not work unless you{' '}
+                                    <button
+                                      onClick={() => navigate('/settings/git')}
+                                      className="underline hover:no-underline font-medium text-amber-700 dark:text-amber-300"
+                                    >
+                                      log in
+                                    </button>.
+                                  </AlertDescription>
+                                </Alert>
+                              );
+                            }
+
+                            return null;
+                          })()
+                        )}
                       </div>
 
-                      {/* Credentials Warning */}
-                      {gitStatus.remotes.length > 0 && (
-                        (() => {
-                          const remoteWithoutCredentials = gitStatus.remotes.find((remote) => !findCredentialsForRepo(remote.url, settings.credentials));
-                          if (!remoteWithoutCredentials) return null;
-
-                          let protocol = '';
-                          let hostname = 'the remote host';
-                          try {
-                            const url = new URL(remoteWithoutCredentials.url);
-                            protocol = url.protocol;
-                            hostname = url.hostname;
-                          } catch {
-                            // Invalid URL
-                            return (
-                              <Alert className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/50">
-                                <AlertTriangle className="h-4 w-4" />
-                                <AlertDescription className="text-sm">
-                              Invalid URL format. Enter an https URL.
-                                </AlertDescription>
-                              </Alert>
-                            );
-                          }
-
-                          // Check for unsupported protocols
-                          if (protocol !== 'https:' && protocol !== 'nostr:') {
-                            return (
-                              <Alert className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/50">
-                                <AlertTriangle className="h-4 w-4" />
-                                <AlertDescription className="text-sm">
-                              The {protocol.replace(':', '')} URL type is not supported. Enter an https URL.
-                                </AlertDescription>
-                              </Alert>
-                            );
-                          }
-
-                          // For nostr protocol, only show warning if user is not logged in
-                          if (protocol === 'nostr:' && !user) {
-                            return (
-                              <Alert className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/50">
-                                <AlertTriangle className="h-4 w-4" />
-                                <AlertDescription className="text-sm">
-                              You are not logged into Nostr. Push & pull might not work unless you{' '}
-                                  <button
-                                    onClick={() => navigate('/settings/nostr')}
-                                    className="underline hover:no-underline font-medium text-amber-700 dark:text-amber-300"
-                                  >
-                                log in
-                                  </button>.
-                                </AlertDescription>
-                              </Alert>
-                            );
-                          }
-
-                          // For https protocol, show warning if no credentials
-                          if (protocol === 'https:') {
-                            return (
-                              <Alert className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/50">
-                                <AlertTriangle className="h-4 w-4" />
-                                <AlertDescription className="text-sm">
-                              You are not logged into {hostname}. Push & pull might not work unless you{' '}
-                                  <button
-                                    onClick={() => navigate('/settings/git')}
-                                    className="underline hover:no-underline font-medium text-amber-700 dark:text-amber-300"
-                                  >
-                                log in
-                                  </button>.
-                                </AlertDescription>
-                              </Alert>
-                            );
-                          }
-
-                          return null;
-                        })()
-                      )}
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Branch Selector */}
-                {gitStatus?.isGitRepo && gitStatus.currentBranch && (
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-sm">Current Branch</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div className="flex gap-2">
-                        <Select
-                          value={gitStatus.currentBranch}
-                          onValueChange={handleSwitchBranch}
-                          disabled={isSwitchingBranch || isLoadingBranches}
-                        >
-                          <SelectTrigger className="flex-1">
-                            <SelectValue>
-                              {isSwitchingBranch ? (
-                                <span className="flex items-center gap-2">
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                              Switching...
-                                </span>
-                              ) : (
-                                <span className="flex items-center gap-2">
-                                  <GitBranch className="h-4 w-4" />
-                                  {gitStatus.currentBranch}
-                                </span>
-                              )}
-                            </SelectValue>
-                          </SelectTrigger>
-                          <SelectContent>
-                            {branches.map((branch) => (
-                              <SelectItem key={branch} value={branch}>
-                                <span className="flex items-center gap-2">
-                                  {branch === gitStatus.currentBranch && (
-                                    <CheckCircle className="h-4 w-4 text-primary" />
+                      {/* Current Branch */}
+                      {gitStatus.currentBranch && (
+                        <div className="space-y-2">
+                          <Label className="text-xs font-medium text-muted-foreground">
+                            Current Branch
+                          </Label>
+                          <div className="flex gap-2">
+                            <Select
+                              value={gitStatus.currentBranch}
+                              onValueChange={handleSwitchBranch}
+                              disabled={isSwitchingBranch || isLoadingBranches}
+                            >
+                              <SelectTrigger className="flex-1">
+                                <SelectValue>
+                                  {isSwitchingBranch ? (
+                                    <span className="flex items-center gap-2">
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                      Switching...
+                                    </span>
+                                  ) : (
+                                    <span className="flex items-center gap-2">
+                                      <GitBranch className="h-4 w-4" />
+                                      {gitStatus.currentBranch}
+                                    </span>
                                   )}
-                                  {branch}
-                                </span>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="shrink-0"
-                          onClick={() => setIsCreateBranchDialogOpen(true)}
-                          disabled={isSwitchingBranch}
-                        >
-                          <Plus className="h-4 w-4 mr-2" />
-                      New
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Sync Status */}
-                {gitStatus?.isGitRepo && (
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-sm">Sync Status</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex items-center gap-2 mb-4">
-                        <syncStatus.icon className={cn("h-4 w-4", syncStatus.color)} />
-                        <span className={cn("text-sm font-medium", syncStatus.color)}>
-                          {syncStatus.text}
-                        </span>
-                      </div>
-
-                      {gitStatus.remotes.length > 0 && (
-                        <div className="flex gap-2">
-                          <Button
-                            onClick={handlePull}
-                            disabled={isPulling || isPushing || isPushingToNostr}
-                            variant="outline"
-                            size="sm"
-                            className="flex-1"
-                          >
-                            {isPulling ? (
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            ) : (
-                              <Download className="h-4 w-4 mr-2" />
-                            )}
-                            {isPulling ? 'Pulling...' : 'Pull'}
-                          </Button>
-
-                          <Button
-                            onClick={handlePush}
-                            disabled={isPushing || isPulling || isPushingToNostr || gitStatus.ahead === 0}
-                            variant="outline"
-                            size="sm"
-                            className="flex-1"
-                          >
-                            {isPushing ? (
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            ) : (
-                              <Upload className="h-4 w-4 mr-2" />
-                            )}
-                            {isPushing ? 'Pushing...' : 'Push'}
-                          </Button>
+                                </SelectValue>
+                              </SelectTrigger>
+                              <SelectContent>
+                                {branches.map((branch) => (
+                                  <SelectItem key={branch} value={branch}>
+                                    <span className="flex items-center gap-2">
+                                      {branch === gitStatus.currentBranch && (
+                                        <CheckCircle className="h-4 w-4 text-primary" />
+                                      )}
+                                      {branch}
+                                    </span>
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="shrink-0"
+                              onClick={() => setIsCreateBranchDialogOpen(true)}
+                              disabled={isSwitchingBranch}
+                            >
+                              <Plus className="h-4 w-4 mr-2" />
+                              New
+                            </Button>
+                          </div>
                         </div>
                       )}
 
-                      {/* Push to Nostr button when no remote is configured and user is logged in */}
-                      {gitStatus.remotes.length === 0 && user && (
-                        <div className="flex gap-2">
+                      {/* Sync Status */}
+                      <div className="space-y-2">
+                        <Label className="text-xs font-medium text-muted-foreground">
+                          Sync Status
+                        </Label>
+                        <div className="flex items-center gap-2 mb-3">
+                          <syncStatus.icon className={cn("h-4 w-4", syncStatus.color)} />
+                          <span className={cn("text-sm font-medium", syncStatus.color)}>
+                            {syncStatus.text}
+                          </span>
+                        </div>
+
+                        {gitStatus.remotes.length > 0 && (
+                          <div className="flex gap-2">
+                            <Button
+                              onClick={handlePull}
+                              disabled={isPulling || isPushing || isPushingToNostr}
+                              variant="outline"
+                              size="sm"
+                              className="flex-1"
+                            >
+                              {isPulling ? (
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              ) : (
+                                <Download className="h-4 w-4 mr-2" />
+                              )}
+                              {isPulling ? 'Pulling...' : 'Pull'}
+                            </Button>
+
+                            <Button
+                              onClick={handlePush}
+                              disabled={isPushing || isPulling || isPushingToNostr || gitStatus.ahead === 0}
+                              variant="outline"
+                              size="sm"
+                              className="flex-1"
+                            >
+                              {isPushing ? (
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              ) : (
+                                <Upload className="h-4 w-4 mr-2" />
+                              )}
+                              {isPushing ? 'Pushing...' : 'Push'}
+                            </Button>
+                          </div>
+                        )}
+
+                        {gitStatus.remotes.length === 0 && user && (
                           <Button
                             onClick={handlePushToNostr}
                             disabled={isPushingToNostr || isPushing || isPulling}
                             variant="outline"
                             size="sm"
-                            className="flex-1"
+                            className="w-full"
                           >
                             {isPushingToNostr ? (
                               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -951,13 +940,24 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
                             )}
                             {isPushingToNostr ? 'Publishing to Nostr...' : 'Push to Nostr'}
                           </Button>
+                        )}
+                      </div>
+
+                      {/* Merge Branch Action */}
+                      {gitStatus.currentBranch && (
+                        <div className="pt-2 border-t">
+                          <MergeDialog
+                            projectId={projectId}
+                            currentBranch={gitStatus.currentBranch}
+                            onMergeComplete={() => refetchGitStatus()}
+                          />
                         </div>
                       )}
                     </CardContent>
                   </Card>
                 )}
 
-                {/* Pull Requests Card */}
+                {/* Section 2: Your Open PRs and Create PR Button */}
                 {gitStatus?.isGitRepo && gitStatus.remotes.length > 0 && originUrl && (
                   <Card>
                     <CardHeader className="pb-3">
@@ -972,7 +972,7 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-3">
-                      {/* Open Pull Requests List (only for non-Nostr repos) */}
+                      {/* Open Pull Requests List */}
                       {!originUrl.startsWith('nostr://') && isLoadingPRs && (
                         <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
                           <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -980,7 +980,8 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
                         </div>
                       )}
                       {!originUrl.startsWith('nostr://') && !isLoadingPRs && pullRequests && pullRequests.length > 0 && (
-                        <div className="space-y-2">
+                        <div className="space-y-2 mb-3">
+                          <div className="text-xs font-medium text-muted-foreground mb-2">Your Open PRs</div>
                           {pullRequests.map((pr) => (
                             <div
                               key={pr.id}
@@ -1011,13 +1012,8 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
                           ))}
                         </div>
                       )}
-                      {!originUrl.startsWith('nostr://') && !isLoadingPRs && (!pullRequests || pullRequests.length === 0) && (
-                        <div className="text-sm text-muted-foreground text-center py-2">
-                          You have no open pull requests
-                        </div>
-                      )}
 
-                      {/* Create PR Button - Works for all repo types */}
+                      {/* Create PR Button */}
                       <PullRequestDialog
                         projectId={projectId}
                         currentBranch={gitStatus.currentBranch}
@@ -1027,64 +1023,45 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
                   </Card>
                 )}
 
-                {/* Branch Operations */}
-                {gitStatus?.isGitRepo && gitStatus.currentBranch && (
+                {/* Section 3: Working Directory */}
+                {gitStatus?.isGitRepo && (
                   <Card>
                     <CardHeader className="pb-3">
-                      <CardTitle className="text-sm">Branch Operations</CardTitle>
-                    </CardHeader>
-                    <CardContent className="flex gap-2">
-                      <MergeDialog
-                        projectId={projectId}
-                        currentBranch={gitStatus.currentBranch}
-                        onMergeComplete={() => refetchGitStatus()}
-                      />
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Working Directory Changes */}
-                {gitStatus?.isGitRepo && gitStatus.changedFiles.length > 0 && (
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-sm">Working Directory Changes</CardTitle>
-                      <CardDescription>
-                        {gitStatus.changedFiles.length} file{gitStatus.changedFiles.length !== 1 ? 's' : ''} with changes
-                      </CardDescription>
+                      <CardTitle className="text-sm">Working Directory</CardTitle>
+                      {gitStatus.changedFiles.length > 0 && (
+                        <CardDescription>
+                          {gitStatus.changedFiles.length} file{gitStatus.changedFiles.length !== 1 ? 's' : ''} with changes
+                        </CardDescription>
+                      )}
                     </CardHeader>
                     <CardContent>
-                      <div className="space-y-2">
-                        {gitStatus.changedFiles.map((file, index) => (
-                          <div
-                            key={index}
-                            className="flex items-center gap-2 p-2 rounded-md border bg-muted/20"
-                          >
-                            {getFileStatusIcon(file.status)}
-                            <span className="font-mono text-sm flex-1 truncate">
-                              {file.filepath}
-                            </span>
-                            <Badge
-                              variant="outline"
-                              className={cn("text-xs", getFileStatusColor(file.status))}
+                      {gitStatus.changedFiles.length > 0 ? (
+                        <div className="space-y-2">
+                          {gitStatus.changedFiles.map((file, index) => (
+                            <div
+                              key={index}
+                              className="flex items-center gap-2 p-2 rounded-md border bg-muted/20"
                             >
-                              {file.status}
-                            </Badge>
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Clean Working Directory */}
-                {gitStatus?.isGitRepo && gitStatus.changedFiles.length === 0 && (
-                  <Card>
-                    <CardContent className="py-6">
-                      <div className="text-center text-muted-foreground">
-                        <CheckCircle className="h-8 w-8 mx-auto mb-2 text-green-500" />
-                        <p>Working directory is clean</p>
-                        <p className="text-xs">No uncommitted changes</p>
-                      </div>
+                              {getFileStatusIcon(file.status)}
+                              <span className="font-mono text-sm flex-1 truncate">
+                                {file.filepath}
+                              </span>
+                              <Badge
+                                variant="outline"
+                                className={cn("text-xs", getFileStatusColor(file.status))}
+                              >
+                                {file.status}
+                              </Badge>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center text-muted-foreground py-6">
+                          <CheckCircle className="h-8 w-8 mx-auto mb-2 text-green-500" />
+                          <p>Working directory is clean</p>
+                          <p className="text-xs">No uncommitted changes</p>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 )}

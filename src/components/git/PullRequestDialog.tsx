@@ -814,20 +814,35 @@ export function PullRequestDialog({
         ref: headBranch,
       });
 
+      // For remote comparisons, use origin/baseBranch
+      let baseRef = baseBranch;
+      try {
+        // Try to resolve the remote tracking branch first
+        await git.resolveRef({
+          dir: projectPath,
+          ref: `origin/${baseBranch}`,
+        });
+        baseRef = `origin/${baseBranch}`;
+        console.log(`Using remote tracking branch: ${baseRef}`);
+      } catch (err) {
+        // Fall back to local branch if remote doesn't exist
+        console.log(`Remote tracking branch origin/${baseBranch} not found, using local ${baseBranch}`);
+      }
+
       const baseCommits = await git.log({
         dir: projectPath,
-        ref: baseBranch,
+        ref: baseRef,
       });
 
       // Find commits unique to head branch
       const baseCommitIds = new Set(baseCommits.map(c => c.oid));
       const uniqueCommits = headCommits.filter(c => !baseCommitIds.has(c.oid));
 
-      console.log(`Found ${uniqueCommits.length} unique commits in ${headBranch}`);
+      console.log(`Found ${uniqueCommits.length} unique commits in ${headBranch} compared to ${baseRef}`);
 
       // Generate patch in git format-patch style
       if (uniqueCommits.length === 0) {
-        throw new Error('No commits to create patch from - branches are identical');
+        throw new Error(`No commits to create patch from - ${headBranch} and ${baseRef} are identical`);
       }
 
       // Build patch content following git format-patch format

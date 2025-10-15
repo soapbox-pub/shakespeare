@@ -5,6 +5,7 @@ import type {
   GitRepository,
   GitFork,
   PullRequest,
+  PullRequestCheck,
   CreatePullRequestOptions,
   GitHostUser,
 } from './types';
@@ -25,6 +26,10 @@ interface GitLabMRResponse {
   target_project_id: number;
   merge_status?: string;
   merged_at?: string;
+  pipeline?: {
+    status: string;
+    web_url: string;
+  };
 }
 
 export class GitLabProvider implements GitHostProvider {
@@ -245,7 +250,7 @@ export class GitLabProvider implements GitHostProvider {
 
   async closePullRequest(owner: string, repo: string, number: number): Promise<PullRequest> {
     const projectPath = this.encodeProjectPath(owner, repo);
-    const data = await this.fetch<any>(`/projects/${projectPath}/merge_requests/${number}`, {
+    const data = await this.fetch<GitLabMRResponse>(`/projects/${projectPath}/merge_requests/${number}`, {
       method: 'PUT',
       body: JSON.stringify({
         state_event: 'close',
@@ -278,23 +283,7 @@ export class GitLabProvider implements GitHostProvider {
     return `https://gitlab.com/${baseRepo}/-/merge_requests/new?merge_request[source_branch]=${headBranch}&merge_request[source_project]=${headOwner}/${headRepoName}&merge_request[target_branch]=${baseBranch}`;
   }
 
-  private transformMergeRequest(data: {
-    id: number;
-    iid: number;
-    state: string;
-    title: string;
-    description: string;
-    web_url: string;
-    created_at: string;
-    updated_at: string;
-    author: { username: string };
-    source_branch: string;
-    target_branch: string;
-    source_project_id: number;
-    target_project_id: number;
-    merge_status?: string;
-    merged_at?: string;
-  }): PullRequest {
+  private transformMergeRequest(data: GitLabMRResponse): PullRequest {
     const state = data.state === 'merged' ? 'merged' : data.state === 'opened' ? 'open' : 'closed';
 
     return {
@@ -315,14 +304,24 @@ export class GitLabProvider implements GitHostProvider {
     };
   }
 
-  private transformPipeline(data: any): PullRequestCheck[] | undefined {
+  private transformPipeline(data: GitLabMRResponse): PullRequestCheck[] | undefined {
     if (!data.pipeline) return undefined;
+
+    const mapConclusion = (status: string): PullRequestCheck['conclusion'] => {
+      switch (status) {
+        case 'success': return 'success';
+        case 'failed': return 'failure';
+        case 'canceled': return 'cancelled';
+        case 'skipped': return 'skipped';
+        default: return undefined;
+      }
+    };
 
     return [{
       name: 'Pipeline',
       status: data.pipeline.status === 'running' ? 'pending' :
-              data.pipeline.status === 'success' ? 'success' : 'failure',
-      conclusion: data.pipeline.status,
+        data.pipeline.status === 'success' ? 'success' : 'failure',
+      conclusion: mapConclusion(data.pipeline.status),
       detailsUrl: data.pipeline.web_url,
     }];
   }

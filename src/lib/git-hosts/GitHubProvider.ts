@@ -5,6 +5,7 @@ import type {
   GitRepository,
   GitFork,
   PullRequest,
+  PullRequestCheck,
   CreatePullRequestOptions,
   GitHostUser,
 } from './types';
@@ -274,7 +275,7 @@ export class GitHubProvider implements GitHostProvider {
     mergeable?: boolean;
     merged?: boolean;
   }): PullRequest {
-    const state = data.merged ? 'merged' : data.state;
+    const state: 'open' | 'closed' | 'merged' = data.merged ? 'merged' : data.state as 'open' | 'closed';
 
     return {
       number: data.number,
@@ -294,7 +295,7 @@ export class GitHubProvider implements GitHostProvider {
     };
   }
 
-  private transformChecks(data: any): PullRequestCheck[] | undefined {
+  private transformChecks(_data: unknown): PullRequestCheck[] | undefined {
     // GitHub's check runs are in a separate API call, so we don't have them here
     // This would need a separate API call to /repos/{owner}/{repo}/commits/{ref}/check-runs
     return undefined;

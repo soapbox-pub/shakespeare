@@ -71,15 +71,6 @@ export function AnnounceRepositoryDialog({
     }
   }, [open]);
 
-  useEffect(() => {
-    if (isOpen && remoteUrl) {
-      // Parse remote URL to pre-fill data
-      parseRemoteUrl(remoteUrl);
-      // Get earliest commit
-      getEarliestCommit();
-    }
-  }, [isOpen, remoteUrl, parseRemoteUrl, getEarliestCommit]);
-
   const parseRemoteUrl = useCallback((url: string) => {
     // Extract repo ID from Nostr URL
     if (url.startsWith('nostr://')) {
@@ -113,6 +104,15 @@ export function AnnounceRepositoryDialog({
       console.warn('Failed to get earliest commit:', err);
     }
   }, [git, projectPath]);
+
+  useEffect(() => {
+    if (isOpen && remoteUrl) {
+      // Parse remote URL to pre-fill data
+      parseRemoteUrl(remoteUrl);
+      // Get earliest commit
+      getEarliestCommit();
+    }
+  }, [isOpen, remoteUrl, parseRemoteUrl, getEarliestCommit]);
 
   const addWebUrl = () => {
     if (newWebUrl.trim() && !webUrls.includes(newWebUrl.trim())) {

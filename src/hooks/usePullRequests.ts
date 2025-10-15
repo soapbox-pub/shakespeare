@@ -260,7 +260,14 @@ async function fetchNostrPatches(
 
   try {
     // Build query filter based on whether user is repo owner or contributor
-    const filter: any = {
+    interface PatchFilter {
+      kinds: number[];
+      '#a': string[];
+      limit: number;
+      authors?: string[];
+    }
+
+    const filter: PatchFilter = {
       kinds: [1617],
       '#a': [`30617:${info.owner}:${info.repo}`],
       limit: 50,
@@ -286,12 +293,13 @@ async function fetchNostrPatches(
     let statusEvents: NostrEvent[] = [];
 
     if (patchIds.length > 0) {
-      statusEvents = await nostr.query([
+      const events = await nostr.query([
         {
           kinds: [1630, 1631, 1632, 1633], // Open, Applied/Merged, Closed, Draft
           '#e': patchIds,
         }
       ], { signal });
+      statusEvents = events as NostrEvent[];
       console.log(`Found ${statusEvents.length} status events`);
     }
 

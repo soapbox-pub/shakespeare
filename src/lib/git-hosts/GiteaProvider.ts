@@ -272,7 +272,7 @@ export class GiteaProvider implements GitHostProvider {
     mergeable?: boolean;
     merged?: boolean;
   }): PullRequest {
-    const state = data.merged ? 'merged' : data.state;
+    const state: 'open' | 'closed' | 'merged' = data.merged ? 'merged' : data.state as 'open' | 'closed';
 
     return {
       number: data.number,

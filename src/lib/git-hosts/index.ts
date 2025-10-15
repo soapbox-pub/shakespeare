@@ -10,12 +10,13 @@ import { GiteaProvider } from './GiteaProvider';
 import { NostrGitProvider } from './NostrGitProvider';
 import { detectGitHost } from './types';
 import type { GitHostProvider, GitHostConfig } from './types';
+import type { NostrEvent } from '@nostrify/nostrify';
 
 /**
  * Create a Git host provider instance based on the repository URL
  */
 interface NostrSigner {
-  signEvent: (event: { kind: number; content: string; tags: string[][]; created_at: number }) => Promise<unknown>;
+  signEvent: (event: { kind: number; content: string; tags: string[][]; created_at: number }) => Promise<NostrEvent>;
 }
 
 export function createGitHostProvider(

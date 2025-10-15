@@ -1,4 +1,4 @@
-import { NRelay1 } from '@nostrify/nostrify';
+import { NRelay1, type NostrEvent } from '@nostrify/nostrify';
 import type {
   GitHostProvider,
   GitHostConfig,
@@ -10,7 +10,7 @@ import type {
 } from './types';
 
 interface NostrSigner {
-  signEvent: (event: { kind: number; content: string; tags: string[][]; created_at: number }) => Promise<unknown>;
+  signEvent: (event: { kind: number; content: string; tags: string[][]; created_at: number }) => Promise<NostrEvent>;
 }
 
 /**
@@ -36,7 +36,7 @@ export class NostrGitProvider implements GitHostProvider {
     this.relay = new NRelay1('wss://relay.nostr.band'); // Default, will be changed
   }
 
-  private async queryRepo(owner: string, repo: string): Promise<{ tags: string[][]; content: string }> {
+  private async queryRepo(owner: string, repo: string): Promise<NostrEvent> {
     // Query for repository announcement (kind 30617)
     // d tag is the repo-id (usually kebab-case short name)
     const events = await this.relay.query([
@@ -46,7 +46,7 @@ export class NostrGitProvider implements GitHostProvider {
         '#d': [repo], // repo is the d tag identifier
         limit: 1,
       }
-    ]);
+    ]) as NostrEvent[];
 
     if (events.length === 0) {
       throw new Error(`Repository not found: ${owner}/${repo}`);

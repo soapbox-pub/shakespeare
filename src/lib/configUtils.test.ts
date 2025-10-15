@@ -165,6 +165,7 @@ describe('configUtils', () => {
 
         expect(result).toEqual({
           credentials: {},
+          hostTokens: {},
           coAuthorEnabled: true,
         });
       });

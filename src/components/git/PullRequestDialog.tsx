@@ -141,6 +141,33 @@ export function PullRequestDialog({
       return;
     }
 
+    const ensureFork = async (info: RemoteInfo, token: string): Promise<{ owner: string; repo: string; url: string }> => {
+      console.log('=== ENSURE FORK ===');
+      console.log('Repository:', `${info.owner}/${info.repo}`);
+
+      // First check if fork already exists
+      const user = await getCurrentUser(info, token);
+      console.log('Current user:', user.username);
+
+      const existingFork = await checkForkExists(info, token, user.username);
+
+      if (existingFork) {
+        console.log('Found existing fork:', existingFork);
+        return existingFork;
+      }
+
+      // Create fork
+      console.log('No existing fork found, creating new fork...');
+      const fork = await createFork(info, token);
+      console.log('Fork created:', fork);
+
+      // Wait a bit for fork to be ready
+      console.log('Waiting 2 seconds for fork to be ready...');
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      return fork;
+    };
+
     setIsCheckingPermissions(true);
     try {
       const credentials = findCredentialsForRepo(remoteUrl, settings.credentials);
@@ -178,7 +205,7 @@ export function PullRequestDialog({
     } finally {
       setIsCheckingPermissions(false);
     }
-  }, [remoteInfo, remoteUrl, settings.credentials, ensureFork]);
+  }, [remoteInfo, remoteUrl, settings.credentials]);
 
   useEffect(() => {
     if (isOpen && remoteUrl) {
@@ -567,33 +594,6 @@ export function PullRequestDialog({
     } catch {
       return false;
     }
-  };
-
-  const ensureFork = async (info: RemoteInfo, token: string): Promise<{ owner: string; repo: string; url: string }> => {
-    console.log('=== ENSURE FORK ===');
-    console.log('Repository:', `${info.owner}/${info.repo}`);
-
-    // First check if fork already exists
-    const user = await getCurrentUser(info, token);
-    console.log('Current user:', user.username);
-
-    const existingFork = await checkForkExists(info, token, user.username);
-
-    if (existingFork) {
-      console.log('Found existing fork:', existingFork);
-      return existingFork;
-    }
-
-    // Create fork
-    console.log('No existing fork found, creating new fork...');
-    const fork = await createFork(info, token);
-    console.log('Fork created:', fork);
-
-    // Wait a bit for fork to be ready
-    console.log('Waiting 2 seconds for fork to be ready...');
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
-    return fork;
   };
 
   const getCurrentUser = async (info: RemoteInfo, token: string): Promise<{ username: string }> => {

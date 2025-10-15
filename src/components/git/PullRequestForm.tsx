@@ -106,13 +106,12 @@ export function PullRequestForm({ projectId, currentBranch, remoteUrl }: PullReq
       } else {
         setError('Unsupported remote URL format');
       }
-    } catch (err) {
+    } catch {
       setError('Failed to parse remote URL');
     }
   }, []);
 
   const loadRemoteBranches = useCallback(async () => {
-    setIsLoadingBranches(true);
     try {
       const branches = await git.listBranches({
         dir: projectPath,
@@ -129,8 +128,6 @@ export function PullRequestForm({ projectId, currentBranch, remoteUrl }: PullReq
       }
     } catch {
       setRemoteBranches(['main', 'master', 'develop']);
-    } finally {
-      setIsLoadingBranches(false);
     }
   }, [git, projectPath]);
 

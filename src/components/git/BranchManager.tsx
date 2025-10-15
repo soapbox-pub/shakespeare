@@ -30,7 +30,6 @@ import {
   ArrowUpRight,
 } from 'lucide-react';
 import { useGit } from '@/hooks/useGit';
-import { useGitStatus } from '@/hooks/useGitStatus';
 import { useToast } from '@/hooks/useToast';
 import { cn } from '@/lib/utils';
 
@@ -61,7 +60,6 @@ export function BranchManager({ projectId, currentBranch, onBranchChange }: Bran
 
   const { git } = useGit();
   const { toast } = useToast();
-  const { data: gitStatus } = useGitStatus(projectId);
   const projectPath = `/projects/${projectId}`;
 
   const loadBranches = useCallback(async () => {
@@ -181,53 +179,16 @@ export function BranchManager({ projectId, currentBranch, onBranchChange }: Bran
       });
 
       // Create the new branch
-      const branchName = newBranchName.trim();
       await git.branch({
         dir: projectPath,
-        ref: branchName,
+        ref: newBranchName.trim(),
         object: currentRef,
       });
 
-      // Check if we have uncommitted changes by getting status directly
-      const statusMatrix = await git.statusMatrix({
-        dir: projectPath,
+      toast({
+        title: 'Branch created',
+        description: `Created branch "${newBranchName}"`,
       });
-
-      // Check if any files have changes (modified, added, deleted, or untracked)
-      const hasUncommittedChanges = statusMatrix.some(([, headStatus, workdirStatus, stageStatus]) => {
-        // No changes if all statuses match and file exists in HEAD
-        if (headStatus === workdirStatus && workdirStatus === stageStatus) {
-          return false;
-        }
-        // File has changes
-        return true;
-      });
-
-      // Always try to switch to the new branch
-      try {
-        await git.checkout({
-          dir: projectPath,
-          ref: branchName,
-        });
-
-        if (hasUncommittedChanges) {
-          toast({
-            title: 'Branch created and switched',
-            description: `Switched to "${branchName}" with uncommitted changes`,
-          });
-        } else {
-          toast({
-            title: 'Branch created and switched',
-            description: `Created and switched to branch "${branchName}"`,
-          });
-        }
-      } catch (checkoutError) {
-        // Branch created but checkout failed
-        toast({
-          title: 'Branch created',
-          description: `Created "${branchName}" but could not switch: ${checkoutError instanceof Error ? checkoutError.message : 'Unknown error'}`,
-        });
-      }
 
       setNewBranchName('');
       setIsCreateDialogOpen(false);

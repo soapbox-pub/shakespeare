@@ -222,7 +222,7 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
                     Welcome to Shakespeare!
                   </h2>
                   <p className="text-lg text-muted-foreground max-w-md mx-auto">
-                    Your AI-powered development assistant for building custom Nostr applications.
+                    Your AI-powered development assistant for building custom applications.
                     Simply describe what you want to build, and AI will help you create it.
                   </p>
                 </div>

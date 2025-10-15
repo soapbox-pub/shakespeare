@@ -1,0 +1,234 @@
+import { proxyUrl } from '../proxyUrl';
+import type {
+  GitHostProvider,
+  GitHostConfig,
+  GitRepository,
+  GitFork,
+  PullRequest,
+  CreatePullRequestOptions,
+  GitHostUser,
+  PullRequestCheck,
+} from './types';
+
+export class GitHubProvider implements GitHostProvider {
+  readonly name = 'GitHub';
+  readonly apiBaseUrl = 'https://api.github.com';
+
+  private config: GitHostConfig;
+  private corsProxy?: string;
+
+  constructor(config: GitHostConfig, corsProxy?: string) {
+    this.config = config;
+    this.corsProxy = corsProxy;
+  }
+
+  private async fetch<T>(path: string, options: RequestInit = {}): Promise<T> {
+    const url = `${this.apiBaseUrl}${path}`;
+    const targetUrl = this.corsProxy ? proxyUrl(this.corsProxy, url) : url;
+
+    const response = await fetch(targetUrl, {
+      ...options,
+      headers: {
+        'Accept': 'application/vnd.github.v3+json',
+        'Authorization': `Bearer ${this.config.token}`,
+        ...options.headers,
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`GitHub API error (${response.status}): ${errorText}`);
+    }
+
+    return response.json();
+  }
+
+  async getRepository(owner: string, repo: string): Promise<GitRepository> {
+    const data = await this.fetch<any>(`/repos/${owner}/${repo}`);
+
+    return {
+      owner: data.owner.login,
+      name: data.name,
+      fullName: data.full_name,
+      defaultBranch: data.default_branch,
+      cloneUrl: data.clone_url,
+      webUrl: data.html_url,
+      description: data.description,
+      isPrivate: data.private,
+    };
+  }
+
+  async canUserPush(owner: string, repo: string): Promise<boolean> {
+    try {
+      const data = await this.fetch<any>(`/repos/${owner}/${repo}`);
+      return data.permissions?.push === true || data.permissions?.admin === true;
+    } catch (error) {
+      // If we can't check permissions, assume no push access
+      return false;
+    }
+  }
+
+  async createFork(owner: string, repo: string): Promise<GitFork> {
+    const data = await this.fetch<any>(`/repos/${owner}/${repo}/forks`, {
+      method: 'POST',
+    });
+
+    return {
+      owner: data.owner.login,
+      name: data.name,
+      fullName: data.full_name,
+      cloneUrl: data.clone_url,
+      webUrl: data.html_url,
+      parentFullName: data.parent.full_name,
+    };
+  }
+
+  async getFork(upstreamOwner: string, upstreamRepo: string, username: string): Promise<GitFork | null> {
+    try {
+      // Check if the fork already exists
+      const data = await this.fetch<any>(`/repos/${username}/${upstreamRepo}`);
+
+      // Verify it's actually a fork of the upstream repo
+      if (data.fork && data.parent?.full_name === `${upstreamOwner}/${upstreamRepo}`) {
+        return {
+          owner: data.owner.login,
+          name: data.name,
+          fullName: data.full_name,
+          cloneUrl: data.clone_url,
+          webUrl: data.html_url,
+          parentFullName: data.parent.full_name,
+        };
+      }
+
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  async waitForFork(
+    upstreamOwner: string,
+    upstreamRepo: string,
+    username: string,
+    timeout = 30000
+  ): Promise<GitFork> {
+    const startTime = Date.now();
+    const pollInterval = 1000;
+
+    while (Date.now() - startTime < timeout) {
+      const fork = await this.getFork(upstreamOwner, upstreamRepo, username);
+      if (fork) {
+        return fork;
+      }
+      await new Promise(resolve => setTimeout(resolve, pollInterval));
+    }
+
+    throw new Error('Timeout waiting for fork to be created');
+  }
+
+  async createPullRequest(options: CreatePullRequestOptions): Promise<PullRequest> {
+    const [baseOwner, baseRepo] = options.baseRepo.split('/');
+    const [headOwner] = options.headRepo.split('/');
+
+    // Format head ref for cross-repo PR
+    const head = headOwner !== baseOwner
+      ? `${headOwner}:${options.headBranch}`
+      : options.headBranch;
+
+    const data = await this.fetch<any>(`/repos/${baseOwner}/${baseRepo}/pulls`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: options.title,
+        body: options.body || '',
+        head,
+        base: options.baseBranch,
+        maintainer_can_modify: options.maintainerCanModify ?? true,
+      }),
+    });
+
+    return this.transformPullRequest(data);
+  }
+
+  async getPullRequest(owner: string, repo: string, number: number): Promise<PullRequest> {
+    const data = await this.fetch<any>(`/repos/${owner}/${repo}/pulls/${number}`);
+    return this.transformPullRequest(data);
+  }
+
+  async listPullRequests(
+    owner: string,
+    repo: string,
+    state: 'open' | 'closed' | 'all' = 'open'
+  ): Promise<PullRequest[]> {
+    const data = await this.fetch<any[]>(`/repos/${owner}/${repo}/pulls?state=${state}`);
+    return data.map(pr => this.transformPullRequest(pr));
+  }
+
+  async updatePullRequest(
+    owner: string,
+    repo: string,
+    number: number,
+    options: { title?: string; body?: string }
+  ): Promise<PullRequest> {
+    const data = await this.fetch<any>(`/repos/${owner}/${repo}/pulls/${number}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(options),
+    });
+
+    return this.transformPullRequest(data);
+  }
+
+  async closePullRequest(owner: string, repo: string, number: number): Promise<PullRequest> {
+    const data = await this.fetch<any>(`/repos/${owner}/${repo}/pulls/${number}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ state: 'closed' }),
+    });
+
+    return this.transformPullRequest(data);
+  }
+
+  async getCurrentUser(): Promise<GitHostUser> {
+    const data = await this.fetch<any>('/user');
+
+    return {
+      username: data.login,
+      name: data.name,
+      email: data.email,
+      avatarUrl: data.avatar_url,
+    };
+  }
+
+  getCompareUrl(baseRepo: string, baseBranch: string, headRepo: string, headBranch: string): string {
+    const [headOwner, headRepoName] = headRepo.split('/');
+    return `https://github.com/${baseRepo}/compare/${baseBranch}...${headOwner}:${headRepoName}:${headBranch}?expand=1`;
+  }
+
+  private transformPullRequest(data: any): PullRequest {
+    const state = data.merged ? 'merged' : data.state;
+    
+    return {
+      number: data.number,
+      title: data.title,
+      body: data.body,
+      state,
+      headBranch: data.head.ref,
+      baseBranch: data.base.ref,
+      headRepo: data.head.repo?.full_name || '',
+      baseRepo: data.base.repo.full_name,
+      url: data.html_url,
+      createdAt: new Date(data.created_at),
+      updatedAt: new Date(data.updated_at),
+      author: data.user.login,
+      mergeable: data.mergeable,
+      checks: this.transformChecks(data),
+    };
+  }
+
+  private transformChecks(data: any): PullRequestCheck[] | undefined {
+    // GitHub's check runs are in a separate API call, so we don't have them here
+    // This would need a separate API call to /repos/{owner}/{repo}/commits/{ref}/check-runs
+    return undefined;
+  }
+}

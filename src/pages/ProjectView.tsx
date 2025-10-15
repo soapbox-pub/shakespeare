@@ -19,6 +19,7 @@ import { StarButton } from '@/components/StarButton';
 import { useBuildProject } from '@/hooks/useBuildProject';
 import { useIsProjectPreviewable } from '@/hooks/useIsProjectPreviewable';
 import { useConsoleError } from '@/hooks/useConsoleError';
+import { ContributeButton, PRStatusBadge } from '@/components/contribute';
 
 export function ProjectView() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -157,6 +158,12 @@ export function ProjectView() {
             <div className="flex items-center gap-2">
               {project ? (
                 <>
+                  <PRStatusBadge projectDir={`/projects/${project.id}`} />
+                  <ContributeButton
+                    projectDir={`/projects/${project.id}`}
+                    variant="ghost"
+                    size="sm"
+                  />
                   <StarButton
                     projectId={project.id}
                     projectName={project.name}
@@ -362,10 +369,16 @@ export function ProjectView() {
                       </div>
                     </div>
 
-                    {/* Right side - Star and Actions Menu */}
+                    {/* Right side - PR Status, Contribute, Star and Actions Menu */}
                     <div className="flex items-center gap-2">
                       {project ? (
                         <>
+                          <PRStatusBadge projectDir={`/projects/${project.id}`} />
+                          <ContributeButton
+                            projectDir={`/projects/${project.id}`}
+                            variant="ghost"
+                            size="sm"
+                          />
                           <StarButton
                             projectId={project.id}
                             projectName={project.name}

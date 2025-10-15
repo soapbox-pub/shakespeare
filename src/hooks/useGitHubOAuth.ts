@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { useGitSettings } from './useGitSettings';
 import { useAppContext } from './useAppContext';
 import { proxyUrl } from '@/lib/proxyUrl';
+import type { GitHostToken } from '@/contexts/GitSettingsContext';
 
 interface GitHubOAuthState {
   isLoading: boolean;
@@ -19,7 +20,7 @@ export function useGitHubOAuth() {
     isLoading: false,
     error: null,
   });
-  const { addCredential } = useGitSettings();
+  const { addCredential, addHostToken } = useGitSettings();
   const { config } = useAppContext();
   const { corsProxy } = config;
 
@@ -161,11 +162,20 @@ export function useGitHubOAuth() {
 
       const userData = await userResponse.json();
 
-      // Store the credentials
+      // Store the credentials (legacy format for existing push/pull operations)
       addCredential('https://github.com', {
         username: userData.login || 'git',
         password: tokenData.access_token,
       });
+
+      // Also store as host token for PR/contribution operations
+      const hostToken: GitHostToken = {
+        token: tokenData.access_token,
+        username: userData.login,
+        scopes: tokenData.scope ? tokenData.scope.split(',').map(s => s.trim()) : [],
+        createdAt: Date.now(),
+      };
+      addHostToken('github.com', hostToken);
 
       setState(prev => ({ ...prev, isLoading: false }));
       return true;

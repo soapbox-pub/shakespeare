@@ -63,7 +63,7 @@ export const ChatInput = memo(function ChatInput({
     setAttachedFiles(prev => prev.filter(file => file !== fileToRemove));
   }, []);
 
-  const handleSend = useCallback(async () => {
+  const handleSend = useCallback(() => {
     if ((!input.trim() && attachedFiles.length === 0) || isLoading) return;
     if (!isConfigured || !providerModel.trim()) return;
 
@@ -73,7 +73,7 @@ export const ChatInput = memo(function ChatInput({
     setInput('');
     setAttachedFiles([]);
 
-    await onSend(currentInput, currentFiles);
+    onSend(currentInput, currentFiles);
   }, [input, attachedFiles, isLoading, isConfigured, providerModel, onSend]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {

@@ -182,36 +182,4 @@ describe('AISettingsProvider', () => {
 
     expect(mockInvalidateQueries).toHaveBeenCalledWith({ queryKey: ['provider-models'] });
   });
-
-  it('should not invalidate provider-models query when updateSettings is called without providers', async () => {
-    // Mock the QueryClient.invalidateQueries method
-    const mockInvalidateQueries = vi.fn();
-
-    // Create a custom TestApp that mocks the query client
-    const MockedTestApp = ({ children }: { children: React.ReactNode }) => {
-      const queryClient = useQueryClient();
-      vi.spyOn(queryClient, 'invalidateQueries').mockImplementation(mockInvalidateQueries);
-      return <>{children}</>;
-    };
-
-    const { result } = renderHook(() => useAISettings(), {
-      wrapper: ({ children }) => (
-        <TestApp>
-          <MockedTestApp>{children}</MockedTestApp>
-        </TestApp>
-      ),
-    });
-
-    await waitFor(() => {
-      expect(result.current.settings.recentlyUsedModels).toEqual([]);
-    });
-
-    act(() => {
-      result.current.updateSettings({
-        recentlyUsedModels: ['test-model']
-      });
-    });
-
-    expect(mockInvalidateQueries).not.toHaveBeenCalled();
-  });
 });

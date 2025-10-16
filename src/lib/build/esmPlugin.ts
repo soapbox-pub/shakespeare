@@ -325,7 +325,7 @@ export function esmPlugin(options: EsmPluginOptions): Plugin {
           ? `${cdnName}@${version}${packagePath}`
           : `${cdnName}${packagePath}`;
 
-        const url = new URL(`${esmUrl}/*${specifier}`);
+        const url = new URL(`${esmUrl}/${specifier}`);
         if (target) url.searchParams.set("target", target);
         if (childLockPath) url.searchParams.set("lp", encodeURIComponent(childLockPath));
 

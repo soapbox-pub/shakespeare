@@ -9,6 +9,7 @@ import { esmPlugin } from "./esmPlugin";
 import { fsPlugin } from "./fsPlugin";
 import { sveltePlugin } from "./sveltePlugin";
 import { convertYarnLockToPackageLock } from "./yarnLockConverter";
+import { convertPnpmLockToPackageLock } from "./pnpmLockConverter";
 
 import type { JSRuntimeFS } from '@/lib/JSRuntime';
 
@@ -105,7 +106,7 @@ async function bundleSvelteKit(
     console.log('Merged Svelte aliases into tsconfig paths:', tsconfig.compilerOptions.paths);
   }
 
-  // Try to read package-lock.json first, fall back to yarn.lock
+  // Try to read package-lock.json first, fall back to yarn.lock, then pnpm-lock.yaml
   let packageLock;
   let buildMode: string;
   try {
@@ -124,8 +125,17 @@ async function bundleSvelteKit(
       packageLock = convertYarnLockToPackageLock(yarnLockText);
       buildMode = "yarn (yarn.lock)";
     } catch {
-      packageLock = { packages: {} };
-      buildMode = "package.json only (no lock file)";
+      try {
+        const pnpmLockText = await fs.readFile(
+          `${projectPath}/pnpm-lock.yaml`,
+          "utf8",
+        );
+        packageLock = convertPnpmLockToPackageLock(pnpmLockText);
+        buildMode = "pnpm (pnpm-lock.yaml)";
+      } catch {
+        packageLock = { packages: {} };
+        buildMode = "package.json only (no lock file)";
+      }
     }
   }
 
@@ -191,22 +201,19 @@ async function bundleSvelteKit(
   const dist: Record<string, Uint8Array> = {};
   const doc = domParser.parseFromString(appHtmlText, "text/html");
 
+  // Track the main component file for mounting
+  let mainComponentPath: string | undefined;
+
   // Process output files
   for (const file of results.outputFiles) {
     const ext = file.path.split('.').pop();
     const filename = `${file.path.slice(1)}`;
+    const entryPoint = results.metafile.outputs[filename]?.entryPoint?.replace(/^fs:/, '');
 
     if (ext === "js") {
-      const script = document.createElement("script");
-      script.type = "module";
-      script.src = "/" + filename;
-
-      // Insert before %sveltekit.head% placeholder or in head
-      const head = doc.head;
-      if (head.textContent?.includes("%sveltekit.head%")) {
-        head.innerHTML = head.innerHTML.replace("%sveltekit.head%", script.outerHTML);
-      } else {
-        head.appendChild(script);
+      // Track the main component for mounting
+      if (entryPoint && entryPoints.includes(entryPoint)) {
+        mainComponentPath = "/" + filename;
       }
 
       dist[filename] = file.contents;
@@ -225,6 +232,33 @@ async function bundleSvelteKit(
     } else {
       dist[filename] = file.contents;
     }
+  }
+
+  // Create a mounting script for the Svelte component
+  if (mainComponentPath) {
+    // Get svelte version from package.json
+    const svelteVersion = packageJson.dependencies?.svelte ||
+                         packageJson.devDependencies?.svelte ||
+                         '5';
+
+    const mountScript = `
+      import Component from '${mainComponentPath}';
+      import { mount } from '${esmUrl}/svelte@${svelteVersion}';
+
+      // Mount the component to the target element
+      const target = document.getElementById('svelte') || document.body;
+      mount(Component, { target });
+    `;
+
+    const mountScriptHash = Math.random().toString(36).substring(7);
+    const mountScriptFilename = `mount-${mountScriptHash}.js`;
+    dist[mountScriptFilename] = new TextEncoder().encode(mountScript);
+
+    // Add the mount script to the HTML
+    const script = document.createElement("script");
+    script.type = "module";
+    script.src = "/" + mountScriptFilename;
+    doc.head.appendChild(script);
   }
 
   // Replace SvelteKit placeholders
@@ -283,7 +317,7 @@ async function bundle(
     tsconfig = undefined;
   }
 
-  // Try to read package-lock.json first, fall back to yarn.lock
+  // Try to read package-lock.json first, fall back to yarn.lock, then pnpm-lock.yaml
   let packageLock;
   let buildMode: string;
   try {
@@ -303,9 +337,19 @@ async function bundle(
       packageLock = convertYarnLockToPackageLock(yarnLockText);
       buildMode = "yarn (yarn.lock)";
     } catch {
-      // If neither exists, use empty packages object
-      packageLock = { packages: {} };
-      buildMode = "package.json only (no lock file)";
+      // If yarn.lock doesn't exist, try pnpm-lock.yaml
+      try {
+        const pnpmLockText = await fs.readFile(
+          `${projectPath}/pnpm-lock.yaml`,
+          "utf8",
+        );
+        packageLock = convertPnpmLockToPackageLock(pnpmLockText);
+        buildMode = "pnpm (pnpm-lock.yaml)";
+      } catch {
+        // If no lock file exists, use empty packages object
+        packageLock = { packages: {} };
+        buildMode = "package.json only (no lock file)";
+      }
     }
   }
 

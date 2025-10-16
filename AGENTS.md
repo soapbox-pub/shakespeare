@@ -108,6 +108,99 @@ Shakespeare provides full Git functionality in the browser using `isomorphic-git
 
 Git operations happen transparently in the background, providing professional version control without requiring Git knowledge from users.
 
+## Build System
+
+Shakespeare includes a browser-based build system that compiles projects entirely in the browser using esbuild-wasm. The build system supports multiple project types and automatically detects the appropriate build strategy.
+
+### Supported Project Types
+
+#### React/Vite Projects
+- **Detection**: Projects with `index.html` at the root
+- **Entry Point**: Script tags in `index.html` with `type="module"`
+- **Static Assets**: Files in `public/` directory
+- **Build Output**: Bundled JavaScript, CSS, and HTML in `dist/` directory
+
+#### SvelteKit Projects
+- **Detection**: Projects with `src/app.html` or `svelte.config.js`/`svelte.config.ts`
+- **Entry Point**: Svelte components in `src/routes/`
+- **Static Assets**: Files in `static/` directory
+- **Build Output**: Compiled Svelte components with client-side rendering
+
+### Build System Architecture
+
+The build system is located in `src/lib/build/` and consists of several plugins:
+
+- **esmPlugin**: Resolves npm packages from esm.sh CDN, handles package-lock.json and yarn.lock
+- **fsPlugin**: Provides filesystem access for imports, handles path aliases like `@/`
+- **sveltePlugin**: Compiles `.svelte` files using the Svelte compiler from CDN
+- **shakespearePlugin**: Provides polyfills and workarounds for browser compatibility
+
+### Project Detection
+
+The build system automatically detects project type using the following logic:
+
+```typescript
+// A project is considered SvelteKit if:
+// 1. It has src/app.html OR svelte.config.js/ts, AND
+// 2. It does NOT have a root index.html (which indicates React/Vite)
+
+// Otherwise, it's treated as a React/Vite project
+```
+
+This detection is used in two places:
+- `buildProject()` in `src/lib/build/index.ts` - for building projects
+- `useIsProjectPreviewable()` in `src/hooks/useIsProjectPreviewable.ts` - for determining if preview is available
+
+### Building Projects
+
+Projects can be built using the `BuildProjectTool` or by calling `buildProject()` directly:
+
+```typescript
+const result = await buildProject({
+  fs,                    // Virtual filesystem
+  projectPath,           // Project directory path
+  domParser,            // DOMParser instance
+  target: "esnext",     // ECMAScript target
+  esmUrl,               // ESM CDN URL
+  outputPath,           // Optional output directory
+});
+```
+
+The build process:
+1. Detects project type (React/Vite or SvelteKit)
+2. Reads package.json, tsconfig.json, and lock files
+3. Bundles code with esbuild and appropriate plugins
+4. Processes HTML template (index.html or app.html)
+5. Copies static assets from public/ or static/
+6. Writes output to dist/ directory
+7. Emits `buildComplete` event for preview refresh
+
+### SvelteKit-Specific Features
+
+When building SvelteKit projects:
+- Compiles `.svelte` components using Svelte 5 compiler from esm.sh
+- Replaces SvelteKit placeholders in app.html:
+  - `%sveltekit.head%` - Replaced with script/style tags
+  - `%sveltekit.body%` - Replaced with `<div id="svelte"></div>`
+  - `%sveltekit.assets%` - Replaced with empty string
+  - `%sveltekit.nonce%` - Replaced with empty string
+- Looks for entry points in `src/routes/` directory
+- Copies static assets from `static/` instead of `public/`
+
+### Preview System
+
+The preview system uses `useIsProjectPreviewable()` to determine if a project can be previewed:
+
+- Returns `true` for React/Vite projects with `index.html` and `package.json`
+- Returns `true` for SvelteKit projects with (`src/app.html` OR `svelte.config.*`) and `package.json`
+- Returns `false` otherwise
+
+When a project is previewable, the PreviewPane component shows:
+- Build button to trigger compilation
+- Live preview iframe with the built application
+- Console output and error messages
+- Browser-like address bar
+
 ## AI Message Format
 
 Shakespeare uses OpenAI-compatible messages for communication between users and AI assistants. The message format follows these conventions:
@@ -198,7 +291,9 @@ This project is a Nostr client application built with React 18.x, TailwindCSS 3.
   - `useNWCContext`: Access NWC context provider
 - `/src/pages/`: Page components used by React Router (Index, NotFound, ProjectView, Settings pages)
 - `/src/lib/`: Utility functions and shared logic
-  - `/src/lib/build/`: Project build system with esbuild integration (esmPlugin, fsPlugin)
+  - `/src/lib/build/`: Project build system with esbuild integration (esmPlugin, fsPlugin, sveltePlugin)
+    - Supports both React/Vite projects and SvelteKit projects
+    - Automatic project type detection based on file structure
   - `/src/lib/commands/`: Shell command implementations for virtual filesystem
     - `/src/lib/commands/git/`: Git command implementations (add, commit, push, pull, etc.)
     - Unix-style commands: `cat`, `cd`, `cp`, `find`, `grep`, `ls`, `mkdir`, `mv`, `rm`, etc.

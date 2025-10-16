@@ -33,9 +33,12 @@ describe('useIsProjectPreviewable', () => {
     expect(mockFileExists).toHaveBeenCalledWith('test-project', 'package.json');
   });
 
-  it('returns false when index.html is missing', async () => {
+  it('returns false when index.html is missing and not a SvelteKit project', async () => {
     mockFileExists.mockImplementation((projectId: string, filePath: string) => {
       if (filePath === 'index.html') return Promise.resolve(false);
+      if (filePath === 'src/app.html') return Promise.resolve(false);
+      if (filePath === 'svelte.config.js') return Promise.resolve(false);
+      if (filePath === 'svelte.config.ts') return Promise.resolve(false);
       return Promise.resolve(true);
     });
 
@@ -49,6 +52,66 @@ describe('useIsProjectPreviewable', () => {
     });
 
     expect(result.current.data).toBe(false);
+  });
+
+  it('returns true for SvelteKit project with src/app.html', async () => {
+    mockFileExists.mockImplementation((projectId: string, filePath: string) => {
+      if (filePath === 'package.json') return Promise.resolve(true);
+      if (filePath === 'index.html') return Promise.resolve(false);
+      if (filePath === 'src/app.html') return Promise.resolve(true);
+      return Promise.resolve(false);
+    });
+
+    const { result } = renderHook(
+      () => useIsProjectPreviewable('test-project'),
+      { wrapper: TestApp }
+    );
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+
+    expect(result.current.data).toBe(true);
+  });
+
+  it('returns true for SvelteKit project with svelte.config.js', async () => {
+    mockFileExists.mockImplementation((projectId: string, filePath: string) => {
+      if (filePath === 'package.json') return Promise.resolve(true);
+      if (filePath === 'index.html') return Promise.resolve(false);
+      if (filePath === 'svelte.config.js') return Promise.resolve(true);
+      return Promise.resolve(false);
+    });
+
+    const { result } = renderHook(
+      () => useIsProjectPreviewable('test-project'),
+      { wrapper: TestApp }
+    );
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+
+    expect(result.current.data).toBe(true);
+  });
+
+  it('returns true for SvelteKit project with svelte.config.ts', async () => {
+    mockFileExists.mockImplementation((projectId: string, filePath: string) => {
+      if (filePath === 'package.json') return Promise.resolve(true);
+      if (filePath === 'index.html') return Promise.resolve(false);
+      if (filePath === 'svelte.config.ts') return Promise.resolve(true);
+      return Promise.resolve(false);
+    });
+
+    const { result } = renderHook(
+      () => useIsProjectPreviewable('test-project'),
+      { wrapper: TestApp }
+    );
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+
+    expect(result.current.data).toBe(true);
   });
 
   it('returns false when package.json is missing', async () => {

@@ -35,16 +35,69 @@ export function fsPlugin(options: FsPluginOptions): Plugin {
           return;
         }
 
-        let resolved: string;
+        let resolved: string | undefined;
+
+        // 1. Absolute paths from CSS files should be treated as external (public assets)
         if (args.path.startsWith("/")) {
+          // Check if the importer is a CSS file
+          const importerExt = args.importer ? extname(args.importer).slice(1) : '';
+          if (importerExt === 'css') {
+            // CSS imports of absolute paths are public assets (fonts, images, etc.)
+            return {
+              path: args.path,
+              external: true,
+            };
+          }
           resolved = args.path;
-        } else if (args.path.startsWith("@/")) {
+        }
+        // 2. Built-in @/ alias (always points to src/)
+        else if (args.path.startsWith("@/")) {
           resolved = join(cwd, "src", args.path.slice(2));
-        } else if (args.importer && (args.path.startsWith("./") || args.path.startsWith("../"))) {
+        }
+        // 3. Relative paths
+        else if (args.importer && (args.path.startsWith("./") || args.path.startsWith("../"))) {
           resolved = join(dirname(args.importer), args.path);
-        } else if (args.importer && tsconfig?.compilerOptions?.baseUrl) {
+        }
+        // 4. Try tsconfig paths
+        else if (tsconfig?.compilerOptions?.paths) {
+          const paths = tsconfig.compilerOptions.paths;
+          const baseUrl = tsconfig.compilerOptions.baseUrl || ".";
+
+          // Try to match against tsconfig paths
+          for (const [pattern, mappings] of Object.entries(paths)) {
+            // Handle exact matches
+            if (pattern === args.path) {
+              const mapping = mappings[0];
+              if (mapping) {
+                resolved = join(cwd, baseUrl, mapping);
+                break;
+              }
+            }
+
+            // Handle wildcard patterns (e.g., "$lib/*": ["src/lib/*"])
+            if (pattern.endsWith('/*')) {
+              const prefix = pattern.slice(0, -2);
+              if (args.path.startsWith(prefix + '/') || args.path === prefix) {
+                const suffix = args.path.slice(prefix.length);
+                const mapping = mappings[0];
+                if (mapping) {
+                  // Replace the * in the mapping with the suffix
+                  const resolvedMapping = mapping.replace('*', suffix.slice(1) || '');
+                  resolved = join(cwd, baseUrl, resolvedMapping);
+                  break;
+                }
+              }
+            }
+          }
+        }
+
+        // 5. Try baseUrl as fallback
+        if (!resolved && args.importer && tsconfig?.compilerOptions?.baseUrl) {
           resolved = join(cwd, tsconfig.compilerOptions.baseUrl, args.path);
-        } else {
+        }
+
+        // If still not resolved, let other plugins handle it
+        if (!resolved) {
           return;
         }
 

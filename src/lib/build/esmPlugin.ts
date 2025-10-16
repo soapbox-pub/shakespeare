@@ -222,6 +222,7 @@ export function esmPlugin(options: EsmPluginOptions): Plugin {
 
         switch (moduleName) {
           case "buffer":
+          case "events":
             return {
               path: `${esmUrl}/${moduleName}?target=${target ?? "esnext"}`,
               namespace: "esm",

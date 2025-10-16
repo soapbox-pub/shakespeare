@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Check, ChevronDown, Edit3, RefreshCw, AlertCircle, Settings, TriangleAlert } from 'lucide-react';
@@ -24,7 +24,7 @@ interface ModelSelectorProps {
   onOpenChange?: (open: boolean) => void;
 }
 
-export function ModelSelector({
+export const ModelSelector = memo(function ModelSelector({
   value,
   onChange,
   className,
@@ -423,4 +423,4 @@ export function ModelSelector({
       </div>
     </TooltipProvider>
   );
-}
+});

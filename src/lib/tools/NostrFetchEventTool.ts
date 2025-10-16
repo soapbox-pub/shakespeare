@@ -58,7 +58,7 @@ export class NostrFetchEventTool implements Tool<NostrFetchEventParams> {
     const decoded = nip19.decode(identifier);
 
     const defaultRelays = [
-      'wss://ditto.pub/relay',
+      'wss://relay.ditto.pub',
       'wss://relay.nostr.band',
       'wss://relay.primal.net',
     ];

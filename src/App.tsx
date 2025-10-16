@@ -41,7 +41,7 @@ const queryClient = new QueryClient({
 
 const defaultConfig: AppConfig = {
   theme: "system",
-  relayUrl: "wss://relay.primal.net",
+  relayUrl: "wss://relay.ditto.pub",
   projectTemplate: "https://gitlab.com/soapbox-pub/mkstack.git",
   deployServer: "shakespeare.wtf",
   esmUrl: "https://esm.shakespeare.diy",
@@ -53,7 +53,7 @@ const defaultConfig: AppConfig = {
 };
 
 const presetRelays = [
-  { url: 'wss://ditto.pub/relay', name: 'Ditto' },
+  { url: 'wss://relay.ditto.pub', name: 'Ditto' },
   { url: 'wss://relay.nostr.band', name: 'Nostr.Band' },
   { url: 'wss://relay.damus.io', name: 'Damus' },
   { url: 'wss://relay.primal.net', name: 'Primal' },

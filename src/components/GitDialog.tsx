@@ -424,8 +424,8 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
       });
 
       // Set origin remote to Nostr URL
-      // Format: nostr://<hex-pubkey>/<repo-id>
-      const nostrUrl = `nostr://${user.pubkey}/${projectId}`;
+      // Format: nostr://<npub>/<repo-id>
+      const nostrUrl = `nostr://${nip19.npubEncode(user.pubkey)}/${projectId}`;
 
       try {
         // Remove existing origin if it exists

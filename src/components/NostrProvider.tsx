@@ -31,7 +31,7 @@ const NostrProvider: React.FC<NostrProviderProps> = (props) => {
   // Update refs when config changes
   useEffect(() => {
     relayUrl.current = config.relayUrl;
-    queryClient.resetQueries();
+    queryClient.invalidateQueries({ queryKey: ['nostr'] });
   }, [config.relayUrl, queryClient]);
 
   // Initialize NPool only once

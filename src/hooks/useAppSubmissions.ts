@@ -39,7 +39,7 @@ export function useAppSubmissions() {
   const { nostr } = useNostr();
 
   return useQuery({
-    queryKey: ['app-submissions'],
+    queryKey: ['nostr', 'app-submissions'],
     queryFn: async (): Promise<AppSubmission[]> => {
       // Get Soapbox team follow pack for auto-approval
       const teamPubkeys = new Set<string>();

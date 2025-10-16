@@ -2,13 +2,9 @@ import { useState, useRef, useEffect, forwardRef, useImperativeHandle, useMemo, 
 import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
-import { CircularProgress } from '@/components/ui/circular-progress';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { FileAttachment } from '@/components/ui/file-attachment';
 import { OnboardingDialog } from '@/components/OnboardingDialog';
-import { Square, Loader2, ChevronDown, ArrowUp } from 'lucide-react';
+import { Loader2, ChevronDown } from 'lucide-react';
 import { useAISettings } from '@/hooks/useAISettings';
 import { useFS } from '@/hooks/useFS';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
@@ -16,7 +12,6 @@ import { useKeepAlive } from '@/hooks/useKeepAlive';
 import { useAppContext } from '@/hooks/useAppContext';
 import { useAIChat } from '@/hooks/useAIChat';
 import { useProviderModels } from '@/hooks/useProviderModels';
-import { ModelSelector } from '@/components/ModelSelector';
 import { AIMessageItem } from '@/components/AIMessageItem';
 import { TextEditorViewTool } from '@/lib/tools/TextEditorViewTool';
 import { TextEditorWriteTool } from '@/lib/tools/TextEditorWriteTool';
@@ -44,6 +39,7 @@ import { saveFileToTmp } from '@/lib/fileUtils';
 import { useGit } from '@/hooks/useGit';
 import { Quilly } from '@/components/Quilly';
 import { ShakespeareLogo } from '@/components/ShakespeareLogo';
+import { ChatInput } from '@/components/Shakespeare/ChatInput';
 
 // Clean interfaces now handled by proper hooks
 
@@ -79,9 +75,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   const { user } = useCurrentUser();
   const { models } = useProviderModels();
   const { config } = useAppContext();
-  const [input, setInput] = useState('');
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
-  const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
   const [scrolledProjects] = useState(() => new Set<string>());
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -103,6 +97,11 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   const [isModelSelectorOpen, setIsModelSelectorOpen] = useState(false);
   const [shouldAutostart, setShouldAutostart] = useState(false);
   const autostartedRef = useRef(false);
+
+  // Memoize model selector onChange handler to prevent unnecessary re-renders
+  const handleModelChange = useCallback((newModel: string) => {
+    setProviderModel(newModel);
+  }, []);
 
   useEffect(() => {
     if (!providerModel && settings.recentlyUsedModels?.length) {
@@ -373,30 +372,22 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     }
   }, [projectId, scrolledProjects, scrollToBottom]);
 
-  const handleFileSelect = (file: File) => {
-    setAttachedFiles(prev => [...prev, file]);
-  };
-
-  const handleFileRemove = (fileToRemove: File) => {
-    setAttachedFiles(prev => prev.filter(file => file !== fileToRemove));
-  };
-
   // Drag and drop handlers
-  const handleDragEnter = (e: React.DragEvent) => {
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragOver(true);
-  };
+  }, []);
 
-  const handleDragOver = (e: React.DragEvent) => {
+  const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     if (!isDragOver) {
       setIsDragOver(true);
     }
-  };
+  }, [isDragOver]);
 
-  const handleDragLeave = (e: React.DragEvent) => {
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
@@ -408,23 +399,15 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     if (!container.contains(relatedTarget)) {
       setIsDragOver(false);
     }
-  };
+  }, []);
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragOver(false);
+  }, []);
 
-    if (isLoading || !providerModel.trim()) return;
-
-    const files = Array.from(e.dataTransfer.files);
-    if (files.length === 0) return;
-
-    // Add all files without validation
-    setAttachedFiles(prev => [...prev, ...files]);
-  };
-
-  const send = useCallback(async (input: string, attachedFiles: File[]) => {
+  const handleSend = useCallback(async (input: string, attachedFiles: File[]) => {
     if ((!input.trim() && attachedFiles.length === 0) || isLoading) return;
 
     // If AI is not configured, show onboarding dialog
@@ -474,9 +457,6 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
       });
     }
 
-    setInput('');
-    setAttachedFiles([]);
-
     // Add model to recently used when sending a message
     addRecentlyUsedModel(modelToUse);
 
@@ -485,64 +465,24 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     await sendMessage(messageContent, modelToUse);
   }, [addRecentlyUsedModel, fs, isConfigured, isLoading, providerModel, sendMessage]);
 
-  const handleSend = useCallback(async () => {
-    await send(input, attachedFiles);
-  }, [input, attachedFiles, send]);
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
-  };
-
-  const handlePaste = async (e: React.ClipboardEvent) => {
-    const items = e.clipboardData?.items;
-    if (!items) return;
-
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i];
-
-      // Check if the item is an image
-      if (item.type.startsWith('image/')) {
-        e.preventDefault(); // Prevent default paste behavior for images
-
-        const file = item.getAsFile();
-        if (file) {
-          // Generate a filename with timestamp
-          const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-          const extension = file.type.split('/')[1] || 'png';
-          const filename = `pasted-image-${timestamp}.${extension}`;
-
-          // Create a new File object with the generated name
-          const namedFile = new File([file], filename, { type: file.type });
-
-          // Add to attached files
-          setAttachedFiles(prev => [...prev, namedFile]);
-        }
-        break; // Only handle the first image found
-      }
-    }
-  };
-
   // Handle textarea focus - show onboarding if not configured
-  const handleTextareaFocus = () => {
+  const handleTextareaFocus = useCallback(() => {
     if (!isConfigured) {
       setShowOnboarding(true);
     }
     if (onFirstInteraction) {
       onFirstInteraction();
     }
-  };
+  }, [isConfigured, onFirstInteraction]);
 
   // Handle first user interaction to enable audio context
-  const handleFirstInteraction = () => {
+  const handleFirstInteraction = useCallback(() => {
     // This will be handled automatically by the useKeepAlive hook
     // when isLoading becomes true after user interaction
     if (onFirstInteraction) {
       onFirstInteraction();
     }
-  };
+  }, [onFirstInteraction]);
 
   // Expose startNewSession function via ref
   useImperativeHandle(ref, () => ({
@@ -674,133 +614,27 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
         </div>
       )}
 
-      <div className="border-t p-4">
-        {/* Chat Input Container */}
-        <div
-          className={`flex flex-col rounded-2xl border border-input bg-background shadow-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 transition-all ${isDragOver ? 'border-primary bg-primary/5 ring-2 ring-primary/20' : ''
-          }`}
-          onDragEnter={handleDragEnter}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-        >
-          <Textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            onPaste={handlePaste}
-            onFocus={handleTextareaFocus}
-            placeholder={
-              !isConfigured
-                ? t('askToAddFeatures')
-                : providerModel.trim()
-                  ? t('askToAddFeatures')
-                  : t('selectModelFirst')
-            }
-            className="flex-1 resize-none border-0 bg-transparent px-4 py-3 text-sm focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground"
-            disabled={isLoading || (isConfigured && !providerModel.trim())}
-            rows={1}
-            aria-label="Chat message input"
-            style={{
-              height: 'auto',
-              minHeight: '96px'
-            }}
-            onInput={(e) => {
-              const target = e.target as HTMLTextAreaElement;
-              target.style.height = 'auto';
-              target.style.height = Math.min(target.scrollHeight, 128) + 'px';
-            }}
-          />
-
-          {/* Bottom Controls Row */}
-          <div className="flex items-center gap-4 px-2 py-2">
-            {/* File Attachment */}
-            <FileAttachment
-              onFileSelect={handleFileSelect}
-              onFileRemove={handleFileRemove}
-              selectedFiles={attachedFiles}
-              disabled={isLoading}
-              multiple={true}
-            />
-
-            {/* Context Usage Wheel */}
-            {contextUsagePercentage >= 10 && currentModel?.contextLength && lastInputTokens > 0 && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="cursor-help">
-                      <CircularProgress
-                        value={contextUsagePercentage}
-                        size={20}
-                        strokeWidth={2}
-                      />
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>{t('contextUsage', {
-                      tokens: lastInputTokens.toLocaleString(),
-                      total: currentModel.contextLength.toLocaleString(),
-                      percentage: contextUsagePercentage.toFixed(1)
-                    })}</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
-
-            {/* Cost Display */}
-            {totalCost >= 0.01 && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="text-xs text-muted-foreground px-2 py-1 bg-muted/50 rounded-md whitespace-nowrap cursor-help">
-                      ${totalCost.toFixed(2)}
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>{t('totalCostSession')}</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
-
-            {/* Model Selector */}
-            <div className="flex-1 max-w-72 ml-auto overflow-hidden">
-              <ModelSelector
-                value={providerModel}
-                onChange={setProviderModel}
-                disabled={isLoading}
-                placeholder={t('chooseModel')}
-                open={isModelSelectorOpen}
-                onOpenChange={setIsModelSelectorOpen}
-              />
-            </div>
-
-            {/* Send/Stop Button */}
-            <div>
-              {isLoading ? (
-                <Button
-                  onClick={stopGeneration}
-                  size="sm"
-                  variant="ghost"
-                  className="size-8 rounded-full p-0 bg-foreground/10 [&_svg]:size-3.5 [&_svg]:fill-foreground hover:bg-foreground/20"
-                >
-                  <Square />
-                </Button>
-              ) : (
-                <Button
-                  onClick={handleSend}
-                  onMouseDown={handleFirstInteraction}
-                  disabled={(!input.trim() && attachedFiles.length === 0) || (isConfigured && !providerModel.trim())}
-                  size="sm"
-                  className="size-8 [&_svg]:size-5 rounded-full p-0"
-                >
-                  <ArrowUp />
-                </Button>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
+      <ChatInput
+        isLoading={isLoading}
+        isConfigured={isConfigured}
+        providerModel={providerModel}
+        onProviderModelChange={handleModelChange}
+        onSend={handleSend}
+        onStop={stopGeneration}
+        onFocus={handleTextareaFocus}
+        onFirstInteraction={handleFirstInteraction}
+        isModelSelectorOpen={isModelSelectorOpen}
+        onModelSelectorOpenChange={setIsModelSelectorOpen}
+        contextUsagePercentage={contextUsagePercentage}
+        currentModelContextLength={currentModel?.contextLength}
+        lastInputTokens={lastInputTokens}
+        totalCost={totalCost}
+        isDragOver={isDragOver}
+        onDragEnter={handleDragEnter}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      />
 
       {/* Onboarding Dialog */}
       <OnboardingDialog

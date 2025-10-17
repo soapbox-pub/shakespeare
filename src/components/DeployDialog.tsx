@@ -23,7 +23,7 @@ import { useDeploySettings } from '@/hooks/useDeploySettings';
 import { useProjectDeploySettings } from '@/hooks/useProjectDeploySettings';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useFS } from '@/hooks/useFS';
-import { ShakespeareDeployProvider, NetlifyDeployProvider, VercelDeployProvider } from '@/lib/deploy-providers';
+import { ShakespeareDeployProvider, NetlifyDeployProvider, VercelDeployProvider, DeployProvider } from '@/lib/deploy-providers';
 import type { DeployProvider as DeployProviderType } from '@/contexts/DeploySettingsContext';
 import { Link } from 'react-router-dom';
 
@@ -39,7 +39,7 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
   const { settings, setProvider } = useDeploySettings();
   const { settings: projectSettings, updateSettings: updateProjectSettings } = useProjectDeploySettings(projectId);
   const { user } = useCurrentUser();
-  const fs = useFS();
+  const { fs } = useFS();
 
   const [selectedProviderId, setSelectedProviderId] = useState<string>('');
   const [isDeploying, setIsDeploying] = useState(false);
@@ -80,7 +80,7 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
     try {
       const projectPath = `/projects/${projectId}`;
 
-      let provider;
+      let provider: DeployProvider;
 
       if (selectedProvider.type === 'shakespeare') {
         if (!user) {

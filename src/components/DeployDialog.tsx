@@ -1,181 +1,350 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Rocket, ExternalLink, AlertCircle } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useToast } from '@/hooks/useToast';
-import { useAppContext } from '@/hooks/useAppContext';
-import { useCurrentUser } from '@/hooks/useCurrentUser';
-import { useMutation } from '@tanstack/react-query';
-import { deployProject } from '@/lib/deploy';
-import { useFS } from '@/hooks/useFS';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
-  CloudUpload,
-  Loader2,
-} from 'lucide-react';
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { useDeploySettings } from '@/hooks/useDeploySettings';
+import { useProjectDeploySettings } from '@/hooks/useProjectDeploySettings';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useFS } from '@/hooks/useFS';
+import { ShakespeareDeployProvider, NetlifyDeployProvider, VercelDeployProvider } from '@/lib/deploy-providers';
+import type { DeployProvider as DeployProviderType } from '@/contexts/DeploySettingsContext';
+import { Link } from 'react-router-dom';
 
 interface DeployDialogProps {
   projectId: string;
   projectName: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onFirstInteraction?: () => void;
 }
 
-export function DeployDialog({
-  projectId,
-  projectName,
-  open,
-  onOpenChange,
-  onFirstInteraction
-}: DeployDialogProps) {
-  const { config } = useAppContext();
+export function DeployDialog({ projectId, projectName, open, onOpenChange }: DeployDialogProps) {
+  const { t } = useTranslation();
+  const { settings, setProvider } = useDeploySettings();
+  const { settings: projectSettings, updateSettings: updateProjectSettings } = useProjectDeploySettings(projectId);
   const { user } = useCurrentUser();
-  const { fs } = useFS();
-  const { toast } = useToast();
+  const fs = useFS();
 
-  // State for the deploy URL input
-  const [deployUrl, setDeployUrl] = useState('');
+  const [selectedProviderId, setSelectedProviderId] = useState<string>('');
+  const [isDeploying, setIsDeploying] = useState(false);
+  const [deployResult, setDeployResult] = useState<{ url: string } | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  // Initialize deploy URL when dialog opens
+  // Form fields for each provider
+  const [netlifyFields, setNetlifyFields] = useState({ siteId: '' });
+  const [vercelFields, setVercelFields] = useState({ teamId: '', projectId: '' });
+
+  // Load project settings when dialog opens
   useEffect(() => {
-    if (open) {
-      setDeployUrl(`${projectId}.${config.deployServer}`);
+    if (open && projectSettings.providerId) {
+      setSelectedProviderId(projectSettings.providerId);
+
+      if (projectSettings.netlify?.siteId) {
+        setNetlifyFields({ siteId: projectSettings.netlify.siteId });
+      }
+
+      if (projectSettings.vercel) {
+        setVercelFields({
+          teamId: projectSettings.vercel.teamId || '',
+          projectId: projectSettings.vercel.projectId || '',
+        });
+      }
     }
-  }, [open, projectId, config.deployServer]);
+  }, [open, projectSettings]);
 
-  const deployMutation = useMutation({
-    mutationFn: async () => {
-      if (!user) {
-        throw new Error("You must be logged into Nostr to deploy a project");
+  const selectedProvider = settings.providers.find(p => p.id === selectedProviderId);
+
+  const handleDeploy = async () => {
+    if (!selectedProvider) return;
+
+    setIsDeploying(true);
+    setError(null);
+    setDeployResult(null);
+
+    try {
+      const projectPath = `/projects/${projectId}`;
+
+      let provider;
+
+      if (selectedProvider.type === 'shakespeare') {
+        if (!user) {
+          throw new Error('You must be logged in with Nostr to use Shakespeare Deploy');
+        }
+        provider = new ShakespeareDeployProvider({
+          signer: user.signer,
+        });
+      } else if (selectedProvider.type === 'netlify') {
+        if (!selectedProvider.apiKey) {
+          throw new Error('Netlify API key is required');
+        }
+
+        // Update provider with site ID if provided
+        const updatedProvider: DeployProviderType = {
+          ...selectedProvider,
+          siteId: netlifyFields.siteId || selectedProvider.siteId,
+        };
+
+        if (netlifyFields.siteId && netlifyFields.siteId !== selectedProvider.siteId) {
+          setProvider(updatedProvider);
+        }
+
+        provider = new NetlifyDeployProvider({
+          apiKey: selectedProvider.apiKey,
+          siteId: updatedProvider.siteId,
+        });
+      } else if (selectedProvider.type === 'vercel') {
+        if (!selectedProvider.apiKey) {
+          throw new Error('Vercel API key is required');
+        }
+
+        // Update provider with team/project ID if provided
+        const updatedProvider: DeployProviderType = {
+          ...selectedProvider,
+          teamId: vercelFields.teamId || selectedProvider.teamId,
+          projectId: vercelFields.projectId || selectedProvider.projectId,
+        };
+
+        if (
+          (vercelFields.teamId && vercelFields.teamId !== selectedProvider.teamId) ||
+          (vercelFields.projectId && vercelFields.projectId !== selectedProvider.projectId)
+        ) {
+          setProvider(updatedProvider);
+        }
+
+        provider = new VercelDeployProvider({
+          apiKey: selectedProvider.apiKey,
+          teamId: updatedProvider.teamId,
+          projectId: updatedProvider.projectId,
+        });
+      } else {
+        throw new Error('Unknown provider type');
       }
 
-      // Parse the deploy URL to extract hostname and server
-      const hostname = deployUrl.trim();
-      const parts = hostname.split('.');
-
-      if (parts.length < 2) {
-        throw new Error("Invalid deploy URL format. Please use format: subdomain.domain.com");
-      }
-
-      // Extract the deploy server (everything after the first dot)
-      const deployServer = parts.slice(1).join('.');
-
-      return await deployProject({
+      const result = await provider.deploy({
+        projectId,
+        projectName,
         fs,
-        projectId, // Keep the original projectId for file path
-        deployServer,
-        projectPath: `/projects/${projectId}`,
-        signer: user.signer,
-        customHostname: hostname, // Pass the custom hostname
-      });
-    },
-    onSuccess: (result) => {
-      toast({
-        title: "Deployment successful!",
-        description: `Your project is now live at ${result.hostname}`,
+        projectPath,
       });
 
-      // Open the deployed site in a new tab
-      window.open(result.url, '_blank');
-
-      // Close the dialog
-      onOpenChange(false);
-    },
-    onError: (error) => {
-      toast({
-        title: "Deployment failed",
-        description: error instanceof Error ? error.message : "An unexpected error occurred",
-        variant: "destructive",
+      // Save project-specific settings
+      await updateProjectSettings({
+        providerId: selectedProviderId,
+        netlify: selectedProvider.type === 'netlify' ? { siteId: netlifyFields.siteId } : undefined,
+        vercel: selectedProvider.type === 'vercel' ? {
+          teamId: vercelFields.teamId,
+          projectId: vercelFields.projectId,
+        } : undefined,
       });
-    },
-  });
 
-  const handleDeploy = () => {
-    if (onFirstInteraction) {
-      onFirstInteraction();
+      setDeployResult(result);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Deployment failed');
+    } finally {
+      setIsDeploying(false);
     }
-    deployMutation.mutate();
   };
 
-  const handleUrlChange = (value: string) => {
-    // Remove protocol if user enters it
-    const cleanValue = value.replace(/^https?:\/\//, '');
-    setDeployUrl(cleanValue);
-  };
-
-  const isValidUrl = () => {
-    const trimmed = deployUrl.trim();
-    return trimmed.length > 0 && trimmed.includes('.') && !trimmed.startsWith('.') && !trimmed.endsWith('.');
+  const handleClose = () => {
+    setSelectedProviderId('');
+    setDeployResult(null);
+    setError(null);
+    setNetlifyFields({ siteId: '' });
+    setVercelFields({ teamId: '', projectId: '' });
+    onOpenChange(false);
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <CloudUpload className="h-5 w-5" />
-            Deploy "{projectName}"
+            <Rocket className="h-5 w-5" />
+            Deploy Project
           </DialogTitle>
+          <DialogDescription>
+            Deploy your project to a hosting platform
+          </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="deploy-url">Deploy URL</Label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                https://
-              </span>
-              <Input
-                id="deploy-url"
-                value={deployUrl}
-                onChange={(e) => handleUrlChange(e.target.value)}
-                placeholder={`${projectId}.${config.deployServer}`}
-                className="pl-16"
-                disabled={deployMutation.isPending}
-              />
+        {deployResult ? (
+          <div className="space-y-4">
+            <Alert>
+              <Rocket className="h-4 w-4" />
+              <AlertDescription>
+                Your project has been successfully deployed!
+              </AlertDescription>
+            </Alert>
+
+            <div className="space-y-2">
+              <Label>Deployed URL</Label>
+              <div className="flex gap-2">
+                <Input
+                  value={deployResult.url}
+                  readOnly
+                  className="flex-1"
+                />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => window.open(deployResult.url, '_blank')}
+                >
+                  <ExternalLink className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Your project will be deployed to this URL. You can customize the subdomain.
-            </p>
+
+            <div className="flex justify-end gap-2">
+              <Button onClick={handleClose}>
+                {t('close')}
+              </Button>
+            </div>
           </div>
-
-          {!user && (
-            <div className="p-3 bg-muted rounded-lg">
-              <p className="text-sm text-muted-foreground">
-                You must be logged into Nostr to deploy projects.
-              </p>
-            </div>
-          )}
-        </div>
-
-        <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={deployMutation.isPending}
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleDeploy}
-            disabled={!user || !isValidUrl() || deployMutation.isPending}
-            className="gap-2"
-          >
-            {deployMutation.isPending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <div className="space-y-4">
+            {settings.providers.length === 0 ? (
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  No deployment providers configured.{' '}
+                  <Link
+                    to="/settings/deploy"
+                    className="underline hover:no-underline"
+                    onClick={handleClose}
+                  >
+                    Configure deployment settings
+                  </Link>
+                </AlertDescription>
+              </Alert>
             ) : (
-              <CloudUpload className="h-4 w-4" />
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="provider">Select Provider</Label>
+                  <Select value={selectedProviderId} onValueChange={setSelectedProviderId}>
+                    <SelectTrigger id="provider">
+                      <SelectValue placeholder="Choose a deployment provider..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {settings.providers.map((provider) => (
+                        <SelectItem key={provider.id} value={provider.id}>
+                          {provider.id === 'shakespeare' && 'Shakespeare Deploy'}
+                          {provider.id === 'netlify' && 'Netlify'}
+                          {provider.id === 'vercel' && 'Vercel'}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {selectedProvider?.type === 'netlify' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="netlify-site-id">
+                      Site ID (Optional)
+                    </Label>
+                    <Input
+                      id="netlify-site-id"
+                      placeholder="Leave empty to create new site"
+                      value={netlifyFields.siteId}
+                      onChange={(e) => setNetlifyFields({ ...netlifyFields, siteId: e.target.value })}
+                    />
+                  </div>
+                )}
+
+                {selectedProvider?.type === 'vercel' && (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="vercel-team-id">
+                        Team ID (Optional)
+                      </Label>
+                      <Input
+                        id="vercel-team-id"
+                        placeholder="Leave empty for personal account"
+                        value={vercelFields.teamId}
+                        onChange={(e) => setVercelFields({ ...vercelFields, teamId: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="vercel-project-id">
+                        Project ID (Optional)
+                      </Label>
+                      <Input
+                        id="vercel-project-id"
+                        placeholder="Leave empty to create new project"
+                        value={vercelFields.projectId}
+                        onChange={(e) => setVercelFields({ ...vercelFields, projectId: e.target.value })}
+                      />
+                    </div>
+                  </>
+                )}
+
+                {selectedProvider?.type === 'shakespeare' && !user && (
+                  <Alert>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      You must be logged in with Nostr to use Shakespeare Deploy.{' '}
+                      <Link
+                        to="/settings/nostr"
+                        className="underline hover:no-underline"
+                        onClick={handleClose}
+                      >
+                        Go to Nostr Settings
+                      </Link>
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {error && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                )}
+
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={handleClose}>
+                    {t('cancel')}
+                  </Button>
+                  <Button
+                    onClick={handleDeploy}
+                    disabled={
+                      !selectedProvider ||
+                      isDeploying ||
+                      (selectedProvider.type === 'shakespeare' && !user)
+                    }
+                  >
+                    {isDeploying ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Deploying...
+                      </>
+                    ) : (
+                      <>
+                        <Rocket className="h-4 w-4 mr-2" />
+                        Deploy
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </>
             )}
-            {deployMutation.isPending ? 'Deploying...' : 'Deploy'}
-          </Button>
-        </DialogFooter>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );

@@ -1,4 +1,4 @@
-import { Bot, GitBranch, Database, Wifi, Settings2, Info, Settings } from 'lucide-react';
+import { Bot, GitBranch, Database, Wifi, Settings2, Info, Settings, Rocket } from 'lucide-react';
 
 export interface SettingsItem {
   id: string;
@@ -34,6 +34,13 @@ export const getSettingsItems = (t: (key: string) => string): SettingsItem[] => 
     description: t('gitSettingsDescription'),
     icon: GitBranch,
     href: '/settings/git',
+  },
+  {
+    id: 'deploy',
+    title: t('deploySettings'),
+    description: t('deploySettingsDescription'),
+    icon: Rocket,
+    href: '/settings/deploy',
   },
   {
     id: 'nostr',

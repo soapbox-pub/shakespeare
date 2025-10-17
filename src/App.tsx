@@ -14,6 +14,7 @@ import { AppProvider } from '@/components/AppProvider';
 import { AppConfig } from '@/contexts/AppContext';
 import { AISettingsProvider } from '@/components/AISettingsProvider';
 import { GitSettingsProvider } from '@/components/GitSettingsProvider';
+import { DeploySettingsProvider } from '@/components/DeploySettingsProvider';
 import { SessionManagerProvider } from '@/components/SessionManagerProvider';
 import { FSProvider } from '@/components/FSProvider';
 import { ConsoleErrorProvider } from '@/components/ConsoleErrorProvider';
@@ -87,15 +88,17 @@ export function App() {
                 <NostrProvider>
                   <AISettingsProvider>
                     <GitSettingsProvider>
-                      <SessionManagerProvider>
-                        <TooltipProvider>
-                          <Toaster />
-                          <DynamicFavicon />
-                          <Suspense>
-                            <AppRouter />
-                          </Suspense>
-                        </TooltipProvider>
-                      </SessionManagerProvider>
+                      <DeploySettingsProvider>
+                        <SessionManagerProvider>
+                          <TooltipProvider>
+                            <Toaster />
+                            <DynamicFavicon />
+                            <Suspense>
+                              <AppRouter />
+                            </Suspense>
+                          </TooltipProvider>
+                        </SessionManagerProvider>
+                      </DeploySettingsProvider>
                     </GitSettingsProvider>
                   </AISettingsProvider>
                 </NostrProvider>

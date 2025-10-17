@@ -71,7 +71,7 @@ interface JSONRPCResponse {
   id: number;
 }
 
-export function PreviewPane({ projectId, activeTab, onToggleView, projectName, onFirstInteraction, isPreviewable = true }: PreviewPaneProps) {
+export function PreviewPane({ projectId, activeTab, onToggleView, projectName, onFirstInteraction: _onFirstInteraction, isPreviewable = true }: PreviewPaneProps) {
   const { t } = useTranslation();
   const { config } = useAppContext();
   const { previewDomain } = config;
@@ -933,7 +933,6 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
           projectName={projectName}
           open={deployDialogOpen}
           onOpenChange={setDeployDialogOpen}
-          onFirstInteraction={onFirstInteraction}
         />
       )}
     </div>

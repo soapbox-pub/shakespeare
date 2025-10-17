@@ -88,6 +88,9 @@ const resources = {
       aiSettingsDescription: 'Configure AI providers and API keys',
       gitSettings: 'Git Settings',
       gitSettingsDescription: 'Configure Git credentials for HTTP authentication',
+      deploySettings: 'Deployment',
+      deploySettingsDescription: 'Configure deployment providers',
+      deploySettingsDescriptionLong: 'Configure deployment providers to deploy your projects to various hosting platforms.',
       nostrSettings: 'Nostr Settings',
       nostrSettingsDescription: 'Configure relay connections and Nostr preferences',
       storageSettings: 'Storage',
@@ -204,6 +207,9 @@ const resources = {
       connectToGitHub: 'Connect to GitHub',
       loginToNostrRequired: 'Log in to Nostr to use this provider',
       goToNostrSettings: 'Go to Nostr Settings',
+
+      // Deploy Settings
+      shakespeareDeployNostrAuth: 'This provider uses Nostr authentication. Make sure you are logged in to deploy.',
 
       // Git Settings
       gitSettingsDescriptionLong: 'Configure Git credentials for HTTP authentication. Settings are automatically saved and stored locally in your browser.',
@@ -412,6 +418,9 @@ const resources = {
       aiSettingsDescription: 'Configure provedores de IA e chaves de API',
       gitSettings: 'Configurações do Git',
       gitSettingsDescription: 'Configure credenciais do Git para autenticação HTTP',
+      deploySettings: 'Implantação',
+      deploySettingsDescription: 'Configure provedores de implantação',
+      deploySettingsDescriptionLong: 'Configure provedores de implantação para implantar seus projetos em várias plataformas de hospedagem.',
       nostrSettings: 'Configurações do Nostr',
       nostrSettingsDescription: 'Configure conexões de relay e preferências do Nostr',
       storageSettings: 'Armazenamento',
@@ -528,6 +537,9 @@ const resources = {
       connectToGitHub: 'Conectar ao GitHub',
       loginToNostrRequired: 'Faça login no Nostr para usar este provedor',
       goToNostrSettings: 'Ir para Configurações do Nostr',
+
+      // Deploy Settings
+      shakespeareDeployNostrAuth: 'Este provedor usa autenticação Nostr. Certifique-se de estar logado para implantar.',
 
       // Git Settings
       gitSettingsDescriptionLong: 'Configure credenciais do Git para autenticação HTTP. As configurações são salvas automaticamente e armazenadas localmente em seu navegador.',
@@ -742,6 +754,9 @@ const resources = {
       aiSettingsDescription: '配置AI提供商和API密钥',
       gitSettings: 'Git设置',
       gitSettingsDescription: '配置HTTP身份验证的Git凭据',
+      deploySettings: '部署',
+      deploySettingsDescription: '配置部署提供商',
+      deploySettingsDescriptionLong: '配置部署提供商以将您的项目部署到各种托管平台。',
       nostrSettings: 'Nostr设置',
       nostrSettingsDescription: '配置中继连接和Nostr偏好',
       storageSettings: '存储',
@@ -858,6 +873,9 @@ const resources = {
       connectToGitHub: '连接到GitHub',
       loginToNostrRequired: '登录Nostr以使用此提供商',
       goToNostrSettings: '前往Nostr设置',
+
+      // Deploy Settings
+      shakespeareDeployNostrAuth: '此提供商使用Nostr身份验证。请确保您已登录以进行部署。',
 
       // Git Settings
       gitSettingsDescriptionLong: '配置HTTP身份验证的Git凭据。设置会自动保存并存储在您的浏览器本地。',

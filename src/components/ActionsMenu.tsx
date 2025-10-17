@@ -12,9 +12,11 @@ import {
   MessageSquarePlus,
   History,
   Folder,
+  Rocket,
 } from 'lucide-react';
 import { GitHistoryDialog } from '@/components/ai/GitHistoryDialog';
 import { GitDialog } from '@/components/GitDialog';
+import { DeployDialog } from '@/components/DeployDialog';
 
 interface ActionsMenuProps {
   projectId: string;
@@ -29,7 +31,7 @@ interface ActionsMenuProps {
 
 export function ActionsMenu({
   projectId,
-  projectName: _projectName,
+  projectName,
   onNewChat,
   onProjectDetails,
   isLoading = false,
@@ -39,6 +41,7 @@ export function ActionsMenu({
 }: ActionsMenuProps) {
   const [gitHistoryOpen, setGitHistoryOpen] = useState(false);
   const [gitDialogOpen, setGitDialogOpen] = useState(false);
+  const [deployDialogOpen, setDeployDialogOpen] = useState(false);
 
   const isAnyLoading = isLoading || isBuildLoading;
 
@@ -87,6 +90,15 @@ export function ActionsMenu({
           </DropdownMenuItem>
 
           <DropdownMenuItem
+            onClick={() => setDeployDialogOpen(true)}
+            disabled={isAnyLoading}
+            className="gap-2"
+          >
+            <Rocket className="h-4 w-4" />
+            Deploy
+          </DropdownMenuItem>
+
+          <DropdownMenuItem
             onClick={onProjectDetails}
             disabled={isAnyLoading}
             className="gap-2"
@@ -112,6 +124,12 @@ export function ActionsMenu({
         onOpenChange={setGitHistoryOpen}
       />
 
+      <DeployDialog
+        projectId={projectId}
+        projectName={projectName}
+        open={deployDialogOpen}
+        onOpenChange={setDeployDialogOpen}
+      />
 
     </>
   );

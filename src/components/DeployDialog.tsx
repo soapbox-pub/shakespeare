@@ -24,7 +24,6 @@ import { useProjectDeploySettings } from '@/hooks/useProjectDeploySettings';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useFS } from '@/hooks/useFS';
 import { ShakespeareAdapter, NetlifyAdapter, VercelAdapter, DeployAdapter } from '@/lib/deploy';
-import type { DeployProvider } from '@/contexts/DeploySettingsContext';
 import { Link } from 'react-router-dom';
 
 interface DeployDialogProps {

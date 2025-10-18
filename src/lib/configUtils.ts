@@ -3,10 +3,12 @@ import { filteredArray } from '@/lib/schema';
 import type { JSRuntimeFS } from '@/lib/JSRuntime';
 import type { AIProvider, AISettings } from '@/contexts/AISettingsContext';
 import type { GitSettings } from '@/contexts/GitSettingsContext';
+import type { DeployProvider, DeploySettings } from '@/contexts/DeploySettingsContext';
 
 const CONFIG_DIR = '/config';
 const AI_CONFIG_PATH = `${CONFIG_DIR}/ai.json`;
 const GIT_CONFIG_PATH = `${CONFIG_DIR}/git.json`;
+const DEPLOY_CONFIG_PATH = `${CONFIG_DIR}/deploy.json`;
 
 const aiProviderSchema: z.ZodType<AIProvider> = z.object({
   id: z.string(),
@@ -44,6 +46,37 @@ const gitSettingsSchema = z.object({
   name: z.string().optional(),
   email: z.string().optional(),
   coAuthorEnabled: z.boolean().optional(),
+});
+
+const shakespeareDeployProviderSchema = z.object({
+  name: z.string(),
+  type: z.literal('shakespeare'),
+  host: z.string().optional(),
+});
+
+const netlifyProviderSchema = z.object({
+  name: z.string(),
+  type: z.literal('netlify'),
+  apiKey: z.string(),
+  baseURL: z.string().optional(),
+});
+
+const vercelProviderSchema = z.object({
+  name: z.string(),
+  type: z.literal('vercel'),
+  apiKey: z.string(),
+  baseURL: z.string().optional(),
+});
+
+const deployProviderSchema: z.ZodType<DeployProvider> = z.discriminatedUnion('type', [
+  shakespeareDeployProviderSchema,
+  netlifyProviderSchema,
+  vercelProviderSchema,
+]);
+
+const deploySettingsSchema = z.object({
+  providers: filteredArray(deployProviderSchema),
+  defaultProviderId: z.string().optional(),
 });
 
 /**
@@ -117,5 +150,33 @@ export async function readGitSettings(fs: JSRuntimeFS): Promise<GitSettings> {
 export async function writeGitSettings(fs: JSRuntimeFS, settings: GitSettings): Promise<void> {
   await ensureConfigDir(fs);
   await fs.writeFile(GIT_CONFIG_PATH, JSON.stringify(settings, null, 2), 'utf8');
+}
+
+/**
+ * Read Deploy settings from VFS
+ */
+export async function readDeploySettings(fs: JSRuntimeFS): Promise<DeploySettings> {
+  const defaultSettings: DeploySettings = {
+    providers: [],
+  };
+
+  try {
+    const content = await fs.readFile(DEPLOY_CONFIG_PATH, 'utf8');
+    const data = JSON.parse(content);
+    return deploySettingsSchema.parse(data);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      console.error('Deploy settings parsing error:', error.errors);
+    }
+    return defaultSettings;
+  }
+}
+
+/**
+ * Write Deploy settings to VFS
+ */
+export async function writeDeploySettings(fs: JSRuntimeFS, settings: DeploySettings): Promise<void> {
+  await ensureConfigDir(fs);
+  await fs.writeFile(DEPLOY_CONFIG_PATH, JSON.stringify(settings, null, 2), 'utf8');
 }
 

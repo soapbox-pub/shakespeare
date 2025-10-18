@@ -1,32 +1,48 @@
 import { useState, useEffect, useMemo, type ReactNode } from 'react';
 import { DeploySettingsContext, type DeploySettings, type DeployProvider } from '@/contexts/DeploySettingsContext';
-
-const STORAGE_KEY = 'shakespeare-deploy-settings';
+import { useFS } from '@/hooks/useFS';
+import { readDeploySettings, writeDeploySettings } from '@/lib/configUtils';
 
 const DEFAULT_SETTINGS: DeploySettings = {
   providers: [],
 };
 
 export function DeploySettingsProvider({ children }: { children: ReactNode }) {
-  const [settings, setSettings] = useState<DeploySettings>(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        return JSON.parse(stored);
-      }
-    } catch (error) {
-      console.error('Failed to load deploy settings:', error);
-    }
-    return DEFAULT_SETTINGS;
-  });
+  const { fs } = useFS();
+  const [settings, setSettings] = useState<DeploySettings>(DEFAULT_SETTINGS);
+  const [isInitialized, setIsInitialized] = useState(false);
 
+  // Initialize settings from VFS on mount
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-    } catch (error) {
-      console.error('Failed to save deploy settings:', error);
-    }
-  }, [settings]);
+    const initializeSettings = async () => {
+      try {
+        const settings = await readDeploySettings(fs);
+        setSettings(settings);
+      } catch (error) {
+        console.error('Failed to initialize deploy settings:', error);
+        setSettings(DEFAULT_SETTINGS);
+      } finally {
+        setIsInitialized(true);
+      }
+    };
+
+    initializeSettings();
+  }, [fs]);
+
+  // Save settings to VFS whenever they change (but not during initialization)
+  useEffect(() => {
+    if (!isInitialized) return;
+
+    const saveSettings = async () => {
+      try {
+        await writeDeploySettings(fs, settings);
+      } catch (error) {
+        console.error('Failed to save deploy settings:', error);
+      }
+    };
+
+    saveSettings();
+  }, [fs, settings, isInitialized]);
 
   const updateSettings = (updates: Partial<DeploySettings>) => {
     setSettings(prev => ({ ...prev, ...updates }));

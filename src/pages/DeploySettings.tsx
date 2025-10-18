@@ -371,134 +371,134 @@ export function DeploySettings() {
           <h4 className="text-sm font-medium">{t('addProvider')}</h4>
           <Accordion type="multiple" className="w-full space-y-2">
             {PRESET_PROVIDERS.map((preset) => {
-                const isNostrPreset = preset.requiresNostr;
-                const isLoggedIntoNostr = !!user;
-                const showNostrLoginRequired = isNostrPreset && !isLoggedIntoNostr;
+              const isNostrPreset = preset.requiresNostr;
+              const isLoggedIntoNostr = !!user;
+              const showNostrLoginRequired = isNostrPreset && !isLoggedIntoNostr;
 
-                return (
-                  <AccordionItem key={preset.id} value={preset.id} className="border rounded-lg">
-                    <AccordionTrigger className="px-4 py-3 hover:no-underline">
-                      <div className="flex items-center justify-between w-full mr-3">
-                        <div className="flex flex-col items-start gap-1">
-                          <span className="font-medium">{preset.name}</span>
-                          <span className="text-xs text-muted-foreground font-normal">
-                            {preset.description}
-                          </span>
-                        </div>
-                        {preset.apiKeyURL && (
-                          <button
-                            type="button"
-                            className="text-xs text-muted-foreground underline hover:text-foreground whitespace-nowrap ml-2"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              window.open(preset.apiKeyURL, '_blank');
-                            }}
-                          >
-                            {t('getApiKey')}
-                          </button>
-                        )}
+              return (
+                <AccordionItem key={preset.id} value={preset.id} className="border rounded-lg">
+                  <AccordionTrigger className="px-4 py-3 hover:no-underline">
+                    <div className="flex items-center justify-between w-full mr-3">
+                      <div className="flex flex-col items-start gap-1">
+                        <span className="font-medium">{preset.name}</span>
+                        <span className="text-xs text-muted-foreground font-normal">
+                          {preset.description}
+                        </span>
                       </div>
-                    </AccordionTrigger>
-                    <AccordionContent className="px-4 pb-4">
-                      {showNostrLoginRequired ? (
-                        <div className="space-y-2">
-                          <p className="text-sm text-muted-foreground">
-                            {t('loginToNostrRequired')}
-                          </p>
-                          <Button asChild className="w-full">
-                            <Link to="/settings/nostr">
-                              {t('goToNostrSettings')}
-                            </Link>
-                          </Button>
-                        </div>
-                      ) : (
-                        <div className="space-y-3">
-                          <div className="grid gap-2">
-                            <Label htmlFor={`preset-${preset.id}-name`}>
+                      {preset.apiKeyURL && (
+                        <button
+                          type="button"
+                          className="text-xs text-muted-foreground underline hover:text-foreground whitespace-nowrap ml-2"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            window.open(preset.apiKeyURL, '_blank');
+                          }}
+                        >
+                          {t('getApiKey')}
+                        </button>
+                      )}
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="px-4 pb-4">
+                    {showNostrLoginRequired ? (
+                      <div className="space-y-2">
+                        <p className="text-sm text-muted-foreground">
+                          {t('loginToNostrRequired')}
+                        </p>
+                        <Button asChild className="w-full">
+                          <Link to="/settings/nostr">
+                            {t('goToNostrSettings')}
+                          </Link>
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <div className="grid gap-2">
+                          <Label htmlFor={`preset-${preset.id}-name`}>
                               Name
+                          </Label>
+                          <Input
+                            id={`preset-${preset.id}-name`}
+                            placeholder="Provider name"
+                            value={presetNames[preset.id] || preset.name}
+                            onChange={(e) => setPresetNames(prev => ({
+                              ...prev,
+                              [preset.id]: e.target.value,
+                            }))}
+                          />
+                        </div>
+
+                        {!preset.requiresNostr && (
+                          <div className="grid gap-2">
+                            <Label htmlFor={`preset-${preset.id}-apiKey`}>
+                              {preset.apiKeyLabel || t('apiKey')}
                             </Label>
-                            <Input
-                              id={`preset-${preset.id}-name`}
-                              placeholder="Provider name"
-                              value={presetNames[preset.id] || preset.name}
-                              onChange={(e) => setPresetNames(prev => ({
+                            <PasswordInput
+                              id={`preset-${preset.id}-apiKey`}
+                              placeholder={t('enterApiKey')}
+                              value={presetApiKeys[preset.id] || ''}
+                              onChange={(e) => setPresetApiKeys(prev => ({
                                 ...prev,
                                 [preset.id]: e.target.value,
                               }))}
                             />
                           </div>
+                        )}
 
-                          {!preset.requiresNostr && (
-                            <div className="grid gap-2">
-                              <Label htmlFor={`preset-${preset.id}-apiKey`}>
-                                {preset.apiKeyLabel || t('apiKey')}
-                              </Label>
-                              <PasswordInput
-                                id={`preset-${preset.id}-apiKey`}
-                                placeholder={t('enterApiKey')}
-                                value={presetApiKeys[preset.id] || ''}
-                                onChange={(e) => setPresetApiKeys(prev => ({
-                                  ...prev,
-                                  [preset.id]: e.target.value,
-                                }))}
-                              />
-                            </div>
-                          )}
-
-                          {preset.type === 'shakespeare' ? (
-                            <div className="grid gap-2">
-                              <Label htmlFor={`preset-${preset.id}-host`}>
+                        {preset.type === 'shakespeare' ? (
+                          <div className="grid gap-2">
+                            <Label htmlFor={`preset-${preset.id}-host`}>
                                 Host (Optional)
-                              </Label>
-                              <Input
-                                id={`preset-${preset.id}-host`}
-                                placeholder="shakespeare.wtf"
-                                value={presetHosts[preset.id] || ''}
-                                onChange={(e) => setPresetHosts(prev => ({
-                                  ...prev,
-                                  [preset.id]: e.target.value,
-                                }))}
-                              />
-                            </div>
-                          ) : (
-                            <div className="grid gap-2">
-                              <Label htmlFor={`preset-${preset.id}-baseURL`}>
+                            </Label>
+                            <Input
+                              id={`preset-${preset.id}-host`}
+                              placeholder="shakespeare.wtf"
+                              value={presetHosts[preset.id] || ''}
+                              onChange={(e) => setPresetHosts(prev => ({
+                                ...prev,
+                                [preset.id]: e.target.value,
+                              }))}
+                            />
+                          </div>
+                        ) : (
+                          <div className="grid gap-2">
+                            <Label htmlFor={`preset-${preset.id}-baseURL`}>
                                 Base URL (Optional)
-                              </Label>
-                              <Input
-                                id={`preset-${preset.id}-baseURL`}
-                                placeholder={
-                                  preset.type === 'netlify' ? 'https://api.netlify.com/api/v1' :
+                            </Label>
+                            <Input
+                              id={`preset-${preset.id}-baseURL`}
+                              placeholder={
+                                preset.type === 'netlify' ? 'https://api.netlify.com/api/v1' :
                                   'https://api.vercel.com'
-                                }
-                                value={presetBaseURLs[preset.id] || ''}
-                                onChange={(e) => setPresetBaseURLs(prev => ({
-                                  ...prev,
-                                  [preset.id]: e.target.value,
-                                }))}
-                              />
-                            </div>
-                          )}
+                              }
+                              value={presetBaseURLs[preset.id] || ''}
+                              onChange={(e) => setPresetBaseURLs(prev => ({
+                                ...prev,
+                                [preset.id]: e.target.value,
+                              }))}
+                            />
+                          </div>
+                        )}
 
-                          <Button
-                            onClick={() => handleAddPresetProvider(preset)}
-                            disabled={
-                              (preset.requiresNostr && !isLoggedIntoNostr) ||
+                        <Button
+                          onClick={() => handleAddPresetProvider(preset)}
+                          disabled={
+                            (preset.requiresNostr && !isLoggedIntoNostr) ||
                               (!preset.requiresNostr && !presetApiKeys[preset.id]?.trim())
-                            }
-                            className="w-full gap-2"
-                          >
-                            <Check className="h-4 w-4" />
-                            {t('add')}
-                          </Button>
-                        </div>
-                      )}
-                    </AccordionContent>
-                  </AccordionItem>
-                );
-              })}
-            </Accordion>
-          </div>
+                          }
+                          className="w-full gap-2"
+                        >
+                          <Check className="h-4 w-4" />
+                          {t('add')}
+                        </Button>
+                      </div>
+                    )}
+                  </AccordionContent>
+                </AccordionItem>
+              );
+            })}
+          </Accordion>
+        </div>
       </div>
     </div>
   );

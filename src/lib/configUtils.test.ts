@@ -3,11 +3,14 @@ import {
   readAISettings,
   writeAISettings,
   readGitSettings,
-  writeGitSettings
+  writeGitSettings,
+  readDeploySettings,
+  writeDeploySettings
 } from './configUtils';
 import type { JSRuntimeFS } from './JSRuntime';
 import type { AISettings } from '@/contexts/AISettingsContext';
 import type { GitSettings } from '@/contexts/GitSettingsContext';
+import type { DeploySettings } from '@/contexts/DeploySettingsContext';
 
 // Mock filesystem
 const createMockFS = (): JSRuntimeFS => ({
@@ -189,5 +192,92 @@ describe('configUtils', () => {
     });
 
 
+  });
+
+  describe('Deploy Settings', () => {
+    const sampleDeploySettings: DeploySettings = {
+      providers: [
+        {
+          name: 'My Netlify',
+          type: 'netlify',
+          apiKey: 'netlify-token-123',
+        },
+        {
+          name: 'My Vercel',
+          type: 'vercel',
+          apiKey: 'vercel-token-456',
+        },
+        {
+          name: 'Shakespeare',
+          type: 'shakespeare',
+        },
+      ],
+      defaultProviderId: 'netlify',
+    };
+
+    describe('readDeploySettings', () => {
+      it('should read Deploy settings from VFS', async () => {
+        vi.mocked(mockFS.readFile).mockResolvedValue(JSON.stringify(sampleDeploySettings));
+
+        const result = await readDeploySettings(mockFS);
+
+        expect(mockFS.readFile).toHaveBeenCalledWith('/config/deploy.json', 'utf8');
+        expect(result).toEqual(sampleDeploySettings);
+      });
+
+      it('should return default settings if file does not exist', async () => {
+        vi.mocked(mockFS.readFile).mockRejectedValue(new Error('File not found'));
+
+        const result = await readDeploySettings(mockFS);
+
+        expect(result).toEqual({
+          providers: [],
+        });
+      });
+
+      it('should return default settings if JSON is invalid', async () => {
+        vi.mocked(mockFS.readFile).mockResolvedValue('invalid json');
+
+        const result = await readDeploySettings(mockFS);
+
+        expect(result).toEqual({
+          providers: [],
+        });
+      });
+    });
+
+    describe('writeDeploySettings', () => {
+      it('should write Deploy settings to VFS', async () => {
+        vi.mocked(mockFS.stat).mockRejectedValue(new Error('Directory not found'));
+        vi.mocked(mockFS.mkdir).mockResolvedValue(undefined);
+        vi.mocked(mockFS.writeFile).mockResolvedValue(undefined);
+
+        await writeDeploySettings(mockFS, sampleDeploySettings);
+
+        expect(mockFS.mkdir).toHaveBeenCalledWith('/config', { recursive: true });
+        expect(mockFS.writeFile).toHaveBeenCalledWith(
+          '/config/deploy.json',
+          JSON.stringify(sampleDeploySettings, null, 2),
+          'utf8'
+        );
+      });
+
+      it('should not create directory if it already exists', async () => {
+        vi.mocked(mockFS.stat).mockResolvedValue({
+          isDirectory: () => true,
+          isFile: () => false,
+        });
+        vi.mocked(mockFS.writeFile).mockResolvedValue(undefined);
+
+        await writeDeploySettings(mockFS, sampleDeploySettings);
+
+        expect(mockFS.mkdir).not.toHaveBeenCalled();
+        expect(mockFS.writeFile).toHaveBeenCalledWith(
+          '/config/deploy.json',
+          JSON.stringify(sampleDeploySettings, null, 2),
+          'utf8'
+        );
+      });
+    });
   });
 });

@@ -164,26 +164,13 @@ export function DeploySettings() {
                 return (
                   <AccordionItem key={provider.id} value={provider.id} className="border rounded-lg">
                     <AccordionTrigger className="px-4 py-3 hover:no-underline">
-                      <div className="flex items-center justify-between w-full mr-3">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">
-                            {preset?.name || provider.id}
-                          </span>
-                          {provider.type === 'shakespeare' && (
-                            <Badge variant="outline">Nostr</Badge>
-                          )}
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRemoveProvider(provider.id);
-                          }}
-                          className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-transparent"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">
+                          {preset?.name || provider.id}
+                        </span>
+                        {provider.type === 'shakespeare' && (
+                          <Badge variant="outline">Nostr</Badge>
+                        )}
                       </div>
                     </AccordionTrigger>
                     <AccordionContent className="px-4 pb-4">
@@ -243,6 +230,14 @@ export function DeploySettings() {
                             </div>
                           </>
                         )}
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleRemoveProvider(provider.id)}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          {t('delete')}
+                        </Button>
                       </div>
                     </AccordionContent>
                   </AccordionItem>

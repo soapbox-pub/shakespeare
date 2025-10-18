@@ -70,37 +70,24 @@ function SortableProviderItem({ provider, preset, onRemove, onSetProvider, onOpe
       className="border rounded-lg"
     >
       <AccordionTrigger className="px-4 py-3 hover:no-underline">
-        <div className="flex items-center justify-between w-full mr-3">
-          <div className="flex items-center gap-2">
-            {showDragHandle && (
-              <div
-                {...attributes}
-                {...listeners}
-                className="cursor-grab active:cursor-grabbing p-1 -ml-1 text-muted-foreground hover:text-foreground"
-              >
-                <GripVertical className="h-4 w-4" />
-              </div>
-            )}
-            <span className="font-medium">
-              {preset?.name || provider.id}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 w-full mr-3">
+          {showDragHandle && (
+            <div
+              {...attributes}
+              {...listeners}
+              className="cursor-grab active:cursor-grabbing p-1 -ml-1 text-muted-foreground hover:text-foreground"
+            >
+              <GripVertical className="h-4 w-4" />
+            </div>
+          )}
+          <span className="font-medium">
+            {preset?.name || provider.id}
+          </span>
+          <div className="ml-auto">
             <CreditsBadge
               provider={provider}
               onOpenDialog={() => onOpenCreditsDialog(provider.id)}
             />
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                onRemove(provider.id);
-              }}
-              className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-transparent"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
           </div>
         </div>
       </AccordionTrigger>
@@ -158,6 +145,14 @@ function SortableProviderItem({ provider, preset, onRemove, onSetProvider, onOpe
               {t('useCorsProxy')}
             </Label>
           </div>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => onRemove(provider.id)}
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            {t('delete')}
+          </Button>
         </div>
       </AccordionContent>
     </AccordionItem>

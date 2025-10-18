@@ -1,4 +1,4 @@
-import type { DeployProvider, DeployOptions, DeployResult, VercelDeployConfig } from './types';
+import type { DeployAdapter, DeployOptions, DeployResult, VercelDeployConfig } from './types';
 
 interface VercelFile {
   file: string;
@@ -13,10 +13,10 @@ interface VercelDeployment {
 }
 
 /**
- * Vercel Deploy Provider
+ * Vercel Deploy Adapter
  * Uses Vercel REST API with access token
  */
-export class VercelDeployProvider implements DeployProvider {
+export class VercelAdapter implements DeployAdapter {
   private config: VercelDeployConfig;
 
   constructor(config: VercelDeployConfig) {
@@ -102,7 +102,7 @@ export class VercelDeployProvider implements DeployProvider {
           try {
             // Read file content
             const fileContent = await fs.readFile(fullPath);
-            
+
             // Convert to base64 for Vercel API
             let base64Content: string;
             if (typeof fileContent === 'string') {

@@ -1,5 +1,5 @@
 import JSZip from 'jszip';
-import type { DeployProvider, DeployOptions, DeployResult, NetlifyDeployConfig } from './types';
+import type { DeployAdapter, DeployOptions, DeployResult, NetlifyDeployConfig } from './types';
 
 interface NetlifySite {
   id: string;
@@ -17,10 +17,10 @@ interface NetlifyBuildResponse {
 }
 
 /**
- * Netlify Deploy Provider
+ * Netlify Deploy Adapter
  * Uses Netlify API with personal access token
  */
-export class NetlifyDeployProvider implements DeployProvider {
+export class NetlifyAdapter implements DeployAdapter {
   private config: NetlifyDeployConfig;
 
   constructor(config: NetlifyDeployConfig) {

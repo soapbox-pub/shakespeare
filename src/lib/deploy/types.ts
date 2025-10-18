@@ -19,7 +19,7 @@ export interface DeployResult {
   metadata?: Record<string, unknown>;
 }
 
-export interface DeployProvider {
+export interface DeployAdapter {
   /** Deploy a project */
   deploy(options: DeployOptions): Promise<DeployResult>;
 }

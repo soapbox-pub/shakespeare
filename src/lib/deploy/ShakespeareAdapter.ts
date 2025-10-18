@@ -1,12 +1,12 @@
 import JSZip from 'jszip';
 import { NIP98Client } from '@nostrify/nostrify';
-import type { DeployProvider, DeployOptions, DeployResult, ShakespeareDeployConfig } from './types';
+import type { DeployAdapter, DeployOptions, DeployResult, ShakespeareDeployConfig } from './types';
 
 /**
- * Shakespeare Deploy Provider
+ * Shakespeare Deploy Adapter
  * Uses NIP-98 authentication with Nostr signer
  */
-export class ShakespeareDeployProvider implements DeployProvider {
+export class ShakespeareAdapter implements DeployAdapter {
   private config: ShakespeareDeployConfig;
 
   constructor(config: ShakespeareDeployConfig) {

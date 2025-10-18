@@ -23,8 +23,8 @@ import { useDeploySettings } from '@/hooks/useDeploySettings';
 import { useProjectDeploySettings } from '@/hooks/useProjectDeploySettings';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useFS } from '@/hooks/useFS';
-import { ShakespeareDeployProvider, NetlifyDeployProvider, VercelDeployProvider, DeployProvider } from '@/lib/deploy-providers';
-import type { DeployProvider as DeployProviderType } from '@/contexts/DeploySettingsContext';
+import { ShakespeareAdapter, NetlifyAdapter, VercelAdapter, DeployAdapter } from '@/lib/deploy';
+import type { DeployProvider } from '@/contexts/DeploySettingsContext';
 import { Link } from 'react-router-dom';
 
 interface DeployDialogProps {
@@ -80,13 +80,13 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
     try {
       const projectPath = `/projects/${projectId}`;
 
-      let provider: DeployProvider;
+      let adapter: DeployAdapter;
 
       if (selectedProvider.type === 'shakespeare') {
         if (!user) {
           throw new Error('You must be logged in with Nostr to use Shakespeare Deploy');
         }
-        provider = new ShakespeareDeployProvider({
+        adapter = new ShakespeareAdapter({
           signer: user.signer,
         });
       } else if (selectedProvider.type === 'netlify') {
@@ -95,7 +95,7 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
         }
 
         // Update provider with site ID if provided
-        const updatedProvider: DeployProviderType = {
+        const updatedProvider: DeployProvider = {
           ...selectedProvider,
           siteId: netlifyFields.siteId || selectedProvider.siteId,
         };
@@ -104,7 +104,7 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
           setProvider(updatedProvider);
         }
 
-        provider = new NetlifyDeployProvider({
+        adapter = new NetlifyAdapter({
           apiKey: selectedProvider.apiKey,
           siteId: updatedProvider.siteId,
         });
@@ -114,7 +114,7 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
         }
 
         // Update provider with team/project ID if provided
-        const updatedProvider: DeployProviderType = {
+        const updatedProvider: DeployProvider = {
           ...selectedProvider,
           teamId: vercelFields.teamId || selectedProvider.teamId,
           projectId: vercelFields.projectId || selectedProvider.projectId,
@@ -127,7 +127,7 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
           setProvider(updatedProvider);
         }
 
-        provider = new VercelDeployProvider({
+        adapter = new VercelAdapter({
           apiKey: selectedProvider.apiKey,
           teamId: updatedProvider.teamId,
           projectId: updatedProvider.projectId,
@@ -136,7 +136,7 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
         throw new Error('Unknown provider type');
       }
 
-      const result = await provider.deploy({
+      const result = await adapter.deploy({
         projectId,
         projectName,
         fs,

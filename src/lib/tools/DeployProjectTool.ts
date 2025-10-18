@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import type { Tool } from "./Tool";
 import type { JSRuntimeFS } from "../JSRuntime";
-import { deployProject } from "../deploy";
+import { ShakespeareAdapter } from "../deploy";
 import type { NostrSigner } from "@nostrify/nostrify";
 
 interface DeployProjectParams {
@@ -47,16 +47,19 @@ export class DeployProjectTool implements Tool<DeployProjectParams> {
         throw new Error(`❌ Could not find index.html in dist directory. Please build the project first using the build tool.`);
       }
 
-      // Deploy the project
-      const result = await deployProject({
-        projectId: this.projectId,
-        deployServer,
-        fs: this.fs,
-        projectPath: this.cwd,
+      // Deploy the project using ShakespeareAdapter
+      const adapter = new ShakespeareAdapter({
         signer: this.signer,
+        deployServer,
       });
 
-      return `✅ Successfully deployed project!\n\n🌐 Live URL: ${result.url}\n📡 Hostname: ${result.hostname}\n\n🚀 Your project is now live and accessible to anyone with the URL!`;
+      const result = await adapter.deploy({
+        projectId: this.projectId,
+        fs: this.fs,
+        projectPath: this.cwd,
+      });
+
+      return `✅ Successfully deployed project!\n\n🌐 Live URL: ${result.url}\n\n🚀 Your project is now live and accessible to anyone with the URL!`;
     } catch (error) {
       throw new Error(`❌ Deployment failed: ${String(error)}`);
     }

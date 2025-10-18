@@ -62,7 +62,7 @@ export class NetlifyDeployProvider implements DeployProvider {
     const zipBlob = await zip.generateAsync({ type: 'blob' });
 
     // Deploy to Netlify
-    await this.triggerBuild(apiKey, activeSiteId, zipBlob, `Deploy from Shakespeare - ${new Date().toISOString()}`);
+    await this.triggerDeploy(apiKey, activeSiteId, zipBlob);
 
     return {
       url: siteUrl,
@@ -110,17 +110,13 @@ export class NetlifyDeployProvider implements DeployProvider {
     return response.json();
   }
 
-  private async triggerBuild(apiKey: string, siteId: string, zipBlob: Blob, title: string): Promise<NetlifyBuildResponse> {
-    const formData = new FormData();
-    formData.append('title', title);
-    formData.append('zip', zipBlob, 'deploy.zip');
-
-    const response = await fetch(`https://api.netlify.com/api/v1/sites/${siteId}/builds`, {
+  private async triggerDeploy(apiKey: string, siteId: string, zipBlob: Blob): Promise<NetlifyBuildResponse> {
+    const response = await fetch(`https://api.netlify.com/api/v1/sites/${siteId}/deploys`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
       },
-      body: formData,
+      body: zipBlob,
     });
 
     if (!response.ok) {

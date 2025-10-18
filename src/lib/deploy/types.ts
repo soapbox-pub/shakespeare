@@ -28,7 +28,7 @@ export interface ShakespeareDeployConfig {
   signer: NostrSigner;
   deployServer?: string;
   customHostname?: string;
-  baseURL?: string;
+  host?: string;
 }
 
 export interface NetlifyDeployConfig {

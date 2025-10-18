@@ -73,7 +73,7 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
         }
         adapter = new ShakespeareAdapter({
           signer: user.signer,
-          baseURL: selectedProvider.baseURL,
+          host: selectedProvider.host,
         });
       } else if (selectedProvider.type === 'netlify') {
         if (!selectedProvider.apiKey) {

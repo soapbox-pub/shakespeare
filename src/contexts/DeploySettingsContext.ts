@@ -3,7 +3,7 @@ import { createContext } from 'react';
 export interface ShakespeareDeployProvider {
   name: string;
   type: 'shakespeare';
-  baseURL?: string;
+  host?: string;
 }
 
 export interface NetlifyProvider {

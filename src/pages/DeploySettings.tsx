@@ -105,14 +105,14 @@ function SortableProviderItem({ provider, index, preset, onRemove, onUpdate, sho
                 {t('shakespeareDeployNostrAuth')}
               </p>
               <div className="grid gap-2">
-                <Label htmlFor={`provider-${index}-baseURL`}>
-                  Base URL (Optional)
+                <Label htmlFor={`provider-${index}-host`}>
+                  Host (Optional)
                 </Label>
                 <Input
-                  id={`provider-${index}-baseURL`}
-                  placeholder="https://api.example.com"
-                  value={provider.baseURL || ''}
-                  onChange={(e) => onUpdate(index, { ...provider, baseURL: e.target.value })}
+                  id={`provider-${index}-host`}
+                  placeholder="shakespeare.wtf"
+                  value={provider.host || ''}
+                  onChange={(e) => onUpdate(index, { ...provider, host: e.target.value })}
                 />
               </div>
             </>
@@ -141,7 +141,7 @@ function SortableProviderItem({ provider, index, preset, onRemove, onUpdate, sho
                 </Label>
                 <Input
                   id={`provider-${index}-baseURL`}
-                  placeholder="https://api.example.com"
+                  placeholder={provider.type === 'netlify' ? 'https://api.netlify.com/api/v1' : 'https://api.vercel.com'}
                   value={provider.baseURL || ''}
                   onChange={(e) => {
                     if (provider.type === 'netlify') {
@@ -203,6 +203,7 @@ export function DeploySettings() {
 
   const [presetApiKeys, setPresetApiKeys] = useState<Record<string, string>>({});
   const [presetBaseURLs, setPresetBaseURLs] = useState<Record<string, string>>({});
+  const [presetHosts, setPresetHosts] = useState<Record<string, string>>({});
   const [presetNames, setPresetNames] = useState<Record<string, string>>(() => {
     // Initialize with preset names
     const initialNames: Record<string, string> = {};
@@ -239,6 +240,7 @@ export function DeploySettings() {
 
     const apiKey = presetApiKeys[preset.id];
     const baseURL = presetBaseURLs[preset.id];
+    const host = presetHosts[preset.id];
     const customName = presetNames[preset.id];
 
     // For non-Shakespeare providers, require API key
@@ -254,7 +256,7 @@ export function DeploySettings() {
       newProvider = {
         name: finalName,
         type: 'shakespeare',
-        ...(baseURL?.trim() && { baseURL: baseURL.trim() }),
+        ...(host?.trim() && { host: host.trim() }),
       };
     } else if (preset.type === 'netlify') {
       newProvider = {
@@ -277,6 +279,7 @@ export function DeploySettings() {
     // Clear inputs and reset name to preset default
     setPresetApiKeys(prev => ({ ...prev, [preset.id]: '' }));
     setPresetBaseURLs(prev => ({ ...prev, [preset.id]: '' }));
+    setPresetHosts(prev => ({ ...prev, [preset.id]: '' }));
     setPresetNames(prev => ({ ...prev, [preset.id]: preset.name }));
   };
 
@@ -442,20 +445,40 @@ export function DeploySettings() {
                             </div>
                           )}
 
-                          <div className="grid gap-2">
-                            <Label htmlFor={`preset-${preset.id}-baseURL`}>
-                              Base URL (Optional)
-                            </Label>
-                            <Input
-                              id={`preset-${preset.id}-baseURL`}
-                              placeholder="https://api.example.com"
-                              value={presetBaseURLs[preset.id] || ''}
-                              onChange={(e) => setPresetBaseURLs(prev => ({
-                                ...prev,
-                                [preset.id]: e.target.value,
-                              }))}
-                            />
-                          </div>
+                          {preset.type === 'shakespeare' ? (
+                            <div className="grid gap-2">
+                              <Label htmlFor={`preset-${preset.id}-host`}>
+                                Host (Optional)
+                              </Label>
+                              <Input
+                                id={`preset-${preset.id}-host`}
+                                placeholder="shakespeare.wtf"
+                                value={presetHosts[preset.id] || ''}
+                                onChange={(e) => setPresetHosts(prev => ({
+                                  ...prev,
+                                  [preset.id]: e.target.value,
+                                }))}
+                              />
+                            </div>
+                          ) : (
+                            <div className="grid gap-2">
+                              <Label htmlFor={`preset-${preset.id}-baseURL`}>
+                                Base URL (Optional)
+                              </Label>
+                              <Input
+                                id={`preset-${preset.id}-baseURL`}
+                                placeholder={
+                                  preset.type === 'netlify' ? 'https://api.netlify.com/api/v1' :
+                                  'https://api.vercel.com'
+                                }
+                                value={presetBaseURLs[preset.id] || ''}
+                                onChange={(e) => setPresetBaseURLs(prev => ({
+                                  ...prev,
+                                  [preset.id]: e.target.value,
+                                }))}
+                              />
+                            </div>
+                          )}
 
                           <Button
                             onClick={() => handleAddPresetProvider(preset)}

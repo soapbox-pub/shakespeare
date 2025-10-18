@@ -8,20 +8,21 @@ import type { DeployAdapter, DeployOptions, DeployResult, ShakespeareDeployConfi
  */
 export class ShakespeareAdapter implements DeployAdapter {
   private config: ShakespeareDeployConfig;
-  private baseURL: string;
+  private host: string;
 
   constructor(config: ShakespeareDeployConfig) {
     this.config = config;
-    this.baseURL = config.baseURL || 'https://shakespeare.wtf';
+    this.host = config.host || 'shakespeare.wtf';
   }
 
   async deploy(options: DeployOptions): Promise<DeployResult> {
     const { projectId, fs, projectPath } = options;
-    const { signer, deployServer = 'shakespeare.wtf', customHostname } = this.config;
+    const { signer, deployServer, customHostname } = this.config;
 
-    // Use custom hostname if provided, otherwise construct from projectId.deployServer
-    const hostname = customHostname || `${projectId}.${deployServer}`;
-    const deployUrl = `${this.baseURL}/deploy`;
+    // Use custom hostname if provided, otherwise construct from projectId.host
+    const effectiveHost = deployServer || this.host;
+    const hostname = customHostname || `${projectId}.${effectiveHost}`;
+    const deployUrl = `https://${effectiveHost}/deploy`;
     const siteUrl = `https://${hostname}`;
 
     // Check if dist directory exists and contains index.html

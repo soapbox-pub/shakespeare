@@ -32,11 +32,16 @@ async function bundle(
   );
 
   // Read package.json
-  const packageJsonText = await fs.readFile(
-    `${projectPath}/package.json`,
-    "utf8",
-  );
-  const packageJson = JSON.parse(packageJsonText);
+  let packageJson;
+  try {
+    const packageJsonText = await fs.readFile(
+      `${projectPath}/package.json`,
+      "utf8",
+    );
+    packageJson = JSON.parse(packageJsonText);
+  } catch {
+    packageJson = {};
+  }
 
   // Try to read tsconfig.json
   let tsconfig;
@@ -186,13 +191,6 @@ export async function buildProject(options: BuildProjectOptions): Promise<{
   projectId?: string;
 }> {
   const { fs, projectPath, outputPath = `${projectPath}/dist` } = options;
-
-  // Check if we're in a valid project directory
-  try {
-    await fs.readFile(`${projectPath}/package.json`, "utf8");
-  } catch {
-    throw new Error(`❌ Could not find package.json at ${projectPath}. Make sure you're in a valid project directory.`);
-  }
 
   // Check if index.html exists
   try {

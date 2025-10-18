@@ -21,12 +21,6 @@ interface PresetProvider {
   requiresNostr?: boolean;
   apiKeyLabel?: string;
   apiKeyURL?: string;
-  fields?: Array<{
-    key: string;
-    label: string;
-    placeholder: string;
-    type?: 'text' | 'password';
-  }>;
 }
 
 const PRESET_PROVIDERS: PresetProvider[] = [
@@ -44,14 +38,6 @@ const PRESET_PROVIDERS: PresetProvider[] = [
     description: 'Deploy to Netlify with personal access token',
     apiKeyLabel: 'Personal Access Token',
     apiKeyURL: 'https://app.netlify.com/user/applications#personal-access-tokens',
-    fields: [
-      {
-        key: 'siteId',
-        label: 'Site ID (Optional)',
-        placeholder: 'Leave empty to create new site',
-        type: 'text',
-      },
-    ],
   },
   {
     id: 'vercel',
@@ -60,20 +46,6 @@ const PRESET_PROVIDERS: PresetProvider[] = [
     description: 'Deploy to Vercel with access token',
     apiKeyLabel: 'Access Token',
     apiKeyURL: 'https://vercel.com/account/tokens',
-    fields: [
-      {
-        key: 'teamId',
-        label: 'Team ID (Optional)',
-        placeholder: 'Leave empty for personal account',
-        type: 'text',
-      },
-      {
-        key: 'projectId',
-        label: 'Project ID (Optional)',
-        placeholder: 'Leave empty to create new project',
-        type: 'text',
-      },
-    ],
   },
 ];
 
@@ -85,7 +57,7 @@ export function DeploySettings() {
   const navigate = useNavigate();
 
   const [presetApiKeys, setPresetApiKeys] = useState<Record<string, string>>({});
-  const [presetFields, setPresetFields] = useState<Record<string, Record<string, string>>>({});
+  const [presetBaseURLs, setPresetBaseURLs] = useState<Record<string, string>>({});
 
   const handleAddPresetProvider = (preset: PresetProvider) => {
     // For Shakespeare, just check if user is logged in
@@ -94,31 +66,42 @@ export function DeploySettings() {
     }
 
     const apiKey = presetApiKeys[preset.id];
+    const baseURL = presetBaseURLs[preset.id];
 
     // For non-Shakespeare providers, require API key
     if (!preset.requiresNostr && !apiKey?.trim()) {
       return;
     }
 
-    const newProvider: DeployProvider = {
-      id: preset.id,
-      type: preset.type,
-      apiKey: preset.requiresNostr ? undefined : apiKey?.trim(),
-    };
+    let newProvider: DeployProvider;
 
-    // Add any additional fields
-    const fields = presetFields[preset.id] || {};
-    Object.entries(fields).forEach(([key, value]) => {
-      if (value.trim()) {
-        newProvider[key as keyof DeployProvider] = value.trim() as never;
-      }
-    });
+    if (preset.type === 'shakespeare') {
+      newProvider = {
+        id: preset.id,
+        type: 'shakespeare',
+        ...(baseURL?.trim() && { baseURL: baseURL.trim() }),
+      };
+    } else if (preset.type === 'netlify') {
+      newProvider = {
+        id: preset.id,
+        type: 'netlify',
+        apiKey: apiKey.trim(),
+        ...(baseURL?.trim() && { baseURL: baseURL.trim() }),
+      };
+    } else {
+      newProvider = {
+        id: preset.id,
+        type: 'vercel',
+        apiKey: apiKey.trim(),
+        ...(baseURL?.trim() && { baseURL: baseURL.trim() }),
+      };
+    }
 
     setProvider(newProvider);
 
     // Clear inputs
     setPresetApiKeys(prev => ({ ...prev, [preset.id]: '' }));
-    setPresetFields(prev => ({ ...prev, [preset.id]: {} }));
+    setPresetBaseURLs(prev => ({ ...prev, [preset.id]: '' }));
   };
 
   const handleRemoveProvider = (id: string) => {
@@ -127,16 +110,6 @@ export function DeploySettings() {
 
   const handleUpdateProvider = (provider: DeployProvider) => {
     setProvider(provider);
-  };
-
-  const handleFieldChange = (presetId: string, fieldKey: string, value: string) => {
-    setPresetFields(prev => ({
-      ...prev,
-      [presetId]: {
-        ...(prev[presetId] || {}),
-        [fieldKey]: value,
-      },
-    }));
   };
 
   const configuredProviderIds = settings.providers.map(p => p.id);
@@ -216,9 +189,22 @@ export function DeploySettings() {
                     <AccordionContent className="px-4 pb-4">
                       <div className="space-y-3">
                         {provider.type === 'shakespeare' ? (
-                          <p className="text-sm text-muted-foreground">
-                            {t('shakespeareDeployNostrAuth')}
-                          </p>
+                          <>
+                            <p className="text-sm text-muted-foreground">
+                              {t('shakespeareDeployNostrAuth')}
+                            </p>
+                            <div className="grid gap-2">
+                              <Label htmlFor={`${provider.id}-baseURL`}>
+                                Base URL (Optional)
+                              </Label>
+                              <Input
+                                id={`${provider.id}-baseURL`}
+                                placeholder="https://api.example.com"
+                                value={provider.baseURL || ''}
+                                onChange={(e) => handleUpdateProvider({ ...provider, baseURL: e.target.value })}
+                              />
+                            </div>
+                          </>
                         ) : (
                           <>
                             <div className="grid gap-2">
@@ -228,40 +214,33 @@ export function DeploySettings() {
                               <PasswordInput
                                 id={`${provider.id}-apiKey`}
                                 placeholder={t('enterApiKey')}
-                                value={provider.apiKey || ''}
-                                onChange={(e) => handleUpdateProvider({ ...provider, apiKey: e.target.value })}
+                                value={provider.apiKey}
+                                onChange={(e) => {
+                                  if (provider.type === 'netlify') {
+                                    handleUpdateProvider({ ...provider, apiKey: e.target.value });
+                                  } else if (provider.type === 'vercel') {
+                                    handleUpdateProvider({ ...provider, apiKey: e.target.value });
+                                  }
+                                }}
                               />
                             </div>
-                            
-                            {/* Additional fields based on provider type */}
-                            {preset?.fields?.map((field) => (
-                              <div key={field.key} className="grid gap-2">
-                                <Label htmlFor={`${provider.id}-${field.key}`}>
-                                  {field.label}
-                                </Label>
-                                {field.type === 'password' ? (
-                                  <PasswordInput
-                                    id={`${provider.id}-${field.key}`}
-                                    placeholder={field.placeholder}
-                                    value={(provider[field.key as keyof DeployProvider] as string) || ''}
-                                    onChange={(e) => handleUpdateProvider({
-                                      ...provider,
-                                      [field.key]: e.target.value,
-                                    })}
-                                  />
-                                ) : (
-                                  <Input
-                                    id={`${provider.id}-${field.key}`}
-                                    placeholder={field.placeholder}
-                                    value={(provider[field.key as keyof DeployProvider] as string) || ''}
-                                    onChange={(e) => handleUpdateProvider({
-                                      ...provider,
-                                      [field.key]: e.target.value,
-                                    })}
-                                  />
-                                )}
-                              </div>
-                            ))}
+                            <div className="grid gap-2">
+                              <Label htmlFor={`${provider.id}-baseURL`}>
+                                Base URL (Optional)
+                              </Label>
+                              <Input
+                                id={`${provider.id}-baseURL`}
+                                placeholder="https://api.example.com"
+                                value={provider.baseURL || ''}
+                                onChange={(e) => {
+                                  if (provider.type === 'netlify') {
+                                    handleUpdateProvider({ ...provider, baseURL: e.target.value });
+                                  } else if (provider.type === 'vercel') {
+                                    handleUpdateProvider({ ...provider, baseURL: e.target.value });
+                                  }
+                                }}
+                              />
+                            </div>
                           </>
                         )}
                       </div>
@@ -277,101 +256,100 @@ export function DeploySettings() {
         {availablePresets.length > 0 && (
           <div className="space-y-3">
             <h4 className="text-sm font-medium">{t('addProvider')}</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <Accordion type="multiple" className="w-full space-y-2">
               {availablePresets.map((preset) => {
                 const isNostrPreset = preset.requiresNostr;
                 const isLoggedIntoNostr = !!user;
                 const showNostrLoginRequired = isNostrPreset && !isLoggedIntoNostr;
 
                 return (
-                  <div key={preset.id} className="border rounded-lg p-4 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-1">
-                        <h5 className="font-medium">{preset.name}</h5>
-                        <p className="text-xs text-muted-foreground">{preset.description}</p>
+                  <AccordionItem key={preset.id} value={preset.id} className="border rounded-lg">
+                    <AccordionTrigger className="px-4 py-3 hover:no-underline">
+                      <div className="flex items-center justify-between w-full mr-3">
+                        <div className="flex flex-col items-start gap-1">
+                          <span className="font-medium">{preset.name}</span>
+                          <span className="text-xs text-muted-foreground font-normal">
+                            {preset.description}
+                          </span>
+                        </div>
+                        {preset.apiKeyURL && (
+                          <button
+                            type="button"
+                            className="text-xs text-muted-foreground underline hover:text-foreground whitespace-nowrap ml-2"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              window.open(preset.apiKeyURL, '_blank');
+                            }}
+                          >
+                            {t('getApiKey')}
+                          </button>
+                        )}
                       </div>
-                      {preset.apiKeyURL && (
-                        <button
-                          type="button"
-                          className="text-xs text-muted-foreground underline hover:text-foreground whitespace-nowrap ml-2"
-                          onClick={() => window.open(preset.apiKeyURL, '_blank')}
-                        >
-                          {t('getApiKey')}
-                        </button>
-                      )}
-                    </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="px-4 pb-4">
+                      {showNostrLoginRequired ? (
+                        <div className="space-y-2">
+                          <p className="text-sm text-muted-foreground">
+                            {t('loginToNostrRequired')}
+                          </p>
+                          <Button asChild className="w-full">
+                            <Link to="/settings/nostr">
+                              {t('goToNostrSettings')}
+                            </Link>
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {!preset.requiresNostr && (
+                            <div className="grid gap-2">
+                              <Label htmlFor={`preset-${preset.id}-apiKey`}>
+                                {preset.apiKeyLabel || t('apiKey')}
+                              </Label>
+                              <PasswordInput
+                                id={`preset-${preset.id}-apiKey`}
+                                placeholder={t('enterApiKey')}
+                                value={presetApiKeys[preset.id] || ''}
+                                onChange={(e) => setPresetApiKeys(prev => ({
+                                  ...prev,
+                                  [preset.id]: e.target.value,
+                                }))}
+                              />
+                            </div>
+                          )}
 
-                    {showNostrLoginRequired ? (
-                      <div className="space-y-2">
-                        <p className="text-sm text-muted-foreground">
-                          {t('loginToNostrRequired')}
-                        </p>
-                        <Button asChild className="w-full">
-                          <Link to="/settings/nostr">
-                            {t('goToNostrSettings')}
-                          </Link>
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        {!preset.requiresNostr && (
                           <div className="grid gap-2">
-                            <Label htmlFor={`preset-${preset.id}-apiKey`}>
-                              {preset.apiKeyLabel || t('apiKey')}
+                            <Label htmlFor={`preset-${preset.id}-baseURL`}>
+                              Base URL (Optional)
                             </Label>
-                            <PasswordInput
-                              id={`preset-${preset.id}-apiKey`}
-                              placeholder={t('enterApiKey')}
-                              value={presetApiKeys[preset.id] || ''}
-                              onChange={(e) => setPresetApiKeys(prev => ({
+                            <Input
+                              id={`preset-${preset.id}-baseURL`}
+                              placeholder="https://api.example.com"
+                              value={presetBaseURLs[preset.id] || ''}
+                              onChange={(e) => setPresetBaseURLs(prev => ({
                                 ...prev,
                                 [preset.id]: e.target.value,
                               }))}
                             />
                           </div>
-                        )}
 
-                        {/* Additional fields */}
-                        {preset.fields?.map((field) => (
-                          <div key={field.key} className="grid gap-2">
-                            <Label htmlFor={`preset-${preset.id}-${field.key}`}>
-                              {field.label}
-                            </Label>
-                            {field.type === 'password' ? (
-                              <PasswordInput
-                                id={`preset-${preset.id}-${field.key}`}
-                                placeholder={field.placeholder}
-                                value={presetFields[preset.id]?.[field.key] || ''}
-                                onChange={(e) => handleFieldChange(preset.id, field.key, e.target.value)}
-                              />
-                            ) : (
-                              <Input
-                                id={`preset-${preset.id}-${field.key}`}
-                                placeholder={field.placeholder}
-                                value={presetFields[preset.id]?.[field.key] || ''}
-                                onChange={(e) => handleFieldChange(preset.id, field.key, e.target.value)}
-                              />
-                            )}
-                          </div>
-                        ))}
-
-                        <Button
-                          onClick={() => handleAddPresetProvider(preset)}
-                          disabled={
-                            (preset.requiresNostr && !isLoggedIntoNostr) ||
-                            (!preset.requiresNostr && !presetApiKeys[preset.id]?.trim())
-                          }
-                          className="w-full gap-2"
-                        >
-                          <Check className="h-4 w-4" />
-                          {t('add')}
-                        </Button>
-                      </div>
-                    )}
-                  </div>
+                          <Button
+                            onClick={() => handleAddPresetProvider(preset)}
+                            disabled={
+                              (preset.requiresNostr && !isLoggedIntoNostr) ||
+                              (!preset.requiresNostr && !presetApiKeys[preset.id]?.trim())
+                            }
+                            className="w-full gap-2"
+                          >
+                            <Check className="h-4 w-4" />
+                            {t('add')}
+                          </Button>
+                        </div>
+                      )}
+                    </AccordionContent>
+                  </AccordionItem>
                 );
               })}
-            </div>
+            </Accordion>
           </div>
         )}
       </div>

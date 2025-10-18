@@ -18,9 +18,11 @@ interface VercelDeployment {
  */
 export class VercelAdapter implements DeployAdapter {
   private config: VercelDeployConfig;
+  private baseURL: string;
 
   constructor(config: VercelDeployConfig) {
     this.config = config;
+    this.baseURL = config.baseURL || 'https://api.vercel.com';
   }
 
   async deploy(options: DeployOptions): Promise<DeployResult> {
@@ -50,7 +52,7 @@ export class VercelAdapter implements DeployAdapter {
     };
 
     // Build API URL with optional team parameter
-    let apiUrl = 'https://api.vercel.com/v13/deployments';
+    let apiUrl = `${this.baseURL}/v13/deployments`;
     if (teamId) {
       apiUrl += `?teamId=${teamId}`;
     }

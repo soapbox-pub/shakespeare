@@ -46,25 +46,10 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
   const [deployResult, setDeployResult] = useState<{ url: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Form fields for each provider
-  const [netlifyFields, setNetlifyFields] = useState({ siteId: '' });
-  const [vercelFields, setVercelFields] = useState({ teamId: '', projectId: '' });
-
   // Load project settings when dialog opens
   useEffect(() => {
     if (open && projectSettings.providerId) {
       setSelectedProviderId(projectSettings.providerId);
-
-      if (projectSettings.netlify?.siteId) {
-        setNetlifyFields({ siteId: projectSettings.netlify.siteId });
-      }
-
-      if (projectSettings.vercel) {
-        setVercelFields({
-          teamId: projectSettings.vercel.teamId || '',
-          projectId: projectSettings.vercel.projectId || '',
-        });
-      }
     }
   }, [open, projectSettings]);
 
@@ -88,49 +73,25 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
         }
         adapter = new ShakespeareAdapter({
           signer: user.signer,
+          baseURL: selectedProvider.baseURL,
         });
       } else if (selectedProvider.type === 'netlify') {
         if (!selectedProvider.apiKey) {
           throw new Error('Netlify API key is required');
         }
 
-        // Update provider with site ID if provided
-        const updatedProvider: DeployProvider = {
-          ...selectedProvider,
-          siteId: netlifyFields.siteId || selectedProvider.siteId,
-        };
-
-        if (netlifyFields.siteId && netlifyFields.siteId !== selectedProvider.siteId) {
-          setProvider(updatedProvider);
-        }
-
         adapter = new NetlifyAdapter({
           apiKey: selectedProvider.apiKey,
-          siteId: updatedProvider.siteId,
+          baseURL: selectedProvider.baseURL,
         });
       } else if (selectedProvider.type === 'vercel') {
         if (!selectedProvider.apiKey) {
           throw new Error('Vercel API key is required');
         }
 
-        // Update provider with team/project ID if provided
-        const updatedProvider: DeployProvider = {
-          ...selectedProvider,
-          teamId: vercelFields.teamId || selectedProvider.teamId,
-          projectId: vercelFields.projectId || selectedProvider.projectId,
-        };
-
-        if (
-          (vercelFields.teamId && vercelFields.teamId !== selectedProvider.teamId) ||
-          (vercelFields.projectId && vercelFields.projectId !== selectedProvider.projectId)
-        ) {
-          setProvider(updatedProvider);
-        }
-
         adapter = new VercelAdapter({
           apiKey: selectedProvider.apiKey,
-          teamId: updatedProvider.teamId,
-          projectId: updatedProvider.projectId,
+          baseURL: selectedProvider.baseURL,
         });
       } else {
         throw new Error('Unknown provider type');
@@ -146,11 +107,6 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
       // Save project-specific settings
       await updateProjectSettings({
         providerId: selectedProviderId,
-        netlify: selectedProvider.type === 'netlify' ? { siteId: netlifyFields.siteId } : undefined,
-        vercel: selectedProvider.type === 'vercel' ? {
-          teamId: vercelFields.teamId,
-          projectId: vercelFields.projectId,
-        } : undefined,
       });
 
       setDeployResult(result);
@@ -165,8 +121,6 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
     setSelectedProviderId('');
     setDeployResult(null);
     setError(null);
-    setNetlifyFields({ siteId: '' });
-    setVercelFields({ teamId: '', projectId: '' });
     onOpenChange(false);
   };
 
@@ -251,47 +205,6 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
                     </SelectContent>
                   </Select>
                 </div>
-
-                {selectedProvider?.type === 'netlify' && (
-                  <div className="space-y-2">
-                    <Label htmlFor="netlify-site-id">
-                      Site ID (Optional)
-                    </Label>
-                    <Input
-                      id="netlify-site-id"
-                      placeholder="Leave empty to create new site"
-                      value={netlifyFields.siteId}
-                      onChange={(e) => setNetlifyFields({ ...netlifyFields, siteId: e.target.value })}
-                    />
-                  </div>
-                )}
-
-                {selectedProvider?.type === 'vercel' && (
-                  <>
-                    <div className="space-y-2">
-                      <Label htmlFor="vercel-team-id">
-                        Team ID (Optional)
-                      </Label>
-                      <Input
-                        id="vercel-team-id"
-                        placeholder="Leave empty for personal account"
-                        value={vercelFields.teamId}
-                        onChange={(e) => setVercelFields({ ...vercelFields, teamId: e.target.value })}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="vercel-project-id">
-                        Project ID (Optional)
-                      </Label>
-                      <Input
-                        id="vercel-project-id"
-                        placeholder="Leave empty to create new project"
-                        value={vercelFields.projectId}
-                        onChange={(e) => setVercelFields({ ...vercelFields, projectId: e.target.value })}
-                      />
-                    </div>
-                  </>
-                )}
 
                 {selectedProvider?.type === 'shakespeare' && !user && (
                   <Alert>

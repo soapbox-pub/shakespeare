@@ -1,13 +1,26 @@
 import { createContext } from 'react';
 
-export interface DeployProvider {
+export interface ShakespeareDeployProvider {
   id: string;
-  type: 'shakespeare' | 'netlify' | 'vercel';
-  apiKey?: string; // Not used for Shakespeare Deploy
-  siteId?: string; // For Netlify
-  projectId?: string; // For Vercel
-  teamId?: string; // For Vercel
+  type: 'shakespeare';
+  baseURL?: string;
 }
+
+export interface NetlifyProvider {
+  id: string;
+  type: 'netlify';
+  apiKey: string;
+  baseURL?: string;
+}
+
+export interface VercelProvider {
+  id: string;
+  type: 'vercel';
+  apiKey: string;
+  baseURL?: string;
+}
+
+export type DeployProvider = ShakespeareDeployProvider | NetlifyProvider | VercelProvider;
 
 export interface DeploySettings {
   providers: DeployProvider[];

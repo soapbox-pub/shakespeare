@@ -28,12 +28,14 @@ export interface ShakespeareDeployConfig {
   signer: NostrSigner;
   deployServer?: string;
   customHostname?: string;
+  baseURL?: string;
 }
 
 export interface NetlifyDeployConfig {
   apiKey: string;
   siteId?: string;
   siteName?: string;
+  baseURL?: string;
 }
 
 export interface VercelDeployConfig {
@@ -41,4 +43,5 @@ export interface VercelDeployConfig {
   projectId?: string;
   teamId?: string;
   projectName?: string;
+  baseURL?: string;
 }

@@ -22,9 +22,11 @@ interface NetlifyBuildResponse {
  */
 export class NetlifyAdapter implements DeployAdapter {
   private config: NetlifyDeployConfig;
+  private baseURL: string;
 
   constructor(config: NetlifyDeployConfig) {
     this.config = config;
+    this.baseURL = config.baseURL || 'https://api.netlify.com/api/v1';
   }
 
   async deploy(options: DeployOptions): Promise<DeployResult> {
@@ -74,7 +76,7 @@ export class NetlifyAdapter implements DeployAdapter {
   }
 
   private async createSite(apiKey: string, name: string): Promise<NetlifySite> {
-    const response = await fetch('https://api.netlify.com/api/v1/sites', {
+    const response = await fetch(`${this.baseURL}/sites`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
@@ -95,7 +97,7 @@ export class NetlifyAdapter implements DeployAdapter {
   }
 
   private async getSite(apiKey: string, siteId: string): Promise<NetlifySite> {
-    const response = await fetch(`https://api.netlify.com/api/v1/sites/${siteId}`, {
+    const response = await fetch(`${this.baseURL}/sites/${siteId}`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
@@ -111,7 +113,7 @@ export class NetlifyAdapter implements DeployAdapter {
   }
 
   private async triggerDeploy(apiKey: string, siteId: string, zipBlob: Blob): Promise<NetlifyBuildResponse> {
-    const response = await fetch(`https://api.netlify.com/api/v1/sites/${siteId}/deploys`, {
+    const response = await fetch(`${this.baseURL}/sites/${siteId}/deploys`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,

@@ -8,9 +8,11 @@ import type { DeployAdapter, DeployOptions, DeployResult, ShakespeareDeployConfi
  */
 export class ShakespeareAdapter implements DeployAdapter {
   private config: ShakespeareDeployConfig;
+  private baseURL: string;
 
   constructor(config: ShakespeareDeployConfig) {
     this.config = config;
+    this.baseURL = config.baseURL || 'https://shakespeare.wtf';
   }
 
   async deploy(options: DeployOptions): Promise<DeployResult> {
@@ -19,7 +21,7 @@ export class ShakespeareAdapter implements DeployAdapter {
 
     // Use custom hostname if provided, otherwise construct from projectId.deployServer
     const hostname = customHostname || `${projectId}.${deployServer}`;
-    const deployUrl = `https://${deployServer}/deploy`;
+    const deployUrl = `${this.baseURL}/deploy`;
     const siteUrl = `https://${hostname}`;
 
     // Check if dist directory exists and contains index.html

@@ -190,7 +190,7 @@ describe('CurlCommand', () => {
     expect(result.stdout).toContain('100  12  100  12');
   });
 
-  it('should be silent when -s flag is used', async () => {
+  it('should still output response body when -s flag is used', async () => {
     const mockResponse = {
       ok: true,
       status: 200,
@@ -205,7 +205,7 @@ describe('CurlCommand', () => {
     const result = await curlCommand.execute(['-s', 'https://example.com'], '/test');
 
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toBe('');
+    expect(result.stdout).toBe('Hello World');
   });
 
   it('should handle HTTP error responses', async () => {
@@ -272,7 +272,9 @@ describe('CurlCommand', () => {
     const result = await curlCommand.execute(['-si', 'https://example.com'], '/test');
 
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toBe(''); // Silent mode
+    // Silent mode still shows response body and headers (when -i is used)
+    expect(result.stdout).toContain('HTTP/1.1 200 OK');
+    expect(result.stdout).toContain('Hello World');
   });
 
   it('should handle write-out format', async () => {

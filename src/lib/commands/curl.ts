@@ -171,14 +171,10 @@ export class CurlCommand implements ShellCommand {
         // Handle write-out format
         if (options.writeOut) {
           const writeOutResult = this.formatWriteOut(options.writeOut, response, responseText);
-          if (options.silent) {
-            return createSuccessResult(writeOutResult);
-          } else {
-            output += '\n' + writeOutResult;
-          }
+          output += '\n' + writeOutResult;
         }
 
-        return createSuccessResult(options.silent ? '' : output);
+        return createSuccessResult(output);
 
       } catch (error) {
         if (timeoutId) {

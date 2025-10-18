@@ -1,20 +1,20 @@
 import { createContext } from 'react';
 
 export interface ShakespeareDeployProvider {
-  id: string;
+  name: string;
   type: 'shakespeare';
   baseURL?: string;
 }
 
 export interface NetlifyProvider {
-  id: string;
+  name: string;
   type: 'netlify';
   apiKey: string;
   baseURL?: string;
 }
 
 export interface VercelProvider {
-  id: string;
+  name: string;
   type: 'vercel';
   apiKey: string;
   baseURL?: string;
@@ -30,8 +30,7 @@ export interface DeploySettings {
 export interface DeploySettingsContextType {
   settings: DeploySettings;
   updateSettings: (settings: Partial<DeploySettings>) => void;
-  setProvider: (provider: DeployProvider) => void;
-  removeProvider: (id: string) => void;
+  removeProvider: (index: number) => void;
   setProviders: (providers: DeployProvider[]) => void;
   isConfigured: boolean;
 }

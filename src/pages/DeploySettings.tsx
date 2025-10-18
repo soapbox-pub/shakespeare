@@ -1,11 +1,29 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Rocket, ArrowLeft, Trash2, Check } from 'lucide-react';
+import { Rocket, ArrowLeft, Trash2, Check, GripVertical } from 'lucide-react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import {
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useDeploySettings } from '@/hooks/useDeploySettings';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
@@ -21,6 +39,133 @@ interface PresetProvider {
   requiresNostr?: boolean;
   apiKeyLabel?: string;
   apiKeyURL?: string;
+}
+
+interface SortableProviderItemProps {
+  provider: DeployProvider;
+  index: number;
+  preset?: PresetProvider;
+  onRemove: (index: number) => void;
+  onUpdate: (index: number, provider: DeployProvider) => void;
+  showDragHandle: boolean;
+}
+
+function SortableProviderItem({ provider, index, preset, onRemove, onUpdate, showDragHandle }: SortableProviderItemProps) {
+  const { t } = useTranslation();
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+  } = useSortable({ id: index });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <AccordionItem
+      ref={setNodeRef}
+      style={style}
+      value={String(index)}
+      className="border rounded-lg"
+    >
+      <AccordionTrigger className="px-4 py-3 hover:no-underline">
+        <div className="flex items-center gap-2">
+          {showDragHandle && (
+            <div
+              {...attributes}
+              {...listeners}
+              className="cursor-grab active:cursor-grabbing p-1 -ml-1 text-muted-foreground hover:text-foreground"
+            >
+              <GripVertical className="h-4 w-4" />
+            </div>
+          )}
+          <span className="font-medium">
+            {provider.name}
+          </span>
+        </div>
+      </AccordionTrigger>
+      <AccordionContent className="px-4 pb-4">
+        <div className="space-y-3">
+          <div className="grid gap-2">
+            <Label htmlFor={`provider-${index}-name`}>Name</Label>
+            <Input
+              id={`provider-${index}-name`}
+              placeholder="Provider name"
+              value={provider.name}
+              onChange={(e) => onUpdate(index, { ...provider, name: e.target.value })}
+            />
+          </div>
+          {provider.type === 'shakespeare' ? (
+            <>
+              <p className="text-sm text-muted-foreground">
+                {t('shakespeareDeployNostrAuth')}
+              </p>
+              <div className="grid gap-2">
+                <Label htmlFor={`provider-${index}-baseURL`}>
+                  Base URL (Optional)
+                </Label>
+                <Input
+                  id={`provider-${index}-baseURL`}
+                  placeholder="https://api.example.com"
+                  value={provider.baseURL || ''}
+                  onChange={(e) => onUpdate(index, { ...provider, baseURL: e.target.value })}
+                />
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="grid gap-2">
+                <Label htmlFor={`provider-${index}-apiKey`}>
+                  {preset?.apiKeyLabel || t('apiKey')}
+                </Label>
+                <PasswordInput
+                  id={`provider-${index}-apiKey`}
+                  placeholder={t('enterApiKey')}
+                  value={provider.apiKey}
+                  onChange={(e) => {
+                    if (provider.type === 'netlify') {
+                      onUpdate(index, { ...provider, apiKey: e.target.value });
+                    } else if (provider.type === 'vercel') {
+                      onUpdate(index, { ...provider, apiKey: e.target.value });
+                    }
+                  }}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor={`provider-${index}-baseURL`}>
+                  Base URL (Optional)
+                </Label>
+                <Input
+                  id={`provider-${index}-baseURL`}
+                  placeholder="https://api.example.com"
+                  value={provider.baseURL || ''}
+                  onChange={(e) => {
+                    if (provider.type === 'netlify') {
+                      onUpdate(index, { ...provider, baseURL: e.target.value });
+                    } else if (provider.type === 'vercel') {
+                      onUpdate(index, { ...provider, baseURL: e.target.value });
+                    }
+                  }}
+                />
+              </div>
+            </>
+          )}
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => onRemove(index)}
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            {t('delete')}
+          </Button>
+        </div>
+      </AccordionContent>
+    </AccordionItem>
+  );
 }
 
 const PRESET_PROVIDERS: PresetProvider[] = [
@@ -51,13 +196,40 @@ const PRESET_PROVIDERS: PresetProvider[] = [
 
 export function DeploySettings() {
   const { t } = useTranslation();
-  const { settings, setProvider, removeProvider } = useDeploySettings();
+  const { settings, removeProvider, setProviders } = useDeploySettings();
   const { user } = useCurrentUser();
   const isMobile = useIsMobile();
   const navigate = useNavigate();
 
   const [presetApiKeys, setPresetApiKeys] = useState<Record<string, string>>({});
   const [presetBaseURLs, setPresetBaseURLs] = useState<Record<string, string>>({});
+  const [presetNames, setPresetNames] = useState<Record<string, string>>(() => {
+    // Initialize with preset names
+    const initialNames: Record<string, string> = {};
+    PRESET_PROVIDERS.forEach(preset => {
+      initialNames[preset.id] = preset.name;
+    });
+    return initialNames;
+  });
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = settings.providers.findIndex(p => p.name === active.id);
+      const newIndex = settings.providers.findIndex(p => p.name === over.id);
+
+      const newProviders = arrayMove(settings.providers, oldIndex, newIndex);
+      setProviders(newProviders);
+    }
+  };
 
   const handleAddPresetProvider = (preset: PresetProvider) => {
     // For Shakespeare, just check if user is logged in
@@ -67,53 +239,56 @@ export function DeploySettings() {
 
     const apiKey = presetApiKeys[preset.id];
     const baseURL = presetBaseURLs[preset.id];
+    const customName = presetNames[preset.id];
 
     // For non-Shakespeare providers, require API key
     if (!preset.requiresNostr && !apiKey?.trim()) {
       return;
     }
 
+    const finalName = customName?.trim() || preset.name;
+
     let newProvider: DeployProvider;
 
     if (preset.type === 'shakespeare') {
       newProvider = {
-        id: preset.id,
+        name: finalName,
         type: 'shakespeare',
         ...(baseURL?.trim() && { baseURL: baseURL.trim() }),
       };
     } else if (preset.type === 'netlify') {
       newProvider = {
-        id: preset.id,
+        name: finalName,
         type: 'netlify',
         apiKey: apiKey.trim(),
         ...(baseURL?.trim() && { baseURL: baseURL.trim() }),
       };
     } else {
       newProvider = {
-        id: preset.id,
+        name: finalName,
         type: 'vercel',
         apiKey: apiKey.trim(),
         ...(baseURL?.trim() && { baseURL: baseURL.trim() }),
       };
     }
 
-    setProvider(newProvider);
+    setProviders([...settings.providers, newProvider]);
 
-    // Clear inputs
+    // Clear inputs and reset name to preset default
     setPresetApiKeys(prev => ({ ...prev, [preset.id]: '' }));
     setPresetBaseURLs(prev => ({ ...prev, [preset.id]: '' }));
+    setPresetNames(prev => ({ ...prev, [preset.id]: preset.name }));
   };
 
-  const handleRemoveProvider = (id: string) => {
-    removeProvider(id);
+  const handleRemoveProvider = (index: number) => {
+    removeProvider(index);
   };
 
-  const handleUpdateProvider = (provider: DeployProvider) => {
-    setProvider(provider);
+  const handleUpdateProvider = (index: number, provider: DeployProvider) => {
+    const newProviders = [...settings.providers];
+    newProviders[index] = provider;
+    setProviders(newProviders);
   };
-
-  const configuredProviderIds = settings.providers.map(p => p.id);
-  const availablePresets = PRESET_PROVIDERS.filter(preset => !configuredProviderIds.includes(preset.id));
 
   return (
     <div className="p-6 space-y-6">
@@ -157,102 +332,42 @@ export function DeploySettings() {
         {settings.providers.length > 0 && (
           <div className="space-y-3">
             <h4 className="text-sm font-medium">{t('configuredProviders')}</h4>
-            <Accordion type="multiple" className="w-full space-y-2">
-              {settings.providers.map((provider) => {
-                const preset = PRESET_PROVIDERS.find(p => p.id === provider.id);
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={settings.providers.map((_, index) => index)}
+                strategy={verticalListSortingStrategy}
+              >
+                <Accordion type="multiple" className="w-full space-y-2">
+                  {settings.providers.map((provider, index) => {
+                    const preset = PRESET_PROVIDERS.find(p => p.type === provider.type);
 
-                return (
-                  <AccordionItem key={provider.id} value={provider.id} className="border rounded-lg">
-                    <AccordionTrigger className="px-4 py-3 hover:no-underline">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">
-                          {preset?.name || provider.id}
-                        </span>
-                        {provider.type === 'shakespeare' && (
-                          <Badge variant="outline">Nostr</Badge>
-                        )}
-                      </div>
-                    </AccordionTrigger>
-                    <AccordionContent className="px-4 pb-4">
-                      <div className="space-y-3">
-                        {provider.type === 'shakespeare' ? (
-                          <>
-                            <p className="text-sm text-muted-foreground">
-                              {t('shakespeareDeployNostrAuth')}
-                            </p>
-                            <div className="grid gap-2">
-                              <Label htmlFor={`${provider.id}-baseURL`}>
-                                Base URL (Optional)
-                              </Label>
-                              <Input
-                                id={`${provider.id}-baseURL`}
-                                placeholder="https://api.example.com"
-                                value={provider.baseURL || ''}
-                                onChange={(e) => handleUpdateProvider({ ...provider, baseURL: e.target.value })}
-                              />
-                            </div>
-                          </>
-                        ) : (
-                          <>
-                            <div className="grid gap-2">
-                              <Label htmlFor={`${provider.id}-apiKey`}>
-                                {preset?.apiKeyLabel || t('apiKey')}
-                              </Label>
-                              <PasswordInput
-                                id={`${provider.id}-apiKey`}
-                                placeholder={t('enterApiKey')}
-                                value={provider.apiKey}
-                                onChange={(e) => {
-                                  if (provider.type === 'netlify') {
-                                    handleUpdateProvider({ ...provider, apiKey: e.target.value });
-                                  } else if (provider.type === 'vercel') {
-                                    handleUpdateProvider({ ...provider, apiKey: e.target.value });
-                                  }
-                                }}
-                              />
-                            </div>
-                            <div className="grid gap-2">
-                              <Label htmlFor={`${provider.id}-baseURL`}>
-                                Base URL (Optional)
-                              </Label>
-                              <Input
-                                id={`${provider.id}-baseURL`}
-                                placeholder="https://api.example.com"
-                                value={provider.baseURL || ''}
-                                onChange={(e) => {
-                                  if (provider.type === 'netlify') {
-                                    handleUpdateProvider({ ...provider, baseURL: e.target.value });
-                                  } else if (provider.type === 'vercel') {
-                                    handleUpdateProvider({ ...provider, baseURL: e.target.value });
-                                  }
-                                }}
-                              />
-                            </div>
-                          </>
-                        )}
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => handleRemoveProvider(provider.id)}
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          {t('delete')}
-                        </Button>
-                      </div>
-                    </AccordionContent>
-                  </AccordionItem>
-                );
-              })}
-            </Accordion>
+                    return (
+                      <SortableProviderItem
+                        key={index}
+                        provider={provider}
+                        index={index}
+                        preset={preset}
+                        onRemove={handleRemoveProvider}
+                        onUpdate={handleUpdateProvider}
+                        showDragHandle={settings.providers.length > 1}
+                      />
+                    );
+                  })}
+                </Accordion>
+              </SortableContext>
+            </DndContext>
           </div>
         )}
 
         {/* Available Preset Providers */}
-        {availablePresets.length > 0 && (
-          <div className="space-y-3">
-            <h4 className="text-sm font-medium">{t('addProvider')}</h4>
-            <Accordion type="multiple" className="w-full space-y-2">
-              {availablePresets.map((preset) => {
+        <div className="space-y-3">
+          <h4 className="text-sm font-medium">{t('addProvider')}</h4>
+          <Accordion type="multiple" className="w-full space-y-2">
+            {PRESET_PROVIDERS.map((preset) => {
                 const isNostrPreset = preset.requiresNostr;
                 const isLoggedIntoNostr = !!user;
                 const showNostrLoginRequired = isNostrPreset && !isLoggedIntoNostr;
@@ -295,6 +410,21 @@ export function DeploySettings() {
                         </div>
                       ) : (
                         <div className="space-y-3">
+                          <div className="grid gap-2">
+                            <Label htmlFor={`preset-${preset.id}-name`}>
+                              Name
+                            </Label>
+                            <Input
+                              id={`preset-${preset.id}-name`}
+                              placeholder="Provider name"
+                              value={presetNames[preset.id] || preset.name}
+                              onChange={(e) => setPresetNames(prev => ({
+                                ...prev,
+                                [preset.id]: e.target.value,
+                              }))}
+                            />
+                          </div>
+
                           {!preset.requiresNostr && (
                             <div className="grid gap-2">
                               <Label htmlFor={`preset-${preset.id}-apiKey`}>
@@ -346,7 +476,6 @@ export function DeploySettings() {
               })}
             </Accordion>
           </div>
-        )}
       </div>
     </div>
   );

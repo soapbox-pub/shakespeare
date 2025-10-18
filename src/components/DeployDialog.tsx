@@ -36,12 +36,12 @@ interface DeployDialogProps {
 
 export function DeployDialog({ projectId, projectName, open, onOpenChange }: DeployDialogProps) {
   const { t } = useTranslation();
-  const { settings, setProvider } = useDeploySettings();
+  const { settings } = useDeploySettings();
   const { settings: projectSettings, updateSettings: updateProjectSettings } = useProjectDeploySettings(projectId);
   const { user } = useCurrentUser();
   const { fs } = useFS();
 
-  const [selectedProviderId, setSelectedProviderId] = useState<string>('');
+  const [selectedProviderName, setSelectedProviderName] = useState<string>('');
   const [isDeploying, setIsDeploying] = useState(false);
   const [deployResult, setDeployResult] = useState<{ url: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -49,11 +49,11 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
   // Load project settings when dialog opens
   useEffect(() => {
     if (open && projectSettings.providerId) {
-      setSelectedProviderId(projectSettings.providerId);
+      setSelectedProviderName(projectSettings.providerId);
     }
   }, [open, projectSettings]);
 
-  const selectedProvider = settings.providers.find(p => p.id === selectedProviderId);
+  const selectedProvider = settings.providers.find(p => p.name === selectedProviderName);
 
   const handleDeploy = async () => {
     if (!selectedProvider) return;
@@ -106,7 +106,7 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
 
       // Save project-specific settings
       await updateProjectSettings({
-        providerId: selectedProviderId,
+        providerId: selectedProviderName,
       });
 
       setDeployResult(result);
@@ -118,7 +118,7 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
   };
 
   const handleClose = () => {
-    setSelectedProviderId('');
+    setSelectedProviderName('');
     setDeployResult(null);
     setError(null);
     onOpenChange(false);
@@ -190,16 +190,14 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
               <>
                 <div className="space-y-2">
                   <Label htmlFor="provider">Select Provider</Label>
-                  <Select value={selectedProviderId} onValueChange={setSelectedProviderId}>
+                  <Select value={selectedProviderName} onValueChange={setSelectedProviderName}>
                     <SelectTrigger id="provider">
                       <SelectValue placeholder="Choose a deployment provider..." />
                     </SelectTrigger>
                     <SelectContent>
                       {settings.providers.map((provider) => (
-                        <SelectItem key={provider.id} value={provider.id}>
-                          {provider.id === 'shakespeare' && 'Shakespeare Deploy'}
-                          {provider.id === 'netlify' && 'Netlify'}
-                          {provider.id === 'vercel' && 'Vercel'}
+                        <SelectItem key={provider.name} value={provider.name}>
+                          {provider.name}
                         </SelectItem>
                       ))}
                     </SelectContent>

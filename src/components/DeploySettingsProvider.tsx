@@ -32,28 +32,10 @@ export function DeploySettingsProvider({ children }: { children: ReactNode }) {
     setSettings(prev => ({ ...prev, ...updates }));
   };
 
-  const setProvider = (provider: DeployProvider) => {
-    setSettings(prev => {
-      const existingIndex = prev.providers.findIndex(p => p.id === provider.id);
-      
-      if (existingIndex >= 0) {
-        // Update existing provider
-        const newProviders = [...prev.providers];
-        newProviders[existingIndex] = provider;
-        return { ...prev, providers: newProviders };
-      } else {
-        // Add new provider
-        return { ...prev, providers: [...prev.providers, provider] };
-      }
-    });
-  };
-
-  const removeProvider = (id: string) => {
+  const removeProvider = (index: number) => {
     setSettings(prev => ({
       ...prev,
-      providers: prev.providers.filter(p => p.id !== id),
-      // Clear default if it was removed
-      defaultProviderId: prev.defaultProviderId === id ? undefined : prev.defaultProviderId,
+      providers: prev.providers.filter((_, i) => i !== index),
     }));
   };
 
@@ -68,7 +50,6 @@ export function DeploySettingsProvider({ children }: { children: ReactNode }) {
   const value = {
     settings,
     updateSettings,
-    setProvider,
     removeProvider,
     setProviders,
     isConfigured,

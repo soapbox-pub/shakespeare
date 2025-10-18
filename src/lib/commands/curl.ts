@@ -16,6 +16,7 @@ interface CurlOptions {
   includeHeaders: boolean;
   followRedirects: boolean;
   silent: boolean;
+  showError: boolean;
   verbose: boolean;
   userAgent?: string;
   timeout?: number;
@@ -144,15 +145,16 @@ export class CurlCommand implements ShellCommand {
         }
 
         // Handle non-success status codes
-        if (!response.ok && !options.silent) {
+        if (!response.ok) {
+          const shouldShowError = !options.silent || options.showError;
           const errorMsg = `HTTP ${response.status}: ${response.statusText}`;
           if (options.output) {
             // Still write to file even on error
             await this.writeToFile(options.output, responseText, cwd);
-            return createErrorResult(errorMsg);
+            return shouldShowError ? createErrorResult(errorMsg) : createSuccessResult('');
           } else {
             output += responseText;
-            return createErrorResult(`${errorMsg}\n${output}`);
+            return shouldShowError ? createErrorResult(`${errorMsg}\n${output}`) : createSuccessResult(output);
           }
         }
 
@@ -171,18 +173,19 @@ export class CurlCommand implements ShellCommand {
         // Handle write-out format
         if (options.writeOut) {
           const writeOutResult = this.formatWriteOut(options.writeOut, response, responseText);
-          if (options.silent) {
-            return createSuccessResult(writeOutResult);
-          } else {
-            output += '\n' + writeOutResult;
-          }
+          output += '\n' + writeOutResult;
         }
 
-        return createSuccessResult(options.silent ? '' : output);
+        return createSuccessResult(output);
 
       } catch (error) {
         if (timeoutId) {
           clearTimeout(timeoutId);
+        }
+
+        const shouldShowError = !options.silent || options.showError;
+        if (!shouldShowError) {
+          return createSuccessResult('');
         }
 
         if (error instanceof Error) {
@@ -213,6 +216,7 @@ export class CurlCommand implements ShellCommand {
       includeHeaders: false,
       followRedirects: true,
       silent: false,
+      showError: false,
       verbose: false,
       maxRedirects: 50,
       showProgress: true,
@@ -283,6 +287,11 @@ export class CurlCommand implements ShellCommand {
             options.showProgress = false;
             break;
 
+          case '-S':
+          case '--show-error':
+            options.showError = true;
+            break;
+
           case '-v':
           case '--verbose':
             options.verbose = true;
@@ -332,6 +341,9 @@ export class CurlCommand implements ShellCommand {
                   case '-s':
                     options.silent = true;
                     options.showProgress = false;
+                    break;
+                  case '-S':
+                    options.showError = true;
                     break;
                   case '-L':
                     options.followRedirects = true;

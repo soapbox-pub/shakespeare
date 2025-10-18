@@ -13,12 +13,9 @@ export function useIsProjectPreviewable(projectId: string) {
     queryFn: async () => {
       try {
         // Check for required files
-        const [hasIndexHtml, hasPackageJson] = await Promise.all([
-          projectsManager.fileExists(projectId, 'index.html'),
-          projectsManager.fileExists(projectId, 'package.json'),
-        ]);
+        const hasIndexHtml = await projectsManager.fileExists(projectId, 'index.html');
 
-        return hasIndexHtml && hasPackageJson;
+        return hasIndexHtml;
       } catch (error) {
         console.error('Failed to check if project is previewable:', error);
         return false;

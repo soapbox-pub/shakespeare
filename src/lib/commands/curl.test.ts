@@ -190,7 +190,7 @@ describe('CurlCommand', () => {
     expect(result.stdout).toContain('100  12  100  12');
   });
 
-  it('should be silent when -s flag is used', async () => {
+  it('should still output response body when -s flag is used', async () => {
     const mockResponse = {
       ok: true,
       status: 200,
@@ -205,7 +205,7 @@ describe('CurlCommand', () => {
     const result = await curlCommand.execute(['-s', 'https://example.com'], '/test');
 
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toBe('');
+    expect(result.stdout).toBe('Hello World');
   });
 
   it('should handle HTTP error responses', async () => {
@@ -272,7 +272,9 @@ describe('CurlCommand', () => {
     const result = await curlCommand.execute(['-si', 'https://example.com'], '/test');
 
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toBe(''); // Silent mode
+    // Silent mode still shows response body and headers (when -i is used)
+    expect(result.stdout).toContain('HTTP/1.1 200 OK');
+    expect(result.stdout).toContain('Hello World');
   });
 
   it('should handle write-out format', async () => {
@@ -301,6 +303,82 @@ describe('CurlCommand', () => {
     mockFetch.mockRejectedValue(new Error('Network error'));
 
     const result = await curlCommand.execute(['https://example.com'], '/test');
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain('Network error');
+  });
+
+  it('should suppress errors when -s is used alone', async () => {
+    const mockResponse = {
+      ok: false,
+      status: 404,
+      statusText: 'Not Found',
+      url: 'https://example.com/notfound',
+      text: vi.fn().mockResolvedValue('Page not found'),
+      headers: new Map(),
+      redirected: false,
+    };
+    mockFetch.mockResolvedValue(mockResponse);
+
+    const result = await curlCommand.execute(['-s', 'https://example.com/notfound'], '/test');
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toBe('Page not found');
+    expect(result.stderr).toBe('');
+  });
+
+  it('should show errors when -sS is used together', async () => {
+    const mockResponse = {
+      ok: false,
+      status: 404,
+      statusText: 'Not Found',
+      url: 'https://example.com/notfound',
+      text: vi.fn().mockResolvedValue('Page not found'),
+      headers: new Map(),
+      redirected: false,
+    };
+    mockFetch.mockResolvedValue(mockResponse);
+
+    const result = await curlCommand.execute(['-sS', 'https://example.com/notfound'], '/test');
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain('HTTP 404: Not Found');
+    expect(result.stderr).toContain('Page not found');
+  });
+
+  it('should show errors when -S is used with -s separately', async () => {
+    const mockResponse = {
+      ok: false,
+      status: 500,
+      statusText: 'Internal Server Error',
+      url: 'https://example.com/error',
+      text: vi.fn().mockResolvedValue('Server error'),
+      headers: new Map(),
+      redirected: false,
+    };
+    mockFetch.mockResolvedValue(mockResponse);
+
+    const result = await curlCommand.execute(['-s', '-S', 'https://example.com/error'], '/test');
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain('HTTP 500: Internal Server Error');
+    expect(result.stderr).toContain('Server error');
+  });
+
+  it('should suppress network errors when -s is used alone', async () => {
+    mockFetch.mockRejectedValue(new Error('Network error'));
+
+    const result = await curlCommand.execute(['-s', 'https://example.com'], '/test');
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toBe('');
+    expect(result.stderr).toBe('');
+  });
+
+  it('should show network errors when -sS is used together', async () => {
+    mockFetch.mockRejectedValue(new Error('Network error'));
+
+    const result = await curlCommand.execute(['-sS', 'https://example.com'], '/test');
 
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain('Network error');

@@ -5,6 +5,7 @@ import { proxyUrl } from '../proxyUrl';
 interface VercelFile {
   file: string;
   data: string;
+  encoding: 'base64';
 }
 
 interface VercelDeployment {
@@ -131,6 +132,7 @@ export class VercelAdapter implements DeployAdapter {
             files.push({
               file: entryRelativePath,
               data: base64Content,
+              encoding: 'base64',
             });
           } catch (error) {
             console.warn(`Failed to read file ${fullPath}:`, error);

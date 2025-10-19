@@ -65,8 +65,9 @@ export function useNetlifyOAuth() {
     }
 
     // Create a new Netlify provider with the OAuth token
+    // Use the preset ID 'netlify' for OAuth-added providers
     const newProvider: NetlifyProvider = {
-      id: crypto.randomUUID(),
+      id: 'netlify',
       name: result.username ? `Netlify (${result.username})` : 'Netlify',
       type: 'netlify',
       apiKey: result.accessToken,

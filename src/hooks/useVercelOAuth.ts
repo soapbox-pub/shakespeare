@@ -69,8 +69,9 @@ export function useVercelOAuth() {
     }
 
     // Create a new Vercel provider with the OAuth token
+    // Use the preset ID 'vercel' for OAuth-added providers
     const newProvider: VercelProvider = {
-      id: crypto.randomUUID(),
+      id: 'vercel',
       name: result.username ? `Vercel (${result.username})` : 'Vercel',
       type: 'vercel',
       apiKey: result.accessToken,

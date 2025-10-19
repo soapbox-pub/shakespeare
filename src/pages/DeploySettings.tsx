@@ -217,6 +217,13 @@ const PRESET_PROVIDERS: PresetProvider[] = [
   },
 ];
 
+// Helper function to generate custom provider ID
+function generateCustomProviderId(type: string): string {
+  const uuid = crypto.randomUUID();
+  const randomSegment = uuid.split('-')[0];
+  return `${type}-${randomSegment}`;
+}
+
 export function DeploySettings() {
   const { t } = useTranslation();
   const { settings, removeProvider, setProviders } = useDeploySettings();
@@ -274,14 +281,14 @@ export function DeploySettings() {
 
     if (preset.type === 'shakespeare') {
       newProvider = {
-        id: crypto.randomUUID(),
+        id: preset.id, // Use preset ID for presets
         name: preset.name,
         type: 'shakespeare',
         ...(preset.proxy && { proxy: true }),
       };
     } else if (preset.type === 'netlify') {
       newProvider = {
-        id: crypto.randomUUID(),
+        id: preset.id, // Use preset ID for presets
         name: preset.name,
         type: 'netlify',
         apiKey: apiKey.trim(),
@@ -289,7 +296,7 @@ export function DeploySettings() {
       };
     } else {
       newProvider = {
-        id: crypto.randomUUID(),
+        id: preset.id, // Use preset ID for presets
         name: preset.name,
         type: 'vercel',
         apiKey: apiKey.trim(),
@@ -310,7 +317,7 @@ export function DeploySettings() {
 
     if (customProviderType === 'shakespeare') {
       newProvider = {
-        id: crypto.randomUUID(),
+        id: generateCustomProviderId(customProviderType), // Generate custom ID
         name: customName.trim(),
         type: 'shakespeare',
         ...(customHost?.trim() && { host: customHost.trim() }),
@@ -319,7 +326,7 @@ export function DeploySettings() {
     } else if (customProviderType === 'netlify') {
       if (!customApiKey.trim()) return;
       newProvider = {
-        id: crypto.randomUUID(),
+        id: generateCustomProviderId(customProviderType), // Generate custom ID
         name: customName.trim(),
         type: 'netlify',
         apiKey: customApiKey.trim(),
@@ -329,7 +336,7 @@ export function DeploySettings() {
     } else {
       if (!customApiKey.trim()) return;
       newProvider = {
-        id: crypto.randomUUID(),
+        id: generateCustomProviderId(customProviderType), // Generate custom ID
         name: customName.trim(),
         type: 'vercel',
         apiKey: customApiKey.trim(),
@@ -359,8 +366,8 @@ export function DeploySettings() {
     setProviders(newProviders);
   };
 
-  const configuredProviderTypes = settings.providers.map(p => p.type);
-  const availablePresets = PRESET_PROVIDERS.filter(preset => !configuredProviderTypes.includes(preset.type));
+  const configuredProviderIds = settings.providers.map(p => p.id);
+  const availablePresets = PRESET_PROVIDERS.filter(preset => !configuredProviderIds.includes(preset.id));
 
   return (
     <div className="p-6 space-y-6">

@@ -1,5 +1,6 @@
 import type { JSRuntimeFS } from '../JSRuntime';
 import type { DeployAdapter, DeployOptions, DeployResult, VercelDeployConfig } from './types';
+import { proxyUrl } from '../proxyUrl';
 
 interface VercelFile {
   file: string;
@@ -23,6 +24,7 @@ export class VercelAdapter implements DeployAdapter {
   private baseURL: string;
   private teamId?: string;
   private projectName?: string;
+  private corsProxy?: string;
 
   constructor(config: VercelDeployConfig) {
     this.fs = config.fs;
@@ -30,6 +32,7 @@ export class VercelAdapter implements DeployAdapter {
     this.baseURL = config.baseURL || 'https://api.vercel.com';
     this.teamId = config.teamId;
     this.projectName = config.projectName;
+    this.corsProxy = config.corsProxy;
   }
 
   async deploy(options: DeployOptions): Promise<DeployResult> {
@@ -63,8 +66,11 @@ export class VercelAdapter implements DeployAdapter {
       apiUrl += `?teamId=${this.teamId}`;
     }
 
+    // Apply proxy if configured
+    const targetUrl = this.corsProxy ? proxyUrl(this.corsProxy, apiUrl) : apiUrl;
+
     // Deploy to Vercel
-    const response = await fetch(apiUrl, {
+    const response = await fetch(targetUrl, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${this.apiKey}`,

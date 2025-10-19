@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Rocket, ArrowLeft, Trash2, Check, GripVertical } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   DndContext,
   closestCenter,
@@ -39,6 +40,7 @@ interface PresetProvider {
   requiresNostr?: boolean;
   apiKeyLabel?: string;
   apiKeyURL?: string;
+  proxy?: boolean;
 }
 
 interface SortableProviderItemProps {
@@ -154,6 +156,19 @@ function SortableProviderItem({ provider, index, preset, onRemove, onUpdate, sho
               </div>
             </>
           )}
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id={`provider-${index}-proxy`}
+              checked={provider.proxy || false}
+              onCheckedChange={(checked) => onUpdate(index, { ...provider, proxy: checked === true })}
+            />
+            <Label
+              htmlFor={`provider-${index}-proxy`}
+              className="text-sm font-normal cursor-pointer"
+            >
+              Use CORS Proxy
+            </Label>
+          </div>
           <Button
             variant="destructive"
             size="sm"
@@ -183,6 +198,7 @@ const PRESET_PROVIDERS: PresetProvider[] = [
     description: 'Deploy to Netlify with personal access token',
     apiKeyLabel: 'Personal Access Token',
     apiKeyURL: 'https://app.netlify.com/user/applications#personal-access-tokens',
+    proxy: true,
   },
   {
     id: 'vercel',
@@ -191,6 +207,7 @@ const PRESET_PROVIDERS: PresetProvider[] = [
     description: 'Deploy to Vercel with access token',
     apiKeyLabel: 'Access Token',
     apiKeyURL: 'https://vercel.com/account/tokens',
+    proxy: true,
   },
 ];
 
@@ -204,6 +221,14 @@ export function DeploySettings() {
   const [presetApiKeys, setPresetApiKeys] = useState<Record<string, string>>({});
   const [presetBaseURLs, setPresetBaseURLs] = useState<Record<string, string>>({});
   const [presetHosts, setPresetHosts] = useState<Record<string, string>>({});
+  const [presetProxies, setPresetProxies] = useState<Record<string, boolean>>(() => {
+    // Initialize with preset proxy defaults
+    const initialProxies: Record<string, boolean> = {};
+    PRESET_PROVIDERS.forEach(preset => {
+      initialProxies[preset.id] = preset.proxy || false;
+    });
+    return initialProxies;
+  });
   const [presetNames, setPresetNames] = useState<Record<string, string>>(() => {
     // Initialize with preset names
     const initialNames: Record<string, string> = {};
@@ -241,6 +266,7 @@ export function DeploySettings() {
     const apiKey = presetApiKeys[preset.id];
     const baseURL = presetBaseURLs[preset.id];
     const host = presetHosts[preset.id];
+    const proxy = presetProxies[preset.id];
     const customName = presetNames[preset.id];
 
     // For non-Shakespeare providers, require API key
@@ -257,6 +283,7 @@ export function DeploySettings() {
         name: finalName,
         type: 'shakespeare',
         ...(host?.trim() && { host: host.trim() }),
+        ...(proxy !== undefined && { proxy }),
       };
     } else if (preset.type === 'netlify') {
       newProvider = {
@@ -264,6 +291,7 @@ export function DeploySettings() {
         type: 'netlify',
         apiKey: apiKey.trim(),
         ...(baseURL?.trim() && { baseURL: baseURL.trim() }),
+        ...(proxy !== undefined && { proxy }),
       };
     } else {
       newProvider = {
@@ -271,15 +299,17 @@ export function DeploySettings() {
         type: 'vercel',
         apiKey: apiKey.trim(),
         ...(baseURL?.trim() && { baseURL: baseURL.trim() }),
+        ...(proxy !== undefined && { proxy }),
       };
     }
 
     setProviders([...settings.providers, newProvider]);
 
-    // Clear inputs and reset name to preset default
+    // Clear inputs and reset to preset defaults
     setPresetApiKeys(prev => ({ ...prev, [preset.id]: '' }));
     setPresetBaseURLs(prev => ({ ...prev, [preset.id]: '' }));
     setPresetHosts(prev => ({ ...prev, [preset.id]: '' }));
+    setPresetProxies(prev => ({ ...prev, [preset.id]: preset.proxy || false }));
     setPresetNames(prev => ({ ...prev, [preset.id]: preset.name }));
   };
 
@@ -479,6 +509,23 @@ export function DeploySettings() {
                             />
                           </div>
                         )}
+
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`preset-${preset.id}-proxy`}
+                            checked={presetProxies[preset.id] || false}
+                            onCheckedChange={(checked) => setPresetProxies(prev => ({
+                              ...prev,
+                              [preset.id]: checked === true,
+                            }))}
+                          />
+                          <Label
+                            htmlFor={`preset-${preset.id}-proxy`}
+                            className="text-sm font-normal cursor-pointer"
+                          >
+                            Use CORS Proxy
+                          </Label>
+                        </div>
 
                         <Button
                           onClick={() => handleAddPresetProvider(preset)}

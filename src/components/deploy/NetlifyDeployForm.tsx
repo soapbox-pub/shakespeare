@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
+import { proxyUrl } from '@/lib/proxyUrl';
 
 interface NetlifySite {
   id: string;
@@ -28,6 +29,7 @@ interface NetlifyDeployFormProps {
   projectName?: string;
   savedSiteId?: string;
   onSiteChange: (siteId: string, siteName: string) => void;
+  corsProxy?: string;
 }
 
 export function NetlifyDeployForm({
@@ -37,6 +39,7 @@ export function NetlifyDeployForm({
   projectName,
   savedSiteId,
   onSiteChange,
+  corsProxy,
 }: NetlifyDeployFormProps) {
   const [sites, setSites] = useState<NetlifySite[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -49,7 +52,10 @@ export function NetlifyDeployForm({
     setError(null);
 
     try {
-      const response = await fetch(`${baseURL}/sites`, {
+      const url = `${baseURL}/sites`;
+      const targetUrl = corsProxy ? proxyUrl(corsProxy, url) : url;
+
+      const response = await fetch(targetUrl, {
         headers: {
           'Authorization': `Bearer ${apiKey}`,
         },
@@ -74,7 +80,7 @@ export function NetlifyDeployForm({
     } finally {
       setIsLoading(false);
     }
-  }, [apiKey, baseURL, savedSiteId]);
+  }, [apiKey, baseURL, savedSiteId, corsProxy]);
 
   useEffect(() => {
     fetchSites();

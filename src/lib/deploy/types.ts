@@ -25,6 +25,7 @@ export interface ShakespeareDeployConfig {
   signer: NostrSigner;
   host?: string;
   subdomain?: string;
+  corsProxy?: string;
 }
 
 export interface NetlifyDeployConfig {
@@ -33,6 +34,7 @@ export interface NetlifyDeployConfig {
   baseURL?: string;
   siteName?: string;
   siteId?: string;
+  corsProxy?: string;
 }
 
 export interface VercelDeployConfig {
@@ -41,4 +43,5 @@ export interface VercelDeployConfig {
   baseURL?: string;
   teamId?: string;
   projectName?: string;
+  corsProxy?: string;
 }

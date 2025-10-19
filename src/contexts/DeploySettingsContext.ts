@@ -4,6 +4,7 @@ export interface ShakespeareDeployProvider {
   name: string;
   type: 'shakespeare';
   host?: string;
+  proxy?: boolean;
 }
 
 export interface NetlifyProvider {
@@ -11,6 +12,7 @@ export interface NetlifyProvider {
   type: 'netlify';
   apiKey: string;
   baseURL?: string;
+  proxy?: boolean;
 }
 
 export interface VercelProvider {
@@ -18,6 +20,7 @@ export interface VercelProvider {
   type: 'vercel';
   apiKey: string;
   baseURL?: string;
+  proxy?: boolean;
 }
 
 export type DeployProvider = ShakespeareDeployProvider | NetlifyProvider | VercelProvider;

@@ -1,6 +1,7 @@
 import JSZip from 'jszip';
 import type { JSRuntimeFS } from '../JSRuntime';
 import type { DeployAdapter, DeployOptions, DeployResult, NetlifyDeployConfig } from './types';
+import { proxyUrl } from '../proxyUrl';
 
 interface NetlifySite {
   id: string;
@@ -27,6 +28,7 @@ export class NetlifyAdapter implements DeployAdapter {
   private baseURL: string;
   private siteName?: string;
   private siteId?: string;
+  private corsProxy?: string;
 
   constructor(config: NetlifyDeployConfig) {
     this.fs = config.fs;
@@ -34,6 +36,7 @@ export class NetlifyAdapter implements DeployAdapter {
     this.baseURL = config.baseURL || 'https://api.netlify.com/api/v1';
     this.siteName = config.siteName;
     this.siteId = config.siteId;
+    this.corsProxy = config.corsProxy;
   }
 
   async deploy(options: DeployOptions): Promise<DeployResult> {
@@ -82,7 +85,10 @@ export class NetlifyAdapter implements DeployAdapter {
   }
 
   private async createSite(name: string): Promise<NetlifySite> {
-    const response = await fetch(`${this.baseURL}/sites`, {
+    const url = `${this.baseURL}/sites`;
+    const targetUrl = this.corsProxy ? proxyUrl(this.corsProxy, url) : url;
+
+    const response = await fetch(targetUrl, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${this.apiKey}`,
@@ -103,7 +109,10 @@ export class NetlifyAdapter implements DeployAdapter {
   }
 
   private async getSite(siteId: string): Promise<NetlifySite> {
-    const response = await fetch(`${this.baseURL}/sites/${siteId}`, {
+    const url = `${this.baseURL}/sites/${siteId}`;
+    const targetUrl = this.corsProxy ? proxyUrl(this.corsProxy, url) : url;
+
+    const response = await fetch(targetUrl, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${this.apiKey}`,
@@ -119,7 +128,10 @@ export class NetlifyAdapter implements DeployAdapter {
   }
 
   private async triggerDeploy(siteId: string, zipBlob: Blob): Promise<NetlifyBuildResponse> {
-    const response = await fetch(`${this.baseURL}/sites/${siteId}/deploys`, {
+    const url = `${this.baseURL}/sites/${siteId}/deploys`;
+    const targetUrl = this.corsProxy ? proxyUrl(this.corsProxy, url) : url;
+
+    const response = await fetch(targetUrl, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${this.apiKey}`,

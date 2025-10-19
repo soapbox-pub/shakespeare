@@ -23,6 +23,7 @@ import { useDeploySettings } from '@/hooks/useDeploySettings';
 import { useProjectDeploySettings } from '@/hooks/useProjectDeploySettings';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useFS } from '@/hooks/useFS';
+import { useAppContext } from '@/hooks/useAppContext';
 import { ShakespeareAdapter, NetlifyAdapter, VercelAdapter, DeployAdapter } from '@/lib/deploy';
 import { Link } from 'react-router-dom';
 import type { ShakespeareDeployProvider, NetlifyProvider, VercelProvider } from '@/contexts/DeploySettingsContext';
@@ -57,6 +58,7 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
   const { settings: projectSettings, updateSettings: updateProjectSettings } = useProjectDeploySettings(projectId);
   const { user } = useCurrentUser();
   const { fs } = useFS();
+  const { config } = useAppContext();
 
   const [selectedProviderName, setSelectedProviderName] = useState<string>('');
   const [isDeploying, setIsDeploying] = useState(false);
@@ -108,6 +110,7 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
           signer: user.signer,
           host: shakespeareProvider.host,
           subdomain: shakespeareForm.subdomain || undefined,
+          corsProxy: shakespeareProvider.proxy ? config.corsProxy : undefined,
         });
       } else if (selectedProvider.type === 'netlify') {
         const netlifyProvider = selectedProvider as NetlifyProvider;
@@ -123,6 +126,7 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
           baseURL: netlifyProvider.baseURL,
           siteName: netlifyForm.siteId ? undefined : (netlifyForm.siteName || undefined),
           siteId: netlifyForm.siteId || undefined,
+          corsProxy: netlifyProvider.proxy ? config.corsProxy : undefined,
         });
       } else if (selectedProvider.type === 'vercel') {
         const vercelProvider = selectedProvider as VercelProvider;
@@ -136,6 +140,7 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
           baseURL: vercelProvider.baseURL,
           teamId: vercelForm.teamId || undefined,
           projectName: vercelForm.projectName || undefined,
+          corsProxy: vercelProvider.proxy ? config.corsProxy : undefined,
         });
       } else {
         throw new Error('Unknown provider type');
@@ -223,6 +228,7 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
           projectName={projectName}
           savedSiteId={projectSettings.netlify?.siteId}
           onSiteChange={handleNetlifySiteChange}
+          corsProxy={netlifyProvider.proxy ? config.corsProxy : undefined}
         />
       );
     }

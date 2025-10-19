@@ -49,13 +49,13 @@ export class DeployProjectTool implements Tool<DeployProjectParams> {
 
       // Deploy the project using ShakespeareAdapter
       const adapter = new ShakespeareAdapter({
+        fs: this.fs,
         signer: this.signer,
-        deployServer,
+        host: deployServer,
       });
 
       const result = await adapter.deploy({
         projectId: this.projectId,
-        fs: this.fs,
         projectPath: this.cwd,
       });
 

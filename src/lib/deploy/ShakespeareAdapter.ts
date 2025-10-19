@@ -1,7 +1,9 @@
 import JSZip from 'jszip';
-import { NIP98Client } from '@nostrify/nostrify';
+import { NIP98 } from '@nostrify/nostrify';
+import { N64 } from '@nostrify/nostrify/utils';
 import type { JSRuntimeFS } from '../JSRuntime';
 import type { DeployAdapter, DeployOptions, DeployResult, ShakespeareDeployConfig } from './types';
+import { proxyUrl } from '../proxyUrl';
 
 /**
  * Shakespeare Deploy Adapter
@@ -12,12 +14,14 @@ export class ShakespeareAdapter implements DeployAdapter {
   private signer: ShakespeareDeployConfig['signer'];
   private host: string;
   private subdomain?: string;
+  private corsProxy?: string;
 
   constructor(config: ShakespeareDeployConfig) {
     this.fs = config.fs;
     this.signer = config.signer;
     this.host = config.host || 'shakespeare.wtf';
     this.subdomain = config.subdomain;
+    this.corsProxy = config.corsProxy;
   }
 
   async deploy(options: DeployOptions): Promise<DeployResult> {
@@ -50,12 +54,29 @@ export class ShakespeareAdapter implements DeployAdapter {
     formData.append('hostname', hostname);
     formData.append('file', zipBlob, `${projectId}.zip`);
 
-    // Create NIP-98 authenticated client and deploy
-    const nip98Client = new NIP98Client({ signer: this.signer });
-    const response = await nip98Client.fetch(deployUrl, {
+    // Create the request
+    let request = new Request(deployUrl, {
       method: 'POST',
       body: formData,
     });
+
+    // Create NIP-98 token for authentication
+    const template = await NIP98.template(request);
+    const event = await this.signer.signEvent(template);
+    const token = N64.encodeEvent(event);
+
+    // Add the Authorization header
+    const headers = new Headers(request.headers);
+    headers.set('Authorization', `Nostr ${token}`);
+    request = new Request(request, { headers });
+
+    // Apply proxy if configured
+    if (this.corsProxy) {
+      request = new Request(proxyUrl(this.corsProxy, request.url), request);
+    }
+
+    // Deploy
+    const response = await fetch(request);
 
     if (!response.ok) {
       const errorText = await response.text().catch(() => 'Unknown error');

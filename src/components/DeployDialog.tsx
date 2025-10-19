@@ -80,8 +80,12 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
 
   // Load project settings when dialog opens
   useEffect(() => {
-    if (open && projectSettings.providerId) {
-      setSelectedProviderId(projectSettings.providerId);
+    if (open) {
+      // Find the first configured provider in project settings
+      const providerIds = Object.keys(projectSettings);
+      if (providerIds.length > 0) {
+        setSelectedProviderId(providerIds[0]);
+      }
     }
   }, [open, projectSettings]);
 
@@ -152,24 +156,29 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
       });
 
       // Save project-specific settings
-      const projectSettingsUpdate: typeof projectSettings = {
-        providerId: selectedProviderId,
-      };
-
-      if (selectedProvider.type === 'netlify' && result.metadata?.siteId) {
-        projectSettingsUpdate.netlify = {
-          siteId: result.metadata.siteId as string,
-        };
+      if (selectedProvider.type === 'shakespeare') {
+        await updateProjectSettings(selectedProviderId, {
+          type: 'shakespeare',
+          data: {
+            subdomain: shakespeareForm.subdomain || undefined,
+          },
+        });
+      } else if (selectedProvider.type === 'netlify') {
+        await updateProjectSettings(selectedProviderId, {
+          type: 'netlify',
+          data: {
+            siteId: result.metadata?.siteId as string | undefined,
+          },
+        });
+      } else if (selectedProvider.type === 'vercel') {
+        await updateProjectSettings(selectedProviderId, {
+          type: 'vercel',
+          data: {
+            teamId: vercelForm.teamId || undefined,
+            projectId: vercelForm.projectName || undefined,
+          },
+        });
       }
-
-      if (selectedProvider.type === 'vercel') {
-        projectSettingsUpdate.vercel = {
-          teamId: vercelForm.teamId || undefined,
-          projectId: vercelForm.projectName || undefined,
-        };
-      }
-
-      await updateProjectSettings(projectSettingsUpdate);
 
       setDeployResult(result);
     } catch (err) {
@@ -219,6 +228,8 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
 
     if (selectedProvider.type === 'netlify') {
       const netlifyProvider = selectedProvider as NetlifyProvider;
+      const savedConfig = projectSettings[selectedProviderId];
+      const savedSiteId = savedConfig?.type === 'netlify' ? savedConfig.data.siteId : undefined;
 
       return (
         <NetlifyDeployForm
@@ -226,7 +237,7 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
           baseURL={netlifyProvider.baseURL}
           projectId={projectId}
           projectName={projectName}
-          savedSiteId={projectSettings.netlify?.siteId}
+          savedSiteId={savedSiteId}
           onSiteChange={handleNetlifySiteChange}
           corsProxy={netlifyProvider.proxy ? config.corsProxy : undefined}
         />
@@ -234,12 +245,16 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
     }
 
     if (selectedProvider.type === 'vercel') {
+      const savedConfig = projectSettings[selectedProviderId];
+      const savedTeamId = savedConfig?.type === 'vercel' ? savedConfig.data.teamId : undefined;
+      const savedProjectName = savedConfig?.type === 'vercel' ? savedConfig.data.projectId : undefined;
+
       return (
         <VercelDeployForm
           projectId={projectId}
           projectName={projectName}
-          savedTeamId={projectSettings.vercel?.teamId}
-          savedProjectName={projectSettings.vercel?.projectId}
+          savedTeamId={savedTeamId}
+          savedProjectName={savedProjectName}
           onConfigChange={handleVercelConfigChange}
         />
       );

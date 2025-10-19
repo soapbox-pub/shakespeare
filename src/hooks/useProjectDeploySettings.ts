@@ -1,16 +1,31 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useFS } from './useFS';
 
-export interface ProjectDeploySettings {
-  providerId?: string;
-  netlify?: {
+export interface ShakespeareProjectConfig {
+  type: 'shakespeare';
+  data: {
+    subdomain?: string;
+  };
+}
+
+export interface NetlifyProjectConfig {
+  type: 'netlify';
+  data: {
     siteId?: string;
   };
-  vercel?: {
+}
+
+export interface VercelProjectConfig {
+  type: 'vercel';
+  data: {
     teamId?: string;
     projectId?: string;
   };
 }
+
+export type ProjectProviderConfig = ShakespeareProjectConfig | NetlifyProjectConfig | VercelProjectConfig;
+
+export type ProjectDeploySettings = Record<string, ProjectProviderConfig>;
 
 /**
  * Hook to manage project-specific deployment settings
@@ -59,9 +74,13 @@ export function useProjectDeploySettings(projectId: string) {
     }
   };
 
-  const updateSettings = async (updates: Partial<ProjectDeploySettings>) => {
-    const newSettings = { ...settings, ...updates };
+  const updateSettings = async (providerId: string, config: ProjectProviderConfig) => {
+    const newSettings = { ...settings, [providerId]: config };
     await saveSettings(newSettings);
+  };
+
+  const getProviderConfig = (providerId: string): ProjectProviderConfig | undefined => {
+    return settings[providerId];
   };
 
   return {
@@ -69,5 +88,6 @@ export function useProjectDeploySettings(projectId: string) {
     isLoading,
     updateSettings,
     saveSettings,
+    getProviderConfig,
   };
 }

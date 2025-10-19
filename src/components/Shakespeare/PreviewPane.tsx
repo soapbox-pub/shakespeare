@@ -9,7 +9,7 @@ import { useBuildProject } from '@/hooks/useBuildProject';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { FolderOpen, ArrowLeft, Bug, Copy, Check, Play, Loader2, MenuIcon, Code, CloudUpload, X, Terminal } from 'lucide-react';
+import { FolderOpen, ArrowLeft, Bug, Copy, Check, Play, Loader2, MenuIcon, Code, Rocket, X, Terminal } from 'lucide-react';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { GitStatusIndicator } from '@/components/GitStatusIndicator';
 import { BrowserAddressBar } from '@/components/ui/browser-address-bar';
@@ -651,7 +651,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
             disabled={isAnyLoading}
             className="gap-2"
           >
-            <CloudUpload className="h-4 w-4" />
+            <Rocket className="h-4 w-4" />
             Deploy
           </DropdownMenuItem>
         </DropdownMenuContent>

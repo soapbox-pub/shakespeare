@@ -35,7 +35,6 @@ function createWrapper(corsProxy: string) {
       theme: 'light',
       relayUrl: 'wss://relay.test',
       projectTemplate: 'https://gitlab.com/soapbox-pub/mkstack.git',
-      deployServer: 'test.com',
       esmUrl: 'https://esm.test',
       corsProxy,
       previewDomain: 'local-test.dev',

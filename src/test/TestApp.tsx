@@ -31,7 +31,6 @@ export function TestApp({ children }: TestAppProps) {
     theme: 'light',
     relayUrl: 'wss://relay.nostr.band',
     projectTemplate: 'https://gitlab.com/soapbox-pub/mkstack.git',
-    deployServer: 'shakespeare.wtf',
     esmUrl: 'https://esm.shakespeare.diy',
     corsProxy: 'https://proxy.shakespeare.diy/?url={href}',
     previewDomain: 'local-shakespeare.dev',

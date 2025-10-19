@@ -43,7 +43,6 @@ describe('useAIProjectId', () => {
         theme: 'dark',
         relayUrl: 'wss://relay.damus.io',
         projectTemplate: 'https://github.com/example/template',
-        deployServer: 'shakespeare.wtf',
         esmUrl: 'https://esm.sh',
         corsProxy: 'https://proxy.example.com/{href}',
         previewDomain: 'local-shakespeare.dev',

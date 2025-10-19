@@ -9,8 +9,6 @@ export interface AppConfig {
   relayUrl: string;
   /** Git repository URL to use as project template */
   projectTemplate: string;
-  /** Deploy server domain (e.g., "shakespeare.wtf") */
-  deployServer: string;
   /** ESM CDN URL for package imports */
   esmUrl: string;
   /** HTTP proxy used to bypass CORS for AI and Git operations */

@@ -32,6 +32,21 @@ export function createAIClient(provider: AIProvider, user?: NUser, corsProxy?: s
         request = new Request(request, { headers });
       }
 
+      // Add Anthropic-specific headers
+      // https://docs.anthropic.com/en/api/versioning
+      if (provider.id === 'anthropic') {
+        const headers = new Headers(request.headers);
+        headers.set('anthropic-version', '2023-06-01');
+        // Required header for direct browser access
+        headers.set('anthropic-dangerous-direct-browser-access', 'true');
+        // Anthropic expects x-api-key header instead of Authorization: Bearer
+        if (provider.apiKey) {
+          headers.set('x-api-key', provider.apiKey);
+          headers.delete('authorization'); // Remove the Bearer token that OpenAI client adds
+        }
+        request = new Request(request, { headers });
+      }
+
       // If Nostr authentication is required and we have a user, use NIP-98
       if (provider.nostr && user?.signer) {
         // Create the NIP98 token

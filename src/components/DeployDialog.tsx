@@ -60,7 +60,7 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
   const { fs } = useFS();
   const { config } = useAppContext();
 
-  const [selectedProviderName, setSelectedProviderName] = useState<string>('');
+  const [selectedProviderId, setSelectedProviderId] = useState<string>('');
   const [isDeploying, setIsDeploying] = useState(false);
   const [deployResult, setDeployResult] = useState<{ url: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -81,11 +81,11 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
   // Load project settings when dialog opens
   useEffect(() => {
     if (open && projectSettings.providerId) {
-      setSelectedProviderName(projectSettings.providerId);
+      setSelectedProviderId(projectSettings.providerId);
     }
   }, [open, projectSettings]);
 
-  const selectedProvider = settings.providers.find(p => p.name === selectedProviderName);
+  const selectedProvider = settings.providers.find(p => p.id === selectedProviderId);
 
   const handleDeploy = async () => {
     if (!selectedProvider) return;
@@ -153,7 +153,7 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
 
       // Save project-specific settings
       const projectSettingsUpdate: typeof projectSettings = {
-        providerId: selectedProviderName,
+        providerId: selectedProviderId,
       };
 
       if (selectedProvider.type === 'netlify' && result.metadata?.siteId) {
@@ -180,7 +180,7 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
   };
 
   const handleClose = () => {
-    setSelectedProviderName('');
+    setSelectedProviderId('');
     setDeployResult(null);
     setError(null);
     // Reset forms
@@ -314,13 +314,13 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
               <>
                 <div className="space-y-2">
                   <Label htmlFor="provider">Select Provider</Label>
-                  <Select value={selectedProviderName} onValueChange={setSelectedProviderName}>
+                  <Select value={selectedProviderId} onValueChange={setSelectedProviderId}>
                     <SelectTrigger id="provider">
                       <SelectValue placeholder="Choose a deployment provider..." />
                     </SelectTrigger>
                     <SelectContent>
                       {settings.providers.map((provider) => (
-                        <SelectItem key={provider.name} value={provider.name}>
+                        <SelectItem key={provider.id} value={provider.id}>
                           {provider.name}
                         </SelectItem>
                       ))}

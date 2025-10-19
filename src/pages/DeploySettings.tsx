@@ -265,12 +265,14 @@ export function DeploySettings() {
 
     if (preset.type === 'shakespeare') {
       newProvider = {
+        id: crypto.randomUUID(),
         name: preset.name,
         type: 'shakespeare',
         ...(preset.proxy && { proxy: true }),
       };
     } else if (preset.type === 'netlify') {
       newProvider = {
+        id: crypto.randomUUID(),
         name: preset.name,
         type: 'netlify',
         apiKey: apiKey.trim(),
@@ -278,6 +280,7 @@ export function DeploySettings() {
       };
     } else {
       newProvider = {
+        id: crypto.randomUUID(),
         name: preset.name,
         type: 'vercel',
         apiKey: apiKey.trim(),
@@ -298,6 +301,7 @@ export function DeploySettings() {
 
     if (customProviderType === 'shakespeare') {
       newProvider = {
+        id: crypto.randomUUID(),
         name: customName.trim(),
         type: 'shakespeare',
         ...(customHost?.trim() && { host: customHost.trim() }),
@@ -306,6 +310,7 @@ export function DeploySettings() {
     } else if (customProviderType === 'netlify') {
       if (!customApiKey.trim()) return;
       newProvider = {
+        id: crypto.randomUUID(),
         name: customName.trim(),
         type: 'netlify',
         apiKey: customApiKey.trim(),
@@ -315,6 +320,7 @@ export function DeploySettings() {
     } else {
       if (!customApiKey.trim()) return;
       newProvider = {
+        id: crypto.randomUUID(),
         name: customName.trim(),
         type: 'vercel',
         apiKey: customApiKey.trim(),

@@ -1,22 +1,24 @@
 import { createContext } from 'react';
 
-export interface ShakespeareDeployProvider {
+export interface BaseDeployProvider {
+  id: string;
   name: string;
+}
+
+export interface ShakespeareDeployProvider extends BaseDeployProvider {
   type: 'shakespeare';
   host?: string;
   proxy?: boolean;
 }
 
-export interface NetlifyProvider {
-  name: string;
+export interface NetlifyProvider extends BaseDeployProvider {
   type: 'netlify';
   apiKey: string;
   baseURL?: string;
   proxy?: boolean;
 }
 
-export interface VercelProvider {
-  name: string;
+export interface VercelProvider extends BaseDeployProvider {
   type: 'vercel';
   apiKey: string;
   baseURL?: string;

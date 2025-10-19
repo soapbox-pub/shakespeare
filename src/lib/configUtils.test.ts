@@ -198,16 +198,19 @@ describe('configUtils', () => {
     const sampleDeploySettings: DeploySettings = {
       providers: [
         {
+          id: 'provider-1',
           name: 'My Netlify',
           type: 'netlify',
           apiKey: 'netlify-token-123',
         },
         {
+          id: 'provider-2',
           name: 'My Vercel',
           type: 'vercel',
           apiKey: 'vercel-token-456',
         },
         {
+          id: 'provider-3',
           name: 'Shakespeare',
           type: 'shakespeare',
         },

@@ -28,6 +28,8 @@ import { Label } from '@/components/ui/label';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useDeploySettings } from '@/hooks/useDeploySettings';
+import { useNetlifyOAuth } from '@/hooks/useNetlifyOAuth';
+import { useVercelOAuth } from '@/hooks/useVercelOAuth';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { useNavigate, Link } from 'react-router-dom';
@@ -42,6 +44,7 @@ interface PresetProvider {
   apiKeyLabel?: string;
   apiKeyURL?: string;
   proxy?: boolean;
+  supportsOAuth?: boolean;
 }
 
 interface SortableProviderItemProps {
@@ -200,6 +203,7 @@ const PRESET_PROVIDERS: PresetProvider[] = [
     apiKeyLabel: 'Personal Access Token',
     apiKeyURL: 'https://app.netlify.com/user/applications#personal-access-tokens',
     proxy: true,
+    supportsOAuth: true,
   },
   {
     id: 'vercel',
@@ -209,6 +213,7 @@ const PRESET_PROVIDERS: PresetProvider[] = [
     apiKeyLabel: 'Access Token',
     apiKeyURL: 'https://vercel.com/account/tokens',
     proxy: true,
+    supportsOAuth: true,
   },
 ];
 
@@ -218,6 +223,10 @@ export function DeploySettings() {
   const { user } = useCurrentUser();
   const isMobile = useIsMobile();
   const navigate = useNavigate();
+
+  // OAuth hooks
+  const netlifyOAuth = useNetlifyOAuth();
+  const vercelOAuth = useVercelOAuth();
 
   const [presetApiKeys, setPresetApiKeys] = useState<Record<string, string>>({});
 
@@ -436,11 +445,18 @@ export function DeploySettings() {
                 const isLoggedIntoNostr = !!user;
                 const showNostrLoginRequired = isNostrPreset && !isLoggedIntoNostr;
 
+                // Get OAuth hook for this preset
+                const oauthHook = preset.type === 'netlify' ? netlifyOAuth :
+                  preset.type === 'vercel' ? vercelOAuth : null;
+                const isOAuthConfigured = oauthHook?.isOAuthConfigured ?? false;
+                const isOAuthLoading = oauthHook?.isLoading ?? false;
+                const oauthError = oauthHook?.error ?? null;
+
                 return (
                   <div key={preset.id} className="border rounded-lg p-4 space-y-3">
                     <div className="flex items-center justify-between">
                       <h5 className="font-medium">{preset.name}</h5>
-                      {preset.apiKeyURL && (
+                      {preset.apiKeyURL && !isOAuthConfigured && (
                         <button
                           type="button"
                           className="text-xs text-muted-foreground underline hover:text-foreground"
@@ -462,7 +478,46 @@ export function DeploySettings() {
                           </Link>
                         </Button>
                       </div>
+                    ) : preset.supportsOAuth && isOAuthConfigured ? (
+                      // Show OAuth button if OAuth is configured
+                      <div className="space-y-3">
+                        <Button
+                          onClick={() => oauthHook?.initiateOAuth()}
+                          disabled={isOAuthLoading}
+                          className="w-full max-w-full gap-2"
+                          variant="default"
+                        >
+                          {isOAuthLoading ? (
+                            <>
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                              Connecting...
+                            </>
+                          ) : (
+                            <>
+                              {preset.type === 'netlify' && (
+                                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                                  <path d="M16.934 8.519a1.044 1.044 0 0 1 .303.23l2.349 2.348a1 1 0 0 1 0 1.414l-2.348 2.349a1.044 1.044 0 0 1-.231.303 1.042 1.042 0 0 1-1.473-1.473l.527-.527H11a1 1 0 1 1 0-2h5.061l-.527-.527a1.042 1.042 0 0 1 1.4-1.517zM7.066 15.481a1.044 1.044 0 0 1-.303-.23l-2.349-2.348a1 1 0 0 1 0-1.414l2.348-2.349a1.044 1.044 0 0 1 .231-.303 1.042 1.042 0 0 1 1.473 1.473l-.527.527H13a1 1 0 0 1 0 2H7.939l.527.527a1.042 1.042 0 0 1-1.4 1.517z" />
+                                </svg>
+                              )}
+                              {preset.type === 'vercel' && (
+                                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                                  <path d="M12 1.5L24 22.5H0L12 1.5z" />
+                                </svg>
+                              )}
+                              <span className="truncate text-ellipsis overflow-hidden">
+                                Connect to {preset.name}
+                              </span>
+                            </>
+                          )}
+                        </Button>
+                        {oauthError && (
+                          <p className="text-sm text-destructive">
+                            {oauthError}
+                          </p>
+                        )}
+                      </div>
                     ) : (
+                      // Show manual token input
                       <div className="space-y-2">
                         <div className="flex gap-2">
                           {!preset.requiresNostr && (

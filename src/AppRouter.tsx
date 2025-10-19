@@ -16,6 +16,8 @@ import StorageSettings from "./pages/StorageSettings";
 import AboutSettings from "./pages/AboutSettings";
 
 import GitHubOAuth from "./pages/GitHubOAuth";
+import NetlifyOAuth from "./pages/NetlifyOAuth";
+import VercelOAuth from "./pages/VercelOAuth";
 import { NIP19Page } from "./pages/NIP19Page";
 import NotFound from "./pages/NotFound";
 import { ProjectView } from "./pages/ProjectView";
@@ -31,6 +33,8 @@ export function AppRouter() {
         <Route path="/" element={<Index />} />
         <Route path="/clone" element={<Clone />} />
         <Route path="/oauth/github" element={<GitHubOAuth />} />
+        <Route path="/oauth/netlify" element={<NetlifyOAuth />} />
+        <Route path="/oauth/vercel" element={<VercelOAuth />} />
         <Route path="/settings" element={<SettingsLayout />}>
           <Route index element={<Settings />} />
           <Route path="preferences" element={<Preferences />} />

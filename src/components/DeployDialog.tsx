@@ -71,7 +71,7 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
   });
   const [netlifyForm, setNetlifyForm] = useState<NetlifyFormData>({
     siteId: '',
-    siteName: projectName || projectId,
+    siteName: '',
   });
   const [vercelForm, setVercelForm] = useState<VercelFormData>({
     projectName: projectName || projectId,
@@ -185,7 +185,7 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
     setError(null);
     // Reset forms
     setShakespeareForm({ subdomain: projectId });
-    setNetlifyForm({ siteId: '', siteName: projectName || projectId });
+    setNetlifyForm({ siteId: '', siteName: '' });
     setVercelForm({ projectName: projectName || projectId, teamId: '' });
     onOpenChange(false);
   };
@@ -362,7 +362,8 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
                     disabled={
                       !selectedProvider ||
                       isDeploying ||
-                      (selectedProvider.type === 'shakespeare' && !user)
+                      (selectedProvider.type === 'shakespeare' && !user) ||
+                      (selectedProvider.type === 'netlify' && !netlifyForm.siteId && !netlifyForm.siteName)
                     }
                   >
                     {isDeploying ? (

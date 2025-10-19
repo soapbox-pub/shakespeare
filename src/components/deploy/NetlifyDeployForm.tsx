@@ -44,7 +44,7 @@ export function NetlifyDeployForm({
   const [sites, setSites] = useState<NetlifySite[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedSiteId, setSelectedSiteId] = useState<string>('new');
+  const [selectedSiteId, setSelectedSiteId] = useState<string>('');
   const [newSiteName, setNewSiteName] = useState(projectName || projectId);
 
   const fetchSites = useCallback(async () => {
@@ -69,11 +69,9 @@ export function NetlifyDeployForm({
       setSites(data);
 
       // If there's a saved site ID and it exists in the list, select it
-      // Otherwise keep "new" selected
+      // Otherwise leave it empty (showing placeholder)
       if (savedSiteId && data.some(s => s.id === savedSiteId)) {
         setSelectedSiteId(savedSiteId);
-      } else {
-        setSelectedSiteId('new');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch sites');
@@ -86,8 +84,18 @@ export function NetlifyDeployForm({
     fetchSites();
   }, [fetchSites]);
 
+  // Update newSiteName when switching to "new" if it's empty
   useEffect(() => {
-    if (selectedSiteId === 'new') {
+    if (selectedSiteId === 'new' && !newSiteName) {
+      setNewSiteName(projectName || projectId);
+    }
+  }, [selectedSiteId, newSiteName, projectName, projectId]);
+
+  useEffect(() => {
+    if (selectedSiteId === '') {
+      // No selection yet - don't call onSiteChange
+      return;
+    } else if (selectedSiteId === 'new') {
       onSiteChange('', newSiteName);
     } else {
       const site = sites.find(s => s.id === selectedSiteId);
@@ -123,7 +131,7 @@ export function NetlifyDeployForm({
         <Label htmlFor="netlify-site">Select Site</Label>
         <Select value={selectedSiteId} onValueChange={setSelectedSiteId}>
           <SelectTrigger id="netlify-site">
-            <SelectValue placeholder="Choose a site..." />
+            <SelectValue placeholder="Select a site or create new..." />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="new">

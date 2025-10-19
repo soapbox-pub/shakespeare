@@ -26,6 +26,7 @@ import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
 import { Label } from '@/components/ui/label';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useDeploySettings } from '@/hooks/useDeploySettings';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useIsMobile } from '@/hooks/useIsMobile';
@@ -195,7 +196,7 @@ const PRESET_PROVIDERS: PresetProvider[] = [
     id: 'netlify',
     type: 'netlify',
     name: 'Netlify',
-    description: 'Deploy to Netlify with personal access token',
+    description: 'Deploy to Netlify',
     apiKeyLabel: 'Personal Access Token',
     apiKeyURL: 'https://app.netlify.com/user/applications#personal-access-tokens',
     proxy: true,
@@ -204,7 +205,7 @@ const PRESET_PROVIDERS: PresetProvider[] = [
     id: 'vercel',
     type: 'vercel',
     name: 'Vercel',
-    description: 'Deploy to Vercel with access token',
+    description: 'Deploy to Vercel',
     apiKeyLabel: 'Access Token',
     apiKeyURL: 'https://vercel.com/account/tokens',
     proxy: true,
@@ -219,24 +220,14 @@ export function DeploySettings() {
   const navigate = useNavigate();
 
   const [presetApiKeys, setPresetApiKeys] = useState<Record<string, string>>({});
-  const [presetBaseURLs, setPresetBaseURLs] = useState<Record<string, string>>({});
-  const [presetHosts, setPresetHosts] = useState<Record<string, string>>({});
-  const [presetProxies, setPresetProxies] = useState<Record<string, boolean>>(() => {
-    // Initialize with preset proxy defaults
-    const initialProxies: Record<string, boolean> = {};
-    PRESET_PROVIDERS.forEach(preset => {
-      initialProxies[preset.id] = preset.proxy || false;
-    });
-    return initialProxies;
-  });
-  const [presetNames, setPresetNames] = useState<Record<string, string>>(() => {
-    // Initialize with preset names
-    const initialNames: Record<string, string> = {};
-    PRESET_PROVIDERS.forEach(preset => {
-      initialNames[preset.id] = preset.name;
-    });
-    return initialNames;
-  });
+
+  // Custom provider form state
+  const [customProviderType, setCustomProviderType] = useState<'shakespeare' | 'netlify' | 'vercel' | ''>('');
+  const [customName, setCustomName] = useState('');
+  const [customApiKey, setCustomApiKey] = useState('');
+  const [customBaseURL, setCustomBaseURL] = useState('');
+  const [customHost, setCustomHost] = useState('');
+  const [customProxy, setCustomProxy] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -249,8 +240,8 @@ export function DeploySettings() {
     const { active, over } = event;
 
     if (over && active.id !== over.id) {
-      const oldIndex = settings.providers.findIndex(p => p.name === active.id);
-      const newIndex = settings.providers.findIndex(p => p.name === over.id);
+      const oldIndex = settings.providers.findIndex((_, i) => i === active.id);
+      const newIndex = settings.providers.findIndex((_, i) => i === over.id);
 
       const newProviders = arrayMove(settings.providers, oldIndex, newIndex);
       setProviders(newProviders);
@@ -264,53 +255,83 @@ export function DeploySettings() {
     }
 
     const apiKey = presetApiKeys[preset.id];
-    const baseURL = presetBaseURLs[preset.id];
-    const host = presetHosts[preset.id];
-    const proxy = presetProxies[preset.id];
-    const customName = presetNames[preset.id];
 
     // For non-Shakespeare providers, require API key
     if (!preset.requiresNostr && !apiKey?.trim()) {
       return;
     }
 
-    const finalName = customName?.trim() || preset.name;
-
     let newProvider: DeployProvider;
 
     if (preset.type === 'shakespeare') {
       newProvider = {
-        name: finalName,
+        name: preset.name,
         type: 'shakespeare',
-        ...(host?.trim() && { host: host.trim() }),
-        ...(proxy !== undefined && { proxy }),
+        ...(preset.proxy && { proxy: true }),
       };
     } else if (preset.type === 'netlify') {
       newProvider = {
-        name: finalName,
+        name: preset.name,
         type: 'netlify',
         apiKey: apiKey.trim(),
-        ...(baseURL?.trim() && { baseURL: baseURL.trim() }),
-        ...(proxy !== undefined && { proxy }),
+        ...(preset.proxy && { proxy: true }),
       };
     } else {
       newProvider = {
-        name: finalName,
+        name: preset.name,
         type: 'vercel',
         apiKey: apiKey.trim(),
-        ...(baseURL?.trim() && { baseURL: baseURL.trim() }),
-        ...(proxy !== undefined && { proxy }),
+        ...(preset.proxy && { proxy: true }),
       };
     }
 
     setProviders([...settings.providers, newProvider]);
 
-    // Clear inputs and reset to preset defaults
+    // Clear inputs
     setPresetApiKeys(prev => ({ ...prev, [preset.id]: '' }));
-    setPresetBaseURLs(prev => ({ ...prev, [preset.id]: '' }));
-    setPresetHosts(prev => ({ ...prev, [preset.id]: '' }));
-    setPresetProxies(prev => ({ ...prev, [preset.id]: preset.proxy || false }));
-    setPresetNames(prev => ({ ...prev, [preset.id]: preset.name }));
+  };
+
+  const handleAddCustomProvider = () => {
+    if (!customProviderType || !customName.trim()) return;
+
+    let newProvider: DeployProvider;
+
+    if (customProviderType === 'shakespeare') {
+      newProvider = {
+        name: customName.trim(),
+        type: 'shakespeare',
+        ...(customHost?.trim() && { host: customHost.trim() }),
+        ...(customProxy && { proxy: true }),
+      };
+    } else if (customProviderType === 'netlify') {
+      if (!customApiKey.trim()) return;
+      newProvider = {
+        name: customName.trim(),
+        type: 'netlify',
+        apiKey: customApiKey.trim(),
+        ...(customBaseURL?.trim() && { baseURL: customBaseURL.trim() }),
+        ...(customProxy && { proxy: true }),
+      };
+    } else {
+      if (!customApiKey.trim()) return;
+      newProvider = {
+        name: customName.trim(),
+        type: 'vercel',
+        apiKey: customApiKey.trim(),
+        ...(customBaseURL?.trim() && { baseURL: customBaseURL.trim() }),
+        ...(customProxy && { proxy: true }),
+      };
+    }
+
+    setProviders([...settings.providers, newProvider]);
+
+    // Clear form
+    setCustomProviderType('');
+    setCustomName('');
+    setCustomApiKey('');
+    setCustomBaseURL('');
+    setCustomHost('');
+    setCustomProxy(false);
   };
 
   const handleRemoveProvider = (index: number) => {
@@ -322,6 +343,9 @@ export function DeploySettings() {
     newProviders[index] = provider;
     setProviders(newProviders);
   };
+
+  const configuredProviderTypes = settings.providers.map(p => p.type);
+  const availablePresets = PRESET_PROVIDERS.filter(preset => !configuredProviderTypes.includes(preset.type));
 
   return (
     <div className="p-6 space-y-6">
@@ -397,39 +421,30 @@ export function DeploySettings() {
         )}
 
         {/* Available Preset Providers */}
-        <div className="space-y-3">
-          <h4 className="text-sm font-medium">{t('addProvider')}</h4>
-          <Accordion type="multiple" className="w-full space-y-2">
-            {PRESET_PROVIDERS.map((preset) => {
-              const isNostrPreset = preset.requiresNostr;
-              const isLoggedIntoNostr = !!user;
-              const showNostrLoginRequired = isNostrPreset && !isLoggedIntoNostr;
+        {availablePresets.length > 0 && (
+          <div className="space-y-3">
+            <h4 className="text-sm font-medium">{t('addProvider')}</h4>
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(min(280px,100%),1fr))] gap-3">
+              {availablePresets.map((preset) => {
+                const isNostrPreset = preset.requiresNostr;
+                const isLoggedIntoNostr = !!user;
+                const showNostrLoginRequired = isNostrPreset && !isLoggedIntoNostr;
 
-              return (
-                <AccordionItem key={preset.id} value={preset.id} className="border rounded-lg">
-                  <AccordionTrigger className="px-4 py-3 hover:no-underline">
-                    <div className="flex items-center justify-between w-full mr-3">
-                      <div className="flex flex-col items-start gap-1">
-                        <span className="font-medium">{preset.name}</span>
-                        <span className="text-xs text-muted-foreground font-normal">
-                          {preset.description}
-                        </span>
-                      </div>
+                return (
+                  <div key={preset.id} className="border rounded-lg p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h5 className="font-medium">{preset.name}</h5>
                       {preset.apiKeyURL && (
                         <button
                           type="button"
-                          className="text-xs text-muted-foreground underline hover:text-foreground whitespace-nowrap ml-2"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            window.open(preset.apiKeyURL, '_blank');
-                          }}
+                          className="text-xs text-muted-foreground underline hover:text-foreground"
+                          onClick={() => window.open(preset.apiKeyURL, '_blank')}
                         >
                           {t('getApiKey')}
                         </button>
                       )}
                     </div>
-                  </AccordionTrigger>
-                  <AccordionContent className="px-4 pb-4">
+
                     {showNostrLoginRequired ? (
                       <div className="space-y-2">
                         <p className="text-sm text-muted-foreground">
@@ -442,108 +457,161 @@ export function DeploySettings() {
                         </Button>
                       </div>
                     ) : (
-                      <div className="space-y-3">
-                        <div className="grid gap-2">
-                          <Label htmlFor={`preset-${preset.id}-name`}>
-                              Name
-                          </Label>
-                          <Input
-                            id={`preset-${preset.id}-name`}
-                            placeholder="Provider name"
-                            value={presetNames[preset.id] || preset.name}
-                            onChange={(e) => setPresetNames(prev => ({
-                              ...prev,
-                              [preset.id]: e.target.value,
-                            }))}
-                          />
-                        </div>
-
-                        {!preset.requiresNostr && (
-                          <div className="grid gap-2">
-                            <Label htmlFor={`preset-${preset.id}-apiKey`}>
-                              {preset.apiKeyLabel || t('apiKey')}
-                            </Label>
+                      <div className="space-y-2">
+                        <div className="flex gap-2">
+                          {!preset.requiresNostr && (
                             <PasswordInput
-                              id={`preset-${preset.id}-apiKey`}
-                              placeholder={t('enterApiKey')}
+                              placeholder={preset.apiKeyLabel || t('enterApiKey')}
+                              className="flex-1"
                               value={presetApiKeys[preset.id] || ''}
                               onChange={(e) => setPresetApiKeys(prev => ({
                                 ...prev,
                                 [preset.id]: e.target.value,
                               }))}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' && presetApiKeys[preset.id]?.trim()) {
+                                  handleAddPresetProvider(preset);
+                                }
+                              }}
                             />
-                          </div>
-                        )}
-
-                        {preset.type === 'shakespeare' ? (
-                          <div className="grid gap-2">
-                            <Label htmlFor={`preset-${preset.id}-host`}>
-                                Host (Optional)
-                            </Label>
-                            <Input
-                              id={`preset-${preset.id}-host`}
-                              placeholder="shakespeare.wtf"
-                              value={presetHosts[preset.id] || ''}
-                              onChange={(e) => setPresetHosts(prev => ({
-                                ...prev,
-                                [preset.id]: e.target.value,
-                              }))}
-                            />
-                          </div>
-                        ) : (
-                          <div className="grid gap-2">
-                            <Label htmlFor={`preset-${preset.id}-baseURL`}>
-                                Base URL (Optional)
-                            </Label>
-                            <Input
-                              id={`preset-${preset.id}-baseURL`}
-                              placeholder={
-                                preset.type === 'netlify' ? 'https://api.netlify.com/api/v1' :
-                                  'https://api.vercel.com'
-                              }
-                              value={presetBaseURLs[preset.id] || ''}
-                              onChange={(e) => setPresetBaseURLs(prev => ({
-                                ...prev,
-                                [preset.id]: e.target.value,
-                              }))}
-                            />
-                          </div>
-                        )}
-
-                        <div className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`preset-${preset.id}-proxy`}
-                            checked={presetProxies[preset.id] || false}
-                            onCheckedChange={(checked) => setPresetProxies(prev => ({
-                              ...prev,
-                              [preset.id]: checked === true,
-                            }))}
-                          />
-                          <Label
-                            htmlFor={`preset-${preset.id}-proxy`}
-                            className="text-sm font-normal cursor-pointer"
-                          >
-                            Use CORS Proxy
-                          </Label>
-                        </div>
-
-                        <Button
-                          onClick={() => handleAddPresetProvider(preset)}
-                          disabled={
-                            (preset.requiresNostr && !isLoggedIntoNostr) ||
+                          )}
+                          <Button
+                            onClick={() => handleAddPresetProvider(preset)}
+                            disabled={
+                              (preset.requiresNostr && !isLoggedIntoNostr) ||
                               (!preset.requiresNostr && !presetApiKeys[preset.id]?.trim())
-                          }
-                          className="w-full gap-2"
-                        >
-                          <Check className="h-4 w-4" />
-                          {t('add')}
-                        </Button>
+                            }
+                            className={preset.requiresNostr ? "w-full" : "h-10 px-4 ml-auto"}
+                          >
+                            {t('add')}
+                          </Button>
+                        </div>
                       </div>
                     )}
-                  </AccordionContent>
-                </AccordionItem>
-              );
-            })}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Custom Provider */}
+        <div className="space-y-3">
+          <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="custom-provider" className="border rounded-lg">
+              <AccordionTrigger className="px-4 py-3 hover:no-underline">
+                <h4 className="text-sm font-medium">{t('addCustomProvider')}</h4>
+              </AccordionTrigger>
+              <AccordionContent className="px-4 pb-4">
+                <div className="space-y-3">
+                  <div className="grid gap-2">
+                    <Label htmlFor="custom-provider-type">{t('providerType')}</Label>
+                    <Select
+                      value={customProviderType}
+                      onValueChange={(value: 'shakespeare' | 'netlify' | 'vercel') => {
+                        setCustomProviderType(value);
+                        // Reset form when provider type changes
+                        setCustomApiKey('');
+                        setCustomBaseURL('');
+                        setCustomHost('');
+                        setCustomProxy(false);
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={t('selectProviderType')} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="shakespeare">Shakespeare Deploy</SelectItem>
+                        <SelectItem value="netlify">Netlify</SelectItem>
+                        <SelectItem value="vercel">Vercel</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {customProviderType && (
+                    <>
+                      <div className="grid gap-2">
+                        <Label htmlFor="custom-name">{t('providerName')}</Label>
+                        <Input
+                          id="custom-name"
+                          placeholder="e.g., My Production Deploy"
+                          value={customName}
+                          onChange={(e) => setCustomName(e.target.value)}
+                        />
+                      </div>
+
+                      {customProviderType === 'shakespeare' ? (
+                        <>
+                          <p className="text-sm text-muted-foreground">
+                            {t('shakespeareDeployNostrAuth')}
+                          </p>
+                          <div className="grid gap-2">
+                            <Label htmlFor="custom-host">Host (Optional)</Label>
+                            <Input
+                              id="custom-host"
+                              placeholder="shakespeare.wtf"
+                              value={customHost}
+                              onChange={(e) => setCustomHost(e.target.value)}
+                            />
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="grid gap-2">
+                            <Label htmlFor="custom-apikey">
+                              {customProviderType === 'netlify' ? 'Personal Access Token' : 'Access Token'}
+                            </Label>
+                            <PasswordInput
+                              id="custom-apikey"
+                              placeholder={t('enterApiKey')}
+                              value={customApiKey}
+                              onChange={(e) => setCustomApiKey(e.target.value)}
+                            />
+                          </div>
+                          <div className="grid gap-2">
+                            <Label htmlFor="custom-baseurl">Base URL (Optional)</Label>
+                            <Input
+                              id="custom-baseurl"
+                              placeholder={
+                                customProviderType === 'netlify'
+                                  ? 'https://api.netlify.com/api/v1'
+                                  : 'https://api.vercel.com'
+                              }
+                              value={customBaseURL}
+                              onChange={(e) => setCustomBaseURL(e.target.value)}
+                            />
+                          </div>
+                        </>
+                      )}
+
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="custom-proxy"
+                          checked={customProxy}
+                          onCheckedChange={(checked) => setCustomProxy(checked === true)}
+                        />
+                        <Label htmlFor="custom-proxy" className="text-sm font-normal cursor-pointer">
+                          Use CORS Proxy
+                        </Label>
+                      </div>
+
+                      <Button
+                        onClick={handleAddCustomProvider}
+                        disabled={
+                          !customProviderType ||
+                          !customName.trim() ||
+                          (customProviderType !== 'shakespeare' && !customApiKey.trim())
+                        }
+                        className="gap-2 ml-auto"
+                      >
+                        <Check className="h-4 w-4" />
+                        {t('add')}
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
           </Accordion>
         </div>
       </div>

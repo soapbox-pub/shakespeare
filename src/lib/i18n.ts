@@ -210,6 +210,8 @@ const resources = {
 
       // Deploy Settings
       shakespeareDeployNostrAuth: 'This provider uses Nostr authentication. Make sure you are logged in to deploy.',
+      providerType: 'Provider Type',
+      selectProviderType: 'Select a provider type',
 
       // Git Settings
       gitSettingsDescriptionLong: 'Configure Git credentials for HTTP authentication. Settings are automatically saved and stored locally in your browser.',
@@ -540,6 +542,8 @@ const resources = {
 
       // Deploy Settings
       shakespeareDeployNostrAuth: 'Este provedor usa autenticação Nostr. Certifique-se de estar logado para implantar.',
+      providerType: 'Tipo de Provedor',
+      selectProviderType: 'Selecione um tipo de provedor',
 
       // Git Settings
       gitSettingsDescriptionLong: 'Configure credenciais do Git para autenticação HTTP. As configurações são salvas automaticamente e armazenadas localmente em seu navegador.',
@@ -876,6 +880,8 @@ const resources = {
 
       // Deploy Settings
       shakespeareDeployNostrAuth: '此提供商使用Nostr身份验证。请确保您已登录以进行部署。',
+      providerType: '提供商类型',
+      selectProviderType: '选择提供商类型',
 
       // Git Settings
       gitSettingsDescriptionLong: '配置HTTP身份验证的Git凭据。设置会自动保存并存储在您的浏览器本地。',
@@ -1207,6 +1213,11 @@ const resources = {
       loginToNostrRequired: 'Shiga Nostr don amfani da wannan mai samarwa',
       goToNostrSettings: 'Tafi zuwa Saitunan Nostr',
 
+      // Deploy Settings
+      shakespeareDeployNostrAuth: 'Wannan mai samarwa yana amfani da tabbatar da Nostr. Tabbatar cewa kun shiga don tura.',
+      providerType: 'Nau\'in Mai Samarwa',
+      selectProviderType: 'Zaɓi nau\'in mai samarwa',
+
       // Git Settings
       gitSettingsDescriptionLong: 'Saita bayanan shaidar Git don tabbatar da HTTP. Saitunan ana ajiye su kai tsaye kuma ana adana su a cikin burauzar ku.',
       configuredCredentials: 'Bayanan Shaidar da aka Saita',
@@ -1537,6 +1548,11 @@ const resources = {
       loginToNostrRequired: 'Wọle si Nostr lati lo olupese yii',
       goToNostrSettings: 'Lọ si Awọn eto Nostr',
 
+      // Deploy Settings
+      shakespeareDeployNostrAuth: 'Olupese yii nlo ijẹrisi Nostr. Rii daju pe o ti wọle lati gbe jade.',
+      providerType: 'Iru Olupese',
+      selectProviderType: 'Yan iru olupese kan',
+
       // Git Settings
       gitSettingsDescriptionLong: 'Tunto awọn ẹri Git fun ijẹrisi HTTP. Awọn eto ni a fi pamọ laifọwọyi ati pe a tọju wọn ni agbegbe ninu awọn aṣawakiri rẹ.',
       configuredCredentials: 'Awọn Ẹri Ti a Tunto',
@@ -1861,6 +1877,11 @@ const resources = {
       connectToGitHub: 'Jikọọ na GitHub',
       loginToNostrRequired: 'Banye na Nostr iji jiri onye na-enye a',
       goToNostrSettings: 'Gaa na Ntọala Nostr',
+
+      // Deploy Settings
+      shakespeareDeployNostrAuth: 'Onye na-enye a na-eji nkwenye Nostr. Jide n\'aka na ị banyere iji bufee.',
+      providerType: 'Ụdị Onye Na-enye',
+      selectProviderType: 'Họrọ ụdị onye na-enye',
 
       // Git Settings
       gitSettingsDescriptionLong: 'Hazie nzere Git maka nkwenye HTTP. Ntọala na-echekwa onwe ya ma chekwaa ya na mpaghara na browser gị.',

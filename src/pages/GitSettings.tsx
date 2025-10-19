@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Check, GitBranch, ArrowLeft, Github, Trash2 } from 'lucide-react';
+import { Check, GitBranch, ArrowLeft, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { SiGithub, SiGitlab } from '@icons-pack/react-simple-icons';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
@@ -212,7 +213,11 @@ export function GitSettings() {
               {availablePresets.map((preset) => (
                 <div key={preset.id} className="border rounded-lg p-4 space-y-3">
                   <div className="flex items-center justify-between">
-                    <h5 className="font-medium">{preset.name}</h5>
+                    <div className="flex items-center gap-2">
+                      {preset.id === 'github' && <SiGithub size={16} />}
+                      {preset.id === 'gitlab' && <SiGitlab size={16} />}
+                      <h5 className="font-medium">{preset.name}</h5>
+                    </div>
                     {preset.tokenURL && (preset.id !== 'github' || !isOAuthConfigured) && (
                       <button
                         type="button"
@@ -241,7 +246,7 @@ export function GitSettings() {
                             </>
                           ) : (
                             <>
-                              <Github className="h-4 w-4" />
+                              <SiGithub size={16} />
                               <span className="truncate text-ellipsis overflow-hidden">
                                 Connect to GitHub
                               </span>

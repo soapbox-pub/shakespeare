@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Rocket, ArrowLeft, Trash2, Check, GripVertical } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
+import { SiNetlify, SiVercel } from '@icons-pack/react-simple-icons';
 import {
   DndContext,
   closestCenter,
@@ -462,7 +463,11 @@ export function DeploySettings() {
                 return (
                   <div key={preset.id} className="border rounded-lg p-4 space-y-3">
                     <div className="flex items-center justify-between">
-                      <h5 className="font-medium">{preset.name}</h5>
+                      <div className="flex items-center gap-2">
+                        {preset.id === 'netlify' && <SiNetlify size={16} />}
+                        {preset.id === 'vercel' && <SiVercel size={16} />}
+                        <h5 className="font-medium">{preset.name}</h5>
+                      </div>
                       {preset.apiKeyURL && !isOAuthConfigured && (
                         <button
                           type="button"
@@ -501,16 +506,8 @@ export function DeploySettings() {
                             </>
                           ) : (
                             <>
-                              {preset.type === 'netlify' && (
-                                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                                  <path d="M16.934 8.519a1.044 1.044 0 0 1 .303.23l2.349 2.348a1 1 0 0 1 0 1.414l-2.348 2.349a1.044 1.044 0 0 1-.231.303 1.042 1.042 0 0 1-1.473-1.473l.527-.527H11a1 1 0 1 1 0-2h5.061l-.527-.527a1.042 1.042 0 0 1 1.4-1.517zM7.066 15.481a1.044 1.044 0 0 1-.303-.23l-2.349-2.348a1 1 0 0 1 0-1.414l2.348-2.349a1.044 1.044 0 0 1 .231-.303 1.042 1.042 0 0 1 1.473 1.473l-.527.527H13a1 1 0 0 1 0 2H7.939l.527.527a1.042 1.042 0 0 1-1.4 1.517z" />
-                                </svg>
-                              )}
-                              {preset.type === 'vercel' && (
-                                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                                  <path d="M12 1.5L24 22.5H0L12 1.5z" />
-                                </svg>
-                              )}
+                              {preset.id === 'netlify' && <SiNetlify size={16} />}
+                              {preset.id === 'vercel' && <SiVercel size={16} />}
                               <span className="truncate text-ellipsis overflow-hidden">
                                 Connect to {preset.name}
                               </span>

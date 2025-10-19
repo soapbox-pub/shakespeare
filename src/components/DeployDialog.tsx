@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Rocket, ExternalLink, AlertCircle } from 'lucide-react';
+import { SiNetlify, SiVercel } from '@icons-pack/react-simple-icons';
 import {
   Dialog,
   DialogContent,
@@ -331,12 +332,24 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
                   <Label htmlFor="provider">Select Provider</Label>
                   <Select value={selectedProviderId} onValueChange={setSelectedProviderId}>
                     <SelectTrigger id="provider">
-                      <SelectValue placeholder="Choose a deployment provider..." />
+                      {selectedProvider ? (
+                        <div className="flex items-center gap-2">
+                          {selectedProvider.id === 'netlify' && <SiNetlify size={14} />}
+                          {selectedProvider.id === 'vercel' && <SiVercel size={14} />}
+                          <span>{selectedProvider.name}</span>
+                        </div>
+                      ) : (
+                        <SelectValue placeholder="Choose a deployment provider..." />
+                      )}
                     </SelectTrigger>
                     <SelectContent>
                       {settings.providers.map((provider) => (
                         <SelectItem key={provider.id} value={provider.id}>
-                          {provider.name}
+                          <div className="flex items-center gap-2">
+                            {provider.id === 'netlify' && <SiNetlify size={14} />}
+                            {provider.id === 'vercel' && <SiVercel size={14} />}
+                            <span>{provider.name}</span>
+                          </div>
                         </SelectItem>
                       ))}
                     </SelectContent>

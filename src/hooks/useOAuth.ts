@@ -8,7 +8,7 @@ export interface OAuthConfig {
   clientSecret: string;
   authorizeUrl: string;
   tokenUrl: string;
-  scope: string;
+  scope?: string;  // Optional - some providers don't use scopes
   redirectUri: string;
   usePKCE?: boolean;
   getUserInfo?: (accessToken: string, corsProxy: string) => Promise<{
@@ -93,10 +93,14 @@ export function useOAuth(config: OAuthConfig) {
       const params = new URLSearchParams({
         client_id: config.clientId,
         redirect_uri: config.redirectUri,
-        scope: config.scope,
         state: state,
         response_type: 'code',
       });
+
+      // Add scope if provided (some providers don't use scopes)
+      if (config.scope) {
+        params.append('scope', config.scope);
+      }
 
       // Add PKCE parameters if enabled
       if (config.usePKCE) {

@@ -26,9 +26,9 @@ export function useNetlifyOAuth() {
     clientSecret: import.meta.env.VITE_NETLIFY_OAUTH_CLIENT_SECRET || '',
     authorizeUrl: 'https://app.netlify.com/authorize',
     tokenUrl: 'https://api.netlify.com/oauth/token',
-    scope: 'deploy',
+    // Netlify doesn't use scope parameter - permissions are configured in the OAuth app settings
     redirectUri: window.location.origin + '/oauth/netlify',
-    usePKCE: false, // Netlify doesn't require PKCE
+    usePKCE: false, // Netlify doesn't support PKCE
     getUserInfo: async (accessToken: string, corsProxy: string) => {
       const userUrl = proxyUrl(corsProxy, 'https://api.netlify.com/api/v1/user');
       const userResponse = await fetch(userUrl, {

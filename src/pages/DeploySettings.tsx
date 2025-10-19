@@ -45,7 +45,6 @@ interface PresetProvider {
   apiKeyLabel?: string;
   apiKeyURL?: string;
   proxy?: boolean;
-  supportsOAuth?: boolean;
 }
 
 interface SortableProviderItemProps {
@@ -206,7 +205,6 @@ const PRESET_PROVIDERS: PresetProvider[] = [
     apiKeyLabel: 'Personal Access Token',
     apiKeyURL: 'https://app.netlify.com/user/applications#personal-access-tokens',
     proxy: true,
-    supportsOAuth: true,
   },
   {
     id: 'vercel',
@@ -216,7 +214,6 @@ const PRESET_PROVIDERS: PresetProvider[] = [
     apiKeyLabel: 'Access Token',
     apiKeyURL: 'https://vercel.com/account/tokens',
     proxy: true,
-    supportsOAuth: true,
   },
 ];
 
@@ -492,7 +489,7 @@ export function DeploySettings() {
                           </Link>
                         </Button>
                       </div>
-                    ) : preset.supportsOAuth && isOAuthConfigured ? (
+                    ) : isOAuthConfigured ? (
                       // Show OAuth button if OAuth is configured
                       <div className="space-y-3">
                         <Button

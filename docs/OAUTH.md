@@ -410,7 +410,6 @@ const newProviderOAuth = useNewProviderOAuth();
   apiKeyLabel: 'Access Token',
   apiKeyURL: 'https://provider.com/settings/tokens',
   proxy: true,
-  supportsOAuth: true,
 }
 
 // In the render logic, add the OAuth hook to the switch:

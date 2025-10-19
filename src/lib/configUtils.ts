@@ -51,26 +51,24 @@ const gitSettingsSchema = z.object({
 const baseDeployProviderSchema = z.object({
   id: z.string(),
   name: z.string(),
+  proxy: z.boolean().optional(),
 });
 
 const shakespeareDeployProviderSchema = baseDeployProviderSchema.extend({
   type: z.literal('shakespeare'),
   host: z.string().optional(),
-  proxy: z.boolean().optional(),
 });
 
 const netlifyProviderSchema = baseDeployProviderSchema.extend({
   type: z.literal('netlify'),
   apiKey: z.string(),
   baseURL: z.string().optional(),
-  proxy: z.boolean().optional(),
 });
 
 const vercelProviderSchema = baseDeployProviderSchema.extend({
   type: z.literal('vercel'),
   apiKey: z.string(),
   baseURL: z.string().optional(),
-  proxy: z.boolean().optional(),
 });
 
 const deployProviderSchema: z.ZodType<DeployProvider> = z.discriminatedUnion('type', [

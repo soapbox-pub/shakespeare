@@ -82,13 +82,18 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
   // Load project settings when dialog opens
   useEffect(() => {
     if (open) {
-      // Find the first configured provider in project settings
-      const providerIds = Object.keys(projectSettings);
-      if (providerIds.length > 0) {
-        setSelectedProviderId(providerIds[0]);
+      // First, try to use the currentProvider from project settings
+      if (projectSettings.currentProvider && settings.providers.some(p => p.id === projectSettings.currentProvider)) {
+        setSelectedProviderId(projectSettings.currentProvider);
+      } else {
+        // Otherwise, find the first configured provider in project settings
+        const providerIds = Object.keys(projectSettings.providers);
+        if (providerIds.length > 0) {
+          setSelectedProviderId(providerIds[0]);
+        }
       }
     }
-  }, [open, projectSettings]);
+  }, [open, projectSettings, settings.providers]);
 
   const selectedProvider = settings.providers.find(p => p.id === selectedProviderId);
 
@@ -156,7 +161,7 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
         projectPath,
       });
 
-      // Save project-specific settings
+      // Save project-specific settings (updateSettings now automatically sets currentProvider)
       if (selectedProvider.type === 'shakespeare') {
         await updateProjectSettings(selectedProviderId, {
           type: 'shakespeare',
@@ -229,7 +234,7 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
 
     if (selectedProvider.type === 'netlify') {
       const netlifyProvider = selectedProvider as NetlifyProvider;
-      const savedConfig = projectSettings[selectedProviderId];
+      const savedConfig = projectSettings.providers[selectedProviderId];
       const savedSiteId = savedConfig?.type === 'netlify' ? savedConfig.data.siteId : undefined;
 
       return (
@@ -246,7 +251,7 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
     }
 
     if (selectedProvider.type === 'vercel') {
-      const savedConfig = projectSettings[selectedProviderId];
+      const savedConfig = projectSettings.providers[selectedProviderId];
       const savedTeamId = savedConfig?.type === 'vercel' ? savedConfig.data.teamId : undefined;
       const savedProjectName = savedConfig?.type === 'vercel' ? savedConfig.data.projectId : undefined;
 

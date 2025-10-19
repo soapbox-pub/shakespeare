@@ -25,7 +25,10 @@ export interface VercelProjectConfig {
 
 export type ProjectProviderConfig = ShakespeareProjectConfig | NetlifyProjectConfig | VercelProjectConfig;
 
-export type ProjectDeploySettings = Record<string, ProjectProviderConfig>;
+export interface ProjectDeploySettings {
+  providers: Record<string, ProjectProviderConfig>;
+  currentProvider?: string;
+}
 
 /**
  * Hook to manage project-specific deployment settings
@@ -33,7 +36,7 @@ export type ProjectDeploySettings = Record<string, ProjectProviderConfig>;
  */
 export function useProjectDeploySettings(projectId: string) {
   const fs = useFS();
-  const [settings, setSettings] = useState<ProjectDeploySettings>({});
+  const [settings, setSettings] = useState<ProjectDeploySettings>({ providers: {} });
   const [isLoading, setIsLoading] = useState(true);
 
   const settingsPath = `/projects/${projectId}/.git/shakespeare/deploy.json`;
@@ -42,10 +45,20 @@ export function useProjectDeploySettings(projectId: string) {
     try {
       setIsLoading(true);
       const content = await fs.fs.readFile(settingsPath, 'utf8');
-      setSettings(JSON.parse(content as string));
+      const parsed = JSON.parse(content as string);
+
+      // Handle migration from old format (flat Record) to new format (with providers key)
+      if (parsed && typeof parsed === 'object' && !('providers' in parsed)) {
+        // Old format: Record<string, ProjectProviderConfig>
+        // Migrate to new format
+        setSettings({ providers: parsed });
+      } else {
+        // New format or empty
+        setSettings(parsed || { providers: {} });
+      }
     } catch {
       // File doesn't exist or is invalid, use empty settings
-      setSettings({});
+      setSettings({ providers: {} });
     } finally {
       setIsLoading(false);
     }
@@ -75,12 +88,16 @@ export function useProjectDeploySettings(projectId: string) {
   };
 
   const updateSettings = async (providerId: string, config: ProjectProviderConfig) => {
-    const newSettings = { ...settings, [providerId]: config };
+    const newSettings = {
+      ...settings,
+      providers: { ...settings.providers, [providerId]: config },
+      currentProvider: providerId,
+    };
     await saveSettings(newSettings);
   };
 
   const getProviderConfig = (providerId: string): ProjectProviderConfig | undefined => {
-    return settings[providerId];
+    return settings.providers[providerId];
   };
 
   return {

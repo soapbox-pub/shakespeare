@@ -27,7 +27,6 @@ export type DeployProvider = ShakespeareDeployProvider | NetlifyProvider | Verce
 
 export interface DeploySettings {
   providers: DeployProvider[];
-  defaultProviderId?: string;
 }
 
 export interface DeploySettingsContextType {

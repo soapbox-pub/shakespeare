@@ -215,7 +215,6 @@ describe('configUtils', () => {
           type: 'shakespeare',
         },
       ],
-      defaultProviderId: 'netlify',
     };
 
     describe('readDeploySettings', () => {

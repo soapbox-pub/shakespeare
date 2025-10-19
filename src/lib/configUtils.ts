@@ -79,7 +79,6 @@ const deployProviderSchema: z.ZodType<DeployProvider> = z.discriminatedUnion('ty
 
 const deploySettingsSchema = z.object({
   providers: filteredArray(deployProviderSchema),
-  defaultProviderId: z.string().optional(),
 });
 
 /**

@@ -135,6 +135,7 @@ export class NetlifyAdapter implements DeployAdapter {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${this.apiKey}`,
+        'Content-Type': 'application/zip',
       },
       body: zipBlob,
     });

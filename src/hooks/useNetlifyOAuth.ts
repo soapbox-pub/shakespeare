@@ -17,7 +17,7 @@ interface NetlifyUserInfo {
  * Uses the generic useOAuth hook with Netlify-specific configuration.
  */
 export function useNetlifyOAuth() {
-  const { setProviders, settings } = useDeploySettings();
+  const { setProviders, settings, isInitialized } = useDeploySettings();
 
   // Netlify OAuth configuration
   const config: OAuthConfig = {
@@ -58,6 +58,11 @@ export function useNetlifyOAuth() {
     code: string,
     state: string
   ): Promise<boolean> => {
+    // Wait for settings to be initialized before processing
+    if (!isInitialized) {
+      return false;
+    }
+
     const result: OAuthResult | null = await oauth.handleCallback(code, state);
 
     if (!result) {
@@ -78,7 +83,7 @@ export function useNetlifyOAuth() {
     setProviders([...settings.providers, newProvider]);
 
     return true;
-  }, [oauth, setProviders, settings.providers]);
+  }, [oauth, setProviders, settings.providers, isInitialized]);
 
   return {
     ...oauth,

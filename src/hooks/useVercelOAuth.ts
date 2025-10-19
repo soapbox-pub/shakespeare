@@ -21,7 +21,7 @@ interface VercelUserInfo {
  * Uses the generic useOAuth hook with Vercel-specific configuration.
  */
 export function useVercelOAuth() {
-  const { setProviders, settings } = useDeploySettings();
+  const { setProviders, settings, isInitialized } = useDeploySettings();
 
   // Vercel OAuth configuration
   const config: OAuthConfig = {
@@ -62,6 +62,11 @@ export function useVercelOAuth() {
     code: string,
     state: string
   ): Promise<boolean> => {
+    // Wait for settings to be initialized before processing
+    if (!isInitialized) {
+      return false;
+    }
+
     const result: OAuthResult | null = await oauth.handleCallback(code, state);
 
     if (!result) {
@@ -82,7 +87,7 @@ export function useVercelOAuth() {
     setProviders([...settings.providers, newProvider]);
 
     return true;
-  }, [oauth, setProviders, settings.providers]);
+  }, [oauth, setProviders, settings.providers, isInitialized]);
 
   return {
     ...oauth,

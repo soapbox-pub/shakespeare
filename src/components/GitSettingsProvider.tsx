@@ -131,6 +131,7 @@ export function GitSettingsProvider({ children }: GitSettingsProviderProps) {
     removeHostToken,
     updateHostToken,
     isConfigured,
+    isInitialized,
   };
 
   return (

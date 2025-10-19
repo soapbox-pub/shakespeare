@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useNetlifyOAuth } from '@/hooks/useNetlifyOAuth';
+import { useDeploySettings } from '@/hooks/useDeploySettings';
 import { useToast } from '@/hooks/useToast';
 import { Card, CardContent } from '@/components/ui/card';
 
@@ -8,9 +9,15 @@ export default function NetlifyOAuth() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { handleCallback } = useNetlifyOAuth();
+  const { isInitialized } = useDeploySettings();
   const { toast } = useToast();
 
   useEffect(() => {
+    // Wait for deploy settings to be initialized
+    if (!isInitialized) {
+      return;
+    }
+
     const code = searchParams.get('code');
     const state = searchParams.get('state');
     const error = searchParams.get('error');
@@ -50,7 +57,7 @@ export default function NetlifyOAuth() {
       // No code or state parameters - redirect to Deploy settings
       navigate('/settings/deploy');
     }
-  }, [searchParams, handleCallback, toast, navigate]);
+  }, [searchParams, handleCallback, toast, navigate, isInitialized]);
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">

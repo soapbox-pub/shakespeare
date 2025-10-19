@@ -30,6 +30,7 @@ export interface GitSettingsContextType {
   removeHostToken: (host: string) => void;
   updateHostToken: (host: string, token: Partial<GitHostToken>) => void;
   isConfigured: boolean;
+  isInitialized: boolean;
 }
 
 export const GitSettingsContext = createContext<GitSettingsContextType | undefined>(undefined);

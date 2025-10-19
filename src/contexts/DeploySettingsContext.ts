@@ -36,6 +36,7 @@ export interface DeploySettingsContextType {
   removeProvider: (index: number) => void;
   setProviders: (providers: DeployProvider[]) => void;
   isConfigured: boolean;
+  isInitialized: boolean;
 }
 
 export const DeploySettingsContext = createContext<DeploySettingsContextType | undefined>(undefined);

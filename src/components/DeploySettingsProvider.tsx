@@ -69,6 +69,7 @@ export function DeploySettingsProvider({ children }: { children: ReactNode }) {
     removeProvider,
     setProviders,
     isConfigured,
+    isInitialized,
   };
 
   return (

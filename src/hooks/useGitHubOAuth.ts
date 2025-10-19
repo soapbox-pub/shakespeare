@@ -18,7 +18,7 @@ interface GitHubUserInfo {
  * Uses the generic useOAuth hook with GitHub-specific configuration.
  */
 export function useGitHubOAuth() {
-  const { addCredential, addHostToken } = useGitSettings();
+  const { addCredential, addHostToken, isInitialized } = useGitSettings();
 
   // GitHub OAuth configuration
   const config: OAuthConfig = {
@@ -60,6 +60,11 @@ export function useGitHubOAuth() {
     code: string,
     state: string
   ): Promise<boolean> => {
+    // Wait for settings to be initialized before processing
+    if (!isInitialized) {
+      return false;
+    }
+
     const result: OAuthResult | null = await oauth.handleCallback(code, state);
 
     if (!result) {
@@ -82,7 +87,7 @@ export function useGitHubOAuth() {
     addHostToken('github.com', hostToken);
 
     return true;
-  }, [oauth, addCredential, addHostToken]);
+  }, [oauth, addCredential, addHostToken, isInitialized]);
 
   return {
     ...oauth,

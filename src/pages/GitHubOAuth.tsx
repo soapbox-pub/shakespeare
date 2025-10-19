@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useGitHubOAuth } from '@/hooks/useGitHubOAuth';
+import { useGitSettings } from '@/hooks/useGitSettings';
 import { useToast } from '@/hooks/useToast';
 import { Card, CardContent } from '@/components/ui/card';
 import { Github } from 'lucide-react';
@@ -9,9 +10,15 @@ export default function GitHubOAuth() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { handleCallback } = useGitHubOAuth();
+  const { isInitialized } = useGitSettings();
   const { toast } = useToast();
 
   useEffect(() => {
+    // Wait for git settings to be initialized
+    if (!isInitialized) {
+      return;
+    }
+
     const code = searchParams.get('code');
     const state = searchParams.get('state');
     const error = searchParams.get('error');
@@ -63,7 +70,7 @@ export default function GitHubOAuth() {
       // No code or state parameters - redirect to Git settings
       navigate('/settings/git');
     }
-  }, [searchParams, handleCallback, toast, navigate]);
+  }, [searchParams, handleCallback, toast, navigate, isInitialized]);
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">

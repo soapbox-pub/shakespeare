@@ -89,8 +89,7 @@ function SortableProviderItem({ provider, index, preset, onRemove, onUpdate, sho
               <GripVertical className="h-4 w-4" />
             </div>
           )}
-          {provider.id === 'netlify' && <SiNetlify size={16} />}
-          {provider.id === 'vercel' && <SiVercel size={16} />}
+          {renderIcon(provider.id)}
           <span className="font-medium">
             {provider.name}
           </span>
@@ -206,15 +205,15 @@ const PRESET_PROVIDERS: PresetProvider[] = [
     apiKeyURL: 'https://app.netlify.com/user/applications#personal-access-tokens',
     proxy: true,
   },
-  {
-    id: 'vercel',
-    type: 'vercel',
-    name: 'Vercel',
-    description: 'Deploy to Vercel',
-    apiKeyLabel: 'Access Token',
-    apiKeyURL: 'https://vercel.com/account/tokens',
-    proxy: true,
-  },
+  // {
+  //   id: 'vercel',
+  //   type: 'vercel',
+  //   name: 'Vercel',
+  //   description: 'Deploy to Vercel',
+  //   apiKeyLabel: 'Access Token',
+  //   apiKeyURL: 'https://vercel.com/account/tokens',
+  //   proxy: true,
+  // },
 ];
 
 // Helper function to generate custom provider ID
@@ -222,6 +221,17 @@ function generateCustomProviderId(type: string): string {
   const uuid = crypto.randomUUID();
   const randomSegment = uuid.split('-')[0];
   return `${type}-${randomSegment}`;
+}
+
+function renderIcon(providerId: string, size = 16) {
+  switch (providerId) {
+    case 'netlify':
+      return <SiNetlify size={size} />;
+    case 'vercel':
+      return <SiVercel size={size} />;
+    default:
+      return null;
+  }
 }
 
 export function DeploySettings() {
@@ -463,8 +473,7 @@ export function DeploySettings() {
                   <div key={preset.id} className="border rounded-lg p-4 space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        {preset.id === 'netlify' && <SiNetlify size={16} />}
-                        {preset.id === 'vercel' && <SiVercel size={16} />}
+                        {renderIcon(preset.id)}
                         <h5 className="font-medium">{preset.name}</h5>
                       </div>
                       {preset.apiKeyURL && !isOAuthConfigured && (
@@ -505,8 +514,7 @@ export function DeploySettings() {
                             </>
                           ) : (
                             <>
-                              {preset.id === 'netlify' && <SiNetlify size={16} />}
-                              {preset.id === 'vercel' && <SiVercel size={16} />}
+                              {renderIcon(preset.id)}
                               <span className="truncate text-ellipsis overflow-hidden">
                                 Connect to {preset.name}
                               </span>
@@ -587,7 +595,7 @@ export function DeploySettings() {
                       <SelectContent>
                         <SelectItem value="shakespeare">Shakespeare Deploy</SelectItem>
                         <SelectItem value="netlify">Netlify</SelectItem>
-                        <SelectItem value="vercel">Vercel</SelectItem>
+                        {/* <SelectItem value="vercel">Vercel</SelectItem> */}
                       </SelectContent>
                     </Select>
                   </div>

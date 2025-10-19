@@ -40,6 +40,17 @@ const PRESET_PROVIDERS: PresetProvider[] = [
   },
 ];
 
+function renderIcon(providerId: string, size = 16) {
+  switch (providerId) {
+    case 'github':
+      return <SiGithub size={size} />;
+    case 'gitlab':
+      return <SiGitlab size={size} />;
+    default:
+      return null;
+  }
+}
+
 export function GitSettings() {
   const { t } = useTranslation();
   const { settings, addCredential, removeCredential, updateCredential, updateSettings } = useGitSettings();
@@ -152,8 +163,7 @@ export function GitSettings() {
                   <AccordionItem key={origin} value={origin} className="border rounded-lg">
                     <AccordionTrigger className="px-4 py-3 hover:no-underline">
                       <div className="flex items-center gap-2">
-                        {preset?.id === 'github' && <SiGithub size={16} />}
-                        {preset?.id === 'gitlab' && <SiGitlab size={16} />}
+                        {preset && renderIcon(preset.id)}
                         <span className="font-medium">
                           {preset?.name || new URL(origin).hostname}
                         </span>
@@ -216,8 +226,7 @@ export function GitSettings() {
                 <div key={preset.id} className="border rounded-lg p-4 space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      {preset.id === 'github' && <SiGithub size={16} />}
-                      {preset.id === 'gitlab' && <SiGitlab size={16} />}
+                      {renderIcon(preset.id)}
                       <h5 className="font-medium">{preset.name}</h5>
                     </div>
                     {preset.tokenURL && (preset.id !== 'github' || !isOAuthConfigured) && (

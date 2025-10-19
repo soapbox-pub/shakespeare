@@ -37,6 +37,21 @@ import { useNavigate, Link } from 'react-router-dom';
 import type { AIProvider } from '@/contexts/AISettingsContext';
 import { AI_PROVIDER_PRESETS, type PresetProvider } from '@/lib/aiProviderPresets';
 
+function renderIcon(providerId: string, size = 16) {
+  switch (providerId) {
+    case 'openai':
+      return <SiOpenai size={size} />;
+    case 'anthropic':
+      return <SiAnthropic size={size} />;
+    case 'google':
+      return <SiGoogle size={size} />;
+    case 'xai':
+      return <SiX size={size} />;
+    default:
+      return null;
+  }
+}
+
 interface SortableProviderItemProps {
   provider: AIProvider;
   preset?: PresetProvider;
@@ -81,10 +96,7 @@ function SortableProviderItem({ provider, preset, onRemove, onSetProvider, onOpe
               <GripVertical className="h-4 w-4" />
             </div>
           )}
-          {provider.id === 'openai' && <SiOpenai size={16} />}
-          {provider.id === 'anthropic' && <SiAnthropic size={16} />}
-          {provider.id === 'google' && <SiGoogle size={16} />}
-          {provider.id === 'xai' && <SiX size={16} />}
+          {renderIcon(provider.id)}
           <span className="font-medium">
             {preset?.name || provider.id}
           </span>
@@ -364,10 +376,7 @@ export function AISettings() {
                   <div key={preset.id} className="border rounded-lg p-4 space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        {preset.id === 'openai' && <SiOpenai size={16} />}
-                        {preset.id === 'anthropic' && <SiAnthropic size={16} />}
-                        {preset.id === 'google' && <SiGoogle size={16} />}
-                        {preset.id === 'xai' && <SiX size={16} />}
+                        {renderIcon(preset.id)}
                         <h5 className="font-medium">{preset.name}</h5>
                       </div>
                       {(preset.apiKeysURL && preset.id !== "routstr") && (

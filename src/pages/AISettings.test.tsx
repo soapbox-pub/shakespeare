@@ -92,8 +92,10 @@ describe('AISettings', () => {
     );
 
     // Should show API key inputs for non-Nostr presets like OpenAI
-    expect(screen.getByText('OpenAI')).toBeInTheDocument();
-    expect(screen.getByText('OpenRouter')).toBeInTheDocument();
+    const openAIElements = screen.getAllByText('OpenAI');
+    expect(openAIElements.length).toBeGreaterThan(0);
+    const openRouterElements = screen.getAllByText('OpenRouter');
+    expect(openRouterElements.length).toBeGreaterThan(0);
 
     // Should show Add buttons for non-Nostr presets
     const addButtons = screen.getAllByText('Add');

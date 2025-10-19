@@ -1,5 +1,6 @@
 import JSZip from 'jszip';
 import { NIP98Client } from '@nostrify/nostrify';
+import type { JSRuntimeFS } from '../JSRuntime';
 import type { DeployAdapter, DeployOptions, DeployResult, ShakespeareDeployConfig } from './types';
 
 /**
@@ -7,35 +8,39 @@ import type { DeployAdapter, DeployOptions, DeployResult, ShakespeareDeployConfi
  * Uses NIP-98 authentication with Nostr signer
  */
 export class ShakespeareAdapter implements DeployAdapter {
-  private config: ShakespeareDeployConfig;
+  private fs: JSRuntimeFS;
+  private signer: ShakespeareDeployConfig['signer'];
   private host: string;
+  private subdomain?: string;
 
   constructor(config: ShakespeareDeployConfig) {
-    this.config = config;
+    this.fs = config.fs;
+    this.signer = config.signer;
     this.host = config.host || 'shakespeare.wtf';
+    this.subdomain = config.subdomain;
   }
 
   async deploy(options: DeployOptions): Promise<DeployResult> {
-    const { projectId, fs, projectPath } = options;
-    const { signer, deployServer, customHostname } = this.config;
+    const { projectId, projectPath } = options;
 
-    // Use custom hostname if provided, otherwise construct from projectId.host
-    const effectiveHost = deployServer || this.host;
-    const hostname = customHostname || `${projectId}.${effectiveHost}`;
-    const deployUrl = `https://${effectiveHost}/deploy`;
+    // Use custom subdomain if provided, otherwise construct from projectId
+    const hostname = this.subdomain
+      ? `${this.subdomain}.${this.host}`
+      : `${projectId}.${this.host}`;
+    const deployUrl = `https://${this.host}/deploy`;
     const siteUrl = `https://${hostname}`;
 
     // Check if dist directory exists and contains index.html
     const distPath = `${projectPath}/dist`;
     try {
-      await fs.readFile(`${distPath}/index.html`, 'utf8');
+      await this.fs.readFile(`${distPath}/index.html`, 'utf8');
     } catch {
       throw new Error('No index.html found in dist directory. Please build the project first.');
     }
 
     // Create ZIP of dist directory
     const zip = new JSZip();
-    await this.addDirectoryToZip(fs, distPath, zip);
+    await this.addDirectoryToZip(distPath, zip);
 
     // Generate ZIP blob
     const zipBlob = await zip.generateAsync({ type: 'blob' });
@@ -46,7 +51,7 @@ export class ShakespeareAdapter implements DeployAdapter {
     formData.append('file', zipBlob, `${projectId}.zip`);
 
     // Create NIP-98 authenticated client and deploy
-    const nip98Client = new NIP98Client({ signer });
+    const nip98Client = new NIP98Client({ signer: this.signer });
     const response = await nip98Client.fetch(deployUrl, {
       method: 'POST',
       body: formData,
@@ -66,9 +71,9 @@ export class ShakespeareAdapter implements DeployAdapter {
     };
   }
 
-  private async addDirectoryToZip(fs: DeployOptions['fs'], dirPath: string, zip: JSZip): Promise<void> {
+  private async addDirectoryToZip(dirPath: string, zip: JSZip): Promise<void> {
     try {
-      const entries = await fs.readdir(dirPath, { withFileTypes: true });
+      const entries = await this.fs.readdir(dirPath, { withFileTypes: true });
 
       for (const entry of entries) {
         const fullPath = `${dirPath}/${entry.name}`;
@@ -77,12 +82,12 @@ export class ShakespeareAdapter implements DeployAdapter {
           // Create folder in zip and recursively add its contents
           const folder = zip.folder(entry.name);
           if (folder) {
-            await this.addDirectoryToZip(fs, fullPath, folder);
+            await this.addDirectoryToZip(fullPath, folder);
           }
         } else if (entry.isFile()) {
           // Add file to zip
           try {
-            const fileContent = await fs.readFile(fullPath);
+            const fileContent = await this.fs.readFile(fullPath);
             zip.file(entry.name, fileContent);
           } catch {
             console.warn(`Failed to read file ${fullPath}`);

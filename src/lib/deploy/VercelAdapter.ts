@@ -1,3 +1,4 @@
+import type { JSRuntimeFS } from '../JSRuntime';
 import type { DeployAdapter, DeployOptions, DeployResult, VercelDeployConfig } from './types';
 
 interface VercelFile {
@@ -17,33 +18,38 @@ interface VercelDeployment {
  * Uses Vercel REST API with access token
  */
 export class VercelAdapter implements DeployAdapter {
-  private config: VercelDeployConfig;
+  private fs: JSRuntimeFS;
+  private apiKey: string;
   private baseURL: string;
+  private teamId?: string;
+  private projectName?: string;
 
   constructor(config: VercelDeployConfig) {
-    this.config = config;
+    this.fs = config.fs;
+    this.apiKey = config.apiKey;
     this.baseURL = config.baseURL || 'https://api.vercel.com';
+    this.teamId = config.teamId;
+    this.projectName = config.projectName;
   }
 
   async deploy(options: DeployOptions): Promise<DeployResult> {
-    const { projectId, projectName, fs, projectPath } = options;
-    const { apiKey, teamId } = this.config;
+    const { projectId, projectPath } = options;
 
     // Check if dist directory exists and contains index.html
     const distPath = `${projectPath}/dist`;
     try {
-      await fs.readFile(`${distPath}/index.html`, 'utf8');
+      await this.fs.readFile(`${distPath}/index.html`, 'utf8');
     } catch {
       throw new Error('No index.html found in dist directory. Please build the project first.');
     }
 
     // Collect all files from dist directory
     const files: VercelFile[] = [];
-    await this.collectFiles(fs, distPath, '', files);
+    await this.collectFiles(distPath, '', files);
 
     // Create deployment payload
     const deploymentPayload = {
-      name: this.config.projectName || projectName || projectId,
+      name: this.projectName || projectId,
       files,
       projectSettings: {
         framework: null, // Static deployment
@@ -53,15 +59,15 @@ export class VercelAdapter implements DeployAdapter {
 
     // Build API URL with optional team parameter
     let apiUrl = `${this.baseURL}/v13/deployments`;
-    if (teamId) {
-      apiUrl += `?teamId=${teamId}`;
+    if (this.teamId) {
+      apiUrl += `?teamId=${this.teamId}`;
     }
 
     // Deploy to Vercel
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
+        'Authorization': `Bearer ${this.apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(deploymentPayload),
@@ -85,13 +91,12 @@ export class VercelAdapter implements DeployAdapter {
   }
 
   private async collectFiles(
-    fs: DeployOptions['fs'],
     dirPath: string,
     relativePath: string,
     files: VercelFile[]
   ): Promise<void> {
     try {
-      const entries = await fs.readdir(dirPath, { withFileTypes: true });
+      const entries = await this.fs.readdir(dirPath, { withFileTypes: true });
 
       for (const entry of entries) {
         const fullPath = `${dirPath}/${entry.name}`;
@@ -99,11 +104,11 @@ export class VercelAdapter implements DeployAdapter {
 
         if (entry.isDirectory()) {
           // Recursively collect files from subdirectories
-          await this.collectFiles(fs, fullPath, entryRelativePath, files);
+          await this.collectFiles(fullPath, entryRelativePath, files);
         } else if (entry.isFile()) {
           try {
             // Read file content
-            const fileContent = await fs.readFile(fullPath);
+            const fileContent = await this.fs.readFile(fullPath);
 
             // Convert to base64 for Vercel API
             let base64Content: string;

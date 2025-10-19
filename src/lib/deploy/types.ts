@@ -4,12 +4,8 @@ import type { NostrSigner } from '@nostrify/nostrify';
 export interface DeployOptions {
   /** Project ID */
   projectId: string;
-  /** Filesystem instance containing the project */
-  fs: JSRuntimeFS;
   /** Path to the project directory */
   projectPath: string;
-  /** Project name */
-  projectName?: string;
 }
 
 export interface DeployResult {
@@ -25,23 +21,24 @@ export interface DeployAdapter {
 }
 
 export interface ShakespeareDeployConfig {
+  fs: JSRuntimeFS;
   signer: NostrSigner;
-  deployServer?: string;
-  customHostname?: string;
   host?: string;
+  subdomain?: string;
 }
 
 export interface NetlifyDeployConfig {
+  fs: JSRuntimeFS;
   apiKey: string;
-  siteId?: string;
-  siteName?: string;
   baseURL?: string;
+  siteName?: string;
+  siteId?: string;
 }
 
 export interface VercelDeployConfig {
+  fs: JSRuntimeFS;
   apiKey: string;
-  projectId?: string;
+  baseURL?: string;
   teamId?: string;
   projectName?: string;
-  baseURL?: string;
 }

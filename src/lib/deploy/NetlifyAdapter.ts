@@ -1,4 +1,5 @@
 import JSZip from 'jszip';
+import type { JSRuntimeFS } from '../JSRuntime';
 import type { DeployAdapter, DeployOptions, DeployResult, NetlifyDeployConfig } from './types';
 
 interface NetlifySite {
@@ -21,50 +22,55 @@ interface NetlifyBuildResponse {
  * Uses Netlify API with personal access token
  */
 export class NetlifyAdapter implements DeployAdapter {
-  private config: NetlifyDeployConfig;
+  private fs: JSRuntimeFS;
+  private apiKey: string;
   private baseURL: string;
+  private siteName?: string;
+  private siteId?: string;
 
   constructor(config: NetlifyDeployConfig) {
-    this.config = config;
+    this.fs = config.fs;
+    this.apiKey = config.apiKey;
     this.baseURL = config.baseURL || 'https://api.netlify.com/api/v1';
+    this.siteName = config.siteName;
+    this.siteId = config.siteId;
   }
 
   async deploy(options: DeployOptions): Promise<DeployResult> {
-    const { projectId, projectName, fs, projectPath } = options;
-    const { apiKey, siteId, siteName } = this.config;
+    const { projectId, projectPath } = options;
 
     // Check if dist directory exists and contains index.html
     const distPath = `${projectPath}/dist`;
     try {
-      await fs.readFile(`${distPath}/index.html`, 'utf8');
+      await this.fs.readFile(`${distPath}/index.html`, 'utf8');
     } catch {
       throw new Error('No index.html found in dist directory. Please build the project first.');
     }
 
     // Get or create site
-    let activeSiteId = siteId;
+    let activeSiteId = this.siteId;
     let siteUrl = '';
 
     if (!activeSiteId) {
       // Create new site
-      const site = await this.createSite(apiKey, siteName || projectName || projectId);
+      const site = await this.createSite(this.siteName || projectId);
       activeSiteId = site.id;
       siteUrl = site.url;
     } else {
       // Get existing site URL
-      const site = await this.getSite(apiKey, activeSiteId);
+      const site = await this.getSite(activeSiteId);
       siteUrl = site.url;
     }
 
     // Create ZIP of dist directory
     const zip = new JSZip();
-    await this.addDirectoryToZip(fs, distPath, zip);
+    await this.addDirectoryToZip(distPath, zip);
 
     // Generate ZIP blob
     const zipBlob = await zip.generateAsync({ type: 'blob' });
 
     // Deploy to Netlify
-    await this.triggerDeploy(apiKey, activeSiteId, zipBlob);
+    await this.triggerDeploy(activeSiteId, zipBlob);
 
     return {
       url: siteUrl,
@@ -75,11 +81,11 @@ export class NetlifyAdapter implements DeployAdapter {
     };
   }
 
-  private async createSite(apiKey: string, name: string): Promise<NetlifySite> {
+  private async createSite(name: string): Promise<NetlifySite> {
     const response = await fetch(`${this.baseURL}/sites`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
+        'Authorization': `Bearer ${this.apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -96,11 +102,11 @@ export class NetlifyAdapter implements DeployAdapter {
     return response.json();
   }
 
-  private async getSite(apiKey: string, siteId: string): Promise<NetlifySite> {
+  private async getSite(siteId: string): Promise<NetlifySite> {
     const response = await fetch(`${this.baseURL}/sites/${siteId}`, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
+        'Authorization': `Bearer ${this.apiKey}`,
       },
     });
 
@@ -112,11 +118,11 @@ export class NetlifyAdapter implements DeployAdapter {
     return response.json();
   }
 
-  private async triggerDeploy(apiKey: string, siteId: string, zipBlob: Blob): Promise<NetlifyBuildResponse> {
+  private async triggerDeploy(siteId: string, zipBlob: Blob): Promise<NetlifyBuildResponse> {
     const response = await fetch(`${this.baseURL}/sites/${siteId}/deploys`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
+        'Authorization': `Bearer ${this.apiKey}`,
       },
       body: zipBlob,
     });
@@ -129,9 +135,9 @@ export class NetlifyAdapter implements DeployAdapter {
     return response.json();
   }
 
-  private async addDirectoryToZip(fs: DeployOptions['fs'], dirPath: string, zip: JSZip): Promise<void> {
+  private async addDirectoryToZip(dirPath: string, zip: JSZip): Promise<void> {
     try {
-      const entries = await fs.readdir(dirPath, { withFileTypes: true });
+      const entries = await this.fs.readdir(dirPath, { withFileTypes: true });
 
       for (const entry of entries) {
         const fullPath = `${dirPath}/${entry.name}`;
@@ -140,12 +146,12 @@ export class NetlifyAdapter implements DeployAdapter {
           // Create folder in zip and recursively add its contents
           const folder = zip.folder(entry.name);
           if (folder) {
-            await this.addDirectoryToZip(fs, fullPath, folder);
+            await this.addDirectoryToZip(fullPath, folder);
           }
         } else if (entry.isFile()) {
           // Add file to zip
           try {
-            const fileContent = await fs.readFile(fullPath);
+            const fileContent = await this.fs.readFile(fullPath);
             zip.file(entry.name, fileContent);
           } catch {
             console.warn(`Failed to read file ${fullPath}`);

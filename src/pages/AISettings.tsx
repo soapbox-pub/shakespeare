@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Check, Bot, ArrowLeft, Trash2, GripVertical } from 'lucide-react';
-import { SiOpenai, SiAnthropic, SiGoogle } from '@icons-pack/react-simple-icons';
+import { SiOpenai, SiAnthropic, SiGoogle, SiX } from '@icons-pack/react-simple-icons';
 import {
   DndContext,
   closestCenter,
@@ -81,6 +81,10 @@ function SortableProviderItem({ provider, preset, onRemove, onSetProvider, onOpe
               <GripVertical className="h-4 w-4" />
             </div>
           )}
+          {provider.id === 'openai' && <SiOpenai size={16} />}
+          {provider.id === 'anthropic' && <SiAnthropic size={16} />}
+          {provider.id === 'google' && <SiGoogle size={16} />}
+          {provider.id === 'xai' && <SiX size={16} />}
           <span className="font-medium">
             {preset?.name || provider.id}
           </span>
@@ -363,6 +367,7 @@ export function AISettings() {
                         {preset.id === 'openai' && <SiOpenai size={16} />}
                         {preset.id === 'anthropic' && <SiAnthropic size={16} />}
                         {preset.id === 'google' && <SiGoogle size={16} />}
+                        {preset.id === 'xai' && <SiX size={16} />}
                         <h5 className="font-medium">{preset.name}</h5>
                       </div>
                       {(preset.apiKeysURL && preset.id !== "routstr") && (

@@ -152,6 +152,8 @@ export function GitSettings() {
                   <AccordionItem key={origin} value={origin} className="border rounded-lg">
                     <AccordionTrigger className="px-4 py-3 hover:no-underline">
                       <div className="flex items-center gap-2">
+                        {preset?.id === 'github' && <SiGithub size={16} />}
+                        {preset?.id === 'gitlab' && <SiGitlab size={16} />}
                         <span className="font-medium">
                           {preset?.name || new URL(origin).hostname}
                         </span>

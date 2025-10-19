@@ -90,6 +90,8 @@ function SortableProviderItem({ provider, index, preset, onRemove, onUpdate, sho
               <GripVertical className="h-4 w-4" />
             </div>
           )}
+          {provider.id === 'netlify' && <SiNetlify size={16} />}
+          {provider.id === 'vercel' && <SiVercel size={16} />}
           <span className="font-medium">
             {provider.name}
           </span>

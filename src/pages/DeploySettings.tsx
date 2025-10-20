@@ -349,18 +349,18 @@ export function DeploySettings() {
         id: preset.id, // Use preset ID for presets
         name: preset.name,
         type: 'nsite',
-        gateway: 'nsite.lol',
+        gateway: 'nosto.re',
         relayUrls: [
           'wss://relay.nsite.lol',
           'wss://relay.nosto.re',
-          'wss://purplerelay.com',
           'wss://relay.nostr.band',
           'wss://relay.primal.net',
+          'wss://relay.damus.io',
+          'wss://purplerelay.com',
         ],
         blossomServers: [
-          'https://blossom.primal.net/',
-          'https://blossom.band/',
-          'https://cdn.sovbit.host/',
+          'https://blossom.primal.net',
+          'https://cdn.sovbit.host',
         ],
       };
     } else if (preset.type === 'netlify') {

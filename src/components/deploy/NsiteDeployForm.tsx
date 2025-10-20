@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { generateSecretKey, getPublicKey } from 'nostr-tools/pure';
 import { nip19 } from 'nostr-tools';
 import { Label } from '@/components/ui/label';
@@ -19,16 +19,24 @@ export function NsiteDeployForm({
 }: NsiteDeployFormProps) {
   const [nsec, setNsec] = useState(savedNsec || '');
   const [npub, setNpub] = useState('');
+  const initialized = useRef(false);
 
-  // Generate a new nsec if none exists
+  // Initialize nsec on mount
   useEffect(() => {
-    if (!nsec) {
-      const sk = generateSecretKey();
-      const newNsec = nip19.nsecEncode(sk);
-      setNsec(newNsec);
-      onNsecChange(newNsec);
+    if (!initialized.current) {
+      initialized.current = true;
+      if (savedNsec) {
+        // If we have a saved nsec, notify parent immediately
+        onNsecChange(savedNsec);
+      } else if (!nsec) {
+        // Generate a new nsec if none exists
+        const sk = generateSecretKey();
+        const newNsec = nip19.nsecEncode(sk);
+        setNsec(newNsec);
+        onNsecChange(newNsec);
+      }
     }
-  }, [nsec, onNsecChange]);
+  }, [savedNsec, nsec, onNsecChange]);
 
   // Update npub when nsec changes
   useEffect(() => {

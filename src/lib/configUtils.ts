@@ -71,10 +71,18 @@ const vercelProviderSchema = baseDeployProviderSchema.extend({
   baseURL: z.string().optional(),
 });
 
+const nsiteProviderSchema = baseDeployProviderSchema.extend({
+  type: z.literal('nsite'),
+  gateway: z.string(),
+  relayUrls: z.array(z.string()),
+  blossomServers: z.array(z.string()),
+});
+
 const deployProviderSchema: z.ZodType<DeployProvider> = z.discriminatedUnion('type', [
   shakespeareDeployProviderSchema,
   netlifyProviderSchema,
   vercelProviderSchema,
+  nsiteProviderSchema,
 ]);
 
 const deploySettingsSchema = z.object({

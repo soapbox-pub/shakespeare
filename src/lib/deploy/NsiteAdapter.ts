@@ -1,6 +1,7 @@
 import { BlossomUploader } from '@nostrify/nostrify/uploaders';
 import { NSecSigner, NPool } from '@nostrify/nostrify';
 import type { NostrEvent } from '@nostrify/nostrify';
+import mime from 'mime';
 import { nip19 } from 'nostr-tools';
 import type { JSRuntimeFS } from '../JSRuntime';
 import type { DeployAdapter, DeployOptions, DeployResult, NsiteDeployConfig } from './types';
@@ -58,16 +59,15 @@ export class NsiteAdapter implements DeployAdapter {
     const fileEvents: NostrEvent[] = [];
     await this.uploadDirectory(distPath, '', uploader, signer, fileEvents);
 
-    // Publish all file events to the relays
-    for (const event of fileEvents) {
-      await relayClient.event(event, { signal: AbortSignal.timeout(5000) });
-    }
-
-    // Publish kind 10063 server list if not already published
-    await this.publishServerList(pubkey, signer, relayClient);
+    // Publish file events and other metadata to the relays
+    await Promise.all([
+      this.publishRelayList(signer, relayClient),
+      this.publishServerList(signer, relayClient),
+      ...fileEvents.map(event => relayClient.event(event, { signal: AbortSignal.timeout(5000) })),
+    ]);
 
     // Generate npub subdomain
-    const npub = this.pubkeyToNpub(pubkey);
+    const npub = nip19.npubEncode(pubkey);
     const siteUrl = `https://${npub}.${this.gateway}`;
 
     return {
@@ -114,7 +114,9 @@ export class NsiteAdapter implements DeployAdapter {
       const content = await this.fs.readFile(filePath);
 
       // Convert to File object for upload
-      const file = new File([content], relativePath.split('/').pop() || 'file');
+      const file = new File([content], relativePath.split('/').pop() || 'file', {
+        type: mime.getType(filePath) || undefined,
+      });
 
       // Upload to Blossom and get tags
       const tags = await uploader.upload(file);
@@ -148,20 +150,18 @@ export class NsiteAdapter implements DeployAdapter {
     }
   }
 
-  private async publishServerList(pubkey: string, signer: NSecSigner, relayClient: NPool): Promise<void> {
-    // Check if server list already exists
-    const events = await relayClient.query([{
-      kinds: [10063],
-      authors: [pubkey],
-      limit: 1,
-    }], { signal: AbortSignal.timeout(5000) });
+  private async publishRelayList(signer: NSecSigner, relayClient: NPool): Promise<void> {
+    const relayListEvent = await signer.signEvent({
+      kind: 10002,
+      content: '',
+      created_at: Math.floor(Date.now() / 1000),
+      tags: this.relayUrls.map(url => ['r', url]),
+    });
 
-    // If server list exists, don't publish a new one
-    if (events.length > 0) {
-      return;
-    }
+    await relayClient.event(relayListEvent, { signal: AbortSignal.timeout(5000) });
+  }
 
-    // Create kind 10063 server list event
+  private async publishServerList(signer: NSecSigner, relayClient: NPool): Promise<void> {
     const serverListEvent = await signer.signEvent({
       kind: 10063,
       content: '',
@@ -170,9 +170,5 @@ export class NsiteAdapter implements DeployAdapter {
     });
 
     await relayClient.event(serverListEvent, { signal: AbortSignal.timeout(5000) });
-  }
-
-  private pubkeyToNpub(pubkey: string): string {
-    return nip19.npubEncode(pubkey);
   }
 }

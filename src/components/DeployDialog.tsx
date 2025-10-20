@@ -270,13 +270,12 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
     }
 
     if (selectedProvider.type === 'nsite') {
-      const nsiteProvider = selectedProvider as import('@/contexts/DeploySettingsContext').NsiteProvider;
       const savedConfig = projectSettings.providers[selectedProviderId];
       const savedNsec = savedConfig?.type === 'nsite' ? savedConfig.data.nsec : undefined;
 
       return (
         <NsiteDeployForm
-          gateway={nsiteProvider.gateway}
+          gateway={selectedProvider.gateway}
           savedNsec={savedNsec}
           onNsecChange={handleNsiteNsecChange}
         />
@@ -284,19 +283,18 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
     }
 
     if (selectedProvider.type === 'netlify') {
-      const netlifyProvider = selectedProvider as NetlifyProvider;
       const savedConfig = projectSettings.providers[selectedProviderId];
       const savedSiteId = savedConfig?.type === 'netlify' ? savedConfig.data.siteId : undefined;
 
       return (
         <NetlifyDeployForm
-          apiKey={netlifyProvider.apiKey}
-          baseURL={netlifyProvider.baseURL}
+          apiKey={selectedProvider.apiKey}
+          baseURL={selectedProvider.baseURL}
           projectId={projectId}
           projectName={projectName}
           savedSiteId={savedSiteId}
           onSiteChange={handleNetlifySiteChange}
-          corsProxy={netlifyProvider.proxy ? config.corsProxy : undefined}
+          corsProxy={selectedProvider.proxy ? config.corsProxy : undefined}
         />
       );
     }

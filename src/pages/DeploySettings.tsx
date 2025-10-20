@@ -238,7 +238,7 @@ const PRESET_PROVIDERS: PresetProvider[] = [
   {
     id: 'nsite',
     type: 'nsite',
-    name: 'Nsite',
+    name: 'nsite',
     description: 'Deploy to Nostr as a static website',
   },
   {
@@ -330,7 +330,7 @@ export function DeploySettings() {
 
     const apiKey = presetApiKeys[preset.id];
 
-    // For non-Shakespeare/non-Nsite providers, require API key
+    // For non-Shakespeare/non-nsite providers, require API key
     if (!preset.requiresNostr && preset.type !== 'nsite' && !apiKey?.trim()) {
       return;
     }
@@ -681,7 +681,7 @@ export function DeploySettings() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="shakespeare">Shakespeare Deploy</SelectItem>
-                        <SelectItem value="nsite">Nsite</SelectItem>
+                        <SelectItem value="nsite">nsite</SelectItem>
                         <SelectItem value="netlify">Netlify</SelectItem>
                         {/* <SelectItem value="vercel">Vercel</SelectItem> */}
                       </SelectContent>

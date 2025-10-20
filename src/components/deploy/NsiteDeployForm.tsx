@@ -96,16 +96,6 @@ export function NsiteDeployForm({
           Keep this private key secure. It's used to sign site metadata.
         </p>
       </div>
-
-      <div className="rounded-md bg-muted p-3 text-sm space-y-2">
-        <p className="font-medium">How it works:</p>
-        <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-          <li>Files are uploaded to Blossom servers</li>
-          <li>Kind 34128 events map URLs to file hashes</li>
-          <li>Kind 10063 lists your Blossom servers</li>
-          <li>Nsite hosts read events and serve files</li>
-        </ul>
-      </div>
     </div>
   );
 }

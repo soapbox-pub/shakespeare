@@ -38,7 +38,7 @@ import type { DeployProvider } from '@/contexts/DeploySettingsContext';
 
 interface PresetProvider {
   id: string;
-  type: 'shakespeare' | 'netlify' | 'vercel';
+  type: 'shakespeare' | 'netlify' | 'vercel' | 'nsite';
   name: string;
   description: string;
   requiresNostr?: boolean;
@@ -123,6 +123,45 @@ function SortableProviderItem({ provider, index, preset, onRemove, onUpdate, sho
                 />
               </div>
             </>
+          ) : provider.type === 'nsite' ? (
+            <>
+              <p className="text-sm text-muted-foreground">
+                Deploy to Nostr as a static website. Uses kind 34128 events and Blossom file storage.
+              </p>
+              <div className="grid gap-2">
+                <Label htmlFor={`provider-${index}-gateway`}>Gateway</Label>
+                <Input
+                  id={`provider-${index}-gateway`}
+                  placeholder="nsite.lol"
+                  value={provider.gateway || ''}
+                  onChange={(e) => onUpdate(index, { ...provider, gateway: e.target.value })}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor={`provider-${index}-relays`}>Relay URLs (comma-separated)</Label>
+                <Input
+                  id={`provider-${index}-relays`}
+                  placeholder="wss://relay.nostr.band, wss://relay.damus.io"
+                  value={provider.relayUrls?.join(', ') || ''}
+                  onChange={(e) => onUpdate(index, {
+                    ...provider,
+                    relayUrls: e.target.value.split(',').map(s => s.trim()).filter(Boolean)
+                  })}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor={`provider-${index}-blossom`}>Blossom Servers (comma-separated)</Label>
+                <Input
+                  id={`provider-${index}-blossom`}
+                  placeholder="https://blossom.primal.net/"
+                  value={provider.blossomServers?.join(', ') || ''}
+                  onChange={(e) => onUpdate(index, {
+                    ...provider,
+                    blossomServers: e.target.value.split(',').map(s => s.trim()).filter(Boolean)
+                  })}
+                />
+              </div>
+            </>
           ) : (
             <>
               <div className="grid gap-2">
@@ -197,6 +236,12 @@ const PRESET_PROVIDERS: PresetProvider[] = [
     requiresNostr: true,
   },
   {
+    id: 'nsite',
+    type: 'nsite',
+    name: 'Nsite',
+    description: 'Deploy to Nostr as a static website',
+  },
+  {
     id: 'netlify',
     type: 'netlify',
     name: 'Netlify',
@@ -248,12 +293,15 @@ export function DeploySettings() {
   const [presetApiKeys, setPresetApiKeys] = useState<Record<string, string>>({});
 
   // Custom provider form state
-  const [customProviderType, setCustomProviderType] = useState<'shakespeare' | 'netlify' | 'vercel' | ''>('');
+  const [customProviderType, setCustomProviderType] = useState<'shakespeare' | 'netlify' | 'vercel' | 'nsite' | ''>('');
   const [customName, setCustomName] = useState('');
   const [customApiKey, setCustomApiKey] = useState('');
   const [customBaseURL, setCustomBaseURL] = useState('');
   const [customHost, setCustomHost] = useState('');
   const [customProxy, setCustomProxy] = useState(false);
+  const [customGateway, setCustomGateway] = useState('');
+  const [customRelayUrls, setCustomRelayUrls] = useState('');
+  const [customBlossomServers, setCustomBlossomServers] = useState('');
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -282,8 +330,8 @@ export function DeploySettings() {
 
     const apiKey = presetApiKeys[preset.id];
 
-    // For non-Shakespeare providers, require API key
-    if (!preset.requiresNostr && !apiKey?.trim()) {
+    // For non-Shakespeare/non-Nsite providers, require API key
+    if (!preset.requiresNostr && preset.type !== 'nsite' && !apiKey?.trim()) {
       return;
     }
 
@@ -295,6 +343,25 @@ export function DeploySettings() {
         name: preset.name,
         type: 'shakespeare',
         ...(preset.proxy && { proxy: true }),
+      };
+    } else if (preset.type === 'nsite') {
+      newProvider = {
+        id: preset.id, // Use preset ID for presets
+        name: preset.name,
+        type: 'nsite',
+        gateway: 'nsite.lol',
+        relayUrls: [
+          'wss://relay.nsite.lol',
+          'wss://relay.nosto.re',
+          'wss://purplerelay.com',
+          'wss://relay.nostr.band',
+          'wss://relay.primal.net',
+        ],
+        blossomServers: [
+          'https://blossom.primal.net/',
+          'https://blossom.band/',
+          'https://cdn.sovbit.host/',
+        ],
       };
     } else if (preset.type === 'netlify') {
       newProvider = {
@@ -332,6 +399,23 @@ export function DeploySettings() {
         type: 'shakespeare',
         ...(customHost?.trim() && { host: customHost.trim() }),
         ...(customProxy && { proxy: true }),
+      };
+    } else if (customProviderType === 'nsite') {
+      const gateway = customGateway.trim() || 'nsite.lol';
+      const relayUrls = customRelayUrls.trim()
+        ? customRelayUrls.split(',').map(s => s.trim()).filter(Boolean)
+        : ['wss://relay.nostr.band'];
+      const blossomServers = customBlossomServers.trim()
+        ? customBlossomServers.split(',').map(s => s.trim()).filter(Boolean)
+        : ['https://blossom.primal.net/'];
+
+      newProvider = {
+        id: generateCustomProviderId(customProviderType), // Generate custom ID
+        name: customName.trim(),
+        type: 'nsite',
+        gateway,
+        relayUrls,
+        blossomServers,
       };
     } else if (customProviderType === 'netlify') {
       if (!customApiKey.trim()) return;
@@ -531,7 +615,7 @@ export function DeploySettings() {
                       // Show manual token input
                       <div className="space-y-2">
                         <div className="flex gap-2">
-                          {!preset.requiresNostr && (
+                          {!preset.requiresNostr && preset.type !== 'nsite' && (
                             <PasswordInput
                               placeholder={preset.apiKeyLabel || t('enterApiKey')}
                               className="flex-1"
@@ -551,9 +635,9 @@ export function DeploySettings() {
                             onClick={() => handleAddPresetProvider(preset)}
                             disabled={
                               (preset.requiresNostr && !isLoggedIntoNostr) ||
-                              (!preset.requiresNostr && !presetApiKeys[preset.id]?.trim())
+                              (!preset.requiresNostr && preset.type !== 'nsite' && !presetApiKeys[preset.id]?.trim())
                             }
-                            className={preset.requiresNostr ? "w-full" : "h-10 px-4 ml-auto"}
+                            className={(preset.requiresNostr || preset.type === 'nsite') ? "w-full" : "h-10 px-4 ml-auto"}
                           >
                             {t('add')}
                           </Button>
@@ -580,13 +664,16 @@ export function DeploySettings() {
                     <Label htmlFor="custom-provider-type">{t('providerType')}</Label>
                     <Select
                       value={customProviderType}
-                      onValueChange={(value: 'shakespeare' | 'netlify' | 'vercel') => {
+                      onValueChange={(value: 'shakespeare' | 'netlify' | 'vercel' | 'nsite') => {
                         setCustomProviderType(value);
                         // Reset form when provider type changes
                         setCustomApiKey('');
                         setCustomBaseURL('');
                         setCustomHost('');
                         setCustomProxy(false);
+                        setCustomGateway('');
+                        setCustomRelayUrls('');
+                        setCustomBlossomServers('');
                       }}
                     >
                       <SelectTrigger>
@@ -594,6 +681,7 @@ export function DeploySettings() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="shakespeare">Shakespeare Deploy</SelectItem>
+                        <SelectItem value="nsite">Nsite</SelectItem>
                         <SelectItem value="netlify">Netlify</SelectItem>
                         {/* <SelectItem value="vercel">Vercel</SelectItem> */}
                       </SelectContent>
@@ -624,6 +712,39 @@ export function DeploySettings() {
                               placeholder="shakespeare.wtf"
                               value={customHost}
                               onChange={(e) => setCustomHost(e.target.value)}
+                            />
+                          </div>
+                        </>
+                      ) : customProviderType === 'nsite' ? (
+                        <>
+                          <p className="text-sm text-muted-foreground">
+                            Deploy to Nostr as a static website. Uses kind 34128 events and Blossom file storage.
+                          </p>
+                          <div className="grid gap-2">
+                            <Label htmlFor="custom-gateway">Gateway</Label>
+                            <Input
+                              id="custom-gateway"
+                              placeholder="nsite.lol"
+                              value={customGateway}
+                              onChange={(e) => setCustomGateway(e.target.value)}
+                            />
+                          </div>
+                          <div className="grid gap-2">
+                            <Label htmlFor="custom-relays">Relay URLs (comma-separated)</Label>
+                            <Input
+                              id="custom-relays"
+                              placeholder="wss://relay.nostr.band, wss://relay.damus.io"
+                              value={customRelayUrls}
+                              onChange={(e) => setCustomRelayUrls(e.target.value)}
+                            />
+                          </div>
+                          <div className="grid gap-2">
+                            <Label htmlFor="custom-blossom">Blossom Servers (comma-separated)</Label>
+                            <Input
+                              id="custom-blossom"
+                              placeholder="https://blossom.primal.net/"
+                              value={customBlossomServers}
+                              onChange={(e) => setCustomBlossomServers(e.target.value)}
                             />
                           </div>
                         </>
@@ -672,7 +793,7 @@ export function DeploySettings() {
                         disabled={
                           !customProviderType ||
                           !customName.trim() ||
-                          (customProviderType !== 'shakespeare' && !customApiKey.trim())
+                          (customProviderType !== 'shakespeare' && customProviderType !== 'nsite' && !customApiKey.trim())
                         }
                         className="gap-2 ml-auto"
                       >

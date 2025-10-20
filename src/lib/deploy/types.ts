@@ -1,5 +1,5 @@
 import type { JSRuntimeFS } from '../JSRuntime';
-import type { NostrSigner } from '@nostrify/nostrify';
+import type { NostrSigner, NPool } from '@nostrify/nostrify';
 
 export interface DeployOptions {
   /** Project ID */
@@ -44,4 +44,13 @@ export interface VercelDeployConfig {
   teamId?: string;
   projectName?: string;
   corsProxy?: string;
+}
+
+export interface NsiteDeployConfig {
+  fs: JSRuntimeFS;
+  nostr: NPool;
+  nsec: string;
+  gateway: string;
+  relayUrls: string[];
+  blossomServers: string[];
 }

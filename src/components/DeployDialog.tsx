@@ -25,12 +25,14 @@ import { useProjectDeploySettings } from '@/hooks/useProjectDeploySettings';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useFS } from '@/hooks/useFS';
 import { useAppContext } from '@/hooks/useAppContext';
-import { ShakespeareAdapter, NetlifyAdapter, VercelAdapter, DeployAdapter } from '@/lib/deploy';
+import { useNostr } from '@nostrify/react';
+import { ShakespeareAdapter, NetlifyAdapter, VercelAdapter, NsiteAdapter, DeployAdapter } from '@/lib/deploy';
 import { Link } from 'react-router-dom';
 import type { ShakespeareDeployProvider, NetlifyProvider, VercelProvider } from '@/contexts/DeploySettingsContext';
 import { ShakespeareDeployForm } from '@/components/deploy/ShakespeareDeployForm';
 import { NetlifyDeployForm } from '@/components/deploy/NetlifyDeployForm';
 import { VercelDeployForm } from '@/components/deploy/VercelDeployForm';
+import { NsiteDeployForm } from '@/components/deploy/NsiteDeployForm';
 
 interface DeployDialogProps {
   projectId: string;
@@ -41,6 +43,10 @@ interface DeployDialogProps {
 
 interface ShakespeareFormData {
   subdomain: string;
+}
+
+interface NsiteFormData {
+  nsec: string;
 }
 
 interface NetlifyFormData {
@@ -60,6 +66,7 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
   const { user } = useCurrentUser();
   const { fs } = useFS();
   const { config } = useAppContext();
+  const { nostr } = useNostr();
 
   const [selectedProviderId, setSelectedProviderId] = useState<string>('');
   const [isDeploying, setIsDeploying] = useState(false);
@@ -69,6 +76,9 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
   // Provider-specific form data
   const [shakespeareForm, setShakespeareForm] = useState<ShakespeareFormData>({
     subdomain: projectId,
+  });
+  const [nsiteForm, setNsiteForm] = useState<NsiteFormData>({
+    nsec: '',
   });
   const [netlifyForm, setNetlifyForm] = useState<NetlifyFormData>({
     siteId: '',
@@ -122,6 +132,21 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
           subdomain: shakespeareForm.subdomain || undefined,
           corsProxy: shakespeareProvider.proxy ? config.corsProxy : undefined,
         });
+      } else if (selectedProvider.type === 'nsite') {
+        const nsiteProvider = selectedProvider as import('@/contexts/DeploySettingsContext').NsiteProvider;
+
+        if (!nsiteForm.nsec) {
+          throw new Error('Site private key (nsec) is required');
+        }
+
+        adapter = new NsiteAdapter({
+          fs,
+          nostr,
+          nsec: nsiteForm.nsec,
+          gateway: nsiteProvider.gateway,
+          relayUrls: nsiteProvider.relayUrls,
+          blossomServers: nsiteProvider.blossomServers,
+        });
       } else if (selectedProvider.type === 'netlify') {
         const netlifyProvider = selectedProvider as NetlifyProvider;
         if (!netlifyProvider.apiKey) {
@@ -169,6 +194,13 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
             subdomain: shakespeareForm.subdomain || undefined,
           },
         });
+      } else if (selectedProvider.type === 'nsite') {
+        await updateProjectSettings(selectedProviderId, {
+          type: 'nsite',
+          data: {
+            nsec: nsiteForm.nsec,
+          },
+        });
       } else if (selectedProvider.type === 'netlify') {
         await updateProjectSettings(selectedProviderId, {
           type: 'netlify',
@@ -200,6 +232,7 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
     setError(null);
     // Reset forms
     setShakespeareForm({ subdomain: projectId });
+    setNsiteForm({ nsec: '' });
     setNetlifyForm({ siteId: '', siteName: '' });
     setVercelForm({ projectName: projectName || projectId, teamId: '' });
     onOpenChange(false);
@@ -207,6 +240,10 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
 
   const handleShakespeareSubdomainChange = useCallback((subdomain: string) => {
     setShakespeareForm({ subdomain });
+  }, []);
+
+  const handleNsiteNsecChange = useCallback((nsec: string) => {
+    setNsiteForm({ nsec });
   }, []);
 
   const handleNetlifySiteChange = useCallback((siteId: string, siteName: string) => {
@@ -228,6 +265,20 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
           host={shakespeareProvider.host}
           projectId={projectId}
           onSubdomainChange={handleShakespeareSubdomainChange}
+        />
+      );
+    }
+
+    if (selectedProvider.type === 'nsite') {
+      const nsiteProvider = selectedProvider as import('@/contexts/DeploySettingsContext').NsiteProvider;
+      const savedConfig = projectSettings.providers[selectedProviderId];
+      const savedNsec = savedConfig?.type === 'nsite' ? savedConfig.data.nsec : undefined;
+
+      return (
+        <NsiteDeployForm
+          gateway={nsiteProvider.gateway}
+          savedNsec={savedNsec}
+          onNsecChange={handleNsiteNsecChange}
         />
       );
     }
@@ -396,6 +447,7 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
                       !selectedProvider ||
                       isDeploying ||
                       (selectedProvider.type === 'shakespeare' && !user) ||
+                      (selectedProvider.type === 'nsite' && !nsiteForm.nsec) ||
                       (selectedProvider.type === 'netlify' && !netlifyForm.siteId && !netlifyForm.siteName)
                     }
                   >

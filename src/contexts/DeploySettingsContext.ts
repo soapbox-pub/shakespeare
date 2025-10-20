@@ -23,7 +23,14 @@ export interface VercelProvider extends BaseDeployProvider {
   baseURL?: string;
 }
 
-export type DeployProvider = ShakespeareDeployProvider | NetlifyProvider | VercelProvider;
+export interface NsiteProvider extends BaseDeployProvider {
+  type: 'nsite';
+  gateway: string;
+  relayUrls: string[];
+  blossomServers: string[];
+}
+
+export type DeployProvider = ShakespeareDeployProvider | NetlifyProvider | VercelProvider | NsiteProvider;
 
 export interface DeploySettings {
   providers: DeployProvider[];

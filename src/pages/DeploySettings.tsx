@@ -567,6 +567,7 @@ export function DeploySettings() {
                         </button>
                       )}
                     </div>
+                    <p className="text-sm text-muted-foreground">{preset.description}</p>
 
                     {showNostrLoginRequired ? (
                       <div className="space-y-2">

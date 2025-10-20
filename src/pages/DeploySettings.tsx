@@ -198,21 +198,21 @@ function SortableProviderItem({ provider, index, preset, onRemove, onUpdate, sho
                   }}
                 />
               </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id={`provider-${index}-proxy`}
+                  checked={provider.proxy || false}
+                  onCheckedChange={(checked) => onUpdate(index, { ...provider, proxy: checked === true })}
+                />
+                <Label
+                  htmlFor={`provider-${index}-proxy`}
+                  className="text-sm font-normal cursor-pointer"
+                >
+                  Use CORS Proxy
+                </Label>
+              </div>
             </>
           )}
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id={`provider-${index}-proxy`}
-              checked={provider.proxy || false}
-              onCheckedChange={(checked) => onUpdate(index, { ...provider, proxy: checked === true })}
-            />
-            <Label
-              htmlFor={`provider-${index}-proxy`}
-              className="text-sm font-normal cursor-pointer"
-            >
-              Use CORS Proxy
-            </Label>
-          </div>
           <Button
             variant="destructive"
             size="sm"

@@ -3,24 +3,26 @@ import { createContext } from 'react';
 export interface BaseDeployProvider {
   id: string;
   name: string;
-  proxy?: boolean;
 }
 
 export interface ShakespeareDeployProvider extends BaseDeployProvider {
   type: 'shakespeare';
   host?: string;
+  proxy?: boolean;
 }
 
 export interface NetlifyProvider extends BaseDeployProvider {
   type: 'netlify';
   apiKey: string;
   baseURL?: string;
+  proxy?: boolean;
 }
 
 export interface VercelProvider extends BaseDeployProvider {
   type: 'vercel';
   apiKey: string;
   baseURL?: string;
+  proxy?: boolean;
 }
 
 export interface NsiteProvider extends BaseDeployProvider {

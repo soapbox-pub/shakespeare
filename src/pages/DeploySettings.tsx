@@ -125,9 +125,6 @@ function SortableProviderItem({ provider, index, preset, onRemove, onUpdate, sho
             </>
           ) : provider.type === 'nsite' ? (
             <>
-              <p className="text-sm text-muted-foreground">
-                Deploy to Nostr as a static website. Uses kind 34128 events and Blossom file storage.
-              </p>
               <div className="grid gap-2">
                 <Label htmlFor={`provider-${index}-gateway`}>Gateway</Label>
                 <Input

@@ -705,7 +705,7 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
         description: "Edit with Shakespeare URL copied",
       });
       return;
-    } catch (clipboardError) {
+    } catch {
       // Fallback to older method
       try {
         const textArea = document.createElement('textarea');
@@ -728,7 +728,7 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
         } else {
           throw new Error('execCommand failed');
         }
-      } catch (fallbackError) {
+      } catch {
         toast({
           title: "Failed to copy",
           description: "Could not copy to clipboard. Please copy manually.",
@@ -807,17 +807,29 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
                           </Button>
                         </div>
 
-                        {/* Copy Shakespeare URL Button */}
+                        {/* Edit with Shakespeare URL */}
                         {originUrl.trim() && (
-                          <Button
-                            onClick={handleCopyShakespeareURL}
-                            variant="ghost"
-                            size="sm"
-                            className="w-full h-8 text-xs gap-2"
-                          >
-                            <Copy className="h-3 w-3" />
-                            Copy "Edit with Shakespeare" URL
-                          </Button>
+                          <div className="space-y-2">
+                            <Label className="text-xs text-muted-foreground">
+                              Edit with Shakespeare URL
+                            </Label>
+                            <div className="flex gap-2">
+                              <Input
+                                value={`https://shakespeare.diy/clone?url=${encodeURIComponent(originUrl.trim())}`}
+                                readOnly
+                                className="flex-1 text-xs text-muted-foreground bg-muted cursor-default h-8 truncate"
+                                tabIndex={-1}
+                              />
+                              <Button
+                                onClick={handleCopyShakespeareURL}
+                                variant="outline"
+                                size="sm"
+                                className="h-8 px-3"
+                              >
+                                <Copy className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </div>
                         )}
 
                         {/* Credentials Warning */}

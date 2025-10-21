@@ -1,4 +1,5 @@
 import { createRoot } from 'react-dom/client';
+import { webpm, fileContentStore } from '@webpm/webpm';
 
 // Import polyfills first
 import './lib/polyfills.ts';

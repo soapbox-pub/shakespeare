@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { type Project } from '@/lib/ProjectsManager';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
@@ -19,16 +19,20 @@ import { StarButton } from '@/components/StarButton';
 import { useBuildProject } from '@/hooks/useBuildProject';
 import { useIsProjectPreviewable } from '@/hooks/useIsProjectPreviewable';
 import { useConsoleError } from '@/hooks/useConsoleError';
+import { webpm } from '@webpm/webpm';
+import { useFS } from '@/hooks/useFS';
 
 export function ProjectView() {
   const { projectId } = useParams<{ projectId: string }>();
   const { t } = useTranslation();
+  const { fs } = useFS();
   const [project, setProject] = useState<Project | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'preview' | 'code'>('preview');
   const [mobileView, setMobileView] = useState<'chat' | 'preview' | 'code'>('chat');
   const [isAILoading, setIsAILoading] = useState(false);
   const [isProjectDetailsOpen, setIsProjectDetailsOpen] = useState(false);
+  const [searchParams] = useSearchParams();
 
   // Use console error state from provider
   const { consoleError, dismissConsoleError, clearErrors } = useConsoleError();
@@ -111,6 +115,24 @@ export function ProjectView() {
     setProject(null);
     navigate('/');
   };
+
+  useEffect(() => {
+    (async () => {
+      if (project && searchParams.get('build')) {
+        const packageJson = await fs.readFile(`/projects/${project.id}/package.json`, 'utf8');
+        await webpm.installWithUntarHandler(JSON.parse(packageJson), {
+          onProgress: (e) => {
+            console.log(`Build progress:`, e.currentProgress);
+          },
+          onComplete: () => {
+            console.log('Build complete');
+          },
+        }, {
+          includeDevDependencies: false,
+        });
+      }
+    })();
+  }, [fs, project, searchParams]);
 
   if (!project && !isLoading) {
     return (

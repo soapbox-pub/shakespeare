@@ -2,6 +2,7 @@ import path from "node:path";
 
 import react from "@vitejs/plugin-react-swc";
 import { defineConfig } from "vitest/config";
+import { nodePolyfills } from "vite-plugin-node-polyfills";
 
 // https://vitejs.dev/config/
 export default defineConfig(() => ({
@@ -10,6 +11,16 @@ export default defineConfig(() => ({
     port: 8080,
   },
   plugins: [
+    nodePolyfills({
+      include: ["buffer", "process", "stream", "module"],
+      exclude: ["http", "https", "net", "tls", "child_process"],
+      globals: {
+        Buffer: true,
+        global: true,
+        process: true,
+      },
+      protocolImports: true,
+    }),
     react(),
   ],
   build: {
@@ -51,5 +62,8 @@ export default defineConfig(() => ({
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
+  },
+  optimizeDeps: {
+    include: ["tar-stream", "fflate"],
   },
 }));

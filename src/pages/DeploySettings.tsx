@@ -247,15 +247,15 @@ const PRESET_PROVIDERS: PresetProvider[] = [
     apiKeyURL: 'https://app.netlify.com/user/applications#personal-access-tokens',
     proxy: true,
   },
-  // {
-  //   id: 'vercel',
-  //   type: 'vercel',
-  //   name: 'Vercel',
-  //   description: 'Deploy to Vercel',
-  //   apiKeyLabel: 'Access Token',
-  //   apiKeyURL: 'https://vercel.com/account/tokens',
-  //   proxy: true,
-  // },
+  {
+    id: 'vercel',
+    type: 'vercel',
+    name: 'Vercel',
+    description: 'Deploy to Vercel',
+    apiKeyLabel: 'Access Token',
+    apiKeyURL: 'https://vercel.com/account/tokens',
+    proxy: true,
+  },
 ];
 
 // Helper function to generate custom provider ID
@@ -681,7 +681,7 @@ export function DeploySettings() {
                         <SelectItem value="shakespeare">Shakespeare Deploy</SelectItem>
                         <SelectItem value="nsite">nsite</SelectItem>
                         <SelectItem value="netlify">Netlify</SelectItem>
-                        {/* <SelectItem value="vercel">Vercel</SelectItem> */}
+                        <SelectItem value="vercel">Vercel</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

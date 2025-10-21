@@ -28,6 +28,7 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { IconMasksTheater } from '@tabler/icons-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
@@ -273,12 +274,14 @@ function generateCustomProviderId(type: string): string {
 
 function renderIcon(providerId: string, size = 16) {
   switch (providerId) {
+    case 'shakespeare':
+      return <IconMasksTheater size={size} />;
     case 'netlify':
       return <SiNetlify size={size} />;
     case 'vercel':
       return <SiVercel size={size} />;
     default:
-      return null;
+      return <Rocket size={size} />;
   }
 }
 

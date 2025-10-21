@@ -53,7 +53,7 @@ function renderIcon(providerId: string, size = 16) {
     case 'gitlab':
       return <SiGitlab size={size} />;
     default:
-      return null;
+      return <GitBranch size={size} />;
   }
 }
 

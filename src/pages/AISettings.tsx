@@ -21,6 +21,7 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { IconMasksTheater } from '@tabler/icons-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
@@ -39,6 +40,8 @@ import { AI_PROVIDER_PRESETS, type PresetProvider } from '@/lib/aiProviderPreset
 
 function renderIcon(providerId: string, size = 16) {
   switch (providerId) {
+    case 'shakespeare':
+      return <IconMasksTheater size={size} />;
     case 'openai':
       return <SiOpenai size={size} />;
     case 'anthropic':
@@ -48,7 +51,7 @@ function renderIcon(providerId: string, size = 16) {
     case 'xai':
       return <SiX size={size} />;
     default:
-      return null;
+      return <Bot size={size} />;
   }
 }
 

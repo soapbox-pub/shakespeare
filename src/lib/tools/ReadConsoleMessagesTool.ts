@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { Tool } from './Tool';
 import { getConsoleMessages } from '@/lib/consoleMessages';
 
@@ -11,15 +12,25 @@ export interface ReadConsoleMessagesParams {
  * This tool allows AI assistants to access console logs for debugging assistance.
  */
 export class ReadConsoleMessagesTool implements Tool<ReadConsoleMessagesParams> {
+  readonly description = 'Read console messages from the project preview. Can filter by level and limit results.';
+
+  readonly inputSchema = z.object({
+    filter: z.enum(['error', 'warn', 'info', 'debug', 'log', 'all']).optional().describe(
+      'Filter messages by level. Defaults to "all" to show all message types.'
+    ),
+    limit: z.number().min(1).max(200).optional().describe(
+      'Maximum number of most recent messages to return. Defaults to 50. Use smaller values (10-20) for quick checks, larger values (100-200) for comprehensive debugging.'
+    ),
+  });
+
   async execute(params: ReadConsoleMessagesParams): Promise<string> {
-    const { filter = 'all', limit } = params;
+    const { filter = 'all', limit = 50 } = params;
 
     let messages = getConsoleMessages()
       .filter(msg => filter === 'all' || msg.level === filter);
 
-    if (limit && limit > 0) {
-      messages = messages.slice(-limit);
-    }
+    // Always apply a limit to prevent unbounded output
+    messages = messages.slice(-limit);
 
     if (messages.length === 0) {
       return `No console messages found${filter !== 'all' ? ` for level: ${filter}` : ''}.`;
@@ -30,8 +41,9 @@ export class ReadConsoleMessagesTool implements Tool<ReadConsoleMessagesParams> 
       .join('\n');
 
     const suffix = filter !== 'all' ? ` (level: ${filter})` : '';
-    return `Found ${messages.length} console message${messages.length !== 1 ? 's' : ''}${suffix}:\n\n${formatted}`;
-  }
+    const totalAvailable = getConsoleMessages().filter(msg => filter === 'all' || msg.level === filter).length;
+    const truncatedNote = totalAvailable > messages.length ? ` (showing last ${messages.length} of ${totalAvailable})` : '';
 
-  description = 'Read console messages from the project preview. Can filter by level and limit results.';
+    return `Found ${messages.length} console message${messages.length !== 1 ? 's' : ''}${suffix}${truncatedNote}:\n\n${formatted}`;
+  }
 }

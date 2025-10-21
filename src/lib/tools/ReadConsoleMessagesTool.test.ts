@@ -92,8 +92,28 @@ describe('ReadConsoleMessagesTool', () => {
     const limitedResult = await tool.execute({ limit: 2 });
     expect(limitedResult).toContain('Found 2 console messages');
 
-    // No limit should return all messages
+    // Default limit (50) should return all messages when total is less than 50
     const allResult = await tool.execute({});
     expect(allResult).toContain('Found 4 console messages');
+  });
+
+  it('should show truncation note when messages exceed limit', async () => {
+    clearConsoleMessages();
+    // Add more messages than the limit
+    for (let i = 1; i <= 60; i++) {
+      addConsoleMessage('log', `Message ${i}`);
+    }
+
+    const tool = new ReadConsoleMessagesTool();
+
+    // Default limit is 50
+    const result = await tool.execute({});
+    expect(result).toContain('(showing last 50 of 60)');
+    expect(result).toContain('Message 60'); // Most recent
+    expect(result).not.toContain('Message 10'); // Too old
+
+    // Custom limit
+    const limitedResult = await tool.execute({ limit: 10 });
+    expect(limitedResult).toContain('(showing last 10 of 60)');
   });
 });

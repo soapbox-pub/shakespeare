@@ -684,7 +684,7 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
   const [isGitManagementOpen, setIsGitManagementOpen] = useState(false);
   const [gitManagementDefaultTab, setGitManagementDefaultTab] = useState<string>('branches');
 
-  const handleCopyShakespeareURL = () => {
+  const handleCopyShakespeareURL = async () => {
     if (!originUrl.trim()) {
       toast({
         title: "No repository URL",
@@ -697,19 +697,45 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
     // Create the Shakespeare clone URL by encoding the origin URL
     const shakespeareURL = `https://shakespeare.diy/clone?url=${encodeURIComponent(originUrl.trim())}`;
 
-    // Copy to clipboard
-    navigator.clipboard.writeText(shakespeareURL).then(() => {
+    // Try modern clipboard API first
+    try {
+      await navigator.clipboard.writeText(shakespeareURL);
       toast({
         title: "Copied to clipboard",
         description: "Edit with Shakespeare URL copied",
       });
-    }).catch(() => {
-      toast({
-        title: "Failed to copy",
-        description: "Could not copy to clipboard",
-        variant: "destructive",
-      });
-    });
+      return;
+    } catch (clipboardError) {
+      // Fallback to older method
+      try {
+        const textArea = document.createElement('textarea');
+        textArea.value = shakespeareURL;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+
+        const successful = document.execCommand('copy');
+        document.body.removeChild(textArea);
+
+        if (successful) {
+          toast({
+            title: "Copied to clipboard",
+            description: "Edit with Shakespeare URL copied",
+          });
+        } else {
+          throw new Error('execCommand failed');
+        }
+      } catch (fallbackError) {
+        toast({
+          title: "Failed to copy",
+          description: "Could not copy to clipboard. Please copy manually.",
+          variant: "destructive",
+        });
+      }
+    }
   };
 
   return (

@@ -808,7 +808,7 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
                         </div>
 
                         {/* Edit with Shakespeare URL */}
-                        {originUrl.trim() && (
+                        {originUrl.trim() ? (
                           <div className="space-y-2">
                             <Label className="text-xs text-muted-foreground">
                               Edit with Shakespeare URL
@@ -828,6 +828,20 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
                               >
                                 <Copy className="h-3 w-3" />
                               </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            <Label className="text-xs text-muted-foreground">
+                              Edit with Shakespeare URL
+                            </Label>
+                            <div className="p-3 rounded-md border-2 border-dashed border-muted-foreground/30 bg-muted/20">
+                              <div className="flex items-center gap-2 text-muted-foreground">
+                                <ExternalLink className="h-4 w-4" />
+                                <span className="text-xs">
+                                  Push your repository to get a shareable Shakespeare link
+                                </span>
+                              </div>
                             </div>
                           </div>
                         )}

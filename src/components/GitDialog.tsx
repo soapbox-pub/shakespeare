@@ -46,6 +46,7 @@ import {
   Settings2,
   GitPullRequest,
   ExternalLink,
+  Copy,
 } from 'lucide-react';
 import { useGitStatus } from '@/hooks/useGitStatus';
 import { useGitSettings } from '@/hooks/useGitSettings';
@@ -683,6 +684,34 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
   const [isGitManagementOpen, setIsGitManagementOpen] = useState(false);
   const [gitManagementDefaultTab, setGitManagementDefaultTab] = useState<string>('branches');
 
+  const handleCopyShakespeareURL = () => {
+    if (!originUrl.trim()) {
+      toast({
+        title: "No repository URL",
+        description: "Please enter a Git URL first",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Create the Shakespeare clone URL by encoding the origin URL
+    const shakespeareURL = `https://shakespeare.diy/clone?url=${encodeURIComponent(originUrl.trim())}`;
+
+    // Copy to clipboard
+    navigator.clipboard.writeText(shakespeareURL).then(() => {
+      toast({
+        title: "Copied to clipboard",
+        description: "Edit with Shakespeare URL copied",
+      });
+    }).catch(() => {
+      toast({
+        title: "Failed to copy",
+        description: "Could not copy to clipboard",
+        variant: "destructive",
+      });
+    });
+  };
+
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -751,6 +780,19 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
                             {isSavingOrigin ? 'Saving...' : 'Save'}
                           </Button>
                         </div>
+
+                        {/* Copy Shakespeare URL Button */}
+                        {originUrl.trim() && (
+                          <Button
+                            onClick={handleCopyShakespeareURL}
+                            variant="ghost"
+                            size="sm"
+                            className="w-full h-8 text-xs gap-2"
+                          >
+                            <Copy className="h-3 w-3" />
+                            Copy "Edit with Shakespeare" URL
+                          </Button>
+                        )}
 
                         {/* Credentials Warning */}
                         {gitStatus.remotes.length > 0 && (

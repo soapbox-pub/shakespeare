@@ -1,8 +1,14 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Rocket, ArrowLeft, Trash2, Check, GripVertical } from 'lucide-react';
+import { Rocket, ArrowLeft, Trash2, Check, GripVertical, ChevronDown } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { SiNetlify, SiVercel } from '@icons-pack/react-simple-icons';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import {
   DndContext,
   closestCenter,
@@ -288,6 +294,7 @@ export function DeploySettings() {
   const vercelOAuth = useVercelOAuth();
 
   const [presetApiKeys, setPresetApiKeys] = useState<Record<string, string>>({});
+  const [forceManualEntry, setForceManualEntry] = useState<Record<string, boolean>>({});
 
   // Custom provider form state
   const [customProviderType, setCustomProviderType] = useState<'shakespeare' | 'netlify' | 'vercel' | 'nsite' | ''>('');
@@ -580,29 +587,49 @@ export function DeploySettings() {
                           </Link>
                         </Button>
                       </div>
-                    ) : isOAuthConfigured ? (
-                      // Show OAuth button if OAuth is configured
+                    ) : isOAuthConfigured && !forceManualEntry[preset.id] ? (
+                      // Show OAuth button if OAuth is configured and not forced to manual
                       <div className="space-y-3">
-                        <Button
-                          onClick={() => oauthHook?.initiateOAuth()}
-                          disabled={isOAuthLoading}
-                          className="w-full max-w-full gap-2"
-                          variant="default"
-                        >
-                          {isOAuthLoading ? (
-                            <>
-                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                              Connecting...
-                            </>
-                          ) : (
-                            <>
-                              {renderIcon(preset.id)}
-                              <span className="truncate text-ellipsis overflow-hidden">
-                                Connect to {preset.name}
-                              </span>
-                            </>
-                          )}
-                        </Button>
+                        <div className="flex gap-0">
+                          <Button
+                            onClick={() => oauthHook?.initiateOAuth()}
+                            disabled={isOAuthLoading}
+                            className="flex-1 rounded-r-none gap-2"
+                            variant="default"
+                          >
+                            {isOAuthLoading ? (
+                              <>
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                Connecting...
+                              </>
+                            ) : (
+                              <>
+                                {renderIcon(preset.id)}
+                                <span className="truncate text-ellipsis overflow-hidden">
+                                  Connect to {preset.name}
+                                </span>
+                              </>
+                            )}
+                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="default"
+                                className="rounded-l-none border-l border-primary-foreground/20 px-2"
+                                disabled={isOAuthLoading}
+                              >
+                                <ChevronDown className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={() => setForceManualEntry(prev => ({ ...prev, [preset.id]: true }))}
+                              >
+                                Enter API key
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                         {oauthError && (
                           <p className="text-sm text-destructive">
                             {oauthError}

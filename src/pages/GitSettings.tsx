@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Check, GitBranch, ArrowLeft, Trash2 } from 'lucide-react';
+import { Check, GitBranch, ArrowLeft, Trash2, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SiGithub, SiGitlab } from '@icons-pack/react-simple-icons';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,12 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Switch } from '@/components/ui/switch';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useGitSettings } from '@/hooks/useGitSettings';
 import { useGitHubOAuth } from '@/hooks/useGitHubOAuth';
 import { useIsMobile } from '@/hooks/useIsMobile';
@@ -61,6 +67,7 @@ export function GitSettings() {
   const [customUsername, setCustomUsername] = useState('');
   const [customPassword, setCustomPassword] = useState('');
   const [presetTokens, setPresetTokens] = useState<Record<string, string>>({});
+  const [forceManualEntry, setForceManualEntry] = useState<Record<string, boolean>>({});
 
   const handleAddPresetProvider = (preset: PresetProvider) => {
     const token = presetTokens[preset.id] as string | undefined;
@@ -242,28 +249,48 @@ export function GitSettings() {
 
                   {preset.id === 'github' ? (
                     // Special rendering for GitHub - OAuth button if configured, otherwise token input
-                    isOAuthConfigured ? (
+                    isOAuthConfigured && !forceManualEntry[preset.id] ? (
                       <div className="space-y-3">
-                        <Button
-                          onClick={initiateOAuth}
-                          disabled={isOAuthLoading}
-                          className="w-full max-w-full gap-2"
-                          variant="default"
-                        >
-                          {isOAuthLoading ? (
-                            <>
-                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                              Connecting...
-                            </>
-                          ) : (
-                            <>
-                              <SiGithub size={16} />
-                              <span className="truncate text-ellipsis overflow-hidden">
-                                Connect to GitHub
-                              </span>
-                            </>
-                          )}
-                        </Button>
+                        <div className="flex gap-0">
+                          <Button
+                            onClick={initiateOAuth}
+                            disabled={isOAuthLoading}
+                            className="flex-1 rounded-r-none gap-2"
+                            variant="default"
+                          >
+                            {isOAuthLoading ? (
+                              <>
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                Connecting...
+                              </>
+                            ) : (
+                              <>
+                                <SiGithub size={16} />
+                                <span className="truncate text-ellipsis overflow-hidden">
+                                  Connect to GitHub
+                                </span>
+                              </>
+                            )}
+                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="default"
+                                className="rounded-l-none border-l border-primary-foreground/20 px-2"
+                                disabled={isOAuthLoading}
+                              >
+                                <ChevronDown className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={() => setForceManualEntry(prev => ({ ...prev, [preset.id]: true }))}
+                              >
+                                Enter API key
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                         {oauthError && (
                           <p className="text-sm text-destructive">
                             {oauthError}

@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Check, Bot, ArrowLeft, Trash2, GripVertical } from 'lucide-react';
-import { SiOpenai, SiAnthropic, SiGoogle, SiX } from '@icons-pack/react-simple-icons';
 import {
   DndContext,
   closestCenter,
@@ -21,7 +20,6 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { IconMasksTheater } from '@tabler/icons-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
@@ -37,21 +35,25 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useNavigate, Link } from 'react-router-dom';
 import type { AIProvider } from '@/contexts/AISettingsContext';
 import { AI_PROVIDER_PRESETS, type PresetProvider } from '@/lib/aiProviderPresets';
+import { ExternalFavicon } from '@/components/ExternalFavicon';
 
-function renderIcon(providerId: string, size = 16) {
-  switch (providerId) {
-    case 'shakespeare':
-      return <IconMasksTheater size={size} />;
-    case 'openai':
-      return <SiOpenai size={size} />;
-    case 'anthropic':
-      return <SiAnthropic size={size} />;
-    case 'google':
-      return <SiGoogle size={size} />;
-    case 'xai':
-      return <SiX size={size} />;
-    default:
-      return <Bot size={size} />;
+/** A few provider-specific icon hacks */
+function getProviderIconUrl(provider: { id: string; baseURL: string }): string {
+  if (provider.id === 'ollama' && provider.baseURL === 'http://localhost:11434/v1') {
+    return 'https://ollama.com/';
+  } else if (provider.baseURL === 'https://generativelanguage.googleapis.com/v1beta/openai') {
+    return 'https://gemini.google.com/';
+  } else if (provider.baseURL === 'https://api.z.ai/api/paas/v4') {
+    return 'https://docs.z.ai/';
+  }
+  try {
+    // Strip .ai and .api subdomains for a better chance at finding a favicon
+    const urlObj = new URL(provider.baseURL);
+    urlObj.hostname = urlObj.hostname.replace(/^(ai\.|api\.)/, '');
+    return urlObj.toString();
+  } catch {
+    // Fallback to baseURL
+    return provider.baseURL;
   }
 }
 
@@ -99,7 +101,15 @@ function SortableProviderItem({ provider, preset, onRemove, onSetProvider, onOpe
               <GripVertical className="h-4 w-4" />
             </div>
           )}
-          {renderIcon(provider.id)}
+          {provider.baseURL ? (
+            <ExternalFavicon
+              url={getProviderIconUrl(provider)}
+              size={16}
+              fallback={<Bot size={16} />}
+            />
+          ) : (
+            <Bot size={16} />
+          )}
           <span className="font-medium">
             {preset?.name || provider.id}
           </span>
@@ -379,7 +389,11 @@ export function AISettings() {
                   <div key={preset.id} className="border rounded-lg p-4 space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        {renderIcon(preset.id)}
+                        <ExternalFavicon
+                          url={getProviderIconUrl(preset)}
+                          size={16}
+                          fallback={<Bot size={16} />}
+                        />
                         <h5 className="font-medium">{preset.name}</h5>
                       </div>
                       {(preset.apiKeysURL && preset.id !== "routstr") && (

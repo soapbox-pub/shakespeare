@@ -18,6 +18,7 @@ export function SystemSettings() {
   const [projectTemplateInput, setProjectTemplateInput] = useState(config.projectTemplate);
   const [esmUrlInput, setEsmUrlInput] = useState(config.esmUrl);
   const [corsProxyInput, setCorsProxyInput] = useState(config.corsProxy);
+  const [faviconUrlInput, setFaviconUrlInput] = useState(config.faviconUrl);
   const [previewDomainInput, setPreviewDomainInput] = useState(config.previewDomain);
   const [showcaseModeratorInput, setShowcaseModeratorInput] = useState(config.showcaseModerator);
 
@@ -113,6 +114,36 @@ export function SystemSettings() {
                 />
                 <p className="text-xs text-muted-foreground">
                   {t('corsProxyDescription')}
+                </p>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+
+        {/* Favicon URL Configuration */}
+        <Accordion type="single" collapsible className="w-full">
+          <AccordionItem value="favicon-url" className="border rounded-lg">
+            <AccordionTrigger className="px-4 py-3 hover:no-underline">
+              <h4 className="text-sm font-medium">Favicon URL</h4>
+            </AccordionTrigger>
+            <AccordionContent className="px-4 pb-4">
+              <div className="py-1 space-y-2">
+                <Input
+                  id="favicon-url"
+                  type="url"
+                  placeholder="https://external-content.duckduckgo.com/ip3/{hostname}.ico"
+                  value={faviconUrlInput}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setFaviconUrlInput(value);
+                    updateConfig((current) => ({
+                      ...current,
+                      faviconUrl: value,
+                    }));
+                  }}
+                />
+                <p className="text-xs text-muted-foreground">
+                  URL template for fetching favicons. Available variables: {'{hostname}'}, {'{origin}'}, {'{href}'}, {'{protocol}'}, {'{pathname}'}
                 </p>
               </div>
             </AccordionContent>

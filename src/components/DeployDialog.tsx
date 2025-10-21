@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Rocket, ExternalLink, AlertCircle } from 'lucide-react';
-import { SiNetlify, SiVercel } from '@icons-pack/react-simple-icons';
+import { ExternalFavicon } from '@/components/ExternalFavicon';
 import {
   Dialog,
   DialogContent,
@@ -28,11 +28,61 @@ import { useAppContext } from '@/hooks/useAppContext';
 import { useNostr } from '@nostrify/react';
 import { ShakespeareAdapter, NetlifyAdapter, VercelAdapter, NsiteAdapter, DeployAdapter } from '@/lib/deploy';
 import { Link } from 'react-router-dom';
-import type { ShakespeareDeployProvider, NetlifyProvider, VercelProvider } from '@/contexts/DeploySettingsContext';
+import type { DeployProvider, ShakespeareDeployProvider, NetlifyProvider, VercelProvider } from '@/contexts/DeploySettingsContext';
 import { ShakespeareDeployForm } from '@/components/deploy/ShakespeareDeployForm';
 import { NetlifyDeployForm } from '@/components/deploy/NetlifyDeployForm';
 import { VercelDeployForm } from '@/components/deploy/VercelDeployForm';
 import { NsiteDeployForm } from '@/components/deploy/NsiteDeployForm';
+
+/**
+ * Helper function to get provider URL for favicon
+ */
+function getProviderUrl(provider: DeployProvider): string | null {
+  switch (provider.type) {
+    case 'shakespeare':
+      if (provider.host) {
+        return `https://${provider.host}`;
+      }
+      return 'https://shakespeare.diy';
+
+    case 'netlify':
+      if (provider.baseURL) {
+        return provider.baseURL;
+      }
+      return 'https://netlify.com';
+
+    case 'vercel':
+      if (provider.baseURL) {
+        return provider.baseURL;
+      }
+      return 'https://vercel.com';
+
+    case 'nsite':
+      return null;
+
+    default:
+      return null;
+  }
+}
+
+/**
+ * Render provider icon using favicon or fallback
+ */
+function renderProviderIcon(provider: DeployProvider, size = 14) {
+  const url = getProviderUrl(provider);
+
+  if (url) {
+    return (
+      <ExternalFavicon
+        url={url}
+        size={size}
+        fallback={<Rocket size={size} />}
+      />
+    );
+  }
+
+  return <Rocket size={size} />;
+}
 
 interface DeployDialogProps {
   projectId: string;
@@ -388,8 +438,7 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
                     <SelectTrigger id="provider">
                       {selectedProvider ? (
                         <div className="flex items-center gap-2">
-                          {selectedProvider.id === 'netlify' && <SiNetlify size={14} />}
-                          {selectedProvider.id === 'vercel' && <SiVercel size={14} />}
+                          {renderProviderIcon(selectedProvider, 14)}
                           <span>{selectedProvider.name}</span>
                         </div>
                       ) : (
@@ -400,8 +449,7 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
                       {settings.providers.map((provider) => (
                         <SelectItem key={provider.id} value={provider.id}>
                           <div className="flex items-center gap-2">
-                            {provider.id === 'netlify' && <SiNetlify size={14} />}
-                            {provider.id === 'vercel' && <SiVercel size={14} />}
+                            {renderProviderIcon(provider, 14)}
                             <span>{provider.name}</span>
                           </div>
                         </SelectItem>

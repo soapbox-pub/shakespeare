@@ -46,6 +46,7 @@ const defaultConfig: AppConfig = {
   projectTemplate: "https://gitlab.com/soapbox-pub/mkstack.git",
   esmUrl: "https://esm.shakespeare.diy",
   corsProxy: "https://proxy.shakespeare.diy/?url={href}",
+  faviconUrl: "https://external-content.duckduckgo.com/ip3/{hostname}.ico",
   previewDomain: "local-shakespeare.dev",
   showcaseEnabled: true,
   showcaseModerator: "npub1jvnpg4c6ljadf5t6ry0w9q0rnm4mksde87kglkrc993z46c39axsgq89sc",

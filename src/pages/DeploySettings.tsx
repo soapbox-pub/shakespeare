@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Rocket, ArrowLeft, Trash2, Check, GripVertical, ChevronDown } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
-import { SiNetlify, SiVercel } from '@icons-pack/react-simple-icons';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,7 +27,6 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { IconMasksTheater } from '@tabler/icons-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
@@ -42,6 +40,8 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { useNavigate, Link } from 'react-router-dom';
 import type { DeployProvider } from '@/contexts/DeploySettingsContext';
+import { ExternalFavicon } from '@/components/ExternalFavicon';
+import { normalizeUrl } from '@/lib/faviconUrl';
 
 interface PresetProvider {
   id: string;
@@ -96,7 +96,18 @@ function SortableProviderItem({ provider, index, preset, onRemove, onUpdate, sho
               <GripVertical className="h-4 w-4" />
             </div>
           )}
-          {renderIcon(provider.id)}
+          {(() => {
+            const url = getProviderUrl(provider);
+            return url ? (
+              <ExternalFavicon
+                url={url}
+                size={16}
+                fallback={<Rocket size={16} />}
+              />
+            ) : (
+              <Rocket size={16} />
+            );
+          })()}
           <span className="font-medium">
             {provider.name}
           </span>
@@ -272,16 +283,35 @@ function generateCustomProviderId(type: string): string {
   return `${type}-${randomSegment}`;
 }
 
-function renderIcon(providerId: string, size = 16) {
-  switch (providerId) {
+function getProviderUrl(provider: DeployProvider | PresetProvider): string | null {
+  switch (provider.type) {
     case 'shakespeare':
-      return <IconMasksTheater size={size} />;
+      // For Shakespeare providers, check for custom host first, then use default
+      if ('host' in provider && provider.host) {
+        return normalizeUrl(provider.host);
+      }
+      return 'https://shakespeare.diy';
+
     case 'netlify':
-      return <SiNetlify size={size} />;
+      // For Netlify providers, check for custom baseURL first, then use default
+      if ('baseURL' in provider && provider.baseURL) {
+        return provider.baseURL;
+      }
+      return 'https://netlify.com';
+
     case 'vercel':
-      return <SiVercel size={size} />;
+      // For Vercel providers, check for custom baseURL first, then use default
+      if ('baseURL' in provider && provider.baseURL) {
+        return provider.baseURL;
+      }
+      return 'https://vercel.com';
+
+    case 'nsite':
+      // nsite uses Rocket icon fallback
+      return null;
+
     default:
-      return <Rocket size={size} />;
+      return null;
   }
 }
 
@@ -564,7 +594,18 @@ export function DeploySettings() {
                   <div key={preset.id} className="border rounded-lg p-4 space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        {renderIcon(preset.id)}
+                        {(() => {
+                          const url = getProviderUrl(preset);
+                          return url ? (
+                            <ExternalFavicon
+                              url={url}
+                              size={16}
+                              fallback={<Rocket size={16} />}
+                            />
+                          ) : (
+                            <Rocket size={16} />
+                          );
+                        })()}
                         <h5 className="font-medium">{preset.name}</h5>
                       </div>
                       {preset.apiKeyURL && !isOAuthConfigured && (
@@ -607,7 +648,18 @@ export function DeploySettings() {
                               </>
                             ) : (
                               <>
-                                {renderIcon(preset.id)}
+                                {(() => {
+                                  const url = getProviderUrl(preset);
+                                  return url ? (
+                                    <ExternalFavicon
+                                      url={url}
+                                      size={16}
+                                      fallback={<Rocket size={16} />}
+                                    />
+                                  ) : (
+                                    <Rocket size={16} />
+                                  );
+                                })()}
                                 <span className="truncate text-ellipsis overflow-hidden">
                                   Connect to {preset.name}
                                 </span>

@@ -33,6 +33,7 @@ export function TestApp({ children }: TestAppProps) {
     projectTemplate: 'https://gitlab.com/soapbox-pub/mkstack.git',
     esmUrl: 'https://esm.shakespeare.diy',
     corsProxy: 'https://proxy.shakespeare.diy/?url={href}',
+    faviconUrl: 'https://external-content.duckduckgo.com/ip3/{hostname}.ico',
     previewDomain: 'local-shakespeare.dev',
     language: 'en',
     showcaseEnabled: true,

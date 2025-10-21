@@ -45,6 +45,7 @@ describe('useAIProjectId', () => {
         projectTemplate: 'https://github.com/example/template',
         esmUrl: 'https://esm.sh',
         corsProxy: 'https://proxy.example.com/{href}',
+        faviconUrl: 'https://external-content.duckduckgo.com/ip3/{hostname}.ico',
         previewDomain: 'local-shakespeare.dev',
         showcaseEnabled: true,
         showcaseModerator: 'npub1jvnpg4c6ljadf5t6ry0w9q0rnm4mksde87kglkrc993z46c39axsgq89sc',

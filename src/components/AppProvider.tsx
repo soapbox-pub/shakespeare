@@ -21,6 +21,7 @@ const AppConfigSchema = z.object({
   projectTemplate: z.string().url(),
   esmUrl: z.string().url(),
   corsProxy: z.string().url(),
+  faviconUrl: z.string().url(),
   previewDomain: z.string().min(1),
   language: z.string(),
   showcaseEnabled: z.boolean(),

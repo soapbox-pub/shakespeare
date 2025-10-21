@@ -13,6 +13,8 @@ export interface AppConfig {
   esmUrl: string;
   /** HTTP proxy used to bypass CORS for AI and Git operations */
   corsProxy: string;
+  /** Favicon URL template (e.g., "https://external-content.duckduckgo.com/ip3/{hostname}.ico") */
+  faviconUrl: string;
   /** Preview domain for iframe sandboxing (e.g., "local-shakespeare.dev") */
   previewDomain: string;
   /** Selected language */

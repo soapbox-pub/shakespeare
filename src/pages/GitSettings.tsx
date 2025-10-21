@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Check, GitBranch, ArrowLeft, Trash2, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { SiGithub, SiGitlab } from '@icons-pack/react-simple-icons';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
@@ -20,6 +19,7 @@ import { useIsMobile } from '@/hooks/useIsMobile';
 import { useNavigate } from 'react-router-dom';
 import type { GitCredential } from '@/contexts/GitSettingsContext';
 import { PasswordInput } from '@/components/ui/password-input';
+import { ExternalFavicon } from '@/components/ExternalFavicon';
 
 interface PresetProvider {
   id: string;
@@ -45,17 +45,6 @@ const PRESET_PROVIDERS: PresetProvider[] = [
     tokenURL: "https://gitlab.com/-/user_settings/personal_access_tokens",
   },
 ];
-
-function renderIcon(providerId: string, size = 16) {
-  switch (providerId) {
-    case 'github':
-      return <SiGithub size={size} />;
-    case 'gitlab':
-      return <SiGitlab size={size} />;
-    default:
-      return <GitBranch size={size} />;
-  }
-}
 
 export function GitSettings() {
   const { t } = useTranslation();
@@ -170,7 +159,11 @@ export function GitSettings() {
                   <AccordionItem key={origin} value={origin} className="border rounded-lg">
                     <AccordionTrigger className="px-4 py-3 hover:no-underline">
                       <div className="flex items-center gap-2">
-                        {preset && renderIcon(preset.id)}
+                        <ExternalFavicon
+                          url={origin}
+                          size={16}
+                          fallback={<GitBranch size={16} />}
+                        />
                         <span className="font-medium">
                           {preset?.name || new URL(origin).hostname}
                         </span>
@@ -233,7 +226,11 @@ export function GitSettings() {
                 <div key={preset.id} className="border rounded-lg p-4 space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      {renderIcon(preset.id)}
+                      <ExternalFavicon
+                        url={preset.origin}
+                        size={16}
+                        fallback={<GitBranch size={16} />}
+                      />
                       <h5 className="font-medium">{preset.name}</h5>
                     </div>
                     {preset.tokenURL && (preset.id !== 'github' || !isOAuthConfigured) && (
@@ -265,7 +262,11 @@ export function GitSettings() {
                               </>
                             ) : (
                               <>
-                                <SiGithub size={16} />
+                                <ExternalFavicon
+                                  url="https://github.com"
+                                  size={16}
+                                  fallback={<GitBranch size={16} />}
+                                />
                                 <span className="truncate text-ellipsis overflow-hidden">
                                   Connect to GitHub
                                 </span>

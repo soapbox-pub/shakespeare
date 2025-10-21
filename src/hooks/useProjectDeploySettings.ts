@@ -8,6 +8,13 @@ export interface ShakespeareProjectConfig {
   };
 }
 
+export interface NsiteProjectConfig {
+  type: 'nsite';
+  data: {
+    nsec: string;
+  };
+}
+
 export interface NetlifyProjectConfig {
   type: 'netlify';
   data: {
@@ -23,7 +30,7 @@ export interface VercelProjectConfig {
   };
 }
 
-export type ProjectProviderConfig = ShakespeareProjectConfig | NetlifyProjectConfig | VercelProjectConfig;
+export type ProjectProviderConfig = ShakespeareProjectConfig | NsiteProjectConfig | NetlifyProjectConfig | VercelProjectConfig;
 
 export interface ProjectDeploySettings {
   providers: Record<string, ProjectProviderConfig>;

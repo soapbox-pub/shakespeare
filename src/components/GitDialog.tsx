@@ -46,6 +46,7 @@ import {
   Settings2,
   GitPullRequest,
   ExternalLink,
+  Copy,
 } from 'lucide-react';
 import { useGitStatus } from '@/hooks/useGitStatus';
 import { useGitSettings } from '@/hooks/useGitSettings';
@@ -683,6 +684,60 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
   const [isGitManagementOpen, setIsGitManagementOpen] = useState(false);
   const [gitManagementDefaultTab, setGitManagementDefaultTab] = useState<string>('branches');
 
+  const handleCopyShakespeareURL = async () => {
+    if (!originUrl.trim()) {
+      toast({
+        title: "No repository URL",
+        description: "Please enter a Git URL first",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Create the Shakespeare clone URL by encoding the origin URL
+    const shakespeareURL = `https://shakespeare.diy/clone?url=${encodeURIComponent(originUrl.trim())}`;
+
+    // Try modern clipboard API first
+    try {
+      await navigator.clipboard.writeText(shakespeareURL);
+      toast({
+        title: "Copied to clipboard",
+        description: "Edit with Shakespeare URL copied",
+      });
+      return;
+    } catch {
+      // Fallback to older method
+      try {
+        const textArea = document.createElement('textarea');
+        textArea.value = shakespeareURL;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+
+        const successful = document.execCommand('copy');
+        document.body.removeChild(textArea);
+
+        if (successful) {
+          toast({
+            title: "Copied to clipboard",
+            description: "Edit with Shakespeare URL copied",
+          });
+        } else {
+          throw new Error('execCommand failed');
+        }
+      } catch {
+        toast({
+          title: "Failed to copy",
+          description: "Could not copy to clipboard. Please copy manually.",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -751,6 +806,45 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
                             {isSavingOrigin ? 'Saving...' : 'Save'}
                           </Button>
                         </div>
+
+                        {/* Edit with Shakespeare URL */}
+                        {originUrl.trim() ? (
+                          <div className="space-y-2">
+                            <Label className="text-xs text-muted-foreground">
+                              Edit with Shakespeare URL
+                            </Label>
+                            <div className="flex gap-2">
+                              <Input
+                                value={`https://shakespeare.diy/clone?url=${encodeURIComponent(originUrl.trim())}`}
+                                readOnly
+                                className="flex-1 text-xs text-muted-foreground bg-muted cursor-default h-8 truncate"
+                                tabIndex={-1}
+                              />
+                              <Button
+                                onClick={handleCopyShakespeareURL}
+                                variant="outline"
+                                size="sm"
+                                className="h-8 px-3"
+                              >
+                                <Copy className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            <Label className="text-xs text-muted-foreground">
+                              Edit with Shakespeare URL
+                            </Label>
+                            <div className="p-3 rounded-md border-2 border-dashed border-muted-foreground/30 bg-muted/20">
+                              <div className="flex items-center gap-2 text-muted-foreground">
+                                <ExternalLink className="h-4 w-4" />
+                                <span className="text-xs">
+                                  Push your repository to get a shareable Shakespeare link
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
 
                         {/* Credentials Warning */}
                         {gitStatus.remotes.length > 0 && (

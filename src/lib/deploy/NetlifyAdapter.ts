@@ -69,6 +69,9 @@ export class NetlifyAdapter implements DeployAdapter {
     const zip = new JSZip();
     await this.addDirectoryToZip(distPath, zip);
 
+    // Ensure _redirects file exists for SPA routing
+    await this.ensureRedirectsFile(distPath, zip);
+
     // Generate ZIP blob
     const zipBlob = await zip.generateAsync({ type: 'blob' });
 
@@ -173,6 +176,27 @@ export class NetlifyAdapter implements DeployAdapter {
       }
     } catch {
       console.warn(`Failed to read directory ${dirPath}`);
+    }
+  }
+
+  /**
+   * Ensures _redirects file exists in the deployment for SPA routing
+   * If not present in dist directory, adds it to the ZIP with default content
+   */
+  private async ensureRedirectsFile(distPath: string, zip: JSZip): Promise<void> {
+    const redirectsPath = `${distPath}/_redirects`;
+
+    try {
+      // Check if _redirects file already exists
+      const stat = await this.fs.stat(redirectsPath);
+      if (!stat.isFile()) {
+        throw new Error('_redirects is not a file');
+      }
+      // File exists, no need to add it (already added by addDirectoryToZip)
+    } catch {
+      // File doesn't exist, add default _redirects to ZIP
+      const defaultRedirects = '/* /index.html 200';
+      zip.file('_redirects', defaultRedirects);
     }
   }
 }

@@ -19,7 +19,7 @@ import { AIProvider } from '@/contexts/AISettingsContext';
 interface CreditsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  provider: AIProvider | undefined;
+  provider: AIProvider;
 }
 
 interface Payment {
@@ -195,16 +195,13 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
 
   // Query for payment history
   const { data: payments, isLoading: isLoadingPayments } = useQuery({
-    queryKey: ['ai-payments', provider?.nostr ? user?.pubkey ?? '' : '', provider?.id ?? ''],
+    queryKey: ['ai-payments', provider.nostr ? user?.pubkey ?? '' : '', provider.id],
     queryFn: async (): Promise<Payment[]> => {
-      if (!provider) {
-        throw new Error('Provider is required');
-      }
       const ai = createAIClient(provider, user, config.corsProxy);
       const data = await ai.get('/credits/payments?limit=50') as PaymentsResponse;
       return data.data;
     },
-    enabled: open && !!provider,
+    enabled: open,
     retry: false,
     refetchOnWindowFocus: false,
   });
@@ -212,9 +209,6 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
   // Mutation for adding credits
   const addCreditsMutation = useMutation({
     mutationFn: async (request: AddCreditsRequest): Promise<Payment> => {
-      if (!provider) {
-        throw new Error('Provider is required');
-      }
       const ai = createAIClient(provider, user, config.corsProxy);
       return await ai.post('/credits/add', {
         body: request,
@@ -235,12 +229,12 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
 
       // Refresh payments list
       queryClient.invalidateQueries({
-        queryKey: ['ai-payments', provider?.nostr ? user?.pubkey ?? '' : '', provider?.id ?? ''],
+        queryKey: ['ai-payments', provider.nostr ? user?.pubkey ?? '' : '', provider.id],
       });
 
       // Refresh credits balance
       queryClient.invalidateQueries({
-        queryKey: ['ai-credits', provider?.nostr ? user?.pubkey ?? '' : '', provider?.id ?? ''],
+        queryKey: ['ai-credits', provider.nostr ? user?.pubkey ?? '' : '', provider.id],
       });
     },
     onError: (error: Error) => {
@@ -256,9 +250,6 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
   // Mutation for checking payment status
   const checkPaymentMutation = useMutation({
     mutationFn: async (paymentId: string): Promise<Payment> => {
-      if (!provider) {
-        throw new Error('Provider is required');
-      }
       const ai = createAIClient(provider, user, config.corsProxy);
       return await ai.get(`/credits/payments/${paymentId}`) as Payment;
     },
@@ -276,7 +267,7 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
 
       // Update the specific payment in the cache instead of refetching
       queryClient.setQueryData<Payment[]>(
-        ['ai-payments', provider?.nostr ? user?.pubkey ?? '' : '', provider?.id ?? ''],
+        ['ai-payments', provider.nostr ? user?.pubkey ?? '' : '', provider.id],
         (oldPayments) => {
           if (!oldPayments) return oldPayments;
           return oldPayments.map(payment =>
@@ -288,7 +279,7 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
       // If payment completed, refresh credits balance
       if (updatedPayment.status === 'completed') {
         queryClient.invalidateQueries({
-          queryKey: ['ai-credits', provider?.nostr ? user?.pubkey ?? '' : '', provider?.id ?? ''],
+          queryKey: ['ai-credits', provider.nostr ? user?.pubkey ?? '' : '', provider.id],
         });
         toast({
           title: 'Payment completed!',
@@ -407,24 +398,6 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
         return 'outline';
     }
   };
-
-  // Guard against undefined provider
-  if (!provider) {
-    return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Credits</DialogTitle>
-          </DialogHeader>
-          <div className="text-center py-8">
-            <p className="text-muted-foreground">
-              No AI provider selected. Please configure an AI provider first.
-            </p>
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
-  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

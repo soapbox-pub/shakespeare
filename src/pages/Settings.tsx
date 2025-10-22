@@ -37,6 +37,11 @@ export function Settings() {
             );
           })}
         </div>
+        {import.meta.env.VERSION && (
+          <div className="text-center text-xs text-muted-foreground/60 pt-4">
+            v{import.meta.env.VERSION}
+          </div>
+        )}
       </div>
     );
   }

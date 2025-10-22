@@ -695,7 +695,7 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
     }
 
     // Create the Shakespeare clone URL by encoding the origin URL
-    const shakespeareURL = `https://shakespeare.diy/clone?url=${encodeURIComponent(originUrl.trim())}`;
+    const shakespeareURL = `${location.origin}/clone?url=${encodeURIComponent(originUrl.trim())}`;
 
     // Try modern clipboard API first
     try {
@@ -815,7 +815,7 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
                             </Label>
                             <div className="flex gap-2">
                               <Input
-                                value={`https://shakespeare.diy/clone?url=${encodeURIComponent(originUrl.trim())}`}
+                                value={`${location.origin}/clone?url=${encodeURIComponent(originUrl.trim())}`}
                                 readOnly
                                 className="flex-1 text-xs text-muted-foreground bg-muted cursor-default h-8 truncate"
                                 tabIndex={-1}

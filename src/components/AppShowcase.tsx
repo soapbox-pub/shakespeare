@@ -71,7 +71,7 @@ export function AppShowcase() {
   // Don't show showcase if no apps exist
   if (isLoading) {
     return (
-      <div className="mt-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="mt-16 max-w-7xl mx-auto">
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {Array.from({ length: 6 }).map((_, i) => (
             <Card key={i} className="h-full flex flex-col">
@@ -107,7 +107,7 @@ export function AppShowcase() {
 
   if (!submissions.length) {
     return (
-      <div className="mt-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="mt-16 max-w-7xl mx-auto">
         <Card className="border-dashed">
           <CardContent className="py-12 px-8 text-center">
             <div className="max-w-sm mx-auto space-y-6">
@@ -123,14 +123,14 @@ export function AppShowcase() {
   }
 
   return (
-    <div className="mt-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="mt-16 max-w-7xl mx-auto">
       {/* Apps Grid */}
       <div className="space-y-12">
         {/* Featured Apps */}
         {featuredApps.length > 0 && (
           <div>
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center">
+            <div className="flex items-start gap-3 mb-6">
+              <div className="flex-none w-8 h-8 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg flex items-center justify-center">
                 <span className="text-sm">⭐</span>
               </div>
               <div>
@@ -154,8 +154,8 @@ export function AppShowcase() {
         {/* Halloween Hackathon 2025 Apps */}
         {halloweenApps.length > 0 && (
           <div>
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
+            <div className="flex items-start gap-3 mb-6">
+              <div className="flex-none w-8 h-8 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex items-center justify-center">
                 <span className="text-sm">🎃</span>
               </div>
               <div>
@@ -179,8 +179,8 @@ export function AppShowcase() {
         {/* Templates Section */}
         {templateApps.length > 0 && (
           <div>
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+            <div className="flex items-start gap-3 mb-6">
+              <div className="flex-none w-8 h-8 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
                 <span className="text-sm">📋</span>
               </div>
               <div>
@@ -207,8 +207,8 @@ export function AppShowcase() {
             <Collapsible open={showAllApps} onOpenChange={setShowAllApps}>
               <CollapsibleTrigger asChild>
                 <Button variant="ghost" className="p-0 h-auto mb-6 hover:bg-transparent">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                  <div className="flex items-start gap-3">
+                    <div className="flex-none w-8 h-8 bg-blue-100 dark:bg-blue-900/50 rounded-lg flex items-center justify-center">
                       <span className="text-sm">📱</span>
                     </div>
                     <div className="text-left">

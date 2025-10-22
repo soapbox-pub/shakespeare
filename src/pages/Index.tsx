@@ -379,6 +379,13 @@ export default function Index() {
 
         {/* App Showcase */}
         <AppShowcase />
+
+        {/* Version Display */}
+        {import.meta.env.VERSION && (
+          <div className="text-center text-xs text-muted-foreground/60 pt-8 pb-4">
+            v{import.meta.env.VERSION}
+          </div>
+        )}
       </AppLayout>
 
       {/* Onboarding Dialog */}

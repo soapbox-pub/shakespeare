@@ -1,13 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
 import { generateSecretKey } from 'nostr-tools';
 import { nip19 } from 'nostr-tools';
-import { Bot, Check, Sparkles, ArrowRight, ArrowLeft, ExternalLink } from 'lucide-react';
+import { Bot, Check, Sparkles, ArrowRight, ArrowLeft, ExternalLink, Search } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
 import { PasswordInput } from '@/components/ui/password-input';
+import { Input } from '@/components/ui/input';
 import { useAISettings } from '@/hooks/useAISettings';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useLoginActions } from '@/hooks/useLoginActions';
@@ -35,6 +36,7 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
   const [showCreditsDialog, setShowCreditsDialog] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [agreedToProviderTerms, setAgreedToProviderTerms] = useState(false);
+  const [modelSearchQuery, setModelSearchQuery] = useState('');
 
   // Ref for the scrollable content area
   const scrollableContentRef = useRef<HTMLDivElement>(null);
@@ -48,6 +50,19 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
   const providerModels = selectedProvider
     ? models.filter(model => model.provider === selectedProvider.id)
     : [];
+
+  // Filter models by search query
+  const filteredModels = modelSearchQuery
+    ? providerModels.filter(model => {
+      const searchLower = modelSearchQuery.toLowerCase();
+      const modelName = (model.name || model.id).toLowerCase();
+      const modelDescription = (model.description || '').toLowerCase();
+      return modelName.includes(searchLower) || modelDescription.includes(searchLower);
+    })
+    : providerModels;
+
+  // Determine if we should show descriptions (only if 8 or fewer models)
+  const showDescriptions = providerModels.length <= 8;
 
   const handleGetStarted = () => {
     setStep('open-source');
@@ -120,12 +135,12 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
       model.pricing.prompt.equals(0) && model.pricing.completion.equals(0)
     );
 
-    if (isFreeModel) {
-      // Free model, go straight to conclusion
-      setStep('conclusion');
-    } else {
-      // Paid model, show credits dialog
+    // Only show credits dialog if the provider uses Nostr AND the model is paid
+    if (!isFreeModel && selectedProvider?.nostr) {
       setShowCreditsDialog(true);
+    } else {
+      // Free model or non-Nostr provider, go straight to conclusion
+      setStep('conclusion');
     }
   };
 
@@ -149,6 +164,7 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
       setShowCreditsDialog(false);
       setAgreedToTerms(false);
       setAgreedToProviderTerms(false);
+      setModelSearchQuery('');
     }
   }, [open]);
 
@@ -471,6 +487,22 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
 
             {step === 'model-selection' && (
               <div className="flex flex-col h-full">
+                {/* Search filter - only show if more than 8 models */}
+                {!isLoadingModels && providerModels.length > 8 && (
+                  <div className="mb-4 flex-shrink-0">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        type="text"
+                        placeholder="Search models..."
+                        value={modelSearchQuery}
+                        onChange={(e) => setModelSearchQuery(e.target.value)}
+                        className="pl-9"
+                      />
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex-1 overflow-y-auto min-h-0 my-4">
                   <div className="space-y-3 p-1">
                     {isLoadingModels ? (
@@ -491,17 +523,17 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
                           </Card>
                         ))}
                       </>
-                    ) : providerModels.length === 0 ? (
+                    ) : filteredModels.length === 0 ? (
                       <Card className="p-6 text-center">
                         <div className="space-y-2">
                           <Bot className="h-8 w-8 mx-auto text-muted-foreground" />
                           <p className="text-muted-foreground">
-                            No models available. Please check your connection and try again.
+                            {modelSearchQuery ? 'No models found matching your search.' : 'No models available. Please check your connection and try again.'}
                           </p>
                         </div>
                       </Card>
                     ) : (
-                      providerModels.map((model) => {
+                      filteredModels.map((model) => {
                         const isSelected = selectedModel === model.fullId;
                         const modelName = model.name || model.id;
 
@@ -520,7 +552,7 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
                                     <span>{modelName}</span>
                                     {model.pricing && <ModelPricing pricing={model.pricing} />}
                                   </CardTitle>
-                                  {model.description && (
+                                  {showDescriptions && model.description && (
                                     <p className="text-lg text-muted-foreground mt-1">
                                       {model.description.length > 500
                                         ? model.description.slice(0, 500) + '...'

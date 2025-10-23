@@ -1,8 +1,19 @@
 {
-  "name": "mkstack",
+  "name": "shakespeare",
+  "description": "Build custom apps with AI assistance using Shakespeare, an open-source development environment",
+  "homepage": "https://shakespeare.diy",
+  "license": "AGPL-3.0-or-later",
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "author": {
+    "name": "shakespeare.diy",
+    "email": "contact@shakespeare.diy"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://gitlab.com/soapbox-pub/shakespeare.git"
+  },
   "scripts": {
     "dev": "npm i --silent && vite",
     "build": "npm i --silent && vite build -l error && cp dist/index.html dist/404.html && echo 'Project built successfully!'",

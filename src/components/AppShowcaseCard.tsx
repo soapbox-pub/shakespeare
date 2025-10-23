@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import badgeSvg from '/badge.svg?url';
 import {
   ExternalLink,
   Edit,
@@ -567,7 +568,7 @@ export function AppShowcaseCard({ app, onEdit, showModerationControls, hideAppro
             className="flex-1"
           >
             <img
-              src="/badge.svg"
+              src={badgeSvg}
               alt="Edit with Shakespeare"
               className="h-6 hover:opacity-80 transition-opacity"
             />

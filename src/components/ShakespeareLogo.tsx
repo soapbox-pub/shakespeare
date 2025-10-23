@@ -1,12 +1,14 @@
+import shakespeareLogo from '/shakespeare.svg?url';
+
 export interface ShakespeareLogoProps {
   className?: string;
 }
 
 export function ShakespeareLogo({ className }: ShakespeareLogoProps) {
   return (
-    <img 
-      src="/shakespeare.svg" 
-      alt="Shakespeare" 
+    <img
+      src={shakespeareLogo}
+      alt="Shakespeare"
       className={className}
     />
   );

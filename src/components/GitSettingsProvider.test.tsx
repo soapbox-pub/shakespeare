@@ -171,7 +171,8 @@ describe('GitSettingsProvider', () => {
               password: 'test-token',
             }
           }
-        })
+        }),
+        '/config' // configPath
       );
     });
   });

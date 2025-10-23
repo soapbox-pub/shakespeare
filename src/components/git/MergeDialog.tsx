@@ -29,6 +29,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { useGit } from '@/hooks/useGit';
+import { useFSPaths } from '@/hooks/useFSPaths';
 import { useToast } from '@/hooks/useToast';
 import { useSearchParams } from 'react-router-dom';
 
@@ -77,9 +78,10 @@ export function MergeDialog({
   const [mergeComplete, setMergeComplete] = useState(false);
 
   const { git } = useGit();
+  const { projectsPath } = useFSPaths();
   const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
-  const projectPath = `/projects/${projectId}`;
+  const projectPath = `${projectsPath}/${projectId}`;
 
   useEffect(() => {
     if (open !== undefined) {

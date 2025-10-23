@@ -8,7 +8,7 @@ import type { JSRuntimeFS } from './JSRuntime';
  */
 async function cleanupDirectory(fs: JSRuntimeFS, dirPath: string, maxAgeMs: number): Promise<void> {
   const now = Date.now();
-  
+
   try {
     // Check if directory exists
     try {
@@ -23,14 +23,14 @@ async function cleanupDirectory(fs: JSRuntimeFS, dirPath: string, maxAgeMs: numb
 
     // Get directory contents
     const entries = await fs.readdir(dirPath, { withFileTypes: true });
-    
+
     for (const entry of entries) {
       const fullPath = `${dirPath}/${entry.name}`;
-      
+
       try {
         const stat = await fs.stat(fullPath);
         const fileAge = now - (stat.mtimeMs || 0);
-        
+
         if (fileAge > maxAgeMs) {
           if (entry.isDirectory()) {
             // Recursively clean subdirectory first, then remove it
@@ -62,19 +62,19 @@ async function cleanupDirectory(fs: JSRuntimeFS, dirPath: string, maxAgeMs: numb
 }
 
 /**
- * Cleans up the /tmp directory by removing files older than 1 hour
+ * Cleans up the tmp directory by removing files older than 1 hour
  * @param fs - The filesystem instance
+ * @param tmpPath - Custom tmp path (default: /tmp)
  */
-export async function cleanupTmpDirectory(fs: JSRuntimeFS): Promise<void> {
+export async function cleanupTmpDirectory(fs: JSRuntimeFS, tmpPath = '/tmp'): Promise<void> {
   const ONE_HOUR_MS = 60 * 60 * 1000; // 1 hour in milliseconds
-  const tmpPath = '/tmp';
-  
-  console.log('Starting /tmp directory cleanup...');
-  
+
+  console.log(`Starting ${tmpPath} directory cleanup...`);
+
   try {
     await cleanupDirectory(fs, tmpPath, ONE_HOUR_MS);
-    console.log('Completed /tmp directory cleanup');
+    console.log(`Completed ${tmpPath} directory cleanup`);
   } catch (error) {
-    console.error('Error during /tmp cleanup:', error);
+    console.error(`Error during ${tmpPath} cleanup:`, error);
   }
 }

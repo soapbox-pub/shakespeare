@@ -1,6 +1,7 @@
 import { ReactNode, useState, useEffect } from 'react';
 import { GitSettingsContext, type GitSettings, type GitCredential, type GitHostToken, type GitSettingsContextType } from '@/contexts/GitSettingsContext';
 import { useFS } from '@/hooks/useFS';
+import { useFSPaths } from '@/hooks/useFSPaths';
 import { readGitSettings, writeGitSettings } from '@/lib/configUtils';
 
 interface GitSettingsProviderProps {
@@ -14,6 +15,7 @@ const DEFAULT_SETTINGS: GitSettings = {
 
 export function GitSettingsProvider({ children }: GitSettingsProviderProps) {
   const { fs } = useFS();
+  const { configPath } = useFSPaths();
   const [settings, setSettings] = useState<GitSettings>(DEFAULT_SETTINGS);
   const [isInitialized, setIsInitialized] = useState(false);
 
@@ -21,7 +23,7 @@ export function GitSettingsProvider({ children }: GitSettingsProviderProps) {
   useEffect(() => {
     const initializeSettings = async () => {
       try {
-        const settings = await readGitSettings(fs);
+        const settings = await readGitSettings(fs, configPath);
         setSettings(settings);
       } catch (error) {
         console.error('Failed to initialize Git settings:', error);
@@ -32,7 +34,7 @@ export function GitSettingsProvider({ children }: GitSettingsProviderProps) {
     };
 
     initializeSettings();
-  }, [fs]);
+  }, [fs, configPath]);
 
   // Save settings to VFS whenever they change (but not during initialization)
   useEffect(() => {
@@ -40,14 +42,14 @@ export function GitSettingsProvider({ children }: GitSettingsProviderProps) {
 
     const saveSettings = async () => {
       try {
-        await writeGitSettings(fs, settings);
+        await writeGitSettings(fs, settings, configPath);
       } catch (error) {
         console.error('Failed to save Git settings:', error);
       }
     };
 
     saveSettings();
-  }, [fs, settings, isInitialized]);
+  }, [fs, settings, isInitialized, configPath]);
 
   const updateSettings = (newSettings: Partial<GitSettings>) => {
     setSettings(prev => ({ ...prev, ...newSettings }));

@@ -25,6 +25,12 @@ export interface AppConfig {
   showcaseModerator: string;
   /** Nostr Git Servers (hostnames) */
   ngitServers: string[];
+  /** VFS path for projects directory */
+  fsPathProjects: string;
+  /** VFS path for config directory */
+  fsPathConfig: string;
+  /** VFS path for temporary files directory */
+  fsPathTmp: string;
 }
 
 export interface AppContextType {

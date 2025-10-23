@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useGit } from './useGit';
+import { useFSPaths } from './useFSPaths';
 
 interface GitFileChange {
   filepath: string;
@@ -41,6 +42,7 @@ interface GitStatus {
 
 export function useGitStatus(projectId: string | null) {
   const { git } = useGit();
+  const { projectsPath } = useFSPaths();
 
   return useQuery({
     queryKey: ['git-status', projectId],
@@ -61,7 +63,7 @@ export function useGitStatus(projectId: string | null) {
       }
 
       try {
-        const cwd = `/projects/${projectId}`;
+        const cwd = `${projectsPath}/${projectId}`;
 
         // Check if we're in a git repository
         try {

@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { useFS } from '@/hooks/useFS';
+import { useFSPaths } from '@/hooks/useFSPaths';
 import { addConsoleMessage, getConsoleMessages, type ConsoleMessage } from '@/lib/consoleMessages';
 import { useConsoleError } from '@/hooks/useConsoleError';
 import { useBuildProject } from '@/hooks/useBuildProject';
@@ -89,6 +90,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
   const [deployDialogOpen, setDeployDialogOpen] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const { fs } = useFS();
+  const { projectsPath } = useFSPaths();
   const projectsManager = useProjectsManager();
 
   // Use console error state from provider
@@ -506,7 +508,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
     if (!selectedFile) return;
 
     try {
-      await fs.writeFile(`/projects/${projectId}/${selectedFile}`, content);
+      await fs.writeFile(`${projectsPath}/${projectId}/${selectedFile}`, content);
       setFileContent(content);
 
       // Automatically trigger a rebuild after saving a file

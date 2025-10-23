@@ -20,8 +20,9 @@ import { DiffViewer } from './DiffViewer';
 import { PullRequestForm } from './PullRequestForm';
 import { useGitStatus } from '@/hooks/useGitStatus';
 import { useGit } from '@/hooks/useGit';
+import { useFSPaths } from '@/hooks/useFSPaths';
 
-interface GitManagementDialogProps {
+interface GitManagementDialogProps{
   projectId: string;
   children?: React.ReactNode;
   open?: boolean;
@@ -39,7 +40,8 @@ export function GitManagementDialog({
   const [activeTab, setActiveTab] = useState(defaultTab);
   const [remoteUrl, setRemoteUrl] = useState<string | null>(null);
   const { git } = useGit();
-  const projectPath = `/projects/${projectId}`;
+  const { projectsPath } = useFSPaths();
+  const projectPath = `${projectsPath}/${projectId}`;
 
   const { data: gitStatus, refetch: refetchGitStatus } = useGitStatus(projectId);
 

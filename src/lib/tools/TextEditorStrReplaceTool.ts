@@ -15,6 +15,8 @@ interface TextEditorStrReplaceParams {
 export class TextEditorStrReplaceTool implements Tool<TextEditorStrReplaceParams> {
   private fs: JSRuntimeFS;
   private cwd: string;
+  private projectsPath: string;
+  private tmpPath: string;
 
   readonly description = "Replace a string in a file with a new string";
 
@@ -27,17 +29,19 @@ export class TextEditorStrReplaceTool implements Tool<TextEditorStrReplaceParams
     ),
   });
 
-  constructor(fs: JSRuntimeFS, cwd: string) {
+  constructor(fs: JSRuntimeFS, cwd: string, options?: { projectsPath?: string; tmpPath?: string }) {
     this.fs = fs;
     this.cwd = cwd;
+    this.projectsPath = options?.projectsPath || '/projects';
+    this.tmpPath = options?.tmpPath || '/tmp';
   }
 
   async execute(args: TextEditorStrReplaceParams): Promise<string> {
     const { path, old_str, new_str, normalize_whitespace = true } = args;
 
     // Check write permissions
-    if (!isWriteAllowed(path, this.cwd)) {
-      throw new Error(createWriteAccessDeniedError(path, undefined, this.cwd));
+    if (!isWriteAllowed(path, this.cwd, { projectsPath: this.projectsPath, tmpPath: this.tmpPath })) {
+      throw new Error(createWriteAccessDeniedError(path, undefined, this.cwd, { projectsPath: this.projectsPath, tmpPath: this.tmpPath }));
     }
 
     // Ban editing dependencies in package.json

@@ -30,6 +30,7 @@ import {
   ArrowUpRight,
 } from 'lucide-react';
 import { useGit } from '@/hooks/useGit';
+import { useFSPaths } from '@/hooks/useFSPaths';
 import { useToast } from '@/hooks/useToast';
 import { cn } from '@/lib/utils';
 
@@ -59,8 +60,9 @@ export function BranchManager({ projectId, currentBranch, onBranchChange }: Bran
   const [switchingToBranch, setSwitchingToBranch] = useState<string | null>(null);
 
   const { git } = useGit();
+  const { projectsPath } = useFSPaths();
   const { toast } = useToast();
-  const projectPath = `/projects/${projectId}`;
+  const projectPath = `${projectsPath}/${projectId}`;
 
   const loadBranches = useCallback(async () => {
     setIsLoading(true);

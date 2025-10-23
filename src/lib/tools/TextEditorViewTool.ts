@@ -13,6 +13,7 @@ interface TextEditorViewParams {
 export class TextEditorViewTool implements Tool<TextEditorViewParams> {
   private fs: JSRuntimeFS;
   private cwd: string;
+  private projectsPath: string;
 
   readonly description = "View the contents of a text file or directory";
 
@@ -28,9 +29,10 @@ export class TextEditorViewTool implements Tool<TextEditorViewParams> {
     ),
   });
 
-  constructor(fs: JSRuntimeFS, cwd: string) {
+  constructor(fs: JSRuntimeFS, cwd: string, options?: { projectsPath?: string }) {
     this.fs = fs;
     this.cwd = cwd;
+    this.projectsPath = options?.projectsPath || '/projects';
   }
 
   async execute(args: TextEditorViewParams): Promise<string> {
@@ -52,9 +54,9 @@ export class TextEditorViewTool implements Tool<TextEditorViewParams> {
       const stats = await this.fs.stat(absolutePath);
 
       if (stats.isDirectory()) {
-        // Special handling for /projects directory - only show project directories, not their contents
+        // Special handling for projects directory - only show project directories, not their contents
         const normalizedPath = absolutePath.replace(/\/$/, ''); // Remove trailing slash
-        if (normalizedPath === '/projects') {
+        if (normalizedPath === this.projectsPath) {
           const tree = await this.generateDirectoryTree(absolutePath, "", 1); // Only show immediate children
           return tree;
         }

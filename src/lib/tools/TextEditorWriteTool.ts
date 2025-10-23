@@ -13,6 +13,8 @@ interface TextEditorWriteParams {
 export class TextEditorWriteTool implements Tool<TextEditorWriteParams> {
   private fs: JSRuntimeFS;
   private cwd: string;
+  private projectsPath: string;
+  private tmpPath: string;
 
   readonly description = "Create or overwrite a file with new content";
 
@@ -23,17 +25,19 @@ export class TextEditorWriteTool implements Tool<TextEditorWriteParams> {
     file_text: z.string().describe("Content to write to the file"),
   });
 
-  constructor(fs: JSRuntimeFS, cwd: string) {
+  constructor(fs: JSRuntimeFS, cwd: string, options?: { projectsPath?: string; tmpPath?: string }) {
     this.fs = fs;
     this.cwd = cwd;
+    this.projectsPath = options?.projectsPath || '/projects';
+    this.tmpPath = options?.tmpPath || '/tmp';
   }
 
   async execute(args: TextEditorWriteParams): Promise<string> {
     const { path, file_text } = args;
 
     // Check write permissions
-    if (!isWriteAllowed(path, this.cwd)) {
-      throw new Error(createWriteAccessDeniedError(path, undefined, this.cwd));
+    if (!isWriteAllowed(path, this.cwd, { projectsPath: this.projectsPath, tmpPath: this.tmpPath })) {
+      throw new Error(createWriteAccessDeniedError(path, undefined, this.cwd, { projectsPath: this.projectsPath, tmpPath: this.tmpPath }));
     }
 
     if (

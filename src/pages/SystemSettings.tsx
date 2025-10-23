@@ -21,6 +21,9 @@ export function SystemSettings() {
   const [faviconUrlInput, setFaviconUrlInput] = useState(config.faviconUrl);
   const [previewDomainInput, setPreviewDomainInput] = useState(config.previewDomain);
   const [showcaseModeratorInput, setShowcaseModeratorInput] = useState(config.showcaseModerator);
+  const [fsPathProjectsInput, setFsPathProjectsInput] = useState(config.fsPathProjects);
+  const [fsPathConfigInput, setFsPathConfigInput] = useState(config.fsPathConfig);
+  const [fsPathTmpInput, setFsPathTmpInput] = useState(config.fsPathTmp);
 
   return (
     <div className="p-6 space-y-6">
@@ -258,6 +261,87 @@ export function SystemSettings() {
                   />
                   <p className="text-xs text-muted-foreground">
                     Nostr public key (npub) of the user who can moderate showcase submissions
+                  </p>
+                </div>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+
+        {/* Filesystem Paths Configuration */}
+        <Accordion type="single" collapsible className="w-full">
+          <AccordionItem value="filesystem-paths" className="border rounded-lg">
+            <AccordionTrigger className="px-4 py-3 hover:no-underline">
+              <h4 className="text-sm font-medium">Filesystem Paths</h4>
+            </AccordionTrigger>
+            <AccordionContent className="px-4 pb-4">
+              <div className="py-1 space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="fs-path-projects" className="text-sm font-medium">
+                    Projects Directory
+                  </Label>
+                  <Input
+                    id="fs-path-projects"
+                    type="text"
+                    placeholder="/projects"
+                    value={fsPathProjectsInput}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setFsPathProjectsInput(value);
+                      updateConfig((current) => ({
+                        ...current,
+                        fsPathProjects: value,
+                      }));
+                    }}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Filesystem path where projects are stored
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="fs-path-config" className="text-sm font-medium">
+                    Config Directory
+                  </Label>
+                  <Input
+                    id="fs-path-config"
+                    type="text"
+                    placeholder="/config"
+                    value={fsPathConfigInput}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setFsPathConfigInput(value);
+                      updateConfig((current) => ({
+                        ...current,
+                        fsPathConfig: value,
+                      }));
+                    }}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Filesystem path where configuration files are stored
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="fs-path-tmp" className="text-sm font-medium">
+                    Temporary Directory
+                  </Label>
+                  <Input
+                    id="fs-path-tmp"
+                    type="text"
+                    placeholder="/tmp"
+                    value={fsPathTmpInput}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setFsPathTmpInput(value);
+                      updateConfig((current) => ({
+                        ...current,
+                        fsPathTmp: value,
+                      }));
+                    }}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Filesystem path for temporary files
                   </p>
                 </div>
               </div>

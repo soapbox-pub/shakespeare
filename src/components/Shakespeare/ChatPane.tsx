@@ -7,6 +7,7 @@ import { OnboardingDialog } from '@/components/OnboardingDialog';
 import { Loader2, ChevronDown } from 'lucide-react';
 import { useAISettings } from '@/hooks/useAISettings';
 import { useFS } from '@/hooks/useFS';
+import { useFSPaths } from '@/hooks/useFSPaths';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useKeepAlive } from '@/hooks/useKeepAlive';
 import { useAppContext } from '@/hooks/useAppContext';
@@ -75,6 +76,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   const { user } = useCurrentUser();
   const { models } = useProviderModels();
   const { config } = useAppContext();
+  const { projectsPath, tmpPath } = useFSPaths();
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const [scrolledProjects] = useState(() => new Set<string>());
@@ -133,14 +135,14 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   }, [projectId, providerModel]);
 
   // Initialize AI chat with tools
-  const cwd = `/projects/${projectId}`;
+  const cwd = `${projectsPath}/${projectId}`;
   const esmUrlRef = useRef(config.esmUrl);
   const customTools = useMemo(() => {
     const baseTools = {
       git_commit: new GitCommitTool(fs, cwd, git),
-      text_editor_view: new TextEditorViewTool(fs, cwd),
-      text_editor_write: new TextEditorWriteTool(fs, cwd),
-      text_editor_str_replace: new TextEditorStrReplaceTool(fs, cwd),
+      text_editor_view: new TextEditorViewTool(fs, cwd, { projectsPath }),
+      text_editor_write: new TextEditorWriteTool(fs, cwd, { projectsPath, tmpPath }),
+      text_editor_str_replace: new TextEditorStrReplaceTool(fs, cwd, { projectsPath, tmpPath }),
       npm_add_package: new NpmAddPackageTool(fs, cwd),
       npm_remove_package: new NpmRemovePackageTool(fs, cwd),
       build_project: new BuildProjectTool(fs, cwd, esmUrlRef.current),
@@ -165,7 +167,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     }
 
     return baseTools;
-  }, [fs, git, cwd, user, projectId]);
+  }, [fs, git, cwd, user, projectId, projectsPath, tmpPath]);
 
   // Convert tools to OpenAI format
   const tools = useMemo(() => {
@@ -438,7 +440,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     if (attachedFiles.length > 0) {
       const filePromises = attachedFiles.map(async (file) => {
         try {
-          const savedPath = await saveFileToTmp(fs, file);
+          const savedPath = await saveFileToTmp(fs, file, tmpPath);
           return `Added file: ${savedPath}`;
         } catch (error) {
           console.error('Failed to save file:', error);
@@ -463,7 +465,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     // Send as text parts if we have multiple parts, otherwise send as string for simplicity
     const messageContent = contentParts.length === 1 ? contentParts[0].text : contentParts;
     await sendMessage(messageContent, modelToUse);
-  }, [addRecentlyUsedModel, fs, isConfigured, isLoading, providerModel, sendMessage]);
+  }, [addRecentlyUsedModel, fs, isConfigured, isLoading, providerModel, sendMessage, tmpPath]);
 
   // Handle textarea focus - show onboarding if not configured
   const handleTextareaFocus = useCallback(() => {

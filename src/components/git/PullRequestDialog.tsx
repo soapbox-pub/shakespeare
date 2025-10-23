@@ -32,6 +32,7 @@ import {
   GitFork,
 } from 'lucide-react';
 import { useGit } from '@/hooks/useGit';
+import { useFSPaths } from '@/hooks/useFSPaths';
 import { useGitSettings } from '@/hooks/useGitSettings';
 import { useToast } from '@/hooks/useToast';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
@@ -84,12 +85,13 @@ export function PullRequestDialog({
   const [error, setError] = useState<string | null>(null);
 
   const { git } = useGit();
+  const { projectsPath } = useFSPaths();
   const { settings } = useGitSettings();
   const { toast } = useToast();
   const { user } = useCurrentUser();
   const { nostr } = useNostr();
   const { config } = useAppContext();
-  const projectPath = `/projects/${projectId}`;
+  const projectPath = `${projectsPath}/${projectId}`;
 
   useEffect(() => {
     if (open !== undefined) {

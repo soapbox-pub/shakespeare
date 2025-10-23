@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useFS } from './useFS';
+import { useFSPaths } from './useFSPaths';
 
 export interface ShakespeareProjectConfig {
   type: 'shakespeare';
@@ -43,10 +44,11 @@ export interface ProjectDeploySettings {
  */
 export function useProjectDeploySettings(projectId: string) {
   const fs = useFS();
+  const { projectsPath } = useFSPaths();
   const [settings, setSettings] = useState<ProjectDeploySettings>({ providers: {} });
   const [isLoading, setIsLoading] = useState(true);
 
-  const settingsPath = `/projects/${projectId}/.git/shakespeare/deploy.json`;
+  const settingsPath = `${projectsPath}/${projectId}/.git/shakespeare/deploy.json`;
 
   const loadSettings = useCallback(async () => {
     try {
@@ -78,7 +80,7 @@ export function useProjectDeploySettings(projectId: string) {
   const saveSettings = async (newSettings: ProjectDeploySettings) => {
     try {
       // Ensure .git/shakespeare directory exists
-      const shakespeareDir = `/projects/${projectId}/.git/shakespeare`;
+      const shakespeareDir = `${projectsPath}/${projectId}/.git/shakespeare`;
       try {
         await fs.fs.stat(shakespeareDir);
       } catch {

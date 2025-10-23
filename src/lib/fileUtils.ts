@@ -46,13 +46,14 @@ export async function generateUniqueFilename(
 }
 
 /**
- * Save a file to the /tmp directory with deduplication
+ * Save a file to the tmp directory with deduplication
  * @param fs - Filesystem instance
  * @param file - File object to save
+ * @param tmpPath - Custom tmp path (default: /tmp)
  * @returns Promise<string> - Full path where the file was saved
  */
-export async function saveFileToTmp(fs: JSRuntimeFS, file: File): Promise<string> {
-  const tmpDir = '/tmp';
+export async function saveFileToTmp(fs: JSRuntimeFS, file: File, tmpPath = '/tmp'): Promise<string> {
+  const tmpDir = tmpPath;
   // Convert spaces to underscores in the filename
   const sanitizedFilename = file.name.replace(/\s+/g, '_');
   const uniqueFilename = await generateUniqueFilename(fs, tmpDir, sanitizedFilename);

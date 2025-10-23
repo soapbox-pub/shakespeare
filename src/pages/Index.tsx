@@ -236,7 +236,7 @@ export default function Index() {
       }
 
       // Store the initial message in chat history using DotAI
-      const dotAI = new DotAI(fs, `/projects/${project.id}`);
+      const dotAI = new DotAI(fs, `${config.fsPathProjects}/${project.id}`);
       const sessionName = DotAI.generateSessionName();
 
       // Create initial message with content parts (same format as ChatPane)

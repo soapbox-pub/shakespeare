@@ -15,6 +15,7 @@ import {
   Check,
 } from 'lucide-react';
 import { useGit } from '@/hooks/useGit';
+import { useFSPaths } from '@/hooks/useFSPaths';
 import { useFS } from '@/hooks/useFS';
 import { useToast } from '@/hooks/useToast';
 import { cn } from '@/lib/utils';
@@ -57,9 +58,10 @@ export function DiffViewer({ projectId, compareFrom = 'HEAD', compareTo, filepat
   const [copiedHunk, setCopiedHunk] = useState<number | null>(null);
 
   const { git } = useGit();
+  const { projectsPath } = useFSPaths();
   const { fs } = useFS();
   const { toast } = useToast();
-  const projectPath = `/projects/${projectId}`;
+  const projectPath = `${projectsPath}/${projectId}`;
 
   const getChangedFilesBetweenRefs = useCallback(async (from: string, to: string): Promise<string[]> => {
     // Get list of files from both refs and find differences

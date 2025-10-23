@@ -7,8 +7,10 @@ import { defineConfig } from "vitest/config";
 function getVersion(): string {
   try {
     const gitCommit = execSync('git rev-parse --short HEAD').toString().trim();
-    const commitDate = execSync('git log -1 --format=%cd --date=format:%Y.%m.%d').toString().trim();
-    return `${commitDate}+${gitCommit}`;
+    const commitTimestamp = execSync('git log -1 --format=%ct').toString().trim();
+    const commitDate = new Date(parseInt(commitTimestamp) * 1000);
+    const utcDate = commitDate.toISOString().split('T')[0].replace(/-/g, '.');
+    return `${utcDate}+${gitCommit}`;
   } catch {
     return new Date().toISOString().split('T')[0].replace(/-/g, '.');
   }

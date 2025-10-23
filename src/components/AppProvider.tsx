@@ -27,6 +27,9 @@ const AppConfigSchema = z.object({
   showcaseEnabled: z.boolean(),
   showcaseModerator: z.string(),
   ngitServers: z.array(z.string()),
+  fsPathProjects: z.string().min(1),
+  fsPathConfig: z.string().min(1),
+  fsPathTmp: z.string().min(1),
 }) satisfies z.ZodType<AppConfig>;
 
 export function AppProvider(props: AppProviderProps) {

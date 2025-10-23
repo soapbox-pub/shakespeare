@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { History, GitCommit, RotateCcw, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
 import { useGit } from '@/hooks/useGit';
+import { useFSPaths } from '@/hooks/useFSPaths';
 import { useFS } from '@/hooks/useFS';
 import { useToast } from '@/hooks/useToast';
 import { useGitStatus } from '@/hooks/useGitStatus';
@@ -45,6 +46,7 @@ export function GitHistoryDialog({ projectId, open: controlledOpen, onOpenChange
   const [isRollingBack, setIsRollingBack] = useState<string | null>(null);
   const [expandedCommits, setExpandedCommits] = useState<Set<string>>(new Set());
   const { fs } = useFS();
+  const { projectsPath } = useFSPaths();
   const { git } = useGit();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -55,7 +57,7 @@ export function GitHistoryDialog({ projectId, open: controlledOpen, onOpenChange
     setError(null);
 
     try {
-      const projectPath = `/projects/${projectId}`;
+      const projectPath = `${projectsPath}/${projectId}`;
 
       // Check if git repository exists
       try {
@@ -78,7 +80,7 @@ export function GitHistoryDialog({ projectId, open: controlledOpen, onOpenChange
     } finally {
       setIsLoading(false);
     }
-  }, [git, projectId]);
+  }, [git, projectId, projectsPath]);
 
   const rollbackToCommit = useCallback(async (targetCommit: GitCommit) => {
     if (!fs) return;
@@ -86,7 +88,7 @@ export function GitHistoryDialog({ projectId, open: controlledOpen, onOpenChange
     setIsRollingBack(targetCommit.oid);
 
     try {
-      const projectPath = `/projects/${projectId}`;
+      const projectPath = `${projectsPath}/${projectId}`;
 
       // Get the current HEAD commit
       const currentCommit = await git.resolveRef({
@@ -227,7 +229,7 @@ ${commitsToRevert.map(c => {
     } finally {
       setIsRollingBack(null);
     }
-  }, [git, fs, projectId, toast, navigate, setIsOpen]);
+  }, [git, fs, projectId, toast, navigate, setIsOpen, projectsPath]);
 
   const resetToHead = useCallback(async () => {
     if (!fs) return;
@@ -235,7 +237,7 @@ ${commitsToRevert.map(c => {
     setIsRollingBack('HEAD');
 
     try {
-      const projectPath = `/projects/${projectId}`;
+      const projectPath = `${projectsPath}/${projectId}`;
 
       // Get the current HEAD commit
       const headCommit = await git.resolveRef({
@@ -326,7 +328,7 @@ ${commitsToRevert.map(c => {
     } finally {
       setIsRollingBack(null);
     }
-  }, [git, fs, projectId, toast, navigate, setIsOpen]);
+  }, [git, fs, projectId, toast, navigate, setIsOpen, projectsPath]);
 
   useEffect(() => {
     if (isOpen) {

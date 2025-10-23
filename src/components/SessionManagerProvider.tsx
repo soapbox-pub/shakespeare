@@ -2,6 +2,7 @@ import { ReactNode, useMemo, useEffect } from 'react';
 import { SessionManagerContext } from '@/contexts/SessionManagerContext';
 import { SessionManager } from '@/lib/SessionManager';
 import { useFS } from '@/hooks/useFS';
+import { useFSPaths } from '@/hooks/useFSPaths';
 import { useAISettings } from '@/hooks/useAISettings';
 import { useProviderModels } from '@/hooks/useProviderModels';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
@@ -16,6 +17,7 @@ interface SessionManagerProviderProps {
  */
 export function SessionManagerProvider({ children }: SessionManagerProviderProps) {
   const { fs } = useFS();
+  const { projectsPath } = useFSPaths();
   const { settings } = useAISettings();
   const { models } = useProviderModels();
   const { user, metadata } = useCurrentUser();
@@ -24,8 +26,8 @@ export function SessionManagerProvider({ children }: SessionManagerProviderProps
   const sessionManager = useMemo(() => {
     const getProviderModels = () => models;
     const getCurrentUser = () => ({ user, metadata });
-    return new SessionManager(fs, settings, getProviderModels, getCurrentUser, config.corsProxy);
-  }, [fs, settings, models, user, metadata, config.corsProxy]);
+    return new SessionManager(fs, settings, getProviderModels, getCurrentUser, config.corsProxy, projectsPath);
+  }, [fs, settings, models, user, metadata, config.corsProxy, projectsPath]);
 
   // Cleanup on unmount
   useEffect(() => {

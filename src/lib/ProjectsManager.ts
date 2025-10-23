@@ -19,6 +19,8 @@ export interface Project {
 export interface ProjectsManagerOptions {
   fs: JSRuntimeFS;
   git: Git;
+  /** Projects directory path (default: /projects) */
+  projectsPath?: string;
 }
 
 export class ProjectsManager {
@@ -29,7 +31,7 @@ export class ProjectsManager {
   constructor(options: ProjectsManagerOptions) {
     this.fs = options.fs;
     this.git = options.git;
-    this.dir = '/projects';
+    this.dir = options.projectsPath || '/projects';
   }
 
   async init() {

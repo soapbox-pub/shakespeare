@@ -61,6 +61,7 @@ export class SessionManager {
   private getProviderModels?: () => Array<{ id: string; provider: string; contextLength?: number; pricing?: { prompt: import('decimal.js').Decimal; completion: import('decimal.js').Decimal } }>;
   private getCurrentUser?: () => { user?: NUser; metadata?: NostrMetadata };
   private corsProxy?: string;
+  private projectsPath: string;
 
   constructor(
     fs: JSRuntimeFS,
@@ -68,11 +69,13 @@ export class SessionManager {
     getProviderModels?: () => Array<{ id: string; provider: string; contextLength?: number; pricing?: { prompt: import('decimal.js').Decimal; completion: import('decimal.js').Decimal } }>,
     getCurrentUser?: () => { user?: NUser; metadata?: NostrMetadata },
     corsProxy?: string,
+    projectsPath = '/projects',
   ) {
     this.fs = fs;
     this.aiSettings = aiSettings;
     this.getProviderModels = getProviderModels;
     this.getCurrentUser = getCurrentUser;
+    this.projectsPath = projectsPath;
     this.corsProxy = corsProxy;
   }
 
@@ -90,7 +93,7 @@ export class SessionManager {
 
     // Try to load existing history
     try {
-      const dotAI = new DotAI(this.fs, `/projects/${projectId}`);
+      const dotAI = new DotAI(this.fs, `${this.projectsPath}/${projectId}`);
       const lastSession = await dotAI.readLastSessionHistory();
       if (lastSession) {
         messages = lastSession.messages;
@@ -232,7 +235,7 @@ export class SessionManager {
         };
 
         const systemPrompt = await makeSystemPrompt({
-          cwd: `/projects/${projectId}`,
+          cwd: `${this.projectsPath}/${projectId}`,
           fs: this.fs,
           mode: "agent",
           name: "Shakespeare",
@@ -568,7 +571,7 @@ export class SessionManager {
     if (!session) return;
 
     try {
-      const dotAI = new DotAI(this.fs, `/projects/${session.projectId}`);
+      const dotAI = new DotAI(this.fs, `${this.projectsPath}/${session.projectId}`);
       await dotAI.setHistory(session.sessionName, session.messages);
     } catch (error) {
       console.warn('Failed to save session history:', error);

@@ -5,10 +5,29 @@ import type { AIProvider, AISettings } from '@/contexts/AISettingsContext';
 import type { GitSettings } from '@/contexts/GitSettingsContext';
 import type { DeployProvider, DeploySettings } from '@/contexts/DeploySettingsContext';
 
-const CONFIG_DIR = '/config';
-const AI_CONFIG_PATH = `${CONFIG_DIR}/ai.json`;
-const GIT_CONFIG_PATH = `${CONFIG_DIR}/git.json`;
-const DEPLOY_CONFIG_PATH = `${CONFIG_DIR}/deploy.json`;
+/**
+ * Get AI config file path
+ * @param configPath - Custom config path (default: /config)
+ */
+function getAIConfigPath(configPath = '/config'): string {
+  return `${configPath}/ai.json`;
+}
+
+/**
+ * Get Git config file path
+ * @param configPath - Custom config path (default: /config)
+ */
+function getGitConfigPath(configPath = '/config'): string {
+  return `${configPath}/git.json`;
+}
+
+/**
+ * Get Deploy config file path
+ * @param configPath - Custom config path (default: /config)
+ */
+function getDeployConfigPath(configPath = '/config'): string {
+  return `${configPath}/deploy.json`;
+}
 
 const aiProviderSchema: z.ZodType<AIProvider> = z.object({
   id: z.string(),
@@ -91,26 +110,31 @@ const deploySettingsSchema = z.object({
 
 /**
  * Ensures the config directory exists
+ * @param fs - Filesystem instance
+ * @param configPath - Custom config path (default: /config)
  */
-async function ensureConfigDir(fs: JSRuntimeFS): Promise<void> {
+async function ensureConfigDir(fs: JSRuntimeFS, configPath = '/config'): Promise<void> {
   try {
-    await fs.stat(CONFIG_DIR);
+    await fs.stat(configPath);
   } catch {
-    await fs.mkdir(CONFIG_DIR, { recursive: true });
+    await fs.mkdir(configPath, { recursive: true });
   }
 }
 
 /**
  * Read AI settings from VFS
+ * @param fs - Filesystem instance
+ * @param configPath - Custom config path (default: /config)
  */
-export async function readAISettings(fs: JSRuntimeFS): Promise<AISettings> {
+export async function readAISettings(fs: JSRuntimeFS, configPath = '/config'): Promise<AISettings> {
   const defaultSettings: AISettings = {
     providers: [],
     recentlyUsedModels: [],
   };
 
   try {
-    const content = await fs.readFile(AI_CONFIG_PATH, 'utf8');
+    const aiConfigPath = getAIConfigPath(configPath);
+    const content = await fs.readFile(aiConfigPath, 'utf8');
     const data = JSON.parse(content);
     return aiSettingsSchema.parse(data);
   } catch (error) {
@@ -123,16 +147,22 @@ export async function readAISettings(fs: JSRuntimeFS): Promise<AISettings> {
 
 /**
  * Write AI settings to VFS
+ * @param fs - Filesystem instance
+ * @param settings - AI settings to write
+ * @param configPath - Custom config path (default: /config)
  */
-export async function writeAISettings(fs: JSRuntimeFS, settings: AISettings): Promise<void> {
-  await ensureConfigDir(fs);
-  await fs.writeFile(AI_CONFIG_PATH, JSON.stringify(settings, null, 2), 'utf8');
+export async function writeAISettings(fs: JSRuntimeFS, settings: AISettings, configPath = '/config'): Promise<void> {
+  await ensureConfigDir(fs, configPath);
+  const aiConfigPath = getAIConfigPath(configPath);
+  await fs.writeFile(aiConfigPath, JSON.stringify(settings, null, 2), 'utf8');
 }
 
 /**
  * Read Git settings from VFS
+ * @param fs - Filesystem instance
+ * @param configPath - Custom config path (default: /config)
  */
-export async function readGitSettings(fs: JSRuntimeFS): Promise<GitSettings> {
+export async function readGitSettings(fs: JSRuntimeFS, configPath = '/config'): Promise<GitSettings> {
   const defaultSettings: GitSettings = {
     credentials: {},
     hostTokens: {},
@@ -141,7 +171,8 @@ export async function readGitSettings(fs: JSRuntimeFS): Promise<GitSettings> {
 
   // Try to read from VFS first
   try {
-    const content = await fs.readFile(GIT_CONFIG_PATH, 'utf8');
+    const gitConfigPath = getGitConfigPath(configPath);
+    const content = await fs.readFile(gitConfigPath, 'utf8');
     const data = JSON.parse(content);
     const parsed = gitSettingsSchema.parse(data);
     // Ensure hostTokens exists even if not in parsed data
@@ -156,22 +187,29 @@ export async function readGitSettings(fs: JSRuntimeFS): Promise<GitSettings> {
 
 /**
  * Write Git settings to VFS
+ * @param fs - Filesystem instance
+ * @param settings - Git settings to write
+ * @param configPath - Custom config path (default: /config)
  */
-export async function writeGitSettings(fs: JSRuntimeFS, settings: GitSettings): Promise<void> {
-  await ensureConfigDir(fs);
-  await fs.writeFile(GIT_CONFIG_PATH, JSON.stringify(settings, null, 2), 'utf8');
+export async function writeGitSettings(fs: JSRuntimeFS, settings: GitSettings, configPath = '/config'): Promise<void> {
+  await ensureConfigDir(fs, configPath);
+  const gitConfigPath = getGitConfigPath(configPath);
+  await fs.writeFile(gitConfigPath, JSON.stringify(settings, null, 2), 'utf8');
 }
 
 /**
  * Read Deploy settings from VFS
+ * @param fs - Filesystem instance
+ * @param configPath - Custom config path (default: /config)
  */
-export async function readDeploySettings(fs: JSRuntimeFS): Promise<DeploySettings> {
+export async function readDeploySettings(fs: JSRuntimeFS, configPath = '/config'): Promise<DeploySettings> {
   const defaultSettings: DeploySettings = {
     providers: [],
   };
 
   try {
-    const content = await fs.readFile(DEPLOY_CONFIG_PATH, 'utf8');
+    const deployConfigPath = getDeployConfigPath(configPath);
+    const content = await fs.readFile(deployConfigPath, 'utf8');
     const data = JSON.parse(content);
     return deploySettingsSchema.parse(data);
   } catch (error) {
@@ -184,9 +222,13 @@ export async function readDeploySettings(fs: JSRuntimeFS): Promise<DeploySetting
 
 /**
  * Write Deploy settings to VFS
+ * @param fs - Filesystem instance
+ * @param settings - Deploy settings to write
+ * @param configPath - Custom config path (default: /config)
  */
-export async function writeDeploySettings(fs: JSRuntimeFS, settings: DeploySettings): Promise<void> {
-  await ensureConfigDir(fs);
-  await fs.writeFile(DEPLOY_CONFIG_PATH, JSON.stringify(settings, null, 2), 'utf8');
+export async function writeDeploySettings(fs: JSRuntimeFS, settings: DeploySettings, configPath = '/config'): Promise<void> {
+  await ensureConfigDir(fs, configPath);
+  const deployConfigPath = getDeployConfigPath(configPath);
+  await fs.writeFile(deployConfigPath, JSON.stringify(settings, null, 2), 'utf8');
 }
 

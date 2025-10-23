@@ -5,6 +5,7 @@ import { Copy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ShellTool } from '@/lib/tools/ShellTool';
 import { useFS } from '@/hooks/useFS';
+import { useFSPaths } from '@/hooks/useFSPaths';
 import { useGit } from '@/hooks/useGit';
 import { ansiToHtml, containsAnsiCodes } from '@/lib/ansiToHtml';
 
@@ -32,11 +33,12 @@ export function Terminal({ projectId, className }: TerminalProps) {
   const shellToolRef = useRef<ShellTool | null>(null);
 
   const { fs } = useFS();
+  const { projectsPath } = useFSPaths();
   const { git } = useGit();
 
   // Initialize ShellTool
   useEffect(() => {
-    shellToolRef.current = new ShellTool(fs, `/projects/${projectId}`, git);
+    shellToolRef.current = new ShellTool(fs, `${projectsPath}/${projectId}`, git);
 
     // Add welcome message
     setLines([{
@@ -45,7 +47,7 @@ export function Terminal({ projectId, className }: TerminalProps) {
       content: `Welcome to Shakespeare Terminal\nType 'help' to see available commands.`,
       timestamp: new Date()
     }]);
-  }, [projectId, fs, git]);
+  }, [projectId, fs, git, projectsPath]);
 
   // Auto-scroll to bottom when new lines are added or execution state changes
   useEffect(() => {
@@ -190,7 +192,7 @@ export function Terminal({ projectId, className }: TerminalProps) {
                       ${' '}
                     </span>
                   ) : null}
-                  {containsAnsiCodes(line.content) 
+                  {containsAnsiCodes(line.content)
                     ? <span dangerouslySetInnerHTML={{ __html: ansiToHtml(line.content) }} />
                     : line.content}
                 </pre>

@@ -24,6 +24,7 @@ import { useDeploySettings } from '@/hooks/useDeploySettings';
 import { useProjectDeploySettings } from '@/hooks/useProjectDeploySettings';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useFS } from '@/hooks/useFS';
+import { useFSPaths } from '@/hooks/useFSPaths';
 import { useAppContext } from '@/hooks/useAppContext';
 import { useNostr } from '@nostrify/react';
 import { ShakespeareAdapter, NetlifyAdapter, VercelAdapter, NsiteAdapter, DeployAdapter } from '@/lib/deploy';
@@ -115,6 +116,7 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
   const { settings: projectSettings, updateSettings: updateProjectSettings } = useProjectDeploySettings(projectId);
   const { user } = useCurrentUser();
   const { fs } = useFS();
+  const { projectsPath } = useFSPaths();
   const { config } = useAppContext();
   const { nostr } = useNostr();
 
@@ -165,7 +167,7 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
     setDeployResult(null);
 
     try {
-      const projectPath = `/projects/${projectId}`;
+      const projectPath = `${projectsPath}/${projectId}`;
 
       let adapter: DeployAdapter;
 

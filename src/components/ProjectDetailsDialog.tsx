@@ -23,6 +23,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/useToast';
 import { useFS } from '@/hooks/useFS';
+import { useFSPaths } from '@/hooks/useFSPaths';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -50,6 +51,7 @@ export function ProjectDetailsDialog({ project, open, onOpenChange, onProjectDel
   const [newProjectName, setNewProjectName] = useState(project.id);
   const { toast } = useToast();
   const { fs } = useFS();
+  const { projectsPath } = useFSPaths();
   const projectsManager = useProjectsManager();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -143,7 +145,7 @@ export function ProjectDetailsDialog({ project, open, onOpenChange, onProjectDel
     setIsExporting(true);
     try {
       const zip = new JSZip();
-      const projectPath = `/projects/${project.id}`;
+      const projectPath = `${projectsPath}/${project.id}`;
 
       // Recursive function to add files and directories to zip from a specific project
       const addFolderToZip = async (dirPath: string, zipFolder: JSZip) => {

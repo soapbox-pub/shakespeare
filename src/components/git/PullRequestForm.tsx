@@ -22,6 +22,7 @@ import {
   GitFork,
 } from 'lucide-react';
 import { useGit } from '@/hooks/useGit';
+import { useFSPaths } from '@/hooks/useFSPaths';
 import { useGitSettings } from '@/hooks/useGitSettings';
 import { useToast } from '@/hooks/useToast';
 import { findCredentialsForRepo } from '@/lib/gitCredentials';
@@ -59,9 +60,10 @@ export function PullRequestForm({ projectId, currentBranch, remoteUrl }: PullReq
   const [error, setError] = useState<string | null>(null);
 
   const { git } = useGit();
+  const { projectsPath } = useFSPaths();
   const { settings } = useGitSettings();
   const { toast } = useToast();
-  const projectPath = `/projects/${projectId}`;
+  const projectPath = `${projectsPath}/${projectId}`;
 
   // All the helper functions from PullRequestDialog can be reused here
   // (parseRemoteUrl, checkPushPermissions, ensureFork, etc.)

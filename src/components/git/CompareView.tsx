@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { GitCompare, Loader2, GitCommit, FileIcon } from 'lucide-react';
 import { useGit } from '@/hooks/useGit';
+import { useFSPaths } from '@/hooks/useFSPaths';
 import { useToast } from '@/hooks/useToast';
 import { DiffViewer } from './DiffViewer';
 
@@ -38,8 +39,9 @@ export function CompareView({ projectId }: CompareViewProps) {
   } | null>(null);
 
   const { git } = useGit();
+  const { projectsPath } = useFSPaths();
   const { toast } = useToast();
-  const projectPath = `/projects/${projectId}`;
+  const projectPath = `${projectsPath}/${projectId}`;
 
   const loadReferences = useCallback(async () => {
     setIsLoading(true);

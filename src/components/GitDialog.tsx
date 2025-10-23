@@ -51,6 +51,7 @@ import {
 import { useGitStatus } from '@/hooks/useGitStatus';
 import { useGitSettings } from '@/hooks/useGitSettings';
 import { useGit } from '@/hooks/useGit';
+import { useFSPaths } from '@/hooks/useFSPaths';
 import { useToast } from '@/hooks/useToast';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useNostr } from '@nostrify/react';
@@ -91,6 +92,7 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
   const { data: gitStatus, refetch: refetchGitStatus } = useGitStatus(projectId);
   const { settings } = useGitSettings();
   const { git } = useGit();
+  const { projectsPath } = useFSPaths();
   const { toast } = useToast();
   const { user } = useCurrentUser();
   const { nostr } = useNostr();
@@ -98,7 +100,7 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
   const { data: pullRequests, isLoading: isLoadingPRs } = usePullRequests(originUrl);
   const { config } = useAppContext();
 
-  const projectPath = `/projects/${projectId}`;
+  const projectPath = `${projectsPath}/${projectId}`;
 
   // Initialize origin URL from git status
   useEffect(() => {

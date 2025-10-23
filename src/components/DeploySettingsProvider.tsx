@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, type ReactNode } from 'react';
 import { DeploySettingsContext, type DeploySettings, type DeployProvider } from '@/contexts/DeploySettingsContext';
 import { useFS } from '@/hooks/useFS';
+import { useFSPaths } from '@/hooks/useFSPaths';
 import { readDeploySettings, writeDeploySettings } from '@/lib/configUtils';
 
 const DEFAULT_SETTINGS: DeploySettings = {
@@ -9,6 +10,7 @@ const DEFAULT_SETTINGS: DeploySettings = {
 
 export function DeploySettingsProvider({ children }: { children: ReactNode }) {
   const { fs } = useFS();
+  const { configPath } = useFSPaths();
   const [settings, setSettings] = useState<DeploySettings>(DEFAULT_SETTINGS);
   const [isInitialized, setIsInitialized] = useState(false);
 
@@ -16,7 +18,7 @@ export function DeploySettingsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const initializeSettings = async () => {
       try {
-        const settings = await readDeploySettings(fs);
+        const settings = await readDeploySettings(fs, configPath);
         setSettings(settings);
       } catch (error) {
         console.error('Failed to initialize deploy settings:', error);
@@ -27,7 +29,7 @@ export function DeploySettingsProvider({ children }: { children: ReactNode }) {
     };
 
     initializeSettings();
-  }, [fs]);
+  }, [fs, configPath]);
 
   // Save settings to VFS whenever they change (but not during initialization)
   useEffect(() => {
@@ -35,14 +37,14 @@ export function DeploySettingsProvider({ children }: { children: ReactNode }) {
 
     const saveSettings = async () => {
       try {
-        await writeDeploySettings(fs, settings);
+        await writeDeploySettings(fs, settings, configPath);
       } catch (error) {
         console.error('Failed to save deploy settings:', error);
       }
     };
 
     saveSettings();
-  }, [fs, settings, isInitialized]);
+  }, [fs, settings, isInitialized, configPath]);
 
   const updateSettings = (updates: Partial<DeploySettings>) => {
     setSettings(prev => ({ ...prev, ...updates }));

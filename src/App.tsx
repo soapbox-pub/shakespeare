@@ -12,6 +12,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { NostrLoginProvider } from '@nostrify/react/login';
 import { AppProvider } from '@/components/AppProvider';
 import { AppConfig } from '@/contexts/AppContext';
+import { useAppContext } from '@/hooks/useAppContext';
 import { AISettingsProvider } from '@/components/AISettingsProvider';
 import { GitSettingsProvider } from '@/components/GitSettingsProvider';
 import { DeploySettingsProvider } from '@/components/DeploySettingsProvider';
@@ -51,6 +52,9 @@ const defaultConfig: AppConfig = {
   showcaseEnabled: true,
   showcaseModerator: "npub1jvnpg4c6ljadf5t6ry0w9q0rnm4mksde87kglkrc993z46c39axsgq89sc",
   ngitServers: ["git.shakespeare.diy", "relay.ngit.dev"],
+  fsPathProjects: "/projects",
+  fsPathConfig: "/config",
+  fsPathTmp: "/tmp",
 };
 
 const presetRelays = [
@@ -65,13 +69,15 @@ const lightningFS = new LightningFS('shakespeare-fs');
 const fs = new LightningFSAdapter(lightningFS.promises);
 
 // Component to handle filesystem cleanup on startup
-// Automatically removes files older than 1 hour from /tmp directory
+// Automatically removes files older than 1 hour from tmp directory
 function FSCleanupHandler() {
+  const { config } = useAppContext();
+
   useEffect(() => {
     // Run cleanup on application startup to remove stale temporary files
     // This helps prevent the VFS from accumulating old files over time
-    cleanupTmpDirectory(fs).catch(console.error);
-  }, []);
+    cleanupTmpDirectory(fs, config.fsPathTmp).catch(console.error);
+  }, [config.fsPathTmp]);
 
   return null;
 }
@@ -82,8 +88,8 @@ export function App() {
       <QueryClientProvider client={queryClient}>
         <AppProvider storageKey="nostr:app-config" defaultConfig={defaultConfig} presetRelays={presetRelays}>
           <FSProvider fs={fs}>
-            <FSCleanupHandler />
             <ConsoleErrorProvider>
+              <FSCleanupHandler />
               <NostrLoginProvider storageKey='nostr:login'>
                 <NostrProvider>
                   <AISettingsProvider>

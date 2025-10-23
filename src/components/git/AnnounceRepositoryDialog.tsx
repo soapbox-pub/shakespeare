@@ -24,6 +24,7 @@ import {
   Megaphone,
 } from 'lucide-react';
 import { useGit } from '@/hooks/useGit';
+import { useFSPaths } from '@/hooks/useFSPaths';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useNostr } from '@/hooks/useNostr';
 import { useToast } from '@/hooks/useToast';
@@ -59,11 +60,12 @@ export function AnnounceRepositoryDialog({
   const [newRelay, setNewRelay] = useState('');
 
   const { git } = useGit();
+  const { projectsPath } = useFSPaths();
   const { user } = useCurrentUser();
   const { nostr } = useNostr();
   const { toast } = useToast();
 
-  const projectPath = `/projects/${projectId}`;
+  const projectPath = `${projectsPath}/${projectId}`;
 
   useEffect(() => {
     if (open !== undefined) {

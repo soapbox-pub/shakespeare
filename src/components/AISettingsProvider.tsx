@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { ReactNode, useState, useEffect } from 'react';
 import { AISettingsContext, type AISettings, type AIProvider, type AISettingsContextType } from '@/contexts/AISettingsContext';
 import { useFS } from '@/hooks/useFS';
+import { useFSPaths } from '@/hooks/useFSPaths';
 import { readAISettings, writeAISettings } from '@/lib/configUtils';
 
 interface AISettingsProviderProps {
@@ -16,6 +17,7 @@ const DEFAULT_SETTINGS: AISettings = {
 export function AISettingsProvider({ children }: AISettingsProviderProps) {
   const queryClient = useQueryClient();
   const { fs } = useFS();
+  const { configPath } = useFSPaths();
   const [settings, setSettings] = useState<AISettings>(DEFAULT_SETTINGS);
   const [isInitialized, setIsInitialized] = useState(false);
 
@@ -23,7 +25,7 @@ export function AISettingsProvider({ children }: AISettingsProviderProps) {
   useEffect(() => {
     const initializeSettings = async () => {
       try {
-        const settings = await readAISettings(fs);
+        const settings = await readAISettings(fs, configPath);
         setSettings(settings);
       } catch (error) {
         console.error('Failed to initialize AI settings:', error);
@@ -34,7 +36,7 @@ export function AISettingsProvider({ children }: AISettingsProviderProps) {
     };
 
     initializeSettings();
-  }, [fs]);
+  }, [fs, configPath]);
 
   // Save settings to VFS whenever they change (but not during initialization)
   useEffect(() => {
@@ -42,14 +44,14 @@ export function AISettingsProvider({ children }: AISettingsProviderProps) {
 
     const saveSettings = async () => {
       try {
-        await writeAISettings(fs, settings);
+        await writeAISettings(fs, settings, configPath);
       } catch (error) {
         console.error('Failed to save AI settings:', error);
       }
     };
 
     saveSettings();
-  }, [fs, settings, isInitialized]);
+  }, [fs, settings, isInitialized, configPath]);
 
   const updateSettings = (newSettings: Partial<AISettings>) => {
     setSettings(prev => ({ ...prev, ...newSettings }));

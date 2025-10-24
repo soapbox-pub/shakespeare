@@ -65,8 +65,9 @@ See [REAL_TERMINAL.md](./REAL_TERMINAL.md) for details.
 ## Native Window Management
 
 - **Resizable windows** with native OS controls
+- **Clean interface** - No default menu bar (File/Edit/View/etc.)
+- **Frameless app** - Shakespeare UI fills the entire window
 - **Multiple windows** support (planned)
-- **Native menus** and keyboard shortcuts
 - **System tray integration** (planned)
 - **OS notifications** (planned)
 

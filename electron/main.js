@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, shell } from 'electron';
+import { app, BrowserWindow, ipcMain, shell, Menu } from 'electron';
 import { spawn } from 'child_process';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -15,6 +15,9 @@ const SHAKESPEARE_ROOT = path.join(os.homedir(), 'shakespeare');
 let mainWindow;
 
 function createWindow() {
+  // Remove the default menu (File, Edit, View, etc.)
+  Menu.setApplicationMenu(null);
+
   // Create the browser window.
   mainWindow = new BrowserWindow({
     width: 1400,

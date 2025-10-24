@@ -101,6 +101,24 @@ await shellTool.execute({
 });
 ```
 
+### ANSI Code Stripping
+
+Output from real shell commands is automatically cleaned for AI consumption:
+- **ANSI color codes** are stripped (e.g., `\u001b[31m` for red text)
+- **Cursor control sequences** are removed
+- **Text formatting codes** are stripped (bold, italic, etc.)
+- **Newlines and whitespace** are preserved
+
+This ensures AI receives clean, parseable text without terminal formatting noise.
+
+**Example:**
+```
+Input:  \u001b[1m\u001b[32madded 142 packages\u001b[39m\u001b[22m in 3s
+Output: added 142 packages in 3s
+```
+
+The Terminal UI still displays colored output for users - only AI tool output is stripped.
+
 ## Differences from Browser Mode
 
 | Feature | Browser Mode | Electron Mode |

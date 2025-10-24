@@ -38,6 +38,16 @@ electron/
 └── README.md           # This file
 ```
 
+## UI Configuration
+
+The Electron build has been configured for a clean, minimal interface:
+
+- **No default menu bar**: The standard File/Edit/View/Window/Help menu is removed
+- **Frameless app**: Shakespeare's UI is the entire window
+- **Native window controls**: Standard minimize/maximize/close buttons remain
+
+This provides a more app-like experience focused on the Shakespeare interface.
+
 ## Development
 
 Run Shakespeare in Electron development mode:

@@ -20,6 +20,7 @@ import { SessionManagerProvider } from '@/components/SessionManagerProvider';
 import { FSProvider } from '@/components/FSProvider';
 import { ConsoleErrorProvider } from '@/components/ConsoleErrorProvider';
 import { LightningFSAdapter } from '@/lib/LightningFSAdapter';
+import { ElectronFSAdapter } from '@/lib/ElectronFSAdapter';
 import { cleanupTmpDirectory } from '@/lib/tmpCleanup';
 import { DynamicFavicon } from '@/components/DynamicFavicon';
 
@@ -64,9 +65,12 @@ const presetRelays = [
   { url: 'wss://relay.primal.net', name: 'Primal' },
 ];
 
-// Initialize LightningFS
-const lightningFS = new LightningFS('shakespeare-fs');
-const fs = new LightningFSAdapter(lightningFS.promises);
+// Initialize filesystem adapter based on environment
+// In Electron, use Electron filesystem at ~/shakespeare
+// In browser, use LightningFS (IndexedDB-backed virtual filesystem)
+const fs = window.electron?.isElectron
+  ? new ElectronFSAdapter()
+  : new LightningFSAdapter(new LightningFS('shakespeare-fs').promises);
 
 // Component to handle filesystem cleanup on startup
 // Automatically removes files older than 1 hour from tmp directory

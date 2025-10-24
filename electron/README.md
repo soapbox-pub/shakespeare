@@ -2,6 +2,17 @@
 
 This directory contains the Electron-specific files for building Shakespeare as a desktop application.
 
+## Filesystem
+
+When running as an Electron app, Shakespeare uses your **local OS filesystem** at `~/shakespeare` instead of the browser's IndexedDB storage. This provides:
+
+- Direct file access with your favorite tools
+- No storage limits (only disk space)
+- Easy version control and backup
+- Better performance for large projects
+
+See [FILESYSTEM.md](./FILESYSTEM.md) for complete details.
+
 ## Structure
 
 ```
@@ -10,6 +21,7 @@ electron/
 ├── preload.js           # Preload script for secure IPC (ESM)
 ├── builder.config.js    # electron-builder configuration (ESM)
 ├── resources/           # Build resources (icons, etc.)
+├── FILESYSTEM.md        # Filesystem configuration details
 └── README.md           # This file
 ```
 

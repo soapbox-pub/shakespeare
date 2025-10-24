@@ -11,4 +11,19 @@ contextBridge.exposeInMainWorld('electron', {
 
   // Flag to indicate we're running in Electron
   isElectron: true,
+
+  // Filesystem API - all paths are relative to ~/shakespeare
+  fs: {
+    readFile: (path, encoding) => ipcRenderer.invoke('fs:readFile', path, encoding),
+    writeFile: (path, data, encoding) => ipcRenderer.invoke('fs:writeFile', path, data, encoding),
+    readdir: (path, withFileTypes) => ipcRenderer.invoke('fs:readdir', path, withFileTypes),
+    mkdir: (path, recursive) => ipcRenderer.invoke('fs:mkdir', path, recursive),
+    stat: (path) => ipcRenderer.invoke('fs:stat', path),
+    lstat: (path) => ipcRenderer.invoke('fs:lstat', path),
+    unlink: (path) => ipcRenderer.invoke('fs:unlink', path),
+    rmdir: (path) => ipcRenderer.invoke('fs:rmdir', path),
+    rename: (oldPath, newPath) => ipcRenderer.invoke('fs:rename', oldPath, newPath),
+    readlink: (path) => ipcRenderer.invoke('fs:readlink', path),
+    symlink: (target, path) => ipcRenderer.invoke('fs:symlink', target, path),
+  },
 });

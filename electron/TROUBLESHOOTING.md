@@ -268,6 +268,40 @@ If they're not:
 2. Verify the link uses `target="_blank"`
 3. Check console for errors
 
+#### Shell Execution Error: "spawn /bin/sh ENOENT"
+
+**Problem:** Terminal or AI shell commands fail with error:
+```
+Error: Error invoking remote method 'shell:exec': Error: Failed to execute command: spawn /bin/sh ENOENT
+```
+
+**Root Cause:** The working directory doesn't exist on the OS filesystem when the shell command is executed.
+
+**Solution:**
+This should be fixed in the latest version. The `shell:exec` handler now automatically creates the working directory before spawning the shell process.
+
+**If the issue persists:**
+1. Check the Electron console logs to see which directory is being used
+2. Verify the directory path is correct (should be under `~/shakespeare/`)
+3. Check filesystem permissions on the Shakespeare directory
+4. Try manually creating the project directory: `mkdir -p ~/shakespeare/projects/{projectId}`
+
+**Debug Steps:**
+1. Open DevTools in Electron (View → Toggle Developer Tools)
+2. Look for console logs showing:
+   - `Shell exec in directory: ...`
+   - `Command: ...`
+3. Check for any filesystem errors in the console
+4. Verify the directory exists: `ls -la ~/shakespeare/projects/`
+
+**Workaround:**
+If the issue continues, you can manually create the directory structure:
+```bash
+mkdir -p ~/shakespeare/projects
+```
+
+Then restart the Electron app.
+
 ### Platform-Specific Issues
 
 #### macOS: "App is damaged and can't be opened"

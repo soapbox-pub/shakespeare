@@ -49,15 +49,15 @@ const styleMap: Record<string, string> = {
 export function ansiToHtml(text: string): string {
   // Regular expression to match ANSI escape sequences
   const ansiRegex = /\u001b\[((?:\d+;)*\d+)m/g;
-  
+
   // Initialize result and current style classes
   let result = '';
   let currentClasses: string[] = [];
-  
+
   // Find all matches and their positions
   const matches: Array<{index: number, length: number, codes: string}> = [];
   let match;
-  
+
   while ((match = ansiRegex.exec(text)) !== null) {
     matches.push({
       index: match.index,
@@ -65,15 +65,15 @@ export function ansiToHtml(text: string): string {
       codes: match[1]
     });
   }
-  
+
   // If no ANSI codes found, return the original text
   if (matches.length === 0) {
     return text;
   }
-  
+
   // Process the text with ANSI codes
   let lastIndex = 0;
-  
+
   for (const match of matches) {
     // Add text before this match with current styling
     if (match.index > lastIndex) {
@@ -84,10 +84,10 @@ export function ansiToHtml(text: string): string {
         result += textSegment;
       }
     }
-    
+
     // Update current classes based on ANSI codes
     const codes = match.codes.split(';');
-    
+
     for (const code of codes) {
       if (code === '0') {
         // Reset all styles
@@ -109,11 +109,11 @@ export function ansiToHtml(text: string): string {
         }
       }
     }
-    
+
     // Update lastIndex to after this match
     lastIndex = match.index + match.length;
   }
-  
+
   // Add any remaining text
   if (lastIndex < text.length) {
     const textSegment = text.substring(lastIndex);
@@ -123,7 +123,7 @@ export function ansiToHtml(text: string): string {
       result += textSegment;
     }
   }
-  
+
   return result;
 }
 
@@ -132,4 +132,18 @@ export function ansiToHtml(text: string): string {
  */
 export function containsAnsiCodes(text: string): boolean {
   return /\u001b\[(?:\d+;)*\d+m/.test(text);
+}
+
+/**
+ * Strip all ANSI escape sequences from a string
+ * This removes color codes, cursor movements, and other terminal control sequences
+ */
+export function stripAnsiCodes(text: string): string {
+  // Remove all ANSI escape sequences
+  // This regex matches:
+  // - Color codes: \u001b[...m
+  // - Cursor movement: \u001b[...H, \u001b[...A, etc.
+  // - Clear screen: \u001b[...J, \u001b[...K
+  // - Other escape sequences
+  return text.replace(/\u001b\[[0-9;]*[a-zA-Z]/g, '');
 }

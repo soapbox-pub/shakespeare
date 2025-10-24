@@ -34,6 +34,7 @@ Shakespeare is proudly Open Source software licensed under the GNU AGPLv3. The p
 Shakespeare can be built and run as a native desktop application using Electron. This provides:
 
 - **Local filesystem access** - Projects stored at `~/shakespeare` on your OS
+- **Real OS terminal** - Execute any system command, not just built-in commands
 - **Direct file access** - Use any code editor, Git client, or file manager
 - **No storage limits** - Only limited by your disk space
 - **Native window management** and OS integration

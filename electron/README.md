@@ -2,7 +2,9 @@
 
 This directory contains the Electron-specific files for building Shakespeare as a desktop application.
 
-## Filesystem
+## Key Features
+
+### Real OS Filesystem
 
 When running as an Electron app, Shakespeare uses your **local OS filesystem** at `~/shakespeare` instead of the browser's IndexedDB storage. This provides:
 
@@ -12,6 +14,17 @@ When running as an Electron app, Shakespeare uses your **local OS filesystem** a
 - Better performance for large projects
 
 See [FILESYSTEM.md](./FILESYSTEM.md) for complete details.
+
+### Real Terminal
+
+The Electron version uses your **real OS terminal** instead of the virtual terminal in the browser. This means:
+
+- All OS commands available (not just built-in commands)
+- Native shell features (pipes, redirection, etc.)
+- Package managers work (`npm`, `yarn`, `pnpm`)
+- Full access to system utilities and build tools
+
+See [REAL_TERMINAL.md](./REAL_TERMINAL.md) for complete details.
 
 ## Structure
 

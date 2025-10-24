@@ -1,4 +1,5 @@
 import { app, BrowserWindow, ipcMain, shell } from 'electron';
+import { spawn } from 'child_process';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs/promises';
@@ -396,4 +397,65 @@ ipcMain.handle('fs:symlink', async (event, target, filePath) => {
     }
     throw err;
   }
+});
+
+// Shell execution handler
+ipcMain.handle('shell:exec', async (event, command, cwd) => {
+  return new Promise(async (resolve, reject) => {
+    try {
+      // Determine the shell and command execution method based on platform
+      const isWindows = process.platform === 'win32';
+      const shellCmd = isWindows ? 'cmd.exe' : '/bin/sh';
+      const shellArgs = isWindows ? ['/c', command] : ['-c', command];
+
+      // Resolve the working directory relative to Shakespeare root
+      const workingDir = cwd ? resolvePath(cwd) : SHAKESPEARE_ROOT;
+
+      // Ensure the working directory exists before spawning
+      try {
+        await fs.mkdir(workingDir, { recursive: true });
+        console.log(`Shell exec in directory: ${workingDir}`);
+        console.log(`Command: ${command}`);
+      } catch (mkdirError) {
+        console.warn(`Failed to create directory ${workingDir}:`, mkdirError.message);
+        // Continue anyway - directory might already exist
+      }
+
+      const child = spawn(shellCmd, shellArgs, {
+        cwd: workingDir,
+        env: { ...process.env },
+        shell: false, // We're already using the shell
+      });
+
+      let stdout = '';
+      let stderr = '';
+
+      child.stdout?.on('data', (data) => {
+        stdout += data.toString();
+      });
+
+      child.stderr?.on('data', (data) => {
+        stderr += data.toString();
+      });
+
+      child.on('error', (error) => {
+        console.error('Shell execution error:', error);
+        console.error('Working directory:', workingDir);
+        console.error('Shell command:', shellCmd);
+        console.error('Shell args:', shellArgs);
+        reject(new Error(`Failed to execute command: ${error.message} (cwd: ${workingDir})`));
+      });
+
+      child.on('close', (code) => {
+        resolve({
+          stdout,
+          stderr,
+          exitCode: code ?? 0,
+        });
+      });
+    } catch (error) {
+      console.error('Shell setup error:', error);
+      reject(new Error(`Failed to setup shell execution: ${error.message}`));
+    }
+  });
 });

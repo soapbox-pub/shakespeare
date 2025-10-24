@@ -11,6 +11,24 @@ Welcome to the Shakespeare Electron build documentation! This directory contains
   - Platform-specific instructions
   - Icon generation
 
+### Features
+- **[FEATURES.md](FEATURES.md)** - Overview of Electron-specific features
+  - Real OS filesystem
+  - Real OS terminal
+  - Native window management
+  - Performance benefits
+  - Browser vs Electron comparison
+- **[REAL_TERMINAL.md](REAL_TERMINAL.md)** - Real terminal feature documentation
+  - How it works
+  - Usage examples
+  - Security considerations
+  - AI integration
+  - Troubleshooting
+- **[FILESYSTEM.md](FILESYSTEM.md)** - Filesystem configuration details
+  - Storage location
+  - Directory structure
+  - File access patterns
+
 ### Integration
 - **[INTEGRATION.md](INTEGRATION.md)** - Guide for integrating Electron features into Shakespeare
   - Detecting Electron environment
@@ -27,6 +45,13 @@ Welcome to the Shakespeare Electron build documentation! This directory contains
   - Platform-specific problems
 
 ### Technical Reference
+- **[ARCHITECTURE.md](ARCHITECTURE.md)** - System architecture and design
+  - Process architecture
+  - Shell execution flow
+  - Filesystem architecture
+  - Security boundaries
+  - Component integration
+  - Performance considerations
 - **[README.md](README.md)** - Complete technical documentation
   - File structure
   - Build configuration
@@ -143,11 +168,15 @@ When updating the Electron build:
 ## 🌟 Features
 
 Current Electron features:
+- ✅ **Real OS filesystem** - Projects stored at `~/shakespeare`
+- ✅ **Real OS terminal** - Execute any system command
 - ✅ Platform detection
 - ✅ App version info
 - ✅ Secure IPC bridge
 - ✅ External link handling
 - ✅ Native window management
+
+See [FEATURES.md](FEATURES.md) for detailed feature documentation.
 
 Potential future features (see [README.md](README.md)):
 - Auto-updates
@@ -155,6 +184,7 @@ Potential future features (see [README.md](README.md)):
 - System tray
 - File associations
 - Native dialogs
+- Native Git CLI integration
 
 ## 📝 Contributing
 

@@ -26,4 +26,9 @@ contextBridge.exposeInMainWorld('electron', {
     readlink: (path) => ipcRenderer.invoke('fs:readlink', path),
     symlink: (target, path) => ipcRenderer.invoke('fs:symlink', target, path),
   },
+
+  // Shell API - execute real shell commands
+  shell: {
+    exec: (command, cwd) => ipcRenderer.invoke('shell:exec', command, cwd),
+  },
 });

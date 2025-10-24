@@ -33,7 +33,7 @@ This architecture allows Shakespeare to provide a full development environment e
 
 Shakespeare provides AI agents with specialized tools for project development (note: these are different from the tools available during Shakespeare's own development). These tools are defined in `src/lib/tools/`:
 
-- **ShellTool**: Execute shell commands in the virtual filesystem environment
+- **ShellTool**: Execute shell commands (virtual in browser, real OS shell in Electron)
 - **TextEditorViewTool**: Read file contents and view directory structures
 - **TextEditorWriteTool**: Create or overwrite files with new content
 - **TextEditorStrReplaceTool**: Replace strings in files
@@ -55,6 +55,7 @@ Shakespeare provides AI agents with specialized tools for project development (n
 
 #### Shell Commands
 
+**In Browser Mode:**
 Shakespeare provides a comprehensive set of shell commands that are JavaScript reimplementations of common Unix commands. These commands operate on the virtual filesystem (VFS) and are accessible through the ShellTool. The shell commands are implemented in `src/lib/commands/` and provide familiar Unix-like functionality for file and directory operations.
 
 **Available Commands:**
@@ -62,6 +63,16 @@ Shakespeare provides a comprehensive set of shell commands that are JavaScript r
 - **Directory Operations**: `cd`, `ls`, `mkdir`, `pwd`, `tree`
 - **System Commands**: `echo`, `which`, `wc`, `head`, `tail`
 - **Git Commands**: `git add`, `git commit`, `git push`, `git pull`, `git status`, `git log`, etc.
+
+**In Electron Mode:**
+When running in Electron, the ShellTool automatically uses the **real OS terminal** instead of the virtual terminal. This means:
+- **All OS commands available**: Not limited to built-in commands
+- **Native shell features**: Pipes, redirection, environment variables work natively
+- **Package managers**: `npm`, `yarn`, `pnpm` work directly
+- **Build tools**: `vite`, `webpack`, `tsc`, etc. available
+- **System utilities**: Full access to OS commands
+
+The ShellTool detects the environment automatically and uses the appropriate execution method.
 
 #### Security
 

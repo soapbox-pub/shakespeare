@@ -43,6 +43,22 @@ interface ElectronFSAPI {
   symlink(target: string, path: string): Promise<void>;
 }
 
+interface ShellExecResult {
+  stdout: string;
+  stderr: string;
+  exitCode: number;
+}
+
+interface ElectronShellAPI {
+  /**
+   * Execute a shell command on the host OS.
+   * @param command - The command to execute
+   * @param cwd - Working directory (relative to ~/shakespeare)
+   * @returns Promise with stdout, stderr, and exit code
+   */
+  exec(command: string, cwd?: string): Promise<ShellExecResult>;
+}
+
 interface ElectronAPI {
   /**
    * Flag indicating the app is running in Electron.
@@ -67,6 +83,12 @@ interface ElectronAPI {
    * All paths are relative to ~/shakespeare directory.
    */
   fs: ElectronFSAPI;
+
+  /**
+   * Shell API for executing real shell commands on the host OS.
+   * All paths in commands are relative to ~/shakespeare directory.
+   */
+  shell: ElectronShellAPI;
 }
 
 interface Window {

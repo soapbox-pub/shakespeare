@@ -1,3 +1,5 @@
+/// <reference path="../electron/electron.d.ts" />
+
 import { createRoot } from 'react-dom/client';
 
 // Import polyfills first

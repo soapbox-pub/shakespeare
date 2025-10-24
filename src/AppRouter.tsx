@@ -1,3 +1,5 @@
+/// <reference path="../electron/electron.d.ts" />
+
 import { BrowserRouter, HashRouter, Route, Routes } from "react-router-dom";
 import { ScrollToTop } from "./components/ScrollToTop";
 import { SessionMonitor } from "./components/SessionMonitor";

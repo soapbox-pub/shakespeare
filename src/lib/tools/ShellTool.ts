@@ -1,3 +1,5 @@
+/// <reference path="../../../electron/electron.d.ts" />
+
 import { z } from "zod";
 import type { Tool } from "./Tool";
 import type { JSRuntimeFS } from "../JSRuntime";

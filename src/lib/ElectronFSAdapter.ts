@@ -1,3 +1,5 @@
+/// <reference path="../../electron/electron.d.ts" />
+
 import type { JSRuntimeFS, DirectoryEntry } from './JSRuntime';
 
 /**

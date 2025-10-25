@@ -18,7 +18,6 @@ function getVersion(): string {
 
 // https://vitejs.dev/config/
 export default defineConfig(() => ({
-  base: './', // Use relative paths for assets (required for Electron)
   server: {
     host: "::",
     port: 8080,

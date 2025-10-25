@@ -59,8 +59,8 @@ function createWindow() {
   } else {
     // Production mode - load from custom protocol
     // This allows absolute paths like /shakespeare.svg to work naturally
-    console.log('Loading from app:// protocol: app://index.html');
-    mainWindow.loadURL('app://index.html');
+    console.log('Loading from app:// protocol: app://./index.html');
+    mainWindow.loadURL('app://./index.html');
   }
 
   // Log any load errors

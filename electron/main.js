@@ -89,30 +89,48 @@ async function ensureShakespeareRoot() {
   }
 }
 
+// Register custom protocol scheme before app is ready (required for privileges)
+if (!process.env.ELECTRON_DEV) {
+  protocol.registerSchemesAsPrivileged([
+    {
+      scheme: 'app',
+      privileges: {
+        standard: true,
+        secure: true,
+        supportFetchAPI: true,
+        corsEnabled: false,
+      },
+    },
+  ]);
+}
+
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 app.whenReady().then(async () => {
   // Register the app:// protocol to serve files from dist/
   // This allows absolute paths (/) to work naturally without base: './'
-  protocol.registerFileProtocol('app', (request, callback) => {
-    // Remove 'app://' prefix and normalize path
-    let filePath = request.url.replace('app://', '');
+  if (!process.env.ELECTRON_DEV) {
+    protocol.registerFileProtocol('app', (request, callback) => {
+      // Remove 'app://' prefix and normalize path
+      let filePath = request.url.replace('app://', '');
 
-    // Handle root path
-    if (filePath === '' || filePath === '/') {
-      filePath = 'index.html';
-    }
+      // Handle root path
+      if (filePath === '' || filePath === '/') {
+        filePath = 'index.html';
+      }
 
-    // Remove leading slash if present
-    if (filePath.startsWith('/')) {
-      filePath = filePath.substring(1);
-    }
+      // Remove leading slash if present
+      if (filePath.startsWith('/')) {
+        filePath = filePath.substring(1);
+      }
 
-    // Resolve to dist directory
-    const fullPath = path.join(__dirname, '../dist', filePath);
+      // Resolve to dist directory
+      const fullPath = path.join(__dirname, '../dist', filePath);
 
-    callback({ path: fullPath });
-  });
+      console.log('Protocol handler:', request.url, '->', fullPath);
+      callback({ path: fullPath });
+    });
+  }
 
   // Ensure Shakespeare root directory exists before creating window
   await ensureShakespeareRoot();

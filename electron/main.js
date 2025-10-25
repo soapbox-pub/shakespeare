@@ -293,6 +293,7 @@ ipcMain.handle('fs:stat', async (event, filePath) => {
   try {
     const fullPath = expandTilde(filePath);
     const stats = await fs.stat(fullPath);
+    const now = Date.now();
     return {
       isDirectory: stats.isDirectory(),
       isFile: stats.isFile(),
@@ -302,13 +303,14 @@ ipcMain.handle('fs:stat', async (event, filePath) => {
       isFIFO: stats.isFIFO(),
       isSocket: stats.isSocket(),
       size: stats.size,
-      mtimeMs: stats.mtimeMs,
-      ctimeMs: stats.ctimeMs,
-      atimeMs: stats.atimeMs,
+      mtimeMs: stats.mtimeMs ?? now,
+      ctimeMs: stats.ctimeMs ?? now,
+      atimeMs: stats.atimeMs ?? now,
       // Date objects need to be serialized as timestamps for IPC
-      mtime: stats.mtime.getTime(),
-      ctime: stats.ctime.getTime(),
-      atime: stats.atime.getTime(),
+      // Use optional chaining and fallback to now to prevent valueOf errors
+      mtime: stats.mtime?.getTime() ?? now,
+      ctime: stats.ctime?.getTime() ?? now,
+      atime: stats.atime?.getTime() ?? now,
     };
   } catch (error) {
     // Re-throw with original error code preserved for ENOENT handling
@@ -329,6 +331,7 @@ ipcMain.handle('fs:lstat', async (event, filePath) => {
   try {
     const fullPath = expandTilde(filePath);
     const stats = await fs.lstat(fullPath);
+    const now = Date.now();
     return {
       isDirectory: stats.isDirectory(),
       isFile: stats.isFile(),
@@ -338,13 +341,14 @@ ipcMain.handle('fs:lstat', async (event, filePath) => {
       isFIFO: stats.isFIFO(),
       isSocket: stats.isSocket(),
       size: stats.size,
-      mtimeMs: stats.mtimeMs,
-      ctimeMs: stats.ctimeMs,
-      atimeMs: stats.atimeMs,
+      mtimeMs: stats.mtimeMs ?? now,
+      ctimeMs: stats.ctimeMs ?? now,
+      atimeMs: stats.atimeMs ?? now,
       // Date objects need to be serialized as timestamps for IPC
-      mtime: stats.mtime.getTime(),
-      ctime: stats.ctime.getTime(),
-      atime: stats.atime.getTime(),
+      // Use optional chaining and fallback to now to prevent valueOf errors
+      mtime: stats.mtime?.getTime() ?? now,
+      ctime: stats.ctime?.getTime() ?? now,
+      atime: stats.atime?.getTime() ?? now,
     };
   } catch (error) {
     const err = new Error(`Failed to lstat ${filePath}: ${error.message}`);

@@ -12,7 +12,7 @@ contextBridge.exposeInMainWorld('electron', {
   // Flag to indicate we're running in Electron
   isElectron: true,
 
-  // Filesystem API - all paths are relative to ~/shakespeare
+  // Filesystem API - paths support tilde (~) expansion for home directory
   fs: {
     readFile: (path, encoding) => ipcRenderer.invoke('fs:readFile', path, encoding),
     writeFile: (path, data, encoding) => ipcRenderer.invoke('fs:writeFile', path, data, encoding),

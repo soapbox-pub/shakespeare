@@ -9,9 +9,6 @@ import os from 'os';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Shakespeare filesystem root directory
-const SHAKESPEARE_ROOT = path.join(os.homedir(), 'shakespeare');
-
 let mainWindow;
 
 function createWindow() {
@@ -79,16 +76,6 @@ function createWindow() {
   });
 }
 
-// Helper function to ensure Shakespeare root directory exists
-async function ensureShakespeareRoot() {
-  try {
-    await fs.mkdir(SHAKESPEARE_ROOT, { recursive: true });
-    console.log(`Shakespeare filesystem root: ${SHAKESPEARE_ROOT}`);
-  } catch (error) {
-    console.error('Failed to create Shakespeare root directory:', error);
-  }
-}
-
 // Register custom protocol scheme before app is ready (required for privileges)
 if (!process.env.ELECTRON_DEV) {
   protocol.registerSchemesAsPrivileged([
@@ -134,9 +121,6 @@ app.whenReady().then(async () => {
       callback({ path: fullPath });
     });
   }
-
-  // Ensure Shakespeare root directory exists before creating window
-  await ensureShakespeareRoot();
 
   createWindow();
 
@@ -193,11 +177,12 @@ ipcMain.handle('get-platform', () => {
   return process.platform;
 });
 
-// Helper function to resolve paths relative to Shakespeare root
-function resolvePath(relativePath) {
-  // Normalize the path and remove leading slash if present
-  const normalized = path.normalize(relativePath).replace(/^[/\\]+/, '');
-  return path.join(SHAKESPEARE_ROOT, normalized);
+// Helper function to expand tilde (~) in paths
+function expandTilde(filepath) {
+  if (filepath.startsWith('~/') || filepath === '~') {
+    return path.join(os.homedir(), filepath.slice(1));
+  }
+  return filepath;
 }
 
 // Filesystem IPC handlers
@@ -208,7 +193,7 @@ ipcMain.handle('fs:readFile', async (event, filePath, encoding) => {
     throw err;
   }
   try {
-    const fullPath = resolvePath(filePath);
+    const fullPath = expandTilde(filePath);
     const data = await fs.readFile(fullPath, encoding ? { encoding } : undefined);
     // If no encoding, convert Buffer to array for IPC serialization
     return encoding ? data : Array.from(data);
@@ -236,7 +221,7 @@ ipcMain.handle('fs:writeFile', async (event, filePath, data, encoding) => {
     throw err;
   }
   try {
-    const fullPath = resolvePath(filePath);
+    const fullPath = expandTilde(filePath);
     // Ensure parent directory exists
     await fs.mkdir(path.dirname(fullPath), { recursive: true });
     // Convert array back to Buffer if needed
@@ -258,7 +243,7 @@ ipcMain.handle('fs:writeFile', async (event, filePath, data, encoding) => {
 
 ipcMain.handle('fs:readdir', async (event, dirPath, withFileTypes) => {
   try {
-    const fullPath = resolvePath(dirPath);
+    const fullPath = expandTilde(dirPath);
     const entries = await fs.readdir(fullPath, { withFileTypes: !!withFileTypes });
 
     if (withFileTypes) {
@@ -288,7 +273,7 @@ ipcMain.handle('fs:readdir', async (event, dirPath, withFileTypes) => {
 
 ipcMain.handle('fs:mkdir', async (event, dirPath, recursive) => {
   try {
-    const fullPath = resolvePath(dirPath);
+    const fullPath = expandTilde(dirPath);
     await fs.mkdir(fullPath, { recursive: !!recursive });
   } catch (error) {
     const err = new Error(`Failed to create directory ${dirPath}: ${error.message}`);
@@ -306,7 +291,7 @@ ipcMain.handle('fs:mkdir', async (event, dirPath, recursive) => {
 
 ipcMain.handle('fs:stat', async (event, filePath) => {
   try {
-    const fullPath = resolvePath(filePath);
+    const fullPath = expandTilde(filePath);
     const stats = await fs.stat(fullPath);
     return {
       isDirectory: stats.isDirectory(),
@@ -342,7 +327,7 @@ ipcMain.handle('fs:stat', async (event, filePath) => {
 
 ipcMain.handle('fs:lstat', async (event, filePath) => {
   try {
-    const fullPath = resolvePath(filePath);
+    const fullPath = expandTilde(filePath);
     const stats = await fs.lstat(fullPath);
     return {
       isDirectory: stats.isDirectory(),
@@ -377,7 +362,7 @@ ipcMain.handle('fs:lstat', async (event, filePath) => {
 
 ipcMain.handle('fs:unlink', async (event, filePath) => {
   try {
-    const fullPath = resolvePath(filePath);
+    const fullPath = expandTilde(filePath);
     await fs.unlink(fullPath);
   } catch (error) {
     const err = new Error(`Failed to unlink ${filePath}: ${error.message}`);
@@ -395,7 +380,7 @@ ipcMain.handle('fs:unlink', async (event, filePath) => {
 
 ipcMain.handle('fs:rmdir', async (event, dirPath) => {
   try {
-    const fullPath = resolvePath(dirPath);
+    const fullPath = expandTilde(dirPath);
     await fs.rmdir(fullPath);
   } catch (error) {
     // Re-throw with original error code preserved for ENOENT handling
@@ -414,8 +399,8 @@ ipcMain.handle('fs:rmdir', async (event, dirPath) => {
 
 ipcMain.handle('fs:rename', async (event, oldPath, newPath) => {
   try {
-    const fullOldPath = resolvePath(oldPath);
-    const fullNewPath = resolvePath(newPath);
+    const fullOldPath = expandTilde(oldPath);
+    const fullNewPath = expandTilde(newPath);
     // Ensure parent directory of new path exists
     await fs.mkdir(path.dirname(fullNewPath), { recursive: true });
     await fs.rename(fullOldPath, fullNewPath);
@@ -435,7 +420,7 @@ ipcMain.handle('fs:rename', async (event, oldPath, newPath) => {
 
 ipcMain.handle('fs:readlink', async (event, filePath) => {
   try {
-    const fullPath = resolvePath(filePath);
+    const fullPath = expandTilde(filePath);
     return await fs.readlink(fullPath);
   } catch (error) {
     const err = new Error(`Failed to read link ${filePath}: ${error.message}`);
@@ -453,7 +438,7 @@ ipcMain.handle('fs:readlink', async (event, filePath) => {
 
 ipcMain.handle('fs:symlink', async (event, target, filePath) => {
   try {
-    const fullPath = resolvePath(filePath);
+    const fullPath = expandTilde(filePath);
     // Ensure parent directory exists
     await fs.mkdir(path.dirname(fullPath), { recursive: true });
     await fs.symlink(target, fullPath);
@@ -480,8 +465,8 @@ ipcMain.handle('shell:exec', async (event, command, cwd) => {
       const shellCmd = isWindows ? 'cmd.exe' : '/bin/sh';
       const shellArgs = isWindows ? ['/c', command] : ['-c', command];
 
-      // Resolve the working directory relative to Shakespeare root
-      const workingDir = cwd ? resolvePath(cwd) : SHAKESPEARE_ROOT;
+      // Expand tilde in working directory if provided, otherwise use home directory
+      const workingDir = cwd ? expandTilde(cwd) : os.homedir();
 
       // Ensure the working directory exists before spawning
       try {

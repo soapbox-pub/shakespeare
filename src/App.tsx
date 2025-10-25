@@ -44,6 +44,47 @@ const queryClient = new QueryClient({
   },
 });
 
+// Get OS-specific default paths for Electron
+function getElectronDefaultPaths(): { fsPathProjects: string; fsPathConfig: string; fsPathTmp: string } {
+  if (!window.electron?.isElectron) {
+    // Browser defaults - use virtual filesystem paths
+    return {
+      fsPathProjects: "/projects",
+      fsPathConfig: "/config",
+      fsPathTmp: "/tmp",
+    };
+  }
+
+  // Electron defaults - use OS-specific paths
+  // Note: The ~ will be expanded by the Electron main process
+  const platform = navigator.platform.toLowerCase();
+
+  if (platform.includes('win')) {
+    // Windows
+    return {
+      fsPathProjects: "~/Documents/Projects",
+      fsPathConfig: "~/AppData/Local/shakespeare",
+      fsPathTmp: "~/AppData/Local/Temp/shakespeare",
+    };
+  } else if (platform.includes('mac')) {
+    // macOS
+    return {
+      fsPathProjects: "~/Projects",
+      fsPathConfig: "~/Library/Application Support/shakespeare",
+      fsPathTmp: "/tmp/shakespeare",
+    };
+  } else {
+    // Linux and other Unix-like systems
+    return {
+      fsPathProjects: "~/Projects",
+      fsPathConfig: "~/.config/shakespeare",
+      fsPathTmp: "/tmp/shakespeare",
+    };
+  }
+}
+
+const electronPaths = getElectronDefaultPaths();
+
 const defaultConfig: AppConfig = {
   theme: "system",
   relayUrl: "wss://relay.ditto.pub",
@@ -55,9 +96,9 @@ const defaultConfig: AppConfig = {
   showcaseEnabled: true,
   showcaseModerator: "npub1jvnpg4c6ljadf5t6ry0w9q0rnm4mksde87kglkrc993z46c39axsgq89sc",
   ngitServers: ["git.shakespeare.diy", "relay.ngit.dev"],
-  fsPathProjects: "/projects",
-  fsPathConfig: "/config",
-  fsPathTmp: "/tmp",
+  fsPathProjects: electronPaths.fsPathProjects,
+  fsPathConfig: electronPaths.fsPathConfig,
+  fsPathTmp: electronPaths.fsPathTmp,
 };
 
 const presetRelays = [

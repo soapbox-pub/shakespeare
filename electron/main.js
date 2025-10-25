@@ -114,6 +114,9 @@ app.whenReady().then(async () => {
       // Remove 'app://' prefix and normalize path
       let filePath = request.url.replace('app://', '');
 
+      // Remove trailing slashes
+      filePath = filePath.replace(/\/+$/, '');
+
       // Handle root path
       if (filePath === '' || filePath === '/') {
         filePath = 'index.html';

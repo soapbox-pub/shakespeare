@@ -43,12 +43,10 @@ export function Terminal({ projectId, className }: TerminalProps) {
     shellToolRef.current = new ShellTool(fs, `${projectsPath}/${projectId}`, git, projectsPath);
 
     // Add welcome message
-    const isElectron = !!window.electron?.shell;
-    const terminalType = isElectron ? 'Real Terminal (OS Shell)' : 'Virtual Terminal';
     setLines([{
       id: Date.now().toString(),
       type: 'output',
-      content: `Welcome to Shakespeare Terminal (${terminalType})\n${isElectron ? 'Running real shell commands on your OS.' : "Type 'help' to see available commands."}`,
+      content: `Welcome to Shakespeare Terminal\nType 'help' to see available commands.`,
       timestamp: new Date()
     }]);
   }, [projectId, fs, git, projectsPath]);

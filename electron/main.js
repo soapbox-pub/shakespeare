@@ -36,6 +36,20 @@ function createWindow() {
     backgroundColor: '#ffffff',
   });
 
+  // Enable DevTools keyboard shortcut (Ctrl+Shift+I / Cmd+Option+I)
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    // Check for Ctrl+Shift+I (Windows/Linux) or Cmd+Option+I (Mac)
+    if (input.control && input.shift && input.key.toLowerCase() === 'i') {
+      mainWindow.webContents.toggleDevTools();
+      event.preventDefault();
+    }
+    // Also support F12
+    if (input.key === 'F12') {
+      mainWindow.webContents.toggleDevTools();
+      event.preventDefault();
+    }
+  });
+
   // Load the app
   if (process.env.ELECTRON_DEV) {
     // Development mode - load from Vite dev server

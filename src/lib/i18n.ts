@@ -228,6 +228,8 @@ const resources = {
       // About Settings
       aboutShakespeare: 'About Shakespeare',
       aboutShakespeareDescription: 'Information about Shakespeare',
+      mirrors: 'Mirrors',
+      mirrorsDescription: 'Shakespeare is available at multiple mirror URLs for redundancy and accessibility.',
       sourceCode: 'Source Code',
       description: 'Description',
       license: 'License',
@@ -619,6 +621,8 @@ const resources = {
       // About Settings
       aboutShakespeare: 'Sobre o Shakespeare',
       aboutShakespeareDescription: 'Informações sobre o Shakespeare.',
+      mirrors: 'Espelhos',
+      mirrorsDescription: 'Shakespeare está disponível em vários URLs espelhados para redundância e acessibilidade.',
       sourceCode: 'Código-fonte',
       description: 'Descrição',
       license: 'Licença',
@@ -962,6 +966,8 @@ const resources = {
       // About Settings
       aboutShakespeare: '关于Shakespeare',
       aboutShakespeareDescription: '关于Shakespeare的信息。',
+      mirrors: '镜像',
+      mirrorsDescription: 'Shakespeare可通过多个镜像URL访问，以确保冗余和可访问性。',
       sourceCode: '源代码',
       description: '描述',
       license: '许可证',
@@ -1295,6 +1301,8 @@ const resources = {
       // About Settings
       aboutShakespeare: 'Game da Shakespeare',
       aboutShakespeareDescription: 'Bayani game da Shakespeare.',
+      mirrors: 'Madubai',
+      mirrorsDescription: 'Shakespeare yana samuwa a URLs masu yawa don inganci da samun dama.',
       sourceCode: 'Lambar Tushe',
       description: 'Bayanin',
       license: 'Lasisi',
@@ -1628,6 +1636,8 @@ const resources = {
       // About Settings
       aboutShakespeare: 'Nipa Shakespeare',
       aboutShakespeareDescription: 'Alaye nipa Shakespeare.',
+      mirrors: 'Awọn Digi',
+      mirrorsDescription: 'Shakespeare wa ni awọn URL digi pupọ fun aredundan ati iraye si.',
       sourceCode: 'Koodu Orisun',
       description: 'Apejuwe',
       license: 'Iwe-aṣẹ',
@@ -1956,6 +1966,8 @@ const resources = {
       // About Settings
       aboutShakespeare: 'Gbasara Shakespeare',
       aboutShakespeareDescription: 'Ozi gbasara Shakespeare.',
+      mirrors: 'Enyo',
+      mirrorsDescription: 'Shakespeare dị na ọtụtụ URL enyo maka nnọchi na nnweta.',
       sourceCode: 'Koodu Isi',
       description: 'Nkọwa',
       license: 'Ikike',

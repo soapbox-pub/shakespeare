@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Info, ExternalLink, Loader2, AlertTriangle, ArrowLeft, Code } from 'lucide-react';
+import { Info, ExternalLink, Loader2, AlertTriangle, ArrowLeft, Code, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -83,6 +83,53 @@ export function AboutSettings() {
         <EmailSubscription />
 
         <div className="space-y-3">
+          {/* Mirrors */}
+          <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="mirrors" className="border rounded-lg">
+              <AccordionTrigger className="px-4 py-3 hover:no-underline">
+                <div className="flex items-center gap-2">
+                  <Globe className="h-5 w-5" />
+                  {t('mirrors')}
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="px-4 pb-4">
+                <p className="text-sm text-muted-foreground mb-3">{t('mirrorsDescription')}</p>
+                <div className="space-y-2">
+                  <Button
+                    variant="outline"
+                    className="w-full h-10 flex items-center gap-2 justify-start"
+                    asChild
+                  >
+                    <a href="https://shakespeare.diy" target="_blank" rel="noopener noreferrer">
+                      <span className="font-mono text-sm">shakespeare.diy</span>
+                      <ExternalLink className="ml-auto h-4 w-4" />
+                    </a>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="w-full h-10 flex items-center gap-2 justify-start"
+                    asChild
+                  >
+                    <a href="https://shakespeare.soapbox.dev" target="_blank" rel="noopener noreferrer">
+                      <span className="font-mono text-sm">shakespeare.soapbox.dev</span>
+                      <ExternalLink className="ml-auto h-4 w-4" />
+                    </a>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="w-full h-10 flex items-center gap-2 justify-start"
+                    asChild
+                  >
+                    <a href="https://shakespeare-b0b9c8.gitlab.io" target="_blank" rel="noopener noreferrer">
+                      <span className="font-mono text-sm">shakespeare-b0b9c8.gitlab.io</span>
+                      <ExternalLink className="ml-auto h-4 w-4" />
+                    </a>
+                  </Button>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+
           {/* Project Information */}
           <Button
             variant="outline"

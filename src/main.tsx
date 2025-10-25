@@ -18,7 +18,7 @@ import 'prismjs/themes/prism.css';
 createRoot(document.getElementById("root")!).render(<App />);
 
 // Register service worker (skip in Electron - doesn't work with file:// protocol)
-if ('serviceWorker' in navigator && !window.electron?.isElectron) {
+if ('serviceWorker' in navigator && !globalThis.electron) {
   window.addEventListener('load', () => {
     navigator.serviceWorker
       .register('/sw.js')

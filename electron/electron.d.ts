@@ -61,12 +61,6 @@ interface ElectronShellAPI {
 
 interface ElectronAPI {
   /**
-   * Flag indicating the app is running in Electron.
-   * Always `true` when running in Electron.
-   */
-  isElectron: boolean;
-
-  /**
    * Get the current platform.
    * @returns 'darwin' | 'win32' | 'linux'
    */

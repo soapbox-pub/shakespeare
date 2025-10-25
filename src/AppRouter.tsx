@@ -25,7 +25,7 @@ import { SettingsLayout } from "./components/SettingsLayout";
 
 export function AppRouter() {
   // Use HashRouter in Electron, BrowserRouter in web
-  const Router = window.electron?.isElectron ? HashRouter : BrowserRouter;
+  const Router = globalThis.electron ? HashRouter : BrowserRouter;
 
   return (
     <Router>

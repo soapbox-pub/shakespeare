@@ -9,9 +9,6 @@ contextBridge.exposeInMainWorld('electron', {
   // App version
   version: () => ipcRenderer.invoke('get-app-version'),
 
-  // Flag to indicate we're running in Electron
-  isElectron: true,
-
   // Filesystem API - paths support tilde (~) expansion for home directory
   fs: {
     readFile: (path, encoding) => ipcRenderer.invoke('fs:readFile', path, encoding),

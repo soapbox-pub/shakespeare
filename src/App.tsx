@@ -44,7 +44,7 @@ const queryClient = new QueryClient({
 
 // Get OS-specific default paths for Electron
 function getElectronDefaultPaths(): { fsPathProjects: string; fsPathConfig: string; fsPathTmp: string } {
-  if (!window.electron?.isElectron) {
+  if (!globalThis.electron) {
     // Browser defaults - use virtual filesystem paths
     return {
       fsPathProjects: "/projects",
@@ -109,7 +109,7 @@ const presetRelays = [
 // Initialize filesystem adapter based on environment
 // In Electron, use Electron filesystem at ~/shakespeare
 // In browser, use LightningFS (IndexedDB-backed virtual filesystem)
-const fs = window.electron?.isElectron
+const fs = globalThis.electron
   ? new ElectronFSAdapter()
   : new LightningFSAdapter(new LightningFS('shakespeare-fs').promises);
 

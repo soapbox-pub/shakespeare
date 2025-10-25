@@ -22,6 +22,8 @@ import { ConsoleErrorProvider } from '@/components/ConsoleErrorProvider';
 import { LightningFSAdapter } from '@/lib/LightningFSAdapter';
 import { cleanupTmpDirectory } from '@/lib/tmpCleanup';
 import { DynamicFavicon } from '@/components/DynamicFavicon';
+import { OfflineIndicator } from '@/components/OfflineIndicator';
+import { PWAUpdatePrompt } from '@/components/PWAUpdatePrompt';
 
 import AppRouter from './AppRouter';
 
@@ -99,6 +101,8 @@ export function App() {
                           <TooltipProvider>
                             <Toaster />
                             <DynamicFavicon />
+                            <OfflineIndicator />
+                            <PWAUpdatePrompt />
                             <Suspense>
                               <AppRouter />
                             </Suspense>

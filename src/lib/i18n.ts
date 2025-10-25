@@ -236,6 +236,13 @@ const resources = {
 
       // Data Settings
       dataSettingsDescriptionLong: 'Export files and manage local data.',
+      offlineCache: 'Offline Cache',
+      offlineCacheDescription: 'Shakespeare caches files locally to enable offline functionality. Clear the cache to free up space or troubleshoot issues.',
+      cacheSize: 'Cache size',
+      clearCache: 'Clear Cache',
+      cacheClearedSuccessfully: 'Cache Cleared',
+      cacheClearedDescription: 'Offline cache has been cleared successfully.',
+      failedToClearCache: 'Failed to Clear Cache',
       exportFiles: 'Export Files',
       exportFilesDescription: 'Download all your projects and files as a ZIP archive. This includes all project files, settings, and data stored locally.',
       exportAllFiles: 'Export All Files',
@@ -563,6 +570,13 @@ const resources = {
 
       // Data Settings
       dataSettingsDescriptionLong: 'Exporte arquivos e gerencie dados locais.',
+      offlineCache: 'Cache Offline',
+      offlineCacheDescription: 'O Shakespeare armazena arquivos localmente para permitir funcionalidade offline. Limpe o cache para liberar espaço ou solucionar problemas.',
+      cacheSize: 'Tamanho do cache',
+      clearCache: 'Limpar Cache',
+      cacheClearedSuccessfully: 'Cache Limpo',
+      cacheClearedDescription: 'O cache offline foi limpo com sucesso.',
+      failedToClearCache: 'Falha ao Limpar Cache',
       exportFiles: 'Exportar Arquivos',
       exportFilesDescription: 'Baixe todos os seus projetos e arquivos como um arquivo ZIP. Isso inclui todos os arquivos de projeto, configurações e dados armazenados localmente.',
       exportAllFiles: 'Exportar Todos os Arquivos',
@@ -899,6 +913,13 @@ const resources = {
 
       // Data Settings
       dataSettingsDescriptionLong: '导出文件和管理本地数据。',
+      offlineCache: '离线缓存',
+      offlineCacheDescription: 'Shakespeare在本地缓存文件以启用离线功能。清除缓存以释放空间或解决问题。',
+      cacheSize: '缓存大小',
+      clearCache: '清除缓存',
+      cacheClearedSuccessfully: '缓存已清除',
+      cacheClearedDescription: '离线缓存已成功清除。',
+      failedToClearCache: '清除缓存失败',
       exportFiles: '导出文件',
       exportFilesDescription: '将您的所有项目和文件下载为ZIP存档。这包括所有项目文件、设置和本地存储的数据。',
       exportAllFiles: '导出所有文件',

@@ -3,6 +3,7 @@ import path from "node:path";
 
 import react from "@vitejs/plugin-react-swc";
 import { defineConfig } from "vitest/config";
+import { VitePWA } from 'vite-plugin-pwa';
 
 function getVersion(): string {
   try {
@@ -27,6 +28,22 @@ export default defineConfig(() => ({
   },
   plugins: [
     react(),
+    VitePWA({
+      registerType: 'autoUpdate',
+      includeAssets: ['shakespeare.svg', 'shakespeare-192x192.png', 'shakespeare-512x512.png', 'sine.mp3'],
+      manifest: false, // Use existing manifest.webmanifest from public folder
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        maximumFileSizeToCacheInBytes: 10 * 1024 * 1024, // 10 MB
+        cleanupOutdatedCaches: true,
+        skipWaiting: true,
+        clientsClaim: true
+      },
+      devOptions: {
+        enabled: false,
+        type: 'module'
+      }
+    })
   ],
   build: {
     sourcemap: true,

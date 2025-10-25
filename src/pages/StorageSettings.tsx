@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Download, Trash2, AlertTriangle, Loader2, Database, Info, ArrowLeft, Shield } from 'lucide-react';
+import { Download, Trash2, AlertTriangle, Loader2, Database, Info, ArrowLeft, Shield, HardDrive } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -10,6 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/useToast';
 import { useFS } from '@/hooks/useFS';
 import { useIsMobile } from '@/hooks/useIsMobile';
+import { useOffline } from '@/hooks/useOffline';
 import {
   isPersistentStorageSupported,
   isPersistentStorageGranted,
@@ -35,14 +36,17 @@ export function StorageSettings() {
   const { t } = useTranslation();
   const [isExporting, setIsExporting] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
+  const [isClearingCache, setIsClearingCache] = useState(false);
   const [isRequestingPersistent, setIsRequestingPersistent] = useState(false);
   const [storageInfo, setStorageInfo] = useState<StorageInfo | null>(null);
   const [storageError, setStorageError] = useState<string | null>(null);
   const [isPersistent, setIsPersistent] = useState<boolean | null>(null);
+  const [cacheSize, setCacheSize] = useState<number>(0);
   const { toast } = useToast();
   const { fs } = useFS();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { clearCache } = useOffline();
 
   // Format bytes to human readable format
   const formatBytes = (bytes: number): string => {
@@ -76,6 +80,30 @@ export function StorageSettings() {
         // Check if storage is persistent
         const persistent = await isPersistentStorageGranted();
         setIsPersistent(persistent);
+
+        // Calculate cache size
+        if ('caches' in window) {
+          const cacheNames = await caches.keys();
+          let totalSize = 0;
+
+          for (const cacheName of cacheNames) {
+            // Include both workbox and shakespeare caches
+            if (cacheName.startsWith('workbox-') || cacheName.includes('shakespeare')) {
+              const cache = await caches.open(cacheName);
+              const requests = await cache.keys();
+
+              for (const request of requests) {
+                const response = await cache.match(request);
+                if (response) {
+                  const blob = await response.blob();
+                  totalSize += blob.size;
+                }
+              }
+            }
+          }
+
+          setCacheSize(totalSize);
+        }
       } catch (error) {
         console.error('Failed to get storage information:', error);
         setStorageError(error instanceof Error ? error.message : 'Failed to get storage information');
@@ -83,7 +111,7 @@ export function StorageSettings() {
     };
 
     loadStorageInfo();
-  }, []);
+  }, [isClearingCache]);
 
   const exportFilesAsZip = async () => {
     const zip = new JSZip();
@@ -217,11 +245,36 @@ export function StorageSettings() {
     }
   };
 
+  const handleClearCache = async () => {
+    setIsClearingCache(true);
+    try {
+      await clearCache();
+      setCacheSize(0);
+
+      toast({
+        title: t('cacheClearedSuccessfully'),
+        description: t('cacheClearedDescription'),
+      });
+    } catch (error) {
+      console.error('Failed to clear cache:', error);
+      toast({
+        title: t('failedToClearCache'),
+        description: error instanceof Error ? error.message : t('error'),
+        variant: "destructive",
+      });
+    } finally {
+      setIsClearingCache(false);
+    }
+  };
+
   const handleClearAllData = async () => {
     setIsClearing(true);
     try {
       // Clear localStorage
       localStorage.clear();
+
+      // Clear caches
+      await clearCache();
 
       // Clear IndexedDB databases
       const databases = await indexedDB.databases();
@@ -356,6 +409,42 @@ export function StorageSettings() {
                 disabled={isRequestingPersistent || isPersistent === null}
               />
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Clear Cache */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <HardDrive className="h-5 w-5" />
+              {t('offlineCache')}
+            </CardTitle>
+            <CardDescription>
+              {t('offlineCacheDescription')}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="text-sm text-muted-foreground">
+              {t('cacheSize')}: {formatBytes(cacheSize)}
+            </div>
+            <Button
+              onClick={handleClearCache}
+              disabled={isClearingCache}
+              variant="outline"
+              className="w-full sm:w-auto"
+            >
+              {isClearingCache ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  {t('clearing')}
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  {t('clearCache')}
+                </>
+              )}
+            </Button>
           </CardContent>
         </Card>
 

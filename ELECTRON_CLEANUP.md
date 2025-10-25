@@ -17,16 +17,26 @@ This document summarizes the cleanup performed on the `electron` branch before m
 
 **Reason:** TypeScript can find the types via triple-slash reference directives (`/// <reference path="..." />`) in files that use `window.electron`. This is the standard approach and doesn't pollute the global tsconfig.
 
-### 2. ❌ `src/components/ShakespeareLogo.tsx` - Removed Vite-specific `?url` import
-### 3. ❌ `src/components/AppShowcaseCard.tsx` - Removed Vite-specific `?url` import
-**Before:**
+### 2. ✅ `src/components/ShakespeareLogo.tsx` - Fixed asset import (removed `?url`, kept import)
+### 3. ✅ `src/components/AppShowcaseCard.tsx` - Fixed asset import (removed `?url`, kept import)
+**Initial (broken):**
 ```tsx
-import shakespeareLogo from '/shakespeare.svg?url';
+import shakespeareLogo from '/shakespeare.svg?url';  // Unnecessary ?url suffix
+```
+
+**Attempted fix (still broken):**
+```tsx
+<img src="/shakespeare.svg" />  // Breaks in Electron - absolute path
+```
+
+**Final solution:**
+```tsx
+import shakespeareLogo from '/shakespeare.svg';  // Import without ?url
 
 export function ShakespeareLogo({ className }: ShakespeareLogoProps) {
   return (
     <img
-      src={shakespeareLogo}
+      src={shakespeareLogo}  // Vite transforms to './shakespeare.svg'
       alt="Shakespeare"
       className={className}
     />
@@ -34,23 +44,16 @@ export function ShakespeareLogo({ className }: ShakespeareLogoProps) {
 }
 ```
 
-**After:**
-```tsx
-export function ShakespeareLogo({ className }: ShakespeareLogoProps) {
-  return (
-    <img
-      src="/shakespeare.svg"
-      alt="Shakespeare"
-      className={className}
-    />
-  );
-}
-```
-
-**Reason:** With `base: './'` in `vite.config.ts`, Vite correctly handles public assets for both browser and Electron. The `?url` parameter was unnecessary and made the code Vite-specific. The files are already in `public/` and get copied to `dist/` during build.
+**Reason:**
+- The `?url` suffix was unnecessary (Vite handles SVG imports without it)
+- But we **do need imports** - absolute paths like `/shakespeare.svg` don't work in Electron's `file://` protocol
+- Importing assets lets Vite transform paths at build time with `base: './'`
+- Works in both browser (`https://...`) and Electron (`file://...`)
 
 Same fix applied to:
-- `src/components/AppShowcaseCard.tsx` - Changed `badgeSvg` import to direct path `/badge.svg`
+- `src/components/AppShowcaseCard.tsx` - `import badgeSvg from '/badge.svg'`
+
+See `PUBLIC_ASSETS_EXPLANATION.md` for detailed explanation.
 
 ## Changes Added (For Type Safety)
 

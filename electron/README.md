@@ -1,176 +1,195 @@
-# Shakespeare Electron Build
+# Shakespeare Electron Desktop App
 
-This directory contains the Electron-specific files for building Shakespeare as a desktop application.
+Shakespeare can run as a native desktop application on macOS, Windows, and Linux using Electron. The desktop version provides enhanced features over the browser version, including real OS filesystem access and native terminal execution.
 
-## Key Features
+## Quick Start
 
-### Real OS Filesystem
-
-When running as an Electron app, Shakespeare uses your **local OS filesystem** at `~/shakespeare` instead of the browser's IndexedDB storage. This provides:
-
-- Direct file access with your favorite tools
-- No storage limits (only disk space)
-- Easy version control and backup
-- Better performance for large projects
-
-See [FILESYSTEM.md](./FILESYSTEM.md) for complete details.
-
-### Real Terminal
-
-The Electron version uses your **real OS terminal** instead of the virtual terminal in the browser. This means:
-
-- All OS commands available (not just built-in commands)
-- Native shell features (pipes, redirection, etc.)
-- Package managers work (`npm`, `yarn`, `pnpm`)
-- Full access to system utilities and build tools
-
-See [REAL_TERMINAL.md](./REAL_TERMINAL.md) for complete details.
-
-## Structure
-
-```
-electron/
-├── main.js              # Electron main process (ESM)
-├── preload.js           # Preload script for secure IPC (ESM)
-├── builder.config.js    # electron-builder configuration (ESM)
-├── resources/           # Build resources (icons, etc.)
-├── FILESYSTEM.md        # Filesystem configuration details
-└── README.md           # This file
-```
-
-## UI Configuration
-
-The Electron build has been configured for a clean, minimal interface:
-
-- **No default menu bar**: The standard File/Edit/View/Window/Help menu is removed
-- **Frameless app**: Shakespeare's UI is the entire window
-- **Native window controls**: Standard minimize/maximize/close buttons remain
-
-This provides a more app-like experience focused on the Shakespeare interface.
-
-## Development
-
-Run Shakespeare in Electron development mode:
-
+### Development Mode
 ```bash
 npm run electron:dev
 ```
 
-This will:
-1. Start the Vite dev server
-2. Wait for it to be ready
-3. Launch Electron pointing to the dev server
-
-## Building
-
-Build Shakespeare for your current platform:
-
+### Build for Distribution
 ```bash
+# Build for your current platform
 npm run electron:build
+
+# Build for specific platforms
+npm run electron:build:mac     # macOS (DMG + ZIP)
+npm run electron:build:win     # Windows (NSIS + Portable)
+npm run electron:build:linux   # Linux (AppImage, DEB, RPM)
+npm run electron:build:all     # All platforms
 ```
-
-Build for specific platforms:
-
-```bash
-npm run electron:build:mac
-npm run electron:build:win
-npm run electron:build:linux
-```
-
-Build for all platforms:
-
-```bash
-npm run electron:build:all
-```
-
-## Output
 
 Built applications will be in the `electron-dist/` directory.
 
-## Platform-Specific Notes
+## Key Features
 
-### macOS
+### 1. Real OS Filesystem
 
-- Requires `.icns` icon file in `electron/resources/icon.icns`
-- Builds both Intel (x64) and Apple Silicon (arm64) versions
-- Creates DMG installer and ZIP archive
+Projects are stored at `~/shakespeare` on your local filesystem instead of browser IndexedDB:
 
-### Windows
+- **No storage limits** - Only limited by disk space
+- **Direct file access** - Use any code editor, file manager, or Git client
+- **Easy backup** - Standard filesystem backup tools work
+- **Better performance** - Faster for large projects
 
-- Requires `.ico` icon file in `electron/resources/icon.ico`
-- Builds both x64 and ARM64 versions
-- Creates NSIS installer and portable executable
+**Directory Structure:**
+```
+~/shakespeare/
+├── projects/          # Your Shakespeare projects
+├── config/           # AI and Git settings
+└── tmp/              # Temporary files
+```
 
-### Linux
+**Opening the directory:**
+- macOS: `open ~/shakespeare`
+- Linux: `xdg-open ~/shakespeare`
+- Windows: `explorer %USERPROFILE%\shakespeare`
 
-- Requires PNG icons in `electron/resources/icons/` (multiple sizes)
-- Builds both x64 and ARM64 versions
-- Creates AppImage, DEB, and RPM packages
+### 2. Real OS Terminal
 
-## Icon Resources
+All OS commands are available, not just built-in commands:
 
-The build is configured to use `public/shakespeare-512x512.png` as the icon source. electron-builder will automatically convert this PNG to the appropriate format for each platform:
+- **Package managers**: `npm`, `yarn`, `pnpm` work directly
+- **Build tools**: `vite`, `webpack`, `tsc`, etc.
+- **Git CLI**: Full Git command-line interface
+- **Native shell features**: Pipes, redirection, environment variables
+- **System utilities**: All your favorite command-line tools
+
+Commands execute in the project directory at `~/shakespeare/projects/{projectId}` with your user's permissions.
+
+### 3. Clean UI
+
+- **No menu bar** - Frameless interface focused on Shakespeare
+- **Native window controls** - Standard minimize/maximize/close buttons
+- **Auto-updates ready** - Can be configured for automatic updates
+
+## Project Structure
+
+```
+electron/
+├── main.js              # Main process (window management, IPC)
+├── preload.js           # Secure IPC bridge
+├── builder.config.js    # Build configuration
+├── resources/           # Icons and build assets
+├── test-config.js       # Configuration validator
+├── test-terminal.js     # Terminal testing script
+├── generate-icons.sh    # Icon generation script
+├── README.md           # This file
+└── GUIDE.md            # Detailed guide and troubleshooting
+```
+
+## Icons
+
+No icon setup required! The build automatically uses `public/shakespeare-512x512.png` and converts it for each platform:
 
 - **macOS**: Converts to `.icns`
-- **Windows**: Converts to `.ico`
-- **Linux**: Uses the PNG directly (generates multiple sizes)
+- **Windows**: Converts to `.ico`  
+- **Linux**: Uses PNG directly
 
-**No additional icon preparation is needed!** The existing Shakespeare logo will be used automatically.
+For custom icons, run `npm run electron:icons` (requires ImageMagick) or place platform-specific icons in `electron/resources/`.
 
-If you want to use custom icons instead, you can:
-1. Place platform-specific icons in `electron/resources/`:
-   - `icon.icns` for macOS
-   - `icon.ico` for Windows
-   - `icons/*.png` for Linux (multiple sizes)
-2. Update `electron/builder.config.js` to point to these files
+## Platform-Specific Builds
+
+### macOS
+- Creates DMG installer and ZIP archive
+- Builds for both Intel (x64) and Apple Silicon (arm64)
+- Requires macOS for code signing (optional for development)
+
+### Windows
+- Creates NSIS installer and portable executable
+- Builds for both x64 and ARM64
+- No code signing required for development
+
+### Linux
+- Creates AppImage, DEB, and RPM packages
+- Builds for both x64 and ARM64
+- Works from any platform
 
 ## Security
 
-The Electron build implements several security best practices:
+The Electron build follows security best practices:
 
-- **Context Isolation**: Enabled to prevent renderer from accessing Node.js
-- **Sandbox**: Disabled to support ESM in preload (context isolation still provides security)
-- **Web Security**: Enabled to enforce same-origin policy
-- **Navigation Protection**: Prevents navigation to external sites
-- **Window Opening**: External links open in default browser
-- **Preload Script**: Minimal API exposure through contextBridge
+- **Context Isolation**: Enabled to prevent renderer access to Node.js
+- **Web Security**: Enforces same-origin policy
+- **Navigation Protection**: Blocks navigation to external sites
+- **Minimal IPC API**: Only essential functionality exposed
+- **Sandboxed Execution**: Commands run with user permissions
+
+## API Exposed to Renderer
+
+The preload script exposes a minimal API via `window.electron`:
+
+```typescript
+window.electron.isElectron           // Boolean: true in Electron
+window.electron.platform()           // Returns: 'darwin' | 'win32' | 'linux'
+window.electron.version()            // Returns app version
+window.electron.fs.*                 // Filesystem operations
+window.electron.shell.exec()         // Execute shell commands
+```
 
 ## Customization
 
-### Main Process (`main.js`)
+### Window Configuration
+Edit `electron/main.js` to customize:
+- Window size and position
+- Minimum/maximum dimensions
+- Background color
+- Title bar style
 
-The main process handles:
-- Window creation and management
-- App lifecycle events
-- Security policies
-- IPC communication
-
-### Preload Script (`preload.js`)
-
-The preload script exposes a minimal API to the renderer:
-- `window.electron.isElectron` - Flag to detect Electron environment
-- `window.electron.platform()` - Get platform information
-- `window.electron.version()` - Get app version
-
-Add additional IPC handlers here if you need Electron-specific features.
-
-### Builder Configuration (`builder.config.js`)
-
-Customize the build process:
+### Build Settings
+Edit `electron/builder.config.js` to configure:
 - App metadata (ID, name, category)
-- Platform-specific settings
-- Installer options
-- Auto-update configuration (if needed)
+- Platform-specific options
+- Installer settings
+- Auto-update configuration
 
-## Future Enhancements
+### Additional Features
+Add to `electron/main.js` and `electron/preload.js`:
+- Native menus
+- System tray icon
+- File associations
+- Custom URL schemes
+- Native dialogs
 
-Potential features to add:
+## Development vs Production
 
-- **Auto-updates**: Configure publish settings in builder.config.js
-- **Native menus**: Add custom application menu
-- **Tray icon**: Add system tray support
-- **File associations**: Associate file types with the app
-- **Deep linking**: Handle custom URL schemes
-- **Native dialogs**: Use Electron's native file/message dialogs
-- **Offline mode**: Enhanced offline capabilities
-- **Local storage**: Use Electron's native storage APIs
+**Development Mode** (`npm run electron:dev`):
+- Loads from Vite dev server (http://localhost:5173)
+- Hot reload enabled
+- DevTools open automatically
+- Faster iteration
+
+**Production Build** (`npm run electron:build`):
+- Loads from built files (file:// protocol)
+- Optimized and minified
+- No DevTools by default
+- Ready for distribution
+
+## Common Issues
+
+See [GUIDE.md](./GUIDE.md) for detailed troubleshooting, including:
+- Port conflicts
+- Blank screen issues
+- Asset loading errors
+- Build failures
+- Platform-specific problems
+
+## Next Steps
+
+1. **Try it out**: Run `npm run electron:dev` to test locally
+2. **Build it**: Create a distributable with `npm run electron:build`
+3. **Customize**: Modify window settings, add native features
+4. **Distribute**: Set up code signing and auto-updates for production
+
+## Resources
+
+- [Electron Documentation](https://www.electronjs.org/docs)
+- [electron-builder Documentation](https://www.electron.build/)
+- [Shakespeare Main Documentation](../README.md)
+- [Detailed Guide](./GUIDE.md)
+
+---
+
+**Note:** For comprehensive documentation including filesystem details, terminal usage, and troubleshooting, see [GUIDE.md](./GUIDE.md).

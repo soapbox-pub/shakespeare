@@ -53,13 +53,25 @@ function createWindow() {
   // Load the app
   if (process.env.ELECTRON_DEV) {
     // Development mode - load from Vite dev server
+    console.log('Loading from Vite dev server: http://localhost:5173');
     mainWindow.loadURL('http://localhost:5173');
     mainWindow.webContents.openDevTools();
   } else {
     // Production mode - load from custom protocol
     // This allows absolute paths like /shakespeare.svg to work naturally
+    console.log('Loading from app:// protocol: app://index.html');
     mainWindow.loadURL('app://index.html');
   }
+
+  // Log any load errors
+  mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
+    console.error('Failed to load:', validatedURL, errorCode, errorDescription);
+  });
+
+  // Log successful load
+  mainWindow.webContents.on('did-finish-load', () => {
+    console.log('Successfully loaded app');
+  });
 
   // Handle window close
   mainWindow.on('closed', () => {

@@ -49,13 +49,13 @@ export class ElectronFSAdapter implements JSRuntimeFS {
     return error;
   }
 
-  async readFile(path: string): Promise<Uint8Array>;
+  async readFile(path: string): Promise<Uint8Array<ArrayBuffer>>;
   async readFile(path: string, options: 'utf8'): Promise<string>;
   async readFile(path: string, options: string): Promise<string>;
   async readFile(path: string, options: { encoding: 'utf8' }): Promise<string>;
   async readFile(path: string, options: { encoding: string }): Promise<string>;
-  async readFile(path: string, options?: string | { encoding?: string }): Promise<string | Uint8Array>;
-  async readFile(path: string, options?: string | { encoding?: string }): Promise<string | Uint8Array> {
+  async readFile(path: string, options?: string | { encoding?: string }): Promise<string | Uint8Array<ArrayBuffer>>;
+  async readFile(path: string, options?: string | { encoding?: string }): Promise<string | Uint8Array<ArrayBuffer>> {
     try {
       const encoding = typeof options === 'string' ? options : options?.encoding;
       const result = await this.electron.fs.readFile(path, encoding);

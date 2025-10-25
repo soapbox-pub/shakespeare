@@ -1,6 +1,6 @@
-import { Settings, ArrowLeft } from "lucide-react";
+import { Settings, ArrowLeft, RefreshCw, Trash2, XCircle, Loader2 } from "lucide-react";
 import { useTranslation } from 'react-i18next';
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -9,12 +9,17 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useNavigate } from "react-router-dom";
 import { useAppContext } from "@/hooks/useAppContext";
+import { useOffline } from "@/hooks/useOffline";
+import { useToast } from "@/hooks/useToast";
 
 export function SystemSettings() {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const { config, updateConfig } = useAppContext();
+  const { toast } = useToast();
+  const { serviceWorkerRegistration, updateServiceWorker, clearCache } = useOffline();
+
   const [projectTemplateInput, setProjectTemplateInput] = useState(config.projectTemplate);
   const [esmUrlInput, setEsmUrlInput] = useState(config.esmUrl);
   const [corsProxyInput, setCorsProxyInput] = useState(config.corsProxy);
@@ -24,6 +29,94 @@ export function SystemSettings() {
   const [fsPathProjectsInput, setFsPathProjectsInput] = useState(config.fsPathProjects);
   const [fsPathConfigInput, setFsPathConfigInput] = useState(config.fsPathConfig);
   const [fsPathTmpInput, setFsPathTmpInput] = useState(config.fsPathTmp);
+
+  // Service Worker state
+  const [swState, setSwState] = useState<string>('');
+  const [isUpdatingSW, setIsUpdatingSW] = useState(false);
+  const [isUnregisteringSW, setIsUnregisteringSW] = useState(false);
+  const [isClearingCache, setIsClearingCache] = useState(false);
+
+  // Monitor Service Worker state
+  useEffect(() => {
+    if (serviceWorkerRegistration?.active) {
+      setSwState(serviceWorkerRegistration.active.state);
+
+      const handleStateChange = () => {
+        if (serviceWorkerRegistration.active) {
+          setSwState(serviceWorkerRegistration.active.state);
+        }
+      };
+
+      serviceWorkerRegistration.active.addEventListener('statechange', handleStateChange);
+
+      return () => {
+        serviceWorkerRegistration.active?.removeEventListener('statechange', handleStateChange);
+      };
+    }
+  }, [serviceWorkerRegistration]);
+
+  const handleUpdateSW = async () => {
+    setIsUpdatingSW(true);
+    try {
+      await updateServiceWorker();
+      toast({
+        title: "Service Worker Updated",
+        description: "The service worker has been updated successfully.",
+      });
+    } catch (error) {
+      toast({
+        title: "Update Failed",
+        description: error instanceof Error ? error.message : "Failed to update service worker",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdatingSW(false);
+    }
+  };
+
+  const handleUnregisterSW = async () => {
+    setIsUnregisteringSW(true);
+    try {
+      if (serviceWorkerRegistration) {
+        const success = await serviceWorkerRegistration.unregister();
+        if (success) {
+          toast({
+            title: "Service Worker Unregistered",
+            description: "The service worker has been unregistered. Refresh the page to complete the process.",
+          });
+        } else {
+          throw new Error("Failed to unregister service worker");
+        }
+      }
+    } catch (error) {
+      toast({
+        title: "Unregister Failed",
+        description: error instanceof Error ? error.message : "Failed to unregister service worker",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUnregisteringSW(false);
+    }
+  };
+
+  const handleClearCache = async () => {
+    setIsClearingCache(true);
+    try {
+      await clearCache();
+      toast({
+        title: "Cache Cleared",
+        description: "All service worker caches have been cleared.",
+      });
+    } catch (error) {
+      toast({
+        title: "Clear Cache Failed",
+        description: error instanceof Error ? error.message : "Failed to clear cache",
+        variant: "destructive",
+      });
+    } finally {
+      setIsClearingCache(false);
+    }
+  };
 
   return (
     <div className="p-6 space-y-6">
@@ -63,6 +156,109 @@ export function SystemSettings() {
       )}
 
       <div className="space-y-3 max-w-xl">
+        {/* Service Worker Configuration */}
+        <Accordion type="single" collapsible className="w-full">
+          <AccordionItem value="service-worker" className="border rounded-lg">
+            <AccordionTrigger className="px-4 py-3 hover:no-underline">
+              <h4 className="text-sm font-medium">Service Worker</h4>
+            </AccordionTrigger>
+            <AccordionContent className="px-4 pb-4">
+              <div className="py-1 space-y-4">
+                {serviceWorkerRegistration ? (
+                  <>
+                    {/* Service Worker Status */}
+                    <div className="space-y-2">
+                      <div className="text-sm space-y-1">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Status:</span>
+                          <span className="font-medium capitalize">{swState || 'Unknown'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Scope:</span>
+                          <span className="font-mono text-xs">{serviceWorkerRegistration.scope}</span>
+                        </div>
+                        {serviceWorkerRegistration.active && (
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Script URL:</span>
+                            <span className="font-mono text-xs truncate max-w-[200px]" title={serviceWorkerRegistration.active.scriptURL}>
+                              {serviceWorkerRegistration.active.scriptURL.split('/').pop()}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Service Worker Controls */}
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <Button
+                        onClick={handleUpdateSW}
+                        disabled={isUpdatingSW}
+                        variant="outline"
+                        size="sm"
+                        className="w-full sm:w-auto"
+                      >
+                        {isUpdatingSW ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Updating...
+                          </>
+                        ) : (
+                          <>
+                            <RefreshCw className="h-4 w-4" />
+                            Update
+                          </>
+                        )}
+                      </Button>
+                      <Button
+                        onClick={handleClearCache}
+                        disabled={isClearingCache}
+                        variant="outline"
+                        size="sm"
+                        className="w-full sm:w-auto"
+                      >
+                        {isClearingCache ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Clearing...
+                          </>
+                        ) : (
+                          <>
+                            <Trash2 className="h-4 w-4" />
+                            Clear Cache
+                          </>
+                        )}
+                      </Button>
+                      <Button
+                        onClick={handleUnregisterSW}
+                        disabled={isUnregisteringSW}
+                        variant="destructive"
+                        size="sm"
+                        className="w-full sm:w-auto"
+                      >
+                        {isUnregisteringSW ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Unregistering...
+                          </>
+                        ) : (
+                          <>
+                            <XCircle className="h-4 w-4" />
+                            Unregister
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-sm text-muted-foreground">
+                    No service worker is currently registered. Service workers are automatically registered when you load the application.
+                  </div>
+                )}
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+
         {/* Project Template Configuration */}
         <Accordion type="single" collapsible className="w-full">
           <AccordionItem value="project-template" className="border rounded-lg">

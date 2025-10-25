@@ -28,6 +28,14 @@ Shakespeare can work on any type of project. But it is specialized to build Reac
 
 Shakespeare is proudly Open Source software licensed under the GNU AGPLv3. The purpose of Shakespeare is to provide a free and open platform for building AI applications that respects user privacy and freedom.
 
+## Mirrors
+
+Shakespeare is available on the following URLs:
+
+- [shakespeare.diy](https://shakespeare.diy)
+- [shakespeare.soapbox.dev](https://shakespeare.soapbox.dev)
+- [shakespeare-b0b9c8.gitlab.io](https://shakespeare-b0b9c8.gitlab.io)
+
 ## Alternatives
 
 - [goose](https://github.com/block/goose) - open-source desktop app and cli utilizing your full computer for AI tasks

@@ -92,7 +92,7 @@ export const AI_PROVIDER_PRESETS: PresetProvider[] = [
     id: "vercel",
     name: "Vercel",
     baseURL: "https://api.v0.dev/v1",
-    apiKeysURL: "https://vercel.com/account/tokens",
+    apiKeysURL: "https://v0.app/chat/settings/billing",
     tosURL: "https://vercel.com/legal/terms",
     proxy: true,
   },

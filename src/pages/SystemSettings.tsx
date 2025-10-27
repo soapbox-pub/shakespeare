@@ -330,7 +330,7 @@ export function SystemSettings() {
                 <Input
                   id="favicon-url"
                   type="url"
-                  placeholder="https://external-content.duckduckgo.com/ip3/{hostname}.ico"
+                  placeholder="https://favicon.shakespeare.diy/?url={href}"
                   value={faviconUrlInput}
                   onChange={(e) => {
                     const value = e.target.value;

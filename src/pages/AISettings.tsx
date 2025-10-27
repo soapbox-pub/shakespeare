@@ -37,26 +37,6 @@ import type { AIProvider } from '@/contexts/AISettingsContext';
 import { AI_PROVIDER_PRESETS, type PresetProvider } from '@/lib/aiProviderPresets';
 import { ExternalFavicon } from '@/components/ExternalFavicon';
 
-/** A few provider-specific icon hacks */
-function getProviderIconUrl(provider: { id: string; baseURL: string }): string {
-  if (provider.id === 'ollama' && provider.baseURL === 'http://localhost:11434/v1') {
-    return 'https://ollama.com/';
-  } else if (provider.baseURL === 'https://generativelanguage.googleapis.com/v1beta/openai') {
-    return 'https://gemini.google.com/';
-  } else if (provider.baseURL === 'https://api.z.ai/api/paas/v4') {
-    return 'https://docs.z.ai/';
-  }
-  try {
-    // Strip .ai and .api subdomains for a better chance at finding a favicon
-    const urlObj = new URL(provider.baseURL);
-    urlObj.hostname = urlObj.hostname.replace(/^(ai\.|api\.)/, '');
-    return urlObj.toString();
-  } catch {
-    // Fallback to baseURL
-    return provider.baseURL;
-  }
-}
-
 interface SortableProviderItemProps {
   provider: AIProvider;
   preset?: PresetProvider;
@@ -103,7 +83,7 @@ function SortableProviderItem({ provider, preset, onRemove, onSetProvider, onOpe
           )}
           {provider.baseURL ? (
             <ExternalFavicon
-              url={getProviderIconUrl(provider)}
+              url={provider.baseURL}
               size={16}
               fallback={<Bot size={16} />}
             />
@@ -390,7 +370,7 @@ export function AISettings() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <ExternalFavicon
-                          url={getProviderIconUrl(preset)}
+                          url={preset.baseURL}
                           size={16}
                           fallback={<Bot size={16} />}
                         />

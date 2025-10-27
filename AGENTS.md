@@ -108,6 +108,30 @@ Shakespeare provides full Git functionality in the browser using `isomorphic-git
 
 Git operations happen transparently in the background, providing professional version control without requiring Git knowledge from users.
 
+### Gift Card Redemption
+
+Shakespeare supports automatic gift card redemption via URL parameters. Users can click shareable gift card links to instantly redeem AI credits.
+
+**URL Format:**
+```
+/giftcard#baseURL=<providerBaseURL>&code=<giftcardCode>
+```
+
+**Flow:**
+1. User clicks gift card link (e.g., from email or social media)
+2. Shakespeare displays a dialog showing the credit amount
+3. URL is rewritten to `/` for privacy (removes gift card code from history)
+4. If user is not logged in or provider is not configured, a multi-step wizard guides them through setup
+5. User can switch between Nostr accounts before redeeming
+6. Credits are added to the user's account via NIP-98 authenticated API call
+
+**Components:**
+- `GiftCardRedeemDialog`: Main dialog handling the entire redemption flow
+- Integrates with existing login/signup dialogs and provider configuration
+- Automatically matches provider baseURL against configured providers and presets
+
+See `GIFTCARD_REDEMPTION.md` for detailed documentation.
+
 ## AI Message Format
 
 Shakespeare uses OpenAI-compatible messages for communication between users and AI assistants. The message format follows these conventions:

@@ -10,6 +10,7 @@ https://shakespeare.diy
 
 - **Use any AI provider** OpenAI, Anthropic, OpenRouter, xAI, ZAI, Deepseek, and more
 - **Buy credits anonymously** with Nostr and Lightning ⚡
+- **Redeem gift cards** with shareable links for instant credits
 - **Runs entirely in the browser** No backend required
 
 ## How it Works

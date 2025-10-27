@@ -1,7 +1,8 @@
-import { useEffect, useRef } from 'react';
-import { Check, Sparkles, ArrowRight, AlertCircle } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Check, Sparkles, ArrowRight, AlertCircle, ExternalLink } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useAISettings } from '@/hooks/useAISettings';
 import { AI_PROVIDER_PRESETS } from '@/lib/aiProviderPresets';
 import type { AIProvider } from '@/contexts/AISettingsContext';
@@ -14,6 +15,7 @@ interface AddProviderDialogProps {
 
 export function AddProviderDialog({ open, onOpenChange, provider }: AddProviderDialogProps) {
   const scrollableContentRef = useRef<HTMLDivElement>(null);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   const { settings, setProvider } = useAISettings();
 
@@ -25,27 +27,26 @@ export function AddProviderDialog({ open, onOpenChange, provider }: AddProviderD
     existingProvider.nostr === provider.nostr &&
     existingProvider.proxy === provider.proxy;
 
-  // Get provider name from presets or fallback to id
-  const getProviderName = () => {
-    const preset = AI_PROVIDER_PRESETS.find(
-      p => p.id === provider.id && p.baseURL === provider.baseURL
-    );
-    return preset?.name || provider.id;
-  };
-
-  const providerName = getProviderName();
+  // Get provider preset if available
+  const preset = AI_PROVIDER_PRESETS.find(
+    p => p.id === provider.id && p.baseURL === provider.baseURL
+  );
+  const providerName = preset?.name || provider.id;
 
   const handleAddProvider = () => {
     setProvider(provider);
     onOpenChange(false);
   };
 
-  // Scroll to top when dialog opens
+  // Reset agreed to terms when dialog opens or provider changes
   useEffect(() => {
-    if (open && scrollableContentRef.current) {
-      scrollableContentRef.current.scrollTop = 0;
+    if (open) {
+      setAgreedToTerms(false);
+      if (scrollableContentRef.current) {
+        scrollableContentRef.current.scrollTop = 0;
+      }
     }
-  }, [open]);
+  }, [open, provider.id]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -164,8 +165,40 @@ export function AddProviderDialog({ open, onOpenChange, provider }: AddProviderD
                   </p>
                 </div>
 
+                {/* Terms of Service Agreement */}
+                {preset?.tosURL && (
+                  <div className="space-y-3 max-w-md mx-auto">
+                    <div className="flex items-center justify-center gap-2">
+                      <Checkbox
+                        id="agree-provider-terms"
+                        checked={agreedToTerms}
+                        onCheckedChange={(checked) => setAgreedToTerms(checked === true)}
+                      />
+                      <label
+                        htmlFor="agree-provider-terms"
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                      >
+                        I agree to {providerName}'s{' '}
+                        <a
+                          href={preset.tosURL}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary underline hover:no-underline inline-flex items-center gap-1"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          Terms of Service
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      </label>
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex justify-center">
-                  <Button onClick={handleAddProvider}>
+                  <Button
+                    onClick={handleAddProvider}
+                    disabled={preset?.tosURL ? !agreedToTerms : false}
+                  >
                     Add Provider
                   </Button>
                 </div>

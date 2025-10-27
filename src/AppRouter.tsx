@@ -31,6 +31,7 @@ export function AppRouter() {
       <URLFragmentHandler />
       <Routes>
         <Route path="/" element={<Index />} />
+        <Route path="/giftcard" element={<Index />} />
         <Route path="/clone" element={<Clone />} />
         <Route path="/oauth/github" element={<GitHubOAuth />} />
         <Route path="/oauth/netlify" element={<NetlifyOAuth />} />

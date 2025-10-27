@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { useAIProjectId } from '@/hooks/useAIProjectId';
@@ -11,6 +11,7 @@ import { useAppContext } from '@/hooks/useAppContext';
 import { AppLayout } from '@/components/AppLayout';
 import { OnboardingDialog } from '@/components/OnboardingDialog';
 import { Act1Dialog } from '@/components/Act1Dialog';
+import { GiftCardRedeemDialog } from '@/components/GiftCardRedeemDialog';
 import { Quilly } from '@/components/Quilly';
 import { DotAI } from '@/lib/DotAI';
 import type { AIMessage } from '@/lib/SessionManager';
@@ -32,7 +33,11 @@ export default function Index() {
   const [storedPrompt, setStoredPrompt] = useLocalStorage('shakespeare-draft-prompt', '');
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showAct1Dialog, setShowAct1Dialog] = useState(false);
+  const [showGiftCardDialog, setShowGiftCardDialog] = useState(false);
+  const [giftCardBaseURL, setGiftCardBaseURL] = useState('');
+  const [giftCardCode, setGiftCardCode] = useState('');
   const navigate = useNavigate();
+  const location = useLocation();
   const projectsManager = useProjectsManager();
   const { fs } = useFS();
   const { generateProjectId, isLoading: isGeneratingId } = useAIProjectId();
@@ -74,6 +79,31 @@ export default function Index() {
       setShowAct1Dialog(true);
     }
   }, []);
+
+  // Handle gift card redemption from URL
+  useEffect(() => {
+    // Check if we're on the /giftcard route
+    if (location.pathname === '/giftcard') {
+      // Parse hash parameters
+      const hash = location.hash.slice(1); // Remove the '#'
+      const params = new URLSearchParams(hash);
+      const baseURL = params.get('baseURL');
+      const code = params.get('code');
+
+      if (baseURL && code) {
+        // Store the gift card details
+        setGiftCardBaseURL(baseURL);
+        setGiftCardCode(code);
+        setShowGiftCardDialog(true);
+
+        // Rewrite URL to '/' for privacy
+        navigate('/', { replace: true });
+      } else {
+        // Invalid gift card URL, just navigate to home
+        navigate('/', { replace: true });
+      }
+    }
+  }, [location, navigate]);
 
   // Sync prompt with local storage
   const handlePromptChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -399,6 +429,16 @@ export default function Index() {
         open={showAct1Dialog}
         onOpenChange={setShowAct1Dialog}
       />
+
+      {/* Gift Card Redeem Dialog */}
+      {giftCardBaseURL && giftCardCode && (
+        <GiftCardRedeemDialog
+          open={showGiftCardDialog}
+          onOpenChange={setShowGiftCardDialog}
+          baseURL={giftCardBaseURL}
+          code={giftCardCode}
+        />
+      )}
     </>
   );
 }

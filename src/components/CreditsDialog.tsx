@@ -597,25 +597,10 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
             />
           </div>
         ) : (
-          <div className="flex-1 flex flex-col min-h-0">
-            {/* Main Tabs */}
-            <Tabs value={activeTab} onValueChange={(value: 'buy' | 'giftcards') => setActiveTab(value)} className="flex-1 flex flex-col min-h-0">
-              <TabsList className="grid w-full grid-cols-2 flex-shrink-0 mb-4">
-                <TabsTrigger value="buy" className="flex items-center gap-2">
-                  <CreditCard className="h-4 w-4" />
-                  Buy Credits
-                </TabsTrigger>
-                <TabsTrigger value="giftcards" className="flex items-center gap-2">
-                  <Gift className="h-4 w-4" />
-                  Gift Cards
-                </TabsTrigger>
-              </TabsList>
-
-              {/* Buy Credits Tab */}
-              <TabsContent value="buy" className="flex-1 overflow-y-auto mt-0 px-1 -mx-1">
-                <Accordion type="multiple" className="w-full">
-                  {/* Buy Credits Accordion */}
-                  <AccordionItem value="add">
+          <div className="flex-1 overflow-y-auto px-1 -mx-1">
+            <Accordion type="multiple" defaultValue={["add"]} className="w-full">
+              {/* Buy Credits Accordion */}
+              <AccordionItem value="add">
                     <AccordionTrigger className="hover:no-underline">
                       <div className="flex items-center gap-2">
                         <DollarSign className="h-4 w-4" />
@@ -683,14 +668,14 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
                   </AccordionItem>
 
                   {/* Transaction History Accordion */}
-                  <AccordionItem value="history" className="border-b-0">
+                  <AccordionItem value="history">
                     <AccordionTrigger className="hover:no-underline">
                       <div className="flex items-center gap-2">
                         <History className="h-4 w-4" />
                         Recent Transactions
                       </div>
                     </AccordionTrigger>
-                    <AccordionContent className="pb-0">
+                    <AccordionContent>
                       <div className="pt-2">
                         {isLoadingPayments ? (
                           <div className="p-3 border rounded-lg space-y-2">
@@ -775,12 +760,7 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
                       </div>
                     </AccordionContent>
                   </AccordionItem>
-                </Accordion>
-              </TabsContent>
 
-              {/* Gift Cards Tab */}
-              <TabsContent value="giftcards" className="flex-1 overflow-y-auto mt-0 px-1 -mx-1">
-                <Accordion type="multiple" className="w-full">
                   {/* Redeem Gift Card Accordion */}
                   <AccordionItem value="redeem">
                     <AccordionTrigger className="hover:no-underline">
@@ -958,9 +938,7 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
                       </div>
                     </AccordionContent>
                   </AccordionItem>
-                </Accordion>
-              </TabsContent>
-            </Tabs>
+            </Accordion>
           </div>
         )}
       </DialogContent>

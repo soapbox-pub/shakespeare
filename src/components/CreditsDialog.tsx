@@ -7,9 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useToast } from '@/hooks/useToast';
 import { createAIClient } from '@/lib/ai-client';
@@ -222,7 +221,6 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
   const [paymentMethod, setPaymentMethod] = useState<'stripe' | 'lightning'>('stripe');
   const [lightningInvoice, setLightningInvoice] = useState<string | null>(null);
   const [refreshingPayments, setRefreshingPayments] = useState<Set<string>>(new Set());
-  const [activeTab, setActiveTab] = useState<'buy' | 'giftcards'>('buy');
   const [giftcardAmount, setGiftcardAmount] = useState<number>(10);
   const [giftcardQuantity, setGiftcardQuantity] = useState<number>(1);
   const [redeemCode, setRedeemCode] = useState<string>('');
@@ -249,7 +247,7 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
       const data = await ai.get('/credits/giftcards?limit=50') as GiftcardsResponse;
       return data.data;
     },
-    enabled: open && activeTab === 'giftcards',
+    enabled: open,
     retry: false,
     refetchOnWindowFocus: false,
   });
@@ -601,343 +599,343 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
             <Accordion type="multiple" defaultValue={["add"]} className="w-full">
               {/* Buy Credits Accordion */}
               <AccordionItem value="add">
-                    <AccordionTrigger className="hover:no-underline">
-                      <div className="flex items-center gap-2">
-                        <DollarSign className="h-4 w-4" />
-                        Buy Credits
-                      </div>
-                    </AccordionTrigger>
-                    <AccordionContent>
-                      <div className="space-y-3 pt-2">
-                        <div className="space-y-3">
-                          <Label htmlFor="amount" className="text-sm font-medium">Amount (USD)</Label>
-                          <div className="space-y-3">
-                            <Input
-                              id="amount"
-                              type="number"
-                              step="0.01"
-                              value={amount}
-                              onChange={(e) => setAmount(Number(e.target.value))}
-                              placeholder="Enter amount"
-                              className="text-center text-lg font-medium"
-                            />
-                            <div className="grid grid-cols-5 gap-2">
-                              {PRESET_AMOUNTS.map((preset) => (
-                                <Button
-                                  key={preset}
-                                  variant={amount === preset ? "default" : "outline"}
-                                  size="sm"
-                                  onClick={() => setAmount(preset)}
-                                  className="text-xs"
-                                >
-                                ${preset}
-                                </Button>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="space-y-3">
-                          <Label className="text-sm font-medium">Payment Method</Label>
-                          <Tabs value={paymentMethod} onValueChange={(value: 'stripe' | 'lightning') => setPaymentMethod(value)} className="w-full">
-                            <TabsList className="grid w-full grid-cols-2">
-                              <TabsTrigger value="stripe" className="flex items-center gap-2">
-                                <CreditCard className="h-4 w-4" />
-                              Credit Card
-                              </TabsTrigger>
-                              <TabsTrigger value="lightning" className="flex items-center gap-2">
-                                <Zap className="h-4 w-4" />
-                              Lightning
-                              </TabsTrigger>
-                            </TabsList>
-                          </Tabs>
-                        </div>
-
-                        <Button
-                          onClick={handleAddCredits}
-                          disabled={amount <= 0 || addCreditsMutation.isPending}
-                          className="w-full h-12 text-base font-medium"
-                          size="lg"
-                        >
-                          {addCreditsMutation.isPending && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
-                          {paymentMethod === 'stripe' ? 'Pay with Card' : 'Generate Invoice'}
-                          {amount > 0 && ` - ${formatCurrency(amount)}`}
-                        </Button>
-                      </div>
-                    </AccordionContent>
-                  </AccordionItem>
-
-                  {/* Transaction History Accordion */}
-                  <AccordionItem value="history">
-                    <AccordionTrigger className="hover:no-underline">
-                      <div className="flex items-center gap-2">
-                        <History className="h-4 w-4" />
-                        Recent Transactions
-                      </div>
-                    </AccordionTrigger>
-                    <AccordionContent>
-                      <div className="pt-2">
-                        {isLoadingPayments ? (
-                          <div className="p-3 border rounded-lg space-y-2">
-                            <div className="flex items-center gap-2">
-                              <Skeleton className="h-4 w-4 rounded" />
-                              <Skeleton className="h-4 w-24" />
-                              <Skeleton className="h-4 w-16 ml-auto" />
-                            </div>
-                            <Skeleton className="h-3 w-32" />
-                          </div>
-                        ) : !payments || payments.length === 0 ? (
-                          <div className="py-8 text-center text-muted-foreground">
-                            <CreditCard className="h-10 w-10 mx-auto mb-3 opacity-50" />
-                            <p className="text-sm">No transactions yet</p>
-                            <p className="text-xs">Your payment history will appear here</p>
-                          </div>
-                        ) : (
-                          <div className="space-y-2">
-                            {payments.map((payment) => (
-                              <div
-                                key={payment.id}
-                                className="p-3 border rounded-lg space-y-2 hover:bg-muted/30 transition-colors"
-                              >
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-2 min-w-0 flex-1">
-                                    {getStatusIcon(payment.status)}
-                                    <span className="text-sm font-medium truncate">
-                                      {payment.method === 'stripe' ? 'Credit Card' : 'Lightning'}
-                                    </span>
-                                    <Badge variant={getStatusVariant(payment.status)} className="text-xs flex-shrink-0">
-                                      {payment.status}
-                                    </Badge>
-                                  </div>
-                                  <div className="text-right flex-shrink-0">
-                                    <p className="text-sm font-medium">{formatCurrency(payment.amount)}</p>
-                                    {payment.fee > 0 && (
-                                      <p className="text-xs text-muted-foreground">
-                                    +{formatCurrency(payment.fee)}
-                                      </p>
-                                    )}
-                                  </div>
-                                </div>
-
-                                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                                  <span>{formatDate(payment.created_at)}</span>
-                                  {payment.status === 'pending' && (
-                                    <div className="flex items-center gap-1">
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => checkPaymentMutation.mutate(payment.id)}
-                                        disabled={refreshingPayments.has(payment.id)}
-                                        className="h-6 px-2 text-xs"
-                                        title="Refresh payment status"
-                                      >
-                                        <RotateCcw className={`h-3 w-3 ${refreshingPayments.has(payment.id) ? 'animate-spin' : ''}`} />
-                                      </Button>
-                                      {payment.url && (
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          onClick={() => {
-                                            if (payment.method === 'lightning') {
-                                              setLightningInvoice(payment.url);
-                                            } else {
-                                              window.open(payment.url, '_blank');
-                                            }
-                                          }}
-                                          className="h-6 px-2 text-xs"
-                                        >
-                                          <ExternalLink className="h-3 w-3 mr-1" />
-                                          {payment.method === 'lightning' ? 'Pay' : 'Pay'}
-                                        </Button>
-                                      )}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </AccordionContent>
-                  </AccordionItem>
-
-                  {/* Redeem Gift Card Accordion */}
-                  <AccordionItem value="redeem">
-                    <AccordionTrigger className="hover:no-underline">
-                      <div className="flex items-center gap-2">
-                        <Plus className="h-4 w-4" />
-                        Redeem Gift Card
-                      </div>
-                    </AccordionTrigger>
-                    <AccordionContent>
-                      <div className="space-y-3 pt-2">
-                        <div className="flex gap-2">
-                          <Input
-                            id="redeem-code"
-                            type="text"
-                            value={redeemCode}
-                            onChange={(e) => setRedeemCode(e.target.value)}
-                            placeholder="Enter gift card code"
-                            className="flex-1"
-                          />
-                          <Button
-                            onClick={handleRedeemGiftcard}
-                            disabled={!redeemCode.trim() || redeemGiftcardMutation.isPending}
-                            size="lg"
-                          >
-                            {redeemGiftcardMutation.isPending && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
-                            Redeem
-                          </Button>
-                        </div>
-                      </div>
-                    </AccordionContent>
-                  </AccordionItem>
-
-                  {/* Create Gift Card Accordion */}
-                  <AccordionItem value="create">
-                    <AccordionTrigger className="hover:no-underline">
-                      <div className="flex items-center gap-2">
-                        <Gift className="h-4 w-4" />
-                        Create Gift Card
-                      </div>
-                    </AccordionTrigger>
-                    <AccordionContent>
-                      <div className="space-y-3 pt-2">
-                        <div className="grid grid-cols-2 gap-2">
-                          <div className="space-y-2">
-                            <Label htmlFor="giftcard-amount" className="text-xs text-muted-foreground">Amount (USD)</Label>
-                            <Input
-                              id="giftcard-amount"
-                              type="number"
-                              step="0.01"
-                              value={giftcardAmount}
-                              onChange={(e) => setGiftcardAmount(Number(e.target.value))}
-                              placeholder="Amount"
-                              className="text-center"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="giftcard-quantity" className="text-xs text-muted-foreground">Quantity</Label>
-                            <Input
-                              id="giftcard-quantity"
-                              type="number"
-                              min="1"
-                              max="100"
-                              value={giftcardQuantity}
-                              onChange={(e) => setGiftcardQuantity(Number(e.target.value))}
-                              placeholder="Qty"
-                              className="text-center"
-                            />
-                          </div>
-                        </div>
+                <AccordionTrigger className="hover:no-underline">
+                  <div className="flex items-center gap-2">
+                    <DollarSign className="h-4 w-4" />
+                    Buy Credits
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="space-y-3 pt-2">
+                    <div className="space-y-3">
+                      <Label htmlFor="amount" className="text-sm font-medium">Amount (USD)</Label>
+                      <div className="space-y-3">
+                        <Input
+                          id="amount"
+                          type="number"
+                          step="0.01"
+                          value={amount}
+                          onChange={(e) => setAmount(Number(e.target.value))}
+                          placeholder="Enter amount"
+                          className="text-center text-lg font-medium"
+                        />
                         <div className="grid grid-cols-5 gap-2">
                           {PRESET_AMOUNTS.map((preset) => (
                             <Button
                               key={preset}
-                              variant={giftcardAmount === preset ? "default" : "outline"}
+                              variant={amount === preset ? "default" : "outline"}
                               size="sm"
-                              onClick={() => setGiftcardAmount(preset)}
+                              onClick={() => setAmount(preset)}
                               className="text-xs"
                             >
                             ${preset}
                             </Button>
                           ))}
                         </div>
-                        <Button
-                          onClick={handleCreateGiftcard}
-                          disabled={giftcardAmount <= 0 || giftcardQuantity <= 0 || createGiftcardMutation.isPending}
-                          className="w-full h-12 text-base font-medium"
-                          size="lg"
-                        >
-                          {createGiftcardMutation.isPending && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
-                          Create {giftcardQuantity > 1 ? `${giftcardQuantity} ` : ''}Gift Card{giftcardQuantity > 1 ? 's' : ''}
-                          {giftcardAmount > 0 && giftcardQuantity > 0 && ` - ${formatCurrency(giftcardAmount * giftcardQuantity)}`}
-                        </Button>
                       </div>
-                    </AccordionContent>
-                  </AccordionItem>
+                    </div>
 
-                  {/* Your Gift Cards Accordion */}
-                  <AccordionItem value="list" className="border-b-0">
-                    <AccordionTrigger className="hover:no-underline">
-                      <div className="flex items-center gap-2">
-                        <CreditCard className="h-4 w-4" />
-                        Your Gift Cards
+                    <div className="space-y-3">
+                      <Label className="text-sm font-medium">Payment Method</Label>
+                      <Tabs value={paymentMethod} onValueChange={(value: 'stripe' | 'lightning') => setPaymentMethod(value)} className="w-full">
+                        <TabsList className="grid w-full grid-cols-2">
+                          <TabsTrigger value="stripe" className="flex items-center gap-2">
+                            <CreditCard className="h-4 w-4" />
+                          Credit Card
+                          </TabsTrigger>
+                          <TabsTrigger value="lightning" className="flex items-center gap-2">
+                            <Zap className="h-4 w-4" />
+                          Lightning
+                          </TabsTrigger>
+                        </TabsList>
+                      </Tabs>
+                    </div>
+
+                    <Button
+                      onClick={handleAddCredits}
+                      disabled={amount <= 0 || addCreditsMutation.isPending}
+                      className="w-full h-12 text-base font-medium"
+                      size="lg"
+                    >
+                      {addCreditsMutation.isPending && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
+                      {paymentMethod === 'stripe' ? 'Pay with Card' : 'Generate Invoice'}
+                      {amount > 0 && ` - ${formatCurrency(amount)}`}
+                    </Button>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+
+              {/* Transaction History Accordion */}
+              <AccordionItem value="history">
+                <AccordionTrigger className="hover:no-underline">
+                  <div className="flex items-center gap-2">
+                    <History className="h-4 w-4" />
+                    Recent Transactions
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="pt-2">
+                    {isLoadingPayments ? (
+                      <div className="p-3 border rounded-lg space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Skeleton className="h-4 w-4 rounded" />
+                          <Skeleton className="h-4 w-24" />
+                          <Skeleton className="h-4 w-16 ml-auto" />
+                        </div>
+                        <Skeleton className="h-3 w-32" />
                       </div>
-                    </AccordionTrigger>
-                    <AccordionContent className="pb-0">
-                      <div className="pt-2">
-                        {isLoadingGiftcards ? (
-                          <div className="p-3 border rounded-lg space-y-2">
-                            <div className="flex items-center gap-2">
-                              <Skeleton className="h-4 w-4 rounded" />
-                              <Skeleton className="h-4 w-32" />
-                              <Skeleton className="h-4 w-16 ml-auto" />
+                    ) : !payments || payments.length === 0 ? (
+                      <div className="py-8 text-center text-muted-foreground">
+                        <CreditCard className="h-10 w-10 mx-auto mb-3 opacity-50" />
+                        <p className="text-sm">No transactions yet</p>
+                        <p className="text-xs">Your payment history will appear here</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {payments.map((payment) => (
+                          <div
+                            key={payment.id}
+                            className="p-3 border rounded-lg space-y-2 hover:bg-muted/30 transition-colors"
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2 min-w-0 flex-1">
+                                {getStatusIcon(payment.status)}
+                                <span className="text-sm font-medium truncate">
+                                  {payment.method === 'stripe' ? 'Credit Card' : 'Lightning'}
+                                </span>
+                                <Badge variant={getStatusVariant(payment.status)} className="text-xs flex-shrink-0">
+                                  {payment.status}
+                                </Badge>
+                              </div>
+                              <div className="text-right flex-shrink-0">
+                                <p className="text-sm font-medium">{formatCurrency(payment.amount)}</p>
+                                {payment.fee > 0 && (
+                                  <p className="text-xs text-muted-foreground">
+                                +{formatCurrency(payment.fee)}
+                                  </p>
+                                )}
+                              </div>
                             </div>
-                            <Skeleton className="h-3 w-48" />
-                          </div>
-                        ) : !giftcards || giftcards.length === 0 ? (
-                          <div className="py-8 text-center text-muted-foreground">
-                            <Gift className="h-10 w-10 mx-auto mb-3 opacity-50" />
-                            <p className="text-sm">No gift cards yet</p>
-                            <p className="text-xs">Create gift cards to share with others</p>
-                          </div>
-                        ) : (
-                          <div className="space-y-2">
-                            {giftcards.map((giftcard) => (
-                              <div
-                                key={giftcard.id}
-                                className="p-3 border rounded-lg space-y-2 hover:bg-muted/30 transition-colors"
-                              >
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-2 min-w-0 flex-1">
-                                    <Gift className="h-4 w-4 flex-shrink-0" />
-                                    <span className="text-sm font-medium truncate">
-                                      Gift Card
-                                    </span>
-                                    <Badge variant={giftcard.redeemed ? "secondary" : "default"} className="text-xs flex-shrink-0">
-                                      {giftcard.redeemed ? 'Redeemed' : 'Active'}
-                                    </Badge>
-                                  </div>
-                                  <div className="text-right flex-shrink-0">
-                                    <p className="text-sm font-medium">{formatCurrency(giftcard.amount)}</p>
-                                  </div>
-                                </div>
 
-                                <div className="flex items-center justify-between">
-                                  <code className="text-xs bg-muted px-2 py-1 rounded font-mono">
-                                    {giftcard.code}
-                                  </code>
-                                  <div className="relative">
+                            <div className="flex items-center justify-between text-xs text-muted-foreground">
+                              <span>{formatDate(payment.created_at)}</span>
+                              {payment.status === 'pending' && (
+                                <div className="flex items-center gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => checkPaymentMutation.mutate(payment.id)}
+                                    disabled={refreshingPayments.has(payment.id)}
+                                    className="h-6 px-2 text-xs"
+                                    title="Refresh payment status"
+                                  >
+                                    <RotateCcw className={`h-3 w-3 ${refreshingPayments.has(payment.id) ? 'animate-spin' : ''}`} />
+                                  </Button>
+                                  {payment.url && (
                                     <Button
                                       variant="ghost"
                                       size="sm"
-                                      onClick={() => handleCopyCode(giftcard.code)}
+                                      onClick={() => {
+                                        if (payment.method === 'lightning') {
+                                          setLightningInvoice(payment.url);
+                                        } else {
+                                          window.open(payment.url, '_blank');
+                                        }
+                                      }}
                                       className="h-6 px-2 text-xs"
                                     >
-                                      <Copy className="h-3 w-3 mr-1" />
-                                      Copy
+                                      <ExternalLink className="h-3 w-3 mr-1" />
+                                      {payment.method === 'lightning' ? 'Pay' : 'Pay'}
                                     </Button>
-                                    {copiedCode === giftcard.code && (
-                                      <div className="absolute -top-8 right-0 bg-foreground text-background text-xs px-2 py-1 rounded shadow-lg z-10 animate-in fade-in-0 duration-200 whitespace-nowrap">
-                                        Copied!
-                                      </div>
-                                    )}
-                                  </div>
+                                  )}
                                 </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
 
-                                {giftcard.created_at && (
-                                  <div className="text-xs text-muted-foreground">
-                                    Created {formatDate(giftcard.created_at)}
+              {/* Redeem Gift Card Accordion */}
+              <AccordionItem value="redeem">
+                <AccordionTrigger className="hover:no-underline">
+                  <div className="flex items-center gap-2">
+                    <Plus className="h-4 w-4" />
+                    Redeem Gift Card
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="space-y-3 pt-2">
+                    <div className="flex gap-2">
+                      <Input
+                        id="redeem-code"
+                        type="text"
+                        value={redeemCode}
+                        onChange={(e) => setRedeemCode(e.target.value)}
+                        placeholder="Enter gift card code"
+                        className="flex-1"
+                      />
+                      <Button
+                        onClick={handleRedeemGiftcard}
+                        disabled={!redeemCode.trim() || redeemGiftcardMutation.isPending}
+                        size="lg"
+                      >
+                        {redeemGiftcardMutation.isPending && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
+                        Redeem
+                      </Button>
+                    </div>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+
+              {/* Create Gift Card Accordion */}
+              <AccordionItem value="create">
+                <AccordionTrigger className="hover:no-underline">
+                  <div className="flex items-center gap-2">
+                    <Gift className="h-4 w-4" />
+                    Create Gift Card
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="space-y-3 pt-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="giftcard-amount" className="text-xs text-muted-foreground">Amount (USD)</Label>
+                        <Input
+                          id="giftcard-amount"
+                          type="number"
+                          step="0.01"
+                          value={giftcardAmount}
+                          onChange={(e) => setGiftcardAmount(Number(e.target.value))}
+                          placeholder="Amount"
+                          className="text-center"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="giftcard-quantity" className="text-xs text-muted-foreground">Quantity</Label>
+                        <Input
+                          id="giftcard-quantity"
+                          type="number"
+                          min="1"
+                          max="100"
+                          value={giftcardQuantity}
+                          onChange={(e) => setGiftcardQuantity(Number(e.target.value))}
+                          placeholder="Qty"
+                          className="text-center"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-5 gap-2">
+                      {PRESET_AMOUNTS.map((preset) => (
+                        <Button
+                          key={preset}
+                          variant={giftcardAmount === preset ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setGiftcardAmount(preset)}
+                          className="text-xs"
+                        >
+                        ${preset}
+                        </Button>
+                      ))}
+                    </div>
+                    <Button
+                      onClick={handleCreateGiftcard}
+                      disabled={giftcardAmount <= 0 || giftcardQuantity <= 0 || createGiftcardMutation.isPending}
+                      className="w-full h-12 text-base font-medium"
+                      size="lg"
+                    >
+                      {createGiftcardMutation.isPending && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
+                      Create {giftcardQuantity > 1 ? `${giftcardQuantity} ` : ''}Gift Card{giftcardQuantity > 1 ? 's' : ''}
+                      {giftcardAmount > 0 && giftcardQuantity > 0 && ` - ${formatCurrency(giftcardAmount * giftcardQuantity)}`}
+                    </Button>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+
+              {/* Your Gift Cards Accordion */}
+              <AccordionItem value="list" className="border-b-0">
+                <AccordionTrigger className="hover:no-underline">
+                  <div className="flex items-center gap-2">
+                    <CreditCard className="h-4 w-4" />
+                    Your Gift Cards
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="pb-0">
+                  <div className="pt-2">
+                    {isLoadingGiftcards ? (
+                      <div className="p-3 border rounded-lg space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Skeleton className="h-4 w-4 rounded" />
+                          <Skeleton className="h-4 w-32" />
+                          <Skeleton className="h-4 w-16 ml-auto" />
+                        </div>
+                        <Skeleton className="h-3 w-48" />
+                      </div>
+                    ) : !giftcards || giftcards.length === 0 ? (
+                      <div className="py-8 text-center text-muted-foreground">
+                        <Gift className="h-10 w-10 mx-auto mb-3 opacity-50" />
+                        <p className="text-sm">No gift cards yet</p>
+                        <p className="text-xs">Create gift cards to share with others</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {giftcards.map((giftcard) => (
+                          <div
+                            key={giftcard.id}
+                            className="p-3 border rounded-lg space-y-2 hover:bg-muted/30 transition-colors"
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2 min-w-0 flex-1">
+                                <Gift className="h-4 w-4 flex-shrink-0" />
+                                <span className="text-sm font-medium truncate">
+                                  Gift Card
+                                </span>
+                                <Badge variant={giftcard.redeemed ? "secondary" : "default"} className="text-xs flex-shrink-0">
+                                  {giftcard.redeemed ? 'Redeemed' : 'Active'}
+                                </Badge>
+                              </div>
+                              <div className="text-right flex-shrink-0">
+                                <p className="text-sm font-medium">{formatCurrency(giftcard.amount)}</p>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-between">
+                              <code className="text-xs bg-muted px-2 py-1 rounded font-mono">
+                                {giftcard.code}
+                              </code>
+                              <div className="relative">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleCopyCode(giftcard.code)}
+                                  className="h-6 px-2 text-xs"
+                                >
+                                  <Copy className="h-3 w-3 mr-1" />
+                                  Copy
+                                </Button>
+                                {copiedCode === giftcard.code && (
+                                  <div className="absolute -top-8 right-0 bg-foreground text-background text-xs px-2 py-1 rounded shadow-lg z-10 animate-in fade-in-0 duration-200 whitespace-nowrap">
+                                    Copied!
                                   </div>
                                 )}
                               </div>
-                            ))}
+                            </div>
+
+                            {giftcard.created_at && (
+                              <div className="text-xs text-muted-foreground">
+                                Created {formatDate(giftcard.created_at)}
+                              </div>
+                            )}
                           </div>
-                        )}
+                        ))}
                       </div>
-                    </AccordionContent>
-                  </AccordionItem>
+                    )}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
             </Accordion>
           </div>
         )}

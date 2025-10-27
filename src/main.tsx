@@ -16,17 +16,3 @@ import '@fontsource-variable/inter';
 import 'prismjs/themes/prism.css';
 
 createRoot(document.getElementById("root")!).render(<App />);
-
-// Register service worker (skip in Electron - doesn't work with file:// protocol)
-if ('serviceWorker' in navigator && !globalThis.electron) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker
-      .register('/sw.js')
-      .then((registration) => {
-        console.log('[ServiceWorker] Registered:', registration);
-      })
-      .catch((error) => {
-        console.error('[ServiceWorker] Registration failed:', error);
-      });
-  });
-}

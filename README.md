@@ -10,6 +10,7 @@ https://shakespeare.diy
 
 - **Use any AI provider** OpenAI, Anthropic, OpenRouter, xAI, ZAI, Deepseek, and more
 - **Buy credits anonymously** with Nostr and Lightning ⚡
+- **Redeem gift cards** with shareable links for instant credits
 - **Runs entirely in the browser** No backend required
 - **Desktop app available** Run as a native Electron application on macOS, Windows, and Linux
 
@@ -55,6 +56,13 @@ npm run electron:build
 ```
 
 For detailed instructions, see [electron/QUICKSTART.md](electron/QUICKSTART.md).
+## Mirrors
+
+Shakespeare is available on the following URLs:
+
+- [shakespeare.diy](https://shakespeare.diy)
+- [shakespeare.soapbox.dev](https://shakespeare.soapbox.dev)
+- [shakespeare-b0b9c8.gitlab.io](https://shakespeare-b0b9c8.gitlab.io)
 
 ## Alternatives
 

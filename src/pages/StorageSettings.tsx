@@ -10,6 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/useToast';
 import { useFS } from '@/hooks/useFS';
 import { useIsMobile } from '@/hooks/useIsMobile';
+import { useOffline } from '@/hooks/useOffline';
 import {
   isPersistentStorageSupported,
   isPersistentStorageGranted,
@@ -43,6 +44,7 @@ export function StorageSettings() {
   const { fs } = useFS();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { clearCache } = useOffline();
 
   // Format bytes to human readable format
   const formatBytes = (bytes: number): string => {
@@ -222,6 +224,9 @@ export function StorageSettings() {
     try {
       // Clear localStorage
       localStorage.clear();
+
+      // Clear caches
+      await clearCache();
 
       // Clear IndexedDB databases
       const databases = await indexedDB.databases();

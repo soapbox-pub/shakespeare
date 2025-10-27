@@ -23,6 +23,8 @@ import { LightningFSAdapter } from '@/lib/LightningFSAdapter';
 import { ElectronFSAdapter } from '@/lib/ElectronFSAdapter';
 import { cleanupTmpDirectory } from '@/lib/tmpCleanup';
 import { DynamicFavicon } from '@/components/DynamicFavicon';
+import { OfflineIndicator } from '@/components/OfflineIndicator';
+import { PWAUpdatePrompt } from '@/components/PWAUpdatePrompt';
 
 import AppRouter from './AppRouter';
 
@@ -89,7 +91,7 @@ const defaultConfig: AppConfig = {
   projectTemplate: "https://gitlab.com/soapbox-pub/mkstack.git",
   esmUrl: "https://esm.shakespeare.diy",
   corsProxy: "https://proxy.shakespeare.diy/?url={href}",
-  faviconUrl: "https://external-content.duckduckgo.com/ip3/{hostname}.ico",
+  faviconUrl: "https://favicon.shakespeare.diy/?url={href}",
   previewDomain: "local-shakespeare.dev",
   showcaseEnabled: true,
   showcaseModerator: "npub1jvnpg4c6ljadf5t6ry0w9q0rnm4mksde87kglkrc993z46c39axsgq89sc",
@@ -144,6 +146,8 @@ export function App() {
                           <TooltipProvider>
                             <Toaster />
                             <DynamicFavicon />
+                            <OfflineIndicator />
+                            <PWAUpdatePrompt />
                             <Suspense>
                               <AppRouter />
                             </Suspense>

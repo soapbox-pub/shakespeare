@@ -88,6 +88,14 @@ export const AI_PROVIDER_PRESETS: PresetProvider[] = [
     tosURL: "https://ai.google.dev/gemini-api/terms",
     proxy: true,
   },
+  {
+    id: "vercel",
+    name: "Vercel",
+    baseURL: "https://api.v0.dev/v1",
+    apiKeysURL: "https://vercel.com/account/tokens",
+    tosURL: "https://vercel.com/legal/terms",
+    proxy: true,
+  },
 ];
 
 // Helper function to get a specific preset by ID

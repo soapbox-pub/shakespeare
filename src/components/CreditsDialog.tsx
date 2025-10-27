@@ -1,15 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import QRCode from 'qrcode';
-import { CreditCard, Zap, ExternalLink, RefreshCw, Check, X, Clock, AlertCircle, Copy, RotateCcw, ArrowLeft } from 'lucide-react';
+import { CreditCard, Zap, ExternalLink, RefreshCw, Check, X, Clock, AlertCircle, Copy, RotateCcw, ArrowLeft, Gift, Plus, History, DollarSign, Printer, Download } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useToast } from '@/hooks/useToast';
 import { createAIClient } from '@/lib/ai-client';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
@@ -48,6 +48,35 @@ interface AddCreditsRequest {
   amount: number;
   method: 'stripe' | 'lightning';
   redirect_url?: string;
+}
+
+interface Giftcard {
+  object: 'giftcard';
+  id: string;
+  code: string;
+  amount: number;
+  redeemed: boolean;
+  created_at?: number;
+}
+
+interface GiftcardsResponse {
+  object: 'list';
+  data: Giftcard[];
+  has_more: boolean;
+}
+
+interface CreateGiftcardRequest {
+  amount: number;
+  quantity: number;
+}
+
+interface RedeemGiftcardRequest {
+  code: string;
+}
+
+interface GiftcardRedemption {
+  object: 'giftcard_redemption';
+  amount: number;
 }
 
 const PRESET_AMOUNTS = [5, 10, 25, 50, 100];
@@ -192,6 +221,11 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
   const [paymentMethod, setPaymentMethod] = useState<'stripe' | 'lightning'>('stripe');
   const [lightningInvoice, setLightningInvoice] = useState<string | null>(null);
   const [refreshingPayments, setRefreshingPayments] = useState<Set<string>>(new Set());
+  const [giftcardAmount, setGiftcardAmount] = useState<number>(10);
+  const [giftcardQuantity, setGiftcardQuantity] = useState<number>(1);
+  const [redeemCode, setRedeemCode] = useState<string>('');
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [isPrintingQRCodes, setIsPrintingQRCodes] = useState(false);
 
   // Query for payment history
   const { data: payments, isLoading: isLoadingPayments } = useQuery({
@@ -199,6 +233,19 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
     queryFn: async (): Promise<Payment[]> => {
       const ai = createAIClient(provider, user, config.corsProxy);
       const data = await ai.get('/credits/payments?limit=50') as PaymentsResponse;
+      return data.data;
+    },
+    enabled: open,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+
+  // Query for gift cards
+  const { data: giftcards, isLoading: isLoadingGiftcards } = useQuery({
+    queryKey: ['ai-giftcards', provider.nostr ? user?.pubkey ?? '' : '', provider.id],
+    queryFn: async (): Promise<Giftcard[]> => {
+      const ai = createAIClient(provider, user, config.corsProxy);
+      const data = await ai.get('/credits/giftcards?limit=50') as GiftcardsResponse;
       return data.data;
     },
     enabled: open,
@@ -316,6 +363,77 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
     },
   });
 
+  // Mutation for creating gift cards
+  const createGiftcardMutation = useMutation({
+    mutationFn: async (request: CreateGiftcardRequest): Promise<Giftcard[]> => {
+      const ai = createAIClient(provider, user, config.corsProxy);
+      const response = await ai.post('/credits/giftcards', {
+        body: request,
+      }) as GiftcardsResponse;
+      return response.data;
+    },
+    onSuccess: (giftcards) => {
+      toast({
+        title: 'Gift Cards created!',
+        description: `Successfully created ${giftcards.length} gift card${giftcards.length > 1 ? 's' : ''}.`,
+      });
+
+      // Refresh gift cards list
+      queryClient.invalidateQueries({
+        queryKey: ['ai-giftcards', provider.nostr ? user?.pubkey ?? '' : '', provider.id],
+      });
+
+      // Refresh credits balance
+      queryClient.invalidateQueries({
+        queryKey: ['ai-credits', provider.nostr ? user?.pubkey ?? '' : '', provider.id],
+      });
+
+      // Reset form
+      setGiftcardAmount(10);
+      setGiftcardQuantity(1);
+    },
+    onError: (error: Error) => {
+      const errorMessage = error?.message || 'Failed to create gift cards';
+      toast({
+        title: 'Creation failed',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Mutation for redeeming gift cards
+  const redeemGiftcardMutation = useMutation({
+    mutationFn: async (request: RedeemGiftcardRequest): Promise<GiftcardRedemption> => {
+      const ai = createAIClient(provider, user, config.corsProxy);
+      return await ai.post('/credits/giftcards/redeem', {
+        body: request,
+      }) as GiftcardRedemption;
+    },
+    onSuccess: (redemption) => {
+      toast({
+        title: 'Gift Card redeemed!',
+        description: `${formatCurrency(redemption.amount)} has been added to your account.`,
+      });
+
+      // Refresh credits balance
+      queryClient.invalidateQueries({
+        queryKey: ['ai-credits', provider.nostr ? user?.pubkey ?? '' : '', provider.id],
+      });
+
+      // Reset redeem code
+      setRedeemCode('');
+    },
+    onError: (error: Error) => {
+      const errorMessage = error?.message || 'Failed to redeem gift card';
+      toast({
+        title: 'Redemption failed',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+    },
+  });
+
   const handleAddCredits = () => {
     if (amount <= 0) {
       toast({
@@ -336,6 +454,292 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
     }
 
     addCreditsMutation.mutate(request);
+  };
+
+  const handleCreateGiftcard = () => {
+    if (giftcardAmount <= 0) {
+      toast({
+        title: 'Invalid amount',
+        description: 'Please enter a valid amount.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (giftcardQuantity <= 0 || giftcardQuantity > 100) {
+      toast({
+        title: 'Invalid quantity',
+        description: 'Quantity must be between 1 and 100.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    createGiftcardMutation.mutate({
+      amount: giftcardAmount,
+      quantity: giftcardQuantity,
+    });
+  };
+
+  const handleRedeemGiftcard = () => {
+    const trimmedCode = redeemCode.trim();
+    if (!trimmedCode) {
+      toast({
+        title: 'Invalid code',
+        description: 'Please enter a gift card code.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    redeemGiftcardMutation.mutate({ code: trimmedCode });
+  };
+
+  const handleCopyCode = (code: string) => {
+    navigator.clipboard.writeText(code);
+    setCopiedCode(code);
+    setTimeout(() => setCopiedCode(null), 2000);
+  };
+
+  const handlePrintGiftcards = async () => {
+    if (!giftcards || giftcards.length === 0) return;
+
+    // Filter only active (non-redeemed) gift cards
+    const activeGiftcards = giftcards.filter(gc => !gc.redeemed);
+    if (activeGiftcards.length === 0) {
+      toast({
+        title: 'No active gift cards',
+        description: 'You have no active gift cards to print.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsPrintingQRCodes(true);
+
+    try {
+      // Generate QR codes for all active gift cards
+      const qrCodePromises = activeGiftcards.map(async (giftcard) => {
+        const url = `${window.location.origin}/giftcard#baseURL=${encodeURIComponent(provider.baseURL)}&code=${encodeURIComponent(giftcard.code)}`;
+        const qrDataUrl = await QRCode.toDataURL(url, {
+          width: 256,
+          margin: 2,
+          color: {
+            dark: '#000000',
+            light: '#ffffff',
+          },
+        });
+        return {
+          ...giftcard,
+          qrDataUrl,
+        };
+      });
+
+      const giftcardsWithQR = await Promise.all(qrCodePromises);
+
+      // Create a new window for printing
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) {
+        throw new Error('Failed to open print window. Please allow popups for this site.');
+      }
+
+      // Generate the print HTML
+      const printHTML = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>Shakespeare AI Gift Cards</title>
+            <style>
+              * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+              }
+              
+              body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+                padding: 20px;
+                background: white;
+              }
+              
+              .grid {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 20px;
+                max-width: 8.5in;
+                margin: 0 auto;
+              }
+              
+              .card {
+                border: 2px solid #000;
+                border-radius: 8px;
+                padding: 20px;
+                text-align: center;
+                page-break-inside: avoid;
+                background: white;
+              }
+              
+              .card-title {
+                font-size: 18px;
+                font-weight: 600;
+                margin-bottom: 15px;
+                color: #000;
+              }
+              
+              .qr-code {
+                width: 200px;
+                height: 200px;
+                margin: 0 auto 15px;
+                display: block;
+              }
+              
+              .amount {
+                font-size: 24px;
+                font-weight: 700;
+                color: #000;
+                margin-bottom: 10px;
+              }
+              
+              .code {
+                font-family: 'Courier New', monospace;
+                font-size: 14px;
+                background: #f5f5f5;
+                padding: 8px 12px;
+                border-radius: 4px;
+                word-break: break-all;
+                color: #000;
+                border: 1px solid #ddd;
+              }
+              
+              .footer {
+                margin-top: 10px;
+                font-size: 12px;
+                color: #666;
+              }
+              
+              @media print {
+                body {
+                  padding: 0;
+                }
+                
+                .grid {
+                  gap: 15px;
+                }
+                
+                .card {
+                  page-break-inside: avoid;
+                }
+              }
+            </style>
+          </head>
+          <body>
+            <div class="grid">
+              ${giftcardsWithQR.map(gc => `
+                <div class="card">
+                  <div class="card-title">Shakespeare AI Gift Card</div>
+                  <img src="${gc.qrDataUrl}" alt="QR Code" class="qr-code" />
+                  <div class="amount">${formatCurrency(gc.amount)}</div>
+                  <div class="code">${gc.code}</div>
+                  <div class="footer">Scan to redeem</div>
+                </div>
+              `).join('')}
+            </div>
+          </body>
+        </html>
+      `;
+
+      printWindow.document.write(printHTML);
+      printWindow.document.close();
+
+      // Wait for images to load before printing
+      printWindow.onload = () => {
+        setTimeout(() => {
+          printWindow.print();
+        }, 250);
+      };
+    } catch (error) {
+      console.error('Failed to generate QR codes:', error);
+      toast({
+        title: 'Print failed',
+        description: error instanceof Error ? error.message : 'Failed to generate QR codes for printing',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsPrintingQRCodes(false);
+    }
+  };
+
+  const handleDownloadCSV = () => {
+    if (!giftcards || giftcards.length === 0) return;
+
+    // Filter only active (non-redeemed) gift cards
+    const activeGiftcards = giftcards.filter(gc => !gc.redeemed);
+    if (activeGiftcards.length === 0) {
+      toast({
+        title: 'No active gift cards',
+        description: 'You have no active gift cards to download.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      // Create CSV header
+      const headers = ['Code', 'Amount', 'Status', 'Created Date', 'Redemption URL'];
+      
+      // Create CSV rows
+      const rows = activeGiftcards.map(gc => {
+        const url = `${window.location.origin}/giftcard#baseURL=${encodeURIComponent(provider.baseURL)}&code=${encodeURIComponent(gc.code)}`;
+        const createdDate = gc.created_at 
+          ? new Date(gc.created_at * 1000).toLocaleDateString('en-US', { 
+              year: 'numeric', 
+              month: 'short', 
+              day: 'numeric' 
+            })
+          : 'N/A';
+        
+        return [
+          gc.code,
+          Number(gc.amount).toFixed(2),
+          gc.redeemed ? 'Redeemed' : 'Active',
+          createdDate,
+          url
+        ];
+      });
+
+      // Combine headers and rows
+      const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+      ].join('\n');
+
+      // Create blob and download
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      
+      link.setAttribute('href', url);
+      link.setAttribute('download', `shakespeare-giftcards-${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: 'CSV downloaded',
+        description: `Downloaded ${activeGiftcards.length} gift card${activeGiftcards.length > 1 ? 's' : ''}.`,
+      });
+    } catch (error) {
+      console.error('Failed to generate CSV:', error);
+      toast({
+        title: 'Download failed',
+        description: error instanceof Error ? error.message : 'Failed to generate CSV file',
+        variant: 'destructive',
+      });
+    }
   };
 
   const formatCurrency = (amount: number) => {
@@ -433,160 +837,373 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
             />
           </div>
         ) : (
-          <div className="flex-1 flex flex-col min-h-0">
-            {/* Add Credits Form - Fixed size section */}
-            <div className="flex-shrink-0 space-y-4 px-1 -mx-1">
-              <div className="space-y-3">
-                <Label htmlFor="amount" className="text-sm font-medium">Amount (USD)</Label>
-                <div className="space-y-3">
-                  <Input
-                    id="amount"
-                    type="number"
-                    step="0.01"
-                    value={amount}
-                    onChange={(e) => setAmount(Number(e.target.value))}
-                    placeholder="Enter amount"
-                    className="text-center text-lg font-medium"
-                  />
-                  <div className="grid grid-cols-5 gap-2">
-                    {PRESET_AMOUNTS.map((preset) => (
-                      <Button
-                        key={preset}
-                        variant={amount === preset ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setAmount(preset)}
-                        className="text-xs"
-                      >
-                      ${preset}
-                      </Button>
-                    ))}
+          <div className="flex-1 overflow-y-auto px-1 -mx-1">
+            <Accordion type="multiple" defaultValue={["add"]} className="w-full">
+              {/* Buy Credits Accordion */}
+              <AccordionItem value="add">
+                <AccordionTrigger className="hover:no-underline">
+                  <div className="flex items-center gap-2">
+                    <DollarSign className="h-4 w-4" />
+                    Buy Credits
                   </div>
-
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <Label className="text-sm font-medium">Payment Method</Label>
-                <Tabs value={paymentMethod} onValueChange={(value: 'stripe' | 'lightning') => setPaymentMethod(value)} className="w-full">
-                  <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="stripe" className="flex items-center gap-2">
-                      <CreditCard className="h-4 w-4" />
-                    Credit Card
-                    </TabsTrigger>
-                    <TabsTrigger value="lightning" className="flex items-center gap-2">
-                      <Zap className="h-4 w-4" />
-                    Lightning
-                    </TabsTrigger>
-                  </TabsList>
-                </Tabs>
-              </div>
-
-              <Button
-                onClick={handleAddCredits}
-                disabled={amount <= 0 || addCreditsMutation.isPending}
-                className="w-full h-12 text-base font-medium"
-                size="lg"
-              >
-                {addCreditsMutation.isPending && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
-                {paymentMethod === 'stripe' ? 'Pay with Card' : 'Generate Invoice'}
-                {amount > 0 && ` - ${formatCurrency(amount)}`}
-              </Button>
-            </div>
-
-            <div className="flex-shrink-0 px-1 -mx-1 py-4">
-              <Separator />
-            </div>
-
-            {/* Transaction History - Flexible section */}
-            <div className="flex-1 min-h-0 flex flex-col px-1 -mx-1">
-              <div className="flex-shrink-0 mb-4">
-                <h3 className="text-base font-semibold">Recent Transactions</h3>
-              </div>
-              <div className="flex-1 min-h-0 overflow-y-auto">
-                {isLoadingPayments ? (
-                  <div className="p-3 border rounded-lg space-y-2">
-                    <div className="flex items-center gap-2">
-                      <Skeleton className="h-4 w-4 rounded" />
-                      <Skeleton className="h-4 w-24" />
-                      <Skeleton className="h-4 w-16 ml-auto" />
-                    </div>
-                    <Skeleton className="h-3 w-32" />
-                  </div>
-                ) : !payments || payments.length === 0 ? (
-                  <div className="flex-1 flex items-center justify-center">
-                    <div className="text-center text-muted-foreground">
-                      <CreditCard className="h-10 w-10 mx-auto mb-3 opacity-50" />
-                      <p className="text-sm">No transactions yet</p>
-                      <p className="text-xs">Your payment history will appear here</p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-2 pb-2">
-                    {payments.map((payment) => (
-                      <div
-                        key={payment.id}
-                        className="p-3 border rounded-lg space-y-2 hover:bg-muted/30 transition-colors"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2 min-w-0 flex-1">
-                            {getStatusIcon(payment.status)}
-                            <span className="text-sm font-medium truncate">
-                              {payment.method === 'stripe' ? 'Credit Card' : 'Lightning'}
-                            </span>
-                            <Badge variant={getStatusVariant(payment.status)} className="text-xs flex-shrink-0">
-                              {payment.status}
-                            </Badge>
-                          </div>
-                          <div className="text-right flex-shrink-0">
-                            <p className="text-sm font-medium">{formatCurrency(payment.amount)}</p>
-                            {payment.fee > 0 && (
-                              <p className="text-xs text-muted-foreground">
-                            +{formatCurrency(payment.fee)}
-                              </p>
-                            )}
-                          </div>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="space-y-3 pt-2">
+                    <div className="space-y-3">
+                      <Label htmlFor="amount" className="text-sm font-medium">Amount (USD)</Label>
+                      <div className="space-y-3">
+                        <Input
+                          id="amount"
+                          type="number"
+                          step="0.01"
+                          value={amount}
+                          onChange={(e) => setAmount(Number(e.target.value))}
+                          placeholder="Enter amount"
+                          className="text-center text-lg font-medium"
+                        />
+                        <div className="grid grid-cols-5 gap-2">
+                          {PRESET_AMOUNTS.map((preset) => (
+                            <Button
+                              key={preset}
+                              variant={amount === preset ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => setAmount(preset)}
+                              className="text-xs"
+                            >
+                            ${preset}
+                            </Button>
+                          ))}
                         </div>
+                      </div>
+                    </div>
 
-                        <div className="flex items-center justify-between text-xs text-muted-foreground">
-                          <span>{formatDate(payment.created_at)}</span>
-                          {payment.status === 'pending' && (
-                            <div className="flex items-center gap-1">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => checkPaymentMutation.mutate(payment.id)}
-                                disabled={refreshingPayments.has(payment.id)}
-                                className="h-6 px-2 text-xs"
-                                title="Refresh payment status"
-                              >
-                                <RotateCcw className={`h-3 w-3 ${refreshingPayments.has(payment.id) ? 'animate-spin' : ''}`} />
-                              </Button>
-                              {payment.url && (
+                    <div className="space-y-3">
+                      <Label className="text-sm font-medium">Payment Method</Label>
+                      <Tabs value={paymentMethod} onValueChange={(value: 'stripe' | 'lightning') => setPaymentMethod(value)} className="w-full">
+                        <TabsList className="grid w-full grid-cols-2">
+                          <TabsTrigger value="stripe" className="flex items-center gap-2">
+                            <CreditCard className="h-4 w-4" />
+                          Credit Card
+                          </TabsTrigger>
+                          <TabsTrigger value="lightning" className="flex items-center gap-2">
+                            <Zap className="h-4 w-4" />
+                          Lightning
+                          </TabsTrigger>
+                        </TabsList>
+                      </Tabs>
+                    </div>
+
+                    <Button
+                      onClick={handleAddCredits}
+                      disabled={amount <= 0 || addCreditsMutation.isPending}
+                      className="w-full h-12 text-base font-medium"
+                      size="lg"
+                    >
+                      {addCreditsMutation.isPending && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
+                      {paymentMethod === 'stripe' ? 'Pay with Card' : 'Generate Invoice'}
+                      {amount > 0 && ` - ${formatCurrency(amount)}`}
+                    </Button>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+
+              {/* Transaction History Accordion */}
+              <AccordionItem value="history">
+                <AccordionTrigger className="hover:no-underline">
+                  <div className="flex items-center gap-2">
+                    <History className="h-4 w-4" />
+                    Recent Transactions
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="pt-2">
+                    {isLoadingPayments ? (
+                      <div className="p-3 border rounded-lg space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Skeleton className="h-4 w-4 rounded" />
+                          <Skeleton className="h-4 w-24" />
+                          <Skeleton className="h-4 w-16 ml-auto" />
+                        </div>
+                        <Skeleton className="h-3 w-32" />
+                      </div>
+                    ) : !payments || payments.length === 0 ? (
+                      <div className="py-8 text-center text-muted-foreground">
+                        <CreditCard className="h-10 w-10 mx-auto mb-3 opacity-50" />
+                        <p className="text-sm">No transactions yet</p>
+                        <p className="text-xs">Your payment history will appear here</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {payments.map((payment) => (
+                          <div
+                            key={payment.id}
+                            className="p-3 border rounded-lg space-y-2 hover:bg-muted/30 transition-colors"
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2 min-w-0 flex-1">
+                                {getStatusIcon(payment.status)}
+                                <span className="text-sm font-medium truncate">
+                                  {payment.method === 'stripe' ? 'Credit Card' : 'Lightning'}
+                                </span>
+                                <Badge variant={getStatusVariant(payment.status)} className="text-xs flex-shrink-0">
+                                  {payment.status}
+                                </Badge>
+                              </div>
+                              <div className="text-right flex-shrink-0">
+                                <p className="text-sm font-medium">{formatCurrency(payment.amount)}</p>
+                                {payment.fee > 0 && (
+                                  <p className="text-xs text-muted-foreground">
+                                +{formatCurrency(payment.fee)}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-between text-xs text-muted-foreground">
+                              <span>{formatDate(payment.created_at)}</span>
+                              {payment.status === 'pending' && (
+                                <div className="flex items-center gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => checkPaymentMutation.mutate(payment.id)}
+                                    disabled={refreshingPayments.has(payment.id)}
+                                    className="h-6 px-2 text-xs"
+                                    title="Refresh payment status"
+                                  >
+                                    <RotateCcw className={`h-3 w-3 ${refreshingPayments.has(payment.id) ? 'animate-spin' : ''}`} />
+                                  </Button>
+                                  {payment.url && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => {
+                                        if (payment.method === 'lightning') {
+                                          setLightningInvoice(payment.url);
+                                        } else {
+                                          window.open(payment.url, '_blank');
+                                        }
+                                      }}
+                                      className="h-6 px-2 text-xs"
+                                    >
+                                      <ExternalLink className="h-3 w-3 mr-1" />
+                                      {payment.method === 'lightning' ? 'Pay' : 'Pay'}
+                                    </Button>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+
+              {/* Redeem Gift Card Accordion */}
+              <AccordionItem value="redeem">
+                <AccordionTrigger className="hover:no-underline">
+                  <div className="flex items-center gap-2">
+                    <Plus className="h-4 w-4" />
+                    Redeem Gift Card
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="space-y-3 pt-2">
+                    <div className="flex gap-2">
+                      <Input
+                        id="redeem-code"
+                        type="text"
+                        value={redeemCode}
+                        onChange={(e) => setRedeemCode(e.target.value)}
+                        placeholder="Enter gift card code"
+                        className="flex-1"
+                      />
+                      <Button
+                        onClick={handleRedeemGiftcard}
+                        disabled={!redeemCode.trim() || redeemGiftcardMutation.isPending}
+                        size="lg"
+                      >
+                        {redeemGiftcardMutation.isPending && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
+                        Redeem
+                      </Button>
+                    </div>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+
+              {/* Create Gift Card Accordion */}
+              <AccordionItem value="create">
+                <AccordionTrigger className="hover:no-underline">
+                  <div className="flex items-center gap-2">
+                    <Gift className="h-4 w-4" />
+                    Create Gift Card
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="space-y-3 pt-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="giftcard-amount" className="text-xs text-muted-foreground">Amount (USD)</Label>
+                        <Input
+                          id="giftcard-amount"
+                          type="number"
+                          step="0.01"
+                          value={giftcardAmount}
+                          onChange={(e) => setGiftcardAmount(Number(e.target.value))}
+                          placeholder="Amount"
+                          className="text-center"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="giftcard-quantity" className="text-xs text-muted-foreground">Quantity</Label>
+                        <Input
+                          id="giftcard-quantity"
+                          type="number"
+                          min="1"
+                          max="100"
+                          value={giftcardQuantity}
+                          onChange={(e) => setGiftcardQuantity(Number(e.target.value))}
+                          placeholder="Qty"
+                          className="text-center"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-5 gap-2">
+                      {PRESET_AMOUNTS.map((preset) => (
+                        <Button
+                          key={preset}
+                          variant={giftcardAmount === preset ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setGiftcardAmount(preset)}
+                          className="text-xs"
+                        >
+                        ${preset}
+                        </Button>
+                      ))}
+                    </div>
+                    <Button
+                      onClick={handleCreateGiftcard}
+                      disabled={giftcardAmount <= 0 || giftcardQuantity <= 0 || createGiftcardMutation.isPending}
+                      className="w-full h-12 text-base font-medium"
+                      size="lg"
+                    >
+                      {createGiftcardMutation.isPending && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
+                      Create {giftcardQuantity > 1 ? `${giftcardQuantity} ` : ''}Gift Card{giftcardQuantity > 1 ? 's' : ''}
+                      {giftcardAmount > 0 && giftcardQuantity > 0 && ` - ${formatCurrency(giftcardAmount * giftcardQuantity)}`}
+                    </Button>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+
+              {/* Your Gift Cards Accordion */}
+              <AccordionItem value="list" className="border-b-0">
+                <AccordionTrigger className="hover:no-underline">
+                  <div className="flex items-center gap-2">
+                    <CreditCard className="h-4 w-4" />
+                    Your Gift Cards
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="pb-0">
+                  <div className="pt-2 space-y-3">
+                    {giftcards && giftcards.filter(gc => !gc.redeemed).length > 0 && (
+                      <div className="grid grid-cols-2 gap-2">
+                        <Button
+                          onClick={handlePrintGiftcards}
+                          disabled={isPrintingQRCodes}
+                          variant="outline"
+                          size="sm"
+                        >
+                          {isPrintingQRCodes ? (
+                            <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                          ) : (
+                            <Printer className="h-4 w-4 mr-2" />
+                          )}
+                          Print QR Codes
+                        </Button>
+                        <Button
+                          onClick={handleDownloadCSV}
+                          variant="outline"
+                          size="sm"
+                        >
+                          <Download className="h-4 w-4 mr-2" />
+                          Download CSV
+                        </Button>
+                      </div>
+                    )}
+                    {isLoadingGiftcards ? (
+                      <div className="p-3 border rounded-lg space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Skeleton className="h-4 w-4 rounded" />
+                          <Skeleton className="h-4 w-32" />
+                          <Skeleton className="h-4 w-16 ml-auto" />
+                        </div>
+                        <Skeleton className="h-3 w-48" />
+                      </div>
+                    ) : !giftcards || giftcards.length === 0 ? (
+                      <div className="py-8 text-center text-muted-foreground">
+                        <Gift className="h-10 w-10 mx-auto mb-3 opacity-50" />
+                        <p className="text-sm">No gift cards yet</p>
+                        <p className="text-xs">Create gift cards to share with others</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {giftcards.map((giftcard) => (
+                          <div
+                            key={giftcard.id}
+                            className="p-3 border rounded-lg space-y-2 hover:bg-muted/30 transition-colors"
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2 min-w-0 flex-1">
+                                <Gift className="h-4 w-4 flex-shrink-0" />
+                                <span className="text-sm font-medium truncate">
+                                  Gift Card
+                                </span>
+                                <Badge variant={giftcard.redeemed ? "secondary" : "default"} className="text-xs flex-shrink-0">
+                                  {giftcard.redeemed ? 'Redeemed' : 'Active'}
+                                </Badge>
+                              </div>
+                              <div className="text-right flex-shrink-0">
+                                <p className="text-sm font-medium">{formatCurrency(giftcard.amount)}</p>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-between">
+                              <code className="text-xs bg-muted px-2 py-1 rounded font-mono">
+                                {giftcard.code}
+                              </code>
+                              <div className="relative">
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => {
-                                    if (payment.method === 'lightning') {
-                                      setLightningInvoice(payment.url);
-                                    } else {
-                                      window.open(payment.url, '_blank');
-                                    }
-                                  }}
+                                  onClick={() => handleCopyCode(giftcard.code)}
                                   className="h-6 px-2 text-xs"
                                 >
-                                  <ExternalLink className="h-3 w-3 mr-1" />
-                                  {payment.method === 'lightning' ? 'Pay' : 'Pay'}
+                                  <Copy className="h-3 w-3 mr-1" />
+                                  Copy
                                 </Button>
-                              )}
+                                {copiedCode === giftcard.code && (
+                                  <div className="absolute -top-8 right-0 bg-foreground text-background text-xs px-2 py-1 rounded shadow-lg z-10 animate-in fade-in-0 duration-200 whitespace-nowrap">
+                                    Copied!
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                          )}
-                        </div>
+
+                            {giftcard.created_at && (
+                              <div className="text-xs text-muted-foreground">
+                                Created {formatDate(giftcard.created_at)}
+                              </div>
+                            )}
+                          </div>
+                        ))}
                       </div>
-                    ))}
+                    )}
                   </div>
-                )}
-              </div>
-            </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           </div>
         )}
       </DialogContent>

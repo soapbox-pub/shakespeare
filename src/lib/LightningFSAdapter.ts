@@ -13,7 +13,7 @@ export class LightningFSAdapter implements JSRuntimeFS {
   async readFile(path: string, options: string): Promise<string>;
   async readFile(path: string, options: { encoding: 'utf8' }): Promise<string>;
   async readFile(path: string, options: { encoding: string }): Promise<string>;
-  async readFile(path: string, options?: string | { encoding?: string }): Promise<string | Uint8Array>;
+  async readFile(path: string, options?: string | { encoding?: string }): Promise<string | Uint8Array<ArrayBuffer>>;
   async readFile(path: string, options?: string | { encoding?: string }): Promise<string | Uint8Array> {
     const encoding = typeof options === 'string' ? options : options?.encoding;
     return this.lightningFS.readFile(path, encoding);

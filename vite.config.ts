@@ -3,6 +3,7 @@ import path from "node:path";
 
 import react from "@vitejs/plugin-react-swc";
 import { defineConfig } from "vitest/config";
+import { VitePWA } from 'vite-plugin-pwa';
 
 function getVersion(): string {
   try {
@@ -27,29 +28,22 @@ export default defineConfig(() => ({
   },
   plugins: [
     react(),
+    VitePWA({
+      includeAssets: ['shakespeare.svg', 'shakespeare-192x192.png', 'shakespeare-512x512.png', 'sine.mp3'],
+      manifest: false, // Use existing manifest.webmanifest from public folder
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,wasm,mp3}'],
+        maximumFileSizeToCacheInBytes: 10 * 1024 * 1024, // 10 MB
+        cleanupOutdatedCaches: true,
+      },
+      devOptions: {
+        enabled: false,
+        type: 'module'
+      }
+    })
   ],
   build: {
     sourcemap: true,
-    rollupOptions: {
-      output: {
-        manualChunks(id) {
-          if (id.includes('node_modules')) {
-            // get the path after "node_modules/"
-            const parts = id.toString().split('node_modules/')[1].split('/');
-
-            // handle scoped packages (@scope/name)
-            const pkgName = parts[0].startsWith('@')
-              ? `${parts[0]}/${parts[1]}`
-              : parts[0];
-
-            return `npm/${pkgName.replace('@', '')}`;
-          }
-          if (id.includes('/src/')) {
-            return 'app';
-          }
-        },
-      },
-    },
   },
   test: {
     globals: true,

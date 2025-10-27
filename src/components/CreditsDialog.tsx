@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import QRCode from 'qrcode';
-import { CreditCard, Zap, ExternalLink, RefreshCw, Check, X, Clock, AlertCircle, Copy, RotateCcw, ArrowLeft, Gift, Plus, History, DollarSign, Printer } from 'lucide-react';
+import { CreditCard, Zap, ExternalLink, RefreshCw, Check, X, Clock, AlertCircle, Copy, RotateCcw, ArrowLeft, Gift, Plus, History, DollarSign, Printer, Download } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -669,6 +669,79 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
     }
   };
 
+  const handleDownloadCSV = () => {
+    if (!giftcards || giftcards.length === 0) return;
+
+    // Filter only active (non-redeemed) gift cards
+    const activeGiftcards = giftcards.filter(gc => !gc.redeemed);
+    if (activeGiftcards.length === 0) {
+      toast({
+        title: 'No active gift cards',
+        description: 'You have no active gift cards to download.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      // Create CSV header
+      const headers = ['Code', 'Amount', 'Status', 'Created Date', 'Redemption URL'];
+      
+      // Create CSV rows
+      const rows = activeGiftcards.map(gc => {
+        const url = `${window.location.origin}/giftcard#baseURL=${encodeURIComponent(provider.baseURL)}&code=${encodeURIComponent(gc.code)}`;
+        const createdDate = gc.created_at 
+          ? new Date(gc.created_at * 1000).toLocaleDateString('en-US', { 
+              year: 'numeric', 
+              month: 'short', 
+              day: 'numeric' 
+            })
+          : 'N/A';
+        
+        return [
+          gc.code,
+          Number(gc.amount).toFixed(2),
+          gc.redeemed ? 'Redeemed' : 'Active',
+          createdDate,
+          url
+        ];
+      });
+
+      // Combine headers and rows
+      const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+      ].join('\n');
+
+      // Create blob and download
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      
+      link.setAttribute('href', url);
+      link.setAttribute('download', `shakespeare-giftcards-${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: 'CSV downloaded',
+        description: `Downloaded ${activeGiftcards.length} gift card${activeGiftcards.length > 1 ? 's' : ''}.`,
+      });
+    } catch (error) {
+      console.error('Failed to generate CSV:', error);
+      toast({
+        title: 'Download failed',
+        description: error instanceof Error ? error.message : 'Failed to generate CSV file',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -1035,20 +1108,29 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
                 <AccordionContent className="pb-0">
                   <div className="pt-2 space-y-3">
                     {giftcards && giftcards.filter(gc => !gc.redeemed).length > 0 && (
-                      <Button
-                        onClick={handlePrintGiftcards}
-                        disabled={isPrintingQRCodes}
-                        variant="outline"
-                        className="w-full"
-                        size="sm"
-                      >
-                        {isPrintingQRCodes ? (
-                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                        ) : (
-                          <Printer className="h-4 w-4 mr-2" />
-                        )}
-                        Print QR Codes ({giftcards.filter(gc => !gc.redeemed).length} active)
-                      </Button>
+                      <div className="grid grid-cols-2 gap-2">
+                        <Button
+                          onClick={handlePrintGiftcards}
+                          disabled={isPrintingQRCodes}
+                          variant="outline"
+                          size="sm"
+                        >
+                          {isPrintingQRCodes ? (
+                            <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                          ) : (
+                            <Printer className="h-4 w-4 mr-2" />
+                          )}
+                          Print QR Codes
+                        </Button>
+                        <Button
+                          onClick={handleDownloadCSV}
+                          variant="outline"
+                          size="sm"
+                        >
+                          <Download className="h-4 w-4 mr-2" />
+                          Download CSV
+                        </Button>
+                      </div>
                     )}
                     {isLoadingGiftcards ? (
                       <div className="p-3 border rounded-lg space-y-2">

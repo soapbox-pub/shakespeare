@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import QRCode from 'qrcode';
-import { CreditCard, Zap, ExternalLink, RefreshCw, Check, X, Clock, AlertCircle, Copy, RotateCcw, ArrowLeft, Gift, Plus, History, DollarSign } from 'lucide-react';
+import { CreditCard, Zap, ExternalLink, RefreshCw, Check, X, Clock, AlertCircle, Copy, RotateCcw, ArrowLeft, Gift, Plus, History, DollarSign, Printer } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -225,6 +225,7 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
   const [giftcardQuantity, setGiftcardQuantity] = useState<number>(1);
   const [redeemCode, setRedeemCode] = useState<string>('');
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [isPrintingQRCodes, setIsPrintingQRCodes] = useState(false);
 
   // Query for payment history
   const { data: payments, isLoading: isLoadingPayments } = useQuery({
@@ -498,6 +499,174 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
     navigator.clipboard.writeText(code);
     setCopiedCode(code);
     setTimeout(() => setCopiedCode(null), 2000);
+  };
+
+  const handlePrintGiftcards = async () => {
+    if (!giftcards || giftcards.length === 0) return;
+
+    // Filter only active (non-redeemed) gift cards
+    const activeGiftcards = giftcards.filter(gc => !gc.redeemed);
+    if (activeGiftcards.length === 0) {
+      toast({
+        title: 'No active gift cards',
+        description: 'You have no active gift cards to print.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsPrintingQRCodes(true);
+
+    try {
+      // Generate QR codes for all active gift cards
+      const qrCodePromises = activeGiftcards.map(async (giftcard) => {
+        const url = `${window.location.origin}/giftcard#baseURL=${encodeURIComponent(provider.baseURL)}&code=${encodeURIComponent(giftcard.code)}`;
+        const qrDataUrl = await QRCode.toDataURL(url, {
+          width: 256,
+          margin: 2,
+          color: {
+            dark: '#000000',
+            light: '#ffffff',
+          },
+        });
+        return {
+          ...giftcard,
+          qrDataUrl,
+        };
+      });
+
+      const giftcardsWithQR = await Promise.all(qrCodePromises);
+
+      // Create a new window for printing
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) {
+        throw new Error('Failed to open print window. Please allow popups for this site.');
+      }
+
+      // Generate the print HTML
+      const printHTML = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>Shakespeare AI Gift Cards</title>
+            <style>
+              * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+              }
+              
+              body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+                padding: 20px;
+                background: white;
+              }
+              
+              .grid {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 20px;
+                max-width: 8.5in;
+                margin: 0 auto;
+              }
+              
+              .card {
+                border: 2px solid #000;
+                border-radius: 8px;
+                padding: 20px;
+                text-align: center;
+                page-break-inside: avoid;
+                background: white;
+              }
+              
+              .card-title {
+                font-size: 18px;
+                font-weight: 600;
+                margin-bottom: 15px;
+                color: #000;
+              }
+              
+              .qr-code {
+                width: 200px;
+                height: 200px;
+                margin: 0 auto 15px;
+                display: block;
+              }
+              
+              .amount {
+                font-size: 24px;
+                font-weight: 700;
+                color: #000;
+                margin-bottom: 10px;
+              }
+              
+              .code {
+                font-family: 'Courier New', monospace;
+                font-size: 14px;
+                background: #f5f5f5;
+                padding: 8px 12px;
+                border-radius: 4px;
+                word-break: break-all;
+                color: #000;
+                border: 1px solid #ddd;
+              }
+              
+              .footer {
+                margin-top: 10px;
+                font-size: 12px;
+                color: #666;
+              }
+              
+              @media print {
+                body {
+                  padding: 0;
+                }
+                
+                .grid {
+                  gap: 15px;
+                }
+                
+                .card {
+                  page-break-inside: avoid;
+                }
+              }
+            </style>
+          </head>
+          <body>
+            <div class="grid">
+              ${giftcardsWithQR.map(gc => `
+                <div class="card">
+                  <div class="card-title">Shakespeare AI Gift Card</div>
+                  <img src="${gc.qrDataUrl}" alt="QR Code" class="qr-code" />
+                  <div class="amount">${formatCurrency(gc.amount)}</div>
+                  <div class="code">${gc.code}</div>
+                  <div class="footer">Scan to redeem</div>
+                </div>
+              `).join('')}
+            </div>
+          </body>
+        </html>
+      `;
+
+      printWindow.document.write(printHTML);
+      printWindow.document.close();
+
+      // Wait for images to load before printing
+      printWindow.onload = () => {
+        setTimeout(() => {
+          printWindow.print();
+        }, 250);
+      };
+    } catch (error) {
+      console.error('Failed to generate QR codes:', error);
+      toast({
+        title: 'Print failed',
+        description: error instanceof Error ? error.message : 'Failed to generate QR codes for printing',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsPrintingQRCodes(false);
+    }
   };
 
   const formatCurrency = (amount: number) => {
@@ -864,7 +1033,23 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
                   </div>
                 </AccordionTrigger>
                 <AccordionContent className="pb-0">
-                  <div className="pt-2">
+                  <div className="pt-2 space-y-3">
+                    {giftcards && giftcards.filter(gc => !gc.redeemed).length > 0 && (
+                      <Button
+                        onClick={handlePrintGiftcards}
+                        disabled={isPrintingQRCodes}
+                        variant="outline"
+                        className="w-full"
+                        size="sm"
+                      >
+                        {isPrintingQRCodes ? (
+                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Printer className="h-4 w-4 mr-2" />
+                        )}
+                        Print QR Codes ({giftcards.filter(gc => !gc.redeemed).length} active)
+                      </Button>
+                    )}
                     {isLoadingGiftcards ? (
                       <div className="p-3 border rounded-lg space-y-2">
                         <div className="flex items-center gap-2">

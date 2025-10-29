@@ -97,7 +97,7 @@ export class GitCheckoutCommand implements GitSubcommand {
       let currentBranch: string | null = null;
       try {
         currentBranch = await this.git.currentBranch({
-          
+
           dir: this.pwd,
         }) || null;
       } catch {
@@ -125,6 +125,7 @@ export class GitCheckoutCommand implements GitSubcommand {
       await this.git.checkout({
         dir: this.pwd,
         ref: branchName,
+        force: true,
       });
 
       return createSuccessResult(`Switched to branch '${branchName}'\n`);
@@ -149,7 +150,7 @@ export class GitCheckoutCommand implements GitSubcommand {
       let currentRef: string;
       try {
         currentRef = await this.git.resolveRef({
-          
+
           dir: this.pwd,
           ref: 'HEAD',
         });
@@ -168,6 +169,7 @@ export class GitCheckoutCommand implements GitSubcommand {
       await this.git.checkout({
         dir: this.pwd,
         ref: branchName,
+        force: true,
       });
 
       return createSuccessResult(`Switched to a new branch '${branchName}'\n`);
@@ -185,7 +187,7 @@ export class GitCheckoutCommand implements GitSubcommand {
       // Get the file from HEAD
       try {
         await this.git.checkout({
-          
+
           dir: this.pwd,
           ref: 'HEAD',
           filepaths: [filePath],

@@ -135,6 +135,7 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
       await git.checkout({
         dir: projectPath,
         ref: branchName,
+        force: true,
       });
 
       toast({
@@ -1125,6 +1126,7 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
                                               await git.checkout({
                                                 dir: projectPath,
                                                 ref: pr.sourceBranch,
+                                                force: true,
                                               });
                                               await refetchGitStatus();
                                               toast({

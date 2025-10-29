@@ -42,7 +42,7 @@ export interface ProjectDeploySettings {
  * Hook to manage project-specific deployment settings
  * Stores settings in .git/shakespeare/deploy.json
  */
-export function useProjectDeploySettings(projectId: string) {
+export function useProjectDeploySettings(projectId: string | null) {
   const fs = useFS();
   const { projectsPath } = useFSPaths();
   const [settings, setSettings] = useState<ProjectDeploySettings>({ providers: {} });
@@ -51,6 +51,13 @@ export function useProjectDeploySettings(projectId: string) {
   const settingsPath = `${projectsPath}/${projectId}/.git/shakespeare/deploy.json`;
 
   const loadSettings = useCallback(async () => {
+    // Don't try to load if projectId is falsy
+    if (!projectId) {
+      setSettings({ providers: {} });
+      setIsLoading(false);
+      return;
+    }
+
     try {
       setIsLoading(true);
       const content = await fs.fs.readFile(settingsPath, 'utf8');
@@ -71,13 +78,17 @@ export function useProjectDeploySettings(projectId: string) {
     } finally {
       setIsLoading(false);
     }
-  }, [fs.fs, settingsPath]);
+  }, [fs.fs, settingsPath, projectId]);
 
   useEffect(() => {
     loadSettings();
   }, [loadSettings]);
 
   const saveSettings = async (newSettings: ProjectDeploySettings) => {
+    if (!projectId) {
+      throw new Error('Cannot save settings: no project selected');
+    }
+
     try {
       // Ensure .git/shakespeare directory exists
       const shakespeareDir = `${projectsPath}/${projectId}/.git/shakespeare`;

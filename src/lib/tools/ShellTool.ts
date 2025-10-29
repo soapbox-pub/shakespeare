@@ -3,6 +3,7 @@ import type { Tool } from "./Tool";
 import type { JSRuntimeFS } from "../JSRuntime";
 import type { ShellCommand } from "../commands/ShellCommand";
 import { Git } from "../git";
+import { stripAnsiCodes } from "../ansiToHtml";
 import {
   CatCommand,
   CdCommand,
@@ -49,6 +50,7 @@ export class ShellTool implements Tool<ShellToolParams> {
   private cwd: string;
   private git: Git;
   private commands: Map<string, ShellCommand>;
+  private projectsPath: string;
 
   readonly description = "Execute shell commands like cat, ls, cd, pwd, rm, cp, mv, echo, head, tail, grep, find, wc, touch, mkdir, sort, uniq, cut, tr, sed, diff, which, whoami, date, env, clear, git, curl, unzip, hexdump. Supports compound commands with &&, ||, ;, and | operators, and output redirection with > and >> operators";
 
@@ -58,10 +60,11 @@ export class ShellTool implements Tool<ShellToolParams> {
     ),
   });
 
-  constructor(fs: JSRuntimeFS, cwd: string, git: Git) {
+  constructor(fs: JSRuntimeFS, cwd: string, git: Git, projectsPath: string = '/projects') {
     this.fs = fs;
     this.cwd = cwd;
     this.git = git;
+    this.projectsPath = projectsPath;
     this.commands = new Map();
 
     // Register available commands
@@ -324,6 +327,11 @@ export class ShellTool implements Tool<ShellToolParams> {
       return "Error: Empty command";
     }
 
+    // Check if running in Electron - if so, use real shell execution
+    if (window.electron?.shell) {
+      return this.executeRealShell(commandStr);
+    }
+
     // Parse compound commands
     const commands = this.parseCompoundCommand(commandStr);
 
@@ -338,6 +346,56 @@ export class ShellTool implements Tool<ShellToolParams> {
 
     // Execute compound commands
     return this.executeCompoundCommands(commands);
+  }
+
+  /**
+   * Execute command using real shell in Electron
+   */
+  private async executeRealShell(commandStr: string): Promise<string> {
+    if (!window.electron?.shell) {
+      throw new Error('Real shell execution is only available in Electron');
+    }
+
+    try {
+      // Get relative path from projects root
+      // Remove the projectsPath prefix to get the relative path for the OS
+      const projectsPrefix = this.projectsPath.endsWith('/')
+        ? this.projectsPath
+        : this.projectsPath + '/';
+
+      const relativeCwd = this.cwd.startsWith(projectsPrefix)
+        ? this.cwd.substring(projectsPrefix.length)
+        : this.cwd;
+
+      const result = await window.electron.shell.exec(commandStr, relativeCwd);
+
+      // Strip ANSI codes from output (color codes, cursor movements, etc.)
+      // This is important for AI consumption and consistent output
+      const cleanStdout = result.stdout ? stripAnsiCodes(result.stdout) : '';
+      const cleanStderr = result.stderr ? stripAnsiCodes(result.stderr) : '';
+
+      // Format output
+      let output = '';
+
+      if (cleanStdout) {
+        output += cleanStdout;
+      }
+
+      if (cleanStderr) {
+        if (output) output += '\n';
+        output += cleanStderr;
+      }
+
+      // Add exit code info for non-zero exits
+      if (result.exitCode !== 0) {
+        if (output) output += '\n';
+        output += `Exit code: ${result.exitCode}`;
+      }
+
+      return output || '(no output)';
+    } catch (error) {
+      return `Error: ${error instanceof Error ? error.message : 'Unknown error'}`;
+    }
   }
 
   /**

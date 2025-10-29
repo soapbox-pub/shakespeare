@@ -1,0 +1,7 @@
+# Place your platform-specific icons here:
+#
+# - icon.icns (macOS)
+# - icon.ico (Windows)
+# - icons/ directory with PNG files (Linux)
+#
+# See electron/README.md for details on creating these icons.

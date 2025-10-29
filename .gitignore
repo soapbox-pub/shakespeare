@@ -15,6 +15,9 @@ dist-ssr
 *.apk
 *.aab
 
+# Electron build output
+electron-dist
+
 # Editor directories and files
 .idea
 .DS_Store

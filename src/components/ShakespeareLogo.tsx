@@ -4,9 +4,9 @@ export interface ShakespeareLogoProps {
 
 export function ShakespeareLogo({ className }: ShakespeareLogoProps) {
   return (
-    <img 
-      src="/shakespeare.svg" 
-      alt="Shakespeare" 
+    <img
+      src="/shakespeare.svg"
+      alt="Shakespeare"
       className={className}
     />
   );

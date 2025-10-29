@@ -38,7 +38,7 @@ export function Terminal({ projectId, className }: TerminalProps) {
 
   // Initialize ShellTool
   useEffect(() => {
-    shellToolRef.current = new ShellTool(fs, `${projectsPath}/${projectId}`, git);
+    shellToolRef.current = new ShellTool(fs, `${projectsPath}/${projectId}`, git, projectsPath);
 
     // Add welcome message
     setLines([{
@@ -81,7 +81,7 @@ export function Terminal({ projectId, className }: TerminalProps) {
   }, []);
 
   const executeCommand = useCallback(async (command: string) => {
-    if (!shellToolRef.current || !command.trim()) return;
+    if (!command.trim()) return;
 
     // Add command to history
     if (command.trim() && !commandHistory.includes(command.trim())) {
@@ -95,21 +95,67 @@ export function Terminal({ projectId, className }: TerminalProps) {
     setIsExecuting(true);
 
     try {
-      // Handle special help command
-      if (command.trim() === 'help') {
-        const availableCommands = shellToolRef.current.getAvailableCommands();
-        const helpText = `Available commands:\n\n${availableCommands.map(cmd =>
-          `${cmd.name.padEnd(12)} - ${cmd.description}`
-        ).join('\n')}\n\nUse 'which <command>' for more details about a specific command.`;
-        addLine('output', helpText);
-      } else if (command.trim() === 'clear') {
+      // Handle special clear command
+      if (command.trim() === 'clear') {
         setLines([]);
-      } else {
-        const result = await shellToolRef.current.execute({ command });
+        setIsExecuting(false);
+        return;
+      }
 
-        // Add output
-        if (result && result.trim()) {
-          addLine('output', result);
+      // Check if running in Electron - use real shell
+      if (window.electron?.shell) {
+        // Get relative path from projects root
+        // Remove the projectsPath prefix to get the relative path for the OS
+        const projectsPrefix = projectsPath.endsWith('/')
+          ? projectsPath
+          : projectsPath + '/';
+
+        const fullCwd = `${projectsPath}/${projectId}`;
+        const relativeCwd = fullCwd.startsWith(projectsPrefix)
+          ? fullCwd.substring(projectsPrefix.length)
+          : fullCwd;
+
+        const result = await window.electron.shell.exec(command, relativeCwd);
+
+        // Format output
+        let output = '';
+
+        if (result.stdout) {
+          output += result.stdout;
+        }
+
+        if (result.stderr) {
+          if (output) output += '\n';
+          output += result.stderr;
+        }
+
+        // Add exit code info for non-zero exits
+        if (result.exitCode !== 0) {
+          if (output) output += '\n';
+          output += `Exit code: ${result.exitCode}`;
+        }
+
+        if (output) {
+          addLine('output', output);
+        }
+      } else {
+        // Use virtual shell (browser mode)
+        if (!shellToolRef.current) return;
+
+        // Handle special help command
+        if (command.trim() === 'help') {
+          const availableCommands = shellToolRef.current.getAvailableCommands();
+          const helpText = `Available commands:\n\n${availableCommands.map(cmd =>
+            `${cmd.name.padEnd(12)} - ${cmd.description}`
+          ).join('\n')}\n\nUse 'which <command>' for more details about a specific command.`;
+          addLine('output', helpText);
+        } else {
+          const result = await shellToolRef.current.execute({ command });
+
+          // Add output
+          if (result && result.trim()) {
+            addLine('output', result);
+          }
         }
       }
     } catch (error) {
@@ -117,7 +163,7 @@ export function Terminal({ projectId, className }: TerminalProps) {
     } finally {
       setIsExecuting(false);
     }
-  }, [addLine, commandHistory]);
+  }, [addLine, commandHistory, projectId, projectsPath]);
 
   const handleSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();

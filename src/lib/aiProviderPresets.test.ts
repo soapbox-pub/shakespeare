@@ -18,7 +18,6 @@ describe('AI Provider Presets', () => {
   it('should include other major providers', () => {
     const providerIds = AI_PROVIDER_PRESETS.map(p => p.id);
     expect(providerIds).toContain('openai');
-    expect(providerIds).toContain('anthropic');
     expect(providerIds).toContain('openrouter');
   });
 

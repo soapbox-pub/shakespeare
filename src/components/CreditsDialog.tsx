@@ -227,12 +227,38 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [isPrintingQRCodes, setIsPrintingQRCodes] = useState(false);
 
+  // Query for payment preview (to get fee information)
+  // This creates a payment invoice in advance so we can show the fee
+  const { data: paymentPreview, isLoading: isLoadingPreview } = useQuery({
+    queryKey: ['ai-payment-preview', provider.nostr ? user?.pubkey ?? '' : '', provider.id, amount, paymentMethod],
+    queryFn: async (): Promise<Payment> => {
+      const ai = createAIClient(provider, user, config.corsProxy);
+      const request: AddCreditsRequest = {
+        amount,
+        method: paymentMethod,
+      };
+
+      if (paymentMethod === 'stripe') {
+        request.redirect_url = window.location.origin + '/settings/ai';
+      }
+
+      return await ai.post('/credits/add', {
+        body: request,
+      }) as Payment;
+    },
+    enabled: open && amount > 0,
+    retry: false,
+    refetchOnWindowFocus: false,
+    staleTime: Infinity, // Don't auto-refetch, we'll manually refetch when needed
+    gcTime: 1000 * 60 * 10, // Keep in cache for 10 minutes
+  });
+
   // Query for payment history
   const { data: payments, isLoading: isLoadingPayments } = useQuery({
     queryKey: ['ai-payments', provider.nostr ? user?.pubkey ?? '' : '', provider.id],
     queryFn: async (): Promise<Payment[]> => {
       const ai = createAIClient(provider, user, config.corsProxy);
-      const data = await ai.get('/credits/payments?limit=50') as PaymentsResponse;
+      const data = await ai.get('/credits/payments?status=completed&limit=50') as PaymentsResponse;
       return data.data;
     },
     enabled: open,
@@ -444,16 +470,48 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
       return;
     }
 
-    const request: AddCreditsRequest = {
-      amount,
-      method: paymentMethod,
-    };
+    // If we have a preview payment, use it directly
+    if (paymentPreview) {
+      // Manually trigger the onSuccess callback with the cached payment
+      if (paymentPreview.method === 'stripe') {
+        // Open Stripe checkout in new window
+        window.open(paymentPreview.url, '_blank');
+        toast({
+          title: 'Payment initiated',
+          description: 'Stripe checkout opened in a new window.',
+        });
+      } else if (paymentPreview.method === 'lightning') {
+        // Show Lightning payment interface
+        setLightningInvoice(paymentPreview.url);
+      }
 
-    if (paymentMethod === 'stripe') {
-      request.redirect_url = window.location.origin + '/settings/ai';
+      // Refresh payments list
+      queryClient.invalidateQueries({
+        queryKey: ['ai-payments', provider.nostr ? user?.pubkey ?? '' : '', provider.id],
+      });
+
+      // Refresh credits balance
+      queryClient.invalidateQueries({
+        queryKey: ['ai-credits', provider.nostr ? user?.pubkey ?? '' : '', provider.id],
+      });
+
+      // Invalidate the preview so a new one will be fetched for the next payment
+      queryClient.invalidateQueries({
+        queryKey: ['ai-payment-preview', provider.nostr ? user?.pubkey ?? '' : '', provider.id, amount, paymentMethod],
+      });
+    } else {
+      // Fallback: create a new payment if preview isn't available
+      const request: AddCreditsRequest = {
+        amount,
+        method: paymentMethod,
+      };
+
+      if (paymentMethod === 'stripe') {
+        request.redirect_url = window.location.origin + '/settings/ai';
+      }
+
+      addCreditsMutation.mutate(request);
     }
-
-    addCreditsMutation.mutate(request);
   };
 
   const handleCreateGiftcard = () => {
@@ -555,13 +613,13 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
                 padding: 0;
                 box-sizing: border-box;
               }
-              
+
               body {
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
                 padding: 20px;
                 background: white;
               }
-              
+
               .grid {
                 display: grid;
                 grid-template-columns: repeat(2, 1fr);
@@ -569,7 +627,7 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
                 max-width: 8.5in;
                 margin: 0 auto;
               }
-              
+
               .card {
                 border: 2px solid #000;
                 border-radius: 8px;
@@ -578,28 +636,28 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
                 page-break-inside: avoid;
                 background: white;
               }
-              
+
               .card-title {
                 font-size: 18px;
                 font-weight: 600;
                 margin-bottom: 15px;
                 color: #000;
               }
-              
+
               .qr-code {
                 width: 200px;
                 height: 200px;
                 margin: 0 auto 15px;
                 display: block;
               }
-              
+
               .amount {
                 font-size: 24px;
                 font-weight: 700;
                 color: #000;
                 margin-bottom: 10px;
               }
-              
+
               .code {
                 font-family: 'Courier New', monospace;
                 font-size: 14px;
@@ -610,22 +668,22 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
                 color: #000;
                 border: 1px solid #ddd;
               }
-              
+
               .footer {
                 margin-top: 10px;
                 font-size: 12px;
                 color: #666;
               }
-              
+
               @media print {
                 body {
                   padding: 0;
                 }
-                
+
                 .grid {
                   gap: 15px;
                 }
-                
+
                 .card {
                   page-break-inside: avoid;
                 }
@@ -686,18 +744,18 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
     try {
       // Create CSV header
       const headers = ['Code', 'Amount', 'Status', 'Created Date', 'Redemption URL'];
-      
+
       // Create CSV rows
       const rows = activeGiftcards.map(gc => {
         const url = `${window.location.origin}/giftcard#baseURL=${encodeURIComponent(provider.baseURL)}&code=${encodeURIComponent(gc.code)}`;
-        const createdDate = gc.created_at 
-          ? new Date(gc.created_at * 1000).toLocaleDateString('en-US', { 
-              year: 'numeric', 
-              month: 'short', 
-              day: 'numeric' 
-            })
+        const createdDate = gc.created_at
+          ? new Date(gc.created_at * 1000).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+          })
           : 'N/A';
-        
+
         return [
           gc.code,
           Number(gc.amount).toFixed(2),
@@ -717,15 +775,15 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement('a');
       const url = URL.createObjectURL(blob);
-      
+
       link.setAttribute('href', url);
       link.setAttribute('download', `shakespeare-giftcards-${new Date().toISOString().split('T')[0]}.csv`);
       link.style.visibility = 'hidden';
-      
+
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
+
       URL.revokeObjectURL(url);
 
       toast({
@@ -786,20 +844,6 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
       case 'pending':
       default:
         return <Clock className="h-4 w-4 text-yellow-600" />;
-    }
-  };
-
-  const getStatusVariant = (status: Payment['status']): "default" | "secondary" | "destructive" | "outline" => {
-    switch (status) {
-      case 'completed':
-        return 'default';
-      case 'failed':
-        return 'destructive';
-      case 'expired':
-        return 'secondary';
-      case 'pending':
-      default:
-        return 'outline';
     }
   };
 
@@ -893,15 +937,38 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
                       </Tabs>
                     </div>
 
+                    {/* Fee display */}
+                    {paymentPreview && paymentPreview.fee > 0 && (
+                      <div className="space-y-1 text-sm">
+                        <div className="flex justify-between text-muted-foreground">
+                          <span>Credits</span>
+                          <span>{formatCurrency(paymentPreview.amount)}</span>
+                        </div>
+                        <div className="flex justify-between text-muted-foreground">
+                          <span>Processing Fee</span>
+                          <span>{formatCurrency(paymentPreview.fee)}</span>
+                        </div>
+                        <div className="flex justify-between font-medium pt-1 border-t">
+                          <span>Total</span>
+                          <span>{formatCurrency(paymentPreview.total)}</span>
+                        </div>
+                      </div>
+                    )}
+
                     <Button
                       onClick={handleAddCredits}
-                      disabled={amount <= 0 || addCreditsMutation.isPending}
+                      disabled={amount <= 0 || addCreditsMutation.isPending || isLoadingPreview}
                       className="w-full h-12 text-base font-medium"
                       size="lg"
                     >
-                      {addCreditsMutation.isPending && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
+                      {(addCreditsMutation.isPending || isLoadingPreview) && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
                       {paymentMethod === 'stripe' ? 'Pay with Card' : 'Generate Invoice'}
-                      {amount > 0 && ` - ${formatCurrency(amount)}`}
+                      {paymentPreview && paymentPreview.fee > 0
+                        ? ` - ${formatCurrency(paymentPreview.total)}`
+                        : amount > 0
+                          ? ` - ${formatCurrency(amount)}`
+                          : ''
+                      }
                     </Button>
                   </div>
                 </AccordionContent>
@@ -945,9 +1012,6 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
                                 <span className="text-sm font-medium truncate">
                                   {payment.method === 'stripe' ? 'Credit Card' : 'Lightning'}
                                 </span>
-                                <Badge variant={getStatusVariant(payment.status)} className="text-xs flex-shrink-0">
-                                  {payment.status}
-                                </Badge>
                               </div>
                               <div className="text-right flex-shrink-0">
                                 <p className="text-sm font-medium">{formatCurrency(payment.amount)}</p>

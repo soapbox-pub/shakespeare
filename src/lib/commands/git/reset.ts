@@ -206,7 +206,7 @@ export class GitResetCommand implements GitSubcommand {
             try {
               currentBranch = await this.git.currentBranch({
                 dir: this.pwd,
-              });
+              }) || null;
             } catch {
               // Detached HEAD state
             }
@@ -262,7 +262,7 @@ export class GitResetCommand implements GitSubcommand {
             try {
               currentBranch = await this.git.currentBranch({
                 dir: this.pwd,
-              });
+              }) || null;
             } catch {
               // Detached HEAD state
             }

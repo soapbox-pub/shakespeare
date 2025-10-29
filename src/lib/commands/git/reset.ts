@@ -185,9 +185,8 @@ export class GitResetCommand implements GitSubcommand {
         return createErrorResult('fatal: Failed to resolve HEAD');
       }
 
-      if (currentOid === targetOid) {
-        return createSuccessResult('');
-      }
+      // Note: Even if currentOid === targetOid, we still need to reset the index
+      // and working directory for --mixed and --hard modes
 
       // Note: isomorphic-git doesn't have a direct reset command
       // We'll implement basic functionality based on the mode
@@ -202,12 +201,44 @@ export class GitResetCommand implements GitSubcommand {
           // Move HEAD and reset staging area (default)
           // Reset the index to match the target commit
           try {
-            await this.git.checkout({
+            // Get the current branch name if we're on one
+            let currentBranch: string | null = null;
+            try {
+              currentBranch = await this.git.currentBranch({
+                dir: this.pwd,
+              });
+            } catch {
+              // Detached HEAD state
+            }
 
+            // Update the branch ref (if on a branch) or HEAD (if detached) only if different
+            if (currentOid !== targetOid) {
+              if (currentBranch) {
+                await this.git.writeRef({
+                  dir: this.pwd,
+                  ref: `refs/heads/${currentBranch}`,
+                  value: targetOid,
+                  force: true,
+                });
+              } else {
+                await this.git.writeRef({
+                  dir: this.pwd,
+                  ref: 'HEAD',
+                  value: targetOid,
+                  force: true,
+                });
+              }
+            }
+
+            // Reset the index only (not the working directory)
+            // Using noCheckout: true to only update the index, not the working directory
+            await this.git.checkout({
               dir: this.pwd,
-              ref: target,
-              noCheckout: true, // Only update the index, not the working directory
+              ref: targetOid,
+              noCheckout: true,
+              noUpdateHead: true,
             });
+
             return createSuccessResult(`HEAD is now at ${targetOid.substring(0, 7)}\n`);
           } catch (error) {
             return createErrorResult(`Failed to reset index: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -217,32 +248,53 @@ export class GitResetCommand implements GitSubcommand {
           // Move HEAD, reset staging area, and reset working directory
           try {
             // For a hard reset, we need to:
-            // 1. Update HEAD to point to the target commit
-            // 2. Reset the index (staging area) to match the target
-            // 3. Reset the working directory to match the target
+            // 1. Update HEAD to point to the target commit (if different)
+            // 2. Reset the index (staging area) and working directory to match the target
 
             // Get the commit object to ensure it exists
             await this.git.readCommit({
-
               dir: this.pwd,
               oid: targetOid,
             });
 
-            // Update HEAD to point to the target commit
-            await this.git.writeRef({
+            // Get the current branch name if we're on one
+            let currentBranch: string | null = null;
+            try {
+              currentBranch = await this.git.currentBranch({
+                dir: this.pwd,
+              });
+            } catch {
+              // Detached HEAD state
+            }
 
-              dir: this.pwd,
-              ref: 'HEAD',
-              value: targetOid,
-            });
+            // Update the branch ref (if on a branch) or HEAD (if detached) FIRST
+            // This is important because checkout uses HEAD to determine what to checkout
+            if (currentOid !== targetOid) {
+              if (currentBranch) {
+                await this.git.writeRef({
+                  dir: this.pwd,
+                  ref: `refs/heads/${currentBranch}`,
+                  value: targetOid,
+                  force: true,
+                });
+              } else {
+                await this.git.writeRef({
+                  dir: this.pwd,
+                  ref: 'HEAD',
+                  value: targetOid,
+                  force: true,
+                });
+              }
+            }
 
-            // Reset the working directory by checking out all files from the target commit
-            // Use force to overwrite any local changes
+            // Now use checkout to reset both the index and working directory
+            // Using noUpdateHead: true because we already updated HEAD above
+            // Using force: true to overwrite any local changes
             await this.git.checkout({
-
               dir: this.pwd,
               ref: targetOid,
               force: true,
+              noUpdateHead: true,
             });
 
             return createSuccessResult(`HEAD is now at ${targetOid.substring(0, 7)}\n`);

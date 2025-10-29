@@ -36,6 +36,9 @@ const mockGit = {
   }),
   writeRef: async () => {},
   checkout: async () => {},
+  listFiles: async () => ['file1.txt', 'file2.txt', 'file3.txt'],
+  currentBranch: async () => 'main',
+  readBlob: async () => ({ blob: new Uint8Array([72, 101, 108, 108, 111]) }), // "Hello"
 } as unknown as Git;
 
 const mockFS = {
@@ -45,6 +48,9 @@ const mockFS = {
     }
     throw new Error('File not found');
   },
+  writeFile: async () => {},
+  mkdir: async () => {},
+  unlink: async () => {},
 } as unknown as JSRuntimeFS;
 
 const mockOptions: GitSubcommandOptions = {

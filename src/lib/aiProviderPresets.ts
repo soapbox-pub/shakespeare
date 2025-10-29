@@ -52,13 +52,6 @@ export const AI_PROVIDER_PRESETS: PresetProvider[] = [
     tosURL: "https://openai.com/policies/",
   },
   {
-    id: "anthropic",
-    name: "Anthropic",
-    baseURL: "https://api.anthropic.com/v1",
-    apiKeysURL: "https://console.anthropic.com/settings/keys",
-    tosURL: "https://www.anthropic.com/legal/",
-  },
-  {
     id: "xai",
     name: "xAI",
     baseURL: "https://api.x.ai/v1",

@@ -27,8 +27,7 @@
     "electron:build:win": "npm run build && electron-builder --win --config electron/builder.config.js",
     "electron:build:linux": "npm run build && electron-builder --linux --config electron/builder.config.js",
     "electron:build:all": "npm run build && electron-builder --mac --win --linux --config electron/builder.config.js",
-    "electron:icons": "bash electron/generate-icons.sh",
-    "electron:validate": "node electron/test-config.js"
+    "electron:icons": "./electron/generate-icons.sh"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

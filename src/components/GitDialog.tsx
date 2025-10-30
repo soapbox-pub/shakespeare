@@ -55,15 +55,14 @@ import { useFSPaths } from '@/hooks/useFSPaths';
 import { useToast } from '@/hooks/useToast';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useNostr } from '@nostrify/react';
-import { useNostrPublish } from '@/hooks/useNostrPublish';
 import { usePullRequests } from '@/hooks/usePullRequests';
-import { useAppContext } from '@/hooks/useAppContext';
 import { cn } from '@/lib/utils';
 import { findCredentialsForRepo } from '@/lib/gitCredentials';
 import { nip19 } from 'nostr-tools';
 import { GitManagementDialog } from '@/components/git/GitManagementDialog';
 import { MergeDialog } from '@/components/git/MergeDialog';
 import { PullRequestDialog } from '@/components/git/PullRequestDialog';
+import { AnnounceRepositoryDialog, type AnnounceRepositoryResult } from '@/components/git/AnnounceRepositoryDialog';
 
 interface GitDialogProps {
   projectId: string;
@@ -76,6 +75,8 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
   const [isPushing, setIsPushing] = useState(false);
   const [isPulling, setIsPulling] = useState(false);
   const [isPushingToNostr, setIsPushingToNostr] = useState(false);
+  const [isAnnounceDialogOpen, setIsAnnounceDialogOpen] = useState(false);
+  const [editNaddr, setEditNaddr] = useState<string | undefined>(undefined);
   const [originUrl, setOriginUrl] = useState('');
   const [isSavingOrigin, setIsSavingOrigin] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -96,19 +97,36 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
   const { toast } = useToast();
   const { user } = useCurrentUser();
   const { nostr } = useNostr();
-  const { mutateAsync: publishEvent } = useNostrPublish();
   const { data: pullRequests, isLoading: isLoadingPRs } = usePullRequests(originUrl);
-  const { config } = useAppContext();
 
   const projectPath = `${projectsPath}/${projectId}`;
 
-  // Initialize origin URL from git status
+  // Initialize origin URL from git status and load nostr.repo config
   useEffect(() => {
-    if (gitStatus?.remotes) {
-      const originRemote = gitStatus.remotes.find(remote => remote.name === 'origin');
-      setOriginUrl(originRemote?.url || '');
-    }
-  }, [gitStatus?.remotes]);
+    const loadGitConfig = async () => {
+      if (gitStatus?.remotes) {
+        const originRemote = gitStatus.remotes.find(remote => remote.name === 'origin');
+        setOriginUrl(originRemote?.url || '');
+
+        // Load nostr.repo config if origin is a nostr:// URL
+        if (originRemote?.url.startsWith('nostr://')) {
+          try {
+            const naddr = await git.getConfig({
+              dir: projectPath,
+              path: 'nostr.repo',
+            });
+            setEditNaddr(naddr || undefined);
+          } catch {
+            setEditNaddr(undefined);
+          }
+        } else {
+          setEditNaddr(undefined);
+        }
+      }
+    };
+
+    loadGitConfig();
+  }, [gitStatus?.remotes, git, projectPath]);
 
   const loadBranches = useCallback(async () => {
     setIsLoadingBranches(true);
@@ -306,22 +324,27 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
         throw new Error(`Repository announcement already exists for project "${projectId}". Cannot create duplicate.`);
       }
 
-      // Create repo announcement event (NIP-34 kind 30617)
-      const cloneUrls = config.ngitServers.map(server =>
-        `https://${server}/${nip19.npubEncode(user.pubkey)}/${projectId}.git`
-      );
-      const relayUrls = config.ngitServers.map(server => `wss://${server}`);
-
-      await publishEvent({
-        kind: 30617,
-        content: "",
-        tags: [
-          ["d", projectId],
-          ["clone", ...cloneUrls],
-          ["relays", ...relayUrls],
-        ],
+      // Open the announcement dialog
+      setIsAnnounceDialogOpen(true);
+      onOpenChange?.(false);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      toast({
+        title: "Cannot push to Nostr",
+        description: errorMessage,
+        variant: "destructive",
       });
+    } finally {
+      setIsPushingToNostr(false);
+    }
+  };
 
+  const handleAnnounceSuccess = async (result: AnnounceRepositoryResult) => {
+    if (!user) return;
+
+    setIsPushingToNostr(true);
+
+    try {
       // Get current repository state
       const refTags: string[][] = [];
 
@@ -417,19 +440,31 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
       }
 
       // Create repo state event (NIP-34 kind 30618)
-      await publishEvent({
+      const stateEvent = {
         kind: 30618,
-        content: "",
+        content: '',
         tags: [
-          ["d", projectId],
+          ['d', result.repoId],
           ...refTags,
-          ...(headRef ? [["HEAD", headRef]] : []),
+          ...(headRef ? [['HEAD', headRef]] : []),
         ],
-      });
+        created_at: Math.floor(Date.now() / 1000),
+      };
+
+      console.log('Creating repository state event:', stateEvent);
+
+      // Sign and publish the state event
+      const signedStateEvent = await user.signer.signEvent(stateEvent);
+
+      // State events only go to the relays specified in the repo announcement
+      console.log('Publishing repository state to relays:', result.relays);
+      await nostr.event(signedStateEvent, { relays: result.relays });
+
+      console.log('Published repository state to Nostr relays');
 
       // Set origin remote to Nostr URL
       // Format: nostr://<npub>/<repo-id>
-      const nostrUrl = `nostr://${nip19.npubEncode(user.pubkey)}/${projectId}`;
+      const nostrUrl = `nostr://${nip19.npubEncode(user.pubkey)}/${result.repoId}`;
 
       try {
         // Remove existing origin if it exists
@@ -447,22 +482,24 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
         url: nostrUrl,
       });
 
+      console.log('Set Git origin to:', nostrUrl);
+
       // Set nostr.repo config
       await git.setConfig({
         dir: projectPath,
         path: 'nostr.repo',
-        value: nip19.naddrEncode({
-          kind: 30617,
-          pubkey: user.pubkey,
-          identifier: projectId,
-        }),
+        value: result.naddr,
       });
+
+      console.log('Set nostr.repo config to:', result.naddr);
 
       toast({
-        title: "Repository published to Nostr",
-        description: "Waiting for GRASP servers to update...",
+        title: 'Repository published to Nostr',
+        description: 'Waiting for GRASP servers to update...',
       });
 
+      // Refresh git status to pick up the new remote
+      await refetchGitStatus();
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       toast({
@@ -683,6 +720,24 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
   };
 
   const syncStatus = getSyncStatus();
+
+  // Check if the nostr:// remote belongs to the current user
+  const isOwnNostrRepo = () => {
+    if (!originUrl.startsWith('nostr://') || !user?.pubkey) return false;
+
+    try {
+      // Parse nostr://<npub>/<repo-id>
+      const urlParts = originUrl.replace('nostr://', '').split('/');
+      if (urlParts.length < 1) return false;
+
+      const npub = urlParts[0];
+      const decoded = nip19.decode(npub);
+
+      return decoded.type === 'npub' && decoded.data === user.pubkey;
+    } catch {
+      return false;
+    }
+  };
 
   const [isGitManagementOpen, setIsGitManagementOpen] = useState(false);
   const [gitManagementDefaultTab, setGitManagementDefaultTab] = useState<string>('branches');
@@ -1038,6 +1093,19 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
                             {isPushingToNostr ? 'Publishing to Nostr...' : 'Push to Nostr'}
                           </Button>
                         )}
+
+                        {/* Edit Nostr Repository Settings */}
+                        {gitStatus.remotes.length > 0 && isOwnNostrRepo() && editNaddr && (
+                          <Button
+                            onClick={() => setIsAnnounceDialogOpen(true)}
+                            variant="ghost"
+                            size="sm"
+                            className="w-full mt-2 h-8 text-xs text-muted-foreground hover:text-foreground"
+                          >
+                            <Settings2 className="h-3 w-3 mr-2" />
+                            Edit Nostr Repository Settings
+                          </Button>
+                        )}
                       </div>
 
                       {/* Merge Branch Action */}
@@ -1297,6 +1365,15 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Announce Repository Dialog */}
+      <AnnounceRepositoryDialog
+        projectId={projectId}
+        open={isAnnounceDialogOpen}
+        onOpenChange={setIsAnnounceDialogOpen}
+        onSuccess={handleAnnounceSuccess}
+        editNaddr={editNaddr}
+      />
     </>
   );
 }

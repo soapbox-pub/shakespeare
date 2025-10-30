@@ -9,51 +9,74 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
   DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   GitBranch,
   Loader2,
   AlertCircle,
-  CheckCircle,
   Plus,
   X,
-  Megaphone,
+  Settings,
+  ChevronDown,
 } from 'lucide-react';
 import { useGit } from '@/hooks/useGit';
 import { useFSPaths } from '@/hooks/useFSPaths';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useNostr } from '@/hooks/useNostr';
 import { useToast } from '@/hooks/useToast';
+import { useAppContext } from '@/hooks/useAppContext';
 import { nip19 } from 'nostr-tools';
+import {
+  createRepositoryAnnouncementEvent,
+  createRepositoryNaddr,
+  validateRepositoryAnnouncementData,
+  validateRepositoryId,
+} from '@/lib/announceRepository';
+
+export interface AnnounceRepositoryResult {
+  repoId: string;
+  cloneUrls: string[];
+  relays: string[];
+  naddr: string;
+}
 
 interface AnnounceRepositoryDialogProps {
   projectId: string;
-  remoteUrl?: string;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  onSuccess?: (result: AnnounceRepositoryResult) => void;
+  /** Repository naddr to edit (if editing existing repo) */
+  editNaddr?: string;
 }
 
 export function AnnounceRepositoryDialog({
   projectId,
-  remoteUrl,
   open,
   onOpenChange,
+  onSuccess,
+  editNaddr,
 }: AnnounceRepositoryDialogProps) {
   const [isOpen, setIsOpen] = useState(open ?? false);
+  const [isPrepopulated, setIsPrepopulated] = useState(false);
   const [repoId, setRepoId] = useState('');
+  const [repoIdError, setRepoIdError] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [webUrls, setWebUrls] = useState<string[]>([]);
   const [cloneUrls, setCloneUrls] = useState<string[]>([]);
-  const [relays, setRelays] = useState<string[]>(['wss://relay.nostr.band']);
+  const [relays, setRelays] = useState<string[]>([]);
   const [earliestCommit, setEarliestCommit] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [createdNaddr, setCreatedNaddr] = useState<string | null>(null);
 
   const [newWebUrl, setNewWebUrl] = useState('');
   const [newCloneUrl, setNewCloneUrl] = useState('');
@@ -64,6 +87,7 @@ export function AnnounceRepositoryDialog({
   const { user } = useCurrentUser();
   const { nostr } = useNostr();
   const { toast } = useToast();
+  const { config } = useAppContext();
 
   const projectPath = `${projectsPath}/${projectId}`;
 
@@ -73,22 +97,24 @@ export function AnnounceRepositoryDialog({
     }
   }, [open]);
 
-  const parseRemoteUrl = useCallback((url: string) => {
-    // Extract repo ID from Nostr URL
-    if (url.startsWith('nostr://')) {
-      const match = url.match(/^nostr:\/\/[^/]+\/(.+)$/);
-      if (match) {
-        const id = match[1];
-        setRepoId(id);
-        setName(id.split('/').pop() || id);
-      }
-    }
+  // Convert projectId to kebab-case for repo ID
+  const toKebabCase = (str: string): string => {
+    return str
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+  };
 
-    // Add the remote URL as a clone URL
-    if (url && !cloneUrls.includes(url)) {
-      setCloneUrls([url]);
+  // Validate repository ID on change
+  const handleRepoIdChange = (value: string) => {
+    setRepoId(value);
+    try {
+      validateRepositoryId(value);
+      setRepoIdError(null);
+    } catch (err) {
+      setRepoIdError(err instanceof Error ? err.message : 'Invalid repository ID');
     }
-  }, [cloneUrls]);
+  };
 
   const getEarliestCommit = useCallback(async () => {
     try {
@@ -107,14 +133,110 @@ export function AnnounceRepositoryDialog({
     }
   }, [git, projectPath]);
 
-  useEffect(() => {
-    if (isOpen && remoteUrl) {
-      // Parse remote URL to pre-fill data
-      parseRemoteUrl(remoteUrl);
-      // Get earliest commit
-      getEarliestCommit();
+  const prepopulateFields = useCallback(async () => {
+    // Set default repo ID from project ID (kebab-case)
+    const defaultRepoId = toKebabCase(projectId);
+    setRepoId(defaultRepoId);
+
+    // Set default name from project ID (title case)
+    const defaultName = projectId
+      .split(/[-_]/)
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+    setName(defaultName);
+
+    // Only prepopulate if the arrays are empty (user hasn't made changes yet)
+    if (cloneUrls.length === 0 && relays.length === 0) {
+      // Prepopulate clone URLs and relays from ngitServers (matching original handlePushToNostr)
+      if (user?.pubkey && config.ngitServers && config.ngitServers.length > 0) {
+        // Clone URLs: https://{server}/{npub}/{repo-id}.git
+        const npub = nip19.npubEncode(user.pubkey);
+        const cloneUrls = config.ngitServers.map(server =>
+          `https://${server}/${npub}/${defaultRepoId}.git`
+        );
+        setCloneUrls(cloneUrls);
+
+        // Relay URLs: wss://{server}
+        const relayUrls = config.ngitServers.map(server => `wss://${server}`);
+        setRelays(relayUrls);
+      } else {
+        // Fallback to default relay if no ngitServers configured
+        setRelays([config.relayUrl || 'wss://relay.nostr.band']);
+      }
     }
-  }, [isOpen, remoteUrl, parseRemoteUrl, getEarliestCommit]);
+
+    // Get earliest commit
+    await getEarliestCommit();
+  }, [projectId, config.relayUrl, config.ngitServers, user?.pubkey, getEarliestCommit, cloneUrls.length, relays.length]);
+
+  // Load existing repository data if editing
+  useEffect(() => {
+    const loadExistingRepo = async () => {
+      if (!editNaddr || !isOpen) return;
+
+      try {
+        // Decode the naddr to get repository coordinates
+        const decoded = nip19.decode(editNaddr);
+        if (decoded.type !== 'naddr') {
+          throw new Error('Invalid repository identifier');
+        }
+
+        const { identifier, pubkey, kind, relays: naddrRelays } = decoded.data;
+
+        // Query for the repository announcement event
+        const filter = {
+          kinds: [kind],
+          authors: [pubkey],
+          '#d': [identifier],
+        };
+
+        const signal = AbortSignal.timeout(3000);
+        const events = await nostr.query([filter], {
+          signal,
+          relays: naddrRelays && naddrRelays.length > 0 ? naddrRelays : [config.relayUrl]
+        });
+
+        if (events.length === 0) {
+          throw new Error('Repository announcement not found');
+        }
+
+        // Use the most recent event
+        const event = events.sort((a, b) => b.created_at - a.created_at)[0];
+
+        // Parse tags to populate form fields
+        const nameTag = event.tags.find(([name]) => name === 'name');
+        const descriptionTag = event.tags.find(([name]) => name === 'description');
+        const webTag = event.tags.find(([name]) => name === 'web');
+        const cloneTag = event.tags.find(([name]) => name === 'clone');
+        const relaysTag = event.tags.find(([name]) => name === 'relays');
+        const eucTag = event.tags.find(([name, , marker]) => name === 'r' && marker === 'euc');
+
+        setRepoId(identifier);
+        setName(nameTag?.[1] || '');
+        setDescription(descriptionTag?.[1] || '');
+        setWebUrls(webTag ? webTag.slice(1) : []);
+        setCloneUrls(cloneTag ? cloneTag.slice(1) : []);
+        setRelays(relaysTag ? relaysTag.slice(1) : []);
+        setEarliestCommit(eucTag?.[1] || '');
+
+        setIsPrepopulated(true);
+      } catch (error) {
+        console.error('Failed to load repository data:', error);
+        toast({
+          title: 'Failed to load repository',
+          description: error instanceof Error ? error.message : 'Unknown error',
+          variant: 'destructive',
+        });
+      }
+    };
+
+    if (isOpen && editNaddr) {
+      loadExistingRepo();
+    } else if (isOpen && !isPrepopulated) {
+      prepopulateFields();
+      setIsPrepopulated(true);
+    }
+  }, [isOpen, isPrepopulated, prepopulateFields, editNaddr, nostr, config.relayUrl, toast]);
 
   const addWebUrl = () => {
     if (newWebUrl.trim() && !webUrls.includes(newWebUrl.trim())) {
@@ -128,8 +250,20 @@ export function AnnounceRepositoryDialog({
   };
 
   const addCloneUrl = () => {
-    if (newCloneUrl.trim() && !cloneUrls.includes(newCloneUrl.trim())) {
-      setCloneUrls([...cloneUrls, newCloneUrl.trim()]);
+    const trimmedUrl = newCloneUrl.trim();
+
+    // Prevent nostr:// URLs in clone URLs
+    if (trimmedUrl.startsWith('nostr://')) {
+      toast({
+        title: 'Invalid clone URL',
+        description: 'Clone URLs must be HTTPS URLs, not nostr:// URLs',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (trimmedUrl && !cloneUrls.includes(trimmedUrl)) {
+      setCloneUrls([...cloneUrls, trimmedUrl]);
       setNewCloneUrl('');
     }
   };
@@ -159,77 +293,26 @@ export function AnnounceRepositoryDialog({
       return;
     }
 
-    if (!repoId.trim()) {
-      toast({
-        title: 'Repository ID required',
-        description: 'Please enter a repository identifier',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    if (cloneUrls.length === 0) {
-      toast({
-        title: 'Clone URL required',
-        description: 'Please add at least one clone URL',
-        variant: 'destructive',
-      });
-      return;
-    }
-
     setIsCreating(true);
     setError(null);
 
     try {
-      // Build tags array per NIP-34
-      const tags: string[][] = [
-        ['d', repoId.trim()], // Required: repository identifier
-      ];
+      // Validate data
+      validateRepositoryAnnouncementData({
+        repoId,
+        cloneUrls,
+      });
 
-      if (name.trim()) {
-        tags.push(['name', name.trim()]);
-      }
-
-      if (description.trim()) {
-        tags.push(['description', description.trim()]);
-      }
-
-      // Add web URLs (all in a single tag per NIP-34)
-      if (webUrls.length > 0) {
-        const trimmedUrls = webUrls.map(url => url.trim()).filter(url => url);
-        if (trimmedUrls.length > 0) {
-          tags.push(['web', ...trimmedUrls]);
-        }
-      }
-
-      // Add clone URLs (required, all in a single tag per NIP-34)
-      if (cloneUrls.length > 0) {
-        const trimmedUrls = cloneUrls.map(url => url.trim()).filter(url => url);
-        if (trimmedUrls.length > 0) {
-          tags.push(['clone', ...trimmedUrls]);
-        }
-      }
-
-      // Add relays for patch submissions (all in a single tag per NIP-34)
-      if (relays.length > 0) {
-        const trimmedRelays = relays.map(relay => relay.trim()).filter(relay => relay);
-        if (trimmedRelays.length > 0) {
-          tags.push(['relays', ...trimmedRelays]);
-        }
-      }
-
-      // Add earliest unique commit (euc) for repository identification
-      if (earliestCommit.trim()) {
-        tags.push(['r', earliestCommit.trim(), 'euc']);
-      }
-
-      // Create repository announcement event (kind 30617)
-      const repoEvent = {
-        kind: 30617,
-        content: '',
-        tags,
-        created_at: Math.floor(Date.now() / 1000),
-      };
+      // Create repository announcement event using shared utility
+      const repoEvent = createRepositoryAnnouncementEvent({
+        repoId,
+        name,
+        description,
+        webUrls,
+        cloneUrls,
+        relays,
+        earliestCommit,
+      });
 
       console.log('=== ANNOUNCING REPOSITORY ===');
       console.log('Repository ID:', repoId.trim());
@@ -243,24 +326,32 @@ export function AnnounceRepositoryDialog({
       console.log('Event coordinate:', `30617:${user.pubkey}:${repoId.trim()}`);
 
       // Publish to Nostr relays
-      await nostr.event(signedEvent);
+      // Repository announcements go to: global relayUrl + relays specified in the announcement
+      const publishRelays = [config.relayUrl, ...relays];
+      console.log('Publishing repository announcement to relays:', publishRelays);
+
+      await nostr.event(signedEvent, { relays: publishRelays });
 
       console.log('Published repository announcement to Nostr relays');
       console.log('To verify: Query for kind 30617 with authors=[' + user.pubkey + '] and #d=[' + repoId.trim() + ']');
 
-      // Create naddr for the repository
-      const naddr = nip19.naddrEncode({
-        identifier: repoId.trim(),
-        pubkey: user.pubkey,
-        kind: 30617,
-        relays: relays.length > 0 ? relays : undefined,
-      });
-
-      setCreatedNaddr(naddr);
+      // Create naddr for the repository using shared utility
+      const naddr = createRepositoryNaddr(repoId, user.pubkey, relays);
 
       toast({
-        title: 'Repository announced!',
-        description: 'Your repository has been announced on Nostr',
+        title: 'Published Nostr announcement',
+        description: 'Configuring repository...',
+      });
+
+      // Close the dialog
+      handleOpenChange(false);
+
+      // Call success callback with the data needed for Git operations
+      onSuccess?.({
+        repoId: repoId.trim(),
+        cloneUrls,
+        relays,
+        naddr,
       });
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
@@ -269,6 +360,7 @@ export function AnnounceRepositoryDialog({
         title: 'Failed to announce repository',
         description: errorMessage,
         variant: 'destructive',
+        duration: Infinity,
       });
     } finally {
       setIsCreating(false);
@@ -281,6 +373,7 @@ export function AnnounceRepositoryDialog({
 
     // Reset form when closing
     if (!newOpen) {
+      setIsPrepopulated(false);
       setRepoId('');
       setName('');
       setDescription('');
@@ -288,7 +381,6 @@ export function AnnounceRepositoryDialog({
       setCloneUrls([]);
       setRelays(['wss://relay.nostr.band']);
       setEarliestCommit('');
-      setCreatedNaddr(null);
       setError(null);
       setNewWebUrl('');
       setNewCloneUrl('');
@@ -296,284 +388,294 @@ export function AnnounceRepositoryDialog({
     }
   };
 
-  const copyNaddr = () => {
-    if (createdNaddr) {
-      navigator.clipboard.writeText(createdNaddr);
-      toast({
-        title: 'Copied to clipboard',
-        description: 'Repository address copied',
-      });
-    }
-  };
-
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>
-        <Button variant="outline" className="gap-2">
-          <Megaphone className="h-4 w-4" />
-          Announce Repository
-        </Button>
-      </DialogTrigger>
       <DialogContent className="max-w-2xl max-h-[90vh]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Megaphone className="h-5 w-5" />
-            Announce Repository on Nostr
+            <Settings className="h-5 w-5" />
+            {editNaddr ? 'Edit' : ''} Nostr Repository Settings
           </DialogTitle>
           <DialogDescription>
-            Publish a repository announcement (NIP-34) to make it discoverable on Nostr git
-            clients
+            {editNaddr
+              ? 'Update your repository announcement (NIP-34) for Nostr git clients'
+              : 'Configure your repository announcement (NIP-34) for Nostr git clients'
+            }
           </DialogDescription>
         </DialogHeader>
 
-        {createdNaddr ? (
-          // Success state
-          <div className="py-8 text-center space-y-4">
-            <CheckCircle className="h-16 w-16 text-green-600 mx-auto" />
-            <div>
-              <h3 className="text-lg font-semibold mb-2">Repository Announced!</h3>
-              <p className="text-muted-foreground">
-                Your repository is now discoverable on Nostr git clients
-              </p>
-            </div>
-            <div className="bg-muted/30 rounded-lg p-4 space-y-2">
-              <Label>Repository Address (naddr)</Label>
-              <div className="flex gap-2">
-                <Input
-                  value={createdNaddr}
-                  readOnly
-                  className="font-mono text-sm"
-                />
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={copyNaddr}
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Share this address with others to let them find your repository
-              </p>
-            </div>
-          </div>
-        ) : (
-          // Form
-          <ScrollArea className="max-h-[60vh]">
-            <div className="space-y-6 pr-4">
-              {/* Error alert */}
-              {error && (
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
+        <ScrollArea className="max-h-[60vh]">
+          <div className="space-y-6 pr-4">
+            {/* Error alert */}
+            {error && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
 
-              {/* Repository ID */}
-              <div className="space-y-2">
-                <Label htmlFor="repo-id">Repository ID *</Label>
-                <Input
-                  id="repo-id"
-                  placeholder="e.g., my-project or username/repo-name"
-                  value={repoId}
-                  onChange={(e) => setRepoId(e.target.value)}
-                  disabled={isCreating}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Unique identifier for this repository (like GitHub's owner/repo)
-                </p>
-              </div>
-
-              {/* Name */}
-              <div className="space-y-2">
-                <Label htmlFor="repo-name">Name</Label>
-                <Input
-                  id="repo-name"
-                  placeholder="Human-readable project name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  disabled={isCreating}
-                />
-              </div>
-
-              {/* Description */}
-              <div className="space-y-2">
-                <Label htmlFor="repo-description">Description</Label>
-                <Textarea
-                  id="repo-description"
-                  placeholder="Brief description of your project"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  rows={3}
-                  disabled={isCreating}
-                />
-              </div>
-
-              {/* Web URLs */}
-              <div className="space-y-2">
-                <Label>Web URLs (Optional)</Label>
-                <div className="space-y-2">
-                  {webUrls.map((url, index) => (
-                    <div key={index} className="flex gap-2">
-                      <Input value={url} readOnly className="flex-1" />
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => removeWebUrl(index)}
-                        disabled={isCreating}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="https://example.com/browse"
-                      value={newWebUrl}
-                      onChange={(e) => setNewWebUrl(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addWebUrl())}
-                      disabled={isCreating}
-                    />
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={addWebUrl}
-                      disabled={isCreating}
-                    >
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  URLs where the repository can be browsed online
-                </p>
-              </div>
-
-              {/* Clone URLs */}
-              <div className="space-y-2">
-                <Label>Clone URLs *</Label>
-                <div className="space-y-2">
-                  {cloneUrls.map((url, index) => (
-                    <div key={index} className="flex gap-2">
-                      <Input value={url} readOnly className="flex-1 font-mono text-sm" />
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => removeCloneUrl(index)}
-                        disabled={isCreating}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="nostr://npub.../repo-id"
-                      value={newCloneUrl}
-                      onChange={(e) => setNewCloneUrl(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addCloneUrl())}
-                      disabled={isCreating}
-                      className="font-mono text-sm"
-                    />
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={addCloneUrl}
-                      disabled={isCreating}
-                    >
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  URLs for cloning the repository (at least one required)
-                </p>
-              </div>
-
-              {/* Relays */}
-              <div className="space-y-2">
-                <Label>Relays for Patches</Label>
-                <div className="space-y-2">
-                  {relays.map((relay, index) => (
-                    <div key={index} className="flex gap-2">
-                      <Input value={relay} readOnly className="flex-1 font-mono text-sm" />
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => removeRelay(index)}
-                        disabled={isCreating || relays.length === 1}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="wss://relay.example.com"
-                      value={newRelay}
-                      onChange={(e) => setNewRelay(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addRelay())}
-                      disabled={isCreating}
-                      className="font-mono text-sm"
-                    />
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={addRelay}
-                      disabled={isCreating}
-                    >
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Relays where patches will be published and monitored
-                </p>
-              </div>
-
-              {/* Earliest Commit */}
-              <div className="space-y-2">
-                <Label htmlFor="earliest-commit">Earliest Unique Commit</Label>
-                <Input
-                  id="earliest-commit"
-                  placeholder="Commit hash"
-                  value={earliestCommit}
-                  onChange={(e) => setEarliestCommit(e.target.value)}
-                  disabled={isCreating}
-                  className="font-mono text-sm"
-                />
-                <p className="text-xs text-muted-foreground">
-                  The root commit of your repository (auto-detected when available)
-                </p>
-              </div>
-            </div>
-          </ScrollArea>
-        )}
-
-        {!createdNaddr && (
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => handleOpenChange(false)}
-              disabled={isCreating}
-            >
-              Cancel
-            </Button>
-            <Button onClick={announceRepository} disabled={isCreating}>
-              {isCreating ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Announcing...
-                </>
+            {/* Repository ID */}
+            <div className="space-y-2">
+              <Label htmlFor="repo-id">Repository ID *</Label>
+              <Input
+                id="repo-id"
+                placeholder="e.g., my-project"
+                value={repoId}
+                onChange={(e) => handleRepoIdChange(e.target.value)}
+                disabled={isCreating}
+                className={repoIdError ? 'border-destructive' : ''}
+              />
+              {repoIdError ? (
+                <p className="text-xs text-destructive">{repoIdError}</p>
               ) : (
-                <>
-                  <GitBranch className="h-4 w-4 mr-2" />
-                  Announce Repository
-                </>
+                <p className="text-xs text-muted-foreground">
+                    Kebab-case short name (e.g., "my-project", "awesome-app")
+                </p>
               )}
-            </Button>
-          </DialogFooter>
-        )}
+            </div>
+
+            {/* Name */}
+            <div className="space-y-2">
+              <Label htmlFor="repo-name">Name</Label>
+              <Input
+                id="repo-name"
+                placeholder="Human-readable project name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                disabled={isCreating}
+              />
+              <p className="text-xs text-muted-foreground">
+                  Display name for your repository
+              </p>
+            </div>
+
+            {/* Description */}
+            <div className="space-y-2">
+              <Label htmlFor="repo-description">Description</Label>
+              <Textarea
+                id="repo-description"
+                placeholder="Brief description of your project"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={3}
+                disabled={isCreating}
+              />
+            </div>
+
+            {/* Advanced Settings */}
+            <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced}>
+              <CollapsibleTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className="w-full justify-between p-0 hover:bg-transparent"
+                >
+                  <span className="text-sm font-medium">Advanced Settings</span>
+                  <ChevronDown
+                    className={`h-4 w-4 transition-transform ${
+                      showAdvanced ? 'rotate-180' : ''
+                    }`}
+                  />
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-6 pt-4">
+                {/* Web URLs */}
+                <div className="space-y-2">
+                  <Label>Web URLs (Optional)</Label>
+                  <div className="space-y-2">
+                    {webUrls.map((url, index) => (
+                      <div key={index} className="flex gap-2">
+                        <Input
+                          value={url}
+                          onChange={(e) => {
+                            const newUrls = [...webUrls];
+                            newUrls[index] = e.target.value;
+                            setWebUrls(newUrls);
+                          }}
+                          className="flex-1"
+                          disabled={isCreating}
+                        />
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => removeWebUrl(index)}
+                          disabled={isCreating}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="https://example.com/browse"
+                        value={newWebUrl}
+                        onChange={(e) => setNewWebUrl(e.target.value)}
+                        onKeyDown={(e) =>
+                          e.key === 'Enter' && (e.preventDefault(), addWebUrl())
+                        }
+                        disabled={isCreating}
+                      />
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={addWebUrl}
+                        disabled={isCreating}
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                      URLs where the repository can be browsed online
+                  </p>
+                </div>
+
+                {/* Clone URLs */}
+                <div className="space-y-2">
+                  <Label>Git Server Clone URLs</Label>
+                  <div className="space-y-2">
+                    {cloneUrls.map((url, index) => (
+                      <div key={index} className="flex gap-2">
+                        <Input
+                          value={url}
+                          onChange={(e) => {
+                            const newUrls = [...cloneUrls];
+                            newUrls[index] = e.target.value;
+                            setCloneUrls(newUrls);
+                          }}
+                          className="flex-1 font-mono text-sm"
+                          disabled={isCreating}
+                        />
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => removeCloneUrl(index)}
+                          disabled={isCreating}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="https://gitnostr.com/..."
+                        value={newCloneUrl}
+                        onChange={(e) => setNewCloneUrl(e.target.value)}
+                        onKeyDown={(e) =>
+                          e.key === 'Enter' && (e.preventDefault(), addCloneUrl())
+                        }
+                        disabled={isCreating}
+                        className="font-mono text-sm"
+                      />
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={addCloneUrl}
+                        disabled={isCreating}
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                      HTTPS URLs for cloning the repository (nostr:// URLs not allowed)
+                  </p>
+                </div>
+
+                {/* Relays */}
+                <div className="space-y-2">
+                  <Label>Git Nostr Relays</Label>
+                  <div className="space-y-2">
+                    {relays.map((relay, index) => (
+                      <div key={index} className="flex gap-2">
+                        <Input
+                          value={relay}
+                          onChange={(e) => {
+                            const newRelays = [...relays];
+                            newRelays[index] = e.target.value;
+                            setRelays(newRelays);
+                          }}
+                          className="flex-1 font-mono text-sm"
+                          disabled={isCreating}
+                        />
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => removeRelay(index)}
+                          disabled={isCreating || relays.length === 1}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="wss://relay.example.com"
+                        value={newRelay}
+                        onChange={(e) => setNewRelay(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addRelay())}
+                        disabled={isCreating}
+                        className="font-mono text-sm"
+                      />
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={addRelay}
+                        disabled={isCreating}
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                      Nostr relays where patches and issues will be published and monitored
+                  </p>
+                </div>
+
+                {/* Earliest Commit */}
+                <div className="space-y-2">
+                  <Label htmlFor="earliest-commit">Earliest Unique Commit</Label>
+                  <Input
+                    id="earliest-commit"
+                    placeholder="Commit hash"
+                    value={earliestCommit}
+                    onChange={(e) => setEarliestCommit(e.target.value)}
+                    disabled={isCreating}
+                    className="font-mono text-sm"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                      The root commit of your repository (auto-detected)
+                  </p>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          </div>
+        </ScrollArea>
+
+        <DialogFooter>
+          <Button
+            variant="outline"
+            onClick={() => handleOpenChange(false)}
+            disabled={isCreating}
+          >
+              Cancel
+          </Button>
+          <Button
+            onClick={announceRepository}
+            disabled={isCreating || !!repoIdError || !repoId.trim()}
+          >
+            {isCreating ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                {editNaddr ? 'Updating...' : 'Publishing...'}
+              </>
+            ) : (
+              <>
+                <GitBranch className="h-4 w-4 mr-2" />
+                {editNaddr ? 'Update on Nostr' : 'Publish to Nostr'}
+              </>
+            )}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

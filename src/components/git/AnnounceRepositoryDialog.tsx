@@ -194,20 +194,29 @@ export function AnnounceRepositoryDialog({
         tags.push(['description', description.trim()]);
       }
 
-      // Add web URLs
-      webUrls.forEach(url => {
-        if (url.trim()) tags.push(['web', url.trim()]);
-      });
+      // Add web URLs (all in a single tag per NIP-34)
+      if (webUrls.length > 0) {
+        const trimmedUrls = webUrls.map(url => url.trim()).filter(url => url);
+        if (trimmedUrls.length > 0) {
+          tags.push(['web', ...trimmedUrls]);
+        }
+      }
 
-      // Add clone URLs (required)
-      cloneUrls.forEach(url => {
-        if (url.trim()) tags.push(['clone', url.trim()]);
-      });
+      // Add clone URLs (required, all in a single tag per NIP-34)
+      if (cloneUrls.length > 0) {
+        const trimmedUrls = cloneUrls.map(url => url.trim()).filter(url => url);
+        if (trimmedUrls.length > 0) {
+          tags.push(['clone', ...trimmedUrls]);
+        }
+      }
 
-      // Add relays for patch submissions
-      relays.forEach(relay => {
-        if (relay.trim()) tags.push(['relays', relay.trim()]);
-      });
+      // Add relays for patch submissions (all in a single tag per NIP-34)
+      if (relays.length > 0) {
+        const trimmedRelays = relays.map(relay => relay.trim()).filter(relay => relay);
+        if (trimmedRelays.length > 0) {
+          tags.push(['relays', ...trimmedRelays]);
+        }
+      }
 
       // Add earliest unique commit (euc) for repository identification
       if (earliestCommit.trim()) {

@@ -203,8 +203,7 @@ describe('Git', () => {
           content: '',
           tags: [
             ['d', 'my-repo'],
-            ['clone', 'https://github.com/user/repo.git'],
-            ['clone', 'https://gitlab.com/user/repo.git']
+            ['clone', 'https://github.com/user/repo.git', 'https://gitlab.com/user/repo.git'],
           ],
           created_at: Date.now(),
           sig: 'signature'

@@ -724,9 +724,11 @@ export function PullRequestDialog({
       }
 
       // Get relay hints from repository announcement
-      const relayTags = repoEvent.tags.filter((t: string[]) => t[0] === 'relays');
-      if (relayTags.length > 0) {
-        publishRelays = relayTags.map((t: string[]) => t[1]);
+      // Per NIP-34, all relays are in a single tag: ["relays", "wss://...", "wss://...", ...]
+      const relayTag = repoEvent.tags.find((t: string[]) => t[0] === 'relays');
+      if (relayTag && relayTag.length > 1) {
+        // Extract all relay URLs from the tag (skip the first element which is "relays")
+        publishRelays = relayTag.slice(1);
         console.log('Publishing to repository relays:', publishRelays);
       } else {
         console.log('No relay hints in repository announcement, using configured relay');

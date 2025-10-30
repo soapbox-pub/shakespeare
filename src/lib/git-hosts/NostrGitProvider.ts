@@ -62,7 +62,11 @@ export class NostrGitProvider implements GitHostProvider {
     const getDescription = () => event.tags.find((t: string[]) => t[0] === 'description')?.[1];
     const getWebUrl = () => event.tags.find((t: string[]) => t[0] === 'web')?.[1] || '';
     const getCloneUrl = () => event.tags.find((t: string[]) => t[0] === 'clone')?.[1] || '';
-    const getRelays = () => event.tags.filter((t: string[]) => t[0] === 'relays').map((t: string[]) => t[1]);
+    // Per NIP-34, all relays are in a single tag: ["relays", "wss://...", "wss://...", ...]
+    const getRelays = () => {
+      const relayTag = event.tags.find((t: string[]) => t[0] === 'relays');
+      return relayTag ? relayTag.slice(1) : [];
+    };
 
     // Update relay to use repository's designated relays
     const repoRelays = getRelays();
@@ -88,9 +92,9 @@ export class NostrGitProvider implements GitHostProvider {
     // But only maintainers can apply them
     // Check if current user is listed as a maintainer
     const event = await this.queryRepo(owner, repo);
-    const maintainers = event.tags
-      .filter((t: string[]) => t[0] === 'maintainers')
-      .map((t: string[]) => t[1]);
+    // Per NIP-34, all maintainers are in a single tag: ["maintainers", "pubkey1", "pubkey2", ...]
+    const maintainerTag = event.tags.find((t: string[]) => t[0] === 'maintainers');
+    const maintainers = maintainerTag ? maintainerTag.slice(1) : [];
 
     // Repo owner is always a maintainer
     const isMaintainer = owner === this.pubkey || maintainers.includes(this.pubkey);

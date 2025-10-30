@@ -959,7 +959,13 @@ export class Git {
     }
   }
 
-  private async fetchNostrRepo(nostrURI: NostrCloneURI): Promise<{ repo?: NostrEvent; state?: NostrEvent }> {
+  private async fetchNostrRepo(nostrURI: NostrCloneURI): Promise<{
+    repo?: NostrEvent;
+    state?: NostrEvent;
+    serversWithoutAnnouncement?: string[];
+    serversWithoutLatestAnnouncement?: string[];
+    serversWithErrors?: string[];
+  }> {
     // Build the filter for both NIP-34 repository announcement and state events
     const filter = {
       kinds: [30617, 30618],
@@ -967,47 +973,105 @@ export class Git {
       '#d': [nostrURI.d],
     };
 
-    const gitRelays = this.ngitServers.map(server => `wss://${server}/`);
+    // Fetch from all relays in parallel
+    const fetchPromises: Promise<{ relay: string; events: NostrEvent[] }>[] = [];
 
-    let events: NostrEvent[] = [];
-
-    // Try the specified relay first, then fall back to known Git relays
+    // Add specified relay if provided
     if (nostrURI.relay) {
-      try {
-        events = await this.nostr.relay(nostrURI.relay).query([filter], { signal: AbortSignal.timeout(1000) });
-      } catch (error) {
-        console.error(`Error querying relay ${nostrURI.relay}: ${error}`);
-      }
-    }
-    if (!events.length) {
-      try {
-        events = await this.nostr.group(gitRelays).query([filter], { signal: AbortSignal.timeout(5000) });
-      } catch (error) {
-        console.error(`Error querying group relays: ${error}`);
-      }
-    }
-    if (!events.length) {
-      throw new Error('No events found for the specified Nostr repository');
+      fetchPromises.push(
+        this.nostr.relay(nostrURI.relay).query([filter], { signal: AbortSignal.timeout(1000) })
+          .then(events => ({ relay: nostrURI.relay!, events }))
+          .catch(error => {
+            console.error(`Error querying relay ${nostrURI.relay}: ${error}`);
+            return { relay: nostrURI.relay!, events: [] };
+          })
+      );
     }
 
-    const repo = events.find((e) => e.kind === 30617);
-    const state = events.find((e) => e.kind === 30618);
+    // Add all ngitservers
+    for (const server of this.ngitServers) {
+      const relayUrl = `wss://${server}/`;
+      fetchPromises.push(
+        this.nostr.relay(relayUrl).query([filter], { signal: AbortSignal.timeout(1000) })
+          .then(events => ({ relay: relayUrl, events }))
+          .catch(error => {
+            console.warn(`Error querying ${server}:`, error);
+            return { relay: relayUrl, events: [], error: true };
+          })
+      );
+    }
 
-    if (!repo) {
+    // Wait for all queries to complete
+    const results = await Promise.all(fetchPromises);
+
+    // Collect all events and find the latest versions
+    let latestRepo: NostrEvent | undefined;
+    let latestState: NostrEvent | undefined;
+
+    for (const result of results) {
+      for (const event of result.events) {
+        if (event.kind === 30617) {
+          if (!latestRepo || event.created_at > latestRepo.created_at) {
+            latestRepo = event;
+          }
+        } else if (event.kind === 30618) {
+          if (!latestState || event.created_at > latestState.created_at) {
+            latestState = event;
+          }
+        }
+      }
+    }
+
+    if (!latestRepo) {
       throw new Error('Repository announcement not found on Nostr network');
     }
 
-    if (state) {
-      console.log(`Found repository state event with ${state.tags.length} tags`);
+    if (latestState) {
+      console.log(`Found repository state event with ${latestState.tags.length} tags`);
     } else {
       console.log('No repository state event found, proceeding with basic clone');
     }
 
     // Get GRASP servers from the announcement and handle any mismatch
-    const ngitServers = getNgitServers(repo);
+    const ngitServers = getNgitServers(latestRepo);
     this.processNgitServersMismatch(ngitServers);
 
-    return { repo, state };
+    // Analyze each ngitserver's status
+    const serversWithoutAnnouncement: string[] = [];
+    const serversWithoutLatestAnnouncement: string[] = [];
+    const serversWithErrors: string[] = [];
+
+    for (const server of this.ngitServers) {
+      const result = results.find(r => r.relay.includes(server));
+
+      if (!result || 'error' in result) {
+        // Server errored or timed out
+        serversWithErrors.push(server);
+        console.warn(`Server ${server} had errors or timed out`);
+      } else {
+        const serverRepo = result.events.find(e => e.kind === 30617);
+
+        if (!serverRepo) {
+          // Server has no announcement at all
+          serversWithoutAnnouncement.push(server);
+          console.log(`Server ${server} has no announcement event`);
+        } else if (serverRepo.created_at < latestRepo.created_at) {
+          // Server has outdated announcement
+          serversWithoutLatestAnnouncement.push(server);
+          console.log(`Server ${server} has outdated announcement (has: ${serverRepo.created_at}, latest: ${latestRepo.created_at})`);
+        } else {
+          console.log(`Server ${server} is up-to-date`);
+        }
+      }
+    }
+
+    return {
+      repo: latestRepo,
+      state: latestState,
+      serversWithoutAnnouncement,
+      serversWithoutLatestAnnouncement,
+      serversWithErrors
+    };
   }
 
   private async nostrClone(nostrURI: NostrCloneURI, options: Omit<Parameters<typeof git.clone>[0], 'fs' | 'http' | 'corsProxy'>): Promise<void> {
@@ -1406,7 +1470,14 @@ export class Git {
     console.log(`Pushing to Nostr repository: ${nostrUrl}`);
 
     // Fetch the repository announcement and state to get relay information and current remote state
-    const { repo, state } = await this.fetchNostrRepo(nostrURI);
+    // Also check which servers don't have the latest announcement
+    const {
+      repo,
+      state,
+      serversWithoutAnnouncement = [],
+      serversWithoutLatestAnnouncement = [],
+      serversWithErrors = []
+    } = await this.fetchNostrRepo(nostrURI);
     if (!repo) {
       throw new Error('Repository announcement not found on Nostr network');
     }
@@ -1500,6 +1571,34 @@ export class Git {
         'wss://relay.ngit.dev/',
         'wss://relay.nostr.band/'
       );
+    }
+
+    // Determine which servers need the announcement published
+    const serversNeedingAnnouncement = [
+      ...serversWithoutAnnouncement,
+      ...serversWithoutLatestAnnouncement
+    ];
+
+    if (serversNeedingAnnouncement.length > 0) {
+      console.log(`Publishing announcement to ${serversNeedingAnnouncement.length} servers:`);
+      if (serversWithoutAnnouncement.length > 0) {
+        console.log(`  - Without announcement: ${serversWithoutAnnouncement.join(', ')}`);
+      }
+      if (serversWithoutLatestAnnouncement.length > 0) {
+        console.log(`  - With outdated announcement: ${serversWithoutLatestAnnouncement.join(', ')}`);
+      }
+      if (serversWithErrors.length > 0) {
+        console.log(`  - With errors (skipping): ${serversWithErrors.join(', ')}`);
+      }
+
+      // Publish the announcement to servers that need it
+      const serversToPublish = serversNeedingAnnouncement.map(server => `wss://${server}/`);
+      try {
+        await this.nostr.group(serversToPublish).event(repo);
+        console.log('✓ Repository announcement published to servers');
+      } catch (error) {
+        console.warn('Failed to publish announcement to some servers:', error);
+      }
     }
 
     // Get current repository state

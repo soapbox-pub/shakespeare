@@ -33,7 +33,7 @@ export class GitPushCommand implements GitSubcommand {
         return createErrorResult('fatal: not a git repository (or any of the parent directories): .git');
       }
 
-      const { remote, branch } = this.parseArgs(args);
+      const { remote, branch, options } = this.parseArgs(args);
 
       // Get current branch if not specified
       let targetBranch = branch;
@@ -75,6 +75,7 @@ export class GitPushCommand implements GitSubcommand {
           remote: remote,
           ref: targetBranch,
           remoteRef: targetBranch,
+          force: options.force,
           onAuth: (url) => findCredentialsForRepo(url, settings.credentials),
           signer: this.signer,
         });
@@ -85,12 +86,14 @@ export class GitPushCommand implements GitSubcommand {
         if (error instanceof Error) {
           if (error.message.includes('authentication')) {
             return createErrorResult('fatal: Authentication failed. Please configure git credentials.');
-          } else if (error.message.includes('rejected')) {
-            return createErrorResult(`error: failed to push some refs to '${remoteUrl}'\nhint: Updates were rejected because the remote contains work that you do not have locally.`);
+          } else if (error.message.includes('rejected') || error.message.includes('Updates were rejected')) {
+            return createErrorResult(`error: failed to push some refs to '${remoteUrl}'\nhint: ${error.message}`);
           } else if (error.message.includes('network')) {
             return createErrorResult('fatal: unable to access remote repository. Please check your network connection.');
           } else if (error.message.includes('Nostr signer is required')) {
             return createErrorResult('fatal: Nostr signer is required for pushing to Nostr repositories. Please log in with a Nostr account.');
+          } else if (error.message.includes('Everything up-to-date')) {
+            return createSuccessResult('Everything up-to-date\n');
           }
         }
 

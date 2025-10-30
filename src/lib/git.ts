@@ -1462,9 +1462,6 @@ export class Git {
 
         pushSuccessful = true;
         console.log(`✓ Successfully pushed to ${cloneUrl}`);
-
-        // If one push succeeds, we can break (unless we want to push to all remotes)
-        break;
       } catch (pushError) {
         console.warn(`Failed to push to ${cloneUrl}:`, pushError);
         lastError = pushError instanceof Error ? pushError : new Error('Unknown push error');

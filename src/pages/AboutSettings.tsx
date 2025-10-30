@@ -120,6 +120,16 @@ export function AboutSettings() {
                     className="w-full h-10 flex items-center gap-2 justify-start"
                     asChild
                   >
+                    <a href="https://shakespeare-diy.github.io" target="_blank" rel="noopener noreferrer">
+                      <span className="font-mono text-sm">shakespeare-diy.github.io</span>
+                      <ExternalLink className="ml-auto h-4 w-4" />
+                    </a>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="w-full h-10 flex items-center gap-2 justify-start"
+                    asChild
+                  >
                     <a href="https://shakespeare-b0b9c8.gitlab.io" target="_blank" rel="noopener noreferrer">
                       <span className="font-mono text-sm">shakespeare-b0b9c8.gitlab.io</span>
                       <ExternalLink className="ml-auto h-4 w-4" />

@@ -14,11 +14,11 @@ const electronDistDir = join(electronDir, 'dist');
 // Read root package.json
 const rootPackage = JSON.parse(readFileSync(join(rootDir, 'package.json'), 'utf-8'));
 
-// Generate CalVer version (YYYY.MM.DDHHMM)
+// Generate CalVer version (YYYY.MM.DDHHMM) in UTC
 const now = new Date();
-const year = now.getFullYear();
-const month = String(now.getMonth() + 1).padStart(2, '0');
-const day = String(now.getDate()).padStart(2, '0');
+const year = now.getUTCFullYear();
+const month = String(now.getUTCMonth() + 1).padStart(2, '0');
+const day = String(now.getUTCDate()).padStart(2, '0');
 const hour = String(now.getUTCHours()).padStart(2, '0');
 const minute = String(now.getUTCMinutes()).padStart(2, '0');
 const version = `${year}.${month}.${day}${hour}${minute}`;

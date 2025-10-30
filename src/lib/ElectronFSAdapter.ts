@@ -47,13 +47,13 @@ export class ElectronFSAdapter implements JSRuntimeFS {
     return error;
   }
 
-  async readFile(path: string): Promise<Uint8Array<ArrayBuffer>>;
+  async readFile(path: string): Promise<Uint8Array<ArrayBufferLike>>;
   async readFile(path: string, options: 'utf8'): Promise<string>;
   async readFile(path: string, options: string): Promise<string>;
   async readFile(path: string, options: { encoding: 'utf8' }): Promise<string>;
   async readFile(path: string, options: { encoding: string }): Promise<string>;
-  async readFile(path: string, options?: string | { encoding?: string }): Promise<string | Uint8Array<ArrayBuffer>>;
-  async readFile(path: string, options?: string | { encoding?: string }): Promise<string | Uint8Array<ArrayBuffer>> {
+  async readFile(path: string, options?: string | { encoding?: string }): Promise<string | Uint8Array<ArrayBufferLike>>;
+  async readFile(path: string, options?: string | { encoding?: string }): Promise<string | Uint8Array<ArrayBufferLike>> {
     try {
       const encoding = typeof options === 'string' ? options : options?.encoding;
       const result = await this.electron.fs.readFile(path, encoding);
@@ -69,7 +69,7 @@ export class ElectronFSAdapter implements JSRuntimeFS {
     }
   }
 
-  async writeFile(path: string, data: string | Uint8Array, options?: string | { encoding?: string }): Promise<void> {
+  async writeFile(path: string, data: string | Uint8Array<ArrayBufferLike>, options?: string | { encoding?: string }): Promise<void> {
     try {
       const encoding = typeof options === 'string' ? options : options?.encoding;
       // Convert Uint8Array to regular array for IPC serialization

@@ -4,14 +4,14 @@
  */
 export interface JSRuntimeFS {
   // Core file operations with proper overloads for type safety
-  readFile(path: string): Promise<Uint8Array<ArrayBuffer>>;
+  readFile(path: string): Promise<Uint8Array<ArrayBufferLike>>;
   readFile(path: string, options: 'utf8'): Promise<string>;
   readFile(path: string, options: string): Promise<string>;
   readFile(path: string, options: { encoding: 'utf8' }): Promise<string>;
   readFile(path: string, options: { encoding: string }): Promise<string>;
-  readFile(path: string, options?: string | { encoding?: string }): Promise<string | Uint8Array<ArrayBuffer>>;
+  readFile(path: string, options?: string | { encoding?: string }): Promise<string | Uint8Array<ArrayBufferLike>>;
 
-  writeFile(path: string, data: string | Uint8Array<ArrayBuffer>, options?: string | { encoding?: string }): Promise<void>;
+  writeFile(path: string, data: string | Uint8Array<ArrayBufferLike>, options?: string | { encoding?: string }): Promise<void>;
 
   // readdir overloads for different return types
   readdir(path: string): Promise<string[]>;

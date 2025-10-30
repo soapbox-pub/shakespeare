@@ -19,7 +19,7 @@
     "typecheck": "npm i --silent && tsc --noEmit",
     "test": "npm i --silent && eslint && vitest run --reporter=dot --silent && echo 'All tests passed!'",
     "electron": "electron electron",
-    "electron:publish": "npm run build && rm -rf electron/dist && cp -r dist electron/dist && node scripts/prepare-electron-publish.js && cd electron && npm publish"
+    "electron:publish": "npm run build && node scripts/prepare-electron-publish.js && cd electron && npm publish"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { readFileSync, writeFileSync, copyFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, copyFileSync, rmSync, cpSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -8,6 +8,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const rootDir = join(__dirname, '..');
 const electronDir = join(rootDir, 'electron');
+const distDir = join(rootDir, 'dist');
+const electronDistDir = join(electronDir, 'dist');
 
 // Read root package.json
 const rootPackage = JSON.parse(readFileSync(join(rootDir, 'package.json'), 'utf-8'));
@@ -23,6 +25,13 @@ const version = `${year}.${month}.${day}${hour}${minute}`;
 
 // Get electron version from root devDependencies
 const electronVersion = rootPackage.devDependencies.electron;
+
+// Remove old electron/dist and copy new one
+console.log('Removing old electron/dist...');
+rmSync(electronDistDir, { recursive: true, force: true });
+
+console.log('Copying dist to electron/dist...');
+cpSync(distDir, electronDistDir, { recursive: true });
 
 // Create electron package.json
 const electronPackage = {

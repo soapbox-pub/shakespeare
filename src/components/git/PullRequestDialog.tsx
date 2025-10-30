@@ -732,63 +732,13 @@ export function PullRequestDialog({
         console.log('No relay hints in repository announcement, using configured relay');
       }
     } else {
-      console.log('Repository announcement not found - creating one automatically');
-
-      // Auto-announce repository
-      try {
-        // Get earliest commit for euc tag
-        const commits = await git.log({
-          dir: projectPath,
-          ref: 'HEAD',
-        });
-
-        let euc: string | null = null;
-        if (commits.length > 0) {
-          euc = commits[commits.length - 1].oid;
-        }
-
-        // Build repository announcement event
-        const repoTags: string[][] = [
-          ['d', info.repo],
-          ['name', info.repo.split('/').pop() || info.repo],
-          ['clone', remoteUrl || ''],
-          ['relays', config.relayUrl],
-        ];
-
-        if (euc) {
-          repoTags.push(['r', euc, 'euc']);
-          earliestUniqueCommit = euc;
-        }
-
-        const repoAnnouncement = {
-          kind: 30617,
-          content: '',
-          tags: repoTags,
-          created_at: Math.floor(Date.now() / 1000),
-        };
-
-        console.log('Auto-creating repository announcement:', repoAnnouncement);
-
-        const signedRepoEvent = await user.signer.signEvent(repoAnnouncement);
-
-        console.log('Signed repository announcement:', signedRepoEvent);
-
-        await nostr.event(signedRepoEvent);
-
-        console.log('Successfully auto-announced repository');
-
-        toast({
-          title: 'Repository announced',
-          description: 'Automatically created repository announcement for patch submission',
-        });
-      } catch (announceError) {
-        console.error('Failed to auto-announce repository:', announceError);
-        throw new Error(
-          'Repository announcement not found and failed to create one automatically.\n\n' +
-          `Error: ${announceError instanceof Error ? announceError.message : 'Unknown error'}\n\n` +
-          'Please try using the "Announce Repository" button manually.'
-        );
-      }
+      console.error('Repository announcement not found');
+      throw new Error(
+        'Repository announcement not found.\n\n' +
+        `The repository owner has not published a repository announcement (kind 30617) for ${info.owner}/${info.repo}.\n\n` +
+        'Patches can only be submitted to repositories that have been announced on Nostr. ' +
+        'Please contact the repository owner to announce their repository first.'
+      );
     }
 
     // Generate git format-patch style content

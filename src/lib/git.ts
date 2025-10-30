@@ -933,6 +933,32 @@ export class Git {
     }
   }
 
+  /**
+   * Process GRASP server mismatch between configured servers and announcement servers.
+   * Updates this.ngitServers if there's a mismatch and logs the changes.
+   */
+  private processNgitServersMismatch(announcementServers: string[]): void {
+    const configuredServers = new Set(this.ngitServers);
+    const announcementSet = new Set(announcementServers);
+
+    const serversOnlyInConfig = this.ngitServers.filter(s => !announcementSet.has(s));
+    const serversOnlyInAnnouncement = announcementServers.filter(s => !configuredServers.has(s));
+
+    const hasMismatch = serversOnlyInConfig.length > 0 || serversOnlyInAnnouncement.length > 0;
+
+    if (hasMismatch) {
+      console.log('GRASP server configuration mismatch detected:');
+      if (serversOnlyInConfig.length > 0) {
+        console.log(`  - Configured but not in announcement: ${serversOnlyInConfig.join(', ')}`);
+      }
+      if (serversOnlyInAnnouncement.length > 0) {
+        console.log(`  - In announcement but not configured: ${serversOnlyInAnnouncement.join(', ')}`);
+      }
+      console.log(`  - Updating to use announcement servers: ${announcementServers.join(', ')}`);
+      this.ngitServers = announcementServers;
+    }
+  }
+
   private async fetchNostrRepo(nostrURI: NostrCloneURI): Promise<{ repo?: NostrEvent; state?: NostrEvent }> {
     // Build the filter for both NIP-34 repository announcement and state events
     const filter = {
@@ -976,6 +1002,10 @@ export class Git {
     } else {
       console.log('No repository state event found, proceeding with basic clone');
     }
+
+    // Get GRASP servers from the announcement and handle any mismatch
+    const ngitServers = getNgitServers(repo);
+    this.processNgitServersMismatch(ngitServers);
 
     return { repo, state };
   }
@@ -1725,6 +1755,84 @@ function getCloneURLs(event: NostrEvent): string[] {
 
   return [...urls];
 }
+
+/**
+ * Extract GRASP server hostnames from a Nostr repository event (kind 30617).
+ *
+ * GRASP servers are identified per NIP-34 by matching clone and relays tags:
+ * - clone tag contains URL(s) matching: [http|https]://<hostname>/<valid-npub>/<repo>.git
+ * - relays tag contains URL(s) matching: [ws|wss]://<hostname>
+ *
+ * NIP-34 format allows multiple values in a single tag:
+ *   ["clone", "url1", "url2", ...]
+ *   ["relays", "relay1", "relay2", ...]
+ *
+ * This function also handles multiple separate tags for backward compatibility.
+ *
+ * @param event - A kind 30617 repository announcement event
+ * @returns Array of hostnames that are identified as GRASP servers
+ */
+export function getNgitServers(event: NostrEvent): string[] {
+  // Track servers with valid GRASP clone URLs
+  const validCloneServers = new Set<string>();
+
+  // Track servers in relays tags
+  const relayServers = new Set<string>();
+
+  for (const [name, ...values] of event.tags) {
+    if (name === 'clone') {
+      // Check clone tags for GRASP pattern: https://<hostname>/<npub>/<repo>.git
+      for (const value of values) {
+        if (value) {
+          try {
+            // Must be http/https and end with .git
+            if (!(value.startsWith('http://') || value.startsWith('https://'))) continue;
+            if (!(value.endsWith('.git/') || value.endsWith('.git'))) continue;
+            if (!value.includes('/npub1')) continue;
+
+            // Extract and validate the npub using nip19.decode
+            // Find the npub1 part in the path
+            const npubMatch = value.match(/\/npub1([a-z0-9]+)\//);
+            if (!npubMatch) continue;
+
+            const npub = `npub1${npubMatch[1]}`;
+            const decoded = nip19.decode(npub);
+            if (decoded.type !== 'npub') continue;
+
+            // If we got here, it's a valid GRASP clone URL
+            const url = new URL(value);
+            validCloneServers.add(url.hostname);
+          } catch {
+            // Ignore invalid URLs or npub decode failures
+          }
+        }
+      }
+    } else if (name === 'relays') {
+      // Check relays tags for websocket URLs
+      for (const value of values) {
+        if (value) {
+          try {
+            const url = new URL(value);
+            if (url.protocol === 'ws:' || url.protocol === 'wss:') {
+              relayServers.add(url.hostname);
+            }
+          } catch {
+            // Ignore invalid URLs
+          }
+        }
+      }
+    }
+  }
+
+  // Only include servers that appear in BOTH clone (with valid GRASP pattern) and relays tags
+  const graspServers = [...validCloneServers].filter(server =>
+    relayServers.has(server)
+  );
+
+  return graspServers;
+}
+
+
 
 // Drain an async iterable of Uint8Array into one Uint8Array
 async function collectToUint8Array(

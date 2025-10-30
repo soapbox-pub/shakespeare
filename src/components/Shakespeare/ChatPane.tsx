@@ -154,7 +154,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
       nostr_read_protocol: new NostrReadProtocolTool(),
       nostr_read_nips_index: new NostrReadNipsIndexTool(),
       nostr_generate_kind: new NostrGenerateKindTool(),
-      shell: new ShellTool(fs, cwd, git, projectsPath),
+      shell: new ShellTool(fs, cwd, git, projectsPath, user?.signer),
       read_console_messages: new ReadConsoleMessagesTool(),
     };
 

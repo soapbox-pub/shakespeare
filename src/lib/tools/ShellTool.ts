@@ -4,6 +4,7 @@ import type { JSRuntimeFS } from "../JSRuntime";
 import type { ShellCommand } from "../commands/ShellCommand";
 import { Git } from "../git";
 import { stripAnsiCodes } from "../ansiToHtml";
+import type { NostrSigner } from "@nostrify/nostrify";
 import {
   CatCommand,
   CdCommand,
@@ -51,6 +52,7 @@ export class ShellTool implements Tool<ShellToolParams> {
   private git: Git;
   private commands: Map<string, ShellCommand>;
   private projectsPath: string;
+  private signer?: NostrSigner;
 
   readonly description = "Execute shell commands like cat, ls, cd, pwd, rm, cp, mv, echo, head, tail, grep, find, wc, touch, mkdir, sort, uniq, cut, tr, sed, diff, which, whoami, date, env, clear, git, curl, unzip, hexdump. Supports compound commands with &&, ||, ;, and | operators, and output redirection with > and >> operators";
 
@@ -60,11 +62,12 @@ export class ShellTool implements Tool<ShellToolParams> {
     ),
   });
 
-  constructor(fs: JSRuntimeFS, cwd: string, git: Git, projectsPath: string = '/projects') {
+  constructor(fs: JSRuntimeFS, cwd: string, git: Git, projectsPath: string = '/projects', signer?: NostrSigner) {
     this.fs = fs;
     this.cwd = cwd;
     this.git = git;
     this.projectsPath = projectsPath;
+    this.signer = signer;
     this.commands = new Map();
 
     // Register available commands
@@ -79,7 +82,7 @@ export class ShellTool implements Tool<ShellToolParams> {
     this.registerCommand(new EchoCommand());
     this.registerCommand(new EnvCommand());
     this.registerCommand(new FindCommand(fs));
-    this.registerCommand(new GitCommand({ git: this.git, fs, cwd: this.cwd }));
+    this.registerCommand(new GitCommand({ git: this.git, fs, cwd: this.cwd, signer: this.signer }));
     this.registerCommand(new GrepCommand(fs));
     this.registerCommand(new HeadCommand(fs));
     this.registerCommand(new HexdumpCommand(fs));

@@ -1,6 +1,7 @@
 import type { Git } from "../git";
 import type { JSRuntimeFS } from "../JSRuntime";
 import type { ShellCommand, ShellCommandResult } from "./ShellCommand";
+import type { NostrSigner } from "@nostrify/nostrify";
 import { createSuccessResult, createErrorResult } from "./ShellCommand";
 
 // Import subcommands
@@ -34,12 +35,14 @@ export interface GitSubcommandOptions {
   git: Git;
   fs: JSRuntimeFS;
   pwd: string;
+  signer?: NostrSigner;
 }
 
 export interface GitCommandOptions {
   git: Git;
   fs: JSRuntimeFS;
   cwd: string;
+  signer?: NostrSigner;
 }
 
 /**
@@ -54,12 +57,14 @@ export class GitCommand implements ShellCommand {
   private git: Git;
   private fs: JSRuntimeFS;
   private cwd: string;
+  private signer?: NostrSigner;
   private subcommands: Map<string, GitSubcommand>;
 
   constructor(options: GitCommandOptions) {
     this.git = options.git;
     this.fs = options.fs;
     this.cwd = options.cwd;
+    this.signer = options.signer;
     this.subcommands = new Map();
 
     // Register all subcommands
@@ -67,6 +72,7 @@ export class GitCommand implements ShellCommand {
       git: this.git,
       fs: this.fs,
       pwd: this.cwd,
+      signer: this.signer,
     };
 
     this.registerSubcommand(new GitInitCommand(subcommandOptions));

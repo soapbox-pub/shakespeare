@@ -1,5 +1,6 @@
 import type { JSRuntimeFS } from "../../JSRuntime";
 import type { ShellCommandResult } from "../ShellCommand";
+import type { NostrSigner } from "@nostrify/nostrify";
 import { createSuccessResult, createErrorResult } from "../ShellCommand";
 import type { GitSubcommand, GitSubcommandOptions } from "../git";
 import type { Git } from "../../git";
@@ -14,11 +15,13 @@ export class GitPushCommand implements GitSubcommand {
   private git: Git;
   private fs: JSRuntimeFS;
   private pwd: string;
+  private signer?: NostrSigner;
 
   constructor(options: GitSubcommandOptions) {
     this.git = options.git;
     this.fs = options.fs;
     this.pwd = options.pwd;
+    this.signer = options.signer;
   }
 
   async execute(args: string[]): Promise<ShellCommandResult> {
@@ -73,6 +76,7 @@ export class GitPushCommand implements GitSubcommand {
           ref: targetBranch,
           remoteRef: targetBranch,
           onAuth: (url) => findCredentialsForRepo(url, settings.credentials),
+          signer: this.signer,
         });
 
         return createSuccessResult(`To ${remoteUrl}\n   ${targetBranch} -> ${targetBranch}\n`);
@@ -85,6 +89,8 @@ export class GitPushCommand implements GitSubcommand {
             return createErrorResult(`error: failed to push some refs to '${remoteUrl}'\nhint: Updates were rejected because the remote contains work that you do not have locally.`);
           } else if (error.message.includes('network')) {
             return createErrorResult('fatal: unable to access remote repository. Please check your network connection.');
+          } else if (error.message.includes('Nostr signer is required')) {
+            return createErrorResult('fatal: Nostr signer is required for pushing to Nostr repositories. Please log in with a Nostr account.');
           }
         }
 

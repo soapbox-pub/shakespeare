@@ -7,6 +7,7 @@ import { ShellTool } from '@/lib/tools/ShellTool';
 import { useFS } from '@/hooks/useFS';
 import { useFSPaths } from '@/hooks/useFSPaths';
 import { useGit } from '@/hooks/useGit';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { ansiToHtml, containsAnsiCodes } from '@/lib/ansiToHtml';
 
 interface TerminalProps {
@@ -35,10 +36,11 @@ export function Terminal({ projectId, className }: TerminalProps) {
   const { fs } = useFS();
   const { projectsPath } = useFSPaths();
   const { git } = useGit();
+  const { user } = useCurrentUser();
 
   // Initialize ShellTool
   useEffect(() => {
-    shellToolRef.current = new ShellTool(fs, `${projectsPath}/${projectId}`, git, projectsPath);
+    shellToolRef.current = new ShellTool(fs, `${projectsPath}/${projectId}`, git, projectsPath, user?.signer);
 
     // Add welcome message
     setLines([{
@@ -47,7 +49,7 @@ export function Terminal({ projectId, className }: TerminalProps) {
       content: `Welcome to Shakespeare Terminal\nType 'help' to see available commands.`,
       timestamp: new Date()
     }]);
-  }, [projectId, fs, git, projectsPath]);
+  }, [projectId, fs, git, projectsPath, user?.signer]);
 
   // Auto-scroll to bottom when new lines are added or execution state changes
   useEffect(() => {

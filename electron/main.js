@@ -28,7 +28,7 @@ function createWindow() {
       sandbox: false, // Disabled to support ESM in preload
       webSecurity: true,
     },
-    icon: path.join(__dirname, '../public/shakespeare-512x512.png'),
+    icon: path.join(__dirname, 'dist/shakespeare-512x512.png'),
     title: 'Shakespeare',
     backgroundColor: '#ffffff',
   });
@@ -115,7 +115,7 @@ app.whenReady().then(async () => {
       }
 
       // Resolve to dist directory
-      const fullPath = path.join(__dirname, '../dist', filePath);
+      const fullPath = path.join(__dirname, 'dist', filePath);
 
       console.log('Protocol handler:', request.url, '->', fullPath);
       callback({ path: fullPath });

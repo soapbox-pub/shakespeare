@@ -1,12 +1,10 @@
 {
-  "name": "shakespeare",
+  "name": "shakespeare.diy",
   "description": "Build custom apps with AI assistance using Shakespeare, an open-source development environment",
   "homepage": "https://shakespeare.diy",
   "license": "AGPL-3.0-or-later",
-  "private": true,
   "version": "0.0.0",
   "type": "module",
-  "main": "electron/main.js",
   "author": {
     "name": "shakespeare.diy",
     "email": "contact@shakespeare.diy"
@@ -19,15 +17,7 @@
     "dev": "npm i --silent && vite",
     "build": "npm i --silent && vite build -l error && cp dist/index.html dist/404.html && echo 'Project built successfully!'",
     "typecheck": "npm i --silent && tsc --noEmit",
-    "test": "npm i --silent && eslint && vitest run --reporter=dot --silent && echo 'All tests passed!'",
-    "deploy": "npm run build && npx -y nostr-deploy-cli deploy --skip-setup",
-    "electron:dev": "npm run build && electron .",
-    "electron:build": "npm run build && electron-builder --config electron/builder.config.js",
-    "electron:build:mac": "npm run build && electron-builder --mac --config electron/builder.config.js",
-    "electron:build:win": "npm run build && electron-builder --win --config electron/builder.config.js",
-    "electron:build:linux": "npm run build && electron-builder --linux --config electron/builder.config.js",
-    "electron:build:all": "npm run build && electron-builder --mac --win --linux --config electron/builder.config.js",
-    "electron:icons": "./electron/generate-icons.sh"
+    "test": "npm i --silent && eslint && vitest run --reporter=dot --silent && echo 'All tests passed!'"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -38,8 +28,8 @@
     "@hookform/resolvers": "^3.9.0",
     "@isomorphic-git/lightning-fs": "^4.6.2",
     "@mozilla/readability": "^0.6.0",
-    "@nostrify/nostrify": "npm:@jsr/nostrify__nostrify@^0.46.5",
-    "@nostrify/react": "npm:@jsr/nostrify__react@^0.2.9",
+    "@nostrify/nostrify": "^0.47.1",
+    "@nostrify/react": "^0.2.17",
     "@radix-ui/react-accordion": "^1.2.0",
     "@radix-ui/react-alert-dialog": "^1.1.1",
     "@radix-ui/react-aspect-ratio": "^1.1.0",
@@ -132,8 +122,6 @@
     "@types/uri-templates": "^0.1.34",
     "@vitejs/plugin-react-swc": "^3.5.0",
     "autoprefixer": "^10.4.20",
-    "electron": "^38.4.0",
-    "electron-builder": "^26.0.12",
     "eslint": "^9.9.0",
     "eslint-plugin-react-hooks": "^5.1.0-rc.0",
     "eslint-plugin-react-refresh": "^0.4.9",

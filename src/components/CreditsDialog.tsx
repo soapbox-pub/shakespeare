@@ -554,7 +554,14 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
   };
 
   const handleCopyCode = (code: string) => {
-    navigator.clipboard.writeText(code);
+    // Create the full shareable URL for the gift card
+    const url = new URL('/giftcard', window.location.origin);
+    url.hash = new URLSearchParams({
+      baseURL: provider.baseURL,
+      code: code,
+    }).toString();
+
+    navigator.clipboard.writeText(url.toString());
     setCopiedCode(code);
     setTimeout(() => setCopiedCode(null), 2000);
   };

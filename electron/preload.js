@@ -1,8 +1,12 @@
 import { contextBridge, ipcRenderer } from 'electron';
+import os from 'node:os';
 
 // Expose protected methods that allow the renderer process to use
 // ipcRenderer without exposing the entire object
 contextBridge.exposeInMainWorld('electron', {
+  // Get the home directory
+  homedir: os.homedir(),
+
   // Platform information
   platform: () => ipcRenderer.invoke('get-platform'),
 

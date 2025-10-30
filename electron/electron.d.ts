@@ -61,6 +61,11 @@ interface ElectronShellAPI {
 
 interface ElectronAPI {
   /**
+   * Get the user's home directory path.
+   */
+  homedir: string;
+
+  /**
    * Get the current platform.
    * @returns 'darwin' | 'win32' | 'linux'
    */

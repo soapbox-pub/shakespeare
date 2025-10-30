@@ -1363,6 +1363,9 @@ export class Git {
   private async nostrPush(nostrUrl: string, options: Omit<Parameters<typeof git.push>[0], 'fs' | 'http' | 'corsProxy'> & { signer: NostrSigner }) {
     const { signer, ...gitPushOptions } = options;
     const dir = options.dir || '.';
+    const ref = options.ref || 'HEAD';
+    const remoteRef = options.remoteRef || ref;
+    const force = options.force || false;
 
     // Parse the Nostr URI
     const nostrURI = await this.parseNostrCloneURI(nostrUrl);
@@ -1372,10 +1375,70 @@ export class Git {
 
     console.log(`Pushing to Nostr repository: ${nostrUrl}`);
 
-    // Fetch the repository announcement to get relay information and clone URLs
-    const { repo } = await this.fetchNostrRepo(nostrURI);
+    // Fetch the repository announcement and state to get relay information and current remote state
+    const { repo, state } = await this.fetchNostrRepo(nostrURI);
     if (!repo) {
       throw new Error('Repository announcement not found on Nostr network');
+    }
+
+    // If we have a state event and --force was not used, check if fast-forward is possible.
+    // we cant let the server do this as we publish the state update first
+    if (state && !force) {
+      const stateInfo = this.extractRepositoryState(state);
+      const remoteRefName = remoteRef.startsWith('refs/') ? remoteRef : `refs/heads/${remoteRef}`;
+      const remoteCommit = stateInfo.refs[remoteRefName];
+
+      if (remoteCommit) {
+        console.log(`Checking fast-forward: remote ${remoteRefName} is at ${remoteCommit}`);
+
+        // Get the local commit we're trying to push
+        let localCommit: string;
+        try {
+          localCommit = await git.resolveRef({
+            fs: this.fs,
+            dir,
+            ref,
+          });
+        } catch (error) {
+          throw new Error(`Failed to resolve local ref ${ref}: ${error}`);
+        }
+
+        console.log(`Local ref ${ref} is at ${localCommit}`);
+
+        // If commits are the same, we're already up to date
+        if (localCommit === remoteCommit) {
+          console.log('Everything up-to-date');
+          return;
+        }
+
+        // Check if local commit is a descendant of remote commit (fast-forward possible)
+        let canFastForward: boolean;
+        try {
+          canFastForward = await git.isDescendent({
+            fs: this.fs,
+            dir,
+            oid: localCommit,
+            ancestor: remoteCommit,
+          });
+        } catch (error) {
+          // If we can't determine ancestry, allow the push to proceed
+          // (the Git server will do its own validation)
+          console.warn(`Could not determine if fast-forward is possible: ${error}`);
+          canFastForward = true;
+        }
+
+        if (!canFastForward) {
+          throw new Error(
+            `Updates were rejected because the remote contains work that you do\n` +
+            `not have locally. This is usually caused by another repository pushing\n` +
+            `to the same ref. You may want to first integrate the remote changes\n` +
+            `(e.g., 'git pull ...') before pushing again.\n` +
+            `See the 'Note about fast-forwards' in 'git push --help' for details.`
+          );
+        }
+
+        console.log('✓ Fast-forward check passed');
+      }
     }
 
     // Extract relay URLs and clone URLs from the repository announcement

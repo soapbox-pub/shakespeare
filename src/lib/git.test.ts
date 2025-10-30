@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Git } from './git';
 import git from 'isomorphic-git';
 import type { NPool } from '@nostrify/nostrify';
@@ -426,6 +426,316 @@ describe('Git', () => {
           email: 'committer@example.com',
         },
       });
+    });
+  });
+
+  describe('Nostr push with fast-forward checking', () => {
+    const mockSigner = {
+      signEvent: vi.fn().mockResolvedValue({
+        id: 'state123',
+        pubkey: 'abcd1234567890abcdef1234567890abcdef1234567890abcdef1234567890ab',
+        kind: 30618,
+        content: '',
+        tags: [],
+        created_at: Date.now(),
+        sig: 'signature',
+      }),
+      getPublicKey: vi.fn().mockResolvedValue('abcd1234567890abcdef1234567890abcdef1234567890abcdef1234567890ab'),
+    };
+
+    beforeEach(() => {
+      // Mock timers to avoid waiting 5 seconds
+      vi.useFakeTimers();
+
+      mockGit.push = vi.fn().mockResolvedValue(undefined);
+      mockGit.listRemotes = vi.fn().mockResolvedValue([
+        { remote: 'origin', url: 'nostr://npub1abc123/my-repo' }
+      ]);
+      mockGit.listRefs = vi.fn().mockResolvedValue(['refs/heads/main']);
+      mockGit.resolveRef = vi.fn().mockResolvedValue('localcommit123');
+      mockGit.isDescendent = vi.fn().mockResolvedValue(true);
+      mockGit.currentBranch = vi.fn().mockResolvedValue('main');
+      mockGit.readCommit = vi.fn().mockResolvedValue({});
+
+      // Mock nip19 decode
+      vi.mocked(nip19.decode).mockReturnValue({
+        type: 'npub',
+        data: 'abcd1234567890abcdef1234567890abcdef1234567890abcdef1234567890ab'
+      });
+
+      vi.mocked(nip19.naddrEncode).mockReturnValue('naddr1...');
+
+      // Mock Nostr query to return repository and state events
+      const mockRelay = {
+        query: vi.fn().mockResolvedValue([
+          {
+            id: 'repo123',
+            pubkey: 'abcd1234567890abcdef1234567890abcdef1234567890abcdef1234567890ab',
+            kind: 30617,
+            content: '',
+            tags: [
+              ['d', 'my-repo'],
+              ['clone', 'https://github.com/user/repo.git'],
+            ],
+            created_at: Date.now(),
+            sig: 'signature',
+          },
+          {
+            id: 'state123',
+            pubkey: 'abcd1234567890abcdef1234567890abcdef1234567890abcdef1234567890ab',
+            kind: 30618,
+            content: '',
+            tags: [
+              ['d', 'my-repo'],
+              ['refs/heads/main', 'remotecommit456'],
+              ['HEAD', 'ref: refs/heads/main'],
+            ],
+            created_at: Date.now(),
+            sig: 'signature',
+          },
+        ]),
+      };
+
+      nostr.group = vi.fn().mockReturnValue(mockRelay);
+      nostr.relay = vi.fn().mockReturnValue(mockRelay);
+      nostr.event = vi.fn().mockResolvedValue(undefined);
+
+      mockGit.setConfig = vi.fn().mockResolvedValue(undefined);
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('rejects non-fast-forward push without --force flag', async () => {
+      // Mock isDescendent to return false (not a fast-forward)
+      mockGit.isDescendent = vi.fn().mockResolvedValue(false);
+
+      await expect(
+        gitInstance.push({
+          dir: '/test',
+          remote: 'origin',
+          ref: 'main',
+          force: false,
+          signer: mockSigner,
+        })
+      ).rejects.toThrow('Updates were rejected');
+    });
+
+    it('allows non-fast-forward push with --force flag', async () => {
+      // Mock isDescendent to return false (not a fast-forward)
+      mockGit.isDescendent = vi.fn().mockResolvedValue(false);
+
+      // Should not throw with force flag
+      const pushPromise = gitInstance.push({
+        dir: '/test',
+        remote: 'origin',
+        ref: 'main',
+        force: true,
+        signer: mockSigner,
+      });
+
+      // Advance timers to skip the 5 second wait
+      await vi.advanceTimersByTimeAsync(5000);
+
+      await pushPromise;
+
+      // Should have attempted to push to the Git remote
+      expect(mockGit.push).toHaveBeenCalled();
+    });
+
+    it('allows fast-forward push without --force flag', async () => {
+      // Mock isDescendent to return true (is a fast-forward)
+      mockGit.isDescendent = vi.fn().mockResolvedValue(true);
+
+      // Should not throw
+      const pushPromise = gitInstance.push({
+        dir: '/test',
+        remote: 'origin',
+        ref: 'main',
+        force: false,
+        signer: mockSigner,
+      });
+
+      // Advance timers to skip the 5 second wait
+      await vi.advanceTimersByTimeAsync(5000);
+
+      await pushPromise;
+
+      // Should have attempted to push to the Git remote
+      expect(mockGit.push).toHaveBeenCalled();
+    });
+
+    it('returns early when commits are already up-to-date', async () => {
+      // Mock resolveRef to return the same commit as remote
+      mockGit.resolveRef = vi.fn().mockResolvedValue('remotecommit456');
+
+      await gitInstance.push({
+        dir: '/test',
+        remote: 'origin',
+        ref: 'main',
+        force: false,
+        signer: mockSigner,
+      });
+
+      // Should not have attempted to push (already up-to-date)
+      expect(mockGit.push).not.toHaveBeenCalled();
+    });
+
+    it('skips fast-forward check when no state event exists', async () => {
+      // Mock Nostr query to return only repo event (no state)
+      const mockRelay = {
+        query: vi.fn().mockResolvedValue([
+          {
+            id: 'repo123',
+            pubkey: 'abcd1234567890abcdef1234567890abcdef1234567890abcdef1234567890ab',
+            kind: 30617,
+            content: '',
+            tags: [
+              ['d', 'my-repo'],
+              ['clone', 'https://github.com/user/repo.git'],
+            ],
+            created_at: Date.now(),
+            sig: 'signature',
+          },
+        ]),
+      };
+
+      nostr.group = vi.fn().mockReturnValue(mockRelay);
+      nostr.relay = vi.fn().mockReturnValue(mockRelay);
+
+      // Should not throw even if not a fast-forward (no state to check against)
+      const pushPromise = gitInstance.push({
+        dir: '/test',
+        remote: 'origin',
+        ref: 'main',
+        force: false,
+        signer: mockSigner,
+      });
+
+      // Advance timers to skip the 5 second wait
+      await vi.advanceTimersByTimeAsync(5000);
+
+      await pushPromise;
+
+      // Should have attempted to push
+      expect(mockGit.push).toHaveBeenCalled();
+    });
+
+    it('skips fast-forward check when state has no matching ref', async () => {
+      // Mock Nostr query to return state with different ref
+      const mockRelay = {
+        query: vi.fn().mockResolvedValue([
+          {
+            id: 'repo123',
+            pubkey: 'abcd1234567890abcdef1234567890abcdef1234567890abcdef1234567890ab',
+            kind: 30617,
+            content: '',
+            tags: [
+              ['d', 'my-repo'],
+              ['clone', 'https://github.com/user/repo.git'],
+            ],
+            created_at: Date.now(),
+            sig: 'signature',
+          },
+          {
+            id: 'state123',
+            pubkey: 'abcd1234567890abcdef1234567890abcdef1234567890abcdef1234567890ab',
+            kind: 30618,
+            content: '',
+            tags: [
+              ['d', 'my-repo'],
+              ['refs/heads/develop', 'othercommit789'],
+              ['HEAD', 'ref: refs/heads/develop'],
+            ],
+            created_at: Date.now(),
+            sig: 'signature',
+          },
+        ]),
+      };
+
+      nostr.group = vi.fn().mockReturnValue(mockRelay);
+      nostr.relay = vi.fn().mockReturnValue(mockRelay);
+
+      // Should not throw (no matching ref in state)
+      const pushPromise = gitInstance.push({
+        dir: '/test',
+        remote: 'origin',
+        ref: 'main',
+        force: false,
+        signer: mockSigner,
+      });
+
+      // Advance timers to skip the 5 second wait
+      await vi.advanceTimersByTimeAsync(5000);
+
+      await pushPromise;
+
+      // Should have attempted to push
+      expect(mockGit.push).toHaveBeenCalled();
+    });
+
+    it('publishes new state event to Nostr relays', async () => {
+      mockGit.isDescendent = vi.fn().mockResolvedValue(true);
+
+      const mockGroupRelay = {
+        query: vi.fn().mockResolvedValue([
+          {
+            id: 'repo123',
+            pubkey: 'abcd1234567890abcdef1234567890abcdef1234567890abcdef1234567890ab',
+            kind: 30617,
+            content: '',
+            tags: [
+              ['d', 'my-repo'],
+              ['clone', 'https://github.com/user/repo.git'],
+            ],
+            created_at: Date.now(),
+            sig: 'signature',
+          },
+          {
+            id: 'state123',
+            pubkey: 'abcd1234567890abcdef1234567890abcdef1234567890abcdef1234567890ab',
+            kind: 30618,
+            content: '',
+            tags: [
+              ['d', 'my-repo'],
+              ['refs/heads/main', 'remotecommit456'],
+              ['HEAD', 'ref: refs/heads/main'],
+            ],
+            created_at: Date.now(),
+            sig: 'signature',
+          },
+        ]),
+        event: vi.fn().mockResolvedValue(undefined),
+      };
+
+      nostr.group = vi.fn().mockReturnValue(mockGroupRelay);
+
+      const pushPromise = gitInstance.push({
+        dir: '/test',
+        remote: 'origin',
+        ref: 'main',
+        force: false,
+        signer: mockSigner,
+      });
+
+      // Advance timers to skip the 5 second wait
+      await vi.advanceTimersByTimeAsync(5000);
+
+      await pushPromise;
+
+      // Should have signed a new state event
+      expect(mockSigner.signEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          kind: 30618,
+          tags: expect.arrayContaining([
+            ['d', 'my-repo'],
+          ]),
+        })
+      );
+
+      // Should have published the state event to Nostr via group
+      expect(mockGroupRelay.event).toHaveBeenCalled();
     });
   });
 });

@@ -973,36 +973,72 @@ export class Git {
       '#d': [nostrURI.d],
     };
 
-    // Fetch from all relays in parallel
-    const fetchPromises: Promise<{ relay: string; events: NostrEvent[] }>[] = [];
+    // Track all servers we've queried to avoid duplicates
+    const queriedServers = new Set<string>();
+    const allResults: Array<{ relay: string; events: NostrEvent[]; error?: boolean }> = [];
+
+    // Start with initial servers
+    const serversToQuery: string[] = [];
 
     // Add specified relay if provided
     if (nostrURI.relay) {
-      fetchPromises.push(
-        this.nostr.relay(nostrURI.relay).query([filter], { signal: AbortSignal.timeout(1000) })
-          .then(events => ({ relay: nostrURI.relay!, events }))
-          .catch(error => {
-            console.error(`Error querying relay ${nostrURI.relay}: ${error}`);
-            return { relay: nostrURI.relay!, events: [] };
-          })
-      );
+      serversToQuery.push(nostrURI.relay);
     }
 
-    // Add all ngitservers
-    for (const server of this.ngitServers) {
-      const relayUrl = `wss://${server}/`;
-      fetchPromises.push(
-        this.nostr.relay(relayUrl).query([filter], { signal: AbortSignal.timeout(1000) })
-          .then(events => ({ relay: relayUrl, events }))
-          .catch(error => {
-            console.warn(`Error querying ${server}:`, error);
-            return { relay: relayUrl, events: [], error: true };
-          })
-      );
+    // Add configured ngit servers
+    serversToQuery.push(...this.ngitServers);
+
+    // Fetch from servers, discovering new ones as we go
+    while (serversToQuery.length > 0) {
+      const currentBatch = [...serversToQuery];
+      serversToQuery.length = 0; // Clear the array
+
+      const fetchPromises: Promise<{ relay: string; events: NostrEvent[]; error?: boolean }>[] = [];
+
+      for (const server of currentBatch) {
+        // Skip if we've already queried this server
+        if (queriedServers.has(server)) {
+          continue;
+        }
+        queriedServers.add(server);
+
+        const relayUrl = server.startsWith('wss://') ? server : `wss://${server}/`;
+        fetchPromises.push(
+          this.nostr.relay(relayUrl).query([filter], { signal: AbortSignal.timeout(1000) })
+            .then(events => ({ relay: relayUrl, events }))
+            .catch(error => {
+              console.warn(`Error querying ${server}:`, error);
+              return { relay: relayUrl, events: [], error: true };
+            })
+        );
+      }
+
+      const results = await Promise.all(fetchPromises);
+      allResults.push(...results);
+
+      // Check each result for new ngit servers to query
+      for (const result of results) {
+        if (!result.error && result.events.length > 0) {
+          // Look for repository announcements (kind 30617) in the results
+          const repoEvents = result.events.filter(e => e.kind === 30617);
+          for (const repoEvent of repoEvents) {
+            // Extract ngit servers from this announcement
+            const discoveredServers = getNgitServers(repoEvent);
+            for (const discoveredServer of discoveredServers) {
+              if (!queriedServers.has(discoveredServer)) {
+                serversToQuery.push(discoveredServer);
+              }
+            }
+          }
+        }
+      }
+
+      if (serversToQuery.length > 0) {
+        console.log(`Discovered ${serversToQuery.length} new ngit servers: ${serversToQuery.join(', ')}`);
+      }
     }
 
-    // Wait for all queries to complete
-    const results = await Promise.all(fetchPromises);
+    const results = allResults;
 
     // Collect all events and find the latest versions
     let latestRepo: NostrEvent | undefined;

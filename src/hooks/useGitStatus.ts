@@ -90,7 +90,8 @@ export function useGitStatus(projectId: string | null) {
             dir: cwd,
             fullname: false,
           });
-          currentBranch = branch || null;
+          // Ensure we have a valid branch name (not empty string or undefined)
+          currentBranch = (branch && branch.trim() !== '') ? branch : null;
         } catch (error) {
           console.warn('Could not get current branch:', error);
         }
@@ -150,6 +151,11 @@ export function useGitStatus(projectId: string | null) {
           });
 
           for (const remote of remoteNames) {
+            // Skip remotes with empty names
+            if (!remote.remote || !remote.url) {
+              console.warn('Skipping remote with empty name or URL:', remote);
+              continue;
+            }
             remotes.push({
               name: remote.remote,
               url: remote.url,
@@ -197,6 +203,13 @@ export function useGitStatus(projectId: string | null) {
         try {
           if (currentBranch && remotes.length > 0) {
             const remote = remotes[0]; // Use first remote (usually 'origin')
+
+            // Validate remote and branch names before constructing ref
+            if (!remote.name || !currentBranch) {
+              console.warn('Invalid remote or branch name for ahead/behind calculation');
+              throw new Error('Invalid remote or branch name');
+            }
+
             const remoteBranchName = `${remote.name}/${currentBranch}`;
 
             try {

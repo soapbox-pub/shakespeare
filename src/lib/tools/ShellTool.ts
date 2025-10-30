@@ -357,17 +357,9 @@ export class ShellTool implements Tool<ShellToolParams> {
     }
 
     try {
-      // Get relative path from projects root
-      // Remove the projectsPath prefix to get the relative path for the OS
-      const projectsPrefix = this.projectsPath.endsWith('/')
-        ? this.projectsPath
-        : this.projectsPath + '/';
-
-      const relativeCwd = this.cwd.startsWith(projectsPrefix)
-        ? this.cwd.substring(projectsPrefix.length)
-        : this.cwd;
-
-      const result = await window.electron.shell.exec(commandStr, relativeCwd);
+      // In Electron, use the full cwd path (with ~ if present)
+      // The Electron main process will expand ~ to the home directory
+      const result = await window.electron.shell.exec(commandStr, this.cwd);
 
       // Strip ANSI codes from output (color codes, cursor movements, etc.)
       // This is important for AI consumption and consistent output

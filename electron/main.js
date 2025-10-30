@@ -190,6 +190,7 @@ ipcMain.handle('fs:readFile', async (event, filePath, encoding) => {
   if (!filePath) {
     const err = new Error('Failed to read file: path is required');
     err.code = 'EINVAL';
+    // Don't log - empty paths are expected from isomorphic-git's ref resolution
     throw err;
   }
   try {
@@ -209,6 +210,11 @@ ipcMain.handle('fs:readFile', async (event, filePath, encoding) => {
         writable: true,
         configurable: true,
       });
+    }
+    // Don't log ENOENT errors - these are expected for git packed objects and missing refs
+    // Only log unexpected errors
+    if (error.code !== 'ENOENT' && error.code !== 'EINVAL') {
+      console.error(err);
     }
     throw err;
   }
@@ -266,6 +272,10 @@ ipcMain.handle('fs:readdir', async (event, dirPath, withFileTypes) => {
         writable: true,
         configurable: true,
       });
+    }
+    // Only log non-ENOTDIR errors (ENOTDIR is expected when checking if a file is a directory)
+    if (error.code !== 'ENOTDIR') {
+      console.error(err);
     }
     throw err;
   }

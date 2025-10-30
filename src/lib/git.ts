@@ -1633,8 +1633,11 @@ export class Git {
       return;
     }
 
-    // Wait 5 seconds for GRASP servers to update
-    await new Promise(resolve => setTimeout(resolve, 5000));
+    // Only wait 5 seconds if we had to publish the announcement to servers
+    if (serversNeedingAnnouncement.length > 0) {
+      console.log('Waiting 5 seconds for GRASP servers to process announcement...');
+      await new Promise(resolve => setTimeout(resolve, 5000));
+    }
 
     let pushSuccessful = false;
     let lastError: Error | null = null;

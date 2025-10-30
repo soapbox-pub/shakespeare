@@ -104,18 +104,10 @@ export function Terminal({ projectId, className }: TerminalProps) {
 
       // Check if running in Electron - use real shell
       if (window.electron?.shell) {
-        // Get relative path from projects root
-        // Remove the projectsPath prefix to get the relative path for the OS
-        const projectsPrefix = projectsPath.endsWith('/')
-          ? projectsPath
-          : projectsPath + '/';
-
+        // Use the full path (with ~ if present) - Electron will expand it
         const fullCwd = `${projectsPath}/${projectId}`;
-        const relativeCwd = fullCwd.startsWith(projectsPrefix)
-          ? fullCwd.substring(projectsPrefix.length)
-          : fullCwd;
 
-        const result = await window.electron.shell.exec(command, relativeCwd);
+        const result = await window.electron.shell.exec(command, fullCwd);
 
         // Format output
         let output = '';

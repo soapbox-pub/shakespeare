@@ -18,7 +18,7 @@
     "build": "npm i --silent && vite build -l error && cp dist/index.html dist/404.html && echo 'Project built successfully!'",
     "typecheck": "npm i --silent && tsc --noEmit",
     "test": "npm i --silent && eslint && vitest run --reporter=dot --silent && echo 'All tests passed!'",
-    "electron": "electron electron",
+    "electron": "npm run build && rm -rf electron/dist && cp -r dist electron/dist && electron electron",
     "electron:publish": "npm run build && node scripts/prepare-electron-publish.js && cd electron && npm publish"
   },
   "dependencies": {

@@ -12,7 +12,6 @@ https://shakespeare.diy
 - **Buy credits anonymously** with Nostr and Lightning ⚡
 - **Redeem gift cards** with shareable links for instant credits
 - **Runs entirely in the browser** No backend required
-- **Desktop app available** Run as a native Electron application on macOS, Windows, and Linux
 
 ## How it Works
 
@@ -30,32 +29,6 @@ Shakespeare can work on any type of project. But it is specialized to build Reac
 
 Shakespeare is proudly Open Source software licensed under the GNU AGPLv3. The purpose of Shakespeare is to provide a free and open platform for building AI applications that respects user privacy and freedom.
 
-## Desktop App
-
-Shakespeare can be built and run as a native desktop application using Electron. This provides:
-
-- **Local filesystem access** - Projects stored at `~/shakespeare` on your OS
-- **Real OS terminal** - Execute any system command, not just built-in commands
-- **Direct file access** - Use any code editor, Git client, or file manager
-- **No storage limits** - Only limited by your disk space
-- **Native window management** and OS integration
-- **Offline-first experience**
-- **Better performance** for intensive operations
-- **Platform-specific installers** (DMG, NSIS, AppImage, etc.)
-
-### Quick Start
-
-**Development Mode:**
-```bash
-npm run electron:dev
-```
-
-**Build for Your Platform:**
-```bash
-npm run electron:build
-```
-
-For detailed instructions, see [electron/QUICKSTART.md](electron/QUICKSTART.md).
 ## Mirrors
 
 Shakespeare is available on the following URLs:

@@ -60,12 +60,12 @@ export function SystemSettings() {
     try {
       await updateServiceWorker();
       toast({
-        title: "Service Worker Updated",
-        description: "The service worker has been updated successfully.",
+        title: t('serviceWorkerUpdated'),
+        description: t('serviceWorkerUpdatedDescription'),
       });
     } catch (error) {
       toast({
-        title: "Update Failed",
+        title: t('serviceWorkerUpdateFailed'),
         description: error instanceof Error ? error.message : "Failed to update service worker",
         variant: "destructive",
       });
@@ -81,8 +81,8 @@ export function SystemSettings() {
         const success = await serviceWorkerRegistration.unregister();
         if (success) {
           toast({
-            title: "Service Worker Unregistered",
-            description: "The service worker has been unregistered. Refresh the page to complete the process.",
+            title: t('serviceWorkerUnregistered'),
+            description: t('serviceWorkerUnregisteredDescription'),
           });
         } else {
           throw new Error("Failed to unregister service worker");
@@ -90,7 +90,7 @@ export function SystemSettings() {
       }
     } catch (error) {
       toast({
-        title: "Unregister Failed",
+        title: t('serviceWorkerUnregisterFailed'),
         description: error instanceof Error ? error.message : "Failed to unregister service worker",
         variant: "destructive",
       });
@@ -104,12 +104,12 @@ export function SystemSettings() {
     try {
       await clearCache();
       toast({
-        title: "Cache Cleared",
-        description: "All service worker caches have been cleared.",
+        title: t('serviceWorkerCacheCleared'),
+        description: t('serviceWorkerCacheClearedDescription'),
       });
     } catch (error) {
       toast({
-        title: "Clear Cache Failed",
+        title: t('serviceWorkerClearCacheFailed'),
         description: error instanceof Error ? error.message : "Failed to clear cache",
         variant: "destructive",
       });
@@ -160,7 +160,7 @@ export function SystemSettings() {
         <Accordion type="single" collapsible className="w-full">
           <AccordionItem value="service-worker" className="border rounded-lg">
             <AccordionTrigger className="px-4 py-3 hover:no-underline">
-              <h4 className="text-sm font-medium">Service Worker</h4>
+              <h4 className="text-sm font-medium">{t('serviceWorker')}</h4>
             </AccordionTrigger>
             <AccordionContent className="px-4 pb-4">
               <div className="py-1 space-y-4">
@@ -170,16 +170,16 @@ export function SystemSettings() {
                     <div className="space-y-2">
                       <div className="text-sm space-y-1">
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Status:</span>
+                          <span className="text-muted-foreground">{t('serviceWorkerStatus')}</span>
                           <span className="font-medium capitalize">{swState || 'Unknown'}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Scope:</span>
+                          <span className="text-muted-foreground">{t('serviceWorkerScope')}</span>
                           <span className="font-mono text-xs">{serviceWorkerRegistration.scope}</span>
                         </div>
                         {serviceWorkerRegistration.active && (
                           <div className="flex justify-between">
-                            <span className="text-muted-foreground">Script URL:</span>
+                            <span className="text-muted-foreground">{t('serviceWorkerScriptUrl')}</span>
                             <span className="font-mono text-xs truncate max-w-[200px]" title={serviceWorkerRegistration.active.scriptURL}>
                               {serviceWorkerRegistration.active.scriptURL.split('/').pop()}
                             </span>
@@ -200,12 +200,12 @@ export function SystemSettings() {
                         {isUpdatingSW ? (
                           <>
                             <Loader2 className="h-4 w-4 animate-spin" />
-                            Updating...
+                            {t('serviceWorkerUpdating')}
                           </>
                         ) : (
                           <>
                             <RefreshCw className="h-4 w-4" />
-                            Update
+                            {t('serviceWorkerUpdate')}
                           </>
                         )}
                       </Button>
@@ -219,12 +219,12 @@ export function SystemSettings() {
                         {isClearingCache ? (
                           <>
                             <Loader2 className="h-4 w-4 animate-spin" />
-                            Clearing...
+                            {t('serviceWorkerClearing')}
                           </>
                         ) : (
                           <>
                             <Trash2 className="h-4 w-4" />
-                            Clear Cache
+                            {t('serviceWorkerClearCache')}
                           </>
                         )}
                       </Button>
@@ -238,12 +238,12 @@ export function SystemSettings() {
                         {isUnregisteringSW ? (
                           <>
                             <Loader2 className="h-4 w-4 animate-spin" />
-                            Unregistering...
+                            {t('serviceWorkerUnregistering')}
                           </>
                         ) : (
                           <>
                             <XCircle className="h-4 w-4" />
-                            Unregister
+                            {t('serviceWorkerUnregister')}
                           </>
                         )}
                       </Button>
@@ -251,7 +251,7 @@ export function SystemSettings() {
                   </>
                 ) : (
                   <div className="text-sm text-muted-foreground">
-                    No service worker is currently registered. Service workers are automatically registered when you load the application.
+                    {t('serviceWorkerNotRegistered')}
                   </div>
                 )}
               </div>
@@ -323,7 +323,7 @@ export function SystemSettings() {
         <Accordion type="single" collapsible className="w-full">
           <AccordionItem value="favicon-url" className="border rounded-lg">
             <AccordionTrigger className="px-4 py-3 hover:no-underline">
-              <h4 className="text-sm font-medium">Favicon URL</h4>
+              <h4 className="text-sm font-medium">{t('faviconUrl')}</h4>
             </AccordionTrigger>
             <AccordionContent className="px-4 pb-4">
               <div className="py-1 space-y-2">
@@ -342,7 +342,7 @@ export function SystemSettings() {
                   }}
                 />
                 <p className="text-xs text-muted-foreground">
-                  URL template for fetching favicons. Available variables: {'{hostname}'}, {'{origin}'}, {'{href}'}, {'{protocol}'}, {'{pathname}'}
+                  {t('faviconUrlDescription')}
                 </p>
               </div>
             </AccordionContent>
@@ -414,13 +414,13 @@ export function SystemSettings() {
         <Accordion type="single" collapsible className="w-full">
           <AccordionItem value="showcase" className="border rounded-lg">
             <AccordionTrigger className="px-4 py-3 hover:no-underline">
-              <h4 className="text-sm font-medium">Showcase</h4>
+              <h4 className="text-sm font-medium">{t('showcase')}</h4>
             </AccordionTrigger>
             <AccordionContent className="px-4 pb-4">
               <div className="py-1 space-y-4">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="showcase-enabled" className="text-sm font-medium">
-                    Showcase Enabled
+                    {t('showcaseEnabled')}
                   </Label>
                   <Switch
                     id="showcase-enabled"
@@ -434,12 +434,12 @@ export function SystemSettings() {
                   />
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Display the app showcase section on the home page
+                  {t('showcaseEnabledDescription')}
                 </p>
 
                 <div className="space-y-2">
                   <Label htmlFor="showcase-moderator" className="text-sm font-medium">
-                    Showcase Moderator
+                    {t('showcaseModerator')}
                   </Label>
                   <Input
                     id="showcase-moderator"
@@ -456,7 +456,7 @@ export function SystemSettings() {
                     }}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Nostr public key (npub) of the user who can moderate showcase submissions
+                    {t('showcaseModeratorDescription')}
                   </p>
                 </div>
               </div>
@@ -468,13 +468,13 @@ export function SystemSettings() {
         <Accordion type="single" collapsible className="w-full">
           <AccordionItem value="filesystem-paths" className="border rounded-lg">
             <AccordionTrigger className="px-4 py-3 hover:no-underline">
-              <h4 className="text-sm font-medium">Filesystem Paths</h4>
+              <h4 className="text-sm font-medium">{t('filesystemPaths')}</h4>
             </AccordionTrigger>
             <AccordionContent className="px-4 pb-4">
               <div className="py-1 space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="fs-path-projects" className="text-sm font-medium">
-                    Projects Directory
+                    {t('projectsDirectory')}
                   </Label>
                   <Input
                     id="fs-path-projects"
@@ -491,13 +491,13 @@ export function SystemSettings() {
                     }}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Filesystem path where projects are stored
+                    {t('projectsDirectoryDescription')}
                   </p>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="fs-path-config" className="text-sm font-medium">
-                    Config Directory
+                    {t('configDirectory')}
                   </Label>
                   <Input
                     id="fs-path-config"
@@ -514,13 +514,13 @@ export function SystemSettings() {
                     }}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Filesystem path where configuration files are stored
+                    {t('configDirectoryDescription')}
                   </p>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="fs-path-tmp" className="text-sm font-medium">
-                    Temporary Directory
+                    {t('temporaryDirectory')}
                   </Label>
                   <Input
                     id="fs-path-tmp"
@@ -537,7 +537,7 @@ export function SystemSettings() {
                     }}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Filesystem path for temporary files
+                    {t('temporaryDirectoryDescription')}
                   </p>
                 </div>
               </div>

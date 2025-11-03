@@ -39,6 +39,48 @@ const resources = {
       corsProxy: 'CORS Proxy',
       corsProxyDescription: 'HTTP proxy URL for bypassing CORS restrictions.',
 
+      // Service Worker
+      serviceWorker: 'Service Worker',
+      serviceWorkerStatus: 'Status:',
+      serviceWorkerScope: 'Scope:',
+      serviceWorkerScriptUrl: 'Script URL:',
+      serviceWorkerUpdate: 'Update',
+      serviceWorkerUpdating: 'Updating...',
+      serviceWorkerClearCache: 'Clear Cache',
+      serviceWorkerClearing: 'Clearing...',
+      serviceWorkerUnregister: 'Unregister',
+      serviceWorkerUnregistering: 'Unregistering...',
+      serviceWorkerNotRegistered: 'No service worker is currently registered. Service workers are automatically registered when you load the application.',
+      serviceWorkerUpdated: 'Service Worker Updated',
+      serviceWorkerUpdatedDescription: 'The service worker has been updated successfully.',
+      serviceWorkerUpdateFailed: 'Update Failed',
+      serviceWorkerUnregistered: 'Service Worker Unregistered',
+      serviceWorkerUnregisteredDescription: 'The service worker has been unregistered. Refresh the page to complete the process.',
+      serviceWorkerUnregisterFailed: 'Unregister Failed',
+      serviceWorkerCacheCleared: 'Cache Cleared',
+      serviceWorkerCacheClearedDescription: 'All service worker caches have been cleared.',
+      serviceWorkerClearCacheFailed: 'Clear Cache Failed',
+
+      // Favicon URL
+      faviconUrl: 'Favicon URL',
+      faviconUrlDescription: 'URL template for fetching favicons. Available variables: {hostname}, {origin}, {href}, {protocol}, {pathname}',
+
+      // Showcase Settings
+      showcase: 'Showcase',
+      showcaseEnabled: 'Showcase Enabled',
+      showcaseEnabledDescription: 'Display the app showcase section on the home page',
+      showcaseModerator: 'Showcase Moderator',
+      showcaseModeratorDescription: 'Nostr public key (npub) of the user who can moderate showcase submissions',
+
+      // Filesystem Paths
+      filesystemPaths: 'Filesystem Paths',
+      projectsDirectory: 'Projects Directory',
+      projectsDirectoryDescription: 'Filesystem path where projects are stored',
+      configDirectory: 'Config Directory',
+      configDirectoryDescription: 'Filesystem path where configuration files are stored',
+      temporaryDirectory: 'Temporary Directory',
+      temporaryDirectoryDescription: 'Filesystem path for temporary files',
+
       // Language Options
       english: 'English',
       portuguese: 'Portuguese',
@@ -390,6 +432,54 @@ const resources = {
       systemSettingsDescription: 'Configure configurações de nível de sistema e opções avançadas.',
       esmUrl: 'URL do CDN Javascript',
       esmUrlDescription: 'URL do CDN Javascript para importações de pacotes.',
+      projectTemplate: 'Modelo de Projeto',
+      projectTemplateDescription: 'URL do repositório Git a ser usado como modelo inicial para novos projetos.',
+      previewDomain: 'Domínio de Visualização',
+      previewDomainDescription: 'Domínio usado para sandbox de visualização em iframe.',
+      corsProxy: 'Proxy CORS',
+      corsProxyDescription: 'URL do proxy HTTP para contornar restrições CORS.',
+
+      // Service Worker
+      serviceWorker: 'Service Worker',
+      serviceWorkerStatus: 'Status:',
+      serviceWorkerScope: 'Escopo:',
+      serviceWorkerScriptUrl: 'URL do Script:',
+      serviceWorkerUpdate: 'Atualizar',
+      serviceWorkerUpdating: 'Atualizando...',
+      serviceWorkerClearCache: 'Limpar Cache',
+      serviceWorkerClearing: 'Limpando...',
+      serviceWorkerUnregister: 'Cancelar Registro',
+      serviceWorkerUnregistering: 'Cancelando Registro...',
+      serviceWorkerNotRegistered: 'Nenhum service worker está registrado atualmente. Service workers são registrados automaticamente quando você carrega o aplicativo.',
+      serviceWorkerUpdated: 'Service Worker Atualizado',
+      serviceWorkerUpdatedDescription: 'O service worker foi atualizado com sucesso.',
+      serviceWorkerUpdateFailed: 'Atualização Falhou',
+      serviceWorkerUnregistered: 'Service Worker Cancelado',
+      serviceWorkerUnregisteredDescription: 'O service worker foi cancelado. Atualize a página para completar o processo.',
+      serviceWorkerUnregisterFailed: 'Cancelamento Falhou',
+      serviceWorkerCacheCleared: 'Cache Limpo',
+      serviceWorkerCacheClearedDescription: 'Todos os caches do service worker foram limpos.',
+      serviceWorkerClearCacheFailed: 'Limpeza de Cache Falhou',
+
+      // Favicon URL
+      faviconUrl: 'URL do Favicon',
+      faviconUrlDescription: 'Modelo de URL para buscar favicons. Variáveis disponíveis: {hostname}, {origin}, {href}, {protocol}, {pathname}',
+
+      // Showcase Settings
+      showcase: 'Vitrine',
+      showcaseEnabled: 'Vitrine Ativada',
+      showcaseEnabledDescription: 'Exibir a seção de vitrine de aplicativos na página inicial',
+      showcaseModerator: 'Moderador da Vitrine',
+      showcaseModeratorDescription: 'Chave pública Nostr (npub) do usuário que pode moderar envios da vitrine',
+
+      // Filesystem Paths
+      filesystemPaths: 'Caminhos do Sistema de Arquivos',
+      projectsDirectory: 'Diretório de Projetos',
+      projectsDirectoryDescription: 'Caminho do sistema de arquivos onde os projetos são armazenados',
+      configDirectory: 'Diretório de Configuração',
+      configDirectoryDescription: 'Caminho do sistema de arquivos onde os arquivos de configuração são armazenados',
+      temporaryDirectory: 'Diretório Temporário',
+      temporaryDirectoryDescription: 'Caminho do sistema de arquivos para arquivos temporários',
 
       // Language Options
       english: 'Inglês',
@@ -576,10 +666,6 @@ const resources = {
       gitEmail: 'Email Git',
       coAuthoredByShakespeare: 'Co-autoria de Shakespeare',
       gitIdentityDescription: 'Se nome e email estiverem configurados, eles serão usados como autor do commit. Caso contrário, shakespeare.diy será usado. Quando co-autoria estiver ativada, Shakespeare será adicionado como co-autor.',
-      projectTemplate: 'Modelo de Projeto',
-      projectTemplateDescription: 'URL do repositório Git a ser usado como modelo inicial para novos projetos.',
-      corsProxy: 'Proxy CORS',
-      corsProxyDescription: 'Proxy usado para contornar CORS para operações de IA e Git.',
 
       // Data Settings
       dataSettingsDescriptionLong: 'Exporte arquivos e gerencie dados locais.',
@@ -746,6 +832,54 @@ const resources = {
       systemSettingsDescription: '配置系统级设置和高级选项。',
       esmUrl: 'Javascript CDN URL',
       esmUrlDescription: '包导入的 Javascript CDN URL。',
+      projectTemplate: '项目模板',
+      projectTemplateDescription: '用作新项目起始模板的Git仓库URL。',
+      previewDomain: '预览域名',
+      previewDomainDescription: '用于iframe预览沙箱的域名。',
+      corsProxy: 'CORS代理',
+      corsProxyDescription: '用于绕过CORS限制的HTTP代理URL。',
+
+      // Service Worker
+      serviceWorker: 'Service Worker',
+      serviceWorkerStatus: '状态：',
+      serviceWorkerScope: '范围：',
+      serviceWorkerScriptUrl: '脚本URL：',
+      serviceWorkerUpdate: '更新',
+      serviceWorkerUpdating: '更新中...',
+      serviceWorkerClearCache: '清除缓存',
+      serviceWorkerClearing: '清除中...',
+      serviceWorkerUnregister: '注销',
+      serviceWorkerUnregistering: '注销中...',
+      serviceWorkerNotRegistered: '当前没有注册的service worker。加载应用程序时会自动注册service worker。',
+      serviceWorkerUpdated: 'Service Worker已更新',
+      serviceWorkerUpdatedDescription: 'Service worker已成功更新。',
+      serviceWorkerUpdateFailed: '更新失败',
+      serviceWorkerUnregistered: 'Service Worker已注销',
+      serviceWorkerUnregisteredDescription: 'Service worker已注销。刷新页面以完成该过程。',
+      serviceWorkerUnregisterFailed: '注销失败',
+      serviceWorkerCacheCleared: '缓存已清除',
+      serviceWorkerCacheClearedDescription: '所有service worker缓存已被清除。',
+      serviceWorkerClearCacheFailed: '清除缓存失败',
+
+      // Favicon URL
+      faviconUrl: 'Favicon URL',
+      faviconUrlDescription: '获取favicon的URL模板。可用变量：{hostname}、{origin}、{href}、{protocol}、{pathname}',
+
+      // Showcase Settings
+      showcase: '展示',
+      showcaseEnabled: '启用展示',
+      showcaseEnabledDescription: '在主页上显示应用展示部分',
+      showcaseModerator: '展示管理员',
+      showcaseModeratorDescription: '可以审核展示提交的用户的Nostr公钥（npub）',
+
+      // Filesystem Paths
+      filesystemPaths: '文件系统路径',
+      projectsDirectory: '项目目录',
+      projectsDirectoryDescription: '存储项目的文件系统路径',
+      configDirectory: '配置目录',
+      configDirectoryDescription: '存储配置文件的文件系统路径',
+      temporaryDirectory: '临时目录',
+      temporaryDirectoryDescription: '临时文件的文件系统路径',
 
       // Language Options
       english: 'English',
@@ -932,10 +1066,6 @@ const resources = {
       gitEmail: 'Git邮箱',
       coAuthoredByShakespeare: 'Shakespeare共同作者',
       gitIdentityDescription: '如果配置了名称和邮箱，它们将用作提交作者。否则，将使用shakespeare.diy。启用共同作者时，Shakespeare将被添加为共同作者。',
-      projectTemplate: '项目模板',
-      projectTemplateDescription: '用作新项目起始模板的Git仓库URL。',
-      corsProxy: 'CORS代理',
-      corsProxyDescription: '用于绕过CORS的代理,适用于AI和Git操作。',
 
       // Data Settings
       dataSettingsDescriptionLong: '导出文件和管理本地数据。',
@@ -1102,6 +1232,54 @@ const resources = {
       systemSettingsDescription: 'Saita saitunan matakin tsari da zaɓuɓɓuka na ci gaba.',
       esmUrl: 'URL na CDN Javascript',
       esmUrlDescription: 'URL na CDN Javascript don shigo da fakitin.',
+      projectTemplate: 'Samfurin Aikin',
+      projectTemplateDescription: 'URL ɗin ma\'ajin Git da za a yi amfani da shi azaman samfurin farawa don sababbin ayyuka.',
+      previewDomain: 'Yankin Duba',
+      previewDomainDescription: 'Yankin da ake amfani da shi don sandbox na duba iframe.',
+      corsProxy: 'CORS Proxy',
+      corsProxyDescription: 'URL ɗin proxy na HTTP don ketare ƙuntatawa na CORS.',
+
+      // Service Worker
+      serviceWorker: 'Service Worker',
+      serviceWorkerStatus: 'Matsayi:',
+      serviceWorkerScope: 'Iyaka:',
+      serviceWorkerScriptUrl: 'URL na Rubutu:',
+      serviceWorkerUpdate: 'Sabuntawa',
+      serviceWorkerUpdating: 'Ana sabuntawa...',
+      serviceWorkerClearCache: 'Share Cache',
+      serviceWorkerClearing: 'Ana sharewa...',
+      serviceWorkerUnregister: 'Soke Rajista',
+      serviceWorkerUnregistering: 'Ana soke rajista...',
+      serviceWorkerNotRegistered: 'Babu service worker da aka yi rajista a halin yanzu. Ana yin rajista na service workers kai tsaye lokacin da kuka loda aikace-aikacen.',
+      serviceWorkerUpdated: 'An Sabunta Service Worker',
+      serviceWorkerUpdatedDescription: 'An sabunta service worker cikin nasara.',
+      serviceWorkerUpdateFailed: 'Sabuntawa Ya Gaza',
+      serviceWorkerUnregistered: 'An Soke Rajista Service Worker',
+      serviceWorkerUnregisteredDescription: 'An soke rajista service worker. Sabunta shafin don kammala aikin.',
+      serviceWorkerUnregisterFailed: 'Soke Rajista Ya Gaza',
+      serviceWorkerCacheCleared: 'An Share Cache',
+      serviceWorkerCacheClearedDescription: 'An share duk caches na service worker.',
+      serviceWorkerClearCacheFailed: 'Share Cache Ya Gaza',
+
+      // Favicon URL
+      faviconUrl: 'URL na Favicon',
+      faviconUrlDescription: 'Samfurin URL don ɗaukar favicons. Masu canji da ake samu: {hostname}, {origin}, {href}, {protocol}, {pathname}',
+
+      // Showcase Settings
+      showcase: 'Nuni',
+      showcaseEnabled: 'An Kunna Nuni',
+      showcaseEnabledDescription: 'Nuna sashen nuni na aikace-aikace a shafin gida',
+      showcaseModerator: 'Mai Kula da Nuni',
+      showcaseModeratorDescription: 'Maɓallin jama\'a na Nostr (npub) na mai amfani wanda zai iya kula da ƙaddamarwar nuni',
+
+      // Filesystem Paths
+      filesystemPaths: 'Hanyoyin Tsarin Fayil',
+      projectsDirectory: 'Kundin Ayyuka',
+      projectsDirectoryDescription: 'Hanyar tsarin fayil inda ake adana ayyuka',
+      configDirectory: 'Kundin Saiti',
+      configDirectoryDescription: 'Hanyar tsarin fayil inda ake adana fayilolin saiti',
+      temporaryDirectory: 'Kundin Wucin Gadi',
+      temporaryDirectoryDescription: 'Hanyar tsarin fayil don fayilolin wucin gadi',
 
       // Language Options
       english: 'Turanci',
@@ -1285,10 +1463,6 @@ const resources = {
       gitEmail: 'Imel Git',
       coAuthoredByShakespeare: 'Haɗin marubuta da Shakespeare',
       gitIdentityDescription: 'Idan an saita suna da imel, za a yi amfani da su azaman marubucin aikin. In ba haka ba, za a yi amfani da shakespeare.diy. Lokacin da aka kunna haɗin marubuta, za a ƙara Shakespeare azaman haɗin marubuta.',
-      projectTemplate: 'Samfurin Aikin',
-      projectTemplateDescription: 'URL ɗin ma\'ajin Git da za a yi amfani da shi azaman samfurin farawa don sababbin ayyuka.',
-      corsProxy: 'CORS Proxy',
-      corsProxyDescription: 'Proxy da ake amfani da shi don ketare CORS don ayyukan AI da Git.',
 
       // Data Settings
       dataSettingsDescriptionLong: 'Fitar da fayiloli da sarrafa bayanan gida.',
@@ -1448,6 +1622,54 @@ const resources = {
       systemSettingsDescription: 'Tunto awọn saitan eto ati awọn ayanfẹ ti o pọju.',
       esmUrl: 'URL CDN Javascript',
       esmUrlDescription: 'URL CDN Javascript fun gbigbe awọn package.',
+      projectTemplate: 'Awoṣe Iṣẹ akanṣe',
+      projectTemplateDescription: 'URL ibi ipamọ Git lati lo bi awoṣe ibẹrẹ fun awọn iṣẹ akanṣe tuntun.',
+      previewDomain: 'Agbegbe Aṣaju wiwo',
+      previewDomainDescription: 'Agbegbe ti a lo fun sandbox aṣaju wiwo iframe.',
+      corsProxy: 'CORS Proxy',
+      corsProxyDescription: 'URL proxy HTTP fun kọja awọn ihamọ CORS.',
+
+      // Service Worker
+      serviceWorker: 'Service Worker',
+      serviceWorkerStatus: 'Ipo:',
+      serviceWorkerScope: 'Iwọn:',
+      serviceWorkerScriptUrl: 'URL Iwe afọwọkọ:',
+      serviceWorkerUpdate: 'Imudojuiwọn',
+      serviceWorkerUpdating: 'N ṣe imudojuiwọn...',
+      serviceWorkerClearCache: 'Nu Cache',
+      serviceWorkerClearing: 'N nu...',
+      serviceWorkerUnregister: 'Yọ Iforukọsilẹ',
+      serviceWorkerUnregistering: 'N yọ iforukọsilẹ...',
+      serviceWorkerNotRegistered: 'Ko si service worker ti o forukọsilẹ lọwọlọwọ. Service workers ni a forukọsilẹ laifọwọyi nigbati o ba gbe ohun elo.',
+      serviceWorkerUpdated: 'Service Worker Ti Ṣe Imudojuiwọn',
+      serviceWorkerUpdatedDescription: 'Service worker ti ṣe imudojuiwọn ni aṣeyọri.',
+      serviceWorkerUpdateFailed: 'Imudojuiwọn Kuna',
+      serviceWorkerUnregistered: 'Service Worker Ti Yọ Iforukọsilẹ',
+      serviceWorkerUnregisteredDescription: 'Service worker ti yọ iforukọsilẹ. Ṣe isọdọtun oju-iwe lati pari ilana naa.',
+      serviceWorkerUnregisterFailed: 'Yiyọ Iforukọsilẹ Kuna',
+      serviceWorkerCacheCleared: 'Cache Ti Nu',
+      serviceWorkerCacheClearedDescription: 'Gbogbo awọn cache service worker ti nu.',
+      serviceWorkerClearCacheFailed: 'Ninu Cache Kuna',
+
+      // Favicon URL
+      faviconUrl: 'URL Favicon',
+      faviconUrlDescription: 'Awoṣe URL fun gbigba awọn favicon. Awọn oniyipada to wa: {hostname}, {origin}, {href}, {protocol}, {pathname}',
+
+      // Showcase Settings
+      showcase: 'Ifihan',
+      showcaseEnabled: 'Ifihan Ṣiṣẹ',
+      showcaseEnabledDescription: 'Ṣafihan apakan ifihan ohun elo lori oju-iwe ile',
+      showcaseModerator: 'Oluṣakoso Ifihan',
+      showcaseModeratorDescription: 'Bọtini gbangba Nostr (npub) ti olumulo ti o le ṣakoso awọn ifisilẹ ifihan',
+
+      // Filesystem Paths
+      filesystemPaths: 'Awọn Ọna Eto Faili',
+      projectsDirectory: 'Itọsọna Awọn iṣẹ akanṣe',
+      projectsDirectoryDescription: 'Ọna eto faili nibiti a tọju awọn iṣẹ akanṣe',
+      configDirectory: 'Itọsọna Iṣeto',
+      configDirectoryDescription: 'Ọna eto faili nibiti a tọju awọn faili iṣeto',
+      temporaryDirectory: 'Itọsọna Igba diẹ',
+      temporaryDirectoryDescription: 'Ọna eto faili fun awọn faili igba diẹ',
 
       // Language Options
       english: 'Gẹẹsi',
@@ -1631,10 +1853,6 @@ const resources = {
       gitEmail: 'Imeeli Git',
       coAuthoredByShakespeare: 'Ajọpọ onkọwe pẹlu Shakespeare',
       gitIdentityDescription: 'Ti a ba tunto orukọ ati imeeli, wọn yoo jẹ lilo bi onkọwe. Bibẹẹkọ, shakespeare.diy yoo jẹ lilo. Nigbati a ba mu ajọpọ onkọwe ṣiṣẹ, Shakespeare yoo jẹ fifikun bi ajọpọ onkọwe.',
-      projectTemplate: 'Awoṣe Iṣẹ akanṣe',
-      projectTemplateDescription: 'URL ibi ipamọ Git lati lo bi awoṣe ibẹrẹ fun awọn iṣẹ akanṣe tuntun.',
-      corsProxy: 'CORS Proxy',
-      corsProxyDescription: 'Olupin proxy ti a lo lati kọja CORS fun awọn iṣẹ AI ati Git.',
 
       // Data Settings
       dataSettingsDescriptionLong: 'Gbe awọn faili jade ati ṣakoso data agbegbe.',
@@ -1789,6 +2007,54 @@ const resources = {
       systemSettingsDescription: 'Hazie ntọala ọkwa sistemu na nhọrọ ndị ọganihu.',
       esmUrl: 'URL CDN Javascript',
       esmUrlDescription: 'URL CDN Javascript maka mbubata ngwugwu.',
+      projectTemplate: 'Ụdịdị Ọrụ',
+      projectTemplateDescription: 'URL nchekwa Git iji mee ka ụdịdị mmalite maka ọrụ ọhụrụ.',
+      previewDomain: 'Ngalaba Nlele',
+      previewDomainDescription: 'Ngalaba ejiri maka sandbox nlele iframe.',
+      corsProxy: 'CORS Proxy',
+      corsProxyDescription: 'URL proxy HTTP iji gafere mmachi CORS.',
+
+      // Service Worker
+      serviceWorker: 'Service Worker',
+      serviceWorkerStatus: 'Ọnọdụ:',
+      serviceWorkerScope: 'Oke:',
+      serviceWorkerScriptUrl: 'URL Edemede:',
+      serviceWorkerUpdate: 'Melite',
+      serviceWorkerUpdating: 'Na-emelite...',
+      serviceWorkerClearCache: 'Hichapụ Cache',
+      serviceWorkerClearing: 'Na-ehichapụ...',
+      serviceWorkerUnregister: 'Kagbuo Ndebanye Aha',
+      serviceWorkerUnregistering: 'Na-akagbu ndebanye aha...',
+      serviceWorkerNotRegistered: 'Enweghị service worker edebanyere aha ugbu a. Service workers na-edebanye aha onwe ya mgbe ị na-ebu ngwa ahụ.',
+      serviceWorkerUpdated: 'Emelitere Service Worker',
+      serviceWorkerUpdatedDescription: 'Emelitere service worker nke ọma.',
+      serviceWorkerUpdateFailed: 'Nmelite Dara',
+      serviceWorkerUnregistered: 'Ekagbuola Service Worker',
+      serviceWorkerUnregisteredDescription: 'Ekagbuola service worker. Megharịa ibe ahụ iji mechaa usoro ahụ.',
+      serviceWorkerUnregisterFailed: 'Nkagbu Dara',
+      serviceWorkerCacheCleared: 'Ehichapụla Cache',
+      serviceWorkerCacheClearedDescription: 'Ehichapụla cache service worker niile.',
+      serviceWorkerClearCacheFailed: 'Nhicha Cache Dara',
+
+      // Favicon URL
+      faviconUrl: 'URL Favicon',
+      faviconUrlDescription: 'Ụdịdị URL maka ịnweta favicon. Mgbanwe dị: {hostname}, {origin}, {href}, {protocol}, {pathname}',
+
+      // Showcase Settings
+      showcase: 'Ngosipụta',
+      showcaseEnabled: 'Ngosipụta Emechara',
+      showcaseEnabledDescription: 'Gosipụta ngalaba ngosipụta ngwa na ibe ụlọ',
+      showcaseModerator: 'Onye Nlekọta Ngosipụta',
+      showcaseModeratorDescription: 'Igodo ọha Nostr (npub) nke onye ọrụ nwere ike ilekọta ntinye ngosipụta',
+
+      // Filesystem Paths
+      filesystemPaths: 'Ụzọ Sistemu Faịlụ',
+      projectsDirectory: 'Ndekọ Ọrụ',
+      projectsDirectoryDescription: 'Ụzọ sistemu faịlụ ebe echekwara ọrụ',
+      configDirectory: 'Ndekọ Nhazi',
+      configDirectoryDescription: 'Ụzọ sistemu faịlụ ebe echekwara faịlụ nhazi',
+      temporaryDirectory: 'Ndekọ Nwa Oge',
+      temporaryDirectoryDescription: 'Ụzọ sistemu faịlụ maka faịlụ nwa oge',
 
       // Language Options
       english: 'Bekee',
@@ -1972,10 +2238,6 @@ const resources = {
       gitEmail: 'Ozi-eletrọniki Git',
       coAuthoredByShakespeare: 'Ndekọ ọnụ na Shakespeare',
       gitIdentityDescription: 'Ọ bụrụ na ahaziri aha na ozi-eletrọniki, a ga-eji ha dị ka onye dere ya. Ma ọ bụghị, a ga-eji shakespeare.diy. Mgbe emere ndekọ ọnụ, a ga-etinye Shakespeare dị ka ndekọ ọnụ.',
-      projectTemplate: 'Ụdịdị Ọrụ',
-      projectTemplateDescription: 'URL nchekwa Git iji mee ka ụdịdị mmalite maka ọrụ ọhụrụ.',
-      corsProxy: 'CORS Proxy',
-      corsProxyDescription: 'Sava proxy ejiri gafere CORS maka ọrụ AI na Git.',
 
       // Data Settings
       dataSettingsDescriptionLong: 'Bupụta faịlụ ma jikwaa data mpaghara.',

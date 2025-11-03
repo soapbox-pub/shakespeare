@@ -1,20 +1,19 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useMutation, useQuery } from '@tanstack/react-query';
-import { Gift, Check, LogIn, Settings as SettingsIcon } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Gift, Check } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { generateSecretKey, nip19 } from 'nostr-tools';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/useToast';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useAISettings } from '@/hooks/useAISettings';
+import { useLoginActions } from '@/hooks/useLoginActions';
 import { createAIClient } from '@/lib/ai-client';
 import { AI_PROVIDER_PRESETS } from '@/lib/aiProviderPresets';
-import { AccountSwitcher } from '@/components/auth/AccountSwitcher';
-import SimpleLoginDialog from '@/components/auth/SimpleLoginDialog';
-import SimpleSignupDialog from '@/components/auth/SimpleSignupDialog';
-import { AddProviderDialog } from '@/components/AddProviderDialog';
+import { LoginArea } from '@/components/auth/LoginArea';
 import { useAppContext } from '@/hooks/useAppContext';
 
 interface GiftCardRedeemDialogProps {
@@ -38,7 +37,7 @@ interface GiftcardRedemption {
   amount: number;
 }
 
-type Step = 'preview' | 'login' | 'provider';
+// No steps needed - everything on one screen!
 
 /**
  * Gift Card Redemption Dialog
@@ -66,15 +65,15 @@ type Step = 'preview' | 'login' | 'provider';
 export function GiftCardRedeemDialog({ open, onOpenChange, baseURL, code }: GiftCardRedeemDialogProps) {
   const { t } = useTranslation();
   const { user } = useCurrentUser();
-  const { settings } = useAISettings();
+  const { settings, setProvider } = useAISettings();
   const { config } = useAppContext();
   const { toast } = useToast();
-  const navigate = useNavigate();
+  const login = useLoginActions();
+  const queryClient = useQueryClient();
 
-  const [currentStep, setCurrentStep] = useState<Step>('preview');
-  const [showLoginDialog, setShowLoginDialog] = useState(false);
-  const [showSignupDialog, setShowSignupDialog] = useState(false);
-  const [showAddProviderDialog, setShowAddProviderDialog] = useState(false);
+  const [generatedNsec, setGeneratedNsec] = useState<string>('');
+  const [agreedToProviderTerms, setAgreedToProviderTerms] = useState(false);
+  const hasInitialized = useRef(false);
 
   // Find matching provider by baseURL
   const matchingProvider = settings.providers.find(p => p.baseURL === baseURL);
@@ -112,8 +111,6 @@ export function GiftCardRedeemDialog({ open, onOpenChange, baseURL, code }: Gift
         description: t('creditsAddedToAccount', { amount: formatCurrency(redemption.amount) }),
       });
       onOpenChange(false);
-      // Navigate to AI settings to show the new credits
-      navigate('/settings/ai');
     },
     onError: (error: Error) => {
       toast({
@@ -124,22 +121,29 @@ export function GiftCardRedeemDialog({ open, onOpenChange, baseURL, code }: Gift
     },
   });
 
-  // Determine current step based on conditions
+  // Reset state and initialize when dialog opens
   useEffect(() => {
-    if (!open) return;
-
-    // Check if user is logged in and provider is configured
-    const hasUser = !!user;
-    const hasProvider = !!matchingProvider;
-
-    if (hasUser && hasProvider) {
-      setCurrentStep('preview');
-    } else if (!hasUser) {
-      setCurrentStep('login');
-    } else if (!hasProvider) {
-      setCurrentStep('provider');
+    if (!open) {
+      // Clear state when closing
+      setGeneratedNsec('');
+      setAgreedToProviderTerms(false);
+      hasInitialized.current = false;
+      return;
     }
-  }, [open, user, matchingProvider]);
+
+    // Only initialize once when dialog opens
+    if (!hasInitialized.current) {
+      hasInitialized.current = true;
+
+      // Auto-generate account if needed
+      if (!user && !generatedNsec) {
+        const secretKey = generateSecretKey();
+        const nsec = nip19.nsecEncode(secretKey);
+        setGeneratedNsec(nsec);
+        login.nsec(nsec);
+      }
+    }
+  }, [open, user, generatedNsec, login]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -152,49 +156,31 @@ export function GiftCardRedeemDialog({ open, onOpenChange, baseURL, code }: Gift
 
   const handleRedeem = () => {
     // Check prerequisites
-    if (!user) {
-      setCurrentStep('login');
-      return;
+    if (!user) return;
+
+    // If provider not configured, add it first
+    if (!matchingProvider && matchingPreset) {
+      if (!agreedToProviderTerms) return;
+
+      const providerConfig = {
+        id: matchingPreset.id,
+        baseURL: matchingPreset.baseURL,
+        nostr: matchingPreset.nostr || undefined,
+      };
+
+      setProvider(providerConfig);
     }
 
-    if (!matchingProvider) {
-      setCurrentStep('provider');
-      return;
-    }
-
-    // All good, redeem the gift card
-    redeemMutation.mutate();
-  };
-
-  const handleLoginSuccess = () => {
-    setShowLoginDialog(false);
-    setShowSignupDialog(false);
-
-    // After login, check if provider is configured
-    if (matchingProvider) {
-      setCurrentStep('preview');
-    } else {
-      setCurrentStep('provider');
-    }
-  };
-
-  const handleProviderAdded = () => {
-    setShowAddProviderDialog(false);
-    setCurrentStep('preview');
-  };
-
-  const handleNext = () => {
-    if (currentStep === 'login') {
-      // User needs to log in
-      setShowSignupDialog(true);
-    } else if (currentStep === 'provider') {
-      // User needs to add provider
-      setShowAddProviderDialog(true);
-    }
-  };
-
-  const handleAddAccountClick = () => {
-    setShowLoginDialog(true);
+    // Redeem the gift card
+    redeemMutation.mutate(undefined, {
+      onSuccess() {
+        // Invalidate AI credits query for this provider and user
+        const providerId = matchingProvider?.id || matchingPreset?.id;
+        if (providerId) {
+          queryClient.invalidateQueries({ queryKey: ['ai-credits', user.pubkey, providerId] });
+        }
+      }
+    });
   };
 
   // Error state
@@ -278,9 +264,7 @@ export function GiftCardRedeemDialog({ open, onOpenChange, baseURL, code }: Gift
                 {t('youveGotCredits', { amount: giftcard && formatCurrency(giftcard.amount) })}
               </h2>
               <p className="text-muted-foreground">
-                {currentStep === 'preview' && t('readyToAddCredits')}
-                {currentStep === 'login' && t('firstLogInToRedeem')}
-                {currentStep === 'provider' && t('addProviderToRedeem', { providerName: matchingPreset?.name || t('provider') })}
+                {t('readyToAddCredits')}
               </p>
             </div>
 
@@ -294,54 +278,68 @@ export function GiftCardRedeemDialog({ open, onOpenChange, baseURL, code }: Gift
               </div>
             )}
 
-            {/* Account preview (only show on preview step) */}
-            {currentStep === 'preview' && user && (
-              <div className="border rounded-lg p-4">
-                <p className="text-xs text-muted-foreground mb-3 text-left">{t('redeemingToAccount')}</p>
-                <AccountSwitcher onAddAccountClick={handleAddAccountClick} />
+            {/* Account selector - always show */}
+            <div className="border rounded-lg p-4">
+              <p className="text-xs text-muted-foreground mb-3 text-left">
+                {t('redeemingToAccount')}
+              </p>
+              <LoginArea className="w-full" />
+            </div>
+
+            {/* Provider ToS - only show if provider not configured */}
+            {!matchingProvider && matchingPreset && (
+              <div className="flex items-center justify-center gap-2">
+                <Checkbox
+                  id="agree-provider-terms"
+                  checked={agreedToProviderTerms}
+                  onCheckedChange={(checked) => setAgreedToProviderTerms(checked === true)}
+                />
+                <label
+                  htmlFor="agree-provider-terms"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                >
+                  {t('agreeToTermsOfService', { providerName: matchingPreset.name })}{' '}
+                  {matchingPreset.tosURL ? (
+                    <a
+                      href={matchingPreset.tosURL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary underline hover:no-underline"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {t('termsOfService')}
+                    </a>
+                  ) : (
+                    t('termsOfService')
+                  )}
+                </label>
               </div>
             )}
 
             {/* Action buttons */}
             <div className="space-y-3">
-              {currentStep === 'preview' ? (
-                <Button
-                  onClick={handleRedeem}
-                  disabled={redeemMutation.isPending}
-                  size="lg"
-                  className="w-full text-lg h-14 font-semibold"
-                >
-                  {redeemMutation.isPending ? (
-                    <>
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2" />
-                      {t('redeeming')}
-                    </>
-                  ) : (
-                    <>
-                      <Gift className="h-5 w-5 mr-2" />
-                      {t('redeemNow')}
-                    </>
-                  )}
-                </Button>
-              ) : (
-                <Button
-                  onClick={handleNext}
-                  size="lg"
-                  className="w-full text-lg h-14 font-semibold"
-                >
-                  {currentStep === 'login' ? (
-                    <>
-                      <LogIn className="h-5 w-5 mr-2" />
-                      {t('logInToContinue')}
-                    </>
-                  ) : (
-                    <>
-                      <SettingsIcon className="h-5 w-5 mr-2" />
-                      {t('addProvider')}
-                    </>
-                  )}
-                </Button>
-              )}
+              <Button
+                onClick={handleRedeem}
+                disabled={
+                  !user ||
+                  redeemMutation.isPending ||
+                  (!matchingProvider && !agreedToProviderTerms)
+                }
+                size="lg"
+                className="w-full text-lg h-14 font-semibold"
+              >
+                {redeemMutation.isPending ? (
+                  <>
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2" />
+                    {t('redeeming')}
+                  </>
+                ) : (
+                  <>
+                    <Gift className="h-5 w-5 mr-2" />
+                    {t('redeemNow')}
+                  </>
+                )}
+              </Button>
 
               <Button
                 variant="ghost"
@@ -351,62 +349,9 @@ export function GiftCardRedeemDialog({ open, onOpenChange, baseURL, code }: Gift
                 {t('cancel')}
               </Button>
             </div>
-
-            {/* Progress indicator */}
-            {currentStep !== 'preview' && (
-              <div className="flex items-center justify-center gap-2 pt-2">
-                <div className={`h-2 w-2 rounded-full ${currentStep === 'login' ? 'bg-primary' : 'bg-muted'}`} />
-                <div className={`h-2 w-2 rounded-full ${currentStep === 'provider' ? 'bg-primary' : 'bg-muted'}`} />
-                <div className={`h-2 w-2 rounded-full bg-muted`} />
-              </div>
-            )}
           </div>
         </DialogContent>
       </Dialog>
-
-      {/* Login/Signup Dialogs */}
-      <SimpleLoginDialog
-        isOpen={showLoginDialog}
-        onClose={() => setShowLoginDialog(false)}
-        onLogin={handleLoginSuccess}
-        onSignup={() => {
-          setShowLoginDialog(false);
-          setShowSignupDialog(true);
-        }}
-      />
-
-      <SimpleSignupDialog
-        isOpen={showSignupDialog}
-        onClose={() => setShowSignupDialog(false)}
-        onComplete={handleLoginSuccess}
-        onLogin={() => {
-          setShowSignupDialog(false);
-          setShowLoginDialog(true);
-        }}
-      />
-
-      {/* Add Provider Dialog */}
-      {matchingPreset && (
-        <AddProviderDialog
-          open={showAddProviderDialog}
-          onOpenChange={(open) => {
-            setShowAddProviderDialog(open);
-            if (!open) {
-              // Check if provider was added when dialog closes
-              const wasAdded = settings.providers.some(p => p.baseURL === baseURL);
-              if (wasAdded) {
-                handleProviderAdded();
-              }
-            }
-          }}
-          provider={{
-            id: matchingPreset.id,
-            baseURL: matchingPreset.baseURL,
-            nostr: matchingPreset.nostr,
-            proxy: matchingPreset.proxy,
-          }}
-        />
-      )}
     </>
   );
 }

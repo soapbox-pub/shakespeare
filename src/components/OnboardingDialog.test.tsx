@@ -10,7 +10,7 @@ vi.mock('@/hooks/useAISettings', () => ({
     setProvider: vi.fn(),
     removeProvider: vi.fn(),
     setProviders: vi.fn(),
-    
+
     addRecentlyUsedModel: vi.fn(),
     updateSettings: vi.fn(),
     isConfigured: false,
@@ -42,9 +42,11 @@ describe('OnboardingDialog', () => {
       </TestApp>
     );
 
-    expect(screen.getByText('Welcome to Shakespeare!')).toBeInTheDocument(); // Only in dialog title now
+    // Translations are rendered, so we check for the actual English text
+    expect(screen.getByText('Welcome to Shakespeare!')).toBeInTheDocument();
     expect(screen.getByText(/Your AI-powered development assistant/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Get Started/i })).toBeInTheDocument();
+    // The button now shows the translated text "Get Started"
+    expect(screen.getByRole('button', { name: 'Get Started' })).toBeInTheDocument();
   });
 
   it('does not render when closed', () => {

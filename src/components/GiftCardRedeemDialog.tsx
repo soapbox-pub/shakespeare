@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Gift, Check, LogIn, Settings as SettingsIcon } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -63,6 +64,7 @@ type Step = 'preview' | 'login' | 'provider';
  * @param code - Gift card code to redeem (e.g., XXXX-XXXX-XXXX-XXXX)
  */
 export function GiftCardRedeemDialog({ open, onOpenChange, baseURL, code }: GiftCardRedeemDialogProps) {
+  const { t } = useTranslation();
   const { user } = useCurrentUser();
   const { settings } = useAISettings();
   const { config } = useAppContext();
@@ -106,8 +108,8 @@ export function GiftCardRedeemDialog({ open, onOpenChange, baseURL, code }: Gift
     },
     onSuccess: (redemption) => {
       toast({
-        title: '🎉 Gift card redeemed!',
-        description: `${formatCurrency(redemption.amount)} has been added to your account.`,
+        title: '🎉 ' + t('giftCardRedeemed'),
+        description: t('creditsAddedToAccount', { amount: formatCurrency(redemption.amount) }),
       });
       onOpenChange(false);
       // Navigate to AI settings to show the new credits
@@ -115,8 +117,8 @@ export function GiftCardRedeemDialog({ open, onOpenChange, baseURL, code }: Gift
     },
     onError: (error: Error) => {
       toast({
-        title: 'Redemption failed',
-        description: error.message || 'Failed to redeem gift card',
+        title: t('redemptionFailed'),
+        description: error.message || t('failedToRedeemGiftCard'),
         variant: 'destructive',
       });
     },
@@ -204,12 +206,12 @@ export function GiftCardRedeemDialog({ open, onOpenChange, baseURL, code }: Gift
             <div className="mb-4">
               <Gift className="h-16 w-16 mx-auto text-muted-foreground opacity-50" />
             </div>
-            <h2 className="text-2xl font-bold mb-2">Invalid Gift Card</h2>
+            <h2 className="text-2xl font-bold mb-2">{t('invalidGiftCard')}</h2>
             <p className="text-muted-foreground">
-              {giftcardError instanceof Error ? giftcardError.message : 'This gift card could not be found.'}
+              {giftcardError instanceof Error ? giftcardError.message : t('giftCardNotFound')}
             </p>
             <Button onClick={() => onOpenChange(false)} className="mt-6">
-              Close
+              {t('close')}
             </Button>
           </div>
         </DialogContent>
@@ -242,12 +244,12 @@ export function GiftCardRedeemDialog({ open, onOpenChange, baseURL, code }: Gift
             <div className="mb-4">
               <Check className="h-16 w-16 mx-auto text-green-500" />
             </div>
-            <h2 className="text-2xl font-bold mb-2">Already Redeemed</h2>
+            <h2 className="text-2xl font-bold mb-2">{t('alreadyRedeemed')}</h2>
             <p className="text-muted-foreground">
-              This gift card has already been redeemed.
+              {t('giftCardAlreadyRedeemed')}
             </p>
             <Button onClick={() => onOpenChange(false)} className="mt-6">
-              Close
+              {t('close')}
             </Button>
           </div>
         </DialogContent>
@@ -273,12 +275,12 @@ export function GiftCardRedeemDialog({ open, onOpenChange, baseURL, code }: Gift
             {/* Title and amount */}
             <div>
               <h2 className="text-3xl font-bold mb-2 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                You've got {giftcard && formatCurrency(giftcard.amount)}!
+                {t('youveGotCredits', { amount: giftcard && formatCurrency(giftcard.amount) })}
               </h2>
               <p className="text-muted-foreground">
-                {currentStep === 'preview' && 'Ready to add these credits to your account?'}
-                {currentStep === 'login' && 'First, let\'s get you logged in to redeem your credits'}
-                {currentStep === 'provider' && `Add ${matchingPreset?.name || 'the provider'} to redeem your credits`}
+                {currentStep === 'preview' && t('readyToAddCredits')}
+                {currentStep === 'login' && t('firstLogInToRedeem')}
+                {currentStep === 'provider' && t('addProviderToRedeem', { providerName: matchingPreset?.name || t('provider') })}
               </p>
             </div>
 
@@ -286,7 +288,7 @@ export function GiftCardRedeemDialog({ open, onOpenChange, baseURL, code }: Gift
             {matchingPreset && (
               <div className="bg-muted/50 rounded-lg p-4 text-sm">
                 <div className="flex items-center justify-center gap-2">
-                  <span className="text-muted-foreground">Provider:</span>
+                  <span className="text-muted-foreground">{t('provider')}:</span>
                   <span className="font-medium">{matchingPreset.name}</span>
                 </div>
               </div>
@@ -295,7 +297,7 @@ export function GiftCardRedeemDialog({ open, onOpenChange, baseURL, code }: Gift
             {/* Account preview (only show on preview step) */}
             {currentStep === 'preview' && user && (
               <div className="border rounded-lg p-4">
-                <p className="text-xs text-muted-foreground mb-3 text-left">Redeeming to account:</p>
+                <p className="text-xs text-muted-foreground mb-3 text-left">{t('redeemingToAccount')}</p>
                 <AccountSwitcher onAddAccountClick={handleAddAccountClick} />
               </div>
             )}
@@ -312,12 +314,12 @@ export function GiftCardRedeemDialog({ open, onOpenChange, baseURL, code }: Gift
                   {redeemMutation.isPending ? (
                     <>
                       <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2" />
-                      Redeeming...
+                      {t('redeeming')}
                     </>
                   ) : (
                     <>
                       <Gift className="h-5 w-5 mr-2" />
-                      Redeem Now
+                      {t('redeemNow')}
                     </>
                   )}
                 </Button>
@@ -330,12 +332,12 @@ export function GiftCardRedeemDialog({ open, onOpenChange, baseURL, code }: Gift
                   {currentStep === 'login' ? (
                     <>
                       <LogIn className="h-5 w-5 mr-2" />
-                      Log In to Continue
+                      {t('logInToContinue')}
                     </>
                   ) : (
                     <>
                       <SettingsIcon className="h-5 w-5 mr-2" />
-                      Add Provider
+                      {t('addProvider')}
                     </>
                   )}
                 </Button>
@@ -346,7 +348,7 @@ export function GiftCardRedeemDialog({ open, onOpenChange, baseURL, code }: Gift
                 onClick={() => onOpenChange(false)}
                 className="w-full"
               >
-                Cancel
+                {t('cancel')}
               </Button>
             </div>
 

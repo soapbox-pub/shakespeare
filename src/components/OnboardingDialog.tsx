@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { generateSecretKey } from 'nostr-tools';
 import { nip19 } from 'nostr-tools';
 import { Bot, Check, Sparkles, ArrowRight, ArrowLeft, ExternalLink, Search } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
@@ -28,6 +29,7 @@ interface OnboardingDialogProps {
 type OnboardingStep = 'welcome' | 'open-source' | 'provider-selection' | 'model-selection' | 'conclusion';
 
 export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) {
+  const { t } = useTranslation();
   const [step, setStep] = useState<OnboardingStep>('welcome');
   const [selectedProvider, setSelectedProvider] = useState<PresetProvider | null>(null);
   const [providerApiKey, setProviderApiKey] = useState<string>('');
@@ -222,7 +224,7 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
                 </Button>
               )}
               <span className="text-xl">
-                {step === 'model-selection' && 'Choose Your AI Model'}
+                {step === 'model-selection' && t('chooseYourAIModel')}
               </span>
             </DialogTitle>
           </DialogHeader>
@@ -235,26 +237,25 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
                 </div>
                 <div className="space-y-3">
                   <h2 className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                    Welcome to Shakespeare!
+                    {t('welcomeToShakespeareOnboarding')}
                   </h2>
                   <p className="text-lg text-muted-foreground max-w-md mx-auto">
-                    Your AI-powered development assistant for building custom applications.
-                    Simply describe what you want to build, and AI will help you create it.
+                    {t('aiPoweredDevelopmentAssistant')}
                   </p>
                 </div>
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-lg mx-auto">
                     <div className="text-center space-y-2">
                       <div className="text-2xl">💡</div>
-                      <p className="text-sm text-muted-foreground">AI-Powered Development</p>
+                      <p className="text-sm text-muted-foreground">{t('aiPoweredDevelopment')}</p>
                     </div>
                     <div className="text-center space-y-2">
                       <div className="text-2xl">⚡</div>
-                      <p className="text-sm text-muted-foreground">Nostr Integration</p>
+                      <p className="text-sm text-muted-foreground">{t('nostrIntegration')}</p>
                     </div>
                     <div className="text-center space-y-2">
                       <div className="text-2xl">🚀</div>
-                      <p className="text-sm text-muted-foreground">Instant Preview</p>
+                      <p className="text-sm text-muted-foreground">{t('instantPreview')}</p>
                     </div>
                   </div>
                   <Button
@@ -266,12 +267,12 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
                     {isSettingUp ? (
                       <>
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
-                        Setting up...
+                        {t('settingUp')}
                       </>
                     ) : (
                       <>
                         <Sparkles className="h-4 w-4" />
-                        Get Started
+                        {t('getStarted')}
                       </>
                     )}
                   </Button>
@@ -283,38 +284,36 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
               <div className="space-y-6 py-4">
                 <div className="text-center space-y-4">
                   <h2 className="text-2xl font-bold">
-                    Shakespeare is Open Source software that runs entirely in your web&nbsp;browser
+                    {t('shakespeareOpenSource')}
                   </h2>
                 </div>
 
                 <div className="grid gap-1 max-w-md mx-auto">
                   <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
                     <div className="h-2 w-2 rounded-full bg-primary mt-2 flex-shrink-0" />
-                    <p className="text-sm">Your device connects directly to third-party AI providers of your choice</p>
+                    <p className="text-sm">{t('yourDeviceConnects')}</p>
                   </div>
                   <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
                     <div className="h-2 w-2 rounded-full bg-primary mt-2 flex-shrink-0" />
-                    <p className="text-sm">Your files are stored on your device in your browser</p>
+                    <p className="text-sm">{t('filesStoredOnDevice')}</p>
                   </div>
                   <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
                     <div className="h-2 w-2 rounded-full bg-primary mt-2 flex-shrink-0" />
-                    <p className="text-sm">Be careful not to delete your browser data or you may lose project files</p>
+                    <p className="text-sm">{t('carefulBrowserData')}</p>
                   </div>
                   <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
                     <div className="h-2 w-2 rounded-full bg-primary mt-2 flex-shrink-0" />
-                    <p className="text-sm">You are responsible for taking backups or syncing to git</p>
+                    <p className="text-sm">{t('responsibleBackups')}</p>
                   </div>
                   <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
                     <div className="h-2 w-2 rounded-full bg-primary mt-2 flex-shrink-0" />
-                    <p className="text-sm">Quality of output depends on quality of input and models used, and is not guaranteed</p>
+                    <p className="text-sm">{t('qualityDependsOnInput')}</p>
                   </div>
                 </div>
 
                 <div className="space-y-3 max-w-md mx-auto">
                   <p className="text-xs text-muted-foreground max-w-xl mx-auto">
-                    Shakespeare is not a cloud service. It's Open Source software that runs on your device.
-                    You agree to the Terms of Service of AI providers you interact with.
-                    Shakespeare is provided "as is" without warranty of any kind.
+                    {t('shakespeareNotCloudService')}
                   </p>
 
                   <div className="flex items-center justify-center gap-2">
@@ -327,7 +326,7 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
                       htmlFor="agree-terms"
                       className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
                     >
-                      I agree
+                      {t('iAgree')}
                     </label>
                   </div>
                 </div>
@@ -338,7 +337,7 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
                     disabled={!agreedToTerms}
                     className="gap-2 rounded-full w-full max-w-md"
                   >
-                    Continue
+                    {t('continueButton')}
                     <ArrowRight className="h-4 w-4" />
                   </Button>
                 </div>
@@ -348,9 +347,9 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
             {step === 'provider-selection' && (
               <div className="space-y-6 py-4">
                 <div className="text-center space-y-4">
-                  <h2 className="text-2xl font-bold">Choose your AI provider</h2>
+                  <h2 className="text-2xl font-bold">{t('chooseAIProvider')}</h2>
                   <p className="text-muted-foreground max-w-md mx-auto">
-                    Select an AI provider to power your development assistant. You can add more providers later in settings.
+                    {t('selectAIProviderDescription')}
                   </p>
                 </div>
 
@@ -394,27 +393,28 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
                   <div className="space-y-3 max-w-md mx-auto">
                     <div className="text-center">
                       <h3 className="text-lg font-semibold">
-                        {selectedProvider.id === 'routstr' ? 'Enter Cashu Token' : 'Enter API Key'}
+                        {selectedProvider.id === 'routstr' ? t('enterCashuToken') : t('enterApiKey')}
                       </h3>
                       <p className="text-sm text-muted-foreground">
                         {selectedProvider.id === 'routstr' ? (
-                          <>{selectedProvider.name} requires a Cashu token</>
+                          t('requiresCashuToken', { providerName: selectedProvider.name })
                         ) : (
                           <>
-                            {selectedProvider.name} requires an {selectedProvider.apiKeysURL ? (
+                            {selectedProvider.name} {t('requiresAnApiKey')}{' '}
+                            {selectedProvider.apiKeysURL ? (
                               <a className="text-foreground underline" href={selectedProvider.apiKeysURL} target="_blank">
-                                API key
+                                {t('apiKey')}
                                 <ExternalLink className="inline-block h-4 w-4 ml-1" />
                               </a>
                             ) : (
-                              <>API key</>
+                              t('apiKey')
                             )}
                           </>
                         )}
                       </p>
                     </div>
                     <PasswordInput
-                      placeholder={selectedProvider.id === 'routstr' ? 'Enter a Cashu Token' : 'Enter your API key'}
+                      placeholder={selectedProvider.id === 'routstr' ? t('enterCashuToken') : t('enterApiKey')}
                       value={providerApiKey}
                       onChange={(e) => setProviderApiKey(e.target.value)}
                       onKeyDown={(e) => {
@@ -439,7 +439,7 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
                         htmlFor="agree-provider-terms"
                         className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
                       >
-                        I agree to {selectedProvider.name}'s{' '}
+                        {t('agreeToTermsOfService', { providerName: selectedProvider.name })}{' '}
                         {selectedProvider.tosURL ? (
                           <a
                             href={selectedProvider.tosURL}
@@ -448,10 +448,10 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
                             className="text-primary underline hover:no-underline"
                             onClick={(e) => e.stopPropagation()}
                           >
-                            Terms of Service
+                            {t('termsOfService')}
                           </a>
                         ) : (
-                          'Terms of Service'
+                          t('termsOfService')
                         )}
                       </label>
                     </div>
@@ -472,11 +472,11 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
                     {isSettingUp ? (
                       <>
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
-                        Setting up...
+                        {t('settingUp')}
                       </>
                     ) : (
                       <>
-                        Continue
+                        {t('continueButton')}
                         <ArrowRight className="h-4 w-4" />
                       </>
                     )}
@@ -494,7 +494,7 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
                       <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
                         type="text"
-                        placeholder="Search models..."
+                        placeholder={t('searchModels')}
                         value={modelSearchQuery}
                         onChange={(e) => setModelSearchQuery(e.target.value)}
                         className="pl-9"
@@ -528,7 +528,7 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
                         <div className="space-y-2">
                           <Bot className="h-8 w-8 mx-auto text-muted-foreground" />
                           <p className="text-muted-foreground">
-                            {modelSearchQuery ? 'No models found matching your search.' : 'No models available. Please check your connection and try again.'}
+                            {modelSearchQuery ? t('noModelsMatchingSearch') : t('noModelsAvailable')}
                           </p>
                         </div>
                       </Card>
@@ -580,7 +580,7 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
                     disabled={!selectedModel}
                     className="gap-2"
                   >
-                    Continue
+                    {t('continueButton')}
                     <ArrowRight className="h-4 w-4" />
                   </Button>
                 </div>
@@ -591,15 +591,14 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
               <div className="text-center space-y-6 py-8">
                 <div className="text-5xl mb-4">🎉</div>
                 <div className="space-y-3">
-                  <h2 className="text-2xl font-bold">Now you're ready to build!</h2>
+                  <h2 className="text-2xl font-bold">{t('nowYoureReady')}</h2>
                   <p className="text-lg text-muted-foreground max-w-md mx-auto">
-                    Your AI assistant is configured and ready to help.
-                    Just enter your prompt to start building amazing Nostr applications.
+                    {t('aiAssistantConfigured')}
                   </p>
                 </div>
                 <Button onClick={handleFinish} size="lg" className="gap-2">
                   <Sparkles className="h-4 w-4" />
-                  Start Building
+                  {t('startBuilding')}
                 </Button>
               </div>
             )}

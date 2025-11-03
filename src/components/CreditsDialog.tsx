@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import QRCode from 'qrcode';
 import { CreditCard, Zap, ExternalLink, RefreshCw, Check, X, Clock, AlertCircle, Copy, RotateCcw, ArrowLeft, Gift, Plus, History, DollarSign, Printer, Download } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -88,6 +89,7 @@ interface LightningPaymentProps {
 }
 
 function LightningPayment({ invoice, amount, onClose }: LightningPaymentProps) {
+  const { t } = useTranslation();
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const [isWebLNAvailable, setIsWebLNAvailable] = useState(false);
   const [isPayingWithWebLN, setIsPayingWithWebLN] = useState(false);
@@ -120,16 +122,16 @@ function LightningPayment({ invoice, amount, onClose }: LightningPaymentProps) {
       await window.webln.sendPayment(invoice);
 
       toast({
-        title: 'Payment sent!',
-        description: 'Your Lightning payment has been sent successfully.',
+        title: t('paymentSent'),
+        description: t('lightningPaymentSent'),
       });
 
       onClose();
     } catch (error) {
       console.error('WebLN payment failed:', error);
       toast({
-        title: 'Payment failed',
-        description: error instanceof Error ? error.message : 'Failed to send Lightning payment',
+        title: t('paymentFailed'),
+        description: error instanceof Error ? error.message : t('failedToSendLightning'),
         variant: 'destructive',
       });
     } finally {
@@ -155,9 +157,9 @@ function LightningPayment({ invoice, amount, onClose }: LightningPaymentProps) {
   return (
     <div className="space-y-4">
       <div className="text-center">
-        <h3 className="text-lg font-semibold mb-2">Lightning Payment</h3>
+        <h3 className="text-lg font-semibold mb-2">{t('lightningPayment')}</h3>
         <p className="text-sm text-muted-foreground">
-          Pay {formatCurrency(amount)} with Lightning Network
+          {t('payWithLightning', { amount: formatCurrency(amount) })}
         </p>
       </div>
 
@@ -185,7 +187,7 @@ function LightningPayment({ invoice, amount, onClose }: LightningPaymentProps) {
           >
             {isPayingWithWebLN && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
             <Zap className="h-4 w-4 mr-2" />
-            Pay with WebLN
+            {t('payWithWebLN')}
           </Button>
         )}
 
@@ -197,11 +199,11 @@ function LightningPayment({ invoice, amount, onClose }: LightningPaymentProps) {
             size="lg"
           >
             <Copy className="h-4 w-4 mr-2" />
-            Copy Invoice
+            {t('copyInvoice')}
           </Button>
           {showCopiedTooltip && (
             <div className="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-foreground text-background text-xs px-2 py-1 rounded shadow-lg z-10 animate-in fade-in-0 duration-200">
-              Copied!
+              {t('copied')}
               <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-foreground"></div>
             </div>
           )}
@@ -212,6 +214,7 @@ function LightningPayment({ invoice, amount, onClose }: LightningPaymentProps) {
 }
 
 export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogProps) {
+  const { t } = useTranslation();
   const { user } = useCurrentUser();
   const { config } = useAppContext();
   const { toast } = useToast();
@@ -292,8 +295,8 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
         // Open Stripe checkout in new window
         window.open(payment.url, '_blank');
         toast({
-          title: 'Payment initiated',
-          description: 'Stripe checkout opened in a new window.',
+          title: t('paymentInitiated'),
+          description: t('stripeCheckoutOpened'),
         });
       } else if (payment.method === 'lightning') {
         // Show Lightning payment interface
@@ -311,9 +314,9 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
       });
     },
     onError: (error: Error) => {
-      const errorMessage = error?.message || 'Failed to initiate payment';
+      const errorMessage = error?.message || t('paymentFailed');
       toast({
-        title: 'Payment failed',
+        title: t('paymentFailed'),
         description: errorMessage,
         variant: 'destructive',
       });
@@ -355,19 +358,19 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
           queryKey: ['ai-credits', provider.nostr ? user?.pubkey ?? '' : '', provider.id],
         });
         toast({
-          title: 'Payment completed!',
-          description: `${formatCurrency(updatedPayment.amount)} has been added to your account.`,
+          title: t('paymentCompleted'),
+          description: t('creditsAddedToAccount', { amount: formatCurrency(updatedPayment.amount) }),
         });
       } else if (updatedPayment.status === 'failed') {
         toast({
-          title: 'Payment failed',
-          description: 'The payment has failed. Please try again.',
+          title: t('paymentFailed'),
+          description: t('paymentFailed'),
           variant: 'destructive',
         });
       } else if (updatedPayment.status === 'expired') {
         toast({
-          title: 'Payment expired',
-          description: 'The payment has expired. Please create a new payment.',
+          title: t('paymentExpired'),
+          description: t('paymentExpiredMessage'),
           variant: 'destructive',
         });
       }
@@ -380,9 +383,9 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
         return newSet;
       });
 
-      const errorMessage = error?.message || 'Failed to check payment status';
+      const errorMessage = error?.message || t('failedToCheckPaymentStatus');
       toast({
-        title: 'Refresh failed',
+        title: t('refreshFailed'),
         description: errorMessage,
         variant: 'destructive',
       });
@@ -400,8 +403,8 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
     },
     onSuccess: (giftcards) => {
       toast({
-        title: 'Gift Cards created!',
-        description: `Successfully created ${giftcards.length} gift card${giftcards.length > 1 ? 's' : ''}.`,
+        title: t('giftCardCreated'),
+        description: t('successfullyCreatedGiftCards', { count: giftcards.length }),
       });
 
       // Refresh gift cards list
@@ -419,9 +422,9 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
       setGiftcardQuantity(1);
     },
     onError: (error: Error) => {
-      const errorMessage = error?.message || 'Failed to create gift cards';
+      const errorMessage = error?.message || t('failedToCreateGiftCards');
       toast({
-        title: 'Creation failed',
+        title: t('creationFailed'),
         description: errorMessage,
         variant: 'destructive',
       });
@@ -438,8 +441,8 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
     },
     onSuccess: (redemption) => {
       toast({
-        title: 'Gift Card redeemed!',
-        description: `${formatCurrency(redemption.amount)} has been added to your account.`,
+        title: t('giftCardRedeemed'),
+        description: t('creditsAddedToAccount', { amount: formatCurrency(redemption.amount) }),
       });
 
       // Refresh credits balance
@@ -451,9 +454,9 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
       setRedeemCode('');
     },
     onError: (error: Error) => {
-      const errorMessage = error?.message || 'Failed to redeem gift card';
+      const errorMessage = error?.message || t('failedToRedeemGiftCard');
       toast({
-        title: 'Redemption failed',
+        title: t('redemptionFailed'),
         description: errorMessage,
         variant: 'destructive',
       });
@@ -463,8 +466,8 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
   const handleAddCredits = () => {
     if (amount <= 0) {
       toast({
-        title: 'Invalid amount',
-        description: 'Please enter a valid amount.',
+        title: t('invalidAmount'),
+        description: t('enterValidAmount'),
         variant: 'destructive',
       });
       return;
@@ -477,8 +480,8 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
         // Open Stripe checkout in new window
         window.open(paymentPreview.url, '_blank');
         toast({
-          title: 'Payment initiated',
-          description: 'Stripe checkout opened in a new window.',
+          title: t('paymentInitiated'),
+          description: t('stripeCheckoutOpened'),
         });
       } else if (paymentPreview.method === 'lightning') {
         // Show Lightning payment interface
@@ -517,8 +520,8 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
   const handleCreateGiftcard = () => {
     if (giftcardAmount <= 0) {
       toast({
-        title: 'Invalid amount',
-        description: 'Please enter a valid amount.',
+        title: t('invalidAmount'),
+        description: t('enterValidAmount'),
         variant: 'destructive',
       });
       return;
@@ -526,8 +529,8 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
 
     if (giftcardQuantity <= 0 || giftcardQuantity > 100) {
       toast({
-        title: 'Invalid quantity',
-        description: 'Quantity must be between 1 and 100.',
+        title: t('invalidQuantity'),
+        description: t('quantityBetween'),
         variant: 'destructive',
       });
       return;
@@ -543,8 +546,8 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
     const trimmedCode = redeemCode.trim();
     if (!trimmedCode) {
       toast({
-        title: 'Invalid code',
-        description: 'Please enter a gift card code.',
+        title: t('invalidCode'),
+        description: t('enterGiftCardCodePrompt'),
         variant: 'destructive',
       });
       return;
@@ -573,8 +576,8 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
     const activeGiftcards = giftcards.filter(gc => !gc.redeemed);
     if (activeGiftcards.length === 0) {
       toast({
-        title: 'No active gift cards',
-        description: 'You have no active gift cards to print.',
+        title: t('noActiveGiftCards'),
+        description: t('noActiveGiftCardsToPrint'),
         variant: 'destructive',
       });
       return;
@@ -605,7 +608,7 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
       // Create a new window for printing
       const printWindow = window.open('', '_blank');
       if (!printWindow) {
-        throw new Error('Failed to open print window. Please allow popups for this site.');
+        throw new Error(t('failedToOpenPrintWindow'));
       }
 
       // Generate the print HTML
@@ -725,8 +728,8 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
     } catch (error) {
       console.error('Failed to generate QR codes:', error);
       toast({
-        title: 'Print failed',
-        description: error instanceof Error ? error.message : 'Failed to generate QR codes for printing',
+        title: t('printFailed'),
+        description: error instanceof Error ? error.message : t('failedToGenerateQRCodes'),
         variant: 'destructive',
       });
     } finally {
@@ -741,8 +744,8 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
     const activeGiftcards = giftcards.filter(gc => !gc.redeemed);
     if (activeGiftcards.length === 0) {
       toast({
-        title: 'No active gift cards',
-        description: 'You have no active gift cards to download.',
+        title: t('noActiveGiftCards'),
+        description: t('noActiveGiftCardsToDownload'),
         variant: 'destructive',
       });
       return;
@@ -794,14 +797,14 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
       URL.revokeObjectURL(url);
 
       toast({
-        title: 'CSV downloaded',
-        description: `Downloaded ${activeGiftcards.length} gift card${activeGiftcards.length > 1 ? 's' : ''}.`,
+        title: t('csvDownloaded'),
+        description: t('downloadedGiftCards', { count: activeGiftcards.length }),
       });
     } catch (error) {
       console.error('Failed to generate CSV:', error);
       toast({
-        title: 'Download failed',
-        description: error instanceof Error ? error.message : 'Failed to generate CSV file',
+        title: t('downloadFailed'),
+        description: error instanceof Error ? error.message : t('failedToGenerateCSV'),
         variant: 'destructive',
       });
     }
@@ -827,7 +830,7 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
         minute: '2-digit',
       }).format(date);
     } else if (diffDays === 1) {
-      return 'Yesterday';
+      return t('yesterday');
     } else if (diffDays < 7) {
       return new Intl.DateTimeFormat('en-US', {
         weekday: 'short',
@@ -866,13 +869,13 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
                   className="flex items-center gap-2 hover:opacity-70 transition-opacity"
                 >
                   <ArrowLeft className="h-5 w-5" />
-                  Back
+                  {t('back')}
                 </button>
               </>
             ) : (
               <>
                 <CreditCard className="h-5 w-5" />
-                Credits
+                {t('credits')}
               </>
             )}
           </DialogTitle>
@@ -895,13 +898,13 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
                 <AccordionTrigger className="hover:no-underline">
                   <div className="flex items-center gap-2">
                     <DollarSign className="h-4 w-4" />
-                    Buy Credits
+                    {t('buyCredits')}
                   </div>
                 </AccordionTrigger>
                 <AccordionContent>
                   <div className="space-y-3 pt-2">
                     <div className="space-y-3">
-                      <Label htmlFor="amount" className="text-sm font-medium">Amount (USD)</Label>
+                      <Label htmlFor="amount" className="text-sm font-medium">{t('amountUSD')}</Label>
                       <div className="space-y-3">
                         <Input
                           id="amount"
@@ -909,7 +912,7 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
                           step="0.01"
                           value={amount}
                           onChange={(e) => setAmount(Number(e.target.value))}
-                          placeholder="Enter amount"
+                          placeholder={t('enterAmount')}
                           className="text-center text-lg font-medium"
                         />
                         <div className="grid grid-cols-5 gap-2">
@@ -929,16 +932,16 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
                     </div>
 
                     <div className="space-y-3">
-                      <Label className="text-sm font-medium">Payment Method</Label>
+                      <Label className="text-sm font-medium">{t('paymentMethod')}</Label>
                       <Tabs value={paymentMethod} onValueChange={(value: 'stripe' | 'lightning') => setPaymentMethod(value)} className="w-full">
                         <TabsList className="grid w-full grid-cols-2">
                           <TabsTrigger value="stripe" className="flex items-center gap-2">
                             <CreditCard className="h-4 w-4" />
-                          Credit Card
+                            {t('creditCard')}
                           </TabsTrigger>
                           <TabsTrigger value="lightning" className="flex items-center gap-2">
                             <Zap className="h-4 w-4" />
-                          Lightning
+                            {t('lightning')}
                           </TabsTrigger>
                         </TabsList>
                       </Tabs>
@@ -948,15 +951,15 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
                     {paymentPreview && paymentPreview.fee > 0 && (
                       <div className="space-y-1 text-sm">
                         <div className="flex justify-between text-muted-foreground">
-                          <span>Credits</span>
+                          <span>{t('credits')}</span>
                           <span>{formatCurrency(paymentPreview.amount)}</span>
                         </div>
                         <div className="flex justify-between text-muted-foreground">
-                          <span>Processing Fee</span>
+                          <span>{t('processingFee')}</span>
                           <span>{formatCurrency(paymentPreview.fee)}</span>
                         </div>
                         <div className="flex justify-between font-medium pt-1 border-t">
-                          <span>Total</span>
+                          <span>{t('total')}</span>
                           <span>{formatCurrency(paymentPreview.total)}</span>
                         </div>
                       </div>
@@ -969,7 +972,7 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
                       size="lg"
                     >
                       {(addCreditsMutation.isPending || isLoadingPreview) && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
-                      {paymentMethod === 'stripe' ? 'Pay with Card' : 'Generate Invoice'}
+                      {paymentMethod === 'stripe' ? t('payWithCard') : t('generateInvoice')}
                       {paymentPreview && paymentPreview.fee > 0
                         ? ` - ${formatCurrency(paymentPreview.total)}`
                         : amount > 0
@@ -986,7 +989,7 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
                 <AccordionTrigger className="hover:no-underline">
                   <div className="flex items-center gap-2">
                     <History className="h-4 w-4" />
-                    Recent Transactions
+                    {t('recentTransactions')}
                   </div>
                 </AccordionTrigger>
                 <AccordionContent>
@@ -1003,8 +1006,8 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
                     ) : !payments || payments.length === 0 ? (
                       <div className="py-8 text-center text-muted-foreground">
                         <CreditCard className="h-10 w-10 mx-auto mb-3 opacity-50" />
-                        <p className="text-sm">No transactions yet</p>
-                        <p className="text-xs">Your payment history will appear here</p>
+                        <p className="text-sm">{t('noTransactionsYet')}</p>
+                        <p className="text-xs">{t('paymentHistoryAppears')}</p>
                       </div>
                     ) : (
                       <div className="space-y-2">
@@ -1017,7 +1020,7 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
                               <div className="flex items-center gap-2 min-w-0 flex-1">
                                 {getStatusIcon(payment.status)}
                                 <span className="text-sm font-medium truncate">
-                                  {payment.method === 'stripe' ? 'Credit Card' : 'Lightning'}
+                                  {payment.method === 'stripe' ? t('creditCard') : t('lightning')}
                                 </span>
                               </div>
                               <div className="text-right flex-shrink-0">
@@ -1058,7 +1061,7 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
                                       className="h-6 px-2 text-xs"
                                     >
                                       <ExternalLink className="h-3 w-3 mr-1" />
-                                      {payment.method === 'lightning' ? 'Pay' : 'Pay'}
+                                      {t('pay')}
                                     </Button>
                                   )}
                                 </div>
@@ -1077,7 +1080,7 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
                 <AccordionTrigger className="hover:no-underline">
                   <div className="flex items-center gap-2">
                     <Plus className="h-4 w-4" />
-                    Redeem Gift Card
+                    {t('redeemGiftCard')}
                   </div>
                 </AccordionTrigger>
                 <AccordionContent>
@@ -1088,7 +1091,7 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
                         type="text"
                         value={redeemCode}
                         onChange={(e) => setRedeemCode(e.target.value)}
-                        placeholder="Enter gift card code"
+                        placeholder={t('enterGiftCardCode')}
                         className="flex-1"
                       />
                       <Button
@@ -1097,7 +1100,7 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
                         size="lg"
                       >
                         {redeemGiftcardMutation.isPending && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
-                        Redeem
+                        {t('redeem')}
                       </Button>
                     </div>
                   </div>
@@ -1109,26 +1112,26 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
                 <AccordionTrigger className="hover:no-underline">
                   <div className="flex items-center gap-2">
                     <Gift className="h-4 w-4" />
-                    Create Gift Card
+                    {t('createGiftCard')}
                   </div>
                 </AccordionTrigger>
                 <AccordionContent>
                   <div className="space-y-3 pt-2">
                     <div className="grid grid-cols-2 gap-2">
                       <div className="space-y-2">
-                        <Label htmlFor="giftcard-amount" className="text-xs text-muted-foreground">Amount (USD)</Label>
+                        <Label htmlFor="giftcard-amount" className="text-xs text-muted-foreground">{t('amountUSD')}</Label>
                         <Input
                           id="giftcard-amount"
                           type="number"
                           step="0.01"
                           value={giftcardAmount}
                           onChange={(e) => setGiftcardAmount(Number(e.target.value))}
-                          placeholder="Amount"
+                          placeholder={t('enterAmount')}
                           className="text-center"
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="giftcard-quantity" className="text-xs text-muted-foreground">Quantity</Label>
+                        <Label htmlFor="giftcard-quantity" className="text-xs text-muted-foreground">{t('quantity')}</Label>
                         <Input
                           id="giftcard-quantity"
                           type="number"
@@ -1136,7 +1139,7 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
                           max="100"
                           value={giftcardQuantity}
                           onChange={(e) => setGiftcardQuantity(Number(e.target.value))}
-                          placeholder="Qty"
+                          placeholder={t('qty')}
                           className="text-center"
                         />
                       </div>
@@ -1161,7 +1164,7 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
                       size="lg"
                     >
                       {createGiftcardMutation.isPending && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
-                      Create {giftcardQuantity > 1 ? `${giftcardQuantity} ` : ''}Gift Card{giftcardQuantity > 1 ? 's' : ''}
+                      {t('createGiftCards', { count: giftcardQuantity })}
                       {giftcardAmount > 0 && giftcardQuantity > 0 && ` - ${formatCurrency(giftcardAmount * giftcardQuantity)}`}
                     </Button>
                   </div>
@@ -1173,7 +1176,7 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
                 <AccordionTrigger className="hover:no-underline">
                   <div className="flex items-center gap-2">
                     <CreditCard className="h-4 w-4" />
-                    Your Gift Cards
+                    {t('yourGiftCards')}
                   </div>
                 </AccordionTrigger>
                 <AccordionContent className="pb-0">
@@ -1191,7 +1194,7 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
                           ) : (
                             <Printer className="h-4 w-4 mr-2" />
                           )}
-                          Print QR Codes
+                          {t('printQRCodes')}
                         </Button>
                         <Button
                           onClick={handleDownloadCSV}
@@ -1199,7 +1202,7 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
                           size="sm"
                         >
                           <Download className="h-4 w-4 mr-2" />
-                          Download CSV
+                          {t('downloadCSV')}
                         </Button>
                       </div>
                     )}
@@ -1215,8 +1218,8 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
                     ) : !giftcards || giftcards.length === 0 ? (
                       <div className="py-8 text-center text-muted-foreground">
                         <Gift className="h-10 w-10 mx-auto mb-3 opacity-50" />
-                        <p className="text-sm">No gift cards yet</p>
-                        <p className="text-xs">Create gift cards to share with others</p>
+                        <p className="text-sm">{t('noGiftCardsYet')}</p>
+                        <p className="text-xs">{t('createGiftCardsToShare')}</p>
                       </div>
                     ) : (
                       <div className="space-y-2">
@@ -1229,10 +1232,10 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
                               <div className="flex items-center gap-2 min-w-0 flex-1">
                                 <Gift className="h-4 w-4 flex-shrink-0" />
                                 <span className="text-sm font-medium truncate">
-                                  Gift Card
+                                  {t('giftCard')}
                                 </span>
                                 <Badge variant={giftcard.redeemed ? "secondary" : "default"} className="text-xs flex-shrink-0">
-                                  {giftcard.redeemed ? 'Redeemed' : 'Active'}
+                                  {giftcard.redeemed ? t('redeemed') : t('active')}
                                 </Badge>
                               </div>
                               <div className="text-right flex-shrink-0">
@@ -1252,11 +1255,11 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
                                   className="h-6 px-2 text-xs"
                                 >
                                   <Copy className="h-3 w-3 mr-1" />
-                                  Copy
+                                  {t('copy')}
                                 </Button>
                                 {copiedCode === giftcard.code && (
                                   <div className="absolute -top-8 right-0 bg-foreground text-background text-xs px-2 py-1 rounded shadow-lg z-10 animate-in fade-in-0 duration-200 whitespace-nowrap">
-                                    Copied!
+                                    {t('copied')}
                                   </div>
                                 )}
                               </div>
@@ -1264,7 +1267,7 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
 
                             {giftcard.created_at && (
                               <div className="text-xs text-muted-foreground">
-                                Created {formatDate(giftcard.created_at)}
+                                {t('created')} {formatDate(giftcard.created_at)}
                               </div>
                             )}
                           </div>

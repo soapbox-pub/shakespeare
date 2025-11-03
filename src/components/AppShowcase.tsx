@@ -14,8 +14,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
 import { RelaySelector } from "@/components/RelaySelector";
 import { useAppContext } from "@/hooks/useAppContext";
+import { useTranslation } from 'react-i18next';
 
 export function AppShowcase() {
+  const { t } = useTranslation();
   const { user } = useCurrentUser();
   const { config } = useAppContext();
   const { data: submissions = [], isLoading } = useAppSubmissions();
@@ -33,7 +35,7 @@ export function AppShowcase() {
   const isModerator = user?.pubkey === MODERATOR_HEX;
 
   // Filter and shuffle submissions - memoized with stable dependency
-  const { templateApps, halloweenApps, featuredApps, approvedApps } = useMemo(() => {
+  const { templateApps, featuredApps, approvedApps } = useMemo(() => {
     // Filter visible submissions
     const visibleSubmissions = submissions.filter(app => !app.isHidden);
 
@@ -41,23 +43,12 @@ export function AppShowcase() {
     const templates = shuffleArray(visibleSubmissions.filter(app => app.appTags.includes('Template')));
     const nonTemplateSubmissions = visibleSubmissions.filter(app => !app.appTags.includes('Template'));
 
-    // Get Halloween Hackathon 2025 apps that are featured (for main showcase)
-    const halloween = shuffleArray(nonTemplateSubmissions.filter(app =>
-      app.appTags.includes('Halloween Hackathon 2025') && app.isFeatured
-    ));
-
-    // Filter out Halloween Hackathon 2025 apps from other sections (unless featured, they go in Halloween section)
-    const nonHalloweenSubmissions = nonTemplateSubmissions.filter(app =>
-      !app.appTags.includes('Halloween Hackathon 2025')
-    );
-
     // Shuffle featured and approved apps for random display order
-    const featured = shuffleArray(nonHalloweenSubmissions.filter(app => app.isFeatured));
-    const approved = shuffleArray(nonHalloweenSubmissions.filter(app => app.isApproved && !app.isFeatured));
+    const featured = shuffleArray(nonTemplateSubmissions.filter(app => app.isFeatured));
+    const approved = shuffleArray(nonTemplateSubmissions.filter(app => app.isApproved && !app.isFeatured));
 
     return {
       templateApps: templates,
-      halloweenApps: halloween,
       featuredApps: featured,
       approvedApps: approved,
     };
@@ -112,7 +103,7 @@ export function AppShowcase() {
           <CardContent className="py-12 px-8 text-center">
             <div className="max-w-sm mx-auto space-y-6">
               <p className="text-muted-foreground">
-                No apps found. Try another relay?
+                {t('noAppsFound')}
               </p>
               <RelaySelector className="w-full" />
             </div>
@@ -134,37 +125,12 @@ export function AppShowcase() {
                 <span className="text-sm">⭐</span>
               </div>
               <div>
-                <h3 className="text-xl font-bold text-foreground">Featured Apps</h3>
-                <p className="text-sm text-muted-foreground">Handpicked applications showcasing the best of our community</p>
+                <h3 className="text-xl font-bold text-foreground">{t('featuredApps')}</h3>
+                <p className="text-sm text-muted-foreground">{t('featuredAppsDescription')}</p>
               </div>
             </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {featuredApps.slice(0, 6).map((app) => (
-                <AppShowcaseCard
-                  key={app.id}
-                  app={app}
-                  showModerationControls={isModerator}
-                  hideApprovalStatus={true}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Halloween Hackathon 2025 Apps */}
-        {halloweenApps.length > 0 && (
-          <div>
-            <div className="flex items-start gap-3 mb-6">
-              <div className="flex-none w-8 h-8 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex items-center justify-center">
-                <span className="text-sm">🎃</span>
-              </div>
-              <div>
-                <h3 className="text-xl font-bold text-foreground">Halloween Hackathon 2025</h3>
-                <p className="text-sm text-muted-foreground">Featured spooky creations from our Halloween hackathon</p>
-              </div>
-            </div>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {halloweenApps.slice(0, 6).map((app) => (
                 <AppShowcaseCard
                   key={app.id}
                   app={app}
@@ -184,8 +150,8 @@ export function AppShowcase() {
                 <span className="text-sm">📋</span>
               </div>
               <div>
-                <h3 className="text-xl font-bold text-foreground">Templates</h3>
-                <p className="text-sm text-muted-foreground">Ready-to-use templates to kickstart your project</p>
+                <h3 className="text-xl font-bold text-foreground">{t('templates')}</h3>
+                <p className="text-sm text-muted-foreground">{t('templatesDescription')}</p>
               </div>
             </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -213,10 +179,10 @@ export function AppShowcase() {
                     </div>
                     <div className="text-left">
                       <h3 className="text-xl font-bold text-foreground">
-                        More Apps ({approvedApps.length})
+                        {t('moreAppsCount', { count: approvedApps.length })}
                       </h3>
                       <p className="text-sm text-muted-foreground">
-                        {showAllApps ? 'Click to collapse' : 'Click to view more community apps'}
+                        {showAllApps ? t('clickToCollapse') : t('clickToViewMore')}
                       </p>
                     </div>
                   </div>

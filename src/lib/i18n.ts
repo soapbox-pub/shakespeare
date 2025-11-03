@@ -348,6 +348,17 @@ const resources = {
       repositoryNotFound: 'Repository not found. Please check the URL and try again.',
       accessDenied: 'Access denied. The repository may be private or require authentication.',
       networkError: 'Network error. Please check your connection and try again.',
+
+      // App Showcase
+      featuredApps: 'Featured Apps',
+      featuredAppsDescription: 'Handpicked applications showcasing the best of our community',
+      templates: 'Templates',
+      templatesDescription: 'Ready-to-use templates to kickstart your project',
+      moreApps: 'More Apps',
+      moreAppsCount: 'More Apps ({{count}})',
+      clickToCollapse: 'Click to collapse',
+      clickToViewMore: 'Click to view more community apps',
+      noAppsFound: 'No apps found. Try another relay?',
     }
   },
   pt: {
@@ -693,6 +704,17 @@ const resources = {
       repositoryNotFound: 'Repositório não encontrado. Verifique a URL e tente novamente.',
       accessDenied: 'Acesso negado. O repositório pode ser privado ou requer autenticação.',
       networkError: 'Erro de rede. Verifique sua conexão e tente novamente.',
+
+      // App Showcase
+      featuredApps: 'Aplicativos em Destaque',
+      featuredAppsDescription: 'Aplicações selecionadas mostrando o melhor da nossa comunidade',
+      templates: 'Modelos',
+      templatesDescription: 'Modelos prontos para usar para iniciar seu projeto',
+      moreApps: 'Mais Aplicativos',
+      moreAppsCount: 'Mais Aplicativos ({{count}})',
+      clickToCollapse: 'Clique para recolher',
+      clickToViewMore: 'Clique para ver mais aplicativos da comunidade',
+      noAppsFound: 'Nenhum aplicativo encontrado. Tentar outro relay?',
     }
   },
   zh: {
@@ -1038,6 +1060,17 @@ const resources = {
       repositoryNotFound: '未找到仓库。请检查URL并重试。',
       accessDenied: '访问被拒绝。仓库可能是私有的或需要身份验证。',
       networkError: '网络错误。请检查您的连接并重试。',
+
+      // App Showcase
+      featuredApps: '精选应用',
+      featuredAppsDescription: '精选应用展示我们社区的最佳作品',
+      templates: '模板',
+      templatesDescription: '即用型模板助您快速启动项目',
+      moreApps: '更多应用',
+      moreAppsCount: '更多应用 ({{count}})',
+      clickToCollapse: '点击折叠',
+      clickToViewMore: '点击查看更多社区应用',
+      noAppsFound: '未找到应用。尝试另一个中继？',
     }
   },
   ha: {
@@ -1373,6 +1406,17 @@ const resources = {
       repositoryNotFound: 'Ba a sami repository ba. Da fatan za a duba URL kuma a sake gwadawa.',
       accessDenied: 'An hana shiga. Repository na iya zama na sirri ko yana buƙatar tabbatarwa.',
       networkError: 'Kuskuren hanyar sadarwa. Da fatan za a duba haɗinku kuma a sake gwadawa.',
+
+      // App Showcase
+      featuredApps: 'Aikace-aikacen da aka Zaɓa',
+      featuredAppsDescription: 'Aikace-aikacen da aka zaɓa suna nuna mafi kyawun al\'ummarmu',
+      templates: 'Samfura',
+      templatesDescription: 'Samfura masu shirye-shirye don fara aikinku',
+      moreApps: 'Ƙarin Aikace-aikace',
+      moreAppsCount: 'Ƙarin Aikace-aikace ({{count}})',
+      clickToCollapse: 'Danna don rufe',
+      clickToViewMore: 'Danna don ganin ƙarin aikace-aikacen al\'umma',
+      noAppsFound: 'Ba a sami aikace-aikace ba. Gwada wani relay?',
     }
   },
   yo: {
@@ -1703,6 +1747,17 @@ const resources = {
       repositoryNotFound: 'Repository ko ri. Jọwọ ṣayẹwo URL ati gbiyanju lẹẹkansi.',
       accessDenied: 'Wiwọle ni idinamọ. Repository le jẹ ikọkọ tabi nilo ijẹrisi.',
       networkError: 'Aṣiṣe nẹtiwọọki. Jọwọ ṣayẹwo asopọ rẹ ati gbiyanju lẹẹkansi.',
+
+      // App Showcase
+      featuredApps: 'Awọn Ohun elo Ti a Yan',
+      featuredAppsDescription: 'Awọn ohun elo ti a yan n ṣafihan ti o dara julọ ti agbegbe wa',
+      templates: 'Awọn Awoṣe',
+      templatesDescription: 'Awọn awoṣe ti o ṣetan lati lo lati bẹrẹ iṣẹ akanṣe rẹ',
+      moreApps: 'Awọn Ohun elo Diẹ Sii',
+      moreAppsCount: 'Awọn Ohun elo Diẹ Sii ({{count}})',
+      clickToCollapse: 'Tẹ lati subu',
+      clickToViewMore: 'Tẹ lati wo awọn ohun elo agbegbe diẹ sii',
+      noAppsFound: 'Ko si awọn ohun elo ti a ri. Gbiyanju relay miiran?',
     }
   },
   ig: {
@@ -2033,6 +2088,17 @@ const resources = {
       repositoryNotFound: 'Ahụghị repository. Biko lelee URL wee nwaa ọzọ.',
       accessDenied: 'Ajụrụ ohere. Repository nwere ike bụrụ nke nzuzo ma ọ bụ chọrọ nkwenye.',
       networkError: 'Njehie netwọk. Biko lelee njikọ gị wee nwaa ọzọ.',
+
+      // App Showcase
+      featuredApps: 'Ngwa Ahọpụtara',
+      featuredAppsDescription: 'Ngwa ahọpụtara na-egosi nke kacha mma nke obodo anyị',
+      templates: 'Ụdịdị',
+      templatesDescription: 'Ụdịdị dị njikere iji jiri malite ọrụ gị',
+      moreApps: 'Ngwa Ndị Ọzọ',
+      moreAppsCount: 'Ngwa Ndị Ọzọ ({{count}})',
+      clickToCollapse: 'Pịa iji gbakọọ',
+      clickToViewMore: 'Pịa iji hụ ngwa obodo ndị ọzọ',
+      noAppsFound: 'Ahụghị ngwa ọ bụla. Nwaa relay ọzọ?',
     }
   }
 };

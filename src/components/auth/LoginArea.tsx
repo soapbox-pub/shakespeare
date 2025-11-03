@@ -42,7 +42,7 @@ export function LoginArea({ className }: LoginAreaProps) {
       ) : (
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
-            <button className='flex items-center gap-3 p-3 rounded-full hover:bg-accent transition-all w-full text-foreground'>
+            <button className='flex items-center gap-3 p-3 rounded-full hover:bg-muted/50 transition-all w-full text-foreground'>
               <Avatar className='w-10 h-10'>
                 <AvatarFallback>
                   <User className='w-5 h-5 text-muted-foreground' />

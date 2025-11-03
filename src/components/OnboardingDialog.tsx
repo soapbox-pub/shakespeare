@@ -1,32 +1,33 @@
 import { useState, useEffect, useRef } from 'react';
 import { generateSecretKey } from 'nostr-tools';
 import { nip19 } from 'nostr-tools';
-import { Bot, Check, Sparkles, ArrowRight, ArrowLeft, ExternalLink, Search } from 'lucide-react';
+import { Bot, Check, Sparkles, ArrowRight, ArrowLeft, ExternalLink, Search, Coins } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
-import { PasswordInput } from '@/components/ui/password-input';
 import { Input } from '@/components/ui/input';
 import { useAISettings } from '@/hooks/useAISettings';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useLoginActions } from '@/hooks/useLoginActions';
 import { useProviderModels } from '@/hooks/useProviderModels';
+import { useAICredits } from '@/hooks/useAICredits';
 import { CreditsDialog } from '@/components/CreditsDialog';
 import { OnboardingCreditsBadge } from '@/components/OnboardingCreditsBadge';
 import { ShakespeareLogo } from '@/components/ShakespeareLogo';
 import { ModelPricing } from '@/components/ModelPricing';
 import { AI_PROVIDER_PRESETS, type PresetProvider } from '@/lib/aiProviderPresets';
 import { cn } from '@/lib/utils';
+import { LoginArea } from '@/components/auth/LoginArea';
 
 interface OnboardingDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-type OnboardingStep = 'welcome' | 'open-source' | 'provider-selection' | 'model-selection' | 'conclusion';
+type OnboardingStep = 'welcome' | 'open-source' | 'provider-selection' | 'nostr-identity' | 'model-selection' | 'conclusion';
 
 export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) {
   const { t } = useTranslation();
@@ -39,6 +40,7 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [agreedToProviderTerms, setAgreedToProviderTerms] = useState(false);
   const [modelSearchQuery, setModelSearchQuery] = useState('');
+  const [generatedNsec, setGeneratedNsec] = useState<string>('');
 
   // Ref for the scrollable content area
   const scrollableContentRef = useRef<HTMLDivElement>(null);
@@ -47,6 +49,17 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
   const { user } = useCurrentUser();
   const login = useLoginActions();
   const { models, isLoading: isLoadingModels } = useProviderModels();
+
+  // Fetch credits for the selected provider (only if it's a Nostr provider and user is logged in)
+  const creditsQuery = useAICredits(
+    selectedProvider && selectedProvider.nostr && user
+      ? {
+        id: selectedProvider.id,
+        baseURL: selectedProvider.baseURL,
+        nostr: selectedProvider.nostr,
+      }
+      : { id: '', baseURL: '', nostr: undefined }
+  );
 
   // Filter models to only show selected provider models
   const providerModels = selectedProvider
@@ -96,11 +109,14 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
     setIsSettingUp(true);
 
     try {
-      // If user is not logged in and provider uses Nostr auth, generate and login with secret key
+      // If user is not logged in and provider uses Nostr auth, generate key and show identity step
       if (!user && selectedProvider.nostr) {
         const secretKey = generateSecretKey();
         const nsec = nip19.nsecEncode(secretKey);
-        login.nsec(nsec);
+        setGeneratedNsec(nsec);
+        setStep('nostr-identity');
+        setIsSettingUp(false);
+        return;
       }
 
       // Add selected provider to their config
@@ -109,6 +125,34 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
         baseURL: selectedProvider.baseURL,
         nostr: selectedProvider.nostr || undefined,
         apiKey: requiresApiKey ? providerApiKey.trim() : undefined,
+      };
+      setProvider(providerConfig);
+
+      // Move to model selection
+      setStep('model-selection');
+    } catch (error) {
+      console.error('Failed to set up user:', error);
+    } finally {
+      setIsSettingUp(false);
+    }
+  };
+
+  const handleContinueFromNostrIdentity = async () => {
+    if (!selectedProvider) return;
+
+    setIsSettingUp(true);
+
+    try {
+      // If no user is logged in yet, log in with generated key
+      if (!user && generatedNsec) {
+        login.nsec(generatedNsec);
+      }
+
+      // Add selected provider to their config
+      const providerConfig = {
+        id: selectedProvider.id,
+        baseURL: selectedProvider.baseURL,
+        nostr: selectedProvider.nostr || undefined,
       };
       setProvider(providerConfig);
 
@@ -167,6 +211,7 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
       setAgreedToTerms(false);
       setAgreedToProviderTerms(false);
       setModelSearchQuery('');
+      setGeneratedNsec('');
     }
   }, [open]);
 
@@ -203,11 +248,24 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
                   <ArrowLeft className="h-4 w-4" />
                 </Button>
               )}
-              {step === 'model-selection' && (
+              {step === 'nostr-identity' && (
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setStep('provider-selection')}
+                  className="mr-2 p-1 h-auto"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+              )}
+              {step === 'model-selection' && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    // Go back to nostr-identity if we have a generated key, otherwise provider-selection
+                    setStep(generatedNsec ? 'nostr-identity' : 'provider-selection');
+                  }}
                   className="mr-2 p-1 h-auto"
                 >
                   <ArrowLeft className="h-4 w-4" />
@@ -477,6 +535,50 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
                     ) : (
                       <>
                         {t('continueButton')}
+                        <ArrowRight className="h-4 w-4" />
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {step === 'nostr-identity' && (
+              <div className="space-y-6 py-4">
+                <div className="text-center space-y-4">
+                  <h2 className="text-2xl font-bold">Your Nostr Account</h2>
+                  <p className="text-muted-foreground max-w-md mx-auto">
+                    This is the account that will be used with {selectedProvider?.name}.
+                  </p>
+                </div>
+
+                <div className="flex flex-col items-center space-y-4">
+                  <LoginArea className="w-full max-w-xs" />
+
+                  {user && creditsQuery.data && (
+                    <div className="flex items-center gap-2 text-sm bg-muted/50 px-4 py-2 rounded-full">
+                      <Coins className="h-4 w-4 text-primary" />
+                      <span className="font-semibold">
+                        {creditsQuery.data.amount.toLocaleString()} credits available
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex justify-center">
+                  <Button
+                    onClick={handleContinueFromNostrIdentity}
+                    disabled={isSettingUp}
+                    className="gap-2 rounded-full w-full max-w-md"
+                  >
+                    {isSettingUp ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                        Setting up...
+                      </>
+                    ) : (
+                      <>
+                        Continue
                         <ArrowRight className="h-4 w-4" />
                       </>
                     )}

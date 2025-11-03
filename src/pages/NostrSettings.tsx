@@ -1,4 +1,4 @@
-import { ArrowLeft, Wifi, Users, UserPlus, LogOut, Trash2, User, Plus, Server, X } from 'lucide-react';
+import { ArrowLeft, Wifi, Users, UserPlus, LogOut, Trash2, User, Plus, Server, X, Key } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -15,6 +15,12 @@ import { useLoggedInAccounts, type Account } from '@/hooks/useLoggedInAccounts';
 import { genUserName } from '@/lib/genUserName';
 import { useState } from 'react';
 import { useAppContext } from '@/hooks/useAppContext';
+import { toast } from '@/hooks/useToast';
+import { useNostrLogin } from '@nostrify/react/login';
+
+const sanitizeFilename = (filename: string) => {
+  return filename.replace(/[^a-z0-9_.-]/gi, '_');
+};
 
 export function NostrSettings() {
   const { t } = useTranslation();
@@ -25,6 +31,7 @@ export function NostrSettings() {
   const [showSignupDialog, setShowSignupDialog] = useState(false);
   const { config, updateConfig } = useAppContext();
   const [newServerHostname, setNewServerHostname] = useState('');
+  const { logins } = useNostrLogin();
 
   const handleSwitchAccount = (accountId: string) => {
     setLogin(accountId);
@@ -68,6 +75,60 @@ export function NostrSettings() {
       ...current,
       ngitServers: (current.ngitServers ?? config.ngitServers).filter(s => s !== hostname),
     }));
+  };
+
+  const getAccountLogin = (accountId: string) => {
+    return logins.find((l) => l.id === accountId);
+  };
+
+  const isNsecLogin = (accountId: string) => {
+    const login = getAccountLogin(accountId);
+    return login?.type === 'nsec';
+  };
+
+  const getAccountNsec = (accountId: string): string | undefined => {
+    const login = getAccountLogin(accountId);
+    if (login?.type === 'nsec' && login.data && 'nsec' in login.data) {
+      return login.data.nsec as string;
+    }
+    return undefined;
+  };
+
+  const downloadNsec = (accountId: string) => {
+    const nsec = getAccountNsec(accountId);
+    if (!nsec) return;
+
+    try {
+      // Create a blob with the key text
+      const blob = new Blob([nsec], { type: 'text/plain; charset=utf-8' });
+      const url = globalThis.URL.createObjectURL(blob);
+
+      // Sanitize filename
+      const filename = sanitizeFilename('secret-key.txt');
+
+      // Create a temporary link element and trigger download
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+
+      // Clean up immediately
+      globalThis.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast({
+        title: 'Secret Key Saved!',
+        description: 'Your key has been safely stored.',
+      });
+    } catch {
+      toast({
+        title: 'Download failed',
+        description: 'Could not download the key file.',
+        variant: 'destructive',
+      });
+    }
   };
 
   return (
@@ -180,6 +241,20 @@ export function NostrSettings() {
                       </div>
 
                       <div className="flex items-center gap-2 z-10">
+                        {isNsecLogin(account.id) && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              downloadNsec(account.id);
+                            }}
+                            className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-transparent"
+                            title="Download secret key"
+                          >
+                            <Key className="h-4 w-4" />
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="icon"

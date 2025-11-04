@@ -101,7 +101,7 @@ const defaultConfig: AppConfig = {
   fsPathConfig: electronPaths.fsPathConfig,
   fsPathTmp: electronPaths.fsPathTmp,
   sentryDsn: import.meta.env.VITE_SENTRY_DSN || "",
-  sentryEnabled: false,
+  sentryEnabled: true,
 };
 
 const presetRelays = [

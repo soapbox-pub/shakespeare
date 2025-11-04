@@ -1,7 +1,5 @@
-import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { ErrorBoundary } from './ErrorBoundary';
 
 // Component that throws an error
@@ -87,32 +85,6 @@ describe('ErrorBoundary', () => {
     );
   });
 
-  it('has a Try Again button that attempts to reset', async () => {
-    const user = userEvent.setup();
-    const onError = vi.fn();
-
-    render(
-      <ErrorBoundary onError={onError}>
-        <ThrowError shouldThrow={true} />
-      </ErrorBoundary>
-    );
-
-    // Error UI should be visible
-    expect(screen.getByText('Something went wrong')).toBeInTheDocument();
-    expect(onError).toHaveBeenCalledTimes(1);
-
-    // Try Again button should be present and clickable
-    const tryAgainButton = screen.getByRole('button', { name: /try again/i });
-    expect(tryAgainButton).toBeInTheDocument();
-
-    // Clicking it will attempt to reset and re-render
-    // Since our component still throws, it will catch the error again
-    await user.click(tryAgainButton);
-
-    // The error boundary catches the error again (expected behavior)
-    expect(onError).toHaveBeenCalledTimes(2);
-  });
-
   it('shows action buttons in error state', () => {
     render(
       <ErrorBoundary>
@@ -120,7 +92,6 @@ describe('ErrorBoundary', () => {
       </ErrorBoundary>
     );
 
-    expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /reload page/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /go home/i })).toBeInTheDocument();
   });

@@ -397,7 +397,7 @@ export default function Index() {
                   className="size-8 [&_svg]:size-5 rounded-full p-0"
                 >
                   {isCreating || isGeneratingId ? (
-                    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2" />
+                    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white" />
                   ) : (
                     <ArrowUp />
                   )}

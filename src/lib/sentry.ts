@@ -51,6 +51,36 @@ export async function initializeSentry(dsn: string): Promise<void> {
       environment: import.meta.env.MODE,
       // Release
       release: import.meta.env.VITE_APP_VERSION || 'development',
+      // Censor sensitive data before sending to Sentry
+      beforeSend(event) {
+        // Regex to match Nostr nsec private keys
+        const NSEC_REGEX = /nsec1[023456789acdefghjklmnpqrstuvwxyz]{58}/g;
+
+        /** Recursively censors nsec values in any value (string, object, array, etc.) */
+        function censorNsec(value: unknown): unknown {
+          if (typeof value === 'string') {
+            return value.replace(NSEC_REGEX, 'nsec1**********************************************************');
+          }
+          if (Array.isArray(value)) {
+            return value.map(censorNsec);
+          }
+          if (value && typeof value === 'object') {
+            const result: Record<string, unknown> = {};
+            for (const [key, val] of Object.entries(value)) {
+              result[key] = censorNsec(val);
+            }
+            return result;
+          }
+          return value;
+        }
+
+        /** Censors nsec values from Sentry events before sending */
+        function censorNsecValues<T extends SentryTypes.Event>(event: T): T | null {
+          return censorNsec(event) as T;
+        }
+
+        return censorNsecValues(event);
+      },
     });
 
     isInitialized = true;

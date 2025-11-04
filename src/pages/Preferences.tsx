@@ -52,10 +52,10 @@ export function Preferences() {
         </div>
       )}
 
-      <div className="space-y-6">
+      <div className="space-y-6 max-w-sm">
         <div className="space-y-2">
           <Label htmlFor="theme-picker">{t('theme')}</Label>
-          <div className="w-full max-w-xs">
+          <div className="w-full">
             <ThemePicker />
           </div>
           <p className="text-sm text-muted-foreground">
@@ -65,7 +65,7 @@ export function Preferences() {
 
         <div className="space-y-2">
           <Label htmlFor="language-picker">{t('language')}</Label>
-          <div className="w-full max-w-xs">
+          <div className="w-full">
             <LanguagePicker />
           </div>
           <p className="text-sm text-muted-foreground">
@@ -74,7 +74,7 @@ export function Preferences() {
         </div>
 
         <div className="space-y-2">
-          <div className="flex items-center justify-between max-w-xs">
+          <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label htmlFor="sentry-enabled" className="text-sm font-medium">
                 {t('shareErrorReports')}
@@ -91,7 +91,7 @@ export function Preferences() {
               }}
             />
           </div>
-          <p className="text-sm text-muted-foreground max-w-xs">
+          <p className="text-sm text-muted-foreground">
             {t('shareErrorReportsDescription')}
           </p>
         </div>

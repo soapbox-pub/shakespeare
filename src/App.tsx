@@ -26,6 +26,7 @@ import { cleanupTmpDirectory } from '@/lib/tmpCleanup';
 import { DynamicFavicon } from '@/components/DynamicFavicon';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { PWAUpdatePrompt } from '@/components/PWAUpdatePrompt';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 import AppRouter from './AppRouter';
 
@@ -134,40 +135,42 @@ function FSCleanupHandler() {
 
 export function App() {
   return (
-    <UnheadProvider head={head}>
-      <QueryClientProvider client={queryClient}>
-        <AppProvider storageKey="nostr:app-config" defaultConfig={defaultConfig} presetRelays={presetRelays}>
-          <SentryProvider>
-            <FSProvider fs={fs}>
-              <ConsoleErrorProvider>
-                <FSCleanupHandler />
-                <NostrLoginProvider storageKey='nostr:login'>
-                  <NostrProvider>
-                    <AISettingsProvider>
-                      <GitSettingsProvider>
-                        <DeploySettingsProvider>
-                          <SessionManagerProvider>
-                            <TooltipProvider>
-                              <Toaster />
-                              <DynamicFavicon />
-                              <OfflineIndicator />
-                              <PWAUpdatePrompt />
-                              <Suspense>
-                                <AppRouter />
-                              </Suspense>
-                            </TooltipProvider>
-                          </SessionManagerProvider>
-                        </DeploySettingsProvider>
-                      </GitSettingsProvider>
-                    </AISettingsProvider>
-                  </NostrProvider>
-                </NostrLoginProvider>
-              </ConsoleErrorProvider>
-            </FSProvider>
-          </SentryProvider>
-        </AppProvider>
-      </QueryClientProvider>
-    </UnheadProvider>
+    <ErrorBoundary>
+      <UnheadProvider head={head}>
+        <QueryClientProvider client={queryClient}>
+          <AppProvider storageKey="nostr:app-config" defaultConfig={defaultConfig} presetRelays={presetRelays}>
+            <SentryProvider>
+              <FSProvider fs={fs}>
+                <ConsoleErrorProvider>
+                  <FSCleanupHandler />
+                  <NostrLoginProvider storageKey='nostr:login'>
+                    <NostrProvider>
+                      <AISettingsProvider>
+                        <GitSettingsProvider>
+                          <DeploySettingsProvider>
+                            <SessionManagerProvider>
+                              <TooltipProvider>
+                                <Toaster />
+                                <DynamicFavicon />
+                                <OfflineIndicator />
+                                <PWAUpdatePrompt />
+                                <Suspense>
+                                  <AppRouter />
+                                </Suspense>
+                              </TooltipProvider>
+                            </SessionManagerProvider>
+                          </DeploySettingsProvider>
+                        </GitSettingsProvider>
+                      </AISettingsProvider>
+                    </NostrProvider>
+                  </NostrLoginProvider>
+                </ConsoleErrorProvider>
+              </FSProvider>
+            </SentryProvider>
+          </AppProvider>
+        </QueryClientProvider>
+      </UnheadProvider>
+    </ErrorBoundary>
   );
 }
 

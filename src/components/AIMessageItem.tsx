@@ -1,6 +1,6 @@
 import { memo, useState } from 'react';
 import { Streamdown } from 'streamdown';
-import { Wrench, Eye, FileText, Edit, Package, PackageMinus, GitCommit, BookOpen, Download, Hash, Tag, Network, List, Plus, Terminal, Globe, CheckCircle, Lightbulb, Loader2, Logs } from 'lucide-react';
+import { Wrench, Eye, FileText, Edit, Package, PackageMinus, GitCommit, BookOpen, Download, Hash, Tag, Network, List, Plus, Terminal, Globe, CheckCircle, Lightbulb, Loader2, Logs, Send } from 'lucide-react';
 import type { AIMessage } from '@/lib/SessionManager';
 import { cn } from '@/lib/utils';
 import { UserMessage } from '@/components/UserMessage';
@@ -141,6 +141,13 @@ export const AIMessageItem = memo(({
               icon: Plus,
               title: args.range ? `Generated ${args.range} kind` : 'Generated Kind'
             };
+          case 'nostr_publish_events': {
+            const eventCount = args.events?.length || 0;
+            return {
+              icon: Send,
+              title: eventCount > 1 ? `Published ${eventCount} Nostr events` : 'Published Nostr event'
+            };
+          }
           case 'deploy_project':
             return {
               icon: Globe,

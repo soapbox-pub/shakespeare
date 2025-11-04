@@ -361,7 +361,7 @@ export function SystemSettings() {
                 <Input
                   id="esm-url"
                   type="url"
-                  placeholder="https://esm.shakespeare.diy"
+                  placeholder="https://esm.sh"
                   value={esmUrlInput}
                   onChange={(e) => {
                     // Strip trailing slash on save.

@@ -91,7 +91,7 @@ const defaultConfig: AppConfig = {
   theme: "system",
   relayUrl: "wss://relay.ditto.pub",
   projectTemplate: "https://gitlab.com/soapbox-pub/mkstack.git",
-  esmUrl: "https://esm.shakespeare.diy",
+  esmUrl: "https://esm.sh",
   corsProxy: "https://proxy.shakespeare.diy/?url={href}",
   faviconUrl: "https://favicon.shakespeare.diy/?url={href}",
   previewDomain: "local-shakespeare.dev",

@@ -55,31 +55,35 @@ export async function initializeSentry(dsn: string): Promise<void> {
       beforeSend(event) {
         // Regex to match Nostr nsec private keys
         const NSEC_REGEX = /nsec1[023456789acdefghjklmnpqrstuvwxyz]{58}/g;
+        // Regex to match AI API keys (typically sk-... format)
+        const API_KEY_REGEX = /sk-[a-zA-Z0-9_-]+/g;
 
-        /** Recursively censors nsec values in any value (string, object, array, etc.) */
-        function censorNsec(value: unknown): unknown {
+        /** Recursively censors sensitive values in any value (string, object, array, etc.) */
+        function censorSensitiveData(value: unknown): unknown {
           if (typeof value === 'string') {
-            return value.replace(NSEC_REGEX, 'nsec1**********************************************************');
+            return value
+              .replace(NSEC_REGEX, 'nsec1**********************************************************')
+              .replace(API_KEY_REGEX, 'sk-***************************');
           }
           if (Array.isArray(value)) {
-            return value.map(censorNsec);
+            return value.map(censorSensitiveData);
           }
           if (value && typeof value === 'object') {
             const result: Record<string, unknown> = {};
             for (const [key, val] of Object.entries(value)) {
-              result[key] = censorNsec(val);
+              result[key] = censorSensitiveData(val);
             }
             return result;
           }
           return value;
         }
 
-        /** Censors nsec values from Sentry events before sending */
-        function censorNsecValues<T extends SentryTypes.Event>(event: T): T | null {
-          return censorNsec(event) as T;
+        /** Censors sensitive values from Sentry events before sending */
+        function censorSensitiveValues<T extends SentryTypes.Event>(event: T): T | null {
+          return censorSensitiveData(event) as T;
         }
 
-        return censorNsecValues(event);
+        return censorSensitiveValues(event);
       },
     });
 

@@ -47,6 +47,7 @@ export interface SessionManagerEvents {
   loadingChanged: (projectId: string, isLoading: boolean) => void;
   costUpdated: (projectId: string, totalCost: number) => void;
   contextUsageUpdated: (projectId: string, inputTokens: number) => void;
+  fileChanged: (projectId: string, filePath: string) => void;
 }
 
 /**

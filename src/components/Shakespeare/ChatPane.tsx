@@ -13,6 +13,7 @@ import { useKeepAlive } from '@/hooks/useKeepAlive';
 import { useAppContext } from '@/hooks/useAppContext';
 import { useAIChat } from '@/hooks/useAIChat';
 import { useProviderModels } from '@/hooks/useProviderModels';
+import { useSessionManager } from '@/hooks/useSessionManager';
 import { AIMessageItem } from '@/components/AIMessageItem';
 import { TextEditorViewTool } from '@/lib/tools/TextEditorViewTool';
 import { TextEditorWriteTool } from '@/lib/tools/TextEditorWriteTool';
@@ -138,12 +139,20 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   // Initialize AI chat with tools
   const cwd = `${projectsPath}/${projectId}`;
   const esmUrlRef = useRef(config.esmUrl);
+  const sessionManager = useSessionManager();
+
+  // Callback to emit file changes for auto-build
+  const handleFileChanged = useCallback((filePath: string) => {
+    // Emit the fileChanged event through the session manager
+    sessionManager.emit('fileChanged', projectId, filePath);
+  }, [sessionManager, projectId]);
+
   const customTools = useMemo(() => {
     const baseTools = {
       git_commit: new GitCommitTool(fs, cwd, git),
       text_editor_view: new TextEditorViewTool(fs, cwd, { projectsPath }),
-      text_editor_write: new TextEditorWriteTool(fs, cwd, { projectsPath, tmpPath }),
-      text_editor_str_replace: new TextEditorStrReplaceTool(fs, cwd, { projectsPath, tmpPath }),
+      text_editor_write: new TextEditorWriteTool(fs, cwd, { projectsPath, tmpPath, onFileChanged: handleFileChanged }),
+      text_editor_str_replace: new TextEditorStrReplaceTool(fs, cwd, { projectsPath, tmpPath, onFileChanged: handleFileChanged }),
       npm_add_package: new NpmAddPackageTool(fs, cwd),
       npm_remove_package: new NpmRemovePackageTool(fs, cwd),
       build_project: new BuildProjectTool(fs, cwd, esmUrlRef.current),
@@ -169,7 +178,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     }
 
     return baseTools;
-  }, [fs, git, cwd, user, projectId, projectsPath, tmpPath]);
+  }, [fs, git, cwd, user, projectId, projectsPath, tmpPath, handleFileChanged]);
 
   // Convert tools to OpenAI format
   const tools = useMemo(() => {

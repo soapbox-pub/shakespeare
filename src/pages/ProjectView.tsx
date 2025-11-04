@@ -19,6 +19,7 @@ import { StarButton } from '@/components/StarButton';
 import { useBuildProject } from '@/hooks/useBuildProject';
 import { useIsProjectPreviewable } from '@/hooks/useIsProjectPreviewable';
 import { useConsoleError } from '@/hooks/useConsoleError';
+import { useAutoBuild } from '@/hooks/useAutoBuild';
 
 export function ProjectView() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -42,6 +43,13 @@ export function ProjectView() {
 
   const build = useBuildProject(projectId!);
   const { data: isPreviewable = false } = useIsProjectPreviewable(projectId!);
+
+  // Enable auto-build for previewable projects
+  useAutoBuild({
+    projectId: projectId!,
+    enabled: isPreviewable,
+    debounceMs: 2000,
+  });
 
   const loadProject = useCallback(async () => {
     if (!projectId) return;

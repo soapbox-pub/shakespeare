@@ -17,6 +17,7 @@ export class TextEditorStrReplaceTool implements Tool<TextEditorStrReplaceParams
   private cwd: string;
   private projectsPath: string;
   private tmpPath: string;
+  private onFileChanged?: (filePath: string) => void;
 
   readonly description = "Replace a string in a file with a new string";
 
@@ -29,11 +30,12 @@ export class TextEditorStrReplaceTool implements Tool<TextEditorStrReplaceParams
     ),
   });
 
-  constructor(fs: JSRuntimeFS, cwd: string, options?: { projectsPath?: string; tmpPath?: string }) {
+  constructor(fs: JSRuntimeFS, cwd: string, options?: { projectsPath?: string; tmpPath?: string; onFileChanged?: (filePath: string) => void }) {
     this.fs = fs;
     this.cwd = cwd;
     this.projectsPath = options?.projectsPath || '/projects';
     this.tmpPath = options?.tmpPath || '/tmp';
+    this.onFileChanged = options?.onFileChanged;
   }
 
   async execute(args: TextEditorStrReplaceParams): Promise<string> {
@@ -171,6 +173,11 @@ export class TextEditorStrReplaceTool implements Tool<TextEditorStrReplaceParams
       }
 
       await this.fs.writeFile(absolutePath, newContent, "utf8");
+
+      // Notify about file change (for auto-build)
+      if (this.onFileChanged) {
+        this.onFileChanged(path);
+      }
 
       let successMessage = `String successfully replaced in ${path}`;
       if (occurrences > 1) {

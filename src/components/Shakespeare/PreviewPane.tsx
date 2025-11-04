@@ -741,7 +741,10 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
                 <div className="absolute inset-0 bg-background/50 backdrop-blur-sm flex items-center justify-center z-10">
                   <div className="bg-background/90 border rounded-lg p-4 shadow-lg flex items-center gap-3">
                     <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                    <span className="text-sm font-medium">Building project...</span>
+                    <div className="flex flex-col">
+                      <span className="text-sm font-medium">Building project...</span>
+                      <span className="text-xs text-muted-foreground">Preview will update automatically</span>
+                    </div>
                   </div>
                 </div>
               )}

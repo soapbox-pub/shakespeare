@@ -15,6 +15,7 @@ export class TextEditorWriteTool implements Tool<TextEditorWriteParams> {
   private cwd: string;
   private projectsPath: string;
   private tmpPath: string;
+  private onFileChanged?: (filePath: string) => void;
 
   readonly description = "Create or overwrite a file with new content";
 
@@ -25,11 +26,12 @@ export class TextEditorWriteTool implements Tool<TextEditorWriteParams> {
     file_text: z.string().describe("Content to write to the file"),
   });
 
-  constructor(fs: JSRuntimeFS, cwd: string, options?: { projectsPath?: string; tmpPath?: string }) {
+  constructor(fs: JSRuntimeFS, cwd: string, options?: { projectsPath?: string; tmpPath?: string; onFileChanged?: (filePath: string) => void }) {
     this.fs = fs;
     this.cwd = cwd;
     this.projectsPath = options?.projectsPath || '/projects';
     this.tmpPath = options?.tmpPath || '/tmp';
+    this.onFileChanged = options?.onFileChanged;
   }
 
   async execute(args: TextEditorWriteParams): Promise<string> {
@@ -58,6 +60,12 @@ export class TextEditorWriteTool implements Tool<TextEditorWriteParams> {
 
       await this.fs.mkdir(dirname(absolutePath), { recursive: true });
       await this.fs.writeFile(absolutePath, file_text, "utf8");
+
+      // Notify about file change (for auto-build)
+      if (this.onFileChanged) {
+        this.onFileChanged(path);
+      }
+
       return `File successfully written to ${path}`;
     } catch (error) {
       throw new Error(String(error));

@@ -31,6 +31,10 @@ export interface AppConfig {
   fsPathConfig: string;
   /** VFS path for temporary files directory */
   fsPathTmp: string;
+  /** Sentry DSN for error reporting (empty string = disabled) */
+  sentryDsn: string;
+  /** Whether the user has enabled Sentry error reporting */
+  sentryEnabled: boolean;
 }
 
 export interface AppContextType {

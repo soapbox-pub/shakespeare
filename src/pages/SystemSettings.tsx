@@ -29,6 +29,7 @@ export function SystemSettings() {
   const [fsPathProjectsInput, setFsPathProjectsInput] = useState(config.fsPathProjects);
   const [fsPathConfigInput, setFsPathConfigInput] = useState(config.fsPathConfig);
   const [fsPathTmpInput, setFsPathTmpInput] = useState(config.fsPathTmp);
+  const [sentryDsnInput, setSentryDsnInput] = useState(config.sentryDsn);
 
   // Service Worker state
   const [swState, setSwState] = useState<string>('');
@@ -459,6 +460,36 @@ export function SystemSettings() {
                     {t('showcaseModeratorDescription')}
                   </p>
                 </div>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+
+        {/* Sentry DSN Configuration */}
+        <Accordion type="single" collapsible className="w-full">
+          <AccordionItem value="sentry-dsn" className="border rounded-lg">
+            <AccordionTrigger className="px-4 py-3 hover:no-underline">
+              <h4 className="text-sm font-medium">{t('sentryDsn')}</h4>
+            </AccordionTrigger>
+            <AccordionContent className="px-4 pb-4">
+              <div className="py-1 space-y-2">
+                <Input
+                  id="sentry-dsn"
+                  type="text"
+                  placeholder="https://..."
+                  value={sentryDsnInput}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setSentryDsnInput(value);
+                    updateConfig((current) => ({
+                      ...current,
+                      sentryDsn: value,
+                    }));
+                  }}
+                />
+                <p className="text-xs text-muted-foreground">
+                  {t('sentryDsnDescription')}
+                </p>
               </div>
             </AccordionContent>
           </AccordionItem>

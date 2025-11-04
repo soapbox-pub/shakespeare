@@ -13,6 +13,7 @@ import { NostrLoginProvider } from '@nostrify/react/login';
 import { AppProvider } from '@/components/AppProvider';
 import { AppConfig } from '@/contexts/AppContext';
 import { useAppContext } from '@/hooks/useAppContext';
+import { SentryProvider } from '@/components/SentryProvider';
 import { AISettingsProvider } from '@/components/AISettingsProvider';
 import { GitSettingsProvider } from '@/components/GitSettingsProvider';
 import { DeploySettingsProvider } from '@/components/DeploySettingsProvider';
@@ -99,6 +100,8 @@ const defaultConfig: AppConfig = {
   fsPathProjects: electronPaths.fsPathProjects,
   fsPathConfig: electronPaths.fsPathConfig,
   fsPathTmp: electronPaths.fsPathTmp,
+  sentryDsn: import.meta.env.VITE_SENTRY_DSN || "",
+  sentryEnabled: false,
 };
 
 const presetRelays = [
@@ -134,32 +137,34 @@ export function App() {
     <UnheadProvider head={head}>
       <QueryClientProvider client={queryClient}>
         <AppProvider storageKey="nostr:app-config" defaultConfig={defaultConfig} presetRelays={presetRelays}>
-          <FSProvider fs={fs}>
-            <ConsoleErrorProvider>
-              <FSCleanupHandler />
-              <NostrLoginProvider storageKey='nostr:login'>
-                <NostrProvider>
-                  <AISettingsProvider>
-                    <GitSettingsProvider>
-                      <DeploySettingsProvider>
-                        <SessionManagerProvider>
-                          <TooltipProvider>
-                            <Toaster />
-                            <DynamicFavicon />
-                            <OfflineIndicator />
-                            <PWAUpdatePrompt />
-                            <Suspense>
-                              <AppRouter />
-                            </Suspense>
-                          </TooltipProvider>
-                        </SessionManagerProvider>
-                      </DeploySettingsProvider>
-                    </GitSettingsProvider>
-                  </AISettingsProvider>
-                </NostrProvider>
-              </NostrLoginProvider>
-            </ConsoleErrorProvider>
-          </FSProvider>
+          <SentryProvider>
+            <FSProvider fs={fs}>
+              <ConsoleErrorProvider>
+                <FSCleanupHandler />
+                <NostrLoginProvider storageKey='nostr:login'>
+                  <NostrProvider>
+                    <AISettingsProvider>
+                      <GitSettingsProvider>
+                        <DeploySettingsProvider>
+                          <SessionManagerProvider>
+                            <TooltipProvider>
+                              <Toaster />
+                              <DynamicFavicon />
+                              <OfflineIndicator />
+                              <PWAUpdatePrompt />
+                              <Suspense>
+                                <AppRouter />
+                              </Suspense>
+                            </TooltipProvider>
+                          </SessionManagerProvider>
+                        </DeploySettingsProvider>
+                      </GitSettingsProvider>
+                    </AISettingsProvider>
+                  </NostrProvider>
+                </NostrLoginProvider>
+              </ConsoleErrorProvider>
+            </FSProvider>
+          </SentryProvider>
         </AppProvider>
       </QueryClientProvider>
     </UnheadProvider>

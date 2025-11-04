@@ -53,6 +53,8 @@ describe('useAIProjectId', () => {
         fsPathProjects: '/projects',
         fsPathConfig: '/config',
         fsPathTmp: '/tmp',
+        sentryDsn: '',
+        sentryEnabled: false,
       },
       updateConfig: vi.fn(),
     });

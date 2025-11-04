@@ -3,15 +3,17 @@ import { useTranslation } from 'react-i18next';
 import { Button } from "@/components/ui/button";
 import { ThemePicker } from "@/components/ThemePicker";
 import { LanguagePicker } from "@/components/LanguagePicker";
-
+import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useNavigate } from "react-router-dom";
+import { useAppContext } from "@/hooks/useAppContext";
 
 export function Preferences() {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
   const navigate = useNavigate();
+  const { config, updateConfig } = useAppContext();
 
   return (
     <div className="p-6 space-y-6">
@@ -68,6 +70,29 @@ export function Preferences() {
           </div>
           <p className="text-sm text-muted-foreground">
             {t('languageDescription')}
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex items-center justify-between max-w-xs">
+            <div className="space-y-0.5">
+              <Label htmlFor="sentry-enabled" className="text-sm font-medium">
+                {t('shareErrorReports')}
+              </Label>
+            </div>
+            <Switch
+              id="sentry-enabled"
+              checked={config.sentryEnabled}
+              onCheckedChange={(checked) => {
+                updateConfig((current) => ({
+                  ...current,
+                  sentryEnabled: checked,
+                }));
+              }}
+            />
+          </div>
+          <p className="text-sm text-muted-foreground max-w-xs">
+            {t('shareErrorReportsDescription')}
           </p>
         </div>
       </div>

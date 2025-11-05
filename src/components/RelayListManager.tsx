@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Plus, X, Wifi } from 'lucide-react';
+import { Plus, X, Wifi, Settings } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useAppContext } from '@/hooks/useAppContext';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useNostrPublish } from '@/hooks/useNostrPublish';
@@ -193,38 +194,51 @@ export function RelayListManager() {
               {renderRelayUrl(relay.url)}
             </span>
 
-            {/* Read Switch */}
-            <div className="flex items-center gap-2 shrink-0">
-              <Label htmlFor={`read-${relay.url}`} className="text-xs text-muted-foreground cursor-pointer">
-                {t('read')}
-              </Label>
-              <Switch
-                id={`read-${relay.url}`}
-                checked={relay.read}
-                onCheckedChange={() => handleToggleRead(relay.url)}
-                className="data-[state=checked]:bg-green-500"
-              />
-            </div>
-
-            {/* Write Switch */}
-            <div className="flex items-center gap-2 shrink-0">
-              <Label htmlFor={`write-${relay.url}`} className="text-xs text-muted-foreground cursor-pointer">
-                {t('write')}
-              </Label>
-              <Switch
-                id={`write-${relay.url}`}
-                checked={relay.write}
-                onCheckedChange={() => handleToggleWrite(relay.url)}
-                className="data-[state=checked]:bg-blue-500"
-              />
-            </div>
+            {/* Settings Popover */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-5 text-muted-foreground hover:text-foreground shrink-0"
+                >
+                  <Settings className="h-4 w-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-48" align="end">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor={`read-${relay.url}`} className="text-sm cursor-pointer">
+                      {t('read')}
+                    </Label>
+                    <Switch
+                      id={`read-${relay.url}`}
+                      checked={relay.read}
+                      onCheckedChange={() => handleToggleRead(relay.url)}
+                      className="data-[state=checked]:bg-green-500 scale-75"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor={`write-${relay.url}`} className="text-sm cursor-pointer">
+                      {t('write')}
+                    </Label>
+                    <Switch
+                      id={`write-${relay.url}`}
+                      checked={relay.write}
+                      onCheckedChange={() => handleToggleWrite(relay.url)}
+                      className="data-[state=checked]:bg-blue-500 scale-75"
+                    />
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
 
             {/* Remove Button */}
             <Button
               variant="ghost"
               size="icon"
               onClick={() => handleRemoveRelay(relay.url)}
-              className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-transparent shrink-0"
+              className="size-5 text-muted-foreground hover:text-destructive hover:bg-transparent shrink-0"
               disabled={relays.length <= 1}
             >
               <X className="h-4 w-4" />

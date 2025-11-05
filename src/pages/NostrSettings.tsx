@@ -327,7 +327,7 @@ export function NostrSettings() {
                     variant="ghost"
                     size="icon"
                     onClick={() => handleRemoveServer(hostname)}
-                    className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-transparent shrink-0"
+                    className="size-5 text-muted-foreground hover:text-destructive hover:bg-transparent shrink-0"
                     disabled={config.ngitServers.length <= 1}
                   >
                     <X className="h-4 w-4" />

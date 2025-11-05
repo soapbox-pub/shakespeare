@@ -50,7 +50,7 @@ export async function initializeSentry(dsn: string): Promise<void> {
       // Environment
       environment: import.meta.env.MODE,
       // Release
-      release: import.meta.env.VITE_APP_VERSION || 'development',
+      release: import.meta.env.VERSION || 'development',
       // Censor sensitive data before sending to Sentry
       beforeSend(event) {
         // Regex to match Nostr nsec private keys

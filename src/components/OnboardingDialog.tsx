@@ -19,6 +19,7 @@ import { CreditsDialog } from '@/components/CreditsDialog';
 import { OnboardingCreditsBadge } from '@/components/OnboardingCreditsBadge';
 import { ShakespeareLogo } from '@/components/ShakespeareLogo';
 import { ModelPricing } from '@/components/ModelPricing';
+import { ExternalFavicon } from '@/components/ExternalFavicon';
 import { AI_PROVIDER_PRESETS, type PresetProvider } from '@/lib/aiProviderPresets';
 import { cn } from '@/lib/utils';
 import { LoginArea } from '@/components/auth/LoginArea';
@@ -426,7 +427,12 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
                         onClick={() => handleProviderSelect(provider)}
                       >
                         <div className="flex items-center justify-between p-3">
-                          <div className="flex-1">
+                          <div className="flex items-center gap-2 flex-1">
+                            <ExternalFavicon
+                              url={provider.baseURL}
+                              size={20}
+                              fallback={<Bot size={20} />}
+                            />
                             <CardTitle className={cn('text-lg font-semibold', {
                               'bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent': isShakespeare,
                             })}>

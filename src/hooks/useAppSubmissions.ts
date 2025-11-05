@@ -52,7 +52,7 @@ export function useAppSubmissions() {
             authors: [addrData.pubkey],
             '#d': [addrData.identifier],
             limit: 1
-          }], { signal: AbortSignal.timeout(3000) });
+          }], { signal: AbortSignal.timeout(1000) });
 
           if (teamEvents.length > 0) {
             const teamEvent = teamEvents[0];
@@ -72,31 +72,19 @@ export function useAppSubmissions() {
       const submissionEvents = await nostr.query([{
         kinds: [APP_SUBMISSION_KIND],
         '#t': ['soapbox-app-submission'],
-        limit: 1000
-      }], { signal: AbortSignal.timeout(1000) });
+        limit: 100,
+      }], { signal: AbortSignal.timeout(3000) });
 
-      // Get featured app lists from moderators (NIP-51 kind 30267)
-      const featuredLists = await nostr.query([{
+      // Get list events from moderators (NIP-51 kind 30267)
+      const moderatorListEvents = await nostr.query([{
         kinds: [30267],
         authors: [MODERATOR_HEX],
-        '#d': ['soapbox-featured-apps'],
-        limit: 10
-      }], { signal: AbortSignal.timeout(1000) });
-
-      // Get approved app lists from moderators (NIP-51 kind 30267)
-      const approvedLists = await nostr.query([{
-        kinds: [30267],
-        authors: [MODERATOR_HEX],
-        '#d': ['soapbox-approved-apps'],
-        limit: 10
-      }], { signal: AbortSignal.timeout(1000) });
-
-      // Get homepage app lists from moderators (NIP-51 kind 30267)
-      const homepageLists = await nostr.query([{
-        kinds: [30267],
-        authors: [MODERATOR_HEX],
-        '#d': ['soapbox-homepage-apps'],
-        limit: 10
+        '#d': [
+          'soapbox-featured-apps',
+          'soapbox-approved-apps',
+          'soapbox-homepage-apps',
+        ],
+        limit: 3,
       }], { signal: AbortSignal.timeout(1000) });
 
       // Get reporting events for hidden apps (NIP-56 kind 1984)
@@ -122,43 +110,30 @@ export function useAppSubmissions() {
       }
 
       // Get the latest featured list
-      const latestFeaturedList = featuredLists.reduce((latest, current) =>
-        !latest || current.created_at > latest.created_at ? current : latest,
-        null as NostrEvent | null
-      );
-
-      // Get the latest approved list
-      const latestApprovedList = approvedLists.reduce((latest, current) =>
-        !latest || current.created_at > latest.created_at ? current : latest,
-        null as NostrEvent | null
-      );
-
-      // Get the latest homepage list
-      const latestHomepageList = homepageLists.reduce((latest, current) =>
-        !latest || current.created_at > latest.created_at ? current : latest,
-        null as NostrEvent | null
-      );
+      const featuredList = moderatorListEvents.find(e => e.tags.find(tag => tag[0] === 'd' && tag[1] === 'soapbox-featured-apps'));
+      const approvedList = moderatorListEvents.find(e => e.tags.find(tag => tag[0] === 'd' && tag[1] === 'soapbox-approved-apps'));
+      const homepageList = moderatorListEvents.find(e => e.tags.find(tag => tag[0] === 'd' && tag[1] === 'soapbox-homepage-apps'));
 
       // Extract featured app coordinates from the list
       const featuredAppCoords = new Set<string>();
-      if (latestFeaturedList) {
-        latestFeaturedList.tags
+      if (featuredList) {
+        featuredList.tags
           .filter(tag => tag[0] === 'a')
           .forEach(tag => featuredAppCoords.add(tag[1]));
       }
 
       // Extract approved app coordinates from the list
       const approvedAppCoords = new Set<string>();
-      if (latestApprovedList) {
-        latestApprovedList.tags
+      if (approvedList) {
+        approvedList.tags
           .filter(tag => tag[0] === 'a')
           .forEach(tag => approvedAppCoords.add(tag[1]));
       }
 
       // Extract homepage app coordinates from the list
       const homepageAppCoords = new Set<string>();
-      if (latestHomepageList) {
-        latestHomepageList.tags
+      if (homepageList) {
+        homepageList.tags
           .filter(tag => tag[0] === 'a')
           .forEach(tag => homepageAppCoords.add(tag[1]));
       }

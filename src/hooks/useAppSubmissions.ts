@@ -73,7 +73,7 @@ export function useAppSubmissions() {
         kinds: [APP_SUBMISSION_KIND],
         '#t': ['soapbox-app-submission'],
         limit: 1000
-      }]);
+      }], { signal: AbortSignal.timeout(1000) });
 
       // Get featured app lists from moderators (NIP-51 kind 30267)
       const featuredLists = await nostr.query([{
@@ -81,7 +81,7 @@ export function useAppSubmissions() {
         authors: [MODERATOR_HEX],
         '#d': ['soapbox-featured-apps'],
         limit: 10
-      }]);
+      }], { signal: AbortSignal.timeout(1000) });
 
       // Get approved app lists from moderators (NIP-51 kind 30267)
       const approvedLists = await nostr.query([{
@@ -89,7 +89,7 @@ export function useAppSubmissions() {
         authors: [MODERATOR_HEX],
         '#d': ['soapbox-approved-apps'],
         limit: 10
-      }]);
+      }], { signal: AbortSignal.timeout(1000) });
 
       // Get homepage app lists from moderators (NIP-51 kind 30267)
       const homepageLists = await nostr.query([{
@@ -97,14 +97,14 @@ export function useAppSubmissions() {
         authors: [MODERATOR_HEX],
         '#d': ['soapbox-homepage-apps'],
         limit: 10
-      }]);
+      }], { signal: AbortSignal.timeout(1000) });
 
       // Get reporting events for hidden apps (NIP-56 kind 1984)
       const reportEvents = await nostr.query([{
         kinds: [1984],
         authors: [MODERATOR_HEX],
         limit: 1000
-      }]);
+      }], { signal: AbortSignal.timeout(1000) });
 
       // Process submissions and apply moderation
       const submissions: AppSubmission[] = [];

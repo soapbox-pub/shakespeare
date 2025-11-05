@@ -160,14 +160,17 @@ export function AnnounceRepositoryDialog({
         const relayUrls = config.ngitServers.map(server => `wss://${server}`);
         setRelays(relayUrls);
       } else {
-        // Fallback to default relay if no ngitServers configured
-        setRelays([config.relayUrl || 'wss://relay.nostr.band']);
+        // Fallback to write relays if no ngitServers configured
+        const writeRelays = config.relayMetadata.relays
+          .filter(r => r.write)
+          .map(r => r.url);
+        setRelays(writeRelays.length > 0 ? writeRelays : ['wss://relay.nostr.band']);
       }
     }
 
     // Get earliest commit
     await getEarliestCommit();
-  }, [projectId, config.relayUrl, config.ngitServers, user?.pubkey, getEarliestCommit, cloneUrls.length, relays.length]);
+  }, [projectId, config.relayMetadata, config.ngitServers, user?.pubkey, getEarliestCommit, cloneUrls.length, relays.length]);
 
   // Load existing repository data if editing
   useEffect(() => {
@@ -191,9 +194,12 @@ export function AnnounceRepositoryDialog({
         };
 
         const signal = AbortSignal.timeout(3000);
+        const readRelays = config.relayMetadata.relays
+          .filter(r => r.read)
+          .map(r => r.url);
         const events = await nostr.query([filter], {
           signal,
-          relays: naddrRelays && naddrRelays.length > 0 ? naddrRelays : [config.relayUrl]
+          relays: naddrRelays && naddrRelays.length > 0 ? naddrRelays : readRelays
         });
 
         if (events.length === 0) {
@@ -236,7 +242,7 @@ export function AnnounceRepositoryDialog({
       prepopulateFields();
       setIsPrepopulated(true);
     }
-  }, [isOpen, isPrepopulated, prepopulateFields, editNaddr, nostr, config.relayUrl, toast]);
+  }, [isOpen, isPrepopulated, prepopulateFields, editNaddr, nostr, config.relayMetadata, toast]);
 
   const addWebUrl = () => {
     if (newWebUrl.trim() && !webUrls.includes(newWebUrl.trim())) {
@@ -326,8 +332,11 @@ export function AnnounceRepositoryDialog({
       console.log('Event coordinate:', `30617:${user.pubkey}:${repoId.trim()}`);
 
       // Publish to Nostr relays
-      // Repository announcements go to: global relayUrl + relays specified in the announcement
-      const publishRelays = [config.relayUrl, ...relays];
+      // Repository announcements go to: write relays + relays specified in the announcement
+      const writeRelays = config.relayMetadata.relays
+        .filter(r => r.write)
+        .map(r => r.url);
+      const publishRelays = [...new Set([...writeRelays, ...relays])];
       console.log('Publishing repository announcement to relays:', publishRelays);
 
       await nostr.event(signedEvent, { relays: publishRelays });

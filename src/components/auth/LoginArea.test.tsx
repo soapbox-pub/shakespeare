@@ -29,12 +29,6 @@ vi.mock('react-router-dom', () => ({
   useNavigate: () => vi.fn()
 }));
 
-vi.mock('@/components/RelaySelector', () => ({
-  RelaySelector: ({ className }: { className?: string }) => (
-    <div data-testid="relay-selector" className={className}>Relay Selector</div>
-  )
-}));
-
 vi.mock('./SimpleLoginDialog', () => ({
   default: ({ isOpen }: { isOpen: boolean; onClose: () => void }) =>
     isOpen ? <div data-testid="login-dialog">Login Dialog</div> : null

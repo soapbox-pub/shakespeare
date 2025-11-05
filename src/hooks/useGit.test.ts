@@ -33,7 +33,10 @@ function createWrapper(corsProxy: string) {
   return function Wrapper({ children }: { children: React.ReactNode }) {
     const defaultConfig: AppConfig = {
       theme: 'light',
-      relayUrl: 'wss://relay.test',
+      relayMetadata: {
+        relays: [{ url: 'wss://relay.test', read: true, write: true }],
+        updatedAt: 0,
+      },
       projectTemplate: 'https://gitlab.com/soapbox-pub/mkstack.git',
       esmUrl: 'https://esm.test',
       corsProxy,

@@ -9,13 +9,6 @@ vi.mock('react-router-dom', () => ({
   useNavigate: () => vi.fn()
 }));
 
-// Mock the RelaySelector component
-vi.mock('@/components/RelaySelector', () => ({
-  RelaySelector: ({ className }: { className?: string }) => (
-    <div data-testid="relay-selector" className={className}>Relay Selector</div>
-  )
-}));
-
 const mockUseLoggedInAccounts = vi.mocked(useLoggedInAccounts);
 
 describe('AccountSwitcher', () => {

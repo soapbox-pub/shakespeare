@@ -708,7 +708,10 @@ export function PullRequestDialog({
     console.log(`Repository announcement query returned ${repoEvents.length} events`);
 
     let earliestUniqueCommit: string | null = null;
-    let publishRelays = [config.relayUrl]; // Use configured relay
+    const writeRelays = config.relayMetadata.relays
+      .filter(r => r.write)
+      .map(r => r.url);
+    let publishRelays = writeRelays.length > 0 ? writeRelays : ['wss://relay.nostr.band']; // Use write relays
 
     if (repoEvents.length > 0) {
       const repoEvent = repoEvents[0];

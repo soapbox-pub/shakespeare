@@ -41,7 +41,10 @@ describe('useAIProjectId', () => {
     mockUseAppContext.mockReturnValue({
       config: {
         theme: 'dark',
-        relayUrl: 'wss://relay.damus.io',
+        relayMetadata: {
+          relays: [{ url: 'wss://relay.damus.io', read: true, write: true }],
+          updatedAt: 0,
+        },
         projectTemplate: 'https://github.com/example/template',
         esmUrl: 'https://esm.sh',
         corsProxy: 'https://proxy.example.com/{href}',

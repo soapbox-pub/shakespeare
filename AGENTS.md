@@ -1098,12 +1098,19 @@ The project includes an `AppProvider` that manages global application state incl
 
 ```typescript
 const defaultConfig: AppConfig = {
-  theme: "light",
-  relayUrl: "wss://relay.nostr.band",
+  theme: "system",
+  relayMetadata: {
+    relays: [
+      { url: 'wss://relay.ditto.pub', read: true, write: true },
+      { url: 'wss://relay.nostr.band', read: true, write: true },
+    ],
+    updatedAt: 0,
+  },
+  // ... other config options
 };
 ```
 
-Preset relays are available including Ditto, Nostr.Band, Damus, and Primal. The app uses local storage to persist user preferences.
+The app uses NIP-65 relay lists for managing multiple relays with read/write permissions. Configuration is persisted in local storage.
 
 ## Routing
 
@@ -1157,11 +1164,12 @@ The router includes automatic scroll-to-top functionality and a 404 NotFound pag
 
 ### Empty States and No Content Found
 
-When no content is found (empty search results, no data available, etc.), display a minimalist empty state with the `RelaySelector` component. This allows users to easily switch relays to discover content from different sources.
+When no content is found (empty search results, no data available, etc.), display a minimalist empty state that guides users to take action or provides helpful context.
 
 ```tsx
-import { RelaySelector } from '@/components/RelaySelector';
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Link } from 'react-router-dom';
 
 // Empty state example
 <div className="col-span-full">
@@ -1169,9 +1177,11 @@ import { Card, CardContent } from '@/components/ui/card';
     <CardContent className="py-12 px-8 text-center">
       <div className="max-w-sm mx-auto space-y-6">
         <p className="text-muted-foreground">
-          No results found. Try another relay?
+          No results found. Configure your relays to discover more content.
         </p>
-        <RelaySelector className="w-full" />
+        <Button asChild variant="outline">
+          <Link to="/settings/nostr">Manage Relays</Link>
+        </Button>
       </div>
     </CardContent>
   </Card>

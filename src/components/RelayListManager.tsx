@@ -1,0 +1,254 @@
+import { useState, useEffect } from 'react';
+import { Plus, X, Wifi } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
+import { useAppContext } from '@/hooks/useAppContext';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useNostrPublish } from '@/hooks/useNostrPublish';
+import { toast } from '@/hooks/useToast';
+
+interface Relay {
+  url: string;
+  read: boolean;
+  write: boolean;
+}
+
+export function RelayListManager() {
+  const { t } = useTranslation();
+  const { config, updateConfig } = useAppContext();
+  const { user } = useCurrentUser();
+  const { mutate: publishEvent } = useNostrPublish();
+
+  const [relays, setRelays] = useState<Relay[]>(config.relayMetadata.relays);
+  const [newRelayUrl, setNewRelayUrl] = useState('');
+
+  // Sync local state with config when it changes (e.g., from NostrProvider sync)
+  useEffect(() => {
+    setRelays(config.relayMetadata.relays);
+  }, [config.relayMetadata.relays]);
+
+  const normalizeRelayUrl = (url: string): string => {
+    const trimmed = url.trim();
+    if (!trimmed) return trimmed;
+
+    if (trimmed.includes('://')) {
+      return trimmed;
+    }
+
+    return `wss://${trimmed}`;
+  };
+
+  const isValidRelayUrl = (url: string): boolean => {
+    const trimmed = url.trim();
+    if (!trimmed) return false;
+
+    const normalized = normalizeRelayUrl(trimmed);
+    try {
+      new URL(normalized);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const handleAddRelay = () => {
+    if (!isValidRelayUrl(newRelayUrl)) {
+      toast({
+        title: t('invalidRelayUrl'),
+        description: t('invalidRelayUrlDescription'),
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const normalized = normalizeRelayUrl(newRelayUrl);
+
+    if (relays.some(r => r.url === normalized)) {
+      toast({
+        title: t('relayAlreadyExists'),
+        description: t('relayAlreadyExistsDescription'),
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const newRelays = [...relays, { url: normalized, read: true, write: true }];
+    setRelays(newRelays);
+    setNewRelayUrl('');
+
+    saveRelays(newRelays);
+  };
+
+  const handleRemoveRelay = (url: string) => {
+    const newRelays = relays.filter(r => r.url !== url);
+    setRelays(newRelays);
+    saveRelays(newRelays);
+  };
+
+  const handleToggleRead = (url: string) => {
+    const newRelays = relays.map(r =>
+      r.url === url ? { ...r, read: !r.read } : r
+    );
+    setRelays(newRelays);
+    saveRelays(newRelays);
+  };
+
+  const handleToggleWrite = (url: string) => {
+    const newRelays = relays.map(r =>
+      r.url === url ? { ...r, write: !r.write } : r
+    );
+    setRelays(newRelays);
+    saveRelays(newRelays);
+  };
+
+  const saveRelays = (newRelays: Relay[]) => {
+    const now = Math.floor(Date.now() / 1000);
+
+    // Update local config
+    updateConfig((current) => ({
+      ...current,
+      relayMetadata: {
+        relays: newRelays,
+        updatedAt: now,
+      },
+    }));
+
+    // Publish to Nostr if user is logged in
+    if (user) {
+      publishNIP65RelayList(newRelays);
+    }
+  };
+
+  const publishNIP65RelayList = (relayList: Relay[]) => {
+    const tags = relayList.map(relay => {
+      if (relay.read && relay.write) {
+        return ['r', relay.url];
+      } else if (relay.read) {
+        return ['r', relay.url, 'read'];
+      } else if (relay.write) {
+        return ['r', relay.url, 'write'];
+      }
+      // If neither read nor write, don't include (shouldn't happen)
+      return null;
+    }).filter((tag): tag is string[] => tag !== null);
+
+    publishEvent(
+      {
+        kind: 10002,
+        content: '',
+        tags,
+      },
+      {
+        onSuccess: () => {
+          toast({
+            title: t('relayListPublished'),
+            description: t('relayListPublishedDescription'),
+          });
+        },
+        onError: (error) => {
+          console.error('Failed to publish relay list:', error);
+          toast({
+            title: t('relayListPublishFailed'),
+            description: t('relayListPublishFailedDescription'),
+            variant: 'destructive',
+          });
+        },
+      }
+    );
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Relay List */}
+      <div className="space-y-2">
+        {relays.map((relay) => (
+          <div
+            key={relay.url}
+            className="flex items-center gap-3 p-3 rounded-md border bg-muted/20"
+          >
+            <Wifi className="h-4 w-4 text-muted-foreground shrink-0" />
+            <span className="font-mono text-sm flex-1 truncate" title={relay.url}>
+              {relay.url.replace(/^wss?:\/\//, '')}
+            </span>
+
+            {/* Read Switch */}
+            <div className="flex items-center gap-2 shrink-0">
+              <Label htmlFor={`read-${relay.url}`} className="text-xs text-muted-foreground cursor-pointer">
+                {t('read')}
+              </Label>
+              <Switch
+                id={`read-${relay.url}`}
+                checked={relay.read}
+                onCheckedChange={() => handleToggleRead(relay.url)}
+                className="data-[state=checked]:bg-green-500"
+              />
+            </div>
+
+            {/* Write Switch */}
+            <div className="flex items-center gap-2 shrink-0">
+              <Label htmlFor={`write-${relay.url}`} className="text-xs text-muted-foreground cursor-pointer">
+                {t('write')}
+              </Label>
+              <Switch
+                id={`write-${relay.url}`}
+                checked={relay.write}
+                onCheckedChange={() => handleToggleWrite(relay.url)}
+                className="data-[state=checked]:bg-blue-500"
+              />
+            </div>
+
+            {/* Remove Button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => handleRemoveRelay(relay.url)}
+              className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-transparent shrink-0"
+              disabled={relays.length <= 1}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        ))}
+      </div>
+
+      {/* Add Relay Form */}
+      <div className="flex gap-2">
+        <div className="flex-1">
+          <Label htmlFor="new-relay-url" className="sr-only">
+            {t('relayUrl')}
+          </Label>
+          <Input
+            id="new-relay-url"
+            placeholder={t('enterRelayUrl')}
+            value={newRelayUrl}
+            onChange={(e) => setNewRelayUrl(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                handleAddRelay();
+              }
+            }}
+          />
+        </div>
+        <Button
+          onClick={handleAddRelay}
+          disabled={!newRelayUrl.trim()}
+          variant="outline"
+          size="sm"
+          className="h-10 shrink-0"
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          {t('addRelay')}
+        </Button>
+      </div>
+
+      {!user && (
+        <p className="text-xs text-muted-foreground">
+          {t('loginToSyncRelays')}
+        </p>
+      )}
+    </div>
+  );
+}

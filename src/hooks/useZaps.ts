@@ -194,10 +194,13 @@ export function useZaps(
 
       const zapAmount = amount * 1000; // convert to millisats
 
+      const writeRelays = config.relayMetadata.relays
+        .filter(r => r.write)
+        .map(r => r.url);
       const zapRequest = nip57.makeZapRequest({
         event: actualTarget,
         amount: zapAmount,
-        relays: [config.relayUrl],
+        relays: writeRelays.length > 0 ? writeRelays : ['wss://relay.nostr.band'],
         comment
       });
 
@@ -255,7 +258,7 @@ export function useZaps(
             });
           }
         }
-            
+
         if (webln) {  // Try WebLN next
           try {
             await webln.sendPayment(newInvoice);

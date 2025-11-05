@@ -12,9 +12,10 @@ import { nip19 } from 'nostr-tools';
 import { shuffleArray } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
-import { RelaySelector } from "@/components/RelaySelector";
 import { useAppContext } from "@/hooks/useAppContext";
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
+import { Settings } from 'lucide-react';
 
 export function AppShowcase() {
   const { t } = useTranslation();
@@ -105,7 +106,12 @@ export function AppShowcase() {
               <p className="text-muted-foreground">
                 {t('noAppsFound')}
               </p>
-              <RelaySelector className="w-full" />
+              <Button asChild variant="outline" className="w-full">
+                <Link to="/settings/nostr">
+                  <Settings className="h-4 w-4 mr-2" />
+                  {t('relayConfiguration')}
+                </Link>
+              </Button>
             </div>
           </CardContent>
         </Card>

@@ -2,11 +2,18 @@ import { createContext } from "react";
 
 export type Theme = "dark" | "light" | "system";
 
+export interface RelayMetadata {
+  /** List of relays with read/write permissions */
+  relays: { url: string; read: boolean; write: boolean }[];
+  /** Unix timestamp of when the relay list was last updated */
+  updatedAt: number;
+}
+
 export interface AppConfig {
   /** Current theme */
   theme: Theme;
-  /** Selected relay URL */
-  relayUrl: string;
+  /** NIP-65 relay list metadata */
+  relayMetadata: RelayMetadata;
   /** Git repository URL to use as project template */
   projectTemplate: string;
   /** ESM CDN URL for package imports */
@@ -42,8 +49,6 @@ export interface AppContextType {
   config: AppConfig;
   /** Update configuration using a callback that receives current config and returns new config */
   updateConfig: (updater: (currentConfig: Partial<AppConfig>) => Partial<AppConfig>) => void;
-  /** Optional list of preset relays to display in the RelaySelector */
-  presetRelays?: { name: string; url: string }[];
 }
 
 export const AppContext = createContext<AppContextType | undefined>(undefined);

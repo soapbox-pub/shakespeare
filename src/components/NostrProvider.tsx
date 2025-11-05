@@ -17,7 +17,7 @@ const GIT_KINDS = [
 
 const NostrProvider: React.FC<NostrProviderProps> = (props) => {
   const { children } = props;
-  const { config, presetRelays } = useAppContext();
+  const { config } = useAppContext();
 
   const gitRelays = config.ngitServers.map(server => `wss://${server}/`);
   const queryClient = useQueryClient();
@@ -26,13 +26,13 @@ const NostrProvider: React.FC<NostrProviderProps> = (props) => {
   const pool = useRef<NPool | undefined>(undefined);
 
   // Use refs so the pool always has the latest data
-  const relayUrl = useRef<string>(config.relayUrl);
+  const relayMetadata = useRef(config.relayMetadata);
 
   // Update refs when config changes
   useEffect(() => {
-    relayUrl.current = config.relayUrl;
+    relayMetadata.current = config.relayMetadata;
     queryClient.invalidateQueries({ queryKey: ['nostr'] });
-  }, [config.relayUrl, queryClient]);
+  }, [config.relayMetadata, queryClient]);
 
   // Initialize NPool only once
   if (!pool.current) {
@@ -42,33 +42,37 @@ const NostrProvider: React.FC<NostrProviderProps> = (props) => {
       },
       reqRouter(filters) {
         const routes = new Map<string, NostrFilter[]>();
-        routes.set(relayUrl.current, filters);
 
+        // Route to all read relays
+        const readRelays = relayMetadata.current.relays
+          .filter(r => r.read)
+          .map(r => r.url);
+
+        for (const url of readRelays) {
+          routes.set(url, filters);
+        }
+
+        // If all filters are git-related, also route to all git relays
         if (filters.every((f) => f.kinds?.every((k) => GIT_KINDS.includes(k)))) {
-          // If all filters are git-related, route to all git relays
           for (const url of gitRelays) {
             routes.set(url, filters);
           }
         }
+
         return routes;
       },
       eventRouter(event: NostrEvent) {
-        // Publish to the selected relay
-        const allRelays = new Set<string>([relayUrl.current]);
+        // Get write relays from metadata
+        const writeRelays = relayMetadata.current.relays
+          .filter(r => r.write)
+          .map(r => r.url);
+
+        const allRelays = new Set<string>(writeRelays);
 
         // If it's a git-related event, also publish to the git relays
         if (GIT_KINDS.includes(event.kind)) {
           for (const url of gitRelays) {
             allRelays.add(url);
-          }
-        }
-
-        // Also publish to the preset relays, capped to 5
-        for (const { url } of (presetRelays ?? [])) {
-          allRelays.add(url);
-
-          if (allRelays.size >= 5) {
-            break;
           }
         }
 

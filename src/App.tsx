@@ -7,6 +7,7 @@ import { InferSeoMetaPlugin } from '@unhead/addons';
 import { Suspense, useEffect } from 'react';
 import LightningFS from '@isomorphic-git/lightning-fs';
 import NostrProvider from '@/components/NostrProvider';
+import { NostrSync } from '@/components/NostrSync';
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { NostrLoginProvider } from '@nostrify/react/login';
@@ -89,7 +90,14 @@ const electronPaths = getElectronDefaultPaths();
 
 const defaultConfig: AppConfig = {
   theme: "system",
-  relayUrl: "wss://relay.ditto.pub",
+  relayMetadata: {
+    relays: [
+      { url: 'wss://relay.ditto.pub', read: true, write: true },
+      { url: 'wss://relay.nostr.band', read: true, write: true },
+      { url: 'wss://relay.primal.net', read: true, write: true },
+    ],
+    updatedAt: 0,
+  },
   projectTemplate: "https://gitlab.com/soapbox-pub/mkstack.git",
   esmUrl: "https://esm.sh",
   corsProxy: "https://proxy.shakespeare.diy/?url={href}",
@@ -104,13 +112,6 @@ const defaultConfig: AppConfig = {
   sentryDsn: import.meta.env.VITE_SENTRY_DSN || "",
   sentryEnabled: true,
 };
-
-const presetRelays = [
-  { url: 'wss://relay.ditto.pub', name: 'Ditto' },
-  { url: 'wss://relay.nostr.band', name: 'Nostr.Band' },
-  { url: 'wss://relay.damus.io', name: 'Damus' },
-  { url: 'wss://relay.primal.net', name: 'Primal' },
-];
 
 // Initialize filesystem adapter based on environment
 // In Electron, use Electron filesystem at ~/shakespeare
@@ -138,13 +139,14 @@ export function App() {
     <ErrorBoundary>
       <UnheadProvider head={head}>
         <QueryClientProvider client={queryClient}>
-          <AppProvider storageKey="nostr:app-config" defaultConfig={defaultConfig} presetRelays={presetRelays}>
+          <AppProvider storageKey="nostr:app-config" defaultConfig={defaultConfig}>
             <SentryProvider>
               <FSProvider fs={fs}>
                 <ConsoleErrorProvider>
                   <FSCleanupHandler />
                   <NostrLoginProvider storageKey='nostr:login'>
                     <NostrProvider>
+                      <NostrSync />
                       <AISettingsProvider>
                         <GitSettingsProvider>
                           <DeploySettingsProvider>

@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
-import { RelaySelector } from '@/components/RelaySelector';
+import { RelayListManager } from '@/components/RelayListManager';
 import SimpleLoginDialog from '@/components/auth/SimpleLoginDialog';
 import SimpleSignupDialog from '@/components/auth/SimpleSignupDialog';
 import { useIsMobile } from '@/hooks/useIsMobile';
@@ -299,10 +299,7 @@ export function NostrSettings() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-2">
-              <Label htmlFor="relay-selector">{t('selectedRelay')}</Label>
-              <RelaySelector className="w-full max-w-md" />
-            </div>
+            <RelayListManager />
           </CardContent>
         </Card>
 

@@ -29,7 +29,12 @@ export function TestApp({ children }: TestAppProps) {
 
   const defaultConfig: AppConfig = {
     theme: 'light',
-    relayUrl: 'wss://relay.nostr.band',
+    relayMetadata: {
+      relays: [
+        { url: 'wss://relay.nostr.band', read: true, write: true },
+      ],
+      updatedAt: 0,
+    },
     projectTemplate: 'https://gitlab.com/soapbox-pub/mkstack.git',
     esmUrl: 'https://esm.shakespeare.diy',
     corsProxy: 'https://proxy.shakespeare.diy/?url={href}',

@@ -703,7 +703,7 @@ export function PullRequestDialog({
         '#d': [info.repo],
         limit: 1,
       }
-    ]);
+    ], { signal: AbortSignal.timeout(3000) });
 
     console.log(`Repository announcement query returned ${repoEvents.length} events`);
 

@@ -52,7 +52,7 @@ export function useAppSubmissions() {
             authors: [addrData.pubkey],
             '#d': [addrData.identifier],
             limit: 1
-          }]);
+          }], { signal: AbortSignal.timeout(3000) });
 
           if (teamEvents.length > 0) {
             const teamEvent = teamEvents[0];

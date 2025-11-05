@@ -132,7 +132,7 @@ export function AppShowcaseCard({ app, onEdit, showModerationControls, hideAppro
           authors: [MODERATOR_HEX],
           '#d': ['soapbox-homepage-apps'],
           limit: 1
-        }]);
+        }], { signal: AbortSignal.timeout(3000) });
 
         const currentHomepageList = currentHomepageLists.reduce((latest: NostrEvent | null, current: NostrEvent) =>
           !latest || current.created_at > latest.created_at ? current : latest,
@@ -175,7 +175,7 @@ export function AppShowcaseCard({ app, onEdit, showModerationControls, hideAppro
             authors: [MODERATOR_HEX],
             '#d': ['soapbox-approved-apps'],
             limit: 1
-          }]);
+          }], { signal: AbortSignal.timeout(3000) });
 
           const currentApprovedList = currentApprovedLists.reduce((latest: NostrEvent | null, current: NostrEvent) =>
             !latest || current.created_at > latest.created_at ? current : latest,
@@ -214,7 +214,7 @@ export function AppShowcaseCard({ app, onEdit, showModerationControls, hideAppro
           authors: [MODERATOR_HEX],
           '#d': ['soapbox-featured-apps'],
           limit: 1
-        }]);
+        }], { signal: AbortSignal.timeout(3000) });
 
         const currentFeaturedList = currentFeaturedLists.reduce((latest: NostrEvent | null, current: NostrEvent) =>
           !latest || current.created_at > latest.created_at ? current : latest,
@@ -257,7 +257,7 @@ export function AppShowcaseCard({ app, onEdit, showModerationControls, hideAppro
             authors: [MODERATOR_HEX],
             '#d': ['soapbox-approved-apps'],
             limit: 1
-          }]);
+          }], { signal: AbortSignal.timeout(3000) });
 
           const currentApprovedList = currentApprovedLists.reduce((latest: NostrEvent | null, current: NostrEvent) =>
             !latest || current.created_at > latest.created_at ? current : latest,
@@ -296,7 +296,7 @@ export function AppShowcaseCard({ app, onEdit, showModerationControls, hideAppro
           authors: [MODERATOR_HEX],
           '#d': ['soapbox-approved-apps'],
           limit: 1
-        }]);
+        }], { signal: AbortSignal.timeout(3000) });
 
         const currentApprovedList = currentApprovedLists.reduce((latest: NostrEvent | null, current: NostrEvent) =>
           !latest || current.created_at > latest.created_at ? current : latest,

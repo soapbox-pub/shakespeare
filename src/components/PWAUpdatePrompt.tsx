@@ -19,8 +19,14 @@ export function PWAUpdatePrompt() {
 
       // Check for updates periodically (every hour)
       if (registration) {
-        setInterval(() => {
-          registration.update();
+        const intervalId = setInterval(async () => {
+          try {
+            await registration.update();
+          } catch (error) {
+            // Registration may no longer be valid, clear the interval
+            console.warn('[PWA] Failed to check for updates:', error);
+            clearInterval(intervalId);
+          }
         }, 60 * 60 * 1000);
       }
     },

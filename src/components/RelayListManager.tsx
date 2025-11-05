@@ -36,7 +36,7 @@ export function RelayListManager() {
       return new URL(url).toString();
     } catch {
       try {
-        return new URL(`wss://${url}/`).toString();
+        return new URL(`wss://${url}`).toString();
       } catch {
         return url;
       }

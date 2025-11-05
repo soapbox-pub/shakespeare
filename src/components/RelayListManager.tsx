@@ -31,14 +31,16 @@ export function RelayListManager() {
   }, [config.relayMetadata.relays]);
 
   const normalizeRelayUrl = (url: string): string => {
-    const trimmed = url.trim();
-    if (!trimmed) return trimmed;
-
-    if (trimmed.includes('://')) {
-      return trimmed;
+    url = url.trim();
+    try {
+      return new URL(url).toString();
+    } catch {
+      try {
+        return new URL(`wss://${url}/`).toString();
+      } catch {
+        return url;
+      }
     }
-
-    return `wss://${trimmed}`;
   };
 
   const isValidRelayUrl = (url: string): boolean => {
@@ -160,6 +162,23 @@ export function RelayListManager() {
     );
   };
 
+  const renderRelayUrl = (url: string): string => {
+    try {
+      const parsed = new URL(url);
+      if (parsed.protocol === 'wss:') {
+        if (parsed.pathname === '/') {
+          return parsed.host;
+        } else {
+          return parsed.host + parsed.pathname;
+        }
+      } else {
+        return parsed.href;
+      }
+    } catch {
+      return url;
+    }
+  }
+
   return (
     <div className="space-y-4">
       {/* Relay List */}
@@ -171,7 +190,7 @@ export function RelayListManager() {
           >
             <Wifi className="h-4 w-4 text-muted-foreground shrink-0" />
             <span className="font-mono text-sm flex-1 truncate" title={relay.url}>
-              {relay.url.replace(/^wss?:\/\//, '')}
+              {renderRelayUrl(relay.url)}
             </span>
 
             {/* Read Switch */}

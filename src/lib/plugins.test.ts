@@ -19,18 +19,20 @@ describe('plugins', () => {
   });
 
   describe('isValidSkillName', () => {
-    it('should validate alphanumeric lowercase names', () => {
+    it('should validate alphanumeric lowercase names with hyphens', () => {
       expect(isValidSkillName('test')).toBe(true);
       expect(isValidSkillName('test123')).toBe(true);
       expect(isValidSkillName('abc')).toBe(true);
+      expect(isValidSkillName('test-name')).toBe(true);
+      expect(isValidSkillName('test-123')).toBe(true);
+      expect(isValidSkillName('condition-based-waiting')).toBe(true);
     });
 
     it('should reject invalid names', () => {
       expect(isValidSkillName('Test')).toBe(false);
-      expect(isValidSkillName('test-name')).toBe(false);
       expect(isValidSkillName('test_name')).toBe(false);
       expect(isValidSkillName('test name')).toBe(false);
-      expect(isValidSkillName('test-123')).toBe(false);
+      expect(isValidSkillName('Test-Name')).toBe(false);
     });
   });
 

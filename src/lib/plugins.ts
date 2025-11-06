@@ -20,10 +20,10 @@ export interface SkillFrontmatter {
 }
 
 /**
- * Validates a skill name (alphanumeric lowercase only)
+ * Validates a skill name (alphanumeric lowercase with hyphens)
  */
 export function isValidSkillName(name: string): boolean {
-  return /^[a-z0-9]+$/.test(name);
+  return /^[a-z0-9-]+$/.test(name);
 }
 
 /**
@@ -84,7 +84,7 @@ export async function getPluginSkills(
 
         // Validate skill name format
         if (!isValidSkillName(frontmatter.name)) {
-          console.warn(`Skill at ${skillPath} has invalid name "${frontmatter.name}" (must be alphanumeric lowercase only)`);
+          console.warn(`Skill at ${skillPath} has invalid name "${frontmatter.name}" (must be lowercase alphanumeric with hyphens)`);
           continue;
         }
 

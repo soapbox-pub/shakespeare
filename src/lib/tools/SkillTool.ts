@@ -14,7 +14,7 @@ export class SkillTool implements Tool<SkillParams> {
   readonly description = 'Load and execute a skill from the configured plugins. Skills are reusable AI workflows that can be invoked by name.';
 
   readonly inputSchema = z.object({
-    name: z.string().describe('The name of the skill to execute (alphanumeric lowercase only)'),
+    name: z.string().describe('The name of the skill to execute (lowercase alphanumeric with hyphens)'),
   });
 
   constructor(fs: JSRuntimeFS, pluginsPath: string) {

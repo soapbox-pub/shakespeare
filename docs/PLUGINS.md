@@ -71,15 +71,15 @@ This can include:
 
 #### Required Frontmatter Fields
 
-- **`name`**: Skill identifier (must be alphanumeric lowercase only, e.g., `myskill`, `skill123`)
+- **`name`**: Skill identifier (must be lowercase alphanumeric with hyphens, e.g., `myskill`, `skill-123`, `condition-based-waiting`)
 - **`description`**: Human-readable description of what the skill does
 
 #### Skill Name Validation
 
 Skill names must:
-- Contain only lowercase letters (a-z) and numbers (0-9)
-- No spaces, hyphens, underscores, or special characters
-- Examples: ✅ `myskill`, `skill123`, `abc` | ❌ `My-Skill`, `skill_name`, `SKILL`
+- Contain only lowercase letters (a-z), numbers (0-9), and hyphens (-)
+- No spaces, underscores, uppercase letters, or other special characters
+- Examples: ✅ `myskill`, `skill-123`, `condition-based-waiting` | ❌ `My-Skill`, `skill_name`, `SKILL`
 
 ## How It Works
 

@@ -455,6 +455,7 @@
   "alreadyRedeemed": "Already Redeemed",
   "giftCardAlreadyRedeemed": "This gift card has already been redeemed.",
   "plugins": "Plugins",
+  "pluginsDescription": "Extend the AI's capabilities with reusable skills from Git repositories.",
   "addPlugin": "Add Plugin",
   "gitRepositoryUrl": "Git Repository URL",
   "pluginDescription": "Plugins can contain skills that extend the AI's capabilities with specialized workflows.",

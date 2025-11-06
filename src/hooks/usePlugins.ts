@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useFS } from './useFS';
 import { useFSPaths } from './useFSPaths';
-import { getPlugins, getAllSkills, deletePlugin as deletePluginFn } from '@/lib/plugins';
+import { getPlugins, getAllSkills, deletePlugin as deletePluginFn, getPluginGitInfo, type PluginGitInfo } from '@/lib/plugins';
 import { useGit } from './useGit';
 import { join } from 'path-browserify';
 
@@ -115,6 +115,16 @@ export function usePlugins() {
     },
   });
 
+  // Function to get git info for a specific plugin
+  const getPluginGitInfoQuery = (pluginName: string) => {
+    return useQuery({
+      queryKey: ['plugin-git-info', pluginsPath, pluginName],
+      queryFn: async () => {
+        return await getPluginGitInfo(fs, pluginsPath, pluginName);
+      },
+    });
+  };
+
   return {
     plugins: pluginsQuery.data || [],
     isLoadingPlugins: pluginsQuery.isLoading,
@@ -123,5 +133,6 @@ export function usePlugins() {
     clonePlugin,
     syncPlugin,
     deletePlugin,
+    getPluginGitInfo: getPluginGitInfoQuery,
   };
 }

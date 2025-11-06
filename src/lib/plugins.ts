@@ -1,6 +1,7 @@
 import { join } from 'path-browserify';
 import matter from 'gray-matter';
 import type { JSRuntimeFS } from './JSRuntime';
+import * as git from 'isomorphic-git';
 
 export interface Skill {
   /** Skill name (alphanumeric lowercase only) */
@@ -17,6 +18,12 @@ export interface SkillFrontmatter {
   name: string;
   description: string;
   [key: string]: unknown;
+}
+
+export interface PluginGitInfo {
+  commitHash: string;
+  commitDate: Date;
+  commitMessage: string;
 }
 
 /**
@@ -140,6 +147,36 @@ export async function findSkill(
 export async function readSkillContent(fs: JSRuntimeFS, skill: Skill): Promise<string> {
   const skillFilePath = join(skill.path, 'SKILL.md');
   return await fs.readFile(skillFilePath, 'utf8');
+}
+
+/**
+ * Get git information for a plugin
+ */
+export async function getPluginGitInfo(fs: JSRuntimeFS, pluginsPath: string, pluginName: string): Promise<PluginGitInfo | null> {
+  const pluginPath = join(pluginsPath, pluginName);
+
+  try {
+    // Get the latest commit
+    const commits = await git.log({
+      fs,
+      dir: pluginPath,
+      depth: 1,
+    });
+
+    if (commits.length === 0) {
+      return null;
+    }
+
+    const commit = commits[0];
+
+    return {
+      commitHash: commit.oid,
+      commitDate: new Date(commit.commit.committer.timestamp * 1000),
+      commitMessage: commit.commit.message,
+    };
+  } catch {
+    return null;
+  }
 }
 
 /**

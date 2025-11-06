@@ -1,6 +1,6 @@
 import { memo, useState } from 'react';
 import { Streamdown } from 'streamdown';
-import { Wrench, Eye, FileText, Edit, Package, PackageMinus, GitCommit, BookOpen, Download, Hash, Tag, Network, List, Plus, Terminal, Globe, CheckCircle, Lightbulb, Loader2, Logs, Send } from 'lucide-react';
+import { Wrench, Eye, FileText, Edit, Package, PackageMinus, GitCommit, BookOpen, Download, Hash, Tag, Network, List, Plus, Terminal, Globe, CheckCircle, Lightbulb, Loader2, Logs, Send, Puzzle } from 'lucide-react';
 import type { AIMessage } from '@/lib/SessionManager';
 import { cn } from '@/lib/utils';
 import { UserMessage } from '@/components/UserMessage';
@@ -162,6 +162,11 @@ export const AIMessageItem = memo(({
             return {
               icon: Logs,
               title: 'Read Console'
+            };
+          case 'skill':
+            return {
+              icon: Puzzle,
+              title: args.name ? `Skill: ${args.name}` : 'Skill'
             };
           default:
             return {

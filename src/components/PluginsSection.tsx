@@ -7,13 +7,14 @@ import { Label } from '@/components/ui/label';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
 import { usePlugins } from '@/hooks/usePlugins';
+import { usePluginGitInfo } from '@/hooks/usePluginGitInfo';
 import { useToast } from '@/hooks/useToast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export function PluginsSection() {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const { plugins, skills, clonePlugin, syncPlugin, deletePlugin, getPluginGitInfo } = usePlugins();
+  const { plugins, skills, clonePlugin, syncPlugin, deletePlugin } = usePlugins();
   const [gitUrl, setGitUrl] = useState('');
 
   const handleAddPlugin = async () => {
@@ -108,7 +109,6 @@ export function PluginsSection() {
               isDeleting={isDeleting}
               onSync={handleSyncPlugin}
               onDelete={handleDeletePlugin}
-              getPluginGitInfo={getPluginGitInfo}
             />;
           })}
         </div>
@@ -180,12 +180,11 @@ interface PluginItemProps {
   isDeleting: boolean;
   onSync: (pluginName: string) => void;
   onDelete: (pluginName: string) => void;
-  getPluginGitInfo: (pluginName: string) => { data: { commitHash: string; commitDate: Date; commitMessage: string } | null | undefined; isLoading: boolean };
 }
 
-function PluginItem({ pluginName, pluginSkills, isSyncing, isDeleting, onSync, onDelete, getPluginGitInfo }: PluginItemProps) {
+function PluginItem({ pluginName, pluginSkills, isSyncing, isDeleting, onSync, onDelete }: PluginItemProps) {
   const { t } = useTranslation();
-  const { data: gitInfo } = getPluginGitInfo(pluginName);
+  const { data: gitInfo } = usePluginGitInfo(pluginName);
 
   return (
     <Accordion type="single" collapsible className="w-full">

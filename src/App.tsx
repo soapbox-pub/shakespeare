@@ -48,13 +48,14 @@ const queryClient = new QueryClient({
 });
 
 // Get OS-specific default paths for Electron
-function getElectronDefaultPaths(): { fsPathProjects: string; fsPathConfig: string; fsPathTmp: string } {
+function getElectronDefaultPaths(): { fsPathProjects: string; fsPathConfig: string; fsPathTmp: string; fsPathPlugins: string } {
   if (!globalThis.electron) {
     // Browser defaults - use virtual filesystem paths
     return {
       fsPathProjects: "/projects",
       fsPathConfig: "/config",
       fsPathTmp: "/tmp",
+      fsPathPlugins: "/plugins",
     };
   }
 
@@ -68,6 +69,7 @@ function getElectronDefaultPaths(): { fsPathProjects: string; fsPathConfig: stri
       fsPathProjects: "~/Documents/Projects",
       fsPathConfig: "~/AppData/Local/shakespeare",
       fsPathTmp: "~/AppData/Local/Temp/shakespeare",
+      fsPathPlugins: "~/AppData/Local/shakespeare/plugins",
     };
   } else if (platform.includes('mac')) {
     // macOS
@@ -75,6 +77,7 @@ function getElectronDefaultPaths(): { fsPathProjects: string; fsPathConfig: stri
       fsPathProjects: "~/Projects",
       fsPathConfig: "~/Library/Application Support/shakespeare",
       fsPathTmp: "/tmp/shakespeare",
+      fsPathPlugins: "~/Library/Application Support/shakespeare/plugins",
     };
   } else {
     // Linux and other Unix-like systems
@@ -82,6 +85,7 @@ function getElectronDefaultPaths(): { fsPathProjects: string; fsPathConfig: stri
       fsPathProjects: "~/Projects",
       fsPathConfig: "~/.config/shakespeare",
       fsPathTmp: "/tmp/shakespeare",
+      fsPathPlugins: "~/.config/shakespeare/plugins",
     };
   }
 }
@@ -109,6 +113,7 @@ const defaultConfig: AppConfig = {
   fsPathProjects: electronPaths.fsPathProjects,
   fsPathConfig: electronPaths.fsPathConfig,
   fsPathTmp: electronPaths.fsPathTmp,
+  fsPathPlugins: electronPaths.fsPathPlugins,
   sentryDsn: import.meta.env.VITE_SENTRY_DSN || "",
   sentryEnabled: true,
 };

@@ -36,6 +36,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import type { AIProvider } from '@/contexts/AISettingsContext';
 import { AI_PROVIDER_PRESETS, type PresetProvider } from '@/lib/aiProviderPresets';
 import { ExternalFavicon } from '@/components/ExternalFavicon';
+import { PluginsSection } from '@/components/PluginsSection';
 
 interface SortableProviderItemProps {
   provider: AIProvider;
@@ -564,6 +565,9 @@ export function AISettings() {
             </AccordionItem>
           </Accordion>
         </div>
+
+        {/* Plugins Section */}
+        <PluginsSection />
       </div>
 
       {/* Render credits dialog outside of accordion structure */}

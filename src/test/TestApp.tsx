@@ -47,6 +47,7 @@ export function TestApp({ children }: TestAppProps) {
     fsPathProjects: '/projects',
     fsPathConfig: '/config',
     fsPathTmp: '/tmp',
+    fsPathPlugins: '/plugins',
     sentryDsn: '',
     sentryEnabled: false,
   };

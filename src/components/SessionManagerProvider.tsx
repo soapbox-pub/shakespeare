@@ -17,7 +17,7 @@ interface SessionManagerProviderProps {
  */
 export function SessionManagerProvider({ children }: SessionManagerProviderProps) {
   const { fs } = useFS();
-  const { projectsPath } = useFSPaths();
+  const { projectsPath, pluginsPath } = useFSPaths();
   const { settings } = useAISettings();
   const { models } = useProviderModels();
   const { user, metadata } = useCurrentUser();
@@ -26,8 +26,8 @@ export function SessionManagerProvider({ children }: SessionManagerProviderProps
   const sessionManager = useMemo(() => {
     const getProviderModels = () => models;
     const getCurrentUser = () => ({ user, metadata });
-    return new SessionManager(fs, settings, getProviderModels, getCurrentUser, config.corsProxy, projectsPath);
-  }, [fs, settings, models, user, metadata, config.corsProxy, projectsPath]);
+    return new SessionManager(fs, settings, getProviderModels, getCurrentUser, config.corsProxy, projectsPath, pluginsPath);
+  }, [fs, settings, models, user, metadata, config.corsProxy, projectsPath, pluginsPath]);
 
   // Cleanup on unmount
   useEffect(() => {

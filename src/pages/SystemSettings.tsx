@@ -29,6 +29,7 @@ export function SystemSettings() {
   const [fsPathProjectsInput, setFsPathProjectsInput] = useState(config.fsPathProjects);
   const [fsPathConfigInput, setFsPathConfigInput] = useState(config.fsPathConfig);
   const [fsPathTmpInput, setFsPathTmpInput] = useState(config.fsPathTmp);
+  const [fsPathPluginsInput, setFsPathPluginsInput] = useState(config.fsPathPlugins);
   const [sentryDsnInput, setSentryDsnInput] = useState(config.sentryDsn);
 
   // Service Worker state
@@ -569,6 +570,29 @@ export function SystemSettings() {
                   />
                   <p className="text-xs text-muted-foreground">
                     {t('temporaryDirectoryDescription')}
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="fs-path-plugins" className="text-sm font-medium">
+                    {t('pluginsDirectory')}
+                  </Label>
+                  <Input
+                    id="fs-path-plugins"
+                    type="text"
+                    placeholder="/plugins"
+                    value={fsPathPluginsInput}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setFsPathPluginsInput(value);
+                      updateConfig((current) => ({
+                        ...current,
+                        fsPathPlugins: value,
+                      }));
+                    }}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {t('pluginsDirectoryDescription')}
                   </p>
                 </div>
               </div>

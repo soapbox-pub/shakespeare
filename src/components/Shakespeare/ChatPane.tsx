@@ -34,6 +34,7 @@ import { NostrPublishEventsTool } from '@/lib/tools/NostrPublishEventsTool';
 import { ShellTool } from '@/lib/tools/ShellTool';
 import { TypecheckTool } from '@/lib/tools/TypecheckTool';
 import { ReadConsoleMessagesTool } from '@/lib/tools/ReadConsoleMessagesTool';
+import { SkillTool } from '@/lib/tools/SkillTool';
 import { ProjectPreviewConsoleError } from '@/lib/consoleMessages';
 import { toolToOpenAI } from '@/lib/tools/openai-adapter';
 import { Tool } from '@/lib/tools/Tool';
@@ -78,7 +79,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   const { user } = useCurrentUser();
   const { models } = useProviderModels();
   const { config } = useAppContext();
-  const { projectsPath, tmpPath } = useFSPaths();
+  const { projectsPath, tmpPath, pluginsPath } = useFSPaths();
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const [scrolledProjects] = useState(() => new Set<string>());
@@ -167,6 +168,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
       nostr_publish_events: new NostrPublishEventsTool(),
       shell: new ShellTool(fs, cwd, git, projectsPath, user?.signer),
       read_console_messages: new ReadConsoleMessagesTool(),
+      skill: new SkillTool(fs, pluginsPath),
     };
 
     // Add deploy tool only if user is logged in
@@ -178,7 +180,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     }
 
     return baseTools;
-  }, [fs, git, cwd, user, projectId, projectsPath, tmpPath, handleFileChanged]);
+  }, [fs, git, cwd, user, projectId, projectsPath, tmpPath, pluginsPath, handleFileChanged]);
 
   // Convert tools to OpenAI format
   const tools = useMemo(() => {

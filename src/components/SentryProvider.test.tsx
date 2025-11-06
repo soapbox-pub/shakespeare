@@ -38,6 +38,7 @@ describe('SentryProvider', () => {
       fsPathProjects: '/projects',
       fsPathConfig: '/config',
       fsPathTmp: '/tmp',
+      fsPathPlugins: '/plugins',
     };
 
     render(
@@ -73,6 +74,7 @@ describe('SentryProvider', () => {
       fsPathProjects: '/projects',
       fsPathConfig: '/config',
       fsPathTmp: '/tmp',
+      fsPathPlugins: '/plugins',
     };
 
     render(
@@ -109,6 +111,7 @@ describe('SentryProvider', () => {
       fsPathProjects: '/projects',
       fsPathConfig: '/config',
       fsPathTmp: '/tmp',
+      fsPathPlugins: '/plugins',
     };
 
     render(
@@ -148,6 +151,7 @@ describe('SentryProvider', () => {
       fsPathProjects: '/projects',
       fsPathConfig: '/config',
       fsPathTmp: '/tmp',
+      fsPathPlugins: '/plugins',
     };
 
     render(

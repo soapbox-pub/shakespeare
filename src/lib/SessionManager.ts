@@ -63,6 +63,7 @@ export class SessionManager {
   private getCurrentUser?: () => { user?: NUser; metadata?: NostrMetadata };
   private corsProxy?: string;
   private projectsPath: string;
+  private pluginsPath?: string;
 
   constructor(
     fs: JSRuntimeFS,
@@ -71,12 +72,14 @@ export class SessionManager {
     getCurrentUser?: () => { user?: NUser; metadata?: NostrMetadata },
     corsProxy?: string,
     projectsPath = '/projects',
+    pluginsPath?: string,
   ) {
     this.fs = fs;
     this.aiSettings = aiSettings;
     this.getProviderModels = getProviderModels;
     this.getCurrentUser = getCurrentUser;
     this.projectsPath = projectsPath;
+    this.pluginsPath = pluginsPath;
     this.corsProxy = corsProxy;
   }
 
@@ -242,6 +245,7 @@ export class SessionManager {
           name: "Shakespeare",
           profession: "software extraordinaire",
           tools: Object.values(session.tools),
+          pluginsPath: this.pluginsPath,
           user,
           metadata,
         });

@@ -4,6 +4,7 @@ import { join } from "path-browserify";
 import OpenAI from "openai";
 import { nip19 } from "nostr-tools";
 import { JSRuntimeFS } from "./JSRuntime";
+import { getAllSkills } from "./plugins";
 
 export interface MakeSystemPromptOpts {
   name: string;
@@ -12,12 +13,13 @@ export interface MakeSystemPromptOpts {
   mode: "init" | "agent";
   fs: JSRuntimeFS;
   cwd: string;
+  pluginsPath?: string;
   user?: NUser;
   metadata?: NostrMetadata;
 }
 
 export async function makeSystemPrompt(opts: MakeSystemPromptOpts): Promise<string> {
-  const { name, profession, tools, mode, fs, cwd, user, metadata } = opts;
+  const { name, profession, tools, mode, fs, cwd, pluginsPath, user, metadata } = opts;
 
   let system = mode === "init"
     ? `You are ${name}, an expert ${profession}. The files in the current directory are a template. Your goal is to transform this template into a working project according to the user's request.`
@@ -179,6 +181,34 @@ The user expects you to handle all technical implementation while they focus on 
       }
     }
   }
+
+  // Add skills section
+  system += "\n\n## Skills\n\n";
+
+  if (pluginsPath) {
+    try {
+      const skills = await getAllSkills(fs, pluginsPath);
+
+      if (skills.length > 0) {
+        system += "You have access to the following skills. **Skills MUST be used whenever applicable** by calling the `skill` tool with the skill name.\n\n";
+        system += "Available skills:\n\n";
+
+        for (const skill of skills) {
+          system += `- **${skill.name}**: ${skill.description}\n  - Plugin: ${skill.plugin}\n  - Path: ${skill.path}\n`;
+        }
+
+        system += `\n**Important**: When a task matches a skill's description, you MUST use that skill by calling the skill tool. Skills contain specialized workflows and best practices for specific tasks.\n`;
+      } else {
+        system += "No skills are currently configured. Skills are reusable AI workflows that can be added via plugins.\n";
+      }
+    } catch {
+      system += "No skills are currently configured. Skills are reusable AI workflows that can be added via plugins.\n";
+    }
+  } else {
+    system += "No skills are currently configured. Skills are reusable AI workflows that can be added via plugins.\n";
+  }
+
+  system += `\nUsers can configure skills in Settings > AI (${location.origin}/settings/ai) by adding plugins that contain skills.`;
 
   // Add README.md if it exists
   try {

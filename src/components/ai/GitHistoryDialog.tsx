@@ -10,6 +10,7 @@ import { useFSPaths } from '@/hooks/useFSPaths';
 import { useFS } from '@/hooks/useFS';
 import { useToast } from '@/hooks/useToast';
 import { useGitStatus } from '@/hooks/useGitStatus';
+import { formatRelativeTime } from '@/lib/utils';
 
 interface GitCommit {
   oid: string;
@@ -335,24 +336,6 @@ ${commitsToRevert.map(c => {
       loadGitHistory();
     }
   }, [isOpen, loadGitHistory]);
-
-  const formatRelativeTime = (timestamp: number) => {
-    const now = Date.now();
-    const commitTime = timestamp * 1000;
-    const diffMs = now - commitTime;
-
-    const diffMinutes = Math.floor(diffMs / (1000 * 60));
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-    if (diffMinutes < 60) {
-      return `${diffMinutes} minutes ago`;
-    } else if (diffHours < 24) {
-      return `${diffHours} hours ago`;
-    } else {
-      return `${diffDays} days ago`;
-    }
-  };
 
   const getCommitMessageLines = (message: string) => {
     const lines = message.split('\n').filter(line => line.trim() !== '');

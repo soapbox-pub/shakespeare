@@ -47,6 +47,7 @@ import {
   GitPullRequest,
   ExternalLink,
   Copy,
+  RefreshCw,
 } from 'lucide-react';
 import { useGitStatus } from '@/hooks/useGitStatus';
 import { useGitSettings } from '@/hooks/useGitSettings';
@@ -56,6 +57,7 @@ import { useToast } from '@/hooks/useToast';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useNostr } from '@nostrify/react';
 import { usePullRequests } from '@/hooks/usePullRequests';
+import { useGitFetch } from '@/hooks/useGitFetch';
 import { cn } from '@/lib/utils';
 import { findCredentialsForRepo } from '@/lib/gitCredentials';
 import { nip19 } from 'nostr-tools';
@@ -63,6 +65,22 @@ import { GitManagementDialog } from '@/components/git/GitManagementDialog';
 import { MergeDialog } from '@/components/git/MergeDialog';
 import { PullRequestDialog } from '@/components/git/PullRequestDialog';
 import { AnnounceRepositoryDialog, type AnnounceRepositoryResult } from '@/components/git/AnnounceRepositoryDialog';
+import { formatRelativeTime } from '@/lib/utils';
+
+// Helper function to format fetch timestamp with special "fetched" prefix
+function formatFetchTime(date: Date | number): string {
+  const timestamp = typeof date === 'number' ? date : date.getTime();
+  const now = Date.now();
+  const diffMs = now - timestamp;
+
+  // Less than 20 seconds - use special "fetched just now" message
+  if (diffMs < 20 * 1000) {
+    return 'fetched just now';
+  }
+
+  // Otherwise use the standard relative time formatter
+  return formatRelativeTime(timestamp);
+}
 
 interface GitDialogProps {
   projectId: string;
@@ -89,6 +107,7 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
   const [isCreatingBranch, setIsCreatingBranch] = useState(false);
   const [newBranchName, setNewBranchName] = useState('');
   const [isCreateBranchDialogOpen, setIsCreateBranchDialogOpen] = useState(false);
+  const [, setUpdateTrigger] = useState(0);
 
   const { data: gitStatus, refetch: refetchGitStatus } = useGitStatus(projectId);
   const { settings } = useGitSettings();
@@ -98,8 +117,18 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
   const { user } = useCurrentUser();
   const { nostr } = useNostr();
   const { data: pullRequests, isLoading: isLoadingPRs } = usePullRequests(originUrl);
+  const { data: gitFetchData, isFetching: isFetchingRemote, refetch: refetchRemote } = useGitFetch(projectId);
 
   const projectPath = `${projectsPath}/${projectId}`;
+
+  // Update the "last fetched" timestamp display every 10 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setUpdateTrigger(prev => prev + 1);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   // Initialize origin URL from git status and load nostr.repo config
   useEffect(() => {
@@ -1041,6 +1070,29 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
                           <span className={cn("text-sm font-medium", syncStatus.color)}>
                             {syncStatus.text}
                           </span>
+
+                          {/* Last Fetched Info - inline with sync status */}
+                          {gitStatus.remotes.length > 0 && gitFetchData?.fetchedAt && (
+                            <>
+                              <span className="text-xs text-muted-foreground">
+                                · {formatFetchTime(gitFetchData.fetchedAt)}
+                              </span>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => refetchRemote()}
+                                disabled={isFetchingRemote}
+                                className="h-5 w-5 p-0 -ml-1 hover:bg-transparent"
+                                title="Refresh remote status"
+                              >
+                                {isFetchingRemote ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : (
+                                  <RefreshCw className="h-3 w-3 hover:text-foreground transition-colors" />
+                                )}
+                              </Button>
+                            </>
+                          )}
                         </div>
 
                         {gitStatus.remotes.length > 0 && (

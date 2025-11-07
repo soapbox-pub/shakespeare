@@ -927,6 +927,8 @@ export class Git {
     state?: RespositoryState;
     serversWithoutAnnouncement?: string[];
     serversWithoutLatestAnnouncement?: string[];
+    serversWithoutState?: string[];
+    serversWithoutLatestState?: string[];
     serversWithErrors?: string[];
   }> {
     // Build the filter for both NIP-34 repository announcement and state events
@@ -1042,6 +1044,8 @@ export class Git {
     // Analyze each ngitserver's status
     const serversWithoutAnnouncement: string[] = [];
     const serversWithoutLatestAnnouncement: string[] = [];
+    const serversWithoutState: string[] = [];
+    const serversWithoutLatestState: string[] = [];
     const serversWithErrors: string[] = [];
 
     for (const server of this.ngitServers) {
@@ -1053,7 +1057,9 @@ export class Git {
         console.warn(`Server ${server} had errors or timed out`);
       } else {
         const serverRepo = result.events.find(e => e.kind === 30617);
+        const serverState = result.events.find(e => e.kind === 30618);
 
+        // Check announcement status
         if (!serverRepo) {
           // Server has no announcement at all
           serversWithoutAnnouncement.push(server);
@@ -1063,7 +1069,22 @@ export class Git {
           serversWithoutLatestAnnouncement.push(server);
           console.log(`Server ${server} has outdated announcement (has: ${serverRepo.created_at}, latest: ${latestRepo.created_at})`);
         } else {
-          console.log(`Server ${server} is up-to-date`);
+          console.log(`Server ${server} has up-to-date announcement`);
+        }
+
+        // Check state status (only if we have a latest state to compare against)
+        if (latestState) {
+          if (!serverState) {
+            // Server has no state event at all
+            serversWithoutState.push(server);
+            console.log(`Server ${server} has no state event`);
+          } else if (serverState.created_at < latestState.created_at) {
+            // Server has outdated state
+            serversWithoutLatestState.push(server);
+            console.log(`Server ${server} has outdated state event (has: ${serverState.created_at}, latest: ${latestState.created_at})`);
+          } else {
+            console.log(`Server ${server} has up-to-date state event`);
+          }
         }
       }
     }
@@ -1073,6 +1094,8 @@ export class Git {
       state,
       serversWithoutAnnouncement,
       serversWithoutLatestAnnouncement,
+      serversWithoutState: serversWithoutState.length > 0 ? serversWithoutState : undefined,
+      serversWithoutLatestState: serversWithoutLatestState.length > 0 ? serversWithoutLatestState : undefined,
       serversWithErrors
     };
   }
@@ -1371,6 +1394,118 @@ export class Git {
     }
   }
 
+  /**
+   * Get remote info for all clone URLs in a repository announcement.
+   * Returns an array of results, each containing either the remote info or an error.
+   */
+  private async listFromCloneUrls(
+    repo: RepositoryAnnouncement
+  ): Promise<Array<{ cloneUrl: string; result: Awaited<ReturnType<typeof git.getRemoteInfo>> } | { cloneUrl: string; error: Error }>> {
+    const results = await Promise.allSettled(
+      repo.httpsCloneUrls.map(async (cloneUrl) => {
+        try {
+          const result = await git.getRemoteInfo({
+            http: this.http,
+            url: cloneUrl,
+          });
+          return { cloneUrl, result };
+        } catch (error) {
+          throw { cloneUrl, error: error instanceof Error ? error : new Error(String(error)) };
+        }
+      })
+    );
+
+    return results.map((result) => {
+      if (result.status === 'fulfilled') {
+        return result.value;
+      } else {
+        // Extract the cloneUrl and error from the rejected promise
+        const rejection = result.reason as { cloneUrl: string; error: Error };
+        return { cloneUrl: rejection.cloneUrl, error: rejection.error };
+      }
+    });
+  }
+
+  /**
+   * Identify differences between Nostr state and remote clone URL states
+   * Returns a map of clone URLs to the changes needed to sync them with the Nostr state
+   */
+  private nostrIdentifyCloneUrlStateDifferences(
+    nostrState: RespositoryState,
+    remoteStates: Array<{ cloneUrl: string; result: Awaited<ReturnType<typeof git.getRemoteInfo>> } | { cloneUrl: string; error: Error }>
+  ): Map<string, {
+    refsToDelete: string[];      // Refs that exist on remote but not in Nostr state
+    refsToUpdate: string[];      // Refs that exist in both but have different commits
+    refsToCreate: string[];      // Refs that exist in Nostr state but not on remote
+  }> {
+    const differences = new Map<string, {
+      refsToDelete: string[];
+      refsToUpdate: string[];
+      refsToCreate: string[];
+    }>();
+
+    for (const remoteState of remoteStates) {
+      // Skip remotes that had errors
+      if ('error' in remoteState) {
+        console.log(`Skipping ${remoteState.cloneUrl} due to error: ${remoteState.error.message}`);
+        continue;
+      }
+
+      const { cloneUrl, result } = remoteState;
+      const changes = {
+        refsToDelete: [] as string[],
+        refsToUpdate: [] as string[],
+        refsToCreate: [] as string[],
+      };
+
+      // Build a complete map of remote refs from heads and tags
+      const remoteRefs: Record<string, string> = {};
+
+      if (result.heads) {
+        for (const [branch, commit] of Object.entries(result.heads)) {
+          remoteRefs[`refs/heads/${branch}`] = commit;
+        }
+      }
+
+      if (result.tags) {
+        for (const [tag, commit] of Object.entries(result.tags)) {
+          remoteRefs[`refs/tags/${tag}`] = commit;
+        }
+      }
+
+      // Check for refs that need to be created or updated
+      for (const [ref, nostrCommit] of Object.entries(nostrState.refs)) {
+        const remoteCommit = remoteRefs[ref];
+
+        if (!remoteCommit) {
+          // Ref exists in Nostr state but not on remote - needs to be created
+          changes.refsToCreate.push(ref);
+        } else if (remoteCommit !== nostrCommit) {
+          // Ref exists in both but points to different commits - needs to be updated
+          changes.refsToUpdate.push(ref);
+        }
+      }
+
+      // Check for refs that need to be deleted (exist on remote but not in Nostr state)
+      for (const ref of Object.keys(remoteRefs)) {
+        if (!nostrState.refs[ref]) {
+          changes.refsToDelete.push(ref);
+        }
+      }
+
+      // Only add to map if there are actual changes needed
+      if (
+        changes.refsToDelete.length > 0 ||
+        changes.refsToUpdate.length > 0 ||
+        changes.refsToCreate.length > 0
+      ) {
+        differences.set(cloneUrl, changes);
+      }
+    }
+
+    return differences;
+  }
+
   private async nostrFetch(nostrUrl: string, options: Omit<Parameters<typeof git.fetch>[0], 'fs' | 'http' | 'corsProxy'> & { remote: string; dir: string }): Promise<{ fetchHead?: string; fetchHeadDescription?: string }> {
     // Parse the Nostr URI
     const nostrURI = await this.parseNostrCloneURI(nostrUrl);
@@ -1381,16 +1516,37 @@ export class Git {
     console.log(`Fetching updates from Nostr repository: ${nostrUrl}`);
 
     // Fetch the latest repository state from Nostr
-    const { repo, state } = await this.fetchNostrRepoEvents(nostrURI);
+    const { repo, state, serversWithoutLatestAnnouncement, serversWithoutLatestState } = await this.fetchNostrRepoEvents(nostrURI);
 
     // If we have a state event, update our refs to match
     if (state) {
-      const foundAllData = () => {
-        // TODO: fix state in out-of-sync grasp servers by pushing correct state to them
-        // step 1: add serversWithoutLatestState to fetchNostrRepoEvents
-        // step 2: let cloneURLsStates = await this.listFromCloneUrls(repo); (also useful for deciding which remotes to fetch from)
-        // step 3: let outOfSyncRefsPerCloneUrl = this.nostrIdentifyCloneUrlStateDifferences(state,remote_states);
-        // step 4: push events and git refs.
+      const foundAllData = async () => {
+        // identify out-of-sync grasp servers are in sync
+        const cloneURLsStates = await this.listFromCloneUrls(repo);
+        const outOfSyncRefsPerCloneUrl = this.nostrIdentifyCloneUrlStateDifferences(state, cloneURLsStates);
+
+        // Log out-of-sync remotes for debugging
+        if (outOfSyncRefsPerCloneUrl.size > 0) {
+          console.log(`Found ${outOfSyncRefsPerCloneUrl.size} out-of-sync clone URLs:`);
+          for (const [cloneUrl, changes] of outOfSyncRefsPerCloneUrl.entries()) {
+            console.log(`  ${cloneUrl}:`, {
+              toDelete: changes.refsToDelete.length,
+              toUpdate: changes.refsToUpdate.length,
+              toCreate: changes.refsToCreate.length,
+            });
+          }
+        }
+
+        // Sync GRASP servers (send announcement and state events and push git ref state updates)
+        await this.nostrSyncNostrGitServers(
+          repo,
+          state,
+          outOfSyncRefsPerCloneUrl,
+          serversWithoutLatestAnnouncement || [],
+          serversWithoutLatestState || [],
+          options.dir
+        );
+
         return {
           fetchHead: state.headCommit,
           fetchHeadDescription: `Fetched from Nostr repository state`,
@@ -1424,12 +1580,12 @@ export class Git {
           } catch (error) {
             console.log(`Failed to fetch missing commits from: ${cloneUrl} error: ${error}`);
           }
-          if (!refsWithMissingData) return foundAllData();
+          if (!refsWithMissingData) return await foundAllData();
         }
         // TODO can we report on partially successfuly fetch? (if some refs were updated but some data not found eg for tags?)
         throw new Error(`failed to find git data on clone urls for the following refs in Nostr state event: ${Object.keys(refsWithMissingData).join(", ")}`)
       } else {
-        return foundAllData();
+        return await foundAllData();
       }
     } else {
       // No state event, try to fetch from the Git clone URLs
@@ -1779,6 +1935,239 @@ export class Git {
       throw error instanceof Error ? error : new Error('Unknown error');
     }
   }
+
+  /**
+   * Publish announcement and state events to Nostr servers that need them
+   * Returns sets of server hostnames where publishing was successful and failed
+   */
+  private async nostrSyncPublishAnnAndStateEventsToServers(
+    repo: RepositoryAnnouncement,
+    state: RespositoryState,
+    serversWithoutLatestAnnouncement: string[],
+    serversWithoutLatestState: string[]
+  ): Promise<{ successfulServers: Set<string>; failedServers: Set<string> }> {
+    // Categorize servers by what they need
+    const serversWithoutLatestAnnouncementSet = new Set(serversWithoutLatestAnnouncement);
+    const serversWithoutLatestStateSet = new Set(serversWithoutLatestState);
+
+    const serversNeedingOnlyAnnouncement = serversWithoutLatestAnnouncement.filter(
+      server => !serversWithoutLatestStateSet.has(server)
+    );
+    const serversNeedingOnlyState = serversWithoutLatestState.filter(
+      server => !serversWithoutLatestAnnouncementSet.has(server)
+    );
+    const serversNeedingBoth = serversWithoutLatestAnnouncement.filter(
+      server => serversWithoutLatestStateSet.has(server)
+    );
+
+    // Track successful and failed servers
+    const successfulServers = new Set<string>();
+    const failedServers = new Set<string>();
+
+    // Dedupe servers that need events
+    const serversNeedingEvents = new Set<string>([
+      ...serversWithoutLatestAnnouncement,
+      ...serversWithoutLatestState,
+    ]);
+
+    if (serversNeedingEvents.size === 0) {
+      return { successfulServers, failedServers };
+    }
+
+    console.log(`Syncing events to ${serversNeedingEvents.size} out-of-sync servers`);
+
+    const publishPromises: Promise<void>[] = [];
+
+    // Publish only announcement to servers that need just announcement
+    if (serversNeedingOnlyAnnouncement.length > 0) {
+      const urls = serversNeedingOnlyAnnouncement.map(server => `wss://${server}/`);
+      publishPromises.push(
+        this.nostr.group(urls).event(repo.event)
+          .then(() => {
+            console.log(`✓ Published announcement to ${serversNeedingOnlyAnnouncement.length} servers`);
+            serversNeedingOnlyAnnouncement.forEach(server => successfulServers.add(server));
+          })
+          .catch(error => {
+            console.warn('Failed to publish announcement to some servers:', error);
+            serversNeedingOnlyAnnouncement.forEach(server => failedServers.add(server));
+          })
+      );
+    }
+
+    // Publish only state to servers that need just state
+    if (serversNeedingOnlyState.length > 0) {
+      const urls = serversNeedingOnlyState.map(server => `wss://${server}/`);
+      publishPromises.push(
+        this.nostr.group(urls).event(state.event)
+          .then(() => {
+            console.log(`✓ Published state to ${serversNeedingOnlyState.length} servers`);
+            serversNeedingOnlyState.forEach(server => successfulServers.add(server));
+          })
+          .catch(error => {
+            console.warn('Failed to publish state to some servers:', error);
+            serversNeedingOnlyState.forEach(server => failedServers.add(server));
+          })
+      );
+    }
+
+    // Publish both announcement and state to servers that need both
+    if (serversNeedingBoth.length > 0) {
+      const urls = serversNeedingBoth.map(server => `wss://${server}/`);
+      publishPromises.push(
+        Promise.all([
+          this.nostr.group(urls).event(repo.event),
+          this.nostr.group(urls).event(state.event),
+        ])
+          .then(() => {
+            console.log(`✓ Published announcement and state to ${serversNeedingBoth.length} servers`);
+            serversNeedingBoth.forEach(server => successfulServers.add(server));
+          })
+          .catch(error => {
+            console.warn('Failed to publish events to some servers:', error);
+            serversNeedingBoth.forEach(server => failedServers.add(server));
+          })
+      );
+    }
+
+    // Wait for all publish operations to complete
+    await Promise.all(publishPromises);
+
+    return { successfulServers, failedServers };
+  }
+
+  /**
+   * Synchronize Nostr Git servers with the latest repository state and announcement
+   * Publishes events to out-of-sync servers and pushes ref changes to GRASP servers
+   */
+  private async nostrSyncNostrGitServers(
+    repo: RepositoryAnnouncement,
+    state: RespositoryState,
+    outOfSyncRefsPerCloneUrl: Map<string, { refsToDelete: string[]; refsToUpdate: string[]; refsToCreate: string[] }>,
+    serversWithoutLatestAnnouncement: string[],
+    serversWithoutLatestState: string[],
+    dir: string
+  ): Promise<void> {
+    // Publish events to servers and get the set of successful and failed servers
+    const { successfulServers, failedServers } = await this.nostrSyncPublishAnnAndStateEventsToServers(
+      repo,
+      state,
+      serversWithoutLatestAnnouncement,
+      serversWithoutLatestState
+    );
+
+    // Log event publishing results
+    if (successfulServers.size > 0) {
+      console.log(`✓ Successfully published events to ${successfulServers.size} server(s)`);
+    }
+    if (failedServers.size > 0) {
+      console.log(`✗ Failed to publish events to ${failedServers.size} server(s)`);
+    }
+
+    // Filter out clone URLs that are not GRASP servers (only sync GRASP servers)
+    // Also filter out servers where event publishing failed (when events were required)
+    const graspServerOutOfSyncRefs = new Map<string, { refsToDelete: string[]; refsToUpdate: string[]; refsToCreate: string[] }>();
+
+    for (const [cloneUrl, changes] of outOfSyncRefsPerCloneUrl.entries()) {
+      // Extract hostname from clone URL to check if it failed
+      const hostname = new URL(cloneUrl).hostname;
+
+      // Skip non-GRASP servers
+      if (repo.nonGraspHttpsCloneUrls.includes(cloneUrl)) {
+        continue;
+      }
+
+      // Only filter out servers where event publishing actually failed
+      // (Some servers might not require events but still need git ref updates)
+      if (failedServers.has(hostname)) {
+        console.log(`Skipping ${cloneUrl} - event publishing failed`);
+        continue;
+      }
+
+      // Include this GRASP server for syncing
+      graspServerOutOfSyncRefs.set(cloneUrl, changes);
+    }
+
+    // Push ref changes to GRASP servers that are out of sync
+    if (graspServerOutOfSyncRefs.size > 0) {
+      console.log(`Pushing ref changes to ${graspServerOutOfSyncRefs.size} out-of-sync GRASP servers`);
+
+      for (const [cloneUrl, changes] of graspServerOutOfSyncRefs.entries()) {
+        try {
+          console.log(`Syncing ${cloneUrl}:`, {
+            toDelete: changes.refsToDelete.length,
+            toUpdate: changes.refsToUpdate.length,
+            toCreate: changes.refsToCreate.length,
+          });
+
+          // Add a temporary remote
+          const tempRemoteName = `sync-${Date.now()}`;
+          await git.addRemote({
+            fs: this.fs,
+            dir,
+            remote: tempRemoteName,
+            url: cloneUrl,
+          });
+
+          try {
+            // Push all refs that need to be created or updated
+            const refsToPush = [...changes.refsToCreate, ...changes.refsToUpdate];
+
+            if (refsToPush.length > 0) {
+              for (const ref of refsToPush) {
+                try {
+                  await git.push({
+                    fs: this.fs,
+                    http: this.http,
+                    dir,
+                    remote: tempRemoteName,
+                    ref,
+                    force: true, // Force push to ensure refs are updated
+                  });
+                  console.log(`  ✓ Pushed ${ref}`);
+                } catch (pushError) {
+                  console.warn(`  ✗ Failed to push ${ref}:`, pushError);
+                }
+              }
+            }
+
+            // Delete refs that should not exist on the remote
+            // Note: Git push with :ref syntax deletes remote refs
+            if (changes.refsToDelete.length > 0) {
+              for (const ref of changes.refsToDelete) {
+                try {
+                  await git.push({
+                    fs: this.fs,
+                    http: this.http,
+                    dir,
+                    remote: tempRemoteName,
+                    ref: `:${ref}`, // :ref syntax deletes the remote ref
+                  });
+                  console.log(`  ✓ Deleted ${ref}`);
+                } catch (deleteError) {
+                  console.warn(`  ✗ Failed to delete ${ref}:`, deleteError);
+                }
+              }
+            }
+
+            console.log(`✓ Synced ${cloneUrl}`);
+          } finally {
+            // Clean up the temporary remote
+            try {
+              await git.deleteRemote({
+                fs: this.fs,
+                dir,
+                remote: tempRemoteName,
+              });
+            } catch {
+              // Ignore cleanup errors
+            }
+          }
+        } catch (error) {
+          console.warn(`Failed to sync ${cloneUrl}:`, error);
+        }
+      }
+    }
+  }
 }
 
 class GitHttp implements HttpClient {
@@ -1869,6 +2258,7 @@ function readableStreamToAsyncIterator(
 }
 
 interface RespositoryState {
+  event: NostrEvent;
   HEAD?: string;
   headCommit?: string;
   headBranch?: string;
@@ -1901,5 +2291,5 @@ function parseRepositoryState(stateEvent: NostrEvent): RespositoryState {
     }
   }
 
-  return { HEAD, headCommit, headBranch, refs };
+  return { event: stateEvent, HEAD, headCommit, headBranch, refs };
 }

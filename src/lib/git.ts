@@ -3,6 +3,7 @@ import { NIP05 } from '@nostrify/nostrify';
 import { nip19 } from 'nostr-tools';
 import { proxyUrl } from './proxyUrl';
 import { readGitSettings } from './configUtils';
+import { parseRepositoryAnnouncement } from './announceRepository';
 import type { NostrEvent, NostrSigner, NPool } from '@nostrify/nostrify';
 import type { JSRuntimeFS } from './JSRuntime';
 
@@ -638,20 +639,20 @@ export class Git {
       }
     } else {
       // No state event, try to get info from the first available clone URL
-      const cloneUrls = getCloneURLs(repo);
+      const repoAnn = parseRepositoryAnnouncement(repo);
 
-      if (cloneUrls.length > 0) {
+      if (repoAnn.httpsCloneUrls.length > 0) {
         // Try to get remote info from the first clone URL
         try {
           const gitRemoteInfo = await git.getRemoteInfo({
             http: this.http,
-            url: cloneUrls[0],
+            url: repoAnn.httpsCloneUrls[0],
           });
 
           Object.assign(refs, gitRemoteInfo.refs);
           HEAD = gitRemoteInfo.HEAD;
         } catch (error) {
-          console.warn(`Failed to get remote info from ${cloneUrls[0]}:`, error);
+          console.warn(`Failed to get remote info from ${repoAnn.httpsCloneUrls[0]}:`, error);
           // Continue with empty refs if we can't get git remote info
         }
       }
@@ -1023,8 +1024,7 @@ export class Git {
           const repoEvents = result.events.filter(e => e.kind === 30617);
           for (const repoEvent of repoEvents) {
             // Extract ngit servers from this announcement
-            const discoveredServers = getNgitServers(repoEvent);
-            for (const discoveredServer of discoveredServers) {
+            for (const discoveredServer of parseRepositoryAnnouncement(repoEvent).graspServers) {
               if (!queriedServers.has(discoveredServer)) {
                 serversToQuery.push(discoveredServer);
               }
@@ -1069,8 +1069,7 @@ export class Git {
     }
 
     // Get GRASP servers from the announcement and handle any mismatch
-    const ngitServers = getNgitServers(latestRepo);
-    this.processNgitServersMismatch(ngitServers);
+    this.processNgitServersMismatch(parseRepositoryAnnouncement(latestRepo).graspServers);
 
     // Analyze each ngitserver's status
     const serversWithoutAnnouncement: string[] = [];
@@ -1134,9 +1133,9 @@ export class Git {
     }
 
     // Collect valid clone URLs from the repo event tags
-    const cloneUrls = getCloneURLs(repo);
+    const repoAnn = parseRepositoryAnnouncement(repo);
 
-    if (cloneUrls.length === 0) {
+    if (repoAnn.httpsCloneUrls.length === 0) {
       throw new Error('No valid clone URLs found in repository announcement');
     }
 
@@ -1147,7 +1146,7 @@ export class Git {
     if (expectedCommit) {
       console.log(`Looking for repository with commit: ${expectedCommit}`);
 
-      for (const cloneUrl of cloneUrls) {
+      for (const cloneUrl of repoAnn.httpsCloneUrls) {
         try {
           console.log(`Checking remote info for: ${cloneUrl}`);
 
@@ -1223,7 +1222,7 @@ export class Git {
     if (!cloneSuccessful) {
       console.log('Falling back to regular clone from available URLs');
 
-      for (const cloneUrl of cloneUrls) {
+      for (const cloneUrl of repoAnn.httpsCloneUrls) {
         try {
           console.log(`Attempting to clone from: ${cloneUrl}`);
 
@@ -1596,9 +1595,8 @@ export class Git {
       }
     }
 
-    // Get clone URLs using shared function (only https for push)
-    const allCloneUrls = getCloneURLs(repo);
-    const cloneUrls = allCloneUrls.filter(url => url.startsWith('https:'));
+    // Get clone URLs using parseRepositoryAnnouncement (only https for push)
+    const repoAnn = parseRepositoryAnnouncement(repo);
 
     // If no relays specified in announcement, use default git-focused relays
     if (relayUrls.length === 0) {
@@ -1664,8 +1662,8 @@ export class Git {
     }
 
     // Push to each clone URL
-    if (cloneUrls.length === 0) {
-      console.warn('No Git clone URLs found in repository announcement');
+    if (repoAnn.httpsCloneUrls.length === 0) {
+      console.warn('No Git https clone URLs found in repository announcement');
       return;
     }
 
@@ -1678,7 +1676,7 @@ export class Git {
     let pushSuccessful = false;
     let lastError: Error | null = null;
 
-    for (const cloneUrl of cloneUrls) {
+    for (const cloneUrl of repoAnn.httpsCloneUrls) {
       console.log(`Pushing to Git remote: ${cloneUrl}`);
 
       try {
@@ -1708,15 +1706,15 @@ export class Git {
 
   private async fetchMissingCommitsFromGitRemotes(repo: NostrEvent, dir: string, refs: Record<string, string>): Promise<void> {
     // Get clone URLs from the repository announcement
-    const cloneUrls = getCloneURLs(repo);
+    const repoAnn = parseRepositoryAnnouncement(repo);
 
-    if (cloneUrls.length === 0) {
+    if (repoAnn.httpsCloneUrls.length === 0) {
       console.warn('No Git clone URLs available to fetch missing commits');
       return;
     }
 
     // Try to fetch missing commits from each Git remote
-    for (const cloneUrl of cloneUrls) {
+    for (const cloneUrl of repoAnn.httpsCloneUrls) {
       console.log(`Fetching missing commits from: ${cloneUrl}`);
 
       try {
@@ -1763,15 +1761,15 @@ export class Git {
 
   private async fetchFromGitRemotes(repo: NostrEvent, dir: string): Promise<{ fetchHead?: string; fetchHeadDescription?: string }> {
     // Get clone URLs from the repository announcement
-    const cloneUrls = getCloneURLs(repo);
+    const repoAnn = parseRepositoryAnnouncement(repo);
 
-    if (cloneUrls.length === 0) {
+    if (repoAnn.httpsCloneUrls.length === 0) {
       throw new Error('No Git clone URLs available for fetching');
     }
 
     // Try to fetch from each Git remote
     let lastError: Error | null = null;
-    for (const cloneUrl of cloneUrls) {
+    for (const cloneUrl of repoAnn.httpsCloneUrls) {
       try {
         console.log(`Fetching from Git remote: ${cloneUrl}`);
 
@@ -1867,108 +1865,6 @@ class GitHttp implements HttpClient {
   }
 }
 
-/**
- * Extract clone URLs from a Nostr repository event (kind 30617).
- * Collects all values from 'clone' tags and validates they are http/https URLs.
- */
-function getCloneURLs(event: NostrEvent): string[] {
-  const urls = new Set<string>();
-
-  for (const [name, ...values] of event.tags) {
-    if (name === 'clone') {
-      for (const value of values) {
-        if (value) {
-          try {
-            const url = new URL(value);
-            if (url.protocol === 'http:' || url.protocol === 'https:') {
-              urls.add(url.href);
-            }
-          } catch {
-            // Ignore invalid URLs
-          }
-        }
-      }
-    }
-  }
-
-  return [...urls];
-}
-
-/**
- * Extract GRASP server hostnames from a Nostr repository event (kind 30617).
- *
- * GRASP servers are identified per NIP-34 by matching clone and relays tags:
- * - clone tag contains URL(s) matching: [http|https]://<hostname>/<valid-npub>/<repo>.git
- * - relays tag contains URL(s) matching: [ws|wss]://<hostname>
- *
- * NIP-34 format allows multiple values in a single tag:
- *   ["clone", "url1", "url2", ...]
- *   ["relays", "relay1", "relay2", ...]
- *
- * This function also handles multiple separate tags for backward compatibility.
- *
- * @param event - A kind 30617 repository announcement event
- * @returns Array of hostnames that are identified as GRASP servers
- */
-export function getNgitServers(event: NostrEvent): string[] {
-  // Track servers with valid GRASP clone URLs
-  const validCloneServers = new Set<string>();
-
-  // Track servers in relays tags
-  const relayServers = new Set<string>();
-
-  for (const [name, ...values] of event.tags) {
-    if (name === 'clone') {
-      // Check clone tags for GRASP pattern: https://<hostname>/<npub>/<repo>.git
-      for (const value of values) {
-        if (value) {
-          try {
-            // Must be http/https and end with .git
-            if (!(value.startsWith('http://') || value.startsWith('https://'))) continue;
-            if (!(value.endsWith('.git/') || value.endsWith('.git'))) continue;
-            if (!value.includes('/npub1')) continue;
-
-            // Extract and validate the npub using nip19.decode
-            // Find the npub1 part in the path
-            const npubMatch = value.match(/\/npub1([a-z0-9]+)\//);
-            if (!npubMatch) continue;
-
-            const npub = `npub1${npubMatch[1]}`;
-            const decoded = nip19.decode(npub);
-            if (decoded.type !== 'npub') continue;
-
-            // If we got here, it's a valid GRASP clone URL
-            const url = new URL(value);
-            validCloneServers.add(url.hostname);
-          } catch {
-            // Ignore invalid URLs or npub decode failures
-          }
-        }
-      }
-    } else if (name === 'relays') {
-      // Check relays tags for websocket URLs
-      for (const value of values) {
-        if (value) {
-          try {
-            const url = new URL(value);
-            if (url.protocol === 'ws:' || url.protocol === 'wss:') {
-              relayServers.add(url.hostname);
-            }
-          } catch {
-            // Ignore invalid URLs
-          }
-        }
-      }
-    }
-  }
-
-  // Only include servers that appear in BOTH clone (with valid GRASP pattern) and relays tags
-  const graspServers = [...validCloneServers].filter(server =>
-    relayServers.has(server)
-  );
-
-  return graspServers;
-}
 
 
 

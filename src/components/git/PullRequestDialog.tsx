@@ -39,6 +39,7 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useNostr } from '@/hooks/useNostr';
 import { useAppContext } from '@/hooks/useAppContext';
 import { findCredentialsForRepo } from '@/lib/gitCredentials';
+import { parseRepositoryAnnouncement } from '@/lib/announceRepository';
 import { nip19 } from 'nostr-tools';
 import type { GitCredential } from '@/contexts/GitSettingsContext';
 
@@ -717,21 +718,20 @@ export function PullRequestDialog({
       const repoEvent = repoEvents[0];
       console.log('Found repository announcement event:', repoEvent);
 
+      // Parse the NIP-34 repository announcement
+      const repoAnn = parseRepositoryAnnouncement(repoEvent);
+
       // Get earliest unique commit from repository announcement
-      const eucTag = repoEvent.tags.find((t: string[]) => t[0] === 'r' && t[2] === 'euc');
-      if (eucTag) {
-        earliestUniqueCommit = eucTag[1];
+      if (repoAnn.earliestCommit) {
+        earliestUniqueCommit = repoAnn.earliestCommit;
         console.log('Found earliest unique commit:', earliestUniqueCommit);
       } else {
         console.warn('No euc tag found in repository announcement');
       }
 
       // Get relay hints from repository announcement
-      // Per NIP-34, all relays are in a single tag: ["relays", "wss://...", "wss://...", ...]
-      const relayTag = repoEvent.tags.find((t: string[]) => t[0] === 'relays');
-      if (relayTag && relayTag.length > 1) {
-        // Extract all relay URLs from the tag (skip the first element which is "relays")
-        publishRelays = relayTag.slice(1);
+      if (repoAnn.relays.length > 0) {
+        publishRelays = repoAnn.relays;
         console.log('Publishing to repository relays:', publishRelays);
       } else {
         console.log('No relay hints in repository announcement, using configured relay');

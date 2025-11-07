@@ -1,4 +1,5 @@
 import type { EventTemplate } from 'nostr-tools';
+import type { NostrEvent } from '@nostrify/nostrify';
 import { nip19 } from 'nostr-tools';
 
 export interface RepositoryAnnouncementData {
@@ -16,6 +17,36 @@ export interface RepositoryAnnouncementData {
   relays?: string[];
   /** Earliest unique commit (root commit) */
   earliestCommit?: string;
+}
+
+/**
+ * Parsed NIP-34 repository announcement with categorized data
+ */
+export interface RepositoryAnnouncement {
+  /** Repository identifier (d tag) */
+  identifier: string;
+  /** Human-readable name */
+  name?: string;
+  /** Description of the repository */
+  description?: string;
+  /** Web URLs where repository can be browsed */
+  webUrls: string[];
+  /** All clone URLs (https) - to support http we would need to store graspServers with ws|wss:// prefix */
+  httpsCloneUrls: string[];
+  /** valid ws:// or wss:// Repository relay URLs*/
+  relays: string[];
+  /** Earliest unique commit (root commit SHA) */
+  earliestCommit?: string;
+  /** Maintainer public keys */
+  maintainers: string[];
+  /** GRASP servers (hostname only) - servers that appear in both clone and relays with valid pattern */
+  graspServers: string[];
+  /** Clone URLs that are NOT GRASP servers */
+  nonGraspHttpsCloneUrls: string[];
+  /** Relay URLs that are NOT GRASP servers */
+  nonGraspRelays: string[];
+  /** Raw event for advanced use */
+  event: NostrEvent;
 }
 
 /**
@@ -149,4 +180,182 @@ export function validateRepositoryAnnouncementData(
   if (data.cloneUrls.length === 0) {
     throw new Error('At least one clone URL is required');
   }
+}
+
+/**
+ * Parses a NIP-34 repository announcement event (kind 30617) into a structured format.
+ *
+ * This function extracts all relevant data from the event tags and categorizes servers
+ * into GRASP and non-GRASP categories. GRASP servers are identified by matching:
+ * - clone tag contains URL(s) matching: [http|https]://<hostname>/<valid-npub>/<repo>.git
+ * - relays tag contains URL(s) matching: [ws|wss]://<hostname>
+ *
+ * @param event - A kind 30617 repository announcement event
+ * @returns Parsed repository data with categorized servers
+ * @throws Error if event is not kind 30617
+ *
+ * @example
+ * ```typescript
+ * const repo = parseRepositoryAnnouncement(event);
+ * console.log(repo.identifier); // "my-repo"
+ * console.log(repo.graspServers); // ["git.example.com"]
+ * console.log(repo.nonGraspCloneUrls); // ["https://github.com/user/repo.git"]
+ * ```
+ */
+export function parseRepositoryAnnouncement(event: NostrEvent): RepositoryAnnouncement {
+  if (event.kind !== 30617) {
+    throw new Error(`Expected kind 30617, got ${event.kind}`);
+  }
+
+  // Extract basic fields
+  const identifier = event.tags.find(([name]) => name === 'd')?.[1] || '';
+  const name = event.tags.find(([name]) => name === 'name')?.[1];
+  const description = event.tags.find(([name]) => name === 'description')?.[1];
+
+  // Extract multi-value tags
+  const webUrls: string[] = [];
+  const httpsCloneUrls: string[] = [];
+  const relays: string[] = [];
+  const maintainers: string[] = [];
+  let earliestCommit: string | undefined;
+
+  // Track servers for GRASP detection
+  const validCloneServers = new Set<string>(); // Servers with valid GRASP clone URLs
+  const relayServers = new Set<string>(); // Servers in relays tags
+  const cloneUrlsByServer = new Map<string, string[]>(); // Map hostname -> clone URLs
+  const relayUrlsByServer = new Map<string, string[]>(); // Map hostname -> relay URLs
+
+  for (const [name, ...values] of event.tags) {
+    switch (name) {
+      case 'web':
+        // All values after tag name are web URLs
+        for (const value of values) {
+          if (value) {
+            webUrls.push(value);
+          }
+        }
+        break;
+
+      case 'clone':
+        // All values after tag name are clone URLs
+        // Also track which ones match GRASP pattern
+        for (const value of values) {
+          if (value) {
+            try {
+              const url = new URL(value);
+
+              // Only accept https:// URLs (reject http://)
+              if (url.protocol === 'https:') {
+                httpsCloneUrls.push(value); // Use original value to preserve exact format
+
+                // Check if this matches GRASP pattern: https://<hostname>/<npub>/<repo>.git
+                if ((value.endsWith('.git/') || value.endsWith('.git')) && value.includes('/npub1')) {
+                  // Extract and validate the npub using nip19.decode
+                  // Match npub1 followed by alphanumeric chars, ending at /
+                  const npubMatch = value.match(/\/npub1([a-z0-9]+)\//);
+                  if (npubMatch) {
+                    const npub = `npub1${npubMatch[1]}`;
+                    try {
+                      const decoded = nip19.decode(npub);
+                      if (decoded.type === 'npub') {
+                        // Valid GRASP clone URL
+                        validCloneServers.add(url.hostname);
+
+                        if (!cloneUrlsByServer.has(url.hostname)) {
+                          cloneUrlsByServer.set(url.hostname, []);
+                        }
+                        cloneUrlsByServer.get(url.hostname)!.push(value);
+                      }
+                    } catch {
+                      // Invalid npub, not a GRASP server
+                    }
+                  }
+                }
+              }
+            } catch {
+              // Invalid URL, skip
+            }
+          }
+        }
+        break;
+
+      case 'relays':
+        // All values after tag name are relay URLs
+        for (const value of values) {
+          if (value) {
+            try {
+              const url = new URL(value);
+              if (url.protocol === 'ws:' || url.protocol === 'wss:') {
+                relays.push(value); // Use original value to preserve exact format
+                relayServers.add(url.hostname);
+
+                if (!relayUrlsByServer.has(url.hostname)) {
+                  relayUrlsByServer.set(url.hostname, []);
+                }
+                relayUrlsByServer.get(url.hostname)!.push(value);
+              }
+            } catch {
+              // Invalid URL, skip
+            }
+          }
+        }
+        break;
+
+      case 'maintainers':
+        // All values after tag name are maintainer pubkeys
+        for (const value of values) {
+          if (value) {
+            maintainers.push(value);
+          }
+        }
+        break;
+
+      case 'r':
+        // Check for earliest unique commit marker
+        if (values.length >= 2 && values[1] === 'euc') {
+          earliestCommit = values[0];
+        }
+        break;
+    }
+  }
+
+  // Identify GRASP servers: must appear in BOTH clone (with valid pattern) and relays
+  const graspServers = [...validCloneServers].filter(server =>
+    relayServers.has(server)
+  );
+
+  // Categorize clone URLs
+  const nonGraspHttpsCloneUrls = httpsCloneUrls.filter(url => {
+    try {
+      const hostname = new URL(url).hostname;
+      return !graspServers.includes(hostname);
+    } catch {
+      return true; // Invalid URLs go to non-GRASP
+    }
+  });
+
+  // Categorize relay URLs
+  const nonGraspRelays = relays.filter(url => {
+    try {
+      const hostname = new URL(url).hostname;
+      return !graspServers.includes(hostname);
+    } catch {
+      return true; // Invalid URLs go to non-GRASP
+    }
+  });
+
+  return {
+    identifier,
+    name,
+    description,
+    webUrls,
+    httpsCloneUrls,
+    relays,
+    earliestCommit,
+    maintainers,
+    graspServers,
+    nonGraspHttpsCloneUrls,
+    nonGraspRelays,
+    event,
+  };
 }

@@ -39,6 +39,7 @@ import {
   createRepositoryNaddr,
   validateRepositoryAnnouncementData,
   validateRepositoryId,
+  parseRepositoryAnnouncement,
 } from '@/lib/announceRepository';
 
 export interface AnnounceRepositoryResult {
@@ -209,21 +210,16 @@ export function AnnounceRepositoryDialog({
         // Use the most recent event
         const event = events.sort((a, b) => b.created_at - a.created_at)[0];
 
-        // Parse tags to populate form fields
-        const nameTag = event.tags.find(([name]) => name === 'name');
-        const descriptionTag = event.tags.find(([name]) => name === 'description');
-        const webTag = event.tags.find(([name]) => name === 'web');
-        const cloneTag = event.tags.find(([name]) => name === 'clone');
-        const relaysTag = event.tags.find(([name]) => name === 'relays');
-        const eucTag = event.tags.find(([name, , marker]) => name === 'r' && marker === 'euc');
+        // Parse the NIP-34 repository announcement
+        const parsed = parseRepositoryAnnouncement(event);
 
-        setRepoId(identifier);
-        setName(nameTag?.[1] || '');
-        setDescription(descriptionTag?.[1] || '');
-        setWebUrls(webTag ? webTag.slice(1) : []);
-        setCloneUrls(cloneTag ? cloneTag.slice(1) : []);
-        setRelays(relaysTag ? relaysTag.slice(1) : []);
-        setEarliestCommit(eucTag?.[1] || '');
+        setRepoId(parsed.identifier);
+        setName(parsed.name || '');
+        setDescription(parsed.description || '');
+        setWebUrls(parsed.webUrls);
+        setCloneUrls(parsed.httpsCloneUrls);
+        setRelays(parsed.relays);
+        setEarliestCommit(parsed.earliestCommit || '');
 
         setIsPrepopulated(true);
       } catch (error) {

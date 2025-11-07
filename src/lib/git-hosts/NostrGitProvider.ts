@@ -1,4 +1,5 @@
 import { NRelay1, type NostrEvent } from '@nostrify/nostrify';
+import { parseRepositoryAnnouncement } from '@/lib/announceRepository';
 import type {
   GitHostProvider,
   GitHostConfig,
@@ -58,31 +59,23 @@ export class NostrGitProvider implements GitHostProvider {
   async getRepository(owner: string, repo: string): Promise<GitRepository> {
     const event = await this.queryRepo(owner, repo);
 
-    const getName = () => event.tags.find((t: string[]) => t[0] === 'name')?.[1] || repo;
-    const getDescription = () => event.tags.find((t: string[]) => t[0] === 'description')?.[1];
-    const getWebUrl = () => event.tags.find((t: string[]) => t[0] === 'web')?.[1] || '';
-    const getCloneUrl = () => event.tags.find((t: string[]) => t[0] === 'clone')?.[1] || '';
-    // Per NIP-34, all relays are in a single tag: ["relays", "wss://...", "wss://...", ...]
-    const getRelays = () => {
-      const relayTag = event.tags.find((t: string[]) => t[0] === 'relays');
-      return relayTag ? relayTag.slice(1) : [];
-    };
+    // Parse the NIP-34 repository announcement
+    const repoAnn = parseRepositoryAnnouncement(event);
 
     // Update relay to use repository's designated relays
-    const repoRelays = getRelays();
-    if (repoRelays.length > 0) {
-      this.relayUrls = repoRelays;
-      this.relay = new NRelay1(repoRelays[0]);
+    if (repoAnn.relays.length > 0) {
+      this.relayUrls = repoAnn.relays;
+      this.relay = new NRelay1(repoAnn.relays[0]);
     }
 
     return {
       owner,
-      name: getName(),
+      name: repoAnn.name || repo,
       fullName: `${owner}/${repo}`,
       defaultBranch: 'main', // Nostr git doesn't specify, assume main
-      cloneUrl: getCloneUrl(),
-      webUrl: getWebUrl(),
-      description: getDescription(),
+      cloneUrl: repoAnn.httpsCloneUrls[0] || '',
+      webUrl: repoAnn.webUrls[0] || '',
+      description: repoAnn.description,
       isPrivate: false, // All Nostr repos are public
     };
   }
@@ -92,12 +85,12 @@ export class NostrGitProvider implements GitHostProvider {
     // But only maintainers can apply them
     // Check if current user is listed as a maintainer
     const event = await this.queryRepo(owner, repo);
-    // Per NIP-34, all maintainers are in a single tag: ["maintainers", "pubkey1", "pubkey2", ...]
-    const maintainerTag = event.tags.find((t: string[]) => t[0] === 'maintainers');
-    const maintainers = maintainerTag ? maintainerTag.slice(1) : [];
+
+    // Parse the NIP-34 repository announcement
+    const parsed = parseRepositoryAnnouncement(event);
 
     // Repo owner is always a maintainer
-    const isMaintainer = owner === this.pubkey || maintainers.includes(this.pubkey);
+    const isMaintainer = owner === this.pubkey || parsed.maintainers.includes(this.pubkey);
     return isMaintainer;
   }
 
@@ -106,8 +99,9 @@ export class NostrGitProvider implements GitHostProvider {
     // Users submit patches to the original repo
     // For compatibility with the PR flow, we return a "virtual fork"
     const repoEvent = await this.queryRepo(owner, repo);
-    const cloneUrl = repoEvent.tags.find((t: string[]) => t[0] === 'clone')?.[1] || '';
-    const webUrl = repoEvent.tags.find((t: string[]) => t[0] === 'web')?.[1] || '';
+
+    // Parse the NIP-34 repository announcement
+    const parsed = parseRepositoryAnnouncement(repoEvent);
 
     // The "fork" is actually just the user's local copy
     // We'll use this to track that patches come from the user
@@ -115,8 +109,8 @@ export class NostrGitProvider implements GitHostProvider {
       owner: this.pubkey,
       name: repo,
       fullName: `${this.pubkey}/${repo}`,
-      cloneUrl,
-      webUrl,
+      cloneUrl: parsed.httpsCloneUrls[0] || '',
+      webUrl: parsed.webUrls[0] || '',
       parentFullName: `${owner}/${repo}`,
     };
   }
@@ -139,8 +133,11 @@ export class NostrGitProvider implements GitHostProvider {
     const [owner, repo] = options.baseRepo.split('/');
     const repoEvent = await this.queryRepo(owner, repo);
 
+    // Parse the NIP-34 repository announcement
+    const parsed = parseRepositoryAnnouncement(repoEvent);
+
     // Get the earliest unique commit (euc) for the repository
-    const euc = repoEvent.tags.find((t: string[]) => t[0] === 'r' && t[2] === 'euc')?.[1];
+    const euc = parsed.earliestCommit;
 
     // Create patch content from the provided body or generate a simple patch description
     const patchContent = options.body ||

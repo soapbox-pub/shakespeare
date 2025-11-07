@@ -1068,7 +1068,6 @@ export class Git {
       }
     }
 
-    
     return {
       repo,
       state,
@@ -1283,6 +1282,95 @@ export class Git {
     }
   }
 
+  /**
+   * Convert a local ref name to a remote tracking ref name assuming default remote refspec
+   * @param remoteName The name of the remote (e.g., 'origin')
+   * @param localRefName The local ref name (e.g., 'refs/heads/main')
+   * @returns The remote tracking ref name (e.g., 'refs/remotes/origin/main')
+   */
+  private localRefToRemoteRef(remoteName: string, localRefName: string): string {
+    if (localRefName === 'HEAD') {
+      // map to the remote's symbolic HEAD (remote default branch pointer)
+      return `refs/remotes/${remoteName}/HEAD`;
+    }
+    // Remove refs/heads/ prefix if present
+    if (localRefName.startsWith('refs/heads/')) {
+      const branchName = localRefName.substring('refs/heads/'.length);
+      return `refs/remotes/${remoteName}/${branchName}`;
+    }
+    // For other refs (tags, etc.), construct the remote ref
+    return `refs/remotes/${remoteName}/${localRefName.replace('refs/','')}`;
+  }
+
+  /**
+   * Update remote tracking refs to match the Nostr state if git data present locally
+   * @returns refs with missing data including HEAD
+   */
+  private async updateRemoteRefsToNostrState(
+    state: RespositoryState,
+    options: Omit<Parameters<typeof git.fetch>[0], 'fs' | 'http' | 'corsProxy'> & { remote: string; dir: string }
+  ): Promise<{
+    updated?: Record<string, string>,
+    refsWithMissingData?: Record<string, string>,
+   }> {
+    // Get the remote name from options (passed from the fetch call)
+    const remoteName = options.remote || 'origin';
+
+    const refsWithMissingData: Record<string, string> = {};
+    const updated: Record<string, string> = {};
+    for (const [refName, entry] of [
+      ...Object.entries(state.refs),
+      ...(state.HEAD ? [["HEAD", state.HEAD]] : [])
+    ]) {
+      // update symbolic ref to use remote ref
+      const value = entry.startsWith("ref: ") ? `ref: ${this.localRefToRemoteRef(remoteName, entry.slice(5))}` : entry;
+      try {
+        // Check if we have this commit locally
+        try {
+          const remoteRefName = this.localRefToRemoteRef(remoteName, refName);
+          try {
+            const existingValue = await git.resolveRef({
+              fs: this.fs,
+              dir: options.dir,
+              ref:remoteRefName,
+            });
+            // update correct ref
+            if (existingValue === value) continue;
+          } catch {
+            // ref doesnt exist yet
+          }
+          if (!value.startsWith("ref: ")) await git.readCommit({
+            fs: this.fs,
+            dir: options.dir,
+            // TODO handle and annotated tags
+            oid: value,
+          });
+          // We have the commit, update the remote tracking ref
+          await git.writeRef({
+            fs: this.fs,
+            dir: options.dir,
+            ref: remoteRefName,
+            force: true, // standard behaviour of git fetch
+            value: value,
+          });
+          console.log(`✓ Updated ${remoteRefName} to ${value}`);
+          updated[refName] = entry;
+        } catch (error) {
+          refsWithMissingData[refName] = value;
+          // We don't have this commit, need to fetch from the actual Git remote
+          console.log(`⚠ Commit ${value} for ${refName} not found locally, need to fetch from Git remote. error: ${error}`);
+        }
+      } catch (error) {
+        console.warn(`Failed to update ref ${refName}:`, error);
+      }
+    }
+
+    return {
+      refsWithMissingData: Object.keys(refsWithMissingData).length > 0 ? refsWithMissingData : undefined,
+      updated: Object.keys(updated).length > 0 ? updated : undefined,
+    }
+  }
+
   private async nostrFetch(nostrUrl: string, options: Omit<Parameters<typeof git.fetch>[0], 'fs' | 'http' | 'corsProxy'> & { remote: string; dir: string }): Promise<{ fetchHead?: string; fetchHeadDescription?: string }> {
     // Parse the Nostr URI
     const nostrURI = await this.parseNostrCloneURI(nostrUrl);
@@ -1295,75 +1383,63 @@ export class Git {
     // Fetch the latest repository state from Nostr
     const { repo, state } = await this.fetchNostrRepoEvents(nostrURI);
 
-    if (!repo) {
-      throw new Error('Repository not found on Nostr network');
-    }
-
     // If we have a state event, update our refs to match
     if (state) {
-      console.log(`Updating repository state from Nostr: HEAD=${state.HEAD}, refs=${Object.keys(state.refs).length}`);
-
-      // Update local refs to match the Nostr state
-      const updatedRefs: string[] = [];
-      for (const [refName, commitId] of Object.entries(state.refs)) {
-        try {
-          // Check if we have this commit locally
-          try {
-            await git.readCommit({
-              fs: this.fs,
-              dir: options.dir,
-              oid: commitId,
-            });
-
-            // We have the commit, update the ref
-            await git.writeRef({
-              fs: this.fs,
-              dir: options.dir,
-              ref: refName,
-              value: commitId,
-            });
-
-            updatedRefs.push(refName);
-            console.log(`✓ Updated ${refName} to ${commitId}`);
-          } catch {
-            // We don't have this commit, need to fetch from the actual Git remote
-            console.log(`⚠ Commit ${commitId} for ${refName} not found locally, need to fetch from Git remote`);
-          }
-        } catch (error) {
-          console.warn(`Failed to update ref ${refName}:`, error);
-        }
-      }
-
-      // If we updated refs but some commits are missing, try to fetch from Git remotes
-      if (updatedRefs.length < Object.keys(state.refs).length) {
-        await this.fetchMissingCommitsFromGitRemotes(repo, options.dir, state.refs);
-      }
-
-      // Update HEAD if specified
-      if (state.HEAD) {
-        try {
-          await git.writeRef({
-            fs: this.fs,
-            dir: options.dir,
-            ref: 'HEAD',
-            value: state.HEAD,
-            symbolic: true,
-          });
-          console.log(`✓ Updated HEAD to ${state.HEAD}`);
-        } catch (error) {
-          console.warn(`Failed to update HEAD:`, error);
-        }
-      }
-
-      return {
-        fetchHead: state.headCommit,
-        fetchHeadDescription: `Fetched from Nostr repository state (${updatedRefs.length} refs updated)`,
+      const foundAllData = () => {
+        // TODO: fix state in out-of-sync grasp servers by pushing correct state to them
+        // step 1: add serversWithoutLatestState to fetchNostrRepoEvents
+        // step 2: let cloneURLsStates = await this.listFromCloneUrls(repo); (also useful for deciding which remotes to fetch from)
+        // step 3: let outOfSyncRefsPerCloneUrl = this.nostrIdentifyCloneUrlStateDifferences(state,remote_states);
+        // step 4: push events and git refs.
+        return {
+          fetchHead: state.headCommit,
+          fetchHeadDescription: `Fetched from Nostr repository state`,
+        };
       };
-    } else {
-      console.log('No repository state found on Nostr, checking for updates from Git remotes');
 
+      let {updated, refsWithMissingData} = await this.updateRemoteRefsToNostrState(state,options);
+
+      if (updated) {
+        console.log(`Updating repository state from Nostr: HEAD=${state.HEAD}, refs=${Object.keys(state.refs).length}`);
+
+      }
+      // If we updated refs but some commits are missing, try to fetch from Git remotes
+      if (refsWithMissingData) {
+        console.log(`Updating repository state from Nostr: HEAD=${state.HEAD}, refs=${Object.keys(state.refs).length}`);
+
+        if (repo.httpsCloneUrls.length === 0) {
+          throw new Error('No Git clone URLs available for fetching');
+        }
+
+        // TODO - we could be more targeted at selecting the remote with all the misssing refs instead of trying 1 by 1.
+        for (const cloneUrl of repo.httpsCloneUrls) {
+          console.log(refsWithMissingData)
+          console.log(`Fetching missing commits from: ${cloneUrl}`);
+          try {
+            // TODO we are just branches and tags so we will miss any other refs in state event
+            await this.nostrFetchDataFromGitRemote(cloneUrl, options.dir);
+            const result = await this.updateRemoteRefsToNostrState(state,options);
+            if (updated || result.updated) updated = { ...(updated || {}), ...(result.updated || {}) }; // merge
+            refsWithMissingData = result.refsWithMissingData; // Replace refsWithMissingData
+          } catch (error) {
+            console.log(`Failed to fetch missing commits from: ${cloneUrl} error: ${error}`);
+          }
+          if (!refsWithMissingData) return foundAllData();
+        }
+        // TODO can we report on partially successfuly fetch? (if some refs were updated but some data not found eg for tags?)
+        throw new Error(`failed to find git data on clone urls for the following refs in Nostr state event: ${Object.keys(refsWithMissingData).join(", ")}`)
+      } else {
+        return foundAllData();
+      }
+    } else {
       // No state event, try to fetch from the Git clone URLs
-      return this.fetchFromGitRemotes(repo, options.dir);
+      console.log('No repository state found on Nostr, checking for updates from Git remotes');
+      if (repo.httpsCloneUrls.length === 0) {
+        throw new Error('No Git clone URLs available for fetching');
+      }
+      // we could catch the error and try the next clone url but that is too risky.
+      // if the other servers aren't in sync it would give us an state with lots of non-fast-foward changes to resolve, only to revert back to the  first priority server next time it is available.
+      return await this.nostrFetchDataFromGitRemote(repo.httpsCloneUrls[0], options.dir);
     }
   }
 
@@ -1650,122 +1726,58 @@ export class Git {
     console.log('✓ Nostr push completed successfully');
   }
 
-  private async fetchMissingCommitsFromGitRemotes(repo: RepositoryAnnouncement, dir: string, refs: Record<string, string>): Promise<void> {
-    // Get clone URLs from the repository announcement
+  /* just fetching the branches and tags so some refs (eg refs/nostr/<event-id>) wont be fetched (unless the remote refspec specifies?) */
+  private async nostrFetchDataFromGitRemote(httpsCloneUrl:string, dir: string): Promise<{ fetchHead?: string; fetchHeadDescription?: string }> {
+    try {
+      console.log(`Fetching from Git remote: ${httpsCloneUrl}`);
 
-    if (repo.httpsCloneUrls.length === 0) {
-      console.warn('No Git clone URLs available to fetch missing commits');
-      return;
-    }
-
-    // Try to fetch missing commits from each Git remote
-    for (const cloneUrl of repo.httpsCloneUrls) {
-      console.log(`Fetching missing commits from: ${cloneUrl}`);
+      // Add a temporary remote
+      const tempRemoteName = `temp-${Date.now()}`;
+      await git.addRemote({
+        fs: this.fs,
+        dir,
+        remote: tempRemoteName,
+        url: httpsCloneUrl,
+      });
 
       try {
-        // Fetch from the clone URL
-        await git.fetch({
+        // Fetch from the temporary remote
+        const fetchResult = await git.fetch({
           fs: this.fs,
           http: this.http,
           dir,
-          url: cloneUrl,
+          tags: true,
+          remote: tempRemoteName,
         });
 
-        // Update our refs to match the Nostr state
-        for (const [refName, commitId] of Object.entries(refs)) {
-          try {
-            // Check if we now have this commit
-            await git.readCommit({
-              fs: this.fs,
-              dir,
-              oid: commitId,
-            });
-
-            // Update the ref
-            await git.writeRef({
-              fs: this.fs,
-              dir,
-              ref: refName,
-              value: commitId,
-            });
-
-            console.log(`✓ Updated ${refName} to ${commitId} after fetching`);
-          } catch {
-            // Still don't have this commit
-            console.warn(`Still missing commit ${commitId} for ${refName}`);
-          }
-        }
-
-        // Successfully fetched from this remote
-        return;
-      } catch (fetchError) {
-        console.warn(`Failed to fetch from ${cloneUrl}:`, fetchError);
-      }
-    }
-  }
-
-  private async fetchFromGitRemotes(repo: RepositoryAnnouncement, dir: string): Promise<{ fetchHead?: string; fetchHeadDescription?: string }> {
-    // Get clone URLs from the repository announcement
-
-    if (repo.httpsCloneUrls.length === 0) {
-      throw new Error('No Git clone URLs available for fetching');
-    }
-
-    // Try to fetch from each Git remote
-    let lastError: Error | null = null;
-    for (const cloneUrl of repo.httpsCloneUrls) {
-      try {
-        console.log(`Fetching from Git remote: ${cloneUrl}`);
-
-        // Add a temporary remote
-        const tempRemoteName = `temp-${Date.now()}`;
-        await git.addRemote({
+        // Remove the temporary remote
+        await git.deleteRemote({
           fs: this.fs,
           dir,
           remote: tempRemoteName,
-          url: cloneUrl,
         });
 
+        return {
+          fetchHead: fetchResult.fetchHead || undefined,
+          fetchHeadDescription: `Fetched from Git remote: ${httpsCloneUrl}`,
+        };
+      } catch (fetchError) {
+        // Clean up the temporary remote
         try {
-          // Fetch from the temporary remote
-          const fetchResult = await git.fetch({
-            fs: this.fs,
-            http: this.http,
-            dir,
-            remote: tempRemoteName,
-          });
-
-          // Remove the temporary remote
           await git.deleteRemote({
             fs: this.fs,
             dir,
             remote: tempRemoteName,
           });
-
-          return {
-            fetchHead: fetchResult.fetchHead || undefined,
-            fetchHeadDescription: `Fetched from Git remote: ${cloneUrl}`,
-          };
-        } catch (fetchError) {
-          // Clean up the temporary remote
-          try {
-            await git.deleteRemote({
-              fs: this.fs,
-              dir,
-              remote: tempRemoteName,
-            });
-          } catch {
-            // Ignore cleanup errors
-          }
-          throw fetchError;
+        } catch {
+          // Ignore cleanup errors
         }
-      } catch (error) {
-        console.warn(`Failed to fetch from ${cloneUrl}:`, error);
-        lastError = error instanceof Error ? error : new Error('Unknown error');
+        throw fetchError;
       }
+    } catch (error) {
+      console.warn(`Failed to fetch from ${httpsCloneUrl}:`, error);
+      throw error instanceof Error ? error : new Error('Unknown error');
     }
-
-    throw lastError || new Error('All fetch attempts failed');
   }
 }
 

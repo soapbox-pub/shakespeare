@@ -3,7 +3,7 @@ import { NIP05 } from '@nostrify/nostrify';
 import { nip19 } from 'nostr-tools';
 import { proxyUrl } from './proxyUrl';
 import { readGitSettings } from './configUtils';
-import { parseRepositoryAnnouncement } from './announceRepository';
+import { parseRepositoryAnnouncement, RepositoryAnnouncement } from './announceRepository';
 import type { NostrEvent, NostrSigner, NPool } from '@nostrify/nostrify';
 import type { JSRuntimeFS } from './JSRuntime';
 
@@ -617,7 +617,7 @@ export class Git {
     console.log(`Getting remote info for Nostr repository: ${nostrUrl}`);
 
     // Fetch the repository announcement and state from Nostr
-    const { repo, state } = await this.fetchNostrRepo(nostrURI);
+    const { repo, state } = await this.fetchNostrRepoEvents(nostrURI);
 
     if (!repo) {
       throw new Error('Repository announcement not found on Nostr network');
@@ -628,31 +628,28 @@ export class Git {
     let HEAD: string | undefined;
 
     if (state) {
-      const stateInfo = this.extractRepositoryState(state);
 
       // Add all refs from the state
-      Object.assign(refs, stateInfo.refs);
+      Object.assign(refs, state.refs);
 
       // Set HEAD
-      if (stateInfo.HEAD) {
-        HEAD = stateInfo.HEAD;
+      if (state.HEAD) {
+        HEAD = state.HEAD;
       }
     } else {
       // No state event, try to get info from the first available clone URL
-      const repoAnn = parseRepositoryAnnouncement(repo);
-
-      if (repoAnn.httpsCloneUrls.length > 0) {
+      if (repo.httpsCloneUrls.length > 0) {
         // Try to get remote info from the first clone URL
         try {
           const gitRemoteInfo = await git.getRemoteInfo({
             http: this.http,
-            url: repoAnn.httpsCloneUrls[0],
+            url: repo.httpsCloneUrls[0],
           });
 
           Object.assign(refs, gitRemoteInfo.refs);
           HEAD = gitRemoteInfo.HEAD;
         } catch (error) {
-          console.warn(`Failed to get remote info from ${repoAnn.httpsCloneUrls[0]}:`, error);
+          console.warn(`Failed to get remote info from ${repo.httpsCloneUrls[0]}:`, error);
           // Continue with empty refs if we can't get git remote info
         }
       }
@@ -773,41 +770,6 @@ export class Git {
       console.error('Failed to get repository state:', error);
       throw new Error(`Failed to get repository state: ${error}`);
     }
-  }
-
-  /**
-   * Extract repository state information from a NIP-34 repository state event
-   */
-  private extractRepositoryState(stateEvent: NostrEvent): {
-    HEAD?: string;
-    headCommit?: string;
-    headBranch?: string;
-    refs: Record<string, string>;
-  } {
-    const refs: Record<string, string> = {};
-    let HEAD: string | undefined;
-    let headCommit: string | undefined;
-    let headBranch: string | undefined;
-
-    for (const [name, value] of stateEvent.tags) {
-      if (name === 'HEAD' && value) {
-        HEAD = value;
-
-        // Parse HEAD reference to extract branch name
-        if (value.startsWith('ref: refs/heads/')) {
-          headBranch = value.slice(16); // Remove "ref: refs/heads/" prefix
-        }
-      } else if (name.startsWith('refs/') && value) {
-        refs[name] = value;
-
-        // If this ref matches the HEAD, store the commit
-        if (HEAD === `ref: ${name}`) {
-          headCommit = value;
-        }
-      }
-    }
-
-    return { HEAD, headCommit, headBranch, refs };
   }
 
   /**
@@ -960,9 +922,9 @@ export class Git {
     }
   }
 
-  private async fetchNostrRepo(nostrURI: NostrCloneURI): Promise<{
-    repo?: NostrEvent;
-    state?: NostrEvent;
+  private async fetchNostrRepoEvents(nostrURI: NostrCloneURI): Promise<{
+    repo: RepositoryAnnouncement;
+    state?: RespositoryState;
     serversWithoutAnnouncement?: string[];
     serversWithoutLatestAnnouncement?: string[];
     serversWithErrors?: string[];
@@ -1061,15 +1023,21 @@ export class Git {
     if (!latestRepo) {
       throw new Error('Repository announcement not found on Nostr network');
     }
-
-    if (latestState) {
-      console.log(`Found repository state event with ${latestState.tags.length} tags`);
-    } else {
-      console.log('No repository state event found, proceeding with basic clone');
+    const repo = parseRepositoryAnnouncement(latestRepo);
+    let state;
+    try {
+      if (latestState) {
+        state = parseRepositoryState(latestState);
+        console.log(`Found repository state event with ${latestState.tags.length} tags`);
+      } else {
+        console.log('No repository state event found, proceeding with basic clone');
+      }
+    } catch {
+      console.log('Invalid repository state event found, proceeding with basic clone');
     }
 
     // Get GRASP servers from the announcement and handle any mismatch
-    this.processNgitServersMismatch(parseRepositoryAnnouncement(latestRepo).graspServers);
+    this.processNgitServersMismatch(repo.graspServers);
 
     // Analyze each ngitserver's status
     const serversWithoutAnnouncement: string[] = [];
@@ -1100,9 +1068,10 @@ export class Git {
       }
     }
 
+    
     return {
-      repo: latestRepo,
-      state: latestState,
+      repo,
+      state,
       serversWithoutAnnouncement,
       serversWithoutLatestAnnouncement,
       serversWithErrors
@@ -1111,7 +1080,7 @@ export class Git {
 
   private async nostrClone(nostrURI: NostrCloneURI, options: Omit<Parameters<typeof git.clone>[0], 'fs' | 'http' | 'corsProxy'>): Promise<void> {
     // Fetch events from Nostr
-    const { repo, state } = await this.fetchNostrRepo(nostrURI);
+    const { repo, state } = await this.fetchNostrRepoEvents(nostrURI);
 
     if (!repo) {
       throw new Error('Repository not found');
@@ -1123,19 +1092,16 @@ export class Git {
     let repositoryRefs: Record<string, string> = {};
 
     if (state) {
-      const stateInfo = this.extractRepositoryState(state);
-      expectedCommit = stateInfo.headCommit;
-      expectedBranch = stateInfo.headBranch;
-      repositoryRefs = stateInfo.refs;
+      expectedCommit = state.headCommit;
+      expectedBranch = state.headBranch;
+      repositoryRefs = state.refs;
 
-      console.log(`Repository state: HEAD=${stateInfo.HEAD}, commit=${expectedCommit}, branch=${expectedBranch}`);
+      console.log(`Repository state: HEAD=${state.HEAD}, commit=${expectedCommit}, branch=${expectedBranch}`);
       console.log(`Available refs:`, Object.keys(repositoryRefs));
     }
 
     // Collect valid clone URLs from the repo event tags
-    const repoAnn = parseRepositoryAnnouncement(repo);
-
-    if (repoAnn.httpsCloneUrls.length === 0) {
+    if (repo.httpsCloneUrls.length === 0) {
       throw new Error('No valid clone URLs found in repository announcement');
     }
 
@@ -1146,7 +1112,7 @@ export class Git {
     if (expectedCommit) {
       console.log(`Looking for repository with commit: ${expectedCommit}`);
 
-      for (const cloneUrl of repoAnn.httpsCloneUrls) {
+      for (const cloneUrl of repo.httpsCloneUrls) {
         try {
           console.log(`Checking remote info for: ${cloneUrl}`);
 
@@ -1222,7 +1188,7 @@ export class Git {
     if (!cloneSuccessful) {
       console.log('Falling back to regular clone from available URLs');
 
-      for (const cloneUrl of repoAnn.httpsCloneUrls) {
+      for (const cloneUrl of repo.httpsCloneUrls) {
         try {
           console.log(`Attempting to clone from: ${cloneUrl}`);
 
@@ -1327,7 +1293,7 @@ export class Git {
     console.log(`Fetching updates from Nostr repository: ${nostrUrl}`);
 
     // Fetch the latest repository state from Nostr
-    const { repo, state } = await this.fetchNostrRepo(nostrURI);
+    const { repo, state } = await this.fetchNostrRepoEvents(nostrURI);
 
     if (!repo) {
       throw new Error('Repository not found on Nostr network');
@@ -1335,12 +1301,11 @@ export class Git {
 
     // If we have a state event, update our refs to match
     if (state) {
-      const stateInfo = this.extractRepositoryState(state);
-      console.log(`Updating repository state from Nostr: HEAD=${stateInfo.HEAD}, refs=${Object.keys(stateInfo.refs).length}`);
+      console.log(`Updating repository state from Nostr: HEAD=${state.HEAD}, refs=${Object.keys(state.refs).length}`);
 
       // Update local refs to match the Nostr state
       const updatedRefs: string[] = [];
-      for (const [refName, commitId] of Object.entries(stateInfo.refs)) {
+      for (const [refName, commitId] of Object.entries(state.refs)) {
         try {
           // Check if we have this commit locally
           try {
@@ -1370,28 +1335,28 @@ export class Git {
       }
 
       // If we updated refs but some commits are missing, try to fetch from Git remotes
-      if (updatedRefs.length < Object.keys(stateInfo.refs).length) {
-        await this.fetchMissingCommitsFromGitRemotes(repo, options.dir, stateInfo.refs);
+      if (updatedRefs.length < Object.keys(state.refs).length) {
+        await this.fetchMissingCommitsFromGitRemotes(repo, options.dir, state.refs);
       }
 
       // Update HEAD if specified
-      if (stateInfo.HEAD) {
+      if (state.HEAD) {
         try {
           await git.writeRef({
             fs: this.fs,
             dir: options.dir,
             ref: 'HEAD',
-            value: stateInfo.HEAD,
+            value: state.HEAD,
             symbolic: true,
           });
-          console.log(`✓ Updated HEAD to ${stateInfo.HEAD}`);
+          console.log(`✓ Updated HEAD to ${state.HEAD}`);
         } catch (error) {
           console.warn(`Failed to update HEAD:`, error);
         }
       }
 
       return {
-        fetchHead: stateInfo.headCommit,
+        fetchHead: state.headCommit,
         fetchHeadDescription: `Fetched from Nostr repository state (${updatedRefs.length} refs updated)`,
       };
     } else {
@@ -1512,7 +1477,7 @@ export class Git {
       serversWithoutAnnouncement = [],
       serversWithoutLatestAnnouncement = [],
       serversWithErrors = []
-    } = await this.fetchNostrRepo(nostrURI);
+    } = await this.fetchNostrRepoEvents(nostrURI);
     if (!repo) {
       throw new Error('Repository announcement not found on Nostr network');
     }
@@ -1520,9 +1485,8 @@ export class Git {
     // If we have a state event and --force was not used, check if fast-forward is possible.
     // we cant let the server do this as we publish the state update first
     if (state && !force) {
-      const stateInfo = this.extractRepositoryState(state);
       const remoteRefName = remoteRef.startsWith('refs/') ? remoteRef : `refs/heads/${remoteRef}`;
-      const remoteCommit = stateInfo.refs[remoteRefName];
+      const remoteCommit = state.refs[remoteRefName];
 
       if (remoteCommit) {
         console.log(`Checking fast-forward: remote ${remoteRefName} is at ${remoteCommit}`);
@@ -1580,24 +1544,6 @@ export class Git {
     // Extract relay URLs and clone URLs from the repository announcement
     const relayUrls: string[] = [];
 
-    for (const [name, ...values] of repo.tags) {
-      if (name === 'relays' && values.length > 0) {
-        for (const value of values) {
-          try {
-            const url = new URL(value);
-            if (url.protocol === 'wss:') {
-              relayUrls.push(url.href);
-            }
-          } catch {
-            // Ignore invalid URLs
-          }
-        }
-      }
-    }
-
-    // Get clone URLs using parseRepositoryAnnouncement (only https for push)
-    const repoAnn = parseRepositoryAnnouncement(repo);
-
     // If no relays specified in announcement, use default git-focused relays
     if (relayUrls.length === 0) {
       relayUrls.push(
@@ -1628,7 +1574,7 @@ export class Git {
       // Publish the announcement to servers that need it
       const serversToPublish = serversNeedingAnnouncement.map(server => `wss://${server}/`);
       try {
-        await this.nostr.group(serversToPublish).event(repo);
+        await this.nostr.group(serversToPublish).event(repo.event);
         console.log('✓ Repository announcement published to servers');
       } catch (error) {
         console.warn('Failed to publish announcement to some servers:', error);
@@ -1662,7 +1608,7 @@ export class Git {
     }
 
     // Push to each clone URL
-    if (repoAnn.httpsCloneUrls.length === 0) {
+    if (repo.httpsCloneUrls.length === 0) {
       console.warn('No Git https clone URLs found in repository announcement');
       return;
     }
@@ -1676,7 +1622,7 @@ export class Git {
     let pushSuccessful = false;
     let lastError: Error | null = null;
 
-    for (const cloneUrl of repoAnn.httpsCloneUrls) {
+    for (const cloneUrl of repo.httpsCloneUrls) {
       console.log(`Pushing to Git remote: ${cloneUrl}`);
 
       try {
@@ -1704,17 +1650,16 @@ export class Git {
     console.log('✓ Nostr push completed successfully');
   }
 
-  private async fetchMissingCommitsFromGitRemotes(repo: NostrEvent, dir: string, refs: Record<string, string>): Promise<void> {
+  private async fetchMissingCommitsFromGitRemotes(repo: RepositoryAnnouncement, dir: string, refs: Record<string, string>): Promise<void> {
     // Get clone URLs from the repository announcement
-    const repoAnn = parseRepositoryAnnouncement(repo);
 
-    if (repoAnn.httpsCloneUrls.length === 0) {
+    if (repo.httpsCloneUrls.length === 0) {
       console.warn('No Git clone URLs available to fetch missing commits');
       return;
     }
 
     // Try to fetch missing commits from each Git remote
-    for (const cloneUrl of repoAnn.httpsCloneUrls) {
+    for (const cloneUrl of repo.httpsCloneUrls) {
       console.log(`Fetching missing commits from: ${cloneUrl}`);
 
       try {
@@ -1759,17 +1704,16 @@ export class Git {
     }
   }
 
-  private async fetchFromGitRemotes(repo: NostrEvent, dir: string): Promise<{ fetchHead?: string; fetchHeadDescription?: string }> {
+  private async fetchFromGitRemotes(repo: RepositoryAnnouncement, dir: string): Promise<{ fetchHead?: string; fetchHeadDescription?: string }> {
     // Get clone URLs from the repository announcement
-    const repoAnn = parseRepositoryAnnouncement(repo);
 
-    if (repoAnn.httpsCloneUrls.length === 0) {
+    if (repo.httpsCloneUrls.length === 0) {
       throw new Error('No Git clone URLs available for fetching');
     }
 
     // Try to fetch from each Git remote
     let lastError: Error | null = null;
-    for (const cloneUrl of repoAnn.httpsCloneUrls) {
+    for (const cloneUrl of repo.httpsCloneUrls) {
       try {
         console.log(`Fetching from Git remote: ${cloneUrl}`);
 
@@ -1910,4 +1854,40 @@ function readableStreamToAsyncIterator(
       return this;
     },
   };
+}
+
+interface RespositoryState {
+  HEAD?: string;
+  headCommit?: string;
+  headBranch?: string;
+  refs: Record<string, string>;
+}
+/**
+ * Parse repository state information from a NIP-34 repository state event
+ */
+function parseRepositoryState(stateEvent: NostrEvent): RespositoryState {
+  const refs: Record<string, string> = {};
+  let HEAD: string | undefined;
+  let headCommit: string | undefined;
+  let headBranch: string | undefined;
+
+  for (const [name, value] of stateEvent.tags) {
+    if (name === 'HEAD' && value) {
+      HEAD = value;
+
+      // Parse HEAD reference to extract branch name
+      if (value.startsWith('ref: refs/heads/')) {
+        headBranch = value.slice(16); // Remove "ref: refs/heads/" prefix
+      }
+    } else if (name.startsWith('refs/') && value) {
+      refs[name] = value;
+
+      // If this ref matches the HEAD, store the commit
+      if (HEAD === `ref: ${name}`) {
+        headCommit = value;
+      }
+    }
+  }
+
+  return { HEAD, headCommit, headBranch, refs };
 }

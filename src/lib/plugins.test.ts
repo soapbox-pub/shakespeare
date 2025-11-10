@@ -40,7 +40,10 @@ class MockFS implements JSRuntimeFS {
     }
   }
 
-  async readdir(path: string): Promise<string[]> {
+  async readdir(path: string): Promise<string[]>;
+  async readdir(path: string, options: { withFileTypes: true }): Promise<import('./JSRuntime').DirectoryEntry[]>;
+  async readdir(path: string, options?: { withFileTypes?: boolean }): Promise<string[] | import('./JSRuntime').DirectoryEntry[]>;
+  async readdir(path: string, options?: { withFileTypes?: boolean }): Promise<string[] | import('./JSRuntime').DirectoryEntry[]> {
     if (!this.dirs.has(path)) throw new Error(`ENOENT: ${path}`);
 
     const entries = new Set<string>();
@@ -64,7 +67,21 @@ class MockFS implements JSRuntimeFS {
       }
     }
 
-    return Array.from(entries);
+    const names = Array.from(entries);
+
+    if (options?.withFileTypes) {
+      return names.map(name => {
+        const fullPath = path === '/' ? `/${name}` : `${path}/${name}`;
+        const isDir = this.dirs.has(fullPath);
+        return {
+          name,
+          isDirectory: () => isDir,
+          isFile: () => !isDir,
+        };
+      });
+    }
+
+    return names;
   }
 
   async mkdir(path: string, options?: { recursive?: boolean }): Promise<void> {
@@ -124,6 +141,18 @@ class MockFS implements JSRuntimeFS {
       this.files.set(newPath, content);
       this.files.delete(oldPath);
     }
+  }
+
+  async lstat(path: string): Promise<{ isDirectory: () => boolean; isFile: () => boolean }> {
+    return this.stat(path);
+  }
+
+  async readlink(_path: string): Promise<string> {
+    throw new Error('Symlinks not supported in MockFS');
+  }
+
+  async symlink(_target: string, _path: string): Promise<void> {
+    throw new Error('Symlinks not supported in MockFS');
   }
 }
 

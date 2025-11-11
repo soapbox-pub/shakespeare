@@ -113,12 +113,14 @@ export function ProjectView() {
   // Handle message sent - increment push reminder counter
   const handleMessageSent = useCallback(() => {
     pushReminder.incrementMessages();
+  }, [pushReminder]);
 
-    // Check if we should show the reminder
-    if (pushReminder.shouldShowReminder) {
+  // Watch for when we should show the reminder (after state updates)
+  useEffect(() => {
+    if (pushReminder.shouldShowReminder && !isPushReminderOpen) {
       setIsPushReminderOpen(true);
     }
-  }, [pushReminder]);
+  }, [pushReminder.shouldShowReminder, isPushReminderOpen]);
 
   // Handle first user interaction to enable audio context
   const handleFirstInteraction = () => {

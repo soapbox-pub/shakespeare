@@ -21,6 +21,7 @@ import VercelOAuth from "./pages/VercelOAuth";
 import { NIP19Page } from "./pages/NIP19Page";
 import NotFound from "./pages/NotFound";
 import { ProjectView } from "./pages/ProjectView";
+import ShowcasePage from "./pages/ShowcasePage";
 import { SettingsLayout } from "./components/SettingsLayout";
 
 export function AppRouter() {
@@ -51,6 +52,7 @@ export function AppRouter() {
           <Route path="about" element={<AboutSettings />} />
         </Route>
         <Route path="/project/:projectId" element={<ProjectView />} />
+        <Route path="/showcase/:id" element={<ShowcasePage />} />
         {/* NIP-19 route for npub1, note1, naddr1, nevent1, nprofile1 */}
         <Route path="/:nip19" element={<NIP19Page />} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

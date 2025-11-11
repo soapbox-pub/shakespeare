@@ -370,14 +370,28 @@ export function AppShowcaseCard({ app, onEdit, showModerationControls, hideAppro
     }
   };
 
+  // Generate naddr for the app
+  const appNaddr = React.useMemo(() => {
+    const dTag = app.tags.find(tag => tag[0] === 'd')?.[1];
+    if (!dTag) return null;
+
+    try {
+      return nip19.naddrEncode({
+        kind: app.kind,
+        pubkey: app.pubkey,
+        identifier: dTag,
+      });
+    } catch {
+      return null;
+    }
+  }, [app.kind, app.pubkey, app.tags]);
+
   return (
     <Card className="group hover:shadow-lg transition-all duration-300 hover:border-primary/20 h-full flex flex-col">
       <div className="relative">
         {/* App Screenshot */}
-        <a
-          href={app.websiteUrl}
-          target="_blank"
-          rel="noopener noreferrer"
+        <Link
+          to={appNaddr ? `/showcase/${appNaddr}` : '#'}
           className="block aspect-video bg-gradient-to-br from-muted/50 to-muted rounded-t-lg overflow-hidden cursor-pointer"
         >
           {!imageError ? (
@@ -397,7 +411,7 @@ export function AppShowcaseCard({ app, onEdit, showModerationControls, hideAppro
               </div>
             </div>
           )}
-        </a>
+        </Link>
 
         {/* Actions Menu */}
         {(isOwner || showModerationControls) && (

@@ -25,6 +25,7 @@ const baseGitStatus = {
   },
   ahead: 0,
   behind: 0,
+  remoteBranchExists: false,
 };
 
 vi.mock('@/hooks/useGitStatus', () => ({
@@ -82,7 +83,16 @@ describe('GitDialog', () => {
     expect(screen.queryByText('Authentication')).not.toBeInTheDocument(); // Authentication section is removed
   });
 
-  it('shows sync status', () => {
+  it('shows sync status when branch is published', () => {
+    // Mock git status with published branch
+    mockUseGitStatus.mockReturnValue({
+      data: {
+        ...baseGitStatus,
+        remoteBranchExists: true,
+      },
+      refetch: mockRefetch,
+    });
+
     render(
       <TestApp>
         <GitDialog projectId="test-project" open={true} onOpenChange={() => {}}>
@@ -133,7 +143,17 @@ describe('GitDialog', () => {
     expect(pushButton.closest('button')).not.toBeDisabled();
   });
 
-  it('disables push button when no commits ahead', () => {
+  it('disables push button when no commits ahead and branch is published', () => {
+    // Mock git status with published branch and no commits ahead
+    mockUseGitStatus.mockReturnValue({
+      data: {
+        ...baseGitStatus,
+        ahead: 0,
+        remoteBranchExists: true,
+      },
+      refetch: mockRefetch,
+    });
+
     render(
       <TestApp>
         <GitDialog projectId="test-project" open={true} onOpenChange={() => {}}>
@@ -145,6 +165,38 @@ describe('GitDialog', () => {
     const pushButton = screen.getByText('Push');
     expect(pushButton).toBeInTheDocument();
     expect(pushButton.closest('button')).toBeDisabled();
+  });
+
+  it('enables push and disables pull when branch is not published', () => {
+    // Mock git status with unpublished branch (has commits but no remote branch)
+    mockUseGitStatus.mockReturnValue({
+      data: {
+        ...baseGitStatus,
+        ahead: 0,
+        remoteBranchExists: false,
+        totalCommits: 5,
+      },
+      refetch: mockRefetch,
+    });
+
+    render(
+      <TestApp>
+        <GitDialog projectId="test-project" open={true} onOpenChange={() => {}}>
+          <button>Open Git Dialog</button>
+        </GitDialog>
+      </TestApp>
+    );
+
+    expect(screen.getByText('Sync Status')).toBeInTheDocument();
+    expect(screen.getByText('Branch not published')).toBeInTheDocument();
+
+    const pushButton = screen.getByText('Push');
+    expect(pushButton).toBeInTheDocument();
+    expect(pushButton.closest('button')).not.toBeDisabled();
+
+    const pullButton = screen.getByText('Pull');
+    expect(pullButton).toBeInTheDocument();
+    expect(pullButton.closest('button')).toBeDisabled();
   });
 
   it('does not show credentials warning when credentials are configured', () => {

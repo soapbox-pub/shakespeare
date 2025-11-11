@@ -38,6 +38,7 @@ interface GitStatus {
   branches: string[];
   ahead: number;
   behind: number;
+  remoteBranchExists: boolean;
 }
 
 export function useGitStatus(projectId: string | null) {
@@ -59,6 +60,7 @@ export function useGitStatus(projectId: string | null) {
           branches: [],
           ahead: 0,
           behind: 0,
+          remoteBranchExists: false,
         };
       }
 
@@ -80,6 +82,7 @@ export function useGitStatus(projectId: string | null) {
             branches: [],
             ahead: 0,
             behind: 0,
+            remoteBranchExists: false,
           };
         }
 
@@ -200,6 +203,7 @@ export function useGitStatus(projectId: string | null) {
         // Calculate ahead/behind
         let ahead = 0;
         let behind = 0;
+        let remoteBranchExists = false;
         try {
           if (currentBranch && remotes.length > 0) {
             const remote = remotes[0]; // Use first remote (usually 'origin')
@@ -224,6 +228,9 @@ export function useGitStatus(projectId: string | null) {
                 ref: currentBranch,
               });
 
+              // Remote branch exists!
+              remoteBranchExists = true;
+
               if (remoteRef && localRef && remoteRef !== localRef) {
                 // Get commits between local and remote
                 const localCommits = await git.log({
@@ -247,11 +254,8 @@ export function useGitStatus(projectId: string | null) {
                 behind = remoteOnlyCommits.length;
               }
             } catch {
-              // Remote branch might not exist or other issues
-              // If we can't find remote branch, assume we're ahead if we have commits
-              if (totalCommits > 0) {
-                ahead = totalCommits;
-              }
+              // Remote branch doesn't exist
+              remoteBranchExists = false;
             }
           }
         } catch (err) {
@@ -269,6 +273,7 @@ export function useGitStatus(projectId: string | null) {
           branches,
           ahead,
           behind,
+          remoteBranchExists,
         };
       } catch (error) {
         console.error('Error checking git status:', error);
@@ -283,6 +288,7 @@ export function useGitStatus(projectId: string | null) {
           branches: [],
           ahead: 0,
           behind: 0,
+          remoteBranchExists: false,
         };
       }
     },

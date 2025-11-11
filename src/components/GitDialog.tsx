@@ -559,10 +559,21 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
       return;
     }
 
-    if (gitStatus.ahead === 0) {
+    // Allow push if there are commits ahead OR if the remote branch doesn't exist (publishing new branch)
+    if (gitStatus.ahead === 0 && gitStatus.remoteBranchExists) {
       toast({
         title: "Nothing to push",
         description: "No commits ahead of remote. Commit your changes first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Ensure we have commits to push when publishing a new branch
+    if (!gitStatus.remoteBranchExists && gitStatus.totalCommits === 0) {
+      toast({
+        title: "Cannot publish branch",
+        description: "No commits to push. Commit your changes first.",
         variant: "destructive",
       });
       return;
@@ -581,10 +592,25 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
         signer: user?.signer, // For signing if pushing to Nostr
       });
 
+      // Set up upstream tracking if this is the first push for this branch
+      if (!gitStatus.remoteBranchExists) {
+        await git.setConfig({
+          dir: projectPath,
+          path: `branch.${gitStatus.currentBranch}.remote`,
+          value: remote.name,
+        });
+        await git.setConfig({
+          dir: projectPath,
+          path: `branch.${gitStatus.currentBranch}.merge`,
+          value: `refs/heads/${gitStatus.currentBranch}`,
+        });
+      }
 
+      const commitCount = gitStatus.remoteBranchExists ? gitStatus.ahead : gitStatus.totalCommits;
+      const action = gitStatus.remoteBranchExists ? 'pushed to' : 'published to';
       toast({
         title: "Push successful",
-        description: `${gitStatus.ahead} commit${gitStatus.ahead !== 1 ? 's' : ''} pushed to ${remote.name}/${gitStatus.currentBranch}`,
+        description: `${commitCount} commit${commitCount !== 1 ? 's' : ''} ${action} ${remote.name}/${gitStatus.currentBranch}`,
       });
 
       // Refresh git status after push
@@ -722,6 +748,11 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
 
     if (gitStatus.remotes.length === 0) {
       return { status: 'no-remote', text: 'No remote configured', icon: AlertCircle, color: 'text-yellow-600' };
+    }
+
+    // Check if remote branch doesn't exist
+    if (!gitStatus.remoteBranchExists && gitStatus.currentBranch) {
+      return { status: 'not-published', text: 'Branch not published', icon: AlertCircle, color: 'text-yellow-600' };
     }
 
     if (gitStatus.ahead > 0 && gitStatus.behind > 0) {
@@ -1095,7 +1126,7 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
                           <div className="flex gap-2">
                             <Button
                               onClick={handlePull}
-                              disabled={isPulling || isPushing || isPushingToNostr}
+                              disabled={isPulling || isPushing || isPushingToNostr || !gitStatus.remoteBranchExists}
                               variant="outline"
                               size="sm"
                               className="flex-1"
@@ -1110,7 +1141,7 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
 
                             <Button
                               onClick={handlePush}
-                              disabled={isPushing || isPulling || isPushingToNostr || gitStatus.ahead === 0}
+                              disabled={isPushing || isPulling || isPushingToNostr || (gitStatus.ahead === 0 && gitStatus.remoteBranchExists)}
                               variant="outline"
                               size="sm"
                               className="flex-1"

@@ -21,7 +21,7 @@ const DEFAULT_STATE: PushReminderState = {
 };
 
 /** Number of messages before showing push reminder */
-const MESSAGE_THRESHOLD = 2; // Lowered to 2 for easier testing
+const MESSAGE_THRESHOLD = 5;
 
 /** Minimum time in ms between showing reminders (5 minutes) */
 const MIN_REMINDER_INTERVAL = 5 * 60 * 1000;
@@ -49,14 +49,12 @@ export function usePushReminder(projectId: string | null) {
   // Check if should show reminder
   const shouldShowReminder = useCallback(() => {
     if (!state.enabled || !projectId || !gitStatus?.isGitRepo) {
-      console.log('[PushReminder] Should NOT show - enabled:', state.enabled, 'projectId:', projectId, 'isGitRepo:', gitStatus?.isGitRepo);
       return false;
     }
 
     // Don't show if user recently interacted with push reminder
     const timeSinceLastInteraction = Date.now() - state.lastInteraction;
     if (timeSinceLastInteraction < MIN_REMINDER_INTERVAL) {
-      console.log('[PushReminder] Should NOT show - too soon since last interaction:', Math.round(timeSinceLastInteraction / 1000), 'seconds');
       return false;
     }
 
@@ -69,37 +67,18 @@ export function usePushReminder(projectId: string | null) {
       gitStatus.remotes.length === 0;
     const enoughMessages = state.messagesSinceLastPush >= MESSAGE_THRESHOLD;
 
-    console.log('[PushReminder] Check:', {
-      hasUnpushedWork,
-      enoughMessages,
-      messageCount: state.messagesSinceLastPush,
-      threshold: MESSAGE_THRESHOLD,
-      hasUncommittedChanges: gitStatus.hasUncommittedChanges,
-      ahead: gitStatus.ahead,
-      remotesCount: gitStatus.remotes.length,
-    });
-
-    const shouldShow = hasUnpushedWork && enoughMessages;
-    console.log('[PushReminder] Should show reminder:', shouldShow);
-
-    return shouldShow;
+    return hasUnpushedWork && enoughMessages;
   }, [state, projectId, gitStatus]);
 
   // Increment message counter
   const incrementMessages = useCallback(() => {
-    if (!state.enabled || !projectId) {
-      console.log('[PushReminder] Not incrementing - enabled:', state.enabled, 'projectId:', projectId);
-      return;
-    }
-
-    const newCount = state.messagesSinceLastPush + 1;
-    console.log('[PushReminder] Incrementing message counter to:', newCount);
+    if (!state.enabled || !projectId) return;
 
     setState((prev) => ({
       ...prev,
       messagesSinceLastPush: prev.messagesSinceLastPush + 1,
     }));
-  }, [state.enabled, projectId, setState, state.messagesSinceLastPush]);
+  }, [state.enabled, projectId, setState]);
 
   // Reset counter (called after push or dismiss)
   const resetReminder = useCallback(() => {

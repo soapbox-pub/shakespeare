@@ -1347,6 +1347,8 @@ export class Git {
     ]) {
       // update symbolic ref to use remote ref
       const value = entry.startsWith("ref: ") ? `ref: ${this.localRefToRemoteRef(remoteName, entry.slice(5))}` : entry;
+      const isSymbolic = value.startsWith("ref: ");
+      const refValue = isSymbolic ? value.slice(5) : value; // Remove "ref: " prefix for symbolic refs
       try {
         // Check if we have this commit locally
         try {
@@ -1356,27 +1358,32 @@ export class Git {
               fs: this.fs,
               dir: options.dir,
               ref:remoteRefName,
+              depth: 1, // Don't resolve symbolic refs, just get the raw value
             });
             // update correct ref
-            if (existingValue === value) continue;
+            if (existingValue === refValue) continue;
           } catch {
             // ref doesnt exist yet
           }
-          if (!value.startsWith("ref: ")) await git.readCommit({
-            fs: this.fs,
-            dir: options.dir,
-            // TODO handle and annotated tags
-            oid: value,
-          });
-          // We have the commit, update the remote tracking ref
+          if (!isSymbolic) {
+            // For non-symbolic refs, verify we have the commit locally
+            await git.readCommit({
+              fs: this.fs,
+              dir: options.dir,
+              // TODO handle annotated tags
+              oid: refValue,
+            });
+          }
+          // We have the commit (or it's a symbolic ref), update the remote tracking ref
           await git.writeRef({
             fs: this.fs,
             dir: options.dir,
             ref: remoteRefName,
             force: true, // standard behaviour of git fetch
-            value: value,
+            value: refValue,
+            symbolic: isSymbolic, // Set symbolic flag for symbolic refs
           });
-          console.log(`✓ Updated ${remoteRefName} to ${value}`);
+          console.log(`✓ Updated ${remoteRefName} to ${isSymbolic ? 'ref: ' : ''}${refValue}`);
           updated[refName] = entry;
         } catch (error) {
           refsWithMissingData[refName] = value;

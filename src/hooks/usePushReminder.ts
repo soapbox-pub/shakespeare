@@ -16,7 +16,7 @@ interface PushReminderState {
 const DEFAULT_STATE: PushReminderState = {
   enabled: true,
   messagesSinceLastPush: 0,
-  lastInteraction: Date.now(),
+  lastInteraction: 0, // Start at 0 so reminders can show immediately
   currentProjectId: null,
 };
 
@@ -41,7 +41,7 @@ export function usePushReminder(projectId: string | null) {
         ...prev,
         currentProjectId: projectId,
         messagesSinceLastPush: 0,
-        lastInteraction: Date.now(),
+        // Don't reset lastInteraction - keep the cooldown across project switches
       }));
     }
   }, [projectId, state.currentProjectId, setState]);

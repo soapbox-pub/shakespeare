@@ -8,12 +8,14 @@ import { Label } from "@/components/ui/label";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useNavigate } from "react-router-dom";
 import { useAppContext } from "@/hooks/useAppContext";
+import { usePushReminder } from "@/hooks/usePushReminder";
 
 export function Preferences() {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const { config, updateConfig } = useAppContext();
+  const pushReminder = usePushReminder(null);
 
   return (
     <div className="p-6 space-y-6">
@@ -70,6 +72,26 @@ export function Preferences() {
           </div>
           <p className="text-sm text-muted-foreground">
             {t('languageDescription')}
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="push-reminders" className="text-sm font-medium">
+                {t('pushReminders')}
+              </Label>
+            </div>
+            <Switch
+              id="push-reminders"
+              checked={pushReminder.enabled}
+              onCheckedChange={(checked) => {
+                pushReminder.setEnabled(checked);
+              }}
+            />
+          </div>
+          <p className="text-sm text-muted-foreground">
+            {t('pushRemindersDescription')}
           </p>
         </div>
 

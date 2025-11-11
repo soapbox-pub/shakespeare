@@ -15,11 +15,14 @@ import { useNavigate } from 'react-router-dom';
 import { ActionsMenu } from '@/components/ActionsMenu';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { GitStatusIndicator } from '@/components/GitStatusIndicator';
+import { PushWarningButton } from '@/components/PushWarningButton';
+import { PushReminderDialog } from '@/components/PushReminderDialog';
 import { StarButton } from '@/components/StarButton';
 import { useBuildProject } from '@/hooks/useBuildProject';
 import { useIsProjectPreviewable } from '@/hooks/useIsProjectPreviewable';
 import { useConsoleError } from '@/hooks/useConsoleError';
 import { useAutoBuild } from '@/hooks/useAutoBuild';
+import { usePushReminder } from '@/hooks/usePushReminder';
 
 export function ProjectView() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -30,6 +33,7 @@ export function ProjectView() {
   const [mobileView, setMobileView] = useState<'chat' | 'preview' | 'code'>('chat');
   const [isAILoading, setIsAILoading] = useState(false);
   const [isProjectDetailsOpen, setIsProjectDetailsOpen] = useState(false);
+  const [isPushReminderOpen, setIsPushReminderOpen] = useState(false);
 
   // Use console error state from provider
   const { consoleError, dismissConsoleError, clearErrors } = useConsoleError();
@@ -43,6 +47,7 @@ export function ProjectView() {
 
   const build = useBuildProject(projectId!);
   const { data: isPreviewable = false } = useIsProjectPreviewable(projectId!);
+  const pushReminder = usePushReminder(projectId || null);
 
   // Enable auto-build for previewable projects
   useAutoBuild({
@@ -105,6 +110,16 @@ export function ProjectView() {
     setIsAILoading(loading);
   };
 
+  // Handle message sent - increment push reminder counter
+  const handleMessageSent = useCallback(() => {
+    pushReminder.incrementMessages();
+
+    // Check if we should show the reminder
+    if (pushReminder.shouldShowReminder) {
+      setIsPushReminderOpen(true);
+    }
+  }, [pushReminder]);
+
   // Handle first user interaction to enable audio context
   const handleFirstInteraction = () => {
     // This will be handled automatically by the useKeepAlive hook
@@ -165,6 +180,7 @@ export function ProjectView() {
             <div className="flex items-center gap-2">
               {project ? (
                 <>
+                  <PushWarningButton projectId={project.id} className="h-8" />
                   <StarButton
                     projectId={project.id}
                     projectName={project.name}
@@ -227,6 +243,7 @@ export function ProjectView() {
                 onNewChat={handleNewChat}
                 onFirstInteraction={handleFirstInteraction}
                 onLoadingChange={handleAILoadingChange}
+                onMessageSent={handleMessageSent}
                 isLoading={isAILoading}
                 isBuildLoading={build.isPending}
                 consoleError={consoleError}
@@ -307,6 +324,17 @@ export function ProjectView() {
             onProjectDeleted={handleProjectDeleted}
           />
         )}
+
+        {/* Push Reminder Dialog */}
+        {project && (
+          <PushReminderDialog
+            projectId={project.id}
+            open={isPushReminderOpen}
+            onOpenChange={setIsPushReminderOpen}
+            onDisableReminders={() => pushReminder.setEnabled(false)}
+            onDismiss={pushReminder.resetReminder}
+          />
+        )}
       </div>
     );
   }
@@ -374,6 +402,7 @@ export function ProjectView() {
                     <div className="flex items-center gap-2">
                       {project ? (
                         <>
+                          <PushWarningButton projectId={project.id} className="h-8" />
                           <StarButton
                             projectId={project.id}
                             projectName={project.name}
@@ -408,6 +437,7 @@ export function ProjectView() {
                       onNewChat={handleNewChat}
                       onFirstInteraction={handleFirstInteraction}
                       onLoadingChange={handleAILoadingChange}
+                      onMessageSent={handleMessageSent}
                       isLoading={isAILoading}
                       isBuildLoading={build.isPending}
                       consoleError={consoleError}
@@ -459,6 +489,17 @@ export function ProjectView() {
           open={isProjectDetailsOpen}
           onOpenChange={setIsProjectDetailsOpen}
           onProjectDeleted={handleProjectDeleted}
+        />
+      )}
+
+      {/* Push Reminder Dialog */}
+      {project && (
+        <PushReminderDialog
+          projectId={project.id}
+          open={isPushReminderOpen}
+          onOpenChange={setIsPushReminderOpen}
+          onDisableReminders={() => pushReminder.setEnabled(false)}
+          onDismiss={pushReminder.resetReminder}
         />
       )}
     </div>

@@ -57,6 +57,8 @@
   "temporaryDirectoryDescription": "Filesystem path for temporary files",
   "sentryDsn": "Sentry DSN",
   "sentryDsnDescription": "Sentry Data Source Name (DSN) for error reporting. Leave empty to disable Sentry.",
+  "pushReminders": "Push reminders",
+  "pushRemindersDescription": "Show periodic reminders to push your code to a remote repository to prevent data loss.",
   "shareErrorReports": "Share error reports",
   "shareErrorReportsDescription": "Help improve this app by automatically sending crash and error reports.",
   "english": "English",

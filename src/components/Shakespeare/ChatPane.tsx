@@ -52,6 +52,7 @@ interface ChatPaneProps {
   onNewChat: () => void;
   onFirstInteraction?: () => void;
   onLoadingChange?: (isLoading: boolean) => void;
+  onMessageSent?: () => void;
   isLoading?: boolean;
   isBuildLoading?: boolean;
   consoleError?: ProjectPreviewConsoleError | null;
@@ -67,6 +68,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   onNewChat,
   onFirstInteraction,
   onLoadingChange,
+  onMessageSent,
   isLoading: externalIsLoading,
   isBuildLoading: externalIsBuildLoading,
   consoleError,
@@ -478,7 +480,12 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     // Send as text parts if we have multiple parts, otherwise send as string for simplicity
     const messageContent = contentParts.length === 1 ? contentParts[0].text : contentParts;
     await sendMessage(messageContent, modelToUse);
-  }, [addRecentlyUsedModel, fs, isConfigured, isLoading, providerModel, sendMessage, tmpPath]);
+
+    // Notify parent that a message was sent (for push reminder tracking)
+    if (onMessageSent) {
+      onMessageSent();
+    }
+  }, [addRecentlyUsedModel, fs, isConfigured, isLoading, providerModel, sendMessage, tmpPath, onMessageSent]);
 
   // Handle textarea focus - show onboarding if not configured
   const handleTextareaFocus = useCallback(() => {

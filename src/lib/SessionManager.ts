@@ -248,6 +248,7 @@ export class SessionManager {
           pluginsPath: this.pluginsPath,
           user,
           metadata,
+          corsProxy: this.corsProxy,
         });
 
         // Prepare messages for AI

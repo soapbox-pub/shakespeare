@@ -16,10 +16,11 @@ export interface MakeSystemPromptOpts {
   pluginsPath?: string;
   user?: NUser;
   metadata?: NostrMetadata;
+  corsProxy?: string;
 }
 
 export async function makeSystemPrompt(opts: MakeSystemPromptOpts): Promise<string> {
-  const { name, profession, tools, mode, fs, cwd, pluginsPath, user, metadata } = opts;
+  const { name, profession, tools, mode, fs, cwd, pluginsPath, user, metadata, corsProxy } = opts;
 
   let system = mode === "init"
     ? `You are ${name}, an expert ${profession}. The files in the current directory are a template. Your goal is to transform this template into a working project according to the user's request.`
@@ -209,6 +210,19 @@ The user expects you to handle all technical implementation while they focus on 
   }
 
   system += `\nUsers can configure skills in Settings > AI (${location.origin}/settings/ai) by adding plugins that contain skills.`;
+
+  // Add CORS proxy information
+  if (corsProxy) {
+    system += `
+
+## Working Around CORS Issues
+
+If you encounter CORS (Cross-Origin Resource Sharing) errors when fetching external APIs, use the configured CORS proxy:
+
+**CORS Proxy URL Template**: \`${corsProxy}\`
+
+Replace \`{href}\`, \`{hostname}\`, or other URL components in the template as needed.`;
+  }
 
   // Add README.md if it exists
   try {

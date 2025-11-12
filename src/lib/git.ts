@@ -1842,7 +1842,7 @@ export class Git {
     }
 
     // Extract relay URLs and clone URLs from the repository announcement
-    const relayUrls: string[] = [];
+    const relayUrls: string[] = [ ...(repo.relays) ?? []];
 
     // If no relays specified in announcement, use default git-focused relays
     if (relayUrls.length === 0) {

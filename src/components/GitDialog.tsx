@@ -446,50 +446,7 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
         throw new Error('Could not determine repository state. The repository might not have any commits or branches.');
       }
 
-      // Get HEAD reference
-      let headRef: string | undefined;
-      try {
-        const currentBranch = await git.currentBranch({ dir: projectPath });
-        if (currentBranch) {
-          headRef = `ref: refs/heads/${currentBranch}`;
-          console.log(`HEAD points to: ${headRef}`);
-        } else {
-          // HEAD is detached, use the commit ID directly
-          const headValue = await git.resolveRef({
-            dir: projectPath,
-            ref: 'HEAD',
-          });
-          if (headValue) {
-            headRef = headValue;
-            console.log(`HEAD is detached at: ${headRef}`);
-          }
-        }
-      } catch (error) {
-        console.warn('Failed to resolve HEAD:', error);
-      }
-
-      // Create repo state event (NIP-34 kind 30618)
-      const stateEvent = {
-        kind: 30618,
-        content: '',
-        tags: [
-          ['d', result.repoId],
-          ...refTags,
-          ...(headRef ? [['HEAD', headRef]] : []),
-        ],
-        created_at: Math.floor(Date.now() / 1000),
-      };
-
-      console.log('Creating repository state event:', stateEvent);
-
-      // Sign and publish the state event
-      const signedStateEvent = await user.signer.signEvent(stateEvent);
-
-      // State events only go to the relays specified in the repo announcement
-      console.log('Publishing repository state to relays:', result.relays);
-      await nostr.event(signedStateEvent, { relays: result.relays });
-
-      console.log('Published repository state to Nostr relays');
+      console.log('Repository has refs:', refTags);
 
       // Set origin remote to Nostr URL
       // Format: nostr://<npub>/<repo-id>
@@ -522,13 +479,54 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
 
       console.log('Set nostr.repo config to:', result.naddr);
 
-      toast({
-        title: 'Repository published to Nostr',
-        description: 'Waiting for GRASP servers to update...',
-      });
-
       // Refresh git status to pick up the new remote
       await refetchGitStatus();
+
+      // Automatically push to the newly configured Nostr remote
+      // Get the current branch fresh from git instead of using stale gitStatus
+      console.log('Starting automatic push to Nostr...');
+
+      try {
+        const currentBranch = await git.currentBranch({ dir: projectPath });
+        console.log('Current branch:', currentBranch);
+
+        if (!currentBranch) {
+          throw new Error('No current branch found');
+        }
+
+        toast({
+          title: 'Repository published to Nostr',
+          description: 'Pushing commits to ngit servers...',
+        });
+
+        console.log('Calling git.push with:', { dir: projectPath, remote: 'origin', ref: currentBranch });
+
+        await git.push({
+          dir: projectPath,
+          remote: 'origin',
+          ref: currentBranch,
+          signer: user.signer,
+        });
+
+        console.log('Push completed successfully');
+
+        toast({
+          title: 'Push successful',
+          description: 'Repository successfully pushed to Nostr',
+        });
+
+        // Refresh git status after push
+        await refetchGitStatus();
+      } catch (pushError) {
+        console.error('Push error:', pushError);
+        const pushErrorMessage = pushError instanceof Error ? pushError.message : 'Unknown error occurred';
+        toast({
+          title: 'Automatic push failed',
+          description: pushErrorMessage,
+          variant: 'destructive',
+          duration: Infinity,
+        });
+      }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       toast({
@@ -682,8 +680,6 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
       setIsPulling(false);
     }
   };
-
-
 
   const getFileStatusIcon = (status: string) => {
     switch (status) {
@@ -1142,7 +1138,7 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
                             ) : (
                               <Zap className="h-4 w-4 mr-2" />
                             )}
-                            {isPushingToNostr ? 'Publishing to Nostr...' : 'Push to Nostr'}
+                            {isPushingToNostr ? 'Loading...' : 'Push to Nostr'}
                           </Button>
                         )}
 

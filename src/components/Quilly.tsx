@@ -11,6 +11,7 @@ import { ProjectPreviewConsoleError } from '@/lib/consoleMessages';
 import { useState } from 'react';
 import { MalformedToolCallError } from '@/lib/errors/MalformedToolCallError';
 import { EmptyMessageError } from '@/lib/errors/EmptyMessageError';
+import { AIProvider } from '@/contexts/AISettingsContext';
 
 export interface QuillyProps {
   error: Error;
@@ -30,23 +31,20 @@ interface ErrorBody {
   }>;
 }
 
-export function Quilly({ error, onDismiss, onNewChat, onOpenModelSelector, onTryAgain, onRequestConsoleErrorHelp, providerModel }: QuillyProps) {
+interface QuillyContentProps {
+  error: Error;
+  onDismiss: () => void;
+  onNewChat: () => void;
+  onOpenModelSelector: () => void;
+  onTryAgain?: () => void;
+  onRequestConsoleErrorHelp?: (error: ProjectPreviewConsoleError) => void;
+  provider: AIProvider | undefined;
+}
+
+function QuillyContent({ error, onDismiss, onNewChat, onOpenModelSelector, onTryAgain, onRequestConsoleErrorHelp, provider }: QuillyContentProps) {
   const navigate = useNavigate();
-  const { settings } = useAISettings();
 
-  // Handle empty provider model gracefully
-  let provider;
-  try {
-    provider = parseProviderModel(providerModel, settings.providers).provider;
-  } catch {
-    // If no valid provider model, use a default or undefined
-    provider = undefined;
-  }
-
-  const credits = useAICredits(provider || { id: '', name: '', apiKey: '', nostr: false });
-  const [showCreditsDialog, setShowCreditsDialog] = useState(false);
-
-  const renderBody = (error: Error | APIError | MalformedToolCallError | ProjectPreviewConsoleError): ErrorBody => {
+  const renderBody = (error: Error | APIError | MalformedToolCallError | ProjectPreviewConsoleError): ErrorBody & { showCreditsButton?: boolean } => {
     // Handle Project Preview Console Errors
     if (error instanceof ProjectPreviewConsoleError) {
       return {
@@ -69,7 +67,7 @@ export function Quilly({ error, onDismiss, onNewChat, onOpenModelSelector, onTry
           onClick: onOpenModelSelector,
         }],
       };
-    } 
+    }
 
     if (error instanceof EmptyMessageError) {
       return {
@@ -101,13 +99,12 @@ export function Quilly({ error, onDismiss, onNewChat, onOpenModelSelector, onTry
           };
 
         case error.code === 'insufficient_quota': {
-          if (credits.data) {
+          // Only show credits dialog if we have a provider with nostr enabled
+          if (provider?.nostr) {
             return {
-              message: `Your account has $${credits.data.amount.toFixed(2)} credits. Please add credits to keep creating.`,
-              actions: [{
-                label: 'Add credits',
-                onClick: () => setShowCreditsDialog(true),
-              }],
+              message: 'Your account is low on credits. Please add credits to keep creating.',
+              showCreditsButton: true,
+              actions: [],
             };
           } else {
             return {
@@ -204,7 +201,7 @@ export function Quilly({ error, onDismiss, onNewChat, onOpenModelSelector, onTry
     };
   };
 
-  const { message, actions = [] } = renderBody(error);
+  const { message, actions = [], showCreditsButton } = renderBody(error);
 
   return (
     <div className="py-2 px-3 bg-primary/5 border border-primary/20 rounded-lg">
@@ -217,6 +214,12 @@ export function Quilly({ error, onDismiss, onNewChat, onOpenModelSelector, onTry
             </h4>
             <p className="text-sm text-muted-foreground">
               {message}
+              {showCreditsButton && provider && (
+                <>
+                  {' '}
+                  <QuillyCreditsButton provider={provider} />
+                </>
+              )}
               {actions.length > 0 && (
                 <>
                   {' '}
@@ -242,12 +245,53 @@ export function Quilly({ error, onDismiss, onNewChat, onOpenModelSelector, onTry
           <X className="h-4 w-4" />
         </Button>
       </div>
+    </div>
+  );
+}
 
+interface QuillyCreditsButtonProps {
+  provider: AIProvider;
+}
+
+function QuillyCreditsButton({ provider }: QuillyCreditsButtonProps) {
+  const [showCreditsDialog, setShowCreditsDialog] = useState(false);
+  const credits = useAICredits(provider);
+
+  return (
+    <>
+      <button className="text-primary underline" onClick={() => setShowCreditsDialog(true)}>
+        {credits.data ? `Add credits (${credits.data.amount.toFixed(2)} remaining)` : 'Add credits'}
+      </button>
       <CreditsDialog
         open={showCreditsDialog}
         onOpenChange={setShowCreditsDialog}
         provider={provider}
       />
-    </div>
+    </>
+  );
+}
+
+export function Quilly({ error, onDismiss, onNewChat, onOpenModelSelector, onTryAgain, onRequestConsoleErrorHelp, providerModel }: QuillyProps) {
+  const { settings } = useAISettings();
+
+  // Handle empty provider model gracefully
+  let provider: AIProvider | undefined;
+  try {
+    provider = parseProviderModel(providerModel, settings.providers).provider;
+  } catch {
+    // If no valid provider model, use a default or undefined
+    provider = undefined;
+  }
+
+  return (
+    <QuillyContent
+      error={error}
+      onDismiss={onDismiss}
+      onNewChat={onNewChat}
+      onOpenModelSelector={onOpenModelSelector}
+      onTryAgain={onTryAgain}
+      onRequestConsoleErrorHelp={onRequestConsoleErrorHelp}
+      provider={provider}
+    />
   );
 }

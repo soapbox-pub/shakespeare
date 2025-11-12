@@ -53,6 +53,7 @@ export class ShellTool implements Tool<ShellToolParams> {
   private commands: Map<string, ShellCommand>;
   private projectsPath: string;
   private signer?: NostrSigner;
+  private corsProxy: string;
 
   readonly description = "Execute shell commands like cat, ls, cd, pwd, rm, cp, mv, echo, head, tail, grep, find, wc, touch, mkdir, sort, uniq, cut, tr, sed, diff, which, whoami, date, env, clear, git, curl, unzip, hexdump. Supports compound commands with &&, ||, ;, and | operators, and output redirection with > and >> operators";
 
@@ -62,11 +63,12 @@ export class ShellTool implements Tool<ShellToolParams> {
     ),
   });
 
-  constructor(fs: JSRuntimeFS, cwd: string, git: Git, projectsPath: string = '/projects', signer?: NostrSigner) {
+  constructor(fs: JSRuntimeFS, cwd: string, git: Git, projectsPath: string = '/projects', corsProxy: string, signer?: NostrSigner) {
     this.fs = fs;
     this.cwd = cwd;
     this.git = git;
     this.projectsPath = projectsPath;
+    this.corsProxy = corsProxy;
     this.signer = signer;
     this.commands = new Map();
 
@@ -75,7 +77,7 @@ export class ShellTool implements Tool<ShellToolParams> {
     this.registerCommand(new CdCommand(fs));
     this.registerCommand(new ClearCommand());
     this.registerCommand(new CpCommand(fs));
-    this.registerCommand(new CurlCommand(fs));
+    this.registerCommand(new CurlCommand(fs, this.corsProxy));
     this.registerCommand(new CutCommand(fs));
     this.registerCommand(new DateCommand());
     this.registerCommand(new DiffCommand(fs));

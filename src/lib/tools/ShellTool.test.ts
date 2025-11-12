@@ -35,12 +35,13 @@ describe('ShellTool', () => {
   let mockNostr: NPool;
   let shellTool: ShellTool;
   const testCwd = '/test/dir';
+  const testCorsProxy = 'https://proxy.shakespeare.diy/?url={href}';
 
   beforeEach(() => {
     mockFS = createMockFS();
     mockNostr = createMockNostr();
     mockGit = new Git({ fs: mockFS, nostr: mockNostr });
-    shellTool = new ShellTool(mockFS, testCwd, mockGit);
+    shellTool = new ShellTool(mockFS, testCwd, mockGit, '/projects', testCorsProxy);
   });
 
   it('should have correct tool properties', () => {

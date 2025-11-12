@@ -3,6 +3,7 @@ import type { JSRuntimeFS } from "../JSRuntime";
 import type { ShellCommand, ShellCommandResult } from "./ShellCommand";
 import { createSuccessResult, createErrorResult } from "./ShellCommand";
 import { isAbsolutePath, validateWritePath } from "../security";
+import { proxyUrl } from "../proxyUrl";
 
 /**
  * Parsed curl options
@@ -35,9 +36,11 @@ export class CurlCommand implements ShellCommand {
   usage = 'curl [options] <url>';
 
   private fs: JSRuntimeFS;
+  private corsProxy: string;
 
-  constructor(fs: JSRuntimeFS) {
+  constructor(fs: JSRuntimeFS, corsProxy: string) {
     this.fs = fs;
+    this.corsProxy = corsProxy;
   }
 
   async execute(args: string[], cwd: string, _input?: string): Promise<ShellCommandResult> {
@@ -61,9 +64,9 @@ export class CurlCommand implements ShellCommand {
         return createErrorResult(`${this.name}: unsupported protocol: ${url.protocol}`);
       }
 
-      // Proxy the URL through CorsProxy
+      // Proxy the URL through configured CorsProxy
       const originalUrl = url.toString();
-      const proxiedUrl = `https://proxy.shakespeare.diy/?url=${encodeURIComponent(originalUrl)}`;
+      const proxiedUrl = proxyUrl(this.corsProxy, originalUrl);
 
       // Prepare request
       const requestInit: RequestInit = {

@@ -166,7 +166,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
       nostr_read_nips_index: new NostrReadNipsIndexTool(),
       nostr_generate_kind: new NostrGenerateKindTool(),
       nostr_publish_events: new NostrPublishEventsTool(),
-      shell: new ShellTool(fs, cwd, git, projectsPath, user?.signer),
+      shell: new ShellTool(fs, cwd, git, projectsPath, config.corsProxy, user?.signer),
       read_console_messages: new ReadConsoleMessagesTool(),
       skill: new SkillTool(fs, pluginsPath),
     };
@@ -180,7 +180,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     }
 
     return baseTools;
-  }, [fs, git, cwd, user, projectId, projectsPath, tmpPath, pluginsPath, handleFileChanged]);
+  }, [fs, git, cwd, user, projectId, projectsPath, tmpPath, pluginsPath, config.corsProxy, handleFileChanged]);
 
   // Convert tools to OpenAI format
   const tools = useMemo(() => {

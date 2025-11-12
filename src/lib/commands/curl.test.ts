@@ -23,9 +23,10 @@ const mockFS: JSRuntimeFS = {
 
 describe('CurlCommand', () => {
   let curlCommand: CurlCommand;
+  const testCorsProxy = 'https://proxy.shakespeare.diy/?url={href}';
 
   beforeEach(() => {
-    curlCommand = new CurlCommand(mockFS);
+    curlCommand = new CurlCommand(mockFS, testCorsProxy);
     vi.clearAllMocks();
   });
 

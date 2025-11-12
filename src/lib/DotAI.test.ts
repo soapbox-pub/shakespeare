@@ -260,4 +260,67 @@ invalid json line
       expect(sessionName1).not.toBe(sessionName2);
     });
   });
+
+  describe('readCost', () => {
+    it('should return 0 when COST file does not exist', async () => {
+      vi.mocked(mockFS.readFile).mockRejectedValue(new Error('File not found'));
+
+      const cost = await dotAI.readCost();
+      expect(cost).toBe(0);
+    });
+
+    it('should read and parse cost from COST file', async () => {
+      vi.mocked(mockFS.readFile).mockResolvedValue('0.123456\n');
+
+      const cost = await dotAI.readCost();
+      expect(cost).toBe(0.123456);
+    });
+
+    it('should return 0 for invalid cost value', async () => {
+      vi.mocked(mockFS.readFile).mockResolvedValue('invalid\n');
+
+      const cost = await dotAI.readCost();
+      expect(cost).toBe(0);
+    });
+
+    it('should handle cost with whitespace', async () => {
+      vi.mocked(mockFS.readFile).mockResolvedValue('  0.050000  \n');
+
+      const cost = await dotAI.readCost();
+      expect(cost).toBe(0.05);
+    });
+  });
+
+  describe('writeCost', () => {
+    it('should create shakespeare directory if it does not exist', async () => {
+      await dotAI.writeCost(0.123456);
+
+      expect(mockFS.mkdir).toHaveBeenCalledWith('/test-project/.git/shakespeare', { recursive: true });
+    });
+
+    it('should write cost with 6 decimal places', async () => {
+      await dotAI.writeCost(0.123456789);
+
+      expect(mockFS.writeFile).toHaveBeenCalledWith(
+        '/test-project/.git/shakespeare/COST',
+        '0.123457\n'
+      );
+    });
+
+    it('should write zero cost correctly', async () => {
+      await dotAI.writeCost(0);
+
+      expect(mockFS.writeFile).toHaveBeenCalledWith(
+        '/test-project/.git/shakespeare/COST',
+        '0.000000\n'
+      );
+    });
+
+    it('should handle write errors gracefully', async () => {
+      vi.mocked(mockFS.writeFile).mockRejectedValue(new Error('Write failed'));
+
+      // Should not throw
+      await expect(dotAI.writeCost(0.123456)).resolves.toBeUndefined();
+    });
+  });
 });

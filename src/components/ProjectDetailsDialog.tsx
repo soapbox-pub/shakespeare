@@ -33,9 +33,11 @@ import {
   Loader2,
   Trash2,
   Save,
+  DollarSign,
 } from 'lucide-react';
 import JSZip from 'jszip';
 import { Separator } from './ui/separator';
+import { DotAI } from '@/lib/DotAI';
 
 interface ProjectDetailsDialogProps {
   project: Project;
@@ -49,6 +51,7 @@ export function ProjectDetailsDialog({ project, open, onOpenChange, onProjectDel
   const [isDeleting, setIsDeleting] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
   const [newProjectName, setNewProjectName] = useState(project.id);
+  const [totalCost, setTotalCost] = useState<number | null>(null);
   const { toast } = useToast();
   const { fs } = useFS();
   const { projectsPath } = useFSPaths();
@@ -61,6 +64,24 @@ export function ProjectDetailsDialog({ project, open, onOpenChange, onProjectDel
     setNewProjectName(project.id);
     setIsRenaming(false);
   }, [project.id]);
+
+  // Load total project cost
+  useEffect(() => {
+    const loadCost = async () => {
+      try {
+        const dotAI = new DotAI(fs, `${projectsPath}/${project.id}`);
+        const cost = await dotAI.readCost();
+        setTotalCost(cost);
+      } catch (error) {
+        console.warn('Failed to load project cost:', error);
+        setTotalCost(null);
+      }
+    };
+
+    if (open) {
+      loadCost();
+    }
+  }, [fs, projectsPath, project.id, open]);
 
   const formatDistanceToNow = (date: Date) => {
     const now = new Date();
@@ -225,6 +246,15 @@ export function ProjectDetailsDialog({ project, open, onOpenChange, onProjectDel
             <span className="text-muted-foreground">Last Modified:</span>
             <span>{formatDistanceToNow(project.lastModified)}</span>
           </div>
+
+          {/* Total Cost */}
+          {totalCost !== null && totalCost > 0 && (
+            <div className="flex items-center gap-2 text-sm">
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+              <span className="text-muted-foreground">Total Cost:</span>
+              <span className="font-mono">${totalCost.toFixed(6)}</span>
+            </div>
+          )}
 
           {/* Project Name */}
           <div className="space-y-2">

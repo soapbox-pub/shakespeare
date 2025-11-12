@@ -525,7 +525,7 @@ export class SessionManager {
   /**
    * Update session cost and context usage based on usage data
    */
-  private updateSessionCost(projectId: string, usage: { prompt_tokens: number; completion_tokens: number; cost?: number }, providerModel: string): void {
+  private async updateSessionCost(projectId: string, usage: { prompt_tokens: number; completion_tokens: number; cost?: number }, providerModel: string): Promise<void> {
     if (!this.getProviderModels) return;
 
     const session = this.sessions.get(projectId);
@@ -535,6 +535,9 @@ export class SessionManager {
     if (typeof usage.cost === 'number') {
       session.totalCost = (session.totalCost || 0) + usage.cost;
       this.emit('costUpdated', projectId, session.totalCost);
+
+      // Accumulate cost to project total
+      await this.accumulateProjectCost(projectId, usage.cost);
       return;
     }
 
@@ -564,6 +567,9 @@ export class SessionManager {
       // Update session total cost
       session.totalCost = (session.totalCost || 0) + requestCost;
       this.emit('costUpdated', projectId, session.totalCost);
+
+      // Accumulate cost to project total
+      await this.accumulateProjectCost(projectId, requestCost);
     } catch (error) {
       console.warn('Failed to calculate session cost:', error);
     }
@@ -581,6 +587,26 @@ export class SessionManager {
       await dotAI.setHistory(session.sessionName, session.messages);
     } catch (error) {
       console.warn('Failed to save session history:', error);
+    }
+  }
+
+  /**
+   * Accumulate request cost to the project's total cost file
+   */
+  private async accumulateProjectCost(projectId: string, requestCost: number): Promise<void> {
+    try {
+      const dotAI = new DotAI(this.fs, `${this.projectsPath}/${projectId}`);
+
+      // Read current project total
+      const currentTotal = await dotAI.readCost();
+
+      // Add this request's cost
+      const newTotal = currentTotal + requestCost;
+
+      // Write back the new total
+      await dotAI.writeCost(newTotal);
+    } catch (error) {
+      console.warn('Failed to accumulate project cost:', error);
     }
   }
 

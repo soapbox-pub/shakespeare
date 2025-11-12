@@ -278,4 +278,38 @@ export class DotAI {
       return null;
     }
   }
+
+  /**
+   * Read the accumulated cost from .git/shakespeare/COST file
+   * @returns The accumulated cost as a number, or 0 if the file doesn't exist
+   */
+  async readCost(): Promise<number> {
+    try {
+      const costPath = join(this.workingDir, ".git", "shakespeare", "COST");
+      const content = await this.fs.readFile(costPath, "utf8");
+      const cost = parseFloat(content.trim());
+      return isNaN(cost) ? 0 : cost;
+    } catch {
+      return 0;
+    }
+  }
+
+  /**
+   * Write the accumulated cost to .git/shakespeare/COST file
+   * @param cost The accumulated cost in USD
+   */
+  async writeCost(cost: number): Promise<void> {
+    const shakespeareDir = join(this.workingDir, ".git", "shakespeare");
+    const costPath = join(shakespeareDir, "COST");
+
+    try {
+      // Ensure .git/shakespeare directory exists
+      await this.fs.mkdir(shakespeareDir, { recursive: true });
+
+      // Write the cost with 6 decimal places for precision
+      await this.fs.writeFile(costPath, cost.toFixed(6) + "\n");
+    } catch (error) {
+      console.warn(`Failed to write .git/shakespeare/COST file: ${error}`);
+    }
+  }
 }

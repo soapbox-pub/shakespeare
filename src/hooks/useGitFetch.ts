@@ -131,25 +131,31 @@ export function useGitFetch(projectId: string | null) {
         let beforeDefaultOid: string | null = null;
         let beforeCurrentOid: string | null = null;
 
-        // Get remote info to find default branch
+        // Get default branch from local symbolic ref
         let defaultBranch: string | null = null;
         try {
-          console.log('Fetching remote info...');
-          const remoteInfo = await git.getRemoteInfo({
-            url: remoteUrl,
-            ...(credentials && {
-              onAuth: () => ({
-                username: credentials.username,
-                password: credentials.password,
-              }),
-            }),
-          });
+          console.log('Reading default branch from local symbolic ref...');
 
-          // Extract default branch from symbolic ref
-          if (remoteInfo.refs?.HEAD?.type === 'symref') {
-            const symref = remoteInfo.refs.HEAD.target;
-            defaultBranch = symref?.replace('refs/heads/', '') || null;
-            console.log('Default branch from remote:', defaultBranch);
+          // Read the symbolic ref file directly
+          // The file contains something like: "ref: refs/remotes/origin/main"
+          try {
+            const symbolicRefContent = await git.resolveRef({
+              dir: cwd,
+              ref: `remotes/${remote.remote}/HEAD`,
+              depth: 1,
+            });
+            // Remove "ref: " prefix and extract the branch name
+            // Content looks like: "ref: refs/remotes/origin/main"
+            const refValue = symbolicRefContent.replace(/^ref:\s*/, '').trim();
+            const match = refValue.match(/refs\/remotes\/[^/]+\/(.+)/);
+            if (match) {
+              defaultBranch = match[1].trim();
+              console.log('Default branch from local symbolic ref:', defaultBranch);
+            } else {
+              console.log('Could not get default branch from local symbolic ref value:', refValue);
+            }
+          } catch {
+            console.log('No local symbolic ref found, will be set after fetch');
           }
 
           // If we have a default branch, try to get its OID before fetch
@@ -165,7 +171,7 @@ export function useGitFetch(projectId: string | null) {
             }
           }
         } catch (error) {
-          console.warn('Could not get remote info:', error);
+          console.warn('Could not read default branch from local data:', error);
         }
 
         // Get current branch OID before fetch
@@ -203,6 +209,27 @@ export function useGitFetch(projectId: string | null) {
         // Get OIDs after fetch
         let afterDefaultOid: string | null = null;
         let afterCurrentOid: string | null = null;
+
+        // Re-read default branch from symbolic ref in case it was just created by fetch
+        if (!defaultBranch) {
+          try {
+            const symbolicRefContent = await git.resolveRef({
+              dir: cwd,
+              ref: `remotes/${remote.remote}/HEAD`,
+              depth: 1,
+            });
+            // Remove "ref: " prefix and extract the branch name
+            // Content looks like: "ref: refs/remotes/origin/main"
+            const refValue = symbolicRefContent.replace(/^ref:\s*/, '').trim();
+            const match = refValue.match(/refs\/remotes\/[^/]+\/(.+)/);
+            if (match) {
+              defaultBranch = match[1].trim();
+              console.log('Default branch from local symbolic ref:', defaultBranch);
+            }
+          } catch {
+            console.log('No local symbolic ref found, will be set after fetch');
+          }
+        }
 
         if (defaultBranch) {
           try {

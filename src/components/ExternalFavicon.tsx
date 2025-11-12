@@ -1,6 +1,7 @@
 import { useAppContext } from '@/hooks/useAppContext';
 import { faviconUrl, normalizeUrl } from '@/lib/faviconUrl';
-import { ReactNode } from 'react';
+import { cn } from '@/lib/utils';
+import { ReactNode, useMemo } from 'react';
 
 interface ExternalFaviconProps {
   /** The URL to fetch the favicon for */
@@ -25,14 +26,28 @@ export function ExternalFavicon({
 }: ExternalFaviconProps) {
   const { config } = useAppContext();
 
-  // Normalize the URL to ensure it has a protocol
-  const normalizedUrl = normalizeUrl(url);
-
   // Generate the favicon URL using the configured template
-  const faviconSrc = faviconUrl(config.faviconUrl, normalizedUrl);
+  const faviconSrc = useMemo(() => {
+    try {
+      // Normalize the URL to ensure it has a protocol
+      const normalizedUrl = normalizeUrl(url);
+      return faviconUrl(config.faviconUrl, normalizedUrl);
+    } catch {
+      return;
+    }
+  }, [url, config.faviconUrl]);
+
+  // If faviconSrc is not available, render the fallback directly
+  if (!faviconSrc) {
+    return (
+      <span className={cn('inline-flex items-center justify-center', className)}>
+        <span>{fallback}</span>
+      </span>
+    )
+  }
 
   return (
-    <span className={`inline-flex items-center justify-center ${className}`}>
+    <span className={cn('inline-flex items-center justify-center', className)}>
       <img
         src={faviconSrc}
         alt=""

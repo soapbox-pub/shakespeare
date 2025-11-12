@@ -154,7 +154,7 @@ export class SessionManager {
    */
   async deleteSession(projectId: string): Promise<void> {
     const session = this.sessions.get(projectId);
-    session?.abortController?.abort();
+    session?.abortController?.abort('Session deleted');
 
     this.sessions.delete(projectId);
 
@@ -481,7 +481,7 @@ export class SessionManager {
     const session = this.sessions.get(projectId);
     if (!session) return;
 
-    session.abortController?.abort();
+    session.abortController?.abort('User stopped generation');
     session.isLoading = false;
     session.streamingMessage = undefined;
     session.abortController = undefined;

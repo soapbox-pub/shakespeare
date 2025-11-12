@@ -96,7 +96,7 @@ export class CurlCommand implements ShellCommand {
       let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
       if (options.timeout) {
-        timeoutId = setTimeout(() => controller.abort(), options.timeout * 1000);
+        timeoutId = setTimeout(() => controller.abort('Request timeout'), options.timeout * 1000);
         requestInit.signal = controller.signal;
       }
 

@@ -681,12 +681,14 @@ export class Git {
   }
 
   /**
-   * Get current repository state for creating a NIP-34 repository state event
+   * Create initial repository state from current local git repository
+   * This should only be used when no existing state event is found
    */
-  private async getCurrentRepositoryState(dir: string): Promise<{
-    refTags: string[][];
-    headRef?: string;
-  }> {
+  private async createInitialRepositoryState(
+    dir: string,
+    dTag: string,
+    signer: NostrSigner
+  ): Promise<NostrEvent> {
     const refTags: string[][] = [];
     let headRef: string | undefined;
 
@@ -765,11 +767,70 @@ export class Git {
       }
 
       console.log(`Repository state: ${refTags.length} refs, HEAD=${headRef}`);
-      return { refTags, headRef };
     } catch (error) {
       console.error('Failed to get repository state:', error);
       throw new Error(`Failed to get repository state: ${error}`);
     }
+
+    // Create and sign the state event
+    return await signer.signEvent({
+      kind: 30618,
+      created_at: Math.floor(Date.now() / 1000),
+      content: '',
+      tags: [
+        ['d', dTag],
+        ...refTags,
+        ...(headRef ? [['HEAD', headRef]] : []),
+      ],
+    });
+  }
+
+  /**
+   * Apply changes from a push operation to repository state and create updated event
+   * Mutates the state object directly and returns the signed event
+   */
+  private async applyPushAndUpdateStateEvent(
+    state: RespositoryState,
+    remoteRef: string,
+    newCommit: string,
+    signer: NostrSigner
+  ): Promise<NostrEvent> {
+    const remoteRefName = remoteRef.startsWith('refs/') ? remoteRef : `refs/heads/${remoteRef}`;
+
+    // Update the ref
+    state.refs[remoteRefName] = newCommit;
+
+    // Update head commit if this ref is HEAD
+    if (state.HEAD === `ref: ${remoteRefName}`) {
+      state.headCommit = newCommit;
+    }
+
+    // Extract d tag from original event
+    const dTag = state.event.tags.find(([name]) => name === 'd');
+    if (!dTag || !dTag[1]) {
+      throw new Error('Repository state event missing required d tag');
+    }
+
+    const tags: string[][] = [['d', dTag[1]]];
+
+    // Add HEAD if set
+    if (state.HEAD) {
+      tags.push(['HEAD', state.HEAD]);
+    }
+    // Add all refs
+    for (const [ref, commit] of Object.entries(state.refs)) {
+      tags.push([ref, commit]);
+    }
+
+    // Create and sign the updated event
+    state.event = await signer.signEvent({
+      kind: 30618,
+      created_at: Math.floor(Date.now() / 1000),
+      content: '',
+      tags,
+    });
+
+    return state.event;
   }
 
   /**
@@ -1820,20 +1881,30 @@ export class Git {
       }
     }
 
-    // Get current repository state
-    const repoState = await this.getCurrentRepositoryState(dir);
+    // Update or create repository state
+    let stateEvent: NostrEvent;
 
-    // Create repository state event (kind 30618)
-    const stateEvent = await signer.signEvent({
-      kind: 30618,
-      created_at: Math.floor(Date.now() / 1000),
-      content: '',
-      tags: [
-        ['d', nostrURI.d], // Repository identifier
-        ...repoState.refTags,
-        ...(repoState.headRef ? [['HEAD', repoState.headRef]] : []),
-      ],
-    });
+    if (state) {
+      // We have an existing state event - update it with the new ref
+
+      // Get the commit we're pushing
+      let localCommit: string;
+      try {
+        localCommit = await git.resolveRef({
+          fs: this.fs,
+          dir,
+          ref,
+        });
+      } catch (error) {
+        throw new Error(`Failed to resolve local ref ${ref}: ${error}`);
+      }
+
+      // Apply push changes and create updated event
+      stateEvent = await this.applyPushAndUpdateStateEvent(state, remoteRef, localCommit, signer);
+    } else {
+      // No existing state event - create initial state from repository
+      stateEvent = await this.createInitialRepositoryState(dir, nostrURI.d, signer);
+    }
 
     // Publish the state event to Nostr relays
     console.log(`Publishing repository state to ${relayUrls.length} relays`);

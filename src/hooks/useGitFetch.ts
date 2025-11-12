@@ -346,7 +346,7 @@ export function useGitFetch(projectId: string | null) {
     if (currentBranchChanged && query.data.currentBranch) {
       toast({
         title: 'Remote changes detected',
-        description: `The ${query.data.currentBranch} branch has new commits available.`,
+        description: `The ${query.data.currentBranch} branch has ${query.data.currentBranchOid === null ? 'been deleted' : 'new commits available'}.`,
         variant: 'default',
       });
 

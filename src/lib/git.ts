@@ -1388,7 +1388,7 @@ export class Git {
 
   /**
    * Update remote tracking refs to match the Nostr state if git data present locally
-   * @returns refs with missing data including HEAD
+   * @returns refs with missing data including HEAD, updated refs, and deleted stale refs
    */
   private async updateRemoteRefsToNostrState(
     state: RespositoryState,
@@ -1396,16 +1396,18 @@ export class Git {
   ): Promise<{
     updated?: Record<string, string>,
     refsWithMissingData?: Record<string, string>,
+    deleted?: string[],
    }> {
     // Get the remote name from options (passed from the fetch call)
     const remoteName = options.remote || 'origin';
 
     const refsWithMissingData: Record<string, string> = {};
     const updated: Record<string, string> = {};
-    for (const [refName, entry] of [
+    const entries = [
       ...Object.entries(state.refs),
       ...(state.HEAD ? [["HEAD", state.HEAD]] : [])
-    ]) {
+    ];
+    for (const [refName, entry] of entries) {
       // update symbolic ref to use remote ref
       const value = entry.startsWith("ref: ") ? `ref: ${this.localRefToRemoteRef(remoteName, entry.slice(5))}` : entry;
       const isSymbolic = value.startsWith("ref: ");
@@ -1456,9 +1458,48 @@ export class Git {
       }
     }
 
+    // Delete local remote refs that don't exist in Repository State
+    const deleted: string[] = [];
+    try {
+      // Get all local remote tracking refs for this remote
+      const localRemoteRefs = await git.listRefs({
+        fs: this.fs,
+        dir: options.dir,
+        filepath: `refs/remotes/${remoteName}`
+      });
+
+      // Build set of expected remote refs based on Repository State
+      // This should match the same set of refs we iterated over above
+      const expectedRemoteRefs = new Set<string>();
+      for (const [refName] of entries) {
+        expectedRemoteRefs.add(this.localRefToRemoteRef(remoteName, refName));
+      }
+      // Delete any local remote refs that don't exist in the Repository State
+      for (const localRemoteRef of localRemoteRefs) {
+        const fullRef = this.localRefToRemoteRef(remoteName, localRemoteRef);
+        
+        if (!expectedRemoteRefs.has(fullRef)) {
+          try {
+            await git.deleteRef({
+              fs: this.fs,
+              dir: options.dir,
+              ref: fullRef,
+            });
+            console.log(`✓ Deleted stale remote ref ${localRemoteRef}`);
+            deleted.push(localRemoteRef);
+          } catch (error) {
+            console.warn(`Failed to delete stale remote ref ${localRemoteRef}:`, error);
+          }
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to clean up stale remote refs:', error);
+    }
+
     return {
       refsWithMissingData: Object.keys(refsWithMissingData).length > 0 ? refsWithMissingData : undefined,
       updated: Object.keys(updated).length > 0 ? updated : undefined,
+      deleted: deleted.length > 0 ? deleted : undefined,
     }
   }
 

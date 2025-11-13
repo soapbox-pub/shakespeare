@@ -11,6 +11,8 @@ import { NostrMetadata } from '@nostrify/nostrify';
 import { MalformedToolCallError } from './errors/MalformedToolCallError';
 import { EmptyMessageError } from './errors/EmptyMessageError';
 import { isEmptyMessage } from './isEmptyMessage';
+import { Git } from './git';
+import type { NPool } from '@nostrify/nostrify';
 
 export type AIMessage = OpenAI.Chat.Completions.ChatCompletionMessageParam | {
   role: 'assistant';
@@ -58,6 +60,7 @@ export class SessionManager {
   private sessions = new Map<string, SessionState>();
   private listeners: Partial<Record<keyof SessionManagerEvents, Set<(...args: unknown[]) => void>>> = {};
   private fs: JSRuntimeFS;
+  private git: Git;
   private aiSettings: { providers: AIProvider[] };
   private getProviderModels?: () => Array<{ id: string; provider: string; contextLength?: number; pricing?: { prompt: import('decimal.js').Decimal; completion: import('decimal.js').Decimal } }>;
   private getCurrentUser?: () => { user?: NUser; metadata?: NostrMetadata };
@@ -67,6 +70,7 @@ export class SessionManager {
 
   constructor(
     fs: JSRuntimeFS,
+    nostr: NPool,
     aiSettings: { providers: AIProvider[] },
     getProviderModels?: () => Array<{ id: string; provider: string; contextLength?: number; pricing?: { prompt: import('decimal.js').Decimal; completion: import('decimal.js').Decimal } }>,
     getCurrentUser?: () => { user?: NUser; metadata?: NostrMetadata },
@@ -75,6 +79,7 @@ export class SessionManager {
     pluginsPath?: string,
   ) {
     this.fs = fs;
+    this.git = new Git({ fs, nostr, corsProxy });
     this.aiSettings = aiSettings;
     this.getProviderModels = getProviderModels;
     this.getCurrentUser = getCurrentUser;
@@ -238,6 +243,15 @@ export class SessionManager {
           tool_calls: undefined
         };
 
+        // Get repository URL if available
+        let repositoryUrl: string | undefined;
+        try {
+          const remoteUrl = await this.git.getRemoteURL(`${this.projectsPath}/${projectId}`, 'origin');
+          repositoryUrl = remoteUrl || undefined;
+        } catch {
+          // No repository URL available
+        }
+
         const systemPrompt = await makeSystemPrompt({
           cwd: `${this.projectsPath}/${projectId}`,
           fs: this.fs,
@@ -249,6 +263,7 @@ export class SessionManager {
           user,
           metadata,
           corsProxy: this.corsProxy,
+          repositoryUrl,
         });
 
         // Prepare messages for AI

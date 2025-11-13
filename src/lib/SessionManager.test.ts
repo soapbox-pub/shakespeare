@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { SessionManager, type AIMessage } from './SessionManager';
 import type { JSRuntimeFS } from './JSRuntime';
+import type { NPool } from '@nostrify/nostrify';
 
 // Mock the filesystem
 const mockFS: JSRuntimeFS = {
@@ -22,6 +23,13 @@ const mockFS: JSRuntimeFS = {
   realpath: vi.fn(),
 } as unknown as JSRuntimeFS;
 
+// Mock NPool
+const mockNostr: NPool = {
+  query: vi.fn(),
+  req: vi.fn(),
+  event: vi.fn(),
+} as unknown as NPool;
+
 describe('SessionManager', () => {
   let sessionManager: SessionManager;
   const mockAISettings = {
@@ -35,7 +43,7 @@ describe('SessionManager', () => {
   };
 
   beforeEach(() => {
-    sessionManager = new SessionManager(mockFS, mockAISettings);
+    sessionManager = new SessionManager(mockFS, mockNostr, mockAISettings);
   });
 
   it('should initialize streaming message with reasoning content', async () => {

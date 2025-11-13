@@ -7,6 +7,7 @@ import { useAISettings } from '@/hooks/useAISettings';
 import { useProviderModels } from '@/hooks/useProviderModels';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useAppContext } from '@/hooks/useAppContext';
+import { useNostr } from '@nostrify/react';
 
 interface SessionManagerProviderProps {
   children: ReactNode;
@@ -22,12 +23,13 @@ export function SessionManagerProvider({ children }: SessionManagerProviderProps
   const { models } = useProviderModels();
   const { user, metadata } = useCurrentUser();
   const { config } = useAppContext();
+  const { nostr } = useNostr();
 
   const sessionManager = useMemo(() => {
     const getProviderModels = () => models;
     const getCurrentUser = () => ({ user, metadata });
-    return new SessionManager(fs, settings, getProviderModels, getCurrentUser, config.corsProxy, projectsPath, pluginsPath);
-  }, [fs, settings, models, user, metadata, config.corsProxy, projectsPath, pluginsPath]);
+    return new SessionManager(fs, nostr, settings, getProviderModels, getCurrentUser, config.corsProxy, projectsPath, pluginsPath);
+  }, [fs, nostr, settings, models, user, metadata, config.corsProxy, projectsPath, pluginsPath]);
 
   // Cleanup on unmount
   useEffect(() => {

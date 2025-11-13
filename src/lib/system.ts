@@ -17,10 +17,11 @@ export interface MakeSystemPromptOpts {
   user?: NUser;
   metadata?: NostrMetadata;
   corsProxy?: string;
+  repositoryUrl?: string;
 }
 
 export async function makeSystemPrompt(opts: MakeSystemPromptOpts): Promise<string> {
-  const { name, profession, tools, mode, fs, cwd, pluginsPath, user, metadata, corsProxy } = opts;
+  const { name, profession, tools, mode, fs, cwd, pluginsPath, user, metadata, corsProxy, repositoryUrl } = opts;
 
   let system = mode === "init"
     ? `You are ${name}, an expert ${profession}. The files in the current directory are a template. Your goal is to transform this template into a working project according to the user's request.`
@@ -62,6 +63,7 @@ You are operating within **Shakespeare**, an AI-powered Nostr website builder th
 - **Current Date**: ${currentDate}
 - **Current Page**: ${location.href}
 - **Current Working Directory**: ${cwd}
+- **Repository URL**: ${repositoryUrl}
 
 ## What Shakespeare Is
 
@@ -222,6 +224,39 @@ If you encounter CORS (Cross-Origin Resource Sharing) errors when fetching exter
 **CORS Proxy URL Template**: \`${corsProxy}\`
 
 Replace \`{href}\`, \`{hostname}\`, or other URL components in the template as needed.`;
+  }
+
+  // Add Edit with Shakespeare section
+  system += `
+
+## Edit with Shakespeare
+
+The "Edit with Shakespeare" button is a way that people can start editing any Shakespeare-compatible site with a single click. It can be added anywhere markdown or HTML is supported, including in READMEs, or within an app itself.`;
+
+  if (repositoryUrl) {
+    const badgeUrl = new URL('/badge.svg', location.origin);
+    const editUrl = new URL('/clone', location.origin);
+    editUrl.searchParams.set('url', repositoryUrl);
+
+    system += `
+
+This project has a repository URL configured, so you can create an "Edit with Shakespeare" button using the following code snippets:
+
+**Markdown:**
+\`\`\`markdown
+[![Edit with Shakespeare](${badgeUrl})](${editUrl})
+\`\`\`
+
+**HTML/JSX/TSX:**
+\`\`\`jsx
+<a href="${editUrl}" target="_blank">
+  <img src="${badgeUrl}" alt="Edit with Shakespeare" />
+</a>
+\`\`\``;
+  } else {
+    system += `
+
+**Important**: This project does not currently have a repository URL configured. If the user asks about adding an "Edit with Shakespeare" button, inform them that they must first initialize a public Git repository from their Shakespeare project. Once a repository URL is available, an "Edit with Shakespeare" button can be created.`;
   }
 
   // Add README.md if it exists

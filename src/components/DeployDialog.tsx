@@ -124,6 +124,7 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
   const [isDeploying, setIsDeploying] = useState(false);
   const [deployResult, setDeployResult] = useState<{ url: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isShakespeareFormValid, setIsShakespeareFormValid] = useState(true);
 
   // Provider-specific form data
   const [shakespeareForm, setShakespeareForm] = useState<ShakespeareFormData>({
@@ -294,6 +295,10 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
     setShakespeareForm({ subdomain });
   }, []);
 
+  const handleShakespeareValidationChange = useCallback((isValid: boolean) => {
+    setIsShakespeareFormValid(isValid);
+  }, []);
+
   const handleNsiteNsecChange = useCallback((nsec: string) => {
     setNsiteForm({ nsec });
   }, []);
@@ -317,6 +322,7 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
           host={shakespeareProvider.host}
           projectId={projectId}
           onSubdomainChange={handleShakespeareSubdomainChange}
+          onValidationChange={handleShakespeareValidationChange}
         />
       );
     }
@@ -495,6 +501,7 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
                       !selectedProvider ||
                       isDeploying ||
                       (selectedProvider.type === 'shakespeare' && !user) ||
+                      (selectedProvider.type === 'shakespeare' && !isShakespeareFormValid) ||
                       (selectedProvider.type === 'nsite' && !nsiteForm.nsec) ||
                       (selectedProvider.type === 'netlify' && !netlifyForm.siteId && !netlifyForm.siteName)
                     }

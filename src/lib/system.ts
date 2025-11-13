@@ -252,7 +252,9 @@ This project has a repository URL configured, so you can create an "Edit with Sh
 <a href="${editUrl}" target="_blank">
   <img src="${badgeUrl}" alt="Edit with Shakespeare" />
 </a>
-\`\`\``;
+\`\`\`
+
+Note: the badge should be displayed at its natural size. It is recommended to omit width/height attributes to ensure proper scaling, or use \`height: auto\` in CSS (or \`"h-auto"\` in Tailwind CSS) when applicable.`;
   } else {
     system += `
 

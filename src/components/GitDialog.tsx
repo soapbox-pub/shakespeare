@@ -616,12 +616,18 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
         });
       }
 
-      const commitCount = gitStatus.remoteBranchExists ? gitStatus.ahead : gitStatus.totalCommits;
-      const action = gitStatus.remoteBranchExists ? 'pushed to' : 'published to';
-      toast({
-        title: "Push successful",
-        description: `${commitCount} commit${commitCount !== 1 ? 's' : ''} ${action} ${remote.name}/${gitStatus.currentBranch}`,
-      });
+      // Show different messages for publishing new branches vs pushing commits
+      if (gitStatus.remoteBranchExists) {
+        toast({
+          title: "Push successful",
+          description: `${gitStatus.ahead} commit${gitStatus.ahead !== 1 ? 's' : ''} pushed to ${remote.name}/${gitStatus.currentBranch}`,
+        });
+      } else {
+        toast({
+          title: "Branch published",
+          description: `New branch published to ${remote.name}/${gitStatus.currentBranch}`,
+        });
+      }
 
       // Refresh git status after push
       await refetchGitStatus();

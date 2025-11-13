@@ -9,8 +9,10 @@ import { useEffect, useRef } from 'react';
 interface FetchResult {
   defaultBranch: string | null;
   defaultBranchOid: string | null;
+  defaultBranchChanged: boolean;
   currentBranch: string | null;
   currentBranchOid: string | null;
+  currentBranchChanged: boolean;
   fetchedAt: number;
   hasChanges: boolean;
   remoteUrl: string | null;
@@ -30,11 +32,10 @@ export function useGitFetch(projectId: string | null) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Track previous state to detect changes
-  const previousStateRef = useRef<{
-    defaultBranchOid: string | null;
-    currentBranchOid: string | null;
-  } | null>(null);
+  // Track which branches we've already notified about to avoid duplicate toasts
+  const notifiedBranchesRef = useRef<Set<string>>(new Set());
+  // Track if this is the first successful fetch to avoid showing toasts on initial load
+  const isFirstFetchRef = useRef(true);
 
   const query = useQuery({
     queryKey: ['git-fetch', projectId],
@@ -47,8 +48,10 @@ export function useGitFetch(projectId: string | null) {
         return {
           defaultBranch: null,
           defaultBranchOid: null,
+          defaultBranchChanged: false,
           currentBranch: null,
           currentBranchOid: null,
+          currentBranchChanged: false,
           fetchedAt: Date.now(),
           hasChanges: false,
           remoteUrl: null,
@@ -68,8 +71,10 @@ export function useGitFetch(projectId: string | null) {
           return {
             defaultBranch: null,
             defaultBranchOid: null,
+            defaultBranchChanged: false,
             currentBranch: null,
             currentBranchOid: null,
+            currentBranchChanged: false,
             fetchedAt: Date.now(),
             hasChanges: false,
             remoteUrl: null,
@@ -85,8 +90,10 @@ export function useGitFetch(projectId: string | null) {
           return {
             defaultBranch: null,
             defaultBranchOid: null,
+            defaultBranchChanged: false,
             currentBranch: null,
             currentBranchOid: null,
+            currentBranchChanged: false,
             fetchedAt: Date.now(),
             hasChanges: false,
             remoteUrl: null,
@@ -102,8 +109,10 @@ export function useGitFetch(projectId: string | null) {
           return {
             defaultBranch: null,
             defaultBranchOid: null,
+            defaultBranchChanged: false,
             currentBranch: null,
             currentBranchOid: null,
+            currentBranchChanged: false,
             fetchedAt: Date.now(),
             hasChanges: false,
             remoteUrl: null,
@@ -265,21 +274,20 @@ export function useGitFetch(projectId: string | null) {
                                      beforeCurrentOid !== afterCurrentOid &&
                                      currentBranch !== defaultBranch; // Don't double-report if they're the same
 
-        const hasChanges = defaultBranchChanged || currentBranchChanged;
-
         console.log('Changes detected:', {
           defaultBranchChanged,
           currentBranchChanged,
-          hasChanges,
         });
 
         const result = {
           defaultBranch,
           defaultBranchOid: afterDefaultOid,
+          defaultBranchChanged,
           currentBranch,
           currentBranchOid: afterCurrentOid,
+          currentBranchChanged,
           fetchedAt: Date.now(),
-          hasChanges,
+          hasChanges: defaultBranchChanged || currentBranchChanged,
           remoteUrl,
         };
 
@@ -304,37 +312,25 @@ export function useGitFetch(projectId: string | null) {
       return;
     }
 
-    const currentState = {
-      defaultBranchOid: query.data.defaultBranchOid,
-      currentBranchOid: query.data.currentBranchOid,
-    };
-
-    // Skip on first load
-    if (previousStateRef.current === null) {
-      previousStateRef.current = currentState;
+    // Skip toasts on the first successful fetch (initial load)
+    if (isFirstFetchRef.current) {
+      isFirstFetchRef.current = false;
       return;
     }
 
-    const prevState = previousStateRef.current;
+    const { defaultBranch, defaultBranchChanged, currentBranch, currentBranchChanged, fetchedAt } = query.data;
 
-    // Detect default branch changes
-    const defaultBranchChanged =
-      prevState.defaultBranchOid !== null &&
-      currentState.defaultBranchOid !== null &&
-      prevState.defaultBranchOid !== currentState.defaultBranchOid;
-
-    // Detect current branch changes
-    const currentBranchChanged =
-      prevState.currentBranchOid !== null &&
-      currentState.currentBranchOid !== null &&
-      prevState.currentBranchOid !== currentState.currentBranchOid &&
-      query.data.currentBranch !== query.data.defaultBranch;
+    // Create a unique key for this fetch's branch changes
+    const defaultBranchKey = defaultBranch ? `${fetchedAt}-${defaultBranch}` : null;
+    const currentBranchKey = currentBranch ? `${fetchedAt}-${currentBranch}` : null;
 
     // Show toast for default branch changes
-    if (defaultBranchChanged && query.data.defaultBranch) {
+    if (defaultBranchChanged && defaultBranch && defaultBranchKey && !notifiedBranchesRef.current.has(defaultBranchKey)) {
+      notifiedBranchesRef.current.add(defaultBranchKey);
+
       toast({
         title: 'Remote changes detected',
-        description: `The ${query.data.defaultBranch} branch has new commits available.`,
+        description: `The ${defaultBranch} branch has new commits available.`,
         variant: 'default',
       });
 
@@ -343,19 +339,18 @@ export function useGitFetch(projectId: string | null) {
     }
 
     // Show toast for current branch changes (if different from default)
-    if (currentBranchChanged && query.data.currentBranch) {
+    if (currentBranchChanged && currentBranch && currentBranchKey && !notifiedBranchesRef.current.has(currentBranchKey)) {
+      notifiedBranchesRef.current.add(currentBranchKey);
+
       toast({
         title: 'Remote changes detected',
-        description: `The ${query.data.currentBranch} branch has new commits available.`,
+        description: `The ${currentBranch} branch has new commits available.`,
         variant: 'default',
       });
 
       // Invalidate git status to show new ahead/behind counts
       queryClient.invalidateQueries({ queryKey: ['git-status', projectId] });
     }
-
-    // Update previous state
-    previousStateRef.current = currentState;
   }, [query.data, query.isSuccess, toast, queryClient, projectId]);
 
   return query;

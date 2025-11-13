@@ -67,6 +67,7 @@ export class SessionManager {
   private corsProxy?: string;
   private projectsPath: string;
   private pluginsPath?: string;
+  private systemPromptTemplate?: string;
 
   constructor(
     fs: JSRuntimeFS,
@@ -77,6 +78,7 @@ export class SessionManager {
     corsProxy?: string,
     projectsPath = '/projects',
     pluginsPath?: string,
+    systemPromptTemplate?: string,
   ) {
     this.fs = fs;
     this.git = new Git({ fs, nostr, corsProxy });
@@ -86,6 +88,7 @@ export class SessionManager {
     this.projectsPath = projectsPath;
     this.pluginsPath = pluginsPath;
     this.corsProxy = corsProxy;
+    this.systemPromptTemplate = systemPromptTemplate;
   }
 
   /**
@@ -256,14 +259,13 @@ export class SessionManager {
           cwd: `${this.projectsPath}/${projectId}`,
           fs: this.fs,
           mode: "agent",
-          name: "Shakespeare",
-          profession: "software extraordinaire",
           tools: Object.values(session.tools),
           pluginsPath: this.pluginsPath,
           user,
           metadata,
           corsProxy: this.corsProxy,
           repositoryUrl,
+          template: this.systemPromptTemplate,
         });
 
         // Prepare messages for AI

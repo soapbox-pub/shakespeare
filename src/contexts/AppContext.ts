@@ -44,6 +44,8 @@ export interface AppConfig {
   sentryDsn: string;
   /** Whether the user has enabled Sentry error reporting */
   sentryEnabled: boolean;
+  /** System prompt EJS template */
+  systemPrompt?: string;
 }
 
 export interface AppContextType {

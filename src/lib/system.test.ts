@@ -39,8 +39,6 @@ describe('makeSystemPrompt', () => {
 
     // Base options for tests
     baseOpts = {
-      name: 'TestBot',
-      profession: 'software developer',
       tools: [],
       mode: 'agent',
       fs: mockFs,
@@ -55,7 +53,7 @@ describe('makeSystemPrompt', () => {
     it('should generate a basic system prompt in agent mode', async () => {
       const result = await makeSystemPrompt(baseOpts);
 
-      expect(result).toContain('You are TestBot, an expert software developer');
+      expect(result).toContain('You are Shakespeare, an expert software extraordinaire');
       expect(result).toContain('Your goal is to work on the project in the current directory');
       expect(result).toContain('explore and understand the project structure');
     });
@@ -63,7 +61,7 @@ describe('makeSystemPrompt', () => {
     it('should generate a basic system prompt in init mode', async () => {
       const result = await makeSystemPrompt({ ...baseOpts, mode: 'init' });
 
-      expect(result).toContain('You are TestBot, an expert software developer');
+      expect(result).toContain('You are Shakespeare, an expert software extraordinaire');
       expect(result).toContain('The files in the current directory are a template');
       expect(result).toContain('transform this template into a working project');
     });
@@ -445,6 +443,58 @@ describe('makeSystemPrompt', () => {
 
       expect(result).toContain('## Your Role');
       expect(result).toContain('Always commit your code changes');
+    });
+  });
+
+  describe('custom template support', () => {
+    it('should render a custom template when provided', async () => {
+      const customTemplate = `Hello Shakespeare! Current directory: <%= ctx.cwd %>`;
+
+      const result = await makeSystemPrompt({
+        ...baseOpts,
+        template: customTemplate,
+      });
+
+      expect(result).toContain('Hello Shakespeare!');
+      expect(result).toContain('Current directory: /projects/test-project');
+      expect(result).not.toContain('# Your Environment'); // Should not include default template content
+    });
+
+    it('should support conditional logic in custom templates', async () => {
+      const customTemplate = `<% if (ctx.mode === 'init') { %>Initializing...<% } else { %>Working on project<% } %>`;
+
+      const result = await makeSystemPrompt({
+        ...baseOpts,
+        mode: 'agent',
+        template: customTemplate,
+      });
+
+      expect(result).toContain('Working on project');
+      expect(result).not.toContain('Initializing');
+    });
+
+    it('should provide access to all context variables in custom templates', async () => {
+      const user = new NUser(
+        'extension',
+        'abc123def456',
+        {} as NUser['signer']
+      );
+
+      const customTemplate = `User: <%= ctx.user?.pubkey || 'none' %>
+CWD: <%= ctx.cwd %>
+Origin: <%= ctx.originUrl %>
+Skills: <%= ctx.skills.length %>`;
+
+      const result = await makeSystemPrompt({
+        ...baseOpts,
+        user,
+        template: customTemplate,
+      });
+
+      expect(result).toContain('User: abc123def456');
+      expect(result).toContain('CWD: /projects/test-project');
+      expect(result).toContain('Origin: http://localhost:3000');
+      expect(result).toContain('Skills: 0');
     });
   });
 });

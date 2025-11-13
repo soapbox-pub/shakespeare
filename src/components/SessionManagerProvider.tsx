@@ -28,8 +28,8 @@ export function SessionManagerProvider({ children }: SessionManagerProviderProps
   const sessionManager = useMemo(() => {
     const getProviderModels = () => models;
     const getCurrentUser = () => ({ user, metadata });
-    return new SessionManager(fs, nostr, settings, getProviderModels, getCurrentUser, config.corsProxy, projectsPath, pluginsPath);
-  }, [fs, nostr, settings, models, user, metadata, config.corsProxy, projectsPath, pluginsPath]);
+    return new SessionManager(fs, nostr, settings, getProviderModels, getCurrentUser, config.corsProxy, projectsPath, pluginsPath, config.systemPrompt);
+  }, [fs, nostr, settings, models, user, metadata, config.corsProxy, projectsPath, pluginsPath, config.systemPrompt]);
 
   // Cleanup on unmount
   useEffect(() => {

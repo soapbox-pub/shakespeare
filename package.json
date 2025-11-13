@@ -71,6 +71,7 @@
     "decimal.js": "^10.6.0",
     "embla-carousel-react": "^8.3.0",
     "esbuild-wasm": "^0.25.8",
+    "eta": "^4.4.1",
     "gray-matter": "^4.0.3",
     "i18next": "^25.5.2",
     "ignore": "^7.0.5",

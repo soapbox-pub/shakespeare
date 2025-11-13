@@ -3,12 +3,11 @@ import { NostrMetadata } from "@nostrify/nostrify";
 import { join } from "path-browserify";
 import OpenAI from "openai";
 import { nip19 } from "nostr-tools";
+import { Eta } from "eta";
 import { JSRuntimeFS } from "./JSRuntime";
 import { getAllSkills } from "./plugins";
 
 export interface MakeSystemPromptOpts {
-  name: string;
-  profession: string;
   tools: OpenAI.Chat.Completions.ChatCompletionTool[];
   mode: "init" | "agent";
   fs: JSRuntimeFS;
@@ -18,52 +17,23 @@ export interface MakeSystemPromptOpts {
   metadata?: NostrMetadata;
   corsProxy?: string;
   repositoryUrl?: string;
+  template?: string;
 }
 
-export async function makeSystemPrompt(opts: MakeSystemPromptOpts): Promise<string> {
-  const { name, profession, tools, mode, fs, cwd, pluginsPath, user, metadata, corsProxy, repositoryUrl } = opts;
+/**
+ * Default system prompt template.
+ * This can be customized by users in Settings > System > System Prompt.
+ */
+export const defaultSystemPrompt = `<% if (ctx.mode === "init") { %>You are Shakespeare, an expert software extraordinaire. The files in the current directory are a template. Your goal is to transform this template into a working project according to the user's request.<% } else { %>You are Shakespeare, an expert software extraordinaire. Your goal is to work on the project in the current directory according to the user's request. First, explore and understand the project structure, examine the existing files, and understand the context before making any assumptions about what the user is asking for.<% } %>
 
-  let system = mode === "init"
-    ? `You are ${name}, an expert ${profession}. The files in the current directory are a template. Your goal is to transform this template into a working project according to the user's request.`
-    : `You are ${name}, an expert ${profession}. Your goal is to work on the project in the current directory according to the user's request. First, explore and understand the project structure, examine the existing files, and understand the context before making any assumptions about what the user is asking for.`;
-
-  // Add current date
-  const currentDate = new Date().toLocaleDateString("en-US", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-
-  let userText: string;
-  if (user) {
-    userText = `The user is logged into Nostr with the following profile:
-
-- **Nostr pubkey (hex)**: ${user.pubkey}
-- **Nostr npub**: ${nip19.npubEncode(user.pubkey)}`;
-
-    if (metadata?.name) userText += `\n- **Name**: ${metadata.name}`;
-    if (metadata?.about) userText += `\n- **About**: ${metadata.about.replace(/[\r\n]+/g, ' ')}`;
-    if (metadata?.website) userText += `\n- **Website**: ${metadata.website}`;
-    if (metadata?.picture) userText += `\n- **Avatar**: ${metadata.picture}`;
-    if (metadata?.banner) userText += `\n- **Banner**: ${metadata.banner}`;
-    if (metadata?.nip05) userText += `\n- **NIP-05**: ${metadata.nip05}`;
-    if (metadata?.lud16) userText += `\n- **Lightning Address**: ${metadata.lud16}`;
-
-    userText += `\n\nSince the user is logged in, they can deploy their creations to public URLs and use Nostr-enabled AI providers.`;
-  } else {
-    userText = `The user is not logged in. The user can log into Nostr by clicking the "Login" button in the sidebar menu. Logging in will allow the user to deploy their creations to public URLs and use Nostr-enabled AI providers.`;
-  }
-
-  // Add Your Environment section
-  system += `\n\n# Your Environment
+# Your Environment
 
 You are operating within **Shakespeare**, an AI-powered Nostr website builder that allows users to create custom Nostr applications through natural language conversation.
 
-- **Current Date**: ${currentDate}
-- **Current Page**: ${location.href}
-- **Current Working Directory**: ${cwd}
-- **Repository URL**: ${repositoryUrl}
+- **Current Date**: <%= ctx.currentDate %>
+- **Current Page**: <%= ctx.currentPage %>
+- **Current Working Directory**: <%= ctx.cwd %>
+- **Repository URL**: <%= ctx.repositoryUrl %>
 
 ## What Shakespeare Is
 
@@ -81,7 +51,19 @@ Shakespeare is a web-based development environment where users can build Nostr w
 
 ## The User
 
-${userText}
+<% if (ctx.user) { %>The user is logged into Nostr with the following profile:
+
+- **Nostr pubkey (hex)**: <%= ctx.user.pubkey %>
+- **Nostr npub**: <%= ctx.npub %><% if (ctx.metadata?.name) { %>
+- **Name**: <%= ctx.metadata.name %><% } %><% if (ctx.metadata?.about) { %>
+- **About**: <%= ctx.sanitizeNewlines(ctx.metadata.about) %><% } %><% if (ctx.metadata?.website) { %>
+- **Website**: <%= ctx.metadata.website %><% } %><% if (ctx.metadata?.picture) { %>
+- **Avatar**: <%= ctx.metadata.picture %><% } %><% if (ctx.metadata?.banner) { %>
+- **Banner**: <%= ctx.metadata.banner %><% } %><% if (ctx.metadata?.nip05) { %>
+- **NIP-05**: <%= ctx.metadata.nip05 %><% } %><% if (ctx.metadata?.lud16) { %>
+- **Lightning Address**: <%= ctx.metadata.lud16 %><% } %>
+
+Since the user is logged in, they can deploy their creations to public URLs and use Nostr-enabled AI providers.<% } else { %>The user is not logged in. The user can log into Nostr by clicking the "Login" button in the sidebar menu. Logging in will allow the user to deploy their creations to public URLs and use Nostr-enabled AI providers.<% } %>
 
 ## User Interface
 
@@ -166,121 +148,149 @@ As the AI assistant in Shakespeare, you help users by:
 
 The user expects you to handle all technical implementation while they focus on describing their vision and requirements. You can leverage the knowledge from other projects in the VFS to build better, more sophisticated applications.
 
-**Always commit your code changes** after completing work on a feature, fix, or meaningful set of changes.`;
+**Always commit your code changes** after completing work on a feature, fix, or meaningful set of changes.<% if (ctx.tools.length > 0) { %>
 
-  // Add available tools to the system prompt
-  const toolNames = tools
-    .filter((tool) => tool.type === "function")
-    .map((tool) => tool.function.name);
+## Available Tools
 
-  if (toolNames.length > 0) {
-    system +=
-      "\n\n## Available Tools\n\nYou have access to the following tools:\n";
-    for (const tool of tools) {
-      if (tool.type === "function") {
-        system += `\n- **${tool.function.name}**: ${
-          tool.function.description || "No description available"
-        }`;
-      }
-    }
-  }
+You have access to the following tools:
+<% ctx.tools.forEach(function(tool) { if (tool.type === 'function') { %>
+- **<%= tool.function.name %>**: <%= tool.function.description || 'No description available' %><% } }); %><% } %>
 
-  // Add skills section
-  system += "\n\n## Skills\n\n";
+## Skills
 
-  if (pluginsPath) {
-    try {
-      const skills = await getAllSkills(fs, pluginsPath);
+<% if (ctx.skills && ctx.skills.length > 0) { %>You have access to the following skills. **Skills MUST be used whenever applicable** by calling the <%= ctx.backtick %>skill<%= ctx.backtick %> tool with the skill name.
 
-      if (skills.length > 0) {
-        system += "You have access to the following skills. **Skills MUST be used whenever applicable** by calling the `skill` tool with the skill name.\n\n";
-        system += "Available skills:\n\n";
+Available skills:
+<% ctx.skills.forEach(function(skill) { %>
+- **<%= skill.name %>**: <%= skill.description %>
+  - Plugin: <%= skill.plugin %>
+  - Path: <%= skill.path %>
+<% }); %>
 
-        for (const skill of skills) {
-          system += `- **${skill.name}**: ${skill.description}\n  - Plugin: ${skill.plugin}\n  - Path: ${skill.path}\n`;
-        }
+**Important**: When a task matches a skill's description, you MUST use that skill by calling the skill tool. Skills contain specialized workflows and best practices for specific tasks.<% } else { %>No skills are currently configured. Skills are reusable AI workflows that can be added via plugins.<% } %>
 
-        system += `\n**Important**: When a task matches a skill's description, you MUST use that skill by calling the skill tool. Skills contain specialized workflows and best practices for specific tasks.\n`;
-      } else {
-        system += "No skills are currently configured. Skills are reusable AI workflows that can be added via plugins.\n";
-      }
-    } catch {
-      system += "No skills are currently configured. Skills are reusable AI workflows that can be added via plugins.\n";
-    }
-  } else {
-    system += "No skills are currently configured. Skills are reusable AI workflows that can be added via plugins.\n";
-  }
-
-  system += `\nUsers can configure skills in Settings > AI (${location.origin}/settings/ai) by adding plugins that contain skills.`;
-
-  // Add CORS proxy information
-  if (corsProxy) {
-    system += `
+Users can configure skills in Settings > AI (<%= ctx.originUrl %>/settings/ai) by adding plugins that contain skills.<% if (ctx.corsProxy) { %>
 
 ## Working Around CORS Issues
 
 If you encounter CORS (Cross-Origin Resource Sharing) errors when fetching external APIs, use the configured CORS proxy:
 
-**CORS Proxy URL Template**: \`${corsProxy}\`
+**CORS Proxy URL Template**: <%= ctx.backtick %><%= ctx.corsProxy %><%= ctx.backtick %>
 
-Replace \`{href}\`, \`{hostname}\`, or other URL components in the template as needed.`;
-  }
-
-  // Add Edit with Shakespeare section
-  system += `
+Replace <%= ctx.backtick %>{href}<%= ctx.backtick %>, <%= ctx.backtick %>{hostname}<%= ctx.backtick %>, or other URL components in the template as needed.<% } %>
 
 ## Edit with Shakespeare
 
-The "Edit with Shakespeare" button is a way that people can start editing any Shakespeare-compatible site with a single click. It can be added anywhere markdown or HTML is supported, including in READMEs, or within an app itself.`;
-
-  if (repositoryUrl) {
-    const badgeUrl = new URL('/badge.svg', location.origin);
-    const editUrl = new URL('/clone', location.origin);
-    editUrl.searchParams.set('url', repositoryUrl);
-
-    system += `
+The "Edit with Shakespeare" button is a way that people can start editing any Shakespeare-compatible site with a single click. It can be added anywhere markdown or HTML is supported, including in READMEs, or within an app itself.<% if (ctx.repositoryUrl) { %>
 
 This project has a repository URL configured, so you can create an "Edit with Shakespeare" button using the following code snippets:
 
 **Markdown:**
 \`\`\`markdown
-[![Edit with Shakespeare](${badgeUrl})](${editUrl})
+[![Edit with Shakespeare](<%= ctx.badgeUrl %>)](<%= ctx.editUrl %>)
 \`\`\`
 
 **HTML/JSX/TSX:**
 \`\`\`jsx
-<a href="${editUrl}" target="_blank">
-  <img src="${badgeUrl}" alt="Edit with Shakespeare" />
+<a href="<%= ctx.editUrl %>" target="_blank">
+  <img src="<%= ctx.badgeUrl %>" alt="Edit with Shakespeare" />
 </a>
 \`\`\`
 
-Note: the badge should be displayed at its natural size. It is recommended to omit width/height attributes to ensure proper scaling, or use \`height: auto\` in CSS (or \`"h-auto"\` in Tailwind CSS) when applicable.`;
-  } else {
-    system += `
+Note: the badge should be displayed at its natural size. It is recommended to omit width/height attributes to ensure proper scaling, or use <%= ctx.backtick %>height: auto<%= ctx.backtick %> in CSS (or <%= ctx.backtick %>"h-auto"<%= ctx.backtick %> in Tailwind CSS) when applicable.<% } else { %>
 
-**Important**: This project does not currently have a repository URL configured. If the user asks about adding an "Edit with Shakespeare" button, inform them that they must first initialize a public Git repository from their Shakespeare project. Once a repository URL is available, an "Edit with Shakespeare" button can be created.`;
+**Important**: This project does not currently have a repository URL configured. If the user asks about adding an "Edit with Shakespeare" button, inform them that they must first initialize a public Git repository from their Shakespeare project. Once a repository URL is available, an "Edit with Shakespeare" button can be created.<% } %><% if (ctx.readmeText) { %>
+
+<%= ctx.readmeText %><% } %><% if (ctx.agentText) { %>
+
+<%= ctx.agentText %><% } %>`;
+
+export async function makeSystemPrompt(opts: MakeSystemPromptOpts): Promise<string> {
+  const { tools, mode, fs, cwd, pluginsPath, user, metadata, corsProxy, repositoryUrl, template } = opts;
+
+  // Add current date
+  const currentDate = new Date().toLocaleDateString("en-US", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+
+  // Get skills
+  let skills: Array<{ name: string; description: string; plugin: string; path: string }> = [];
+  if (pluginsPath) {
+    try {
+      skills = await getAllSkills(fs, pluginsPath);
+    } catch {
+      // Skills not available, use empty array
+      skills = [];
+    }
   }
 
-  // Add README.md if it exists
+  // Get README.md if it exists
+  let readmeText: string | undefined;
   try {
     const readmePath = join(cwd, "README.md");
-    const readmeText = await fs.readFile(readmePath, "utf8");
-    if (readmeText) {
-      system += "\n\n" + readmeText;
-    }
+    readmeText = await fs.readFile(readmePath, "utf8");
   } catch {
     // README.md not found, continue
   }
 
-  // Add context from AGENTS.md if it exists
+  // Get agent context if it exists
+  let agentText: string | undefined;
   try {
     const { text } = await getAgentContext(fs, cwd);
-    system += "\n\n" + text;
+    agentText = text;
   } catch {
     // AGENTS.md not found, continue
   }
 
-  return system;
+  // Build URLs for Edit with Shakespeare
+  let badgeUrl: string | undefined;
+  let editUrl: string | undefined;
+  if (repositoryUrl) {
+    badgeUrl = new URL('/badge.svg', location.origin).toString();
+    const editUrlObj = new URL('/clone', location.origin);
+    editUrlObj.searchParams.set('url', repositoryUrl);
+    editUrl = editUrlObj.toString();
+  }
+
+  // Build context object for template
+  const context = {
+    mode,
+    currentDate,
+    currentPage: location.href,
+    cwd,
+    repositoryUrl,
+    user,
+    npub: user ? nip19.npubEncode(user.pubkey) : undefined,
+    metadata,
+    tools,
+    skills,
+    corsProxy,
+    originUrl: location.origin,
+    badgeUrl,
+    editUrl,
+    readmeText,
+    agentText,
+    // Helper function to sanitize newlines in text
+    sanitizeNewlines: (text: string) => text.replace(/[\r\n]+/g, ' '),
+    // Helper function to output backticks
+    backtick: '`',
+  };
+
+  // Render the template with the context
+  // Use the provided template, or fall back to the default
+  const templateToRender = template || defaultSystemPrompt;
+
+  try {
+    const eta = new Eta({ varName: 'ctx' });
+    return eta.renderString(templateToRender, context);
+  } catch (error) {
+    console.error("Error rendering system prompt template:", error);
+    // Return the template as-is if rendering fails
+    return templateToRender;
+  }
 }
 
 async function getAgentContext(

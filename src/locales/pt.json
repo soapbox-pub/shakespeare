@@ -55,6 +55,8 @@
   "configDirectoryDescription": "Caminho do sistema de arquivos onde os arquivos de configuração são armazenados",
   "temporaryDirectory": "Diretório Temporário",
   "temporaryDirectoryDescription": "Caminho do sistema de arquivos para arquivos temporários",
+  "systemPrompt": "Prompt do Sistema",
+  "systemPromptDescription": "Personalize o prompt do sistema do assistente de IA usando sintaxe de template EJS. Isso controla o comportamento e conhecimento do assistente.",
   "english": "Inglês",
   "portuguese": "Português",
   "chinese": "Chinês",

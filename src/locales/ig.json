@@ -419,5 +419,8 @@
   "invalidGiftCard": "Kaadị Onyinye Na-ezighị Ezi",
   "giftCardNotFound": "Achọtaghị kaadị onyinye a.",
   "alreadyRedeemed": "Egbapụtalarị",
-  "giftCardAlreadyRedeemed": "Egbapụtalarị kaadị onyinye a."
+  "giftCardAlreadyRedeemed": "Egbapụtalarị kaadị onyinye a.",
+  "modified": "Gbanwere",
+  "restoreToDefault": "Weghachi na nke mbụ",
+  "restoredToDefault": "Weghachiri na Nke Mbụ"
 }

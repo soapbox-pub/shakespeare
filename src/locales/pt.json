@@ -432,5 +432,8 @@
   "invalidGiftCard": "Cartão Presente Inválido",
   "giftCardNotFound": "Este cartão presente não pôde ser encontrado.",
   "alreadyRedeemed": "Já Resgatado",
-  "giftCardAlreadyRedeemed": "Este cartão presente já foi resgatado."
+  "giftCardAlreadyRedeemed": "Este cartão presente já foi resgatado.",
+  "modified": "Modificado",
+  "restoreToDefault": "Restaurar para padrão",
+  "restoredToDefault": "Restaurado para Padrão"
 }

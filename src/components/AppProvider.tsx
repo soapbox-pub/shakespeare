@@ -79,6 +79,7 @@ export function AppProvider(props: AppProviderProps) {
 
   const appContextValue: AppContextType = {
     config,
+    defaultConfig,
     updateConfig,
   };
 

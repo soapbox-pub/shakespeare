@@ -38,28 +38,30 @@ describe('useAIProjectId', () => {
     });
 
     // Mock useAppContext
-    mockUseAppContext.mockReturnValue({
-      config: {
-        theme: 'dark',
-        relayMetadata: {
-          relays: [{ url: 'wss://relay.damus.io', read: true, write: true }],
-          updatedAt: 0,
-        },
-        projectTemplate: 'https://github.com/example/template',
-        esmUrl: 'https://esm.sh',
-        corsProxy: 'https://proxy.example.com/{href}',
-        faviconUrl: 'https://external-content.duckduckgo.com/ip3/{hostname}.ico',
-        previewDomain: 'local-shakespeare.dev',
-        showcaseEnabled: true,
-        showcaseModerator: 'npub1jvnpg4c6ljadf5t6ry0w9q0rnm4mksde87kglkrc993z46c39axsgq89sc',
-        ngitServers: ['git.shakespeare.diy', 'relay.ngit.dev'],
-        fsPathProjects: '/projects',
-        fsPathConfig: '/config',
-        fsPathTmp: '/tmp',
-        fsPathPlugins: '/plugins',
-        sentryDsn: '',
-        sentryEnabled: false,
+    const config = {
+      theme: 'dark' as const,
+      relayMetadata: {
+        relays: [{ url: 'wss://relay.damus.io', read: true, write: true }],
+        updatedAt: 0,
       },
+      projectTemplate: 'https://github.com/example/template',
+      esmUrl: 'https://esm.sh',
+      corsProxy: 'https://proxy.example.com/{href}',
+      faviconUrl: 'https://external-content.duckduckgo.com/ip3/{hostname}.ico',
+      previewDomain: 'local-shakespeare.dev',
+      showcaseEnabled: true,
+      showcaseModerator: 'npub1jvnpg4c6ljadf5t6ry0w9q0rnm4mksde87kglkrc993z46c39axsgq89sc',
+      ngitServers: ['git.shakespeare.diy', 'relay.ngit.dev'],
+      fsPathProjects: '/projects',
+      fsPathConfig: '/config',
+      fsPathTmp: '/tmp',
+      fsPathPlugins: '/plugins',
+      sentryDsn: '',
+      sentryEnabled: false,
+    };
+    mockUseAppContext.mockReturnValue({
+      config,
+      defaultConfig: config,
       updateConfig: vi.fn(),
     });
 

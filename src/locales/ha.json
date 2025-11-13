@@ -422,5 +422,8 @@
   "invalidGiftCard": "Katin Kyauta Ba Daidai Ba",
   "giftCardNotFound": "Ba a iya samun wannan katin kyauta.",
   "alreadyRedeemed": "An riga an Fanshi",
-  "giftCardAlreadyRedeemed": "An riga an fanshi wannan katin kyauta."
+  "giftCardAlreadyRedeemed": "An riga an fanshi wannan katin kyauta.",
+  "modified": "An Canza",
+  "restoreToDefault": "Mayar da asali",
+  "restoredToDefault": "An Mayar da Asali"
 }

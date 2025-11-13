@@ -49,6 +49,8 @@ export interface AppConfig {
 export interface AppContextType {
   /** Current application configuration */
   config: AppConfig;
+  /** Default application configuration */
+  defaultConfig: AppConfig;
   /** Update configuration using a callback that receives current config and returns new config */
   updateConfig: (updater: (currentConfig: Partial<AppConfig>) => Partial<AppConfig>) => void;
 }

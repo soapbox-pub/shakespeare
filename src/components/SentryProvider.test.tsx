@@ -42,7 +42,7 @@ describe('SentryProvider', () => {
     };
 
     render(
-      <AppContext.Provider value={{ config, updateConfig: mockUpdateConfig }}>
+      <AppContext.Provider value={{ config, defaultConfig: config, updateConfig: mockUpdateConfig }}>
         <SentryProvider>
           <div>Test</div>
         </SentryProvider>
@@ -78,7 +78,7 @@ describe('SentryProvider', () => {
     };
 
     render(
-      <AppContext.Provider value={{ config, updateConfig: mockUpdateConfig }}>
+      <AppContext.Provider value={{ config, defaultConfig: config, updateConfig: mockUpdateConfig }}>
         <SentryProvider>
           <div>Test</div>
         </SentryProvider>
@@ -115,7 +115,7 @@ describe('SentryProvider', () => {
     };
 
     render(
-      <AppContext.Provider value={{ config, updateConfig: mockUpdateConfig }}>
+      <AppContext.Provider value={{ config, defaultConfig: config, updateConfig: mockUpdateConfig }}>
         <SentryProvider>
           <div>Test</div>
         </SentryProvider>
@@ -155,7 +155,7 @@ describe('SentryProvider', () => {
     };
 
     render(
-      <AppContext.Provider value={{ config, updateConfig: mockUpdateConfig }}>
+      <AppContext.Provider value={{ config, defaultConfig: config, updateConfig: mockUpdateConfig }}>
         <SentryProvider>
           <div>Test</div>
         </SentryProvider>

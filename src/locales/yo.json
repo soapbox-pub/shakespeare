@@ -419,5 +419,8 @@
   "invalidGiftCard": "Kaadi Ẹbun Ti ko Tọ",
   "giftCardNotFound": "A ko le ri kaadi ẹbun yii.",
   "alreadyRedeemed": "Ti ra Tẹlẹ",
-  "giftCardAlreadyRedeemed": "A ti ra kaadi ẹbun yii tẹlẹ."
+  "giftCardAlreadyRedeemed": "A ti ra kaadi ẹbun yii tẹlẹ.",
+  "modified": "Ti Yipada",
+  "restoreToDefault": "Pada si atilẹwa",
+  "restoredToDefault": "Ti Pada si Atilẹwa"
 }

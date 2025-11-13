@@ -187,13 +187,23 @@ export function BranchManager({ projectId, currentBranch, onBranchChange }: Bran
         object: currentRef,
       });
 
-      toast({
-        title: 'Branch created',
-        description: `Created branch "${newBranchName}"`,
+      // Automatically check out the new branch
+      await git.checkout({
+        dir: projectPath,
+        ref: newBranchName.trim(),
+        force: true,
       });
 
+      // Close the dialog before showing the toast
       setNewBranchName('');
       setIsCreateDialogOpen(false);
+
+      // Show success toast indicating the branch was created and checked out
+      toast({
+        title: 'Branch created and checked out',
+        description: `Switched to new branch "${newBranchName.trim()}"`,
+      });
+
       await loadBranches();
       onBranchChange?.();
     } catch (error) {

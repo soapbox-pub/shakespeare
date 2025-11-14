@@ -49,12 +49,14 @@ export function useNostrPublish(): UseMutationResult<NostrEvent> {
         queryClient.invalidateQueries({ queryKey: ['nostr', 'comments'] });
       }
 
-      // Ratings (kind 7)
+      // Ratings and Emoji Reactions (kind 7)
       if (kind === 7) {
         // Invalidate rating queries for the target event
         const eTag = tags.find(([name]) => name === 'e')?.[1];
         if (eTag) {
           queryClient.invalidateQueries({ queryKey: ['ratings', eTag] });
+          // Also invalidate comment reactions if this is a reaction to a comment
+          queryClient.invalidateQueries({ queryKey: ['comment-reactions', eTag] });
         }
       }
 

@@ -5,6 +5,7 @@ import { nip19 } from 'nostr-tools';
 import { useAuthor } from '@/hooks/useAuthor';
 import { useComments } from '@/hooks/useComments';
 import { CommentForm } from './CommentForm';
+import { EmojiReactions } from './EmojiReactions';
 import { NoteContent } from '@/components/NoteContent';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -26,10 +27,10 @@ interface CommentProps {
 export function Comment({ root, comment, depth = 0, maxDepth = 3, limit }: CommentProps) {
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [showReplies, setShowReplies] = useState(depth < 2); // Auto-expand first 2 levels
-  
+
   const author = useAuthor(comment.pubkey);
   const { data: commentsData } = useComments(root, limit);
-  
+
   const metadata = author.data?.metadata;
   const displayName = metadata?.name ?? genUserName(comment.pubkey)
   const timeAgo = formatDistanceToNow(new Date(comment.created_at * 1000), { addSuffix: true });
@@ -55,7 +56,7 @@ export function Comment({ root, comment, depth = 0, maxDepth = 3, limit }: Comme
                   </Avatar>
                 </Link>
                 <div>
-                  <Link 
+                  <Link
                     to={`/${nip19.npubEncode(comment.pubkey)}`}
                     className="font-medium text-sm hover:text-primary transition-colors"
                   >
@@ -71,6 +72,13 @@ export function Comment({ root, comment, depth = 0, maxDepth = 3, limit }: Comme
               <NoteContent event={comment} className="text-sm" />
             </div>
 
+            {/* Emoji Reactions */}
+            <EmojiReactions
+              commentId={comment.id}
+              commentAuthor={comment.pubkey}
+              className="pt-2"
+            />
+
             {/* Comment Actions */}
             <div className="flex items-center justify-between pt-2">
               <div className="flex items-center space-x-2">
@@ -83,7 +91,7 @@ export function Comment({ root, comment, depth = 0, maxDepth = 3, limit }: Comme
                   <MessageSquare className="h-3 w-3 mr-1" />
                   Reply
                 </Button>
-                
+
                 {hasReplies && (
                   <Collapsible open={showReplies} onOpenChange={setShowReplies}>
                     <CollapsibleTrigger asChild>

@@ -34,7 +34,6 @@ Shakespeare is proudly Open Source software licensed under the GNU AGPLv3. The p
 Shakespeare is available on the following URLs:
 
 - [shakespeare.diy](https://shakespeare.diy)
-- [shakespeare.soapbox.dev](https://shakespeare.soapbox.dev)
 - [shakespeare-diy.github.io](https://shakespeare-diy.github.io)
 - [shakespeare-b0b9c8.gitlab.io](https://shakespeare-b0b9c8.gitlab.io)
 

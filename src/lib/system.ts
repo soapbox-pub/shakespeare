@@ -31,8 +31,8 @@ export const defaultSystemPrompt = `<% if (ctx.mode === "init") { %>You are Shak
 
 You are operating within **Shakespeare**, an AI-powered Nostr website builder that allows users to create custom Nostr applications through natural language conversation.
 
-- **Current Date**: <%= ctx.currentDate %>
-- **Current Page**: <%= ctx.currentPage %>
+- **Current Date**: <%= ctx.date %>
+- **Current Page**: <%= ctx.location.href %>
 - **Current Working Directory**: <%= ctx.cwd %>
 - **Repository URL**: <%= ctx.repositoryUrl %>
 
@@ -210,7 +210,7 @@ export async function makeSystemPrompt(opts: MakeSystemPromptOpts): Promise<stri
   const { tools, mode, fs, cwd, config, defaultConfig, user, metadata, repositoryUrl, template } = opts;
 
   // Add current date
-  const currentDate = new Date().toLocaleDateString("en-US", {
+  const date = new Date().toLocaleDateString("en-US", {
     weekday: "long",
     year: "numeric",
     month: "long",
@@ -259,8 +259,7 @@ export async function makeSystemPrompt(opts: MakeSystemPromptOpts): Promise<stri
   // Build context object for template
   const context = {
     mode,
-    currentDate,
-    currentPage: location.href,
+    date,
     cwd,
     repositoryUrl,
     config,

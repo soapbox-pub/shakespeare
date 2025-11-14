@@ -187,7 +187,11 @@ export class SessionManager {
   /**
    * Send a message and start AI generation
    */
-  async sendMessage(projectId: string, content: string | Array<OpenAI.Chat.Completions.ChatCompletionContentPartText>, providerModel: string): Promise<void> {
+  async sendMessage(
+    projectId: string,
+    content: string | Array<OpenAI.Chat.Completions.ChatCompletionContentPartText | OpenAI.Chat.Completions.ChatCompletionContentPartImage>,
+    providerModel: string
+  ): Promise<void> {
     const session = this.sessions.get(projectId);
 
     if (!session || session.isLoading) return;
@@ -275,9 +279,11 @@ export class SessionManager {
         });
 
         // Prepare messages for AI
-        const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = systemPrompt
+        // Note: User messages with image_url content parts are valid ChatCompletionMessageParam types
+        // The AIMessage type includes ChatCompletionMessageParam, so this cast is safe
+        const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = (systemPrompt
           ? [{ role: 'system', content: systemPrompt }, ...session.messages]
-          : session.messages;
+          : session.messages) as OpenAI.Chat.Completions.ChatCompletionMessageParam[];
 
         // Prepare completion options
         const completionOptions: OpenAI.Chat.Completions.ChatCompletionCreateParams = {
@@ -609,7 +615,8 @@ export class SessionManager {
     try {
       const config = this.getConfig();
       const dotAI = new DotAI(this.fs, `${config.fsPathProjects}/${session.projectId}`);
-      await dotAI.setHistory(session.sessionName, session.messages);
+      // Cast to ChatCompletionMessageParam[] - user messages with image arrays are valid
+      await dotAI.setHistory(session.sessionName, session.messages as OpenAI.Chat.Completions.ChatCompletionMessageParam[]);
     } catch (error) {
       console.warn('Failed to save session history:', error);
     }

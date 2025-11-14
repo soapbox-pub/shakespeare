@@ -114,7 +114,10 @@ export function useAIChat({
   }, [projectId]);
 
   // Actions
-  const sendMessage = useCallback(async (content: string | Array<OpenAI.Chat.Completions.ChatCompletionContentPartText>, providerModel: string) => {
+  const sendMessage = useCallback(async (
+    content: string | Array<OpenAI.Chat.Completions.ChatCompletionContentPartText | OpenAI.Chat.Completions.ChatCompletionContentPartImage>,
+    providerModel: string
+  ) => {
     try {
       await initSession();
       await sessionManager.sendMessage(projectId, content, providerModel);

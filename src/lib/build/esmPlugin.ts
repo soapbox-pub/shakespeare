@@ -426,6 +426,8 @@ export function esmPlugin(options: EsmPluginOptions): Plugin {
             loader = "js";
           } else if (contentType === "text/css") {
             loader = "css";
+          } else if (contentType === "application/wasm") {
+            loader = "binary";
           } else {
             loader = "text";
           }

@@ -1,5 +1,5 @@
 import type _ESBuild from "esbuild-wasm";
-import wasmUrl from "esbuild-wasm/esbuild.wasm?url" with { type: "url" };
+import wasmUrl from "esbuild-wasm/esbuild.wasm?url";
 
 type ESBuild = typeof _ESBuild;
 

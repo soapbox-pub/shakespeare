@@ -56,7 +56,7 @@
   "temporaryDirectory": "Itọsọna Igba diẹ",
   "temporaryDirectoryDescription": "Ọna eto faili fun awọn faili igba diẹ",
   "systemPrompt": "Ibeere Eto",
-  "systemPromptDescription": "Ṣe adani ibeere eto oluranlọwọ AI nipa lilo sintasi awoṣe EJS. Eyi n ṣakoso ihuwasi ati imọ oluranlọwọ naa.",
+  "systemPromptDescription": "Ṣe adani ibeere eto oluranlọwọ AI nipa lilo sintasi awoṣe ti o jọ Jinja. Eyi n ṣakoso ihuwasi ati imọ oluranlọwọ naa.",
   "english": "Gẹẹsi",
   "portuguese": "Potogisi",
   "chinese": "Kannada",

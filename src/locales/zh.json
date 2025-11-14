@@ -56,7 +56,7 @@
   "temporaryDirectory": "临时目录",
   "temporaryDirectoryDescription": "临时文件的文件系统路径",
   "systemPrompt": "系统提示",
-  "systemPromptDescription": "使用EJS模板语法自定义AI助手的系统提示。这控制助手的行为和知识。",
+  "systemPromptDescription": "使用类似Jinja的模板语法自定义AI助手的系统提示。这控制助手的行为和知识。",
   "english": "English",
   "portuguese": "Português",
   "chinese": "中文",

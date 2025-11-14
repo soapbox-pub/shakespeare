@@ -56,7 +56,7 @@
   "temporaryDirectory": "Ndekọ Nwa Oge",
   "temporaryDirectoryDescription": "Ụzọ sistemu faịlụ maka faịlụ nwa oge",
   "systemPrompt": "Ajụjụ Sistemu",
-  "systemPromptDescription": "Hazie ajụjụ sistemu nke enyemaka AI site na iji syntax template EJS. Nke a na-achịkwa omume na ihe ọmụma nke enyemaka ahụ.",
+  "systemPromptDescription": "Hazie ajụjụ sistemu nke enyemaka AI site na iji syntax template yiri Jinja. Nke a na-achịkwa omume na ihe ọmụma nke enyemaka ahụ.",
   "english": "Bekee",
   "portuguese": "Portuguese",
   "chinese": "Chinese",

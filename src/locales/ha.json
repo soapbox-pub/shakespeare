@@ -56,7 +56,7 @@
   "temporaryDirectory": "Kundin Wucin Gadi",
   "temporaryDirectoryDescription": "Hanyar tsarin fayil don fayilolin wucin gadi",
   "systemPrompt": "Tambarin Tsarin",
-  "systemPromptDescription": "Keɓanta tambarin tsarin mataimaki na AI ta amfani da tsarin samfuri na EJS. Wannan yana sarrafa ɗabi'a da ilimi na mataimaki.",
+  "systemPromptDescription": "Keɓanta tambarin tsarin mataimaki na AI ta amfani da tsarin samfuri mai kama da Jinja. Wannan yana sarrafa ɗabi'a da ilimi na mataimaki.",
   "english": "Turanci",
   "portuguese": "Fotigis",
   "chinese": "Sinanci",

@@ -60,7 +60,7 @@
   "shareErrorReports": "Share error reports",
   "shareErrorReportsDescription": "Help improve this app by automatically sending crash and error reports.",
   "systemPrompt": "System Prompt",
-  "systemPromptDescription": "Customize the AI assistant's system prompt using EJS template syntax. This controls the assistant's behavior and knowledge.",
+  "systemPromptDescription": "Customize the AI assistant's system prompt using Jinja-like template syntax. This controls the assistant's behavior and knowledge.",
   "english": "English",
   "portuguese": "Portuguese",
   "chinese": "Chinese",

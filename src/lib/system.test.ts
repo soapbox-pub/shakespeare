@@ -470,7 +470,7 @@ describe('makeSystemPrompt', () => {
 
   describe('custom template support', () => {
     it('should render a custom template when provided', async () => {
-      const customTemplate = `Hello Shakespeare! Current directory: <%= ctx.cwd %>`;
+      const customTemplate = `Hello Shakespeare! Current directory: {{ cwd }}`;
 
       const result = await makeSystemPrompt({
         ...baseOpts,
@@ -483,7 +483,7 @@ describe('makeSystemPrompt', () => {
     });
 
     it('should support conditional logic in custom templates', async () => {
-      const customTemplate = `<% if (ctx.mode === 'init') { %>Initializing...<% } else { %>Working on project<% } %>`;
+      const customTemplate = `{% if mode === 'init' %}Initializing...{% else %}Working on project{% endif %}`;
 
       const result = await makeSystemPrompt({
         ...baseOpts,
@@ -502,10 +502,10 @@ describe('makeSystemPrompt', () => {
         {} as NUser['signer']
       );
 
-      const customTemplate = `User: <%= ctx.user?.pubkey || 'none' %>
-CWD: <%= ctx.cwd %>
-Origin: <%= ctx.originUrl %>
-Skills: <%= ctx.skills.length %>`;
+      const customTemplate = `User: {{ user.pubkey if user else 'none' }}
+CWD: {{ cwd }}
+Origin: {{ location.origin }}
+Skills: {{ skills.length }}`;
 
       const result = await makeSystemPrompt({
         ...baseOpts,

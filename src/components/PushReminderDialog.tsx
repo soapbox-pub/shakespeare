@@ -12,7 +12,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { GitBranch, Upload, AlertTriangle, X } from 'lucide-react';
 import { useGitStatus } from '@/hooks/useGitStatus';
-import { useNavigate } from 'react-router-dom';
 import { GitDialog } from '@/components/GitDialog';
 
 interface PushReminderDialogProps {
@@ -33,7 +32,6 @@ export function PushReminderDialog({
   const [dontShowAgain, setDontShowAgain] = useState(false);
   const [isGitDialogOpen, setIsGitDialogOpen] = useState(false);
   const { data: gitStatus } = useGitStatus(projectId);
-  const navigate = useNavigate();
 
   // Close the reminder dialog when git dialog opens
   useEffect(() => {
@@ -63,7 +61,7 @@ export function PushReminderDialog({
     if (dontShowAgain) {
       onDisableReminders();
     }
-    
+
     if (hasNoRemote) {
       // Close reminder dialog and open git dialog
       onOpenChange(false);

@@ -4,7 +4,6 @@ import { GitDialog } from '@/components/GitDialog';
 import { AlertTriangle, Upload, GitBranch } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useGitStatus } from '@/hooks/useGitStatus';
-import { useNavigate } from 'react-router-dom';
 import {
   Tooltip,
   TooltipContent,
@@ -18,14 +17,13 @@ interface PushWarningButtonProps {
   variant?: 'icon' | 'full';
 }
 
-export function PushWarningButton({ 
-  projectId, 
+export function PushWarningButton({
+  projectId,
   className,
-  variant = 'icon' 
+  variant = 'icon'
 }: PushWarningButtonProps) {
   const [isGitDialogOpen, setIsGitDialogOpen] = useState(false);
   const { data: gitStatus } = useGitStatus(projectId);
-  const navigate = useNavigate();
 
   if (!gitStatus?.isGitRepo) {
     return null;

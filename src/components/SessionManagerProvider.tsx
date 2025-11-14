@@ -1,8 +1,7 @@
-import { ReactNode, useMemo, useEffect } from 'react';
+import { ReactNode, useEffect, useRef } from 'react';
 import { SessionManagerContext } from '@/contexts/SessionManagerContext';
 import { SessionManager } from '@/lib/SessionManager';
 import { useFS } from '@/hooks/useFS';
-import { useFSPaths } from '@/hooks/useFSPaths';
 import { useAISettings } from '@/hooks/useAISettings';
 import { useProviderModels } from '@/hooks/useProviderModels';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
@@ -18,31 +17,80 @@ interface SessionManagerProviderProps {
  */
 export function SessionManagerProvider({ children }: SessionManagerProviderProps) {
   const { fs } = useFS();
-  const { projectsPath, pluginsPath } = useFSPaths();
   const { settings } = useAISettings();
   const { models } = useProviderModels();
   const { user, metadata } = useCurrentUser();
-  const { config } = useAppContext();
+  const { config, defaultConfig } = useAppContext();
   const { nostr } = useNostr();
 
-  const sessionManager = useMemo(() => {
-    const getProviderModels = () => models;
-    const getCurrentUser = () => ({ user, metadata });
-    return new SessionManager(fs, nostr, settings, getProviderModels, getCurrentUser, config.corsProxy, projectsPath, pluginsPath, config.systemPrompt);
-  }, [fs, nostr, settings, models, user, metadata, config.corsProxy, projectsPath, pluginsPath, config.systemPrompt]);
+  // Create SessionManager instance only once
+  const sessionManager = useRef<SessionManager | undefined>(undefined);
+
+  // Use refs so SessionManager always has the latest data
+  const configRef = useRef(config);
+  const defaultConfigRef = useRef(defaultConfig);
+  const settingsRef = useRef(settings);
+  const modelsRef = useRef(models);
+  const userRef = useRef(user);
+  const metadataRef = useRef(metadata);
+
+  // Update refs when values change
+  useEffect(() => {
+    configRef.current = config;
+  }, [config]);
+
+  useEffect(() => {
+    defaultConfigRef.current = defaultConfig;
+  }, [defaultConfig]);
+
+  useEffect(() => {
+    settingsRef.current = settings;
+  }, [settings]);
+
+  useEffect(() => {
+    modelsRef.current = models;
+  }, [models]);
+
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
+
+  useEffect(() => {
+    metadataRef.current = metadata;
+  }, [metadata]);
+
+  // Initialize SessionManager only once
+  if (!sessionManager.current) {
+    // Callbacks access refs to get latest values
+    const getProviderModels = () => modelsRef.current;
+    const getCurrentUser = () => ({ user: userRef.current, metadata: metadataRef.current });
+    const getConfig = () => configRef.current;
+    const getDefaultConfig = () => defaultConfigRef.current;
+    const getSettings = () => settingsRef.current;
+
+    sessionManager.current = new SessionManager(
+      fs,
+      nostr,
+      getSettings,
+      getConfig,
+      getDefaultConfig,
+      getProviderModels,
+      getCurrentUser,
+    );
+  }
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       // Fire and forget cleanup - we don't need to await in useEffect cleanup
-      sessionManager.cleanup().catch(error => {
+      sessionManager.current?.cleanup().catch(error => {
         console.warn('Failed to cleanup session manager:', error);
       });
     };
-  }, [sessionManager]);
+  }, []);
 
   return (
-    <SessionManagerContext.Provider value={sessionManager}>
+    <SessionManagerContext.Provider value={sessionManager.current}>
       {children}
     </SessionManagerContext.Provider>
   );

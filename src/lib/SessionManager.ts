@@ -13,6 +13,7 @@ import { EmptyMessageError } from './errors/EmptyMessageError';
 import { isEmptyMessage } from './isEmptyMessage';
 import { Git } from './git';
 import type { NPool } from '@nostrify/nostrify';
+import type { AppConfig } from '@/contexts/AppContext';
 
 export type AIMessage = OpenAI.Chat.Completions.ChatCompletionMessageParam | {
   role: 'assistant';
@@ -60,35 +61,34 @@ export class SessionManager {
   private sessions = new Map<string, SessionState>();
   private listeners: Partial<Record<keyof SessionManagerEvents, Set<(...args: unknown[]) => void>>> = {};
   private fs: JSRuntimeFS;
-  private git: Git;
-  private aiSettings: { providers: AIProvider[] };
+  private nostr: NPool;
+  private getSettings: () => { providers: AIProvider[] };
+  private getConfig: () => AppConfig;
+  private getDefaultConfig: () => AppConfig;
   private getProviderModels?: () => Array<{ id: string; provider: string; contextLength?: number; pricing?: { prompt: import('decimal.js').Decimal; completion: import('decimal.js').Decimal } }>;
   private getCurrentUser?: () => { user?: NUser; metadata?: NostrMetadata };
-  private corsProxy?: string;
-  private projectsPath: string;
-  private pluginsPath?: string;
-  private systemPromptTemplate?: string;
 
   constructor(
     fs: JSRuntimeFS,
     nostr: NPool,
-    aiSettings: { providers: AIProvider[] },
+    getSettings: () => { providers: AIProvider[] },
+    getConfig: () => AppConfig,
+    getDefaultConfig: () => AppConfig,
     getProviderModels?: () => Array<{ id: string; provider: string; contextLength?: number; pricing?: { prompt: import('decimal.js').Decimal; completion: import('decimal.js').Decimal } }>,
     getCurrentUser?: () => { user?: NUser; metadata?: NostrMetadata },
-    corsProxy?: string,
-    projectsPath = '/projects',
-    pluginsPath?: string,
-    systemPromptTemplate?: string,
   ) {
     this.fs = fs;
-    this.git = new Git({ fs, nostr, corsProxy });
-    this.aiSettings = aiSettings;
+    this.nostr = nostr;
+    this.getSettings = getSettings;
+    this.getConfig = getConfig;
+    this.getDefaultConfig = getDefaultConfig;
     this.getProviderModels = getProviderModels;
     this.getCurrentUser = getCurrentUser;
-    this.projectsPath = projectsPath;
-    this.pluginsPath = pluginsPath;
-    this.corsProxy = corsProxy;
-    this.systemPromptTemplate = systemPromptTemplate;
+  }
+
+  private get git(): Git {
+    const config = this.getConfig();
+    return new Git({ fs: this.fs, nostr: this.nostr, corsProxy: config.corsProxy });
   }
 
   /**
@@ -105,7 +105,8 @@ export class SessionManager {
 
     // Try to load existing history
     try {
-      const dotAI = new DotAI(this.fs, `${this.projectsPath}/${projectId}`);
+      const config = this.getConfig();
+      const dotAI = new DotAI(this.fs, `${config.fsPathProjects}/${projectId}`);
       const lastSession = await dotAI.readLastSessionHistory();
       if (lastSession) {
         messages = lastSession.messages;
@@ -217,14 +218,19 @@ export class SessionManager {
     this.emit('loadingChanged', projectId, true);
 
     try {
+      // Get latest config and settings
+      const config = this.getConfig();
+      const defaultConfig = this.getDefaultConfig();
+      const settings = this.getSettings();
+
       // Parse provider and model
-      const parsed = parseProviderModel(providerModel, this.aiSettings.providers);
+      const parsed = parseProviderModel(providerModel, settings.providers);
       const provider = parsed.provider;
       const model = parsed.model;
 
       // Initialize OpenAI client
       const { user, metadata } = this.getCurrentUser?.() ?? {};
-      const openai = createAIClient(provider, user, this.corsProxy);
+      const openai = createAIClient(provider, user, config.corsProxy);
 
       let stepCount = 0;
       const maxSteps = session.maxSteps || 50;
@@ -249,23 +255,23 @@ export class SessionManager {
         // Get repository URL if available
         let repositoryUrl: string | undefined;
         try {
-          const remoteUrl = await this.git.getRemoteURL(`${this.projectsPath}/${projectId}`, 'origin');
+          const remoteUrl = await this.git.getRemoteURL(`${config.fsPathProjects}/${projectId}`, 'origin');
           repositoryUrl = remoteUrl || undefined;
         } catch {
           // No repository URL available
         }
 
         const systemPrompt = await makeSystemPrompt({
-          cwd: `${this.projectsPath}/${projectId}`,
+          cwd: `${config.fsPathProjects}/${projectId}`,
           fs: this.fs,
           mode: "agent",
           tools: Object.values(session.tools),
-          pluginsPath: this.pluginsPath,
+          config,
+          defaultConfig,
           user,
           metadata,
-          corsProxy: this.corsProxy,
           repositoryUrl,
-          template: this.systemPromptTemplate,
+          template: config.systemPrompt,
         });
 
         // Prepare messages for AI
@@ -560,7 +566,8 @@ export class SessionManager {
 
     // Otherwise, get the cost from the models endpoint
     try {
-      const parsed = parseProviderModel(providerModel, this.aiSettings.providers);
+      const settings = this.getSettings();
+      const parsed = parseProviderModel(providerModel, settings.providers);
       const modelName = parsed.model;
       const provider = parsed.provider;
 
@@ -600,7 +607,8 @@ export class SessionManager {
     if (!session) return;
 
     try {
-      const dotAI = new DotAI(this.fs, `${this.projectsPath}/${session.projectId}`);
+      const config = this.getConfig();
+      const dotAI = new DotAI(this.fs, `${config.fsPathProjects}/${session.projectId}`);
       await dotAI.setHistory(session.sessionName, session.messages);
     } catch (error) {
       console.warn('Failed to save session history:', error);
@@ -612,7 +620,8 @@ export class SessionManager {
    */
   private async accumulateProjectCost(projectId: string, requestCost: number): Promise<void> {
     try {
-      const dotAI = new DotAI(this.fs, `${this.projectsPath}/${projectId}`);
+      const config = this.getConfig();
+      const dotAI = new DotAI(this.fs, `${config.fsPathProjects}/${projectId}`);
 
       // Read current project total
       const currentTotal = await dotAI.readCost();

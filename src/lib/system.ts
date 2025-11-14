@@ -6,16 +6,17 @@ import { nip19 } from "nostr-tools";
 import { Eta } from "eta";
 import { JSRuntimeFS } from "./JSRuntime";
 import { getAllSkills } from "./plugins";
+import type { AppConfig } from "@/contexts/AppContext";
 
 export interface MakeSystemPromptOpts {
   tools: OpenAI.Chat.Completions.ChatCompletionTool[];
   mode: "init" | "agent";
   fs: JSRuntimeFS;
   cwd: string;
-  pluginsPath?: string;
+  config: AppConfig;
+  defaultConfig: AppConfig;
   user?: NUser;
   metadata?: NostrMetadata;
-  corsProxy?: string;
   repositoryUrl?: string;
   template?: string;
 }
@@ -54,14 +55,14 @@ Shakespeare is a web-based development environment where users can build Nostr w
 <% if (ctx.user) { %>The user is logged into Nostr with the following profile:
 
 - **Nostr pubkey (hex)**: <%= ctx.user.pubkey %>
-- **Nostr npub**: <%= ctx.npub %><% if (ctx.metadata?.name) { %>
-- **Name**: <%= ctx.metadata.name %><% } %><% if (ctx.metadata?.about) { %>
-- **About**: <%= ctx.sanitizeNewlines(ctx.metadata.about) %><% } %><% if (ctx.metadata?.website) { %>
-- **Website**: <%= ctx.metadata.website %><% } %><% if (ctx.metadata?.picture) { %>
-- **Avatar**: <%= ctx.metadata.picture %><% } %><% if (ctx.metadata?.banner) { %>
-- **Banner**: <%= ctx.metadata.banner %><% } %><% if (ctx.metadata?.nip05) { %>
-- **NIP-05**: <%= ctx.metadata.nip05 %><% } %><% if (ctx.metadata?.lud16) { %>
-- **Lightning Address**: <%= ctx.metadata.lud16 %><% } %>
+- **Nostr npub**: <%= ctx.user.npub %><% if (ctx.user.name) { %>
+- **Name**: <%= ctx.user.name %><% } %><% if (ctx.user.about) { %>
+- **About**: <%= ctx.user.about %><% } %><% if (ctx.user.website) { %>
+- **Website**: <%= ctx.user.website %><% } %><% if (ctx.user.picture) { %>
+- **Avatar**: <%= ctx.user.picture %><% } %><% if (ctx.user.banner) { %>
+- **Banner**: <%= ctx.user.banner %><% } %><% if (ctx.user.nip05) { %>
+- **NIP-05**: <%= ctx.user.nip05 %><% } %><% if (ctx.user.lud16) { %>
+- **Lightning Address**: <%= ctx.user.lud16 %><% } %>
 
 Since the user is logged in, they can deploy their creations to public URLs and use Nostr-enabled AI providers.<% } else { %>The user is not logged in. The user can log into Nostr by clicking the "Login" button in the sidebar menu. Logging in will allow the user to deploy their creations to public URLs and use Nostr-enabled AI providers.<% } %>
 
@@ -123,8 +124,8 @@ Shakespeare operates on a browser-based virtual filesystem (VFS) that persists a
 ├── config/                         # Configuration files
 │   ├── ai.json                     # AI provider settings and API keys
 │   └── git.json                    # Git credentials and repository settings
-└── tmp/                           # Temporary files and scratch space
-    └── ...                        # Various temporary files and directories
+└── tmp/                            # Temporary files and scratch space
+    └── ...                         # Various temporary files and directories
 \`\`\`
 
 ### Key VFS Features
@@ -158,7 +159,7 @@ You have access to the following tools:
 
 ## Skills
 
-<% if (ctx.skills && ctx.skills.length > 0) { %>You have access to the following skills. **Skills MUST be used whenever applicable** by calling the <%= ctx.backtick %>skill<%= ctx.backtick %> tool with the skill name.
+<% if (ctx.skills && ctx.skills.length > 0) { %>You have access to the following skills. **Skills MUST be used whenever applicable** by calling the \`skill\` tool with the skill name.
 
 Available skills:
 <% ctx.skills.forEach(function(skill) { %>
@@ -169,15 +170,15 @@ Available skills:
 
 **Important**: When a task matches a skill's description, you MUST use that skill by calling the skill tool. Skills contain specialized workflows and best practices for specific tasks.<% } else { %>No skills are currently configured. Skills are reusable AI workflows that can be added via plugins.<% } %>
 
-Users can configure skills in Settings > AI (<%= ctx.originUrl %>/settings/ai) by adding plugins that contain skills.<% if (ctx.corsProxy) { %>
+Users can configure skills in Settings > AI (<%= ctx.location.origin %>/settings/ai) by adding plugins that contain skills.<% if (ctx.config.corsProxy) { %>
 
 ## Working Around CORS Issues
 
 If you encounter CORS (Cross-Origin Resource Sharing) errors when fetching external APIs, use the configured CORS proxy:
 
-**CORS Proxy URL Template**: <%= ctx.backtick %><%= ctx.corsProxy %><%= ctx.backtick %>
+**CORS Proxy URL Template**: \`<%= ctx.config.corsProxy %>\`
 
-Replace <%= ctx.backtick %>{href}<%= ctx.backtick %>, <%= ctx.backtick %>{hostname}<%= ctx.backtick %>, or other URL components in the template as needed.<% } %>
+Replace \`{href}\`, \`{hostname}\`, or other URL components in the template as needed.<% } %>
 
 ## Edit with Shakespeare
 
@@ -197,16 +198,16 @@ This project has a repository URL configured, so you can create an "Edit with Sh
 </a>
 \`\`\`
 
-Note: the badge should be displayed at its natural size. It is recommended to omit width/height attributes to ensure proper scaling, or use <%= ctx.backtick %>height: auto<%= ctx.backtick %> in CSS (or <%= ctx.backtick %>"h-auto"<%= ctx.backtick %> in Tailwind CSS) when applicable.<% } else { %>
+Note: the badge should be displayed at its natural size. It is recommended to omit width/height attributes to ensure proper scaling, or use \`height: auto\` in CSS (or \`"h-auto"\` in Tailwind CSS) when applicable.<% } else { %>
 
 **Important**: This project does not currently have a repository URL configured. If the user asks about adding an "Edit with Shakespeare" button, inform them that they must first initialize a public Git repository from their Shakespeare project. Once a repository URL is available, an "Edit with Shakespeare" button can be created.<% } %><% if (ctx.readmeText) { %>
 
 <%= ctx.readmeText %><% } %><% if (ctx.agentText) { %>
 
-<%= ctx.agentText %><% } %>`;
+<%= ctx.agentsText %><% } %>`;
 
 export async function makeSystemPrompt(opts: MakeSystemPromptOpts): Promise<string> {
-  const { tools, mode, fs, cwd, pluginsPath, user, metadata, corsProxy, repositoryUrl, template } = opts;
+  const { tools, mode, fs, cwd, config, defaultConfig, user, metadata, repositoryUrl, template } = opts;
 
   // Add current date
   const currentDate = new Date().toLocaleDateString("en-US", {
@@ -218,9 +219,9 @@ export async function makeSystemPrompt(opts: MakeSystemPromptOpts): Promise<stri
 
   // Get skills
   let skills: Array<{ name: string; description: string; plugin: string; path: string }> = [];
-  if (pluginsPath) {
+  if (config.fsPathPlugins) {
     try {
-      skills = await getAllSkills(fs, pluginsPath);
+      skills = await getAllSkills(fs, config.fsPathPlugins);
     } catch {
       // Skills not available, use empty array
       skills = [];
@@ -237,10 +238,10 @@ export async function makeSystemPrompt(opts: MakeSystemPromptOpts): Promise<stri
   }
 
   // Get agent context if it exists
-  let agentText: string | undefined;
+  let agentsText: string | undefined;
   try {
     const { text } = await getAgentContext(fs, cwd);
-    agentText = text;
+    agentsText = text;
   } catch {
     // AGENTS.md not found, continue
   }
@@ -262,21 +263,32 @@ export async function makeSystemPrompt(opts: MakeSystemPromptOpts): Promise<stri
     currentPage: location.href,
     cwd,
     repositoryUrl,
-    user,
-    npub: user ? nip19.npubEncode(user.pubkey) : undefined,
-    metadata,
+    config,
+    defaultConfig,
+    user: user
+      ? {
+        ...metadata,
+        pubkey: user.pubkey,
+        npub: nip19.npubEncode(user.pubkey),
+        about: metadata?.about?.replace(/[\r\n]+/g, ' '),
+      }
+      : undefined,
     tools,
     skills,
-    corsProxy,
-    originUrl: location.origin,
+    location: {
+      href: location.href,
+      origin: location.origin,
+      pathname: location.pathname,
+      port: location.port,
+      hostname: location.hostname,
+      protocol: location.protocol,
+      search: location.search,
+      hash: location.hash,
+    },
     badgeUrl,
     editUrl,
     readmeText,
-    agentText,
-    // Helper function to sanitize newlines in text
-    sanitizeNewlines: (text: string) => text.replace(/[\r\n]+/g, ' '),
-    // Helper function to output backticks
-    backtick: '`',
+    agentsText,
   };
 
   // Render the template with the context

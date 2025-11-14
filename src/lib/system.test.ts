@@ -3,6 +3,7 @@ import { makeSystemPrompt, MakeSystemPromptOpts } from './system';
 import { JSRuntimeFS } from './JSRuntime';
 import { NUser } from '@nostrify/react/login';
 import { NostrMetadata } from '@nostrify/nostrify';
+import { AppConfig } from '@/contexts/AppContext';
 import OpenAI from 'openai';
 
 // Mock the plugins module
@@ -16,6 +17,32 @@ vi.mock('path-browserify', () => ({
 }));
 
 import { getAllSkills } from './plugins';
+
+// Test configuration
+const testConfig: AppConfig = {
+  theme: 'light',
+  relayMetadata: {
+    relays: [
+      { url: 'wss://relay.nostr.band', read: true, write: true },
+    ],
+    updatedAt: 0,
+  },
+  projectTemplate: 'https://gitlab.com/soapbox-pub/mkstack.git',
+  esmUrl: 'https://esm.shakespeare.diy',
+  corsProxy: 'https://proxy.shakespeare.diy/?url={href}',
+  faviconUrl: 'https://external-content.duckduckgo.com/ip3/{hostname}.ico',
+  previewDomain: 'local-shakespeare.dev',
+  language: 'en',
+  showcaseEnabled: true,
+  showcaseModerator: 'npub1jvnpg4c6ljadf5t6ry0w9q0rnm4mksde87kglkrc993z46c39axsgq89sc',
+  ngitServers: ['git.shakespeare.diy', 'relay.ngit.dev'],
+  fsPathProjects: '/projects',
+  fsPathConfig: '/config',
+  fsPathTmp: '/tmp',
+  fsPathPlugins: '/plugins',
+  sentryDsn: '',
+  sentryEnabled: false,
+};
 
 describe('makeSystemPrompt', () => {
   let mockFs: JSRuntimeFS;
@@ -43,6 +70,8 @@ describe('makeSystemPrompt', () => {
       mode: 'agent',
       fs: mockFs,
       cwd: '/projects/test-project',
+      config: testConfig,
+      defaultConfig: testConfig,
     };
 
     // Mock getAllSkills to return empty array by default
@@ -207,7 +236,10 @@ describe('makeSystemPrompt', () => {
 
   describe('skills section', () => {
     it('should show no skills message when pluginsPath is not provided', async () => {
-      const result = await makeSystemPrompt(baseOpts);
+      const result = await makeSystemPrompt({
+        ...baseOpts,
+        config: { ...testConfig, fsPathPlugins: '' },
+      });
 
       expect(result).toContain('## Skills');
       expect(result).toContain('No skills are currently configured');
@@ -216,10 +248,7 @@ describe('makeSystemPrompt', () => {
     it('should show no skills message when getAllSkills returns empty array', async () => {
       vi.mocked(getAllSkills).mockResolvedValue([]);
 
-      const result = await makeSystemPrompt({
-        ...baseOpts,
-        pluginsPath: '/plugins',
-      });
+      const result = await makeSystemPrompt(baseOpts);
 
       expect(result).toContain('No skills are currently configured');
       expect(getAllSkills).toHaveBeenCalledWith(mockFs, '/plugins');
@@ -241,10 +270,7 @@ describe('makeSystemPrompt', () => {
         },
       ]);
 
-      const result = await makeSystemPrompt({
-        ...baseOpts,
-        pluginsPath: '/plugins',
-      });
+      const result = await makeSystemPrompt(baseOpts);
 
       expect(result).toContain('## Skills');
       expect(result).toContain('**create_component**: Create a new React component');
@@ -256,10 +282,7 @@ describe('makeSystemPrompt', () => {
     it('should handle getAllSkills errors gracefully', async () => {
       vi.mocked(getAllSkills).mockRejectedValue(new Error('Plugin error'));
 
-      const result = await makeSystemPrompt({
-        ...baseOpts,
-        pluginsPath: '/plugins',
-      });
+      const result = await makeSystemPrompt(baseOpts);
 
       expect(result).toContain('No skills are currently configured');
     });
@@ -267,19 +290,19 @@ describe('makeSystemPrompt', () => {
 
   describe('CORS proxy section', () => {
     it('should not include CORS proxy section when not provided', async () => {
-      const result = await makeSystemPrompt(baseOpts);
+      const result = await makeSystemPrompt({
+        ...baseOpts,
+        config: { ...testConfig, corsProxy: '' },
+      });
 
       expect(result).not.toContain('## Working Around CORS Issues');
     });
 
     it('should include CORS proxy information when provided', async () => {
-      const result = await makeSystemPrompt({
-        ...baseOpts,
-        corsProxy: 'https://cors-proxy.example.com/{href}',
-      });
+      const result = await makeSystemPrompt(baseOpts);
 
       expect(result).toContain('## Working Around CORS Issues');
-      expect(result).toContain('**CORS Proxy URL Template**: `https://cors-proxy.example.com/{href}`');
+      expect(result).toContain('**CORS Proxy URL Template**: `https://proxy.shakespeare.diy/?url={href}`');
     });
   });
 
@@ -391,7 +414,6 @@ describe('makeSystemPrompt', () => {
       const result = await makeSystemPrompt({
         ...baseOpts,
         user,
-        corsProxy: 'https://cors.example.com/{href}',
         repositoryUrl: 'https://github.com/test/repo.git',
       });
 

@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { SessionManager, type AIMessage } from './SessionManager';
 import type { JSRuntimeFS } from './JSRuntime';
 import type { NPool } from '@nostrify/nostrify';
+import type { AppConfig } from '@/contexts/AppContext';
 
 // Mock the filesystem
 const mockFS: JSRuntimeFS = {
@@ -30,6 +31,32 @@ const mockNostr: NPool = {
   event: vi.fn(),
 } as unknown as NPool;
 
+// Test configuration
+const testConfig: AppConfig = {
+  theme: 'light',
+  relayMetadata: {
+    relays: [
+      { url: 'wss://relay.nostr.band', read: true, write: true },
+    ],
+    updatedAt: 0,
+  },
+  projectTemplate: 'https://gitlab.com/soapbox-pub/mkstack.git',
+  esmUrl: 'https://esm.shakespeare.diy',
+  corsProxy: 'https://proxy.shakespeare.diy/?url={href}',
+  faviconUrl: 'https://external-content.duckduckgo.com/ip3/{hostname}.ico',
+  previewDomain: 'local-shakespeare.dev',
+  language: 'en',
+  showcaseEnabled: true,
+  showcaseModerator: 'npub1jvnpg4c6ljadf5t6ry0w9q0rnm4mksde87kglkrc993z46c39axsgq89sc',
+  ngitServers: ['git.shakespeare.diy', 'relay.ngit.dev'],
+  fsPathProjects: '/projects',
+  fsPathConfig: '/config',
+  fsPathTmp: '/tmp',
+  fsPathPlugins: '/plugins',
+  sentryDsn: '',
+  sentryEnabled: false,
+};
+
 describe('SessionManager', () => {
   let sessionManager: SessionManager;
   const mockAISettings = {
@@ -43,7 +70,10 @@ describe('SessionManager', () => {
   };
 
   beforeEach(() => {
-    sessionManager = new SessionManager(mockFS, mockNostr, mockAISettings);
+    const getSettings = () => mockAISettings;
+    const getConfig = () => testConfig;
+    const getDefaultConfig = () => testConfig;
+    sessionManager = new SessionManager(mockFS, mockNostr, getSettings, getConfig, getDefaultConfig);
   });
 
   it('should initialize streaming message with reasoning content', async () => {

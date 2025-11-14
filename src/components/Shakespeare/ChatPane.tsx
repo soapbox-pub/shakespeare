@@ -39,11 +39,11 @@ import { ProjectPreviewConsoleError } from '@/lib/consoleMessages';
 import { toolToOpenAI } from '@/lib/tools/openai-adapter';
 import { Tool } from '@/lib/tools/Tool';
 import OpenAI from 'openai';
-import { saveFileToTmp } from '@/lib/fileUtils';
 import { useGit } from '@/hooks/useGit';
 import { Quilly } from '@/components/Quilly';
 import { ShakespeareLogo } from '@/components/ShakespeareLogo';
 import { ChatInput } from '@/components/Shakespeare/ChatInput';
+import { buildMessageContent } from '@/lib/buildMessageContent';
 
 // Clean interfaces now handled by proper hooks
 
@@ -438,45 +438,12 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
 
     const modelToUse = providerModel.trim();
 
-    // Build message content as text parts
-    const contentParts: Array<OpenAI.Chat.Completions.ChatCompletionContentPartText> = [];
-
-    // Add user input as text part if present
-    if (input.trim()) {
-      contentParts.push({
-        type: 'text',
-        text: input.trim()
-      });
-    }
-
-    // Process attached files and add as separate text parts
-    if (attachedFiles.length > 0) {
-      const filePromises = attachedFiles.map(async (file) => {
-        try {
-          const savedPath = await saveFileToTmp(fs, file, tmpPath);
-          return `Added file: ${savedPath}`;
-        } catch (error) {
-          console.error('Failed to save file:', error);
-          return `Failed to save file: ${file.name}`;
-        }
-      });
-
-      const fileResults = await Promise.all(filePromises);
-
-      // Add each file as a separate text part
-      fileResults.forEach(fileResult => {
-        contentParts.push({
-          type: 'text',
-          text: fileResult
-        });
-      });
-    }
+    // Build message content from input and attached files
+    const messageContent = await buildMessageContent(input, attachedFiles, fs, tmpPath);
 
     // Add model to recently used when sending a message
     addRecentlyUsedModel(modelToUse);
 
-    // Send as text parts if we have multiple parts, otherwise send as string for simplicity
-    const messageContent = contentParts.length === 1 ? contentParts[0].text : contentParts;
     await sendMessage(messageContent, modelToUse);
   }, [addRecentlyUsedModel, fs, isConfigured, isLoading, providerModel, sendMessage, tmpPath]);
 

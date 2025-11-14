@@ -243,14 +243,12 @@ export function esmPlugin(options: EsmPluginOptions): Plugin {
 
       // Handle bare imports like "react"
       build.onResolve({ filter: /^[^./].*/ }, (args) => {
-        // HACK: https://github.com/esm-dev/esm.sh/issues/1217
-        if (args.path === "yet-another-react-lightbox/styles.css") {
-          args.path = "yet-another-react-lightbox/dist/styles.css";
-        }
+        const [path, query] = args.path.split("?");
+        const params = new URLSearchParams(query);
 
-        const packageName = args.path.startsWith("@")
-          ? args.path.split("/").slice(0, 2).join("/")
-          : args.path.split("/")[0];
+        const packageName = path.startsWith("@")
+          ? path.split("/").slice(0, 2).join("/")
+          : path.split("/")[0];
 
         // If the importer is CSS, ignore (no JS deps)
         try {
@@ -319,7 +317,7 @@ export function esmPlugin(options: EsmPluginOptions): Plugin {
           }
         }
 
-        const packagePath = args.path.slice(packageName.length);
+        const packagePath = path.slice(packageName.length);
         const specifier = version
           ? `${cdnName}@${version}${packagePath}`
           : `${cdnName}${packagePath}`;
@@ -336,6 +334,14 @@ export function esmPlugin(options: EsmPluginOptions): Plugin {
           return {
             path: urlStr,
             external: true,
+          };
+        }
+
+        // https://vite.dev/guide/assets#explicit-url-imports
+        if (params.has("url")) {
+          return {
+            path: urlStr,
+            namespace: "esm-file-external",
           };
         }
 
@@ -438,6 +444,14 @@ export function esmPlugin(options: EsmPluginOptions): Plugin {
         return {
           contents,
           loader,
+        };
+      });
+
+      // Convert `?url` imports to URL strings pointing to the ESM CDN
+      build.onLoad({ filter: /.*/, namespace: "esm-file-external" }, (args) => {
+        return {
+          contents: `export default ${JSON.stringify(args.path)};`,
+          loader: "js",
         };
       });
     },

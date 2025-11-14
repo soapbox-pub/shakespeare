@@ -296,7 +296,7 @@ export async function makeSystemPrompt(opts: MakeSystemPromptOpts): Promise<stri
   const templateToRender = template || defaultSystemPrompt;
 
   try {
-    const eta = new Eta({ varName: 'ctx' });
+    const eta = new Eta({ varName: 'ctx', autoTrim: false });
     return eta.renderString(templateToRender, context);
   } catch (error) {
     console.error("Error rendering system prompt template:", error);

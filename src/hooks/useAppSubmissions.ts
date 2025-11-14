@@ -223,8 +223,8 @@ export function useAppSubmissions() {
 
       return submissions;
     },
-    staleTime: 30000, // 30 seconds
-    refetchInterval: 60000, // 1 minute
+    staleTime: 10000, // 10 seconds
+    refetchInterval: 30000, // 30 seconds
   });
 }
 

@@ -346,8 +346,10 @@ export function AppShowcaseCard({ app, onEdit, showModerationControls, hideAppro
         });
       }
 
-      // Invalidate queries to refresh the data
+      // Invalidate queries to refresh the data immediately
+      queryClient.invalidateQueries({ queryKey: ['nostr', 'app-submissions'] });
       queryClient.invalidateQueries({ queryKey: ['app-submissions'] });
+      queryClient.invalidateQueries({ queryKey: ['showcase-moderation'] });
 
       // If this is a Halloween app, also invalidate Halloween queries
       if (isHalloweenSubmission) {
@@ -418,8 +420,8 @@ export function AppShowcaseCard({ app, onEdit, showModerationControls, hideAppro
           <div className="absolute top-3 right-3">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="secondary" size="sm" className="h-8 w-8 p-0">
-                  <MoreVertical className="w-4 h-4" />
+                <Button variant="secondary" size="sm" className="h-8 w-8 p-0" disabled={isPending}>
+                  <MoreVertical className={`w-4 h-4 ${isPending ? 'animate-spin' : ''}`} />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">

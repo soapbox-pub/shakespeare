@@ -194,6 +194,8 @@ export default function ShowcasePage() {
       return { isFeatured, isApproved, isHomepage, isHidden };
     },
     enabled: !!appEvent,
+    staleTime: 5000, // 5 seconds
+    refetchInterval: 15000, // 15 seconds
   });
 
   // Parse app data from event
@@ -485,7 +487,9 @@ export default function ShowcasePage() {
         });
       }
 
+      // Invalidate queries immediately for real-time updates
       queryClient.invalidateQueries({ queryKey: ['showcase-moderation', id] });
+      queryClient.invalidateQueries({ queryKey: ['nostr', 'app-submissions'] });
       queryClient.invalidateQueries({ queryKey: ['app-submissions'] });
 
       toast({
@@ -813,8 +817,9 @@ export default function ShowcasePage() {
 function RatingsSection({ appEvent }: { appEvent: NostrEvent }) {
   const { nostr } = useNostr();
   const { user } = useCurrentUser();
-  const { mutate: publishEvent } = useNostrPublish();
+  const { mutate: publishEvent, isPending } = useNostrPublish();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   // Fetch ratings (kind 7 reactions with rating content)
   const { data: ratings = [], isLoading } = useQuery({
@@ -837,6 +842,8 @@ function RatingsSection({ appEvent }: { appEvent: NostrEvent }) {
         return !isNaN(rating) && rating >= 1 && rating <= 5;
       });
     },
+    staleTime: 10000, // 10 seconds
+    refetchInterval: 30000, // 30 seconds
   });
 
   // Calculate average rating
@@ -863,6 +870,25 @@ function RatingsSection({ appEvent }: { appEvent: NostrEvent }) {
       return;
     }
 
+    // Optimistic update
+    const optimisticRating = {
+      id: `temp-${Date.now()}`,
+      pubkey: user.pubkey,
+      content: rating.toString(),
+      created_at: Math.floor(Date.now() / 1000),
+      kind: 7,
+      tags: [['e', appEvent.id], ['p', appEvent.pubkey]],
+      sig: ''
+    };
+
+    // Update cache optimistically
+    queryClient.setQueryData(['ratings', appEvent.id], (oldRatings: NostrEvent[] = []) => {
+      // Remove any existing rating from this user
+      const filteredRatings = oldRatings.filter(r => r.pubkey !== user.pubkey);
+      // Add the new rating
+      return [...filteredRatings, optimisticRating];
+    });
+
     publishEvent({
       kind: 7,
       content: rating.toString(),
@@ -871,11 +897,22 @@ function RatingsSection({ appEvent }: { appEvent: NostrEvent }) {
         ['p', appEvent.pubkey],
       ],
       created_at: Math.floor(Date.now() / 1000),
-    });
-
-    toast({
-      title: 'Rating Submitted!',
-      description: `You rated this app ${rating} star${rating > 1 ? 's' : ''}`,
+    }, {
+      onSuccess: () => {
+        toast({
+          title: 'Rating Submitted!',
+          description: `You rated this app ${rating} star${rating > 1 ? 's' : ''}`,
+        });
+      },
+      onError: () => {
+        // Revert optimistic update on error
+        queryClient.invalidateQueries({ queryKey: ['ratings', appEvent.id] });
+        toast({
+          title: 'Error',
+          description: 'Failed to submit rating. Please try again.',
+          variant: 'destructive',
+        });
+      }
     });
   };
 
@@ -926,15 +963,15 @@ function RatingsSection({ appEvent }: { appEvent: NostrEvent }) {
               <button
                 key={i}
                 onClick={() => handleRate(starValue)}
-                className="transition-transform hover:scale-110"
-                disabled={!user}
+                className="transition-transform hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={!user || isPending}
               >
                 <Star
                   className={`w-10 h-10 ${
                     userRating && starValue <= userRating
                       ? 'fill-yellow-500 text-yellow-500'
                       : 'text-gray-300 hover:text-yellow-500'
-                  }`}
+                  } ${isPending ? 'animate-pulse' : ''}`}
                 />
               </button>
             );

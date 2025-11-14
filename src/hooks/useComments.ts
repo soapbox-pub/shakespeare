@@ -57,7 +57,7 @@ export function useComments(root: NostrEvent | URL, limit?: number) {
         });
 
         const allDescendants = [...directReplies];
-        
+
         // Recursively get descendants of each direct reply
         for (const reply of directReplies) {
           allDescendants.push(...getDescendants(reply.id));
@@ -94,5 +94,7 @@ export function useComments(root: NostrEvent | URL, limit?: number) {
       };
     },
     enabled: !!root,
+    staleTime: 10000, // 10 seconds
+    refetchInterval: 30000, // 30 seconds
   });
 }

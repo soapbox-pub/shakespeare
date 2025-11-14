@@ -19,9 +19,9 @@ interface CommentFormProps {
 export function CommentForm({
   root,
   reply,
-  onSuccess, 
+  onSuccess,
   placeholder = "Write a comment...",
-  compact = false 
+  compact = false
 }: CommentFormProps) {
   const [content, setContent] = useState('');
   const { user } = useCurrentUser();
@@ -29,7 +29,7 @@ export function CommentForm({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!content.trim() || !user) return;
 
     postComment(
@@ -72,10 +72,13 @@ export function CommentForm({
           />
           <div className="flex justify-between items-center">
             <span className="text-sm text-muted-foreground">
-              {reply ? 'Replying to comment' : 'Adding to the discussion'}
+              {isPending
+                ? (reply ? 'Posting reply...' : 'Posting comment...')
+                : (reply ? 'Replying to comment' : 'Adding to the discussion')
+              }
             </span>
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               disabled={!content.trim() || isPending}
               size={compact ? "sm" : "default"}
             >

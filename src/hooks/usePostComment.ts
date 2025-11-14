@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNostrPublish } from '@/hooks/useNostrPublish';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { NKinds, type NostrEvent } from '@nostrify/nostrify';
 
 interface PostCommentParams {
@@ -11,6 +12,7 @@ interface PostCommentParams {
 /** Post a NIP-22 (kind 1111) comment on an event. */
 export function usePostComment() {
   const { mutateAsync: publishEvent } = useNostrPublish();
+  const { user } = useCurrentUser();
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -82,10 +84,61 @@ export function usePostComment() {
 
       return event;
     },
+    onMutate: async ({ root, reply, content }) => {
+      if (!user) return;
+
+      const queryKey = ['nostr', 'comments', root instanceof URL ? root.toString() : root.id];
+
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey });
+
+      // Snapshot the previous value
+      const previousComments = queryClient.getQueryData(queryKey);
+
+      // Optimistically update the cache
+      queryClient.setQueryData(queryKey, (old: unknown) => {
+        if (!old || typeof old !== 'object') return old;
+
+        const commentsData = old as { allComments?: NostrEvent[]; topLevelComments?: NostrEvent[] };
+
+        // Create optimistic comment
+        const optimisticComment: NostrEvent = {
+          id: `temp-${Date.now()}`,
+          pubkey: user.pubkey,
+          created_at: Math.floor(Date.now() / 1000),
+          kind: 1111,
+          tags: [], // Tags will be filled properly by the actual event
+          content,
+          sig: ''
+        };
+
+        // Add to allComments
+        const newAllComments = [...(commentsData.allComments || []), optimisticComment];
+
+        // Add to topLevelComments if it's a top-level comment (no reply)
+        const newTopLevelComments = !reply
+          ? [optimisticComment, ...(commentsData.topLevelComments || [])]
+          : commentsData.topLevelComments;
+
+        return {
+          ...commentsData,
+          allComments: newAllComments,
+          topLevelComments: newTopLevelComments,
+        };
+      });
+
+      // Return a context object with the snapshotted value
+      return { previousComments };
+    },
+    onError: (err, variables, context) => {
+      // If the mutation fails, use the context returned from onMutate to roll back
+      const queryKey = ['nostr', 'comments', variables.root instanceof URL ? variables.root.toString() : variables.root.id];
+      queryClient.setQueryData(queryKey, context?.previousComments);
+    },
     onSuccess: (_, { root }) => {
-      // Invalidate and refetch comments
+      // Invalidate and refetch comments to get the real data
       queryClient.invalidateQueries({
-        queryKey: ['comments', root instanceof URL ? root.toString() : root.id]
+        queryKey: ['nostr', 'comments', root instanceof URL ? root.toString() : root.id]
       });
     },
   });

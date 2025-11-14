@@ -24,7 +24,7 @@ async function bundle(
   options: BuildProjectOptions,
 ): Promise<Record<string, Uint8Array>> {
   const { fs, projectPath, domParser, target = "esnext", esmUrl } = options;
-  const esbuild = await getEsbuild(esmUrl);
+  const esbuild = await getEsbuild();
 
   const indexHtmlText = await fs.readFile(
     `${projectPath}/index.html`,

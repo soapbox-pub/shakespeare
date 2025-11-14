@@ -1,22 +1,23 @@
 import type _ESBuild from "esbuild-wasm";
+import wasmUrl from "esbuild-wasm/esbuild.wasm?url" with { type: "url" };
 
 type ESBuild = typeof _ESBuild;
 
 let promise: Promise<ESBuild> | undefined;
 
-export function getEsbuild(esmUrl: string): Promise<ESBuild> {
+export function getEsbuild(): Promise<ESBuild> {
   if (!promise) {
-    promise = loadEsbuild(esmUrl);
+    promise = loadEsbuild();
   }
   return promise;
 }
 
-async function loadEsbuild(esmUrl: string): Promise<ESBuild> {
+async function loadEsbuild(): Promise<ESBuild> {
   const { default: esbuild } = await import("esbuild-wasm");
 
   await esbuild.initialize({
-    worker: false,
-    wasmURL: `${esmUrl}/esbuild-wasm@0.25.8/esbuild.wasm`,
+    worker: true,
+    wasmURL: wasmUrl,
   });
 
   return esbuild;

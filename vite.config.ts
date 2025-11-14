@@ -33,7 +33,7 @@ export default defineConfig(() => ({
       manifest: false, // Use existing manifest.webmanifest from public folder
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,wasm,mp3}'],
-        maximumFileSizeToCacheInBytes: 10 * 1024 * 1024, // 10 MB
+        maximumFileSizeToCacheInBytes: 15 * 1024 * 1024, // 15 MB (to accommodate esbuild.wasm at ~12 MB)
         cleanupOutdatedCaches: true,
       },
       devOptions: {

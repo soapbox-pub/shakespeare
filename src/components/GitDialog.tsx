@@ -1138,7 +1138,7 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
                           )}
                         </div>
 
-                        {gitStatus.remotes.length > 0 && (
+                        {originUrl.trim() && (
                           <div className="flex gap-2">
                             <Button
                               onClick={handlePull}
@@ -1172,7 +1172,7 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
                           </div>
                         )}
 
-                        {gitStatus.remotes.length === 0 && user && (
+                        {!originUrl.trim() && user && (
                           <Button
                             onClick={handlePushToNostr}
                             disabled={isPushingToNostr || isPushing || isPulling}

@@ -49,7 +49,10 @@ export function useOAuth(config: OAuthConfig) {
   const { corsProxy } = appConfig;
 
   // Check if OAuth is configured
-  const isOAuthConfigured = !!(config.clientId && config.clientSecret);
+  // For PKCE flows (like Cloudflare), we only need clientId
+  const isOAuthConfigured = config.usePKCE
+    ? !!config.clientId
+    : !!(config.clientId && config.clientSecret);
 
   // Generate a cryptographically secure random string for PKCE code verifier
   const generateCodeVerifier = (): string => {

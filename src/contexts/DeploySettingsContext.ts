@@ -32,7 +32,15 @@ export interface NsiteProvider extends BaseDeployProvider {
   blossomServers: string[];
 }
 
-export type DeployProvider = ShakespeareDeployProvider | NetlifyProvider | VercelProvider | NsiteProvider;
+export interface CloudflareProvider extends BaseDeployProvider {
+  type: 'cloudflare';
+  apiToken: string;
+  accountId: string;
+  baseURL?: string;
+  proxy?: boolean;
+}
+
+export type DeployProvider = ShakespeareDeployProvider | NetlifyProvider | VercelProvider | NsiteProvider | CloudflareProvider;
 
 export interface DeploySettings {
   providers: DeployProvider[];

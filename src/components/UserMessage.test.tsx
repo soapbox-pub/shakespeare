@@ -16,8 +16,11 @@ describe('UserMessage', () => {
 
     render(<UserMessage content={content} />);
 
-    // When using string content, it should still work but won't separate file attachments
-    expect(screen.getByText(content)).toBeInTheDocument();
+    // When using string content, it should parse and separate file attachments
+    expect(screen.getByText('Here is my file:')).toBeInTheDocument();
+    expect(screen.getByText('test.txt')).toBeInTheDocument();
+    // Full path should not be displayed
+    expect(screen.queryByText('/tmp/test.txt')).not.toBeInTheDocument();
   });
 
   it('renders file attachment badges for single file with text parts', () => {

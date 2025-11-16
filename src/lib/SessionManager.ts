@@ -278,12 +278,43 @@ export class SessionManager {
           template: config.systemPrompt,
         });
 
+        // Helper function to filter out unsupported image formats (keep only JPG/JPEG/PNG)
+        const filterSupportedImages = (msgs: OpenAI.Chat.Completions.ChatCompletionMessageParam[]): OpenAI.Chat.Completions.ChatCompletionMessageParam[] => {
+          return msgs.map(msg => {
+            if (msg.role === 'user' && typeof msg.content !== 'string' && Array.isArray(msg.content)) {
+              const filteredContent = msg.content.filter(part => {
+                if (part.type !== 'image_url') return true;
+                
+                const imagePart = part as OpenAI.Chat.Completions.ChatCompletionContentPartImage;
+                const url = imagePart.image_url.url.toLowerCase();
+                
+                // Keep only JPG/JPEG/PNG images
+                // Check file extension or data URL MIME type
+                return /\.(jpg|jpeg|png)(\?|$)/.test(url) || 
+                       url.startsWith('data:image/jpeg') || 
+                       url.startsWith('data:image/png') ||
+                       url.startsWith('data:image/jpg');
+              });
+              
+              return {
+                ...msg,
+                content: filteredContent
+              };
+            }
+            return msg;
+          });
+        };
+
         // Prepare messages for AI
         // Note: User messages with image_url content parts are valid ChatCompletionMessageParam types
         // The AIMessage type includes ChatCompletionMessageParam, so this cast is safe
-        const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = (systemPrompt
+        let messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = (systemPrompt
           ? [{ role: 'system', content: systemPrompt }, ...session.messages]
           : session.messages) as OpenAI.Chat.Completions.ChatCompletionMessageParam[];
+
+        // Filter out unsupported image formats (keep only JPG/JPEG/PNG for API)
+        // This ensures the UI shows all image types, but API only receives supported formats
+        messages = filterSupportedImages(messages);
 
         // Prepare completion options
         const completionOptions: OpenAI.Chat.Completions.ChatCompletionCreateParams = {

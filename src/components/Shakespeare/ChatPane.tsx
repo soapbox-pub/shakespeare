@@ -44,6 +44,7 @@ import { Quilly } from '@/components/Quilly';
 import { ShakespeareLogo } from '@/components/ShakespeareLogo';
 import { ChatInput } from '@/components/Shakespeare/ChatInput';
 import { buildMessageContent } from '@/lib/buildMessageContent';
+import { useUploadFile } from '@/hooks/useUploadFile';
 
 // Clean interfaces now handled by proper hooks
 
@@ -77,6 +78,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   const { fs } = useFS();
   const { git } = useGit();
   const { user } = useCurrentUser();
+  const { mutateAsync: uploadFile } = useUploadFile();
   const { models } = useProviderModels();
   const { config } = useAppContext();
   const { projectsPath, tmpPath, pluginsPath } = useFSPaths();
@@ -439,13 +441,20 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     const modelToUse = providerModel.trim();
 
     // Build message content from input and attached files
-    const messageContent = await buildMessageContent(input, attachedFiles, fs, tmpPath);
+    // Pass uploadFile function if user is logged in
+    const messageContent = await buildMessageContent(
+      input,
+      attachedFiles,
+      fs,
+      tmpPath,
+      user ? uploadFile : undefined
+    );
 
     // Add model to recently used when sending a message
     addRecentlyUsedModel(modelToUse);
 
     await sendMessage(messageContent, modelToUse);
-  }, [addRecentlyUsedModel, fs, isConfigured, isLoading, providerModel, sendMessage, tmpPath]);
+  }, [addRecentlyUsedModel, fs, isConfigured, isLoading, providerModel, sendMessage, tmpPath, uploadFile, user]);
 
   // Handle textarea focus - show onboarding if not configured
   const handleTextareaFocus = useCallback(() => {

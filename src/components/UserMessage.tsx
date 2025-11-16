@@ -1,4 +1,4 @@
-import { FileText, File } from 'lucide-react';
+import { Paperclip } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import type OpenAI from 'openai';
 
@@ -18,21 +18,60 @@ export function UserMessage({ content }: UserMessageProps) {
     : content.filter(part => part.type === 'text') as Array<{ type: 'text'; text: string }>;
 
   // Regular expression to match "Added file: /tmp/<filename>" patterns
-  const filePattern = /^Added file: (\/tmp\/[^\s\n]+)$/;
+  // Matches the pattern anywhere in the text
+  const filePattern = /Added file:\s*(\/tmp\/[^\s\n]+)/g;
 
   // Process each content part and categorize as text or file
   const processedParts: Array<{ type: 'text' | 'file'; content: string; filepath?: string }> = [];
 
   contentParts.forEach(part => {
     const text = part.text.trim();
-    const match = text.match(filePattern);
+    
+    // Find all file patterns in this text part
+    const fileMatches: Array<{ filepath: string; index: number; length: number }> = [];
+    let match;
+    filePattern.lastIndex = 0; // Reset regex
+    
+    while ((match = filePattern.exec(text)) !== null) {
+      fileMatches.push({
+        filepath: match[1], // "/tmp/filename.txt"
+        index: match.index,
+        length: match[0].length
+      });
+    }
 
-    if (match) {
-      // This is a file attachment
-      const filepath = match[1]; // "/tmp/filename.txt"
-      processedParts.push({ type: 'file', content: text, filepath });
+    if (fileMatches.length > 0) {
+      // Split text around file patterns and process each segment
+      let lastIndex = 0;
+      
+      fileMatches.forEach((fileMatch) => {
+        // Add text before the file pattern
+        if (fileMatch.index > lastIndex) {
+          const textBefore = text.substring(lastIndex, fileMatch.index).trim();
+          if (textBefore) {
+            processedParts.push({ type: 'text', content: textBefore });
+          }
+        }
+        
+        // Add the file attachment badge (without showing "Added file:" text)
+        processedParts.push({ 
+          type: 'file', 
+          content: '', // Empty - badge will show filename only
+          filepath: fileMatch.filepath 
+        });
+        
+        lastIndex = fileMatch.index + fileMatch.length;
+      });
+      
+      // Add remaining text after the last file pattern
+      if (lastIndex < text.length) {
+        const textAfter = text.substring(lastIndex).trim();
+        if (textAfter) {
+          processedParts.push({ type: 'text', content: textAfter });
+        }
+      }
     } else if (text) {
-      // This is regular text content
+      // No file patterns found, treat as regular text
       processedParts.push({ type: 'text', content: text });
     }
   });
@@ -42,19 +81,6 @@ export function UserMessage({ content }: UserMessageProps) {
     return null;
   }
 
-  const getFileIcon = (filename: string) => {
-    const extension = filename.split('.').pop()?.toLowerCase();
-
-    // Return FileText icon for text-like files, File icon for others
-    const textExtensions = ['txt', 'md', 'json', 'js', 'ts', 'jsx', 'tsx', 'css', 'html', 'xml', 'yml', 'yaml'];
-
-    if (extension && textExtensions.includes(extension)) {
-      return <FileText className="h-3 w-3" />;
-    }
-
-    return <File className="h-3 w-3" />;
-  };
-
   const getFileName = (filepath: string) => {
     return filepath.split('/').pop() || filepath;
   };
@@ -63,18 +89,25 @@ export function UserMessage({ content }: UserMessageProps) {
     <div className="space-y-2">
       {processedParts.map((part, index) => {
         if (part.type === 'text') {
+          // Only render text if it has content
+          if (!part.content.trim()) return null;
           return (
             <div key={index} className="whitespace-pre-wrap">
               {part.content}
             </div>
           );
         } else {
+          // Render file attachment badge (no "Added file:" text)
           const filename = getFileName(part.filepath!);
           return (
-            <div key={index} className="flex items-center gap-2">
-              <Badge variant="secondary" className="flex items-center gap-1.5 px-2 py-1">
-                {getFileIcon(filename)}
-                <span className="text-xs font-medium">{filename}</span>
+            <div key={index} className="flex items-center gap-2 max-w-full min-w-0">
+              <Badge variant="secondary" className="inline-flex items-center gap-1.5 px-2 py-1 max-w-full">
+                <span className="flex-shrink-0">
+                  <Paperclip className="h-3 w-3" />
+                </span>
+                <span className="text-xs font-medium truncate min-w-0" title={filename}>
+                  {filename}
+                </span>
               </Badge>
             </div>
           );

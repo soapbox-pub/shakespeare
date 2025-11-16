@@ -312,8 +312,8 @@ export const AIMessageItem = memo(({
     // Extract image URLs from content array
     const imageUrls = contentArray
       ? contentArray
-          .filter(part => part.type === 'image_url')
-          .map(part => (part as OpenAI.Chat.Completions.ChatCompletionContentPartImage).image_url.url)
+        .filter(part => part.type === 'image_url')
+        .map(part => (part as OpenAI.Chat.Completions.ChatCompletionContentPartImage).image_url.url)
       : [];
 
     return (
@@ -321,7 +321,9 @@ export const AIMessageItem = memo(({
         <div className="flex justify-end py-6">
           <div className="max-w-[80%] bg-secondary rounded-2xl rounded-br-md px-4 py-3">
             <div className="text-sm break-words space-y-2">
-              {/* Render images first */}
+              {/* Render text content and attachments first */}
+              {userContent && <UserMessage content={userContent} />}
+              {/* Render images after text and attachments */}
               {imageUrls.length > 0 && (
                 <div className="space-y-2">
                   {imageUrls.map((url, index) => (
@@ -349,8 +351,6 @@ export const AIMessageItem = memo(({
                   ))}
                 </div>
               )}
-              {/* Render text content */}
-              {userContent && <UserMessage content={userContent} />}
             </div>
           </div>
         </div>

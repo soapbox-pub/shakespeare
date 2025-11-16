@@ -305,6 +305,31 @@ export class SessionManager {
           });
         };
 
+        // Helper function to strip all image_url parts but keep text parts (including VFS paths)
+        const stripImageUrls = (msgs: OpenAI.Chat.Completions.ChatCompletionMessageParam[]): OpenAI.Chat.Completions.ChatCompletionMessageParam[] => {
+          return msgs.map(msg => {
+            if (msg.role === 'user' && typeof msg.content !== 'string' && Array.isArray(msg.content)) {
+              // Keep only text parts (this includes "Added file: /tmp/..." paths)
+              const textParts = msg.content.filter(part => part.type === 'text');
+              
+              // If we had images, convert to string content (or empty if no text)
+              if (textParts.length > 0) {
+                return {
+                  ...msg,
+                  content: textParts.map(part => (part as OpenAI.Chat.Completions.ChatCompletionContentPartText).text).join('\n')
+                };
+              }
+              
+              // If no text parts, return empty string
+              return {
+                ...msg,
+                content: ''
+              };
+            }
+            return msg;
+          });
+        };
+
         // Prepare messages for AI
         // Note: User messages with image_url content parts are valid ChatCompletionMessageParam types
         // The AIMessage type includes ChatCompletionMessageParam, so this cast is safe
@@ -327,10 +352,50 @@ export class SessionManager {
           },
         };
 
-        // Generate streaming response
-        const stream = await openai.chat.completions.create(completionOptions, {
-          signal: session.abortController?.signal
+        // Check if messages contain any images (for retry logic)
+        const hasImages = messages.some(msg => {
+          if (msg.role === 'user' && typeof msg.content !== 'string' && Array.isArray(msg.content)) {
+            return msg.content.some(part => part.type === 'image_url');
+          }
+          return false;
         });
+
+        // Generate streaming response with retry logic for models that don't support images
+        let stream: AsyncIterable<OpenAI.Chat.Completions.ChatCompletionChunk>;
+        let retriedWithoutImages = false;
+
+        try {
+          stream = await openai.chat.completions.create(completionOptions, {
+            signal: session.abortController?.signal
+          });
+        } catch (error) {
+          // Check if this is likely an image-related error (400/404) and we haven't retried yet
+          const errorObj = error as Record<string, unknown>;
+          const errorStatus = typeof errorObj?.status === 'number' ? errorObj.status : undefined;
+          const isImageError = errorStatus === 400 || errorStatus === 404 || errorStatus === 500;
+
+          if (isImageError && hasImages && !retriedWithoutImages) {
+            console.warn('API call failed with image-related error, retrying without image_url parts (keeping VFS paths):', error);
+            retriedWithoutImages = true;
+
+            // Strip image_url parts but keep text parts (including VFS paths)
+            const messagesWithoutImages = stripImageUrls(messages);
+            
+            // Update completion options with stripped messages
+            const retryOptions: OpenAI.Chat.Completions.ChatCompletionCreateParams = {
+              ...completionOptions,
+              messages: messagesWithoutImages
+            };
+
+            // Retry the API call
+            stream = await openai.chat.completions.create(retryOptions, {
+              signal: session.abortController?.signal
+            });
+          } else {
+            // Re-throw if not an image error or already retried
+            throw error;
+          }
+        }
 
         let accumulatedContent = '';
         let accumulatedReasoningContent = '';

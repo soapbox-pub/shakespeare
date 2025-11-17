@@ -4,13 +4,13 @@ import { useTranslation } from 'react-i18next';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { useFS } from '@/hooks/useFS';
 import { useFSPaths } from '@/hooks/useFSPaths';
-import { addConsoleMessage, getConsoleMessages, type ConsoleMessage } from '@/lib/consoleMessages';
+import { addConsoleMessage, getConsoleMessages, addConsoleMessageListener, removeConsoleMessageListener, type ConsoleMessage } from '@/lib/consoleMessages';
 import { useConsoleError } from '@/hooks/useConsoleError';
 import { useBuildProject } from '@/hooks/useBuildProject';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { FolderOpen, ArrowLeft, Bug, Copy, Check, Play, Loader2, MenuIcon, Code, Rocket, X, Terminal } from 'lucide-react';
+import { FolderOpen, ArrowLeft, Bug, Copy, Check, Play, Loader2, MenuIcon, Code, Rocket, Terminal, Trash2 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { GitStatusIndicator } from '@/components/GitStatusIndicator';
 import { BrowserAddressBar } from '@/components/ui/browser-address-bar';
@@ -20,11 +20,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { FileTree } from './FileTree';
 import { FileEditor } from './FileEditor';
@@ -88,6 +83,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
   const [historyIndex, setHistoryIndex] = useState(0);
 
   const [deployDialogOpen, setDeployDialogOpen] = useState(false);
+  const [showConsoleView, setShowConsoleView] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const { fs } = useFS();
   const { projectsPath } = useFSPaths();
@@ -465,6 +461,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
     setFileContent('');
     setMobileCodeView('explorer');
     setDesktopCodeView('files');
+    setShowConsoleView(false);
 
     // Reset navigation history and state
     setCurrentPath('/');
@@ -521,102 +518,189 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
     }
   };
 
-  const ConsoleDropdown = () => {
-    const [isOpen, setIsOpen] = useState(false);
-    const [copiedMessageIndex, setCopiedMessageIndex] = useState<number | null>(null);
+  // Constants
+  const CONSOLE_SORT_ORDER_KEY = 'consoleSortOrder';
+  const COPY_FEEDBACK_DURATION = 2000;
 
-    const messages = isOpen ? getConsoleMessages() : [];
+  // Helper function to get message level color
+  const getMessageLevelColor = (level: ConsoleMessage['level']): string => {
+    switch (level) {
+      case 'error': return 'text-destructive';
+      case 'warn': return 'text-warning';
+      case 'info': return 'text-primary';
+      default: return 'text-muted-foreground';
+    }
+  };
+
+  const ConsoleToggleButton = () => {
+    return (
+      <Button
+        variant={showConsoleView ? "secondary" : "ghost"}
+        size="sm"
+        className="h-8 w-8 p-0 relative"
+        onClick={() => setShowConsoleView(!showConsoleView)}
+        title={showConsoleView ? "Show preview" : "Show console"}
+      >
+        <Bug className="h-4 w-4" />
+        {hasConsoleErrors && (
+          <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full border-2 border-background bg-red-500" />
+        )}
+      </Button>
+    );
+  };
+
+  // Individual console message component
+  const ConsoleMessage = ({ msg, index, copiedMessageIndex, onCopy }: {
+    msg: ConsoleMessage;
+    index: number;
+    copiedMessageIndex: number | null;
+    onCopy: (msg: ConsoleMessage, index: number) => void;
+  }) => {
+    return (
+      <div
+        className="group relative py-0.5 px-1 hover:bg-muted/50 transition-colors duration-150 rounded cursor-pointer"
+        onClick={(e) => {
+          e.stopPropagation();
+          onCopy(msg, index);
+        }}
+      >
+        <div className={cn(
+          "text-xs font-mono leading-tight whitespace-pre-wrap break-words",
+          getMessageLevelColor(msg.level)
+        )}>
+          {msg.message}
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onCopy(msg, index);
+          }}
+          className="h-3 w-3 p-0 opacity-0 group-hover:opacity-100 transition-all duration-200 absolute right-1 top-1 hover:bg-muted/70 text-muted-foreground hover:text-foreground bg-background/80 rounded border"
+        >
+          {copiedMessageIndex === index ? (
+            <Check className="h-2 w-2 text-success" />
+          ) : (
+            <Copy className="h-2 w-2" />
+          )}
+        </Button>
+      </div>
+    );
+  };
+
+  const ConsoleView = () => {
+    const [copiedMessageIndex, setCopiedMessageIndex] = useState<number | null>(null);
+    const [messages, setMessages] = useState<ConsoleMessage[]>([]);
+    
+    // Load sort order from localStorage, default to 'newest-first'
+    const [sortOrder, setSortOrder] = useState<'newest-first' | 'oldest-first'>(() => {
+      const saved = localStorage.getItem(CONSOLE_SORT_ORDER_KEY);
+      return (saved === 'oldest-first' || saved === 'newest-first') ? saved : 'newest-first';
+    });
+
+    // Save sort order to localStorage whenever it changes
+    useEffect(() => {
+      localStorage.setItem(CONSOLE_SORT_ORDER_KEY, sortOrder);
+    }, [sortOrder]);
+
+    // Update messages from the global store
+    const updateMessages = useCallback(() => {
+      const rawMessages = getConsoleMessages();
+      // Messages come in chronological order (oldest first)
+      // Reverse only if showing newest first
+      const sortedMessages = sortOrder === 'newest-first' ? [...rawMessages].reverse() : rawMessages;
+      setMessages(sortedMessages);
+    }, [sortOrder]);
+
+    // Initial load and listener setup
+    useEffect(() => {
+      updateMessages();
+      addConsoleMessageListener(updateMessages);
+      return () => {
+        removeConsoleMessageListener(updateMessages);
+      };
+    }, [updateMessages]);
 
     const copyMessageToClipboard = async (msg: ConsoleMessage, index: number) => {
       try {
         await navigator.clipboard.writeText(msg.message);
         setCopiedMessageIndex(index);
-        setTimeout(() => setCopiedMessageIndex(null), 2000);
+        setTimeout(() => setCopiedMessageIndex(null), COPY_FEEDBACK_DURATION);
       } catch (error) {
         console.error('Failed to copy message to clipboard:', error);
       }
     };
 
+    const handleClearMessages = () => {
+      clearErrors();
+      setCopiedMessageIndex(null);
+    };
+
     const messageCount = messages.length;
 
     return (
-      <Popover open={isOpen} onOpenChange={setIsOpen}>
-        <PopoverTrigger asChild>
+      <div className="h-full w-full flex flex-col bg-background">
+        {/* Header */}
+        <div className="h-12 flex-shrink-0 flex items-center justify-between px-4 border-b">
           <Button
             variant="ghost"
             size="sm"
-            className="h-8 w-8 p-0 relative"
+            onClick={() => setShowConsoleView(false)}
+            className="h-8 gap-2 text-muted-foreground hover:text-foreground"
           >
-            <Bug className="h-4 w-4" />
-            {hasConsoleErrors && (
-              <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full border-2 border-background bg-red-500" />
-            )}
+            <ArrowLeft className="h-4 w-4" />
+            Back
           </Button>
-        </PopoverTrigger>
-        <PopoverContent
-          align="end"
-          className="w-[calc(100vw-1rem)] max-w-[480px] max-h-[512px] overflow-hidden shadow-lg border rounded-lg bg-background p-0"
-          sideOffset={4}
-        >
-
-          {/* Messages */}
-          <div className="h-[60vh] max-h-[512px] w-full bg-background text-foreground font-mono text-xs relative overflow-y-auto overflow-x-hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-            <div className="py-2 px-1 space-y-0">
-              {messageCount === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <p className="text-sm text-muted-foreground font-medium">No console messages</p>
-                  <p className="text-xs text-muted-foreground mt-1">Messages from your project will appear here</p>
-                </div>
-              ) : (
-                messages.map((msg, index) => (
-                  <div
-                    key={index}
-                    className="group relative py-0.5 px-1 hover:bg-muted/50 transition-colors duration-150 rounded cursor-pointer"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      copyMessageToClipboard(msg, index);
-                    }}
-                  >
-                    <div className={cn(
-                      "text-xs font-mono leading-tight whitespace-pre-wrap break-words",
-                      msg.level === 'error' ? "text-destructive" :
-                        msg.level === 'warn' ? "text-warning" :
-                          msg.level === 'info' ? "text-primary" :
-                            "text-muted-foreground"
-                    )}>
-                      {msg.message}
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        copyMessageToClipboard(msg, index);
-                      }}
-                      className="h-3 w-3 p-0 opacity-0 group-hover:opacity-100 transition-all duration-200 absolute right-1 top-1 hover:bg-muted/70 text-muted-foreground hover:text-foreground bg-background/80 rounded border"
-                    >
-                      {copiedMessageIndex === index ? (
-                        <Check className="h-2 w-2 text-success" />
-                      ) : (
-                        <Copy className="h-2 w-2" />
-                      )}
-                    </Button>
-                  </div>
-                ))
-              )}
-            </div>
+          <div className="flex items-center gap-2">
+            {messageCount > 0 && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSortOrder(sortOrder === 'newest-first' ? 'oldest-first' : 'newest-first')}
+                  className="h-8 text-muted-foreground hover:text-foreground"
+                  title={sortOrder === 'newest-first' ? 'Latest First' : 'Oldest First'}
+                >
+                  {sortOrder === 'newest-first' ? 'Latest First' : 'Oldest First'}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleClearMessages}
+                  className="h-8 text-destructive/80 hover:text-destructive"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Clear
+                </Button>
+              </>
+            )}
           </div>
+        </div>
 
-          {/* Close button */}
-          <button
-            onClick={() => setIsOpen(false)}
-            className="absolute top-2 right-2 h-8 w-8 p-0 bg-muted/50 hover:bg-muted/70 rounded-md z-10 flex items-center justify-center border"
-          >
-            <X className="h-5 w-5 text-muted-foreground" />
-          </button>
-        </PopoverContent>
-      </Popover>
+        {/* Messages */}
+        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] bg-background text-foreground font-mono text-xs">
+          <div className="py-2 px-1 space-y-0">
+            {messageCount === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <p className="text-sm text-muted-foreground font-medium">No console messages</p>
+                <p className="text-xs text-muted-foreground mt-1">Messages from your project will appear here</p>
+              </div>
+            ) : (
+              messages.map((msg, index) => (
+                <ConsoleMessage
+                  key={index}
+                  msg={msg}
+                  index={index}
+                  copiedMessageIndex={copiedMessageIndex}
+                  onCopy={copyMessageToClipboard}
+                />
+              ))
+            )}
+          </div>
+        </div>
+      </div>
     );
   };
 
@@ -689,7 +773,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
                           <Code className="h-4 w-4" />
                         </Button>
                       )}
-                      <ConsoleDropdown />
+                      <ConsoleToggleButton />
                       <Menu />
                     </div>
                   )}
@@ -697,16 +781,25 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
               </div>
 
               {/* Content area */}
-              <div className="flex-1">
-                {hasBuiltProject ? (
+              <div className="flex-1 min-h-0 relative">
+                {/* Console View */}
+                <div className={cn("absolute inset-0", showConsoleView ? "block" : "hidden")}>
+                  <ConsoleView />
+                </div>
+
+                {/* Preview iframe */}
+                {hasBuiltProject && (
                   <iframe
                     ref={iframeRef}
                     src={`https://${projectId}.${previewDomain}/`}
-                    className="w-full h-full border-0"
+                    className={cn("w-full h-full border-0", showConsoleView ? "hidden" : "block")}
                     title="Project Preview"
                     sandbox="allow-scripts allow-same-origin"
                   />
-                ) : (
+                )}
+
+                {/* Build prompt */}
+                {!hasBuiltProject && !showConsoleView && (
                   <div className="h-full flex items-center justify-center bg-muted">
                     <div className="text-center">
                       <h3 className="text-lg font-semibold mb-2">{t('projectPreview')}</h3>

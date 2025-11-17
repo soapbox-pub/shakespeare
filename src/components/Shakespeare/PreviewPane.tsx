@@ -32,6 +32,7 @@ import { DeployDialog } from '@/components/DeployDialog';
 import { Terminal as TerminalComponent } from '@/components/Terminal';
 import { useSearchParams } from 'react-router-dom';
 import { useAppContext } from '@/hooks/useAppContext';
+import { isMediaFile } from '@/lib/fileUtils';
 
 interface PreviewPaneProps {
   projectId: string;
@@ -130,6 +131,13 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
   }, [isBuildLoading, isPreviewable, handleBuildProject, shouldBuild]);
 
   const loadFileContent = useCallback(async (filePath: string) => {
+    // Skip loading media files - they can't be edited as text
+    if (isMediaFile(filePath)) {
+      setFileContent('');
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     try {
       const content = await projectsManager.readFile(projectId, filePath);

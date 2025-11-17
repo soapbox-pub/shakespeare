@@ -83,6 +83,8 @@
   "add": "添加",
   "remove": "移除",
   "retry": "重试",
+  "latestFirst": "最新优先",
+  "oldestFirst": "最旧优先",
   "name": "名称",
   "email": "邮箱",
   "buildNostrApps": "使用AI构建应用",

@@ -83,6 +83,8 @@
   "add": "Adicionar",
   "remove": "Remover",
   "retry": "Tentar novamente",
+  "latestFirst": "Mais Recentes Primeiro",
+  "oldestFirst": "Mais Antigos Primeiro",
   "name": "Nome",
   "email": "Email",
   "buildNostrApps": "Construa aplicativos com IA",

@@ -87,6 +87,8 @@
   "add": "Add",
   "remove": "Remove",
   "retry": "Retry",
+  "latestFirst": "Latest First",
+  "oldestFirst": "Oldest First",
   "name": "Name",
   "email": "Email",
   "buildNostrApps": "Build apps with AI",

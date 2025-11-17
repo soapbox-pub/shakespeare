@@ -83,6 +83,8 @@
   "add": "Fi kun",
   "remove": "Yọ kuro",
   "retry": "Tun gbiyanju",
+  "latestFirst": "Tuntun Akọkọ",
+  "oldestFirst": "Atijọ Akọkọ",
   "name": "Orukọ",
   "email": "Imeeli",
   "buildNostrApps": "Kọ awọn ohun elo pẹlu AI",

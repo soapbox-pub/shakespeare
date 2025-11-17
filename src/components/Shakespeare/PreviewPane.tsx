@@ -10,7 +10,7 @@ import { useBuildProject } from '@/hooks/useBuildProject';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { FolderOpen, ArrowLeft, Bug, Copy, Check, Play, Loader2, MenuIcon, Code, Rocket, Terminal, Trash2 } from 'lucide-react';
+import { FolderOpen, ArrowLeft, Bug, Copy, Check, Play, Loader2, MenuIcon, Code, Rocket, Terminal, Trash2, ChevronRight } from 'lucide-react';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { GitStatusIndicator } from '@/components/GitStatusIndicator';
 import { BrowserAddressBar } from '@/components/ui/browser-address-bar';
@@ -661,18 +661,16 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
                   size="sm"
                   onClick={() => setSortOrder(sortOrder === 'newest-first' ? 'oldest-first' : 'newest-first')}
                   className="h-8 text-muted-foreground hover:text-foreground"
-                  title={sortOrder === 'newest-first' ? 'Latest First' : 'Oldest First'}
                 >
-                  {sortOrder === 'newest-first' ? 'Latest First' : 'Oldest First'}
+                  {sortOrder === 'newest-first' ? t('latestFirst') : t('oldestFirst')}
                 </Button>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={handleClearMessages}
-                  className="h-8 text-destructive/80 hover:text-destructive"
+                  className="h-8 w-8 p-0 text-destructive/80 hover:text-destructive"
                 >
                   <Trash2 className="h-4 w-4" />
-                  Clear
                 </Button>
               </>
             )}
@@ -682,21 +680,25 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
         {/* Messages */}
         <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] bg-background text-foreground font-mono text-xs">
           <div className="py-2 px-1 space-y-0">
-            {messageCount === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <p className="text-sm text-muted-foreground font-medium">No console messages</p>
-                <p className="text-xs text-muted-foreground mt-1">Messages from your project will appear here</p>
+            {/* Console prompt indicator - at top for newest-first, bottom for oldest-first */}
+            {sortOrder === 'newest-first' && (
+              <div className="py-0.5 px-1 flex items-center">
+                <ChevronRight className="h-3 w-3 text-muted-foreground" />
               </div>
-            ) : (
-              messages.map((msg, index) => (
-                <ConsoleMessage
-                  key={index}
-                  msg={msg}
-                  index={index}
-                  copiedMessageIndex={copiedMessageIndex}
-                  onCopy={copyMessageToClipboard}
-                />
-              ))
+            )}
+            {messages.map((msg, index) => (
+              <ConsoleMessage
+                key={index}
+                msg={msg}
+                index={index}
+                copiedMessageIndex={copiedMessageIndex}
+                onCopy={copyMessageToClipboard}
+              />
+            ))}
+            {sortOrder === 'oldest-first' && (
+              <div className="py-0.5 px-1 flex items-center">
+                <ChevronRight className="h-3 w-3 text-muted-foreground" />
+              </div>
             )}
           </div>
         </div>

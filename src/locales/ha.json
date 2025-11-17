@@ -83,6 +83,8 @@
   "add": "Ƙara",
   "remove": "Cire",
   "retry": "Sake gwadawa",
+  "latestFirst": "Na Baya-bayan nan Da farko",
+  "oldestFirst": "Na Dā Da farko",
   "name": "Suna",
   "email": "Imel",
   "buildNostrApps": "Gina aikace-aikace da AI",

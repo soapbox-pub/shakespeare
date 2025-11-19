@@ -1,5 +1,5 @@
 import { encodeBase64 } from '@std/encoding/base64';
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo, memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { useFS } from '@/hooks/useFS';
@@ -521,6 +521,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
   // Constants
   const CONSOLE_SORT_ORDER_KEY = 'consoleSortOrder';
   const COPY_FEEDBACK_DURATION = 2000;
+  const MAX_CONSOLE_MESSAGES = 500; // Limit displayed messages for performance
 
   // Helper function to get message level color
   const getMessageLevelColor = (level: ConsoleMessage['level']): string => {
@@ -549,8 +550,8 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
     );
   };
 
-  // Individual console message component
-  const ConsoleMessage = ({ msg, index, copiedMessageIndex, onCopy }: {
+  // Individual console message component - memoized for performance
+  const ConsoleMessage = memo(({ msg, index, copiedMessageIndex, onCopy }: {
     msg: ConsoleMessage;
     index: number;
     copiedMessageIndex: number | null;
@@ -588,11 +589,14 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
         </Button>
       </div>
     );
-  };
+  });
+  ConsoleMessage.displayName = 'ConsoleMessage';
 
   const ConsoleView = () => {
     const [copiedMessageIndex, setCopiedMessageIndex] = useState<number | null>(null);
-    const [messages, setMessages] = useState<ConsoleMessage[]>([]);
+    const [isInitialLoad, setIsInitialLoad] = useState(true);
+    const [rawMessages, setRawMessages] = useState<ConsoleMessage[]>([]);
+    const [totalMessageCount, setTotalMessageCount] = useState(0);
     
     // Load sort order from localStorage, default to 'newest-first'
     const [sortOrder, setSortOrder] = useState<'newest-first' | 'oldest-first'>(() => {
@@ -605,23 +609,95 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
       localStorage.setItem(CONSOLE_SORT_ORDER_KEY, sortOrder);
     }, [sortOrder]);
 
-    // Update messages from the global store
+    // Track rapid message bursts for intelligent batching
+    const lastMessageTimeRef = useRef<number>(0);
+    const pendingUpdateRef = useRef<number>();
+    const messageCountSinceUpdateRef = useRef<number>(0);
+    
+    // Update messages from the global store - optimized for immediate updates
     const updateMessages = useCallback(() => {
-      const rawMessages = getConsoleMessages();
-      // Messages come in chronological order (oldest first)
-      // Reverse only if showing newest first
-      const sortedMessages = sortOrder === 'newest-first' ? [...rawMessages].reverse() : rawMessages;
-      setMessages(sortedMessages);
-    }, [sortOrder]);
+      const allMessages = getConsoleMessages();
+      setTotalMessageCount(allMessages.length);
+      
+      // Limit messages for performance (keep most recent)
+      const limitedMessages = allMessages.length > MAX_CONSOLE_MESSAGES
+        ? allMessages.slice(-MAX_CONSOLE_MESSAGES)
+        : allMessages;
+      
+      setRawMessages(limitedMessages);
+      setIsInitialLoad(false);
+      messageCountSinceUpdateRef.current = 0;
+    }, []);
+
+    // Smart update handler: immediate for single messages, batched for rapid bursts
+    const handleMessageUpdate = useCallback(() => {
+      const now = Date.now();
+      const timeSinceLastMessage = now - lastMessageTimeRef.current;
+      lastMessageTimeRef.current = now;
+      messageCountSinceUpdateRef.current += 1;
+      
+      // Detect rapid bursts: if we get more than 3 messages within 50ms, batch them
+      const isRapidBurst = messageCountSinceUpdateRef.current > 3 && timeSinceLastMessage < 50;
+      
+      // Clear any pending update
+      if (pendingUpdateRef.current) {
+        cancelAnimationFrame(pendingUpdateRef.current);
+        pendingUpdateRef.current = undefined;
+      }
+      
+      if (isRapidBurst) {
+        // Batch rapid updates using requestAnimationFrame for smooth rendering
+        // This prevents UI blocking during loops that log many messages
+        pendingUpdateRef.current = requestAnimationFrame(() => {
+          updateMessages();
+        });
+      } else {
+        // Immediate update for normal console.log calls (like browser console)
+        // Single messages appear instantly, just like native browser console
+        updateMessages();
+      }
+    }, [updateMessages]);
 
     // Initial load and listener setup
     useEffect(() => {
-      updateMessages();
-      addConsoleMessageListener(updateMessages);
+      // Initial load - check if we have many messages
+      const allMessages = getConsoleMessages();
+      if (allMessages.length > 500) {
+        setIsInitialLoad(true);
+        // Use requestIdleCallback for non-blocking initial render, fallback to setTimeout
+        const scheduleUpdate = () => {
+          if ('requestIdleCallback' in window) {
+            requestIdleCallback(() => {
+              updateMessages();
+            }, { timeout: 100 });
+          } else {
+            setTimeout(() => {
+              updateMessages();
+            }, 0);
+          }
+        };
+        scheduleUpdate();
+      } else {
+        updateMessages();
+      }
+      
+      addConsoleMessageListener(handleMessageUpdate);
       return () => {
-        removeConsoleMessageListener(updateMessages);
+        removeConsoleMessageListener(handleMessageUpdate);
+        if (pendingUpdateRef.current) {
+          cancelAnimationFrame(pendingUpdateRef.current);
+        }
       };
-    }, [updateMessages]);
+    }, [handleMessageUpdate, updateMessages]);
+
+    // Memoize sorted messages to avoid recalculation on every render
+    const messages = useMemo(() => {
+      if (sortOrder === 'newest-first') {
+        // For newest-first, reverse the array (messages are stored oldest-first)
+        return [...rawMessages].reverse();
+      }
+      return rawMessages;
+    }, [rawMessages, sortOrder]);
 
     const copyMessageToClipboard = async (msg: ConsoleMessage, index: number) => {
       try {
@@ -639,6 +715,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
     };
 
     const messageCount = messages.length;
+    const hasMoreMessages = rawMessages.length >= MAX_CONSOLE_MESSAGES;
 
     return (
       <div className="h-full w-full flex flex-col bg-background">
@@ -656,6 +733,11 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
           <div className="flex items-center gap-2">
             {messageCount > 0 && (
               <>
+                {hasMoreMessages && (
+                  <span className="text-xs text-muted-foreground">
+                    Showing last {MAX_CONSOLE_MESSAGES.toLocaleString()} of {totalMessageCount.toLocaleString()}
+                  </span>
+                )}
                 <Button
                   variant="ghost"
                   size="sm"
@@ -678,29 +760,38 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
         </div>
 
         {/* Messages */}
-        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] bg-background text-foreground font-mono text-xs">
-          <div className="py-2 px-1 space-y-0">
-            {/* Console prompt indicator - at top for newest-first, bottom for oldest-first */}
-            {sortOrder === 'newest-first' && (
-              <div className="py-0.5 px-1 flex items-center">
-                <ChevronRight className="h-3 w-3 text-muted-foreground" />
+        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] bg-background text-foreground font-mono text-xs relative">
+          {isInitialLoad ? (
+            <div className="absolute inset-0 flex items-center justify-center z-10 bg-background">
+              <div className="flex flex-col items-center gap-2">
+                <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                <span className="text-sm text-muted-foreground">Loading console messages...</span>
               </div>
-            )}
-            {messages.map((msg, index) => (
-              <ConsoleMessage
-                key={index}
-                msg={msg}
-                index={index}
-                copiedMessageIndex={copiedMessageIndex}
-                onCopy={copyMessageToClipboard}
-              />
-            ))}
-            {sortOrder === 'oldest-first' && (
-              <div className="py-0.5 px-1 flex items-center">
-                <ChevronRight className="h-3 w-3 text-muted-foreground" />
-              </div>
-            )}
-          </div>
+            </div>
+          ) : (
+            <div className="py-2 px-1 space-y-0">
+              {/* Console prompt indicator - at top for newest-first, bottom for oldest-first */}
+              {sortOrder === 'newest-first' && (
+                <div className="py-0.5 px-1 flex items-center">
+                  <ChevronRight className="h-3 w-3 text-muted-foreground" />
+                </div>
+              )}
+              {messages.map((msg, index) => (
+                <ConsoleMessage
+                  key={`${index}-${msg.message.slice(0, 20)}`}
+                  msg={msg}
+                  index={index}
+                  copiedMessageIndex={copiedMessageIndex}
+                  onCopy={copyMessageToClipboard}
+                />
+              ))}
+              {sortOrder === 'oldest-first' && (
+                <div className="py-0.5 px-1 flex items-center">
+                  <ChevronRight className="h-3 w-3 text-muted-foreground" />
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     );

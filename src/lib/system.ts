@@ -200,7 +200,7 @@ This project has a repository URL configured, so you can create an "Edit with Sh
 
 Note: the badge should be displayed at its natural size. It is recommended to omit width/height attributes to ensure proper scaling, or use \`height: auto\` in CSS (or \`"h-auto"\` in Tailwind CSS) when applicable.{% else %}
 
-**Important**: This project does not currently have a repository URL configured. If the user asks about adding an "Edit with Shakespeare" button, inform them that they must first initialize a public Git repository from their Shakespeare project. Once a repository URL is available, an "Edit with Shakespeare" button can be created.{% endif %}{% if readmeText %}
+**Important**: This project does not currently have a repository URL configured. If the user asks about adding an "Edit with Shakespeare" button, inform them that they must first initialize a public Git repository from their Shakespeare project. Once a repository URL is available, an "Edit with Shakespeare" button can be created.{% endif %}{% if README %}
 
 {{ README }}{% endif %}{% if AGENTS %}
 

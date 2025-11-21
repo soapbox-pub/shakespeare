@@ -36,6 +36,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import type { AIProvider } from '@/contexts/AISettingsContext';
 import { AI_PROVIDER_PRESETS, type PresetProvider } from '@/lib/aiProviderPresets';
 import { ExternalFavicon } from '@/components/ExternalFavicon';
+import { MCPServersSection } from '@/components/MCPServersSection';
 import { PluginsSection } from '@/components/PluginsSection';
 
 interface SortableProviderItemProps {
@@ -565,6 +566,9 @@ export function AISettings() {
             </AccordionItem>
           </Accordion>
         </div>
+
+        {/* MCP Servers Section */}
+        <MCPServersSection />
 
         {/* Plugins Section */}
         <PluginsSection />

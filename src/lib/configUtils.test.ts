@@ -74,7 +74,10 @@ describe('configUtils', () => {
         const result = await readAISettings(mockFS);
 
         expect(mockFS.readFile).toHaveBeenCalledWith('/config/ai.json', 'utf8');
-        expect(result).toEqual(sampleAISettings);
+        expect(result).toEqual({
+          ...sampleAISettings,
+          mcpServers: {},
+        });
       });
 
       it('should return default settings if file does not exist and no localStorage data', async () => {
@@ -86,6 +89,7 @@ describe('configUtils', () => {
         expect(result).toEqual({
           providers: [],
           recentlyUsedModels: [],
+          mcpServers: {},
         });
       });
 
@@ -98,6 +102,7 @@ describe('configUtils', () => {
         expect(result).toEqual({
           providers: [],
           recentlyUsedModels: [],
+          mcpServers: {},
         });
       });
     });

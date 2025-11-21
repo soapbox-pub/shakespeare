@@ -1,7 +1,7 @@
 import z from 'zod';
 import { filteredArray } from '@/lib/schema';
 import type { JSRuntimeFS } from '@/lib/JSRuntime';
-import type { AIProvider, AISettings } from '@/contexts/AISettingsContext';
+import type { AIProvider, AISettings, MCPServer } from '@/contexts/AISettingsContext';
 import type { GitSettings } from '@/contexts/GitSettingsContext';
 import type { DeployProvider, DeploySettings } from '@/contexts/DeploySettingsContext';
 
@@ -42,9 +42,15 @@ const providerModelSchema = z.string().regex(
   'Must be in format provider/model (e.g., "openai/gpt-4o")',
 );
 
+const mcpServerSchema: z.ZodType<MCPServer> = z.object({
+  type: z.literal('streamable-http'),
+  url: z.string().url(),
+});
+
 const aiSettingsSchema = z.object({
   providers: filteredArray(aiProviderSchema),
   recentlyUsedModels: filteredArray(providerModelSchema),
+  mcpServers: z.record(z.string(), mcpServerSchema).optional(),
 });
 
 const gitCredentialSchema = z.object({
@@ -130,13 +136,19 @@ export async function readAISettings(fs: JSRuntimeFS, configPath = '/config'): P
   const defaultSettings: AISettings = {
     providers: [],
     recentlyUsedModels: [],
+    mcpServers: {},
   };
 
   try {
     const aiConfigPath = getAIConfigPath(configPath);
     const content = await fs.readFile(aiConfigPath, 'utf8');
     const data = JSON.parse(content);
-    return aiSettingsSchema.parse(data);
+    const parsed = aiSettingsSchema.parse(data);
+    // Ensure mcpServers exists even if not in parsed data
+    return {
+      ...parsed,
+      mcpServers: parsed.mcpServers || {},
+    };
   } catch (error) {
     if (error instanceof z.ZodError) {
       console.error('AI settings parsing error:', error.errors);

@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { ReactNode, useState, useEffect } from 'react';
-import { AISettingsContext, type AISettings, type AIProvider, type AISettingsContextType } from '@/contexts/AISettingsContext';
+import { AISettingsContext, type AISettings, type AIProvider, type MCPServer, type AISettingsContextType } from '@/contexts/AISettingsContext';
 import { useFS } from '@/hooks/useFS';
 import { useFSPaths } from '@/hooks/useFSPaths';
 import { readAISettings, writeAISettings } from '@/lib/configUtils';
@@ -12,6 +12,7 @@ interface AISettingsProviderProps {
 const DEFAULT_SETTINGS: AISettings = {
   providers: [],
   recentlyUsedModels: [],
+  mcpServers: {},
 };
 
 export function AISettingsProvider({ children }: AISettingsProviderProps) {
@@ -128,6 +129,27 @@ export function AISettingsProvider({ children }: AISettingsProviderProps) {
     });
   };
 
+  const setMCPServer = (name: string, server: MCPServer) => {
+    setSettings(prev => ({
+      ...prev,
+      mcpServers: {
+        ...(prev.mcpServers || {}),
+        [name]: server,
+      },
+    }));
+  };
+
+  const removeMCPServer = (name: string) => {
+    setSettings(prev => {
+      const newMCPServers = { ...(prev.mcpServers || {}) };
+      delete newMCPServers[name];
+      return {
+        ...prev,
+        mcpServers: newMCPServers,
+      };
+    });
+  };
+
   const isConfigured = settings.providers.length > 0;
 
   const contextValue: AISettingsContextType = {
@@ -137,6 +159,8 @@ export function AISettingsProvider({ children }: AISettingsProviderProps) {
     removeProvider,
     setProviders,
     addRecentlyUsedModel,
+    setMCPServer,
+    removeMCPServer,
     isConfigured,
   };
 

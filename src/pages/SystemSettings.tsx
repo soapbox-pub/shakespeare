@@ -52,82 +52,120 @@ export function SystemSettings() {
     systemPrompt: (config.systemPrompt || defaultSystemPrompt) !== (defaultConfig.systemPrompt || defaultSystemPrompt),
   }), [config, defaultConfig]);
 
-  // Restore functions
+  // Restore functions - clear the value from config to use the default
   const restoreProjectTemplate = () => {
     const defaultValue = defaultConfig.projectTemplate;
     setProjectTemplateInput(defaultValue);
-    updateConfig((current) => ({ ...current, projectTemplate: defaultValue }));
+    updateConfig((current) => {
+      const { projectTemplate, ...rest } = current;
+      return rest;
+    });
   };
 
   const restoreEsmUrl = () => {
     const defaultValue = defaultConfig.esmUrl;
     setEsmUrlInput(defaultValue);
-    updateConfig((current) => ({ ...current, esmUrl: defaultValue }));
+    updateConfig((current) => {
+      const { esmUrl, ...rest } = current;
+      return rest;
+    });
   };
 
   const restoreCorsProxy = () => {
     const defaultValue = defaultConfig.corsProxy;
     setCorsProxyInput(defaultValue);
-    updateConfig((current) => ({ ...current, corsProxy: defaultValue }));
+    updateConfig((current) => {
+      const { corsProxy, ...rest } = current;
+      return rest;
+    });
   };
 
   const restoreFaviconUrl = () => {
     const defaultValue = defaultConfig.faviconUrl;
     setFaviconUrlInput(defaultValue);
-    updateConfig((current) => ({ ...current, faviconUrl: defaultValue }));
+    updateConfig((current) => {
+      const { faviconUrl, ...rest } = current;
+      return rest;
+    });
   };
 
   const restorePreviewDomain = () => {
     const defaultValue = defaultConfig.previewDomain;
     setPreviewDomainInput(defaultValue);
-    updateConfig((current) => ({ ...current, previewDomain: defaultValue }));
+    updateConfig((current) => {
+      const { previewDomain, ...rest } = current;
+      return rest;
+    });
   };
 
   const restoreShowcaseEnabled = () => {
-    const defaultValue = defaultConfig.showcaseEnabled;
-    updateConfig((current) => ({ ...current, showcaseEnabled: defaultValue }));
+    updateConfig((current) => {
+      const { showcaseEnabled, ...rest } = current;
+      return rest;
+    });
   };
 
   const restoreShowcaseModerator = () => {
     const defaultValue = defaultConfig.showcaseModerator;
     setShowcaseModeratorInput(defaultValue);
-    updateConfig((current) => ({ ...current, showcaseModerator: defaultValue }));
+    updateConfig((current) => {
+      const { showcaseModerator, ...rest } = current;
+      return rest;
+    });
   };
 
   const restoreFsPathProjects = () => {
     const defaultValue = defaultConfig.fsPathProjects;
     setFsPathProjectsInput(defaultValue);
-    updateConfig((current) => ({ ...current, fsPathProjects: defaultValue }));
+    updateConfig((current) => {
+      const { fsPathProjects, ...rest } = current;
+      return rest;
+    });
   };
 
   const restoreFsPathConfig = () => {
     const defaultValue = defaultConfig.fsPathConfig;
     setFsPathConfigInput(defaultValue);
-    updateConfig((current) => ({ ...current, fsPathConfig: defaultValue }));
+    updateConfig((current) => {
+      const { fsPathConfig, ...rest } = current;
+      return rest;
+    });
   };
 
   const restoreFsPathTmp = () => {
     const defaultValue = defaultConfig.fsPathTmp;
     setFsPathTmpInput(defaultValue);
-    updateConfig((current) => ({ ...current, fsPathTmp: defaultValue }));
+    updateConfig((current) => {
+      const { fsPathTmp, ...rest } = current;
+      return rest;
+    });
   };
 
   const restoreFsPathPlugins = () => {
     const defaultValue = defaultConfig.fsPathPlugins;
     setFsPathPluginsInput(defaultValue);
-    updateConfig((current) => ({ ...current, fsPathPlugins: defaultValue }));
+    updateConfig((current) => {
+      const { fsPathPlugins, ...rest } = current;
+      return rest;
+    });
   };
 
   const restoreSentryDsn = () => {
     const defaultValue = defaultConfig.sentryDsn;
     setSentryDsnInput(defaultValue);
-    updateConfig((current) => ({ ...current, sentryDsn: defaultValue }));
+    updateConfig((current) => {
+      const { sentryDsn, ...rest } = current;
+      return rest;
+    });
   };
 
   const restoreSystemPrompt = () => {
     const defaultValue = defaultSystemPrompt;
     setSystemPromptInput(defaultValue);
-    updateConfig((current) => ({ ...current, systemPrompt: defaultValue }));
+    updateConfig((current) => {
+      const { systemPrompt, ...rest } = current;
+      return rest;
+    });
   };
 
   // Service Worker state

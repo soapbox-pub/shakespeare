@@ -21,8 +21,12 @@ export class MCPClient {
       capabilities: {}
     });
 
-    // Create HTTP transport
-    this.transport = new StreamableHTTPClientTransport(new URL(server.url));
+    // Create HTTP transport with optional custom headers
+    this.transport = new StreamableHTTPClientTransport(new URL(server.url), {
+      requestInit: server.headers ? {
+        headers: server.headers,
+      } : undefined,
+    });
   }
 
   /**

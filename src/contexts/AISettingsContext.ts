@@ -11,6 +11,7 @@ export interface AIProvider {
 export interface MCPServer {
   type: 'streamable-http';
   url: string;
+  headers?: Record<string, string>;
 }
 
 export interface MCPServers {

@@ -45,6 +45,7 @@ const providerModelSchema = z.string().regex(
 const mcpServerSchema: z.ZodType<MCPServer> = z.object({
   type: z.literal('streamable-http'),
   url: z.string().url(),
+  headers: z.record(z.string(), z.string()).optional(),
 });
 
 const aiSettingsSchema = z.object({

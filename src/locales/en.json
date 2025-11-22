@@ -493,6 +493,8 @@
   "mcpServerDeleted": "MCP Server Deleted",
   "mcpServerDeletedDescription": "MCP server \"{{name}}\" has been deleted successfully.",
   "mcpServerDeleteFailed": "Failed to Delete MCP Server",
+  "mcpServerHeaders": "Headers",
+  "mcpServerHeadersDescription": "Add custom HTTP headers to be sent with requests to this MCP server (e.g., Authorization headers).",
   "discoveringTools": "Discovering tools...",
   "toolsDiscovered": "{{count}} tool(s) discovered",
   "toolDiscoveryFailed": "Failed to discover tools from this server",

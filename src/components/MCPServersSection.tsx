@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Server, Trash2, Check } from 'lucide-react';
+import { Server, Trash2, Check, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Separator } from '@/components/ui/separator';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAISettings } from '@/hooks/useAISettings';
 import { useToast } from '@/hooks/useToast';
 import { useMCPServerStatus } from '@/hooks/useMCPServerStatus';
@@ -81,69 +83,86 @@ export function MCPServersSection() {
   };
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h4 className="text-sm font-medium">{t('mcpServers')}</h4>
+    <div className="space-y-4">
+      {/* Divider */}
+      <Separator className="my-6" />
+
+      {/* MCP Servers Header */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <Server className="h-5 w-5 text-primary" />
+          <h3 className="text-lg font-semibold">{t('mcpServers')}</h3>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          {t('mcpServersDescription')}
+        </p>
       </div>
 
-      <p className="text-sm text-muted-foreground">
-        {t('mcpServersDescription')}
-      </p>
-
-      {/* Configured MCP Servers */}
-      {serverEntries.length > 0 && (
-        <Accordion type="multiple" className="w-full space-y-2">
+      {/* Configured MCP Servers List */}
+      {serverEntries.length > 0 ? (
+        <div className="space-y-2">
           {serverEntries.map(([name, server]) => (
-            <AccordionItem key={name} value={name} className="border rounded-lg">
-              <AccordionTrigger className="px-4 py-3 hover:no-underline">
-                <div className="flex items-center gap-2 w-full mr-3">
-                  <Server size={16} />
-                  <span className="font-medium">{name}</span>
-                  <MCPConnectionStatus server={server} />
-                </div>
-              </AccordionTrigger>
-              <AccordionContent className="px-4 pb-4">
-                <div className="space-y-3">
-                  <div className="grid gap-2">
-                    <Label htmlFor={`${name}-type`}>{t('mcpServerType')}</Label>
-                    <Select value={server.type} disabled>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="streamable-http">{t('mcpServerTypeStreamableHttp')}</SelectItem>
-                      </SelectContent>
-                    </Select>
+            <Accordion key={name} type="single" collapsible className="w-full">
+              <AccordionItem value={name} className="border rounded-lg">
+                <AccordionTrigger className="px-4 py-3 hover:no-underline">
+                  <div className="flex items-center gap-2 w-full mr-3">
+                    <Server size={16} className="text-primary" />
+                    <span className="font-medium">{name}</span>
+                    <MCPConnectionStatus server={server} />
                   </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor={`${name}-url`}>{t('mcpServerUrl')}</Label>
-                    <Input
-                      id={`${name}-url`}
-                      value={server.url}
-                      onChange={(e) => setMCPServer(name, { ...server, url: e.target.value })}
-                      placeholder="https://example.com/mcp"
-                    />
+                </AccordionTrigger>
+                <AccordionContent className="px-4 pb-4">
+                  <div className="space-y-3">
+                    <div className="grid gap-2">
+                      <Label htmlFor={`${name}-type`}>{t('mcpServerType')}</Label>
+                      <Select value={server.type} disabled>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="streamable-http">{t('mcpServerTypeStreamableHttp')}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor={`${name}-url`}>{t('mcpServerUrl')}</Label>
+                      <Input
+                        id={`${name}-url`}
+                        value={server.url}
+                        onChange={(e) => setMCPServer(name, { ...server, url: e.target.value })}
+                        placeholder="https://example.com/mcp"
+                      />
+                    </div>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => handleRemoveServer(name)}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      {t('delete')}
+                    </Button>
                   </div>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => handleRemoveServer(name)}
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    {t('delete')}
-                  </Button>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           ))}
-        </Accordion>
+        </div>
+      ) : (
+        <Alert>
+          <AlertDescription className="text-sm">
+            {t('noMcpServersConfigured')}
+          </AlertDescription>
+        </Alert>
       )}
 
       {/* Add New MCP Server */}
       <Accordion type="single" collapsible className="w-full">
         <AccordionItem value="add-server" className="border rounded-lg">
           <AccordionTrigger className="px-4 py-3 hover:no-underline">
-            <h5 className="text-sm font-medium">{t('addMcpServer')}</h5>
+            <div className="flex items-center gap-2">
+              <Plus className="h-4 w-4" />
+              <span className="text-sm font-medium">{t('addMcpServer')}</span>
+            </div>
           </AccordionTrigger>
           <AccordionContent className="px-4 pb-4">
             <div className="space-y-3">
@@ -185,7 +204,7 @@ export function MCPServersSection() {
               <Button
                 onClick={handleAddServer}
                 disabled={!serverName.trim() || !serverUrl.trim() || !!mcpServers[serverName.trim()]}
-                className="gap-2 ml-auto"
+                className="gap-2 w-full"
               >
                 <Check className="h-4 w-4" />
                 {t('add')}
@@ -199,12 +218,6 @@ export function MCPServersSection() {
           </AccordionContent>
         </AccordionItem>
       </Accordion>
-
-      {serverEntries.length === 0 && (
-        <p className="text-sm text-muted-foreground text-center py-4">
-          {t('noMcpServersConfigured')}
-        </p>
-      )}
     </div>
   );
 }

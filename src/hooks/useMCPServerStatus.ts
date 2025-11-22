@@ -14,20 +14,20 @@ export function useMCPServerStatus(server: MCPServer): 'connected' | 'offline' |
 
     async function checkConnection() {
       setStatus('checking');
-      
+
       try {
         const client = new MCPClient(server);
         await client.connect();
-        
+
         // Try to list tools to verify the connection is working
         await client.listTools();
-        
+
         await client.close();
-        
+
         if (!cancelled) {
           setStatus('connected');
         }
-      } catch (error) {
+      } catch {
         if (!cancelled) {
           setStatus('offline');
         }
@@ -39,7 +39,7 @@ export function useMCPServerStatus(server: MCPServer): 'connected' | 'offline' |
     return () => {
       cancelled = true;
     };
-  }, [server.url]); // Re-check when URL changes
+  }, [server]); // Re-check when server config changes
 
   return status;
 }

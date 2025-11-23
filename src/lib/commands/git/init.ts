@@ -11,19 +11,17 @@ export class GitInitCommand implements GitSubcommand {
 
   private git: Git;
   private fs: JSRuntimeFS;
-  private pwd: string;
 
   constructor(options: GitSubcommandOptions) {
     this.git = options.git;
     this.fs = options.fs;
-    this.pwd = options.pwd;
   }
 
-  async execute(args: string[]): Promise<ShellCommandResult> {
+  async execute(args: string[], cwd: string): Promise<ShellCommandResult> {
     try {
       // Parse arguments
       const { options, directory } = this.parseArgs(args);
-      const targetDir = directory || this.pwd;
+      const targetDir = directory || cwd;
 
       // Check if directory exists, create if needed
       if (directory) {

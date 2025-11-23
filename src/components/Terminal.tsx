@@ -5,14 +5,13 @@ import { Copy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ShellTool } from '@/lib/tools/ShellTool';
 import { useFS } from '@/hooks/useFS';
-import { useFSPaths } from '@/hooks/useFSPaths';
 import { useGit } from '@/hooks/useGit';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useAppContext } from '@/hooks/useAppContext';
 import { ansiToHtml, containsAnsiCodes } from '@/lib/ansiToHtml';
 
 interface TerminalProps {
-  projectId: string;
+  cwd: string;
   className?: string;
 }
 
@@ -23,7 +22,7 @@ interface TerminalLine {
   timestamp: Date;
 }
 
-export function Terminal({ projectId, className }: TerminalProps) {
+export function Terminal({ cwd, className }: TerminalProps) {
   const [lines, setLines] = useState<TerminalLine[]>([]);
   const [currentInput, setCurrentInput] = useState('');
   const [isExecuting, setIsExecuting] = useState(false);
@@ -35,14 +34,13 @@ export function Terminal({ projectId, className }: TerminalProps) {
   const shellToolRef = useRef<ShellTool | null>(null);
 
   const { fs } = useFS();
-  const { projectsPath } = useFSPaths();
   const { git } = useGit();
   const { user } = useCurrentUser();
   const { config } = useAppContext();
 
   // Initialize ShellTool
   useEffect(() => {
-    shellToolRef.current = new ShellTool(fs, `${projectsPath}/${projectId}`, git, projectsPath, config.corsProxy, user?.signer);
+    shellToolRef.current = new ShellTool(fs, cwd, git, config.corsProxy, user?.signer);
 
     // Add welcome message
     setLines([{
@@ -51,7 +49,7 @@ export function Terminal({ projectId, className }: TerminalProps) {
       content: `Welcome to Shakespeare Terminal\nType 'help' to see available commands.`,
       timestamp: new Date()
     }]);
-  }, [projectId, fs, git, projectsPath, config.corsProxy, user?.signer]);
+  }, [cwd, fs, git, config.corsProxy, user?.signer]);
 
   // Auto-scroll to bottom when new lines are added or execution state changes
   useEffect(() => {
@@ -108,10 +106,8 @@ export function Terminal({ projectId, className }: TerminalProps) {
 
       // Check if running in Electron - use real shell
       if (window.electron?.shell) {
-        // Use the full path (with ~ if present) - Electron will expand it
-        const fullCwd = `${projectsPath}/${projectId}`;
-
-        const result = await window.electron.shell.exec(command, fullCwd);
+        // Use the provided cwd (Electron will expand ~ if present)
+        const result = await window.electron.shell.exec(command, cwd);
 
         // Format output
         let output = '';
@@ -159,7 +155,7 @@ export function Terminal({ projectId, className }: TerminalProps) {
     } finally {
       setIsExecuting(false);
     }
-  }, [addLine, commandHistory, projectId, projectsPath]);
+  }, [addLine, commandHistory, cwd]);
 
   const handleSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();

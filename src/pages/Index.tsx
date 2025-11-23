@@ -24,9 +24,11 @@ import { ArrowUp } from 'lucide-react';
 import { useSeoMeta } from '@unhead/react';
 import { ShakespeareLogo } from '@/components/ShakespeareLogo';
 import { AppShowcase } from '@/components/AppShowcase';
+import { useToast } from '@/hooks/useToast';
 
 export default function Index() {
   const { t } = useTranslation();
+  const { toast } = useToast();
   const [prompt, setPrompt] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [storedPrompt, setStoredPrompt] = useLocalStorage('shakespeare-draft-prompt', '');
@@ -227,8 +229,20 @@ export default function Index() {
       // Add model to recently used when creating project with AI
       addRecentlyUsedModel(providerModel.trim());
 
-      // Create project with AI-generated ID
-      const project = await projectsManager.createProject(prompt.trim(), config.projectTemplate, projectId);
+      // Create project with AI-generated ID and handle template update errors
+      const project = await projectsManager.createProject(
+        prompt.trim(),
+        config.projectTemplate,
+        projectId,
+        () => {
+          // Show a toast if template update fails (non-critical)
+          toast({
+            title: t('templateUpdateFailed'),
+            description: t('templateUpdateFailedDescription'),
+            variant: 'default',
+          });
+        }
+      );
 
       // Build message content from input and attached files
       // Images are converted to base64-encoded data URLs

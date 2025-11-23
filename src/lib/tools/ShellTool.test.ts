@@ -41,7 +41,7 @@ describe('ShellTool', () => {
     mockFS = createMockFS();
     mockNostr = createMockNostr();
     mockGit = new Git({ fs: mockFS, nostr: mockNostr });
-    shellTool = new ShellTool(mockFS, testCwd, mockGit, '/projects', testCorsProxy);
+    shellTool = new ShellTool(mockFS, testCwd, mockGit, testCorsProxy);
   });
 
   it('should have correct tool properties', () => {

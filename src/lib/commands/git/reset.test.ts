@@ -56,7 +56,6 @@ const mockFS = {
 const mockOptions: GitSubcommandOptions = {
   git: mockGit,
   fs: mockFS,
-  pwd: '/test/repo',
 };
 
 describe('GitResetCommand', () => {
@@ -146,14 +145,14 @@ describe('GitResetCommand', () => {
         } as unknown as JSRuntimeFS,
       });
 
-      const result = await commandWithoutGit.execute([]);
+      const result = await commandWithoutGit.execute([], '/test/repo');
 
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toContain('fatal: not a git repository');
     });
 
     it('should unstage all files when called without arguments', async () => {
-      const result = await command.execute([]);
+      const result = await command.execute([], '/test/repo');
 
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain('Unstaged changes after reset:');
@@ -165,7 +164,7 @@ describe('GitResetCommand', () => {
     });
 
     it('should unstage all files when called with HEAD', async () => {
-      const result = await command.execute(['HEAD']);
+      const result = await command.execute(['HEAD'], '/test/repo');
 
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain('Unstaged changes after reset:');
@@ -174,7 +173,7 @@ describe('GitResetCommand', () => {
     });
 
     it('should unstage specific files when called with HEAD and file paths', async () => {
-      const result = await command.execute(['HEAD', 'staged.txt']);
+      const result = await command.execute(['HEAD', 'staged.txt'], '/test/repo');
 
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain('Unstaged changes after reset:');
@@ -194,7 +193,7 @@ describe('GitResetCommand', () => {
         } as unknown as Git,
       });
 
-      const result = await commandWithNoStaged.execute([]);
+      const result = await commandWithNoStaged.execute([], '/test/repo');
 
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toBe('');
@@ -214,35 +213,35 @@ describe('GitResetCommand', () => {
         } as unknown as Git,
       });
 
-      const result = await commandWithError.execute(['HEAD', 'nonexistent.txt']);
+      const result = await commandWithError.execute(['HEAD', 'nonexistent.txt'], '/test/repo');
 
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toContain("error: pathspec 'nonexistent.txt' did not match any file(s) known to git");
     });
 
     it('should handle commit reset with hard mode', async () => {
-      const result = await command.execute(['--hard', 'HEAD~1']);
+      const result = await command.execute(['--hard', 'HEAD~1'], '/test/repo');
 
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain('HEAD is now at def456a');
     });
 
     it('should handle commit reset with mixed mode', async () => {
-      const result = await command.execute(['--mixed', 'HEAD~1']);
+      const result = await command.execute(['--mixed', 'HEAD~1'], '/test/repo');
 
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain('HEAD is now at def456a');
     });
 
     it('should return error for soft reset (not implemented)', async () => {
-      const result = await command.execute(['--soft', 'HEAD~1']);
+      const result = await command.execute(['--soft', 'HEAD~1'], '/test/repo');
 
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toContain('--soft reset is not implemented');
     });
 
     it('should handle invalid commit reference', async () => {
-      const result = await command.execute(['abcdef12345']);
+      const result = await command.execute(['abcdef12345'], '/test/repo');
 
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toContain("fatal: ambiguous argument 'abcdef12345'");

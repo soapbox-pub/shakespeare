@@ -11,19 +11,17 @@ export class GitFetchCommand implements GitSubcommand {
 
   private git: Git;
   private fs: JSRuntimeFS;
-  private pwd: string;
 
   constructor(options: GitSubcommandOptions) {
     this.git = options.git;
     this.fs = options.fs;
-    this.pwd = options.pwd;
   }
 
-  async execute(args: string[]): Promise<ShellCommandResult> {
+  async execute(args: string[], cwd: string): Promise<ShellCommandResult> {
     try {
       // Check if we're in a git repository
       try {
-        await this.fs.stat(`${this.pwd}/.git`);
+        await this.fs.stat(`${cwd}/.git`);
       } catch {
         return createErrorResult('fatal: not a git repository (or any of the parent directories): .git');
       }
@@ -34,7 +32,7 @@ export class GitFetchCommand implements GitSubcommand {
       let remoteUrl: string;
       try {
         const remotes = await this.git.listRemotes({
-          dir: this.pwd,
+          dir: cwd,
         });
 
         const targetRemote = remotes.find(r => r.remote === remote);
@@ -52,7 +50,7 @@ export class GitFetchCommand implements GitSubcommand {
           // Fetch specific refs
           for (const ref of refs) {
             await this.git.fetch({
-              dir: this.pwd,
+              dir: cwd,
               remote: remote,
               ref: ref,
             });
@@ -60,7 +58,7 @@ export class GitFetchCommand implements GitSubcommand {
         } else {
           // Fetch all refs (default behavior)
           await this.git.fetch({
-            dir: this.pwd,
+            dir: cwd,
             remote: remote,
           });
         }
@@ -74,7 +72,7 @@ export class GitFetchCommand implements GitSubcommand {
           for (const ref of refs) {
             try {
               await this.git.resolveRef({
-                dir: this.pwd,
+                dir: cwd,
                 ref: `refs/remotes/${remote}/${ref}`,
               });
               lines.push(` * branch            ${ref}     -> ${remote}/${ref}`);

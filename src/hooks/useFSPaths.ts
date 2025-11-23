@@ -17,5 +17,7 @@ export function useFSPaths() {
     tmpPath: config.fsPathTmp,
     /** Plugins directory path (default: /plugins) */
     pluginsPath: config.fsPathPlugins,
+    /** Templates directory path (default: /templates) */
+    templatesPath: config.fsPathTemplates,
   };
 }

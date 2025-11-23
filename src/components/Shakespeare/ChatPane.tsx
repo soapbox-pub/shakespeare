@@ -14,6 +14,7 @@ import { useAppContext } from '@/hooks/useAppContext';
 import { useAIChat } from '@/hooks/useAIChat';
 import { useProviderModels } from '@/hooks/useProviderModels';
 import { useSessionManager } from '@/hooks/useSessionManager';
+import { useMCPTools } from '@/hooks/useMCPTools';
 import { AIMessageItem } from '@/components/AIMessageItem';
 import { TextEditorViewTool } from '@/lib/tools/TextEditorViewTool';
 import { TextEditorWriteTool } from '@/lib/tools/TextEditorWriteTool';
@@ -35,6 +36,7 @@ import { ShellTool } from '@/lib/tools/ShellTool';
 import { TypecheckTool } from '@/lib/tools/TypecheckTool';
 import { ReadConsoleMessagesTool } from '@/lib/tools/ReadConsoleMessagesTool';
 import { SkillTool } from '@/lib/tools/SkillTool';
+import { createMCPTools } from '@/lib/tools/MCPTool';
 import { ProjectPreviewConsoleError } from '@/lib/consoleMessages';
 import { toolToOpenAI } from '@/lib/tools/openai-adapter';
 import { Tool } from '@/lib/tools/Tool';
@@ -148,8 +150,12 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     sessionManager.emit('fileChanged', projectId, filePath);
   }, [sessionManager, projectId]);
 
-  const customTools = useMemo(() => {
-    const baseTools = {
+  // Fetch MCP tools
+  const { tools: mcpOpenAITools, clients: mcpClients } = useMCPTools();
+
+  // Separate built-in tools from MCP tools for clarity
+  const builtInTools = useMemo(() => {
+    const tools: Record<string, Tool<unknown>> = {
       git_commit: new GitCommitTool(fs, cwd, git),
       text_editor_view: new TextEditorViewTool(fs, cwd, { projectsPath }),
       text_editor_write: new TextEditorWriteTool(fs, cwd, { projectsPath, tmpPath, onFileChanged: handleFileChanged }),
@@ -166,30 +172,42 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
       nostr_read_nips_index: new NostrReadNipsIndexTool(),
       nostr_generate_kind: new NostrGenerateKindTool(),
       nostr_publish_events: new NostrPublishEventsTool(),
-      shell: new ShellTool(fs, cwd, git, projectsPath, config.corsProxy, user?.signer),
+      shell: new ShellTool(fs, cwd, git, config.corsProxy, user?.signer),
       read_console_messages: new ReadConsoleMessagesTool(),
       skill: new SkillTool(fs, pluginsPath),
     };
 
     // Add deploy tool only if user is logged in
     if (user && user.signer) {
-      return {
-        ...baseTools,
-        deploy_project: new DeployProjectTool(fs, cwd, user.signer, projectId),
-      };
+      tools.deploy_project = new DeployProjectTool(fs, cwd, user.signer, projectId);
     }
 
-    return baseTools;
+    return tools;
   }, [fs, git, cwd, user, projectId, projectsPath, tmpPath, pluginsPath, config.corsProxy, handleFileChanged]);
 
-  // Convert tools to OpenAI format
+  // MCP tools wrapped for execution
+  const mcpToolWrappers = useMemo(() => createMCPTools(mcpClients), [mcpClients]);
+
+  // Combined tool executors (for SessionManager to call)
+  const customTools = useMemo(() => ({
+    ...builtInTools,
+    ...mcpToolWrappers,
+  }), [builtInTools, mcpToolWrappers]);
+
+  // Convert tools to OpenAI format for AI provider
   const tools = useMemo(() => {
     const result: Record<string, OpenAI.Chat.Completions.ChatCompletionTool> = {};
-    for (const [name, tool] of Object.entries(customTools)) {
+
+    // Convert built-in tools to OpenAI format
+    for (const [name, tool] of Object.entries(builtInTools)) {
       result[name] = toolToOpenAI(name, tool as Tool<unknown>);
     }
+
+    // Add MCP tools (already in OpenAI format from useMCPTools)
+    Object.assign(result, mcpOpenAITools);
+
     return result;
-  }, [customTools]);
+  }, [builtInTools, mcpOpenAITools]);
 
   // Keep-alive functionality to prevent tab throttling during AI processing
   const { updateMetadata } = useKeepAlive({

@@ -609,7 +609,7 @@ Commands are executed through the `ShellTool` which handles:
 import { ShellTool } from '@/lib/tools/ShellTool';
 
 // Create shell tool with filesystem and working directory
-const shell = new ShellTool(fs, '/project/root');
+const shell = new ShellTool(fs, '/project/root', ...rest);
 
 // Execute commands
 const result = await shell.execute({ command: 'cat package.json' });

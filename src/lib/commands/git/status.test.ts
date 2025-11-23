@@ -52,7 +52,6 @@ describe('GitStatusCommand', () => {
     statusCommand = new GitStatusCommand({
       git: mockGit,
       fs: mockFS,
-      pwd: testCwd,
     });
   });
 
@@ -66,7 +65,7 @@ describe('GitStatusCommand', () => {
     // Mock stat to throw error for .git directory
     vi.mocked(mockFS.stat).mockRejectedValueOnce(new Error('ENOENT'));
 
-    const result = await statusCommand.execute([]);
+    const result = await statusCommand.execute([], testCwd);
 
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain('fatal: not a git repository');
@@ -77,7 +76,7 @@ describe('GitStatusCommand', () => {
     vi.mocked(mockGit.statusMatrix).mockResolvedValue([]);
     vi.mocked(mockGit.currentBranch).mockResolvedValue('main');
 
-    const result = await statusCommand.execute([]);
+    const result = await statusCommand.execute([], testCwd);
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain('On branch main');
@@ -93,7 +92,7 @@ describe('GitStatusCommand', () => {
     ]);
     vi.mocked(mockGit.currentBranch).mockResolvedValue('main');
 
-    const result = await statusCommand.execute([]);
+    const result = await statusCommand.execute([], testCwd);
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain('On branch main');
@@ -109,7 +108,7 @@ describe('GitStatusCommand', () => {
     ]);
     vi.mocked(mockGit.currentBranch).mockResolvedValue('main');
 
-    const result = await statusCommand.execute([]);
+    const result = await statusCommand.execute([], testCwd);
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain('On branch main');
@@ -125,7 +124,7 @@ describe('GitStatusCommand', () => {
     ]);
     vi.mocked(mockGit.currentBranch).mockResolvedValue('main');
 
-    const result = await statusCommand.execute([]);
+    const result = await statusCommand.execute([], testCwd);
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain('On branch main');
@@ -141,7 +140,7 @@ describe('GitStatusCommand', () => {
     ]);
     vi.mocked(mockGit.currentBranch).mockResolvedValue('main');
 
-    const result = await statusCommand.execute([]);
+    const result = await statusCommand.execute([], testCwd);
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain('On branch main');
@@ -159,7 +158,7 @@ describe('GitStatusCommand', () => {
     ]);
     vi.mocked(mockGit.currentBranch).mockResolvedValue('main');
 
-    const result = await statusCommand.execute(['--porcelain']);
+    const result = await statusCommand.execute(['--porcelain'], testCwd);
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain('?? untracked.txt');
@@ -175,7 +174,7 @@ describe('GitStatusCommand', () => {
     ]);
     vi.mocked(mockGit.currentBranch).mockResolvedValue('main');
 
-    const result = await statusCommand.execute(['--short']);
+    const result = await statusCommand.execute(['--short'], testCwd);
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain('?? untracked.txt');
@@ -191,7 +190,7 @@ describe('GitStatusCommand', () => {
     ]);
     vi.mocked(mockGit.currentBranch).mockResolvedValue('feature-branch');
 
-    const result = await statusCommand.execute([]);
+    const result = await statusCommand.execute([], testCwd);
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain('On branch feature-branch');
@@ -209,7 +208,7 @@ describe('GitStatusCommand', () => {
     vi.mocked(mockGit.statusMatrix).mockResolvedValue([]);
     vi.mocked(mockGit.currentBranch).mockResolvedValue(undefined);
 
-    const result = await statusCommand.execute([]);
+    const result = await statusCommand.execute([], testCwd);
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain('HEAD detached at unknown');

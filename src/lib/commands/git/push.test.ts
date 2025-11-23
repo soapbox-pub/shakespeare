@@ -25,7 +25,6 @@ describe('GitPushCommand', () => {
     pushCommand = new GitPushCommand({
       git: mockGit as Git,
       fs: mockFS as JSRuntimeFS,
-      pwd: mockPwd,
     });
   });
 
@@ -37,17 +36,16 @@ describe('GitPushCommand', () => {
     const cmd = new GitPushCommand({
       git: mockGit as Git,
       fs: mockFSNoRepo as JSRuntimeFS,
-      pwd: '/non-existent',
     });
 
-    const result = await cmd.execute(['origin', 'main']);
+    const result = await cmd.execute(['origin', 'main'], mockPwd);
 
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain('not a git repository');
   });
 
   it('should fail when no remote is configured', async () => {
-    const result = await pushCommand.execute(['origin', 'main']);
+    const result = await pushCommand.execute(['origin', 'main'], mockPwd);
 
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain('does not appear to be a git repository');
@@ -59,7 +57,7 @@ describe('GitPushCommand', () => {
       { remote: 'origin', url: 'https://example.com/repo.git' },
     ]);
 
-    await pushCommand.execute(['origin', 'main', '--force']);
+    await pushCommand.execute(['origin', 'main', '--force'], mockPwd);
 
     // Verify that git.push was called with force: true
     expect(mockGit.push).toHaveBeenCalledWith(
@@ -75,7 +73,7 @@ describe('GitPushCommand', () => {
       { remote: 'origin', url: 'https://example.com/repo.git' },
     ]);
 
-    await pushCommand.execute(['origin', 'main', '-f']);
+    await pushCommand.execute(['origin', 'main', '-f'], mockPwd);
 
     // Verify that git.push was called with force: true
     expect(mockGit.push).toHaveBeenCalledWith(
@@ -91,7 +89,7 @@ describe('GitPushCommand', () => {
       { remote: 'origin', url: 'https://example.com/repo.git' },
     ]);
 
-    await pushCommand.execute(['origin', 'main']);
+    await pushCommand.execute(['origin', 'main'], mockPwd);
 
     // Verify that git.push was called with force: false
     expect(mockGit.push).toHaveBeenCalledWith(

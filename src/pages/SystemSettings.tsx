@@ -13,6 +13,7 @@ import { useAppContext } from "@/hooks/useAppContext";
 import { useOffline } from "@/hooks/useOffline";
 import { useToast } from "@/hooks/useToast";
 import { defaultSystemPrompt } from "@/lib/system";
+import { Terminal } from "@/components/Terminal";
 
 export function SystemSettings() {
   const { t } = useTranslation();
@@ -32,6 +33,7 @@ export function SystemSettings() {
   const [fsPathConfigInput, setFsPathConfigInput] = useState(config.fsPathConfig);
   const [fsPathTmpInput, setFsPathTmpInput] = useState(config.fsPathTmp);
   const [fsPathPluginsInput, setFsPathPluginsInput] = useState(config.fsPathPlugins);
+  const [fsPathTemplatesInput, setFsPathTemplatesInput] = useState(config.fsPathTemplates);
   const [sentryDsnInput, setSentryDsnInput] = useState(config.sentryDsn);
   const [systemPromptInput, setSystemPromptInput] = useState(config.systemPrompt || defaultSystemPrompt);
 
@@ -48,86 +50,134 @@ export function SystemSettings() {
     fsPathConfig: config.fsPathConfig !== defaultConfig.fsPathConfig,
     fsPathTmp: config.fsPathTmp !== defaultConfig.fsPathTmp,
     fsPathPlugins: config.fsPathPlugins !== defaultConfig.fsPathPlugins,
+    fsPathTemplates: config.fsPathTemplates !== defaultConfig.fsPathTemplates,
     sentryDsn: config.sentryDsn !== defaultConfig.sentryDsn,
     systemPrompt: (config.systemPrompt || defaultSystemPrompt) !== (defaultConfig.systemPrompt || defaultSystemPrompt),
   }), [config, defaultConfig]);
 
-  // Restore functions
+  // Restore functions - clear the value from config to use the default
   const restoreProjectTemplate = () => {
     const defaultValue = defaultConfig.projectTemplate;
     setProjectTemplateInput(defaultValue);
-    updateConfig((current) => ({ ...current, projectTemplate: defaultValue }));
+    updateConfig((current) => {
+      const { projectTemplate, ...rest } = current;
+      return rest;
+    });
   };
 
   const restoreEsmUrl = () => {
     const defaultValue = defaultConfig.esmUrl;
     setEsmUrlInput(defaultValue);
-    updateConfig((current) => ({ ...current, esmUrl: defaultValue }));
+    updateConfig((current) => {
+      const { esmUrl, ...rest } = current;
+      return rest;
+    });
   };
 
   const restoreCorsProxy = () => {
     const defaultValue = defaultConfig.corsProxy;
     setCorsProxyInput(defaultValue);
-    updateConfig((current) => ({ ...current, corsProxy: defaultValue }));
+    updateConfig((current) => {
+      const { corsProxy, ...rest } = current;
+      return rest;
+    });
   };
 
   const restoreFaviconUrl = () => {
     const defaultValue = defaultConfig.faviconUrl;
     setFaviconUrlInput(defaultValue);
-    updateConfig((current) => ({ ...current, faviconUrl: defaultValue }));
+    updateConfig((current) => {
+      const { faviconUrl, ...rest } = current;
+      return rest;
+    });
   };
 
   const restorePreviewDomain = () => {
     const defaultValue = defaultConfig.previewDomain;
     setPreviewDomainInput(defaultValue);
-    updateConfig((current) => ({ ...current, previewDomain: defaultValue }));
+    updateConfig((current) => {
+      const { previewDomain, ...rest } = current;
+      return rest;
+    });
   };
 
   const restoreShowcaseEnabled = () => {
-    const defaultValue = defaultConfig.showcaseEnabled;
-    updateConfig((current) => ({ ...current, showcaseEnabled: defaultValue }));
+    updateConfig((current) => {
+      const { showcaseEnabled, ...rest } = current;
+      return rest;
+    });
   };
 
   const restoreShowcaseModerator = () => {
     const defaultValue = defaultConfig.showcaseModerator;
     setShowcaseModeratorInput(defaultValue);
-    updateConfig((current) => ({ ...current, showcaseModerator: defaultValue }));
+    updateConfig((current) => {
+      const { showcaseModerator, ...rest } = current;
+      return rest;
+    });
   };
 
   const restoreFsPathProjects = () => {
     const defaultValue = defaultConfig.fsPathProjects;
     setFsPathProjectsInput(defaultValue);
-    updateConfig((current) => ({ ...current, fsPathProjects: defaultValue }));
+    updateConfig((current) => {
+      const { fsPathProjects, ...rest } = current;
+      return rest;
+    });
   };
 
   const restoreFsPathConfig = () => {
     const defaultValue = defaultConfig.fsPathConfig;
     setFsPathConfigInput(defaultValue);
-    updateConfig((current) => ({ ...current, fsPathConfig: defaultValue }));
+    updateConfig((current) => {
+      const { fsPathConfig, ...rest } = current;
+      return rest;
+    });
   };
 
   const restoreFsPathTmp = () => {
     const defaultValue = defaultConfig.fsPathTmp;
     setFsPathTmpInput(defaultValue);
-    updateConfig((current) => ({ ...current, fsPathTmp: defaultValue }));
+    updateConfig((current) => {
+      const { fsPathTmp, ...rest } = current;
+      return rest;
+    });
   };
 
   const restoreFsPathPlugins = () => {
     const defaultValue = defaultConfig.fsPathPlugins;
     setFsPathPluginsInput(defaultValue);
-    updateConfig((current) => ({ ...current, fsPathPlugins: defaultValue }));
+    updateConfig((current) => {
+      const { fsPathPlugins, ...rest } = current;
+      return rest;
+    });
+  };
+
+  const restoreFsPathTemplates = () => {
+    const defaultValue = defaultConfig.fsPathTemplates;
+    setFsPathTemplatesInput(defaultValue);
+    updateConfig((current) => {
+      const { fsPathTemplates, ...rest } = current;
+      return rest;
+    });
   };
 
   const restoreSentryDsn = () => {
     const defaultValue = defaultConfig.sentryDsn;
     setSentryDsnInput(defaultValue);
-    updateConfig((current) => ({ ...current, sentryDsn: defaultValue }));
+    updateConfig((current) => {
+      const { sentryDsn, ...rest } = current;
+      return rest;
+    });
   };
 
   const restoreSystemPrompt = () => {
     const defaultValue = defaultSystemPrompt;
     setSystemPromptInput(defaultValue);
-    updateConfig((current) => ({ ...current, systemPrompt: defaultValue }));
+    updateConfig((current) => {
+      const { systemPrompt, ...rest } = current;
+      return rest;
+    });
   };
 
   // Service Worker state
@@ -748,7 +798,7 @@ export function SystemSettings() {
             <AccordionTrigger className="px-4 py-3 hover:no-underline">
               <div className="flex items-center gap-2">
                 <h4 className="text-sm font-medium">{t('filesystemPaths')}</h4>
-                {(isModified.fsPathProjects || isModified.fsPathConfig || isModified.fsPathTmp || isModified.fsPathPlugins) && (
+                {(isModified.fsPathProjects || isModified.fsPathConfig || isModified.fsPathTmp || isModified.fsPathPlugins || isModified.fsPathTemplates) && (
                   <div className="h-2 w-2 rounded-full bg-yellow-500" title={t('modified')} />
                 )}
               </div>
@@ -918,6 +968,47 @@ export function SystemSettings() {
                     {t('pluginsDirectoryDescription')}
                   </p>
                 </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="fs-path-templates" className="text-sm font-medium">
+                      {t('templatesDirectory')}
+                    </Label>
+                    {isModified.fsPathTemplates && (
+                      <div className="h-2 w-2 rounded-full bg-yellow-500" title={t('modified')} />
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <Input
+                      id="fs-path-templates"
+                      type="text"
+                      placeholder="/templates"
+                      value={fsPathTemplatesInput}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setFsPathTemplatesInput(value);
+                        updateConfig((current) => ({
+                          ...current,
+                          fsPathTemplates: value,
+                        }));
+                      }}
+                      className="flex-1"
+                    />
+                    {isModified.fsPathTemplates && (
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={restoreFsPathTemplates}
+                        title={t('restoreToDefault')}
+                      >
+                        <RotateCcw className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {t('templatesDirectoryDescription')}
+                  </p>
+                </div>
               </div>
             </AccordionContent>
           </AccordionItem>
@@ -965,6 +1056,22 @@ export function SystemSettings() {
                 <p className="text-xs text-muted-foreground">
                   {t('systemPromptDescription')}
                 </p>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+
+        {/* Terminal */}
+        <Accordion type="single" collapsible className="w-full">
+          <AccordionItem value="terminal" className="border rounded-lg">
+            <AccordionTrigger className="px-4 py-3 hover:no-underline">
+              <div className="flex items-center gap-2">
+                <h4 className="text-sm font-medium">{t('terminal')}</h4>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="px-0 pb-0">
+              <div className="h-[500px]">
+                <Terminal cwd="/" />
               </div>
             </AccordionContent>
           </AccordionItem>

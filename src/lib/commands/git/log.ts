@@ -11,19 +11,17 @@ export class GitLogCommand implements GitSubcommand {
 
   private git: Git;
   private fs: JSRuntimeFS;
-  private pwd: string;
 
   constructor(options: GitSubcommandOptions) {
     this.git = options.git;
     this.fs = options.fs;
-    this.pwd = options.pwd;
   }
 
-  async execute(args: string[]): Promise<ShellCommandResult> {
+  async execute(args: string[], cwd: string): Promise<ShellCommandResult> {
     try {
       // Check if we're in a git repository
       try {
-        await this.fs.stat(`${this.pwd}/.git`);
+        await this.fs.stat(`${cwd}/.git`);
       } catch {
         return createErrorResult('fatal: not a git repository (or any of the parent directories): .git');
       }
@@ -32,8 +30,7 @@ export class GitLogCommand implements GitSubcommand {
 
       try {
         const commits = await this.git.log({
-          
-          dir: this.pwd,
+          dir: cwd,
           depth: limit,
         });
 
@@ -42,9 +39,9 @@ export class GitLogCommand implements GitSubcommand {
         }
 
         if (options.oneline) {
-          return this.formatOnelineLog(commits);
+          return this.formatOnelineLog(commits, cwd);
         } else {
-          return this.formatFullLog(commits, options.graph);
+          return this.formatFullLog(commits, options.graph, cwd);
         }
 
       } catch (error) {
@@ -103,7 +100,7 @@ export class GitLogCommand implements GitSubcommand {
     return { options, limit };
   }
 
-  private formatOnelineLog(commits: Array<{ oid: string; commit: { message: string } }>): ShellCommandResult {
+  private  formatOnelineLog(commits: Array<{ oid: string; commit: { message: string } }>, _cwd: string): ShellCommandResult  {
     const lines: string[] = [];
 
     for (const commit of commits) {
@@ -115,7 +112,7 @@ export class GitLogCommand implements GitSubcommand {
     return createSuccessResult(lines.join('\n') + '\n');
   }
 
-  private formatFullLog(commits: Array<{ oid: string; commit: { message: string; author: { name: string; email: string; timestamp: number } } }>, showGraph: boolean): ShellCommandResult {
+  private  formatFullLog(commits: Array<{ oid: string; commit: { message: string; author: { name: string; email: string; timestamp: number } } }>, showGraph: boolean, _cwd: string): ShellCommandResult  {
     const lines: string[] = [];
 
     for (let i = 0; i < commits.length; i++) {

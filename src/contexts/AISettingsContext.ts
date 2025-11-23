@@ -8,9 +8,20 @@ export interface AIProvider {
   proxy?: boolean;
 }
 
+export interface MCPServer {
+  type: 'streamable-http';
+  url: string;
+  headers?: Record<string, string>;
+}
+
+export interface MCPServers {
+  [key: string]: MCPServer;
+}
+
 export interface AISettings {
   providers: AIProvider[];
   recentlyUsedModels: string[];
+  mcpServers?: MCPServers;
 }
 
 export interface AISettingsContextType {
@@ -20,6 +31,8 @@ export interface AISettingsContextType {
   removeProvider: (id: string) => void;
   setProviders: (providers: AIProvider[]) => void;
   addRecentlyUsedModel: (modelId: string) => void;
+  setMCPServer: (name: string, server: MCPServer) => void;
+  removeMCPServer: (name: string) => void;
   isConfigured: boolean;
 }
 

@@ -56,6 +56,7 @@ describe('useAIProjectId', () => {
       fsPathConfig: '/config',
       fsPathTmp: '/tmp',
       fsPathPlugins: '/plugins',
+      fsPathTemplates: '/templates',
       sentryDsn: '',
       sentryEnabled: false,
     };
@@ -93,13 +94,15 @@ describe('useAIProjectId', () => {
 
   it('should return not configured when AI settings are not configured', () => {
     mockUseAISettings.mockReturnValue({
-      settings: { providers: [], recentlyUsedModels: [] },
+      settings: { providers: [], recentlyUsedModels: [], mcpServers: {} },
       isConfigured: false,
       updateSettings: vi.fn(),
       setProvider: vi.fn(),
       removeProvider: vi.fn(),
       setProviders: vi.fn(),
       addRecentlyUsedModel: vi.fn(),
+      setMCPServer: vi.fn(),
+      removeMCPServer: vi.fn(),
     });
 
     const { result } = renderHook(() => useAIProjectId());
@@ -110,7 +113,7 @@ describe('useAIProjectId', () => {
 
   it('should throw error when trying to generate ID without configuration', async () => {
     mockUseAISettings.mockReturnValue({
-      settings: { providers: [], recentlyUsedModels: [] },
+      settings: { providers: [], recentlyUsedModels: [], mcpServers: {} },
       isConfigured: false,
       updateSettings: vi.fn(),
       setProvider: vi.fn(),
@@ -118,6 +121,8 @@ describe('useAIProjectId', () => {
       setProviders: vi.fn(),
 
       addRecentlyUsedModel: vi.fn(),
+      setMCPServer: vi.fn(),
+      removeMCPServer: vi.fn(),
     });
 
     const { result } = renderHook(() => useAIProjectId());
@@ -142,6 +147,8 @@ describe('useAIProjectId', () => {
       setProviders: vi.fn(),
 
       addRecentlyUsedModel: vi.fn(),
+      setMCPServer: vi.fn(),
+      removeMCPServer: vi.fn(),
     });
 
     const { result } = renderHook(() => useAIProjectId());
@@ -166,6 +173,8 @@ describe('useAIProjectId', () => {
       setProviders: vi.fn(),
 
       addRecentlyUsedModel: vi.fn(),
+      setMCPServer: vi.fn(),
+      removeMCPServer: vi.fn(),
     });
 
     const { result } = renderHook(() => useAIProjectId());
@@ -189,6 +198,8 @@ describe('useAIProjectId', () => {
       setProviders: vi.fn(),
 
       addRecentlyUsedModel: vi.fn(),
+      setMCPServer: vi.fn(),
+      removeMCPServer: vi.fn(),
     });
 
     const { result } = renderHook(() => useAIProjectId());
@@ -221,6 +232,8 @@ describe('useAIProjectId', () => {
       setProviders: vi.fn(),
 
       addRecentlyUsedModel: vi.fn(),
+      setMCPServer: vi.fn(),
+      removeMCPServer: vi.fn(),
     });
 
     // Mock AI response - returns a project name that already exists
@@ -274,6 +287,8 @@ describe('useAIProjectId', () => {
       setProviders: vi.fn(),
 
       addRecentlyUsedModel: vi.fn(),
+      setMCPServer: vi.fn(),
+      removeMCPServer: vi.fn(),
     });
 
     // Mock AI to return a project name that already exists
@@ -329,6 +344,8 @@ describe('useAIProjectId', () => {
       setProviders: vi.fn(),
 
       addRecentlyUsedModel: vi.fn(),
+      setMCPServer: vi.fn(),
+      removeMCPServer: vi.fn(),
     });
 
     // Mock AI to return a very long project name (over 50 characters)
@@ -379,6 +396,8 @@ describe('useAIProjectId', () => {
       setProviders: vi.fn(),
 
       addRecentlyUsedModel: vi.fn(),
+      setMCPServer: vi.fn(),
+      removeMCPServer: vi.fn(),
     });
 
     // Mock AI to return an invalid project name (doesn't match regex)
@@ -429,6 +448,8 @@ describe('useAIProjectId', () => {
       setProviders: vi.fn(),
 
       addRecentlyUsedModel: vi.fn(),
+      setMCPServer: vi.fn(),
+      removeMCPServer: vi.fn(),
     });
 
     // Mock AI to return a project name that already exists
@@ -486,6 +507,8 @@ describe('useAIProjectId', () => {
       setProviders: vi.fn(),
 
       addRecentlyUsedModel: vi.fn(),
+      setMCPServer: vi.fn(),
+      removeMCPServer: vi.fn(),
     });
 
     const { result } = renderHook(() => useAIProjectId());

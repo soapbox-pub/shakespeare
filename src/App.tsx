@@ -48,7 +48,7 @@ const queryClient = new QueryClient({
 });
 
 // Get OS-specific default paths for Electron
-function getElectronDefaultPaths(): { fsPathProjects: string; fsPathConfig: string; fsPathTmp: string; fsPathPlugins: string } {
+function getElectronDefaultPaths(): { fsPathProjects: string; fsPathConfig: string; fsPathTmp: string; fsPathPlugins: string; fsPathTemplates: string } {
   if (!globalThis.electron) {
     // Browser defaults - use virtual filesystem paths
     return {
@@ -56,6 +56,7 @@ function getElectronDefaultPaths(): { fsPathProjects: string; fsPathConfig: stri
       fsPathConfig: "/config",
       fsPathTmp: "/tmp",
       fsPathPlugins: "/plugins",
+      fsPathTemplates: "/templates",
     };
   }
 
@@ -70,6 +71,7 @@ function getElectronDefaultPaths(): { fsPathProjects: string; fsPathConfig: stri
       fsPathConfig: "~/AppData/Local/shakespeare",
       fsPathTmp: "~/AppData/Local/Temp/shakespeare",
       fsPathPlugins: "~/AppData/Local/shakespeare/plugins",
+      fsPathTemplates: "~/AppData/Local/shakespeare/templates",
     };
   } else if (platform.includes('mac')) {
     // macOS
@@ -78,6 +80,7 @@ function getElectronDefaultPaths(): { fsPathProjects: string; fsPathConfig: stri
       fsPathConfig: "~/Library/Application Support/shakespeare",
       fsPathTmp: "/tmp/shakespeare",
       fsPathPlugins: "~/Library/Application Support/shakespeare/plugins",
+      fsPathTemplates: "~/Library/Application Support/shakespeare/templates",
     };
   } else {
     // Linux and other Unix-like systems
@@ -86,6 +89,7 @@ function getElectronDefaultPaths(): { fsPathProjects: string; fsPathConfig: stri
       fsPathConfig: "~/.config/shakespeare",
       fsPathTmp: "/tmp/shakespeare",
       fsPathPlugins: "~/.config/shakespeare/plugins",
+      fsPathTemplates: "~/.config/shakespeare/templates",
     };
   }
 }
@@ -114,6 +118,7 @@ const defaultConfig: AppConfig = {
   fsPathConfig: electronPaths.fsPathConfig,
   fsPathTmp: electronPaths.fsPathTmp,
   fsPathPlugins: electronPaths.fsPathPlugins,
+  fsPathTemplates: electronPaths.fsPathTemplates,
   sentryDsn: import.meta.env.VITE_SENTRY_DSN || "",
   sentryEnabled: true,
 };

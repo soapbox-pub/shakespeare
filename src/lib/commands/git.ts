@@ -28,13 +28,12 @@ export interface GitSubcommand {
   name: string;
   description: string;
   usage: string;
-  execute(args: string[]): Promise<ShellCommandResult>;
+  execute(args: string[], cwd: string): Promise<ShellCommandResult>;
 }
 
 export interface GitSubcommandOptions {
   git: Git;
   fs: JSRuntimeFS;
-  pwd: string;
   signer?: NostrSigner;
 }
 
@@ -71,7 +70,6 @@ export class GitCommand implements ShellCommand {
     const subcommandOptions: GitSubcommandOptions = {
       git: this.git,
       fs: this.fs,
-      pwd: this.cwd,
       signer: this.signer,
     };
 
@@ -99,7 +97,7 @@ export class GitCommand implements ShellCommand {
     this.subcommands.set(subcommand.name, subcommand);
   }
 
-  async execute(args: string[], _cwd: string, _input?: string): Promise<ShellCommandResult> {
+  async execute(args: string[], cwd: string, _input?: string): Promise<ShellCommandResult> {
     try {
       // Handle no arguments or help
       if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
@@ -120,8 +118,9 @@ export class GitCommand implements ShellCommand {
         return createErrorResult(`git: '${subcommandName}' is not a git command. See 'git --help'.`);
       }
 
-      // Execute the subcommand
-      return await subcommand.execute(subcommandArgs);
+      // Execute the subcommand, passing the current working directory
+      // This ensures git commands use the correct directory after 'cd' commands
+      return await subcommand.execute(subcommandArgs, cwd);
 
     } catch (error) {
       return createErrorResult(`git: ${error instanceof Error ? error.message : 'Unknown error'}`);

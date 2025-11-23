@@ -42,14 +42,15 @@ describe('ModelSelector', () => {
     vi.clearAllMocks();
 
     mockUseAISettings.mockReturnValue({
-      settings: { providers: [], recentlyUsedModels: [] },
+      settings: { providers: [], recentlyUsedModels: [], mcpServers: {} },
       addRecentlyUsedModel: mockAddRecentlyUsedModel,
       isConfigured: true,
       updateSettings: vi.fn(),
       removeProvider: vi.fn(),
       setProvider: vi.fn(),
       setProviders: vi.fn(),
-
+      setMCPServer: vi.fn(),
+      removeMCPServer: vi.fn(),
     });
 
     mockUseProviderModels.mockReturnValue({
@@ -87,6 +88,8 @@ describe('ModelSelector', () => {
       removeProvider: vi.fn(),
       setProvider: vi.fn(),
       setProviders: vi.fn(),
+      setMCPServer: vi.fn(),
+      removeMCPServer: vi.fn(),
 
     });
 
@@ -140,6 +143,8 @@ describe('ModelSelector', () => {
       removeProvider: vi.fn(),
       setProvider: vi.fn(),
       setProviders: vi.fn(),
+      setMCPServer: vi.fn(),
+      removeMCPServer: vi.fn(),
 
     });
 
@@ -189,6 +194,8 @@ describe('ModelSelector', () => {
       removeProvider: vi.fn(),
       setProvider: vi.fn(),
       setProviders: vi.fn(),
+      setMCPServer: vi.fn(),
+      removeMCPServer: vi.fn(),
 
     });
 
@@ -233,13 +240,15 @@ describe('ModelSelector', () => {
     });
 
     mockUseAISettings.mockReturnValue({
-      settings: { providers: [], recentlyUsedModels: [] }, // No recently used models
+      settings: { providers: [], recentlyUsedModels: [], mcpServers: {} }, // No recently used models
       addRecentlyUsedModel: mockAddRecentlyUsedModel,
       isConfigured: true,
       updateSettings: vi.fn(),
       removeProvider: vi.fn(),
       setProvider: vi.fn(),
       setProviders: vi.fn(),
+      setMCPServer: vi.fn(),
+      removeMCPServer: vi.fn(),
 
     });
 

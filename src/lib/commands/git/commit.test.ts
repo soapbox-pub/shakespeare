@@ -75,12 +75,11 @@ describe('GitCommitCommand', () => {
     commitCommand = new GitCommitCommand({
       git: mockGit as Git,
       fs: mockFS as JSRuntimeFS,
-      pwd: mockPwd,
     });
   });
 
   it('should commit with a message', async () => {
-    const result = await commitCommand.execute(['-m', 'Test commit']);
+    const result = await commitCommand.execute(['-m', 'Test commit'], mockPwd);
     
     expect(mockGit.commit).toHaveBeenCalledWith(expect.objectContaining({
       dir: mockPwd,
@@ -92,7 +91,7 @@ describe('GitCommitCommand', () => {
   });
 
   it('should fail without a message', async () => {
-    const result = await commitCommand.execute([]);
+    const result = await commitCommand.execute([], mockPwd);
     
     expect(mockGit.commit).not.toHaveBeenCalled();
     
@@ -101,7 +100,7 @@ describe('GitCommitCommand', () => {
   });
 
   it('should handle --amend flag', async () => {
-    const result = await commitCommand.execute(['--amend', '-m', 'Amended commit']);
+    const result = await commitCommand.execute(['--amend', '-m', 'Amended commit'], mockPwd);
     
     expect(mockGit.log).toHaveBeenCalledWith({
       dir: mockPwd,
@@ -119,7 +118,7 @@ describe('GitCommitCommand', () => {
   });
 
   it('should handle --amend flag without message', async () => {
-    const result = await commitCommand.execute(['--amend']);
+    const result = await commitCommand.execute(['--amend'], mockPwd);
     
     expect(mockGit.log).toHaveBeenCalledWith({
       dir: mockPwd,
@@ -135,7 +134,7 @@ describe('GitCommitCommand', () => {
   });
 
   it('should handle -a flag to stage all tracked modified files', async () => {
-    const result = await commitCommand.execute(['-a', '-m', 'Commit with auto-stage']);
+    const result = await commitCommand.execute(['-a', '-m', 'Commit with auto-stage'], mockPwd);
     
     // Should call add for the modified tracked file
     expect(mockGit.add).toHaveBeenCalledWith({
@@ -165,7 +164,7 @@ describe('GitCommitCommand', () => {
   });
 
   it('should handle -am flag for combined auto-stage and message', async () => {
-    const result = await commitCommand.execute(['-am', 'Combined flag commit']);
+    const result = await commitCommand.execute(['-am', 'Combined flag commit'], mockPwd);
     
     // Should call add for the modified tracked file
     expect(mockGit.add).toHaveBeenCalledWith({
@@ -192,7 +191,7 @@ describe('GitCommitCommand', () => {
     // Mock empty status
     mockGit.statusMatrix = vi.fn().mockResolvedValue([]);
     
-    const result = await commitCommand.execute(['--allow-empty', '-m', 'Empty commit']);
+    const result = await commitCommand.execute(['--allow-empty', '-m', 'Empty commit'], mockPwd);
     
     expect(mockGit.commit).toHaveBeenCalledWith(expect.objectContaining({
       dir: mockPwd,
@@ -209,7 +208,7 @@ describe('GitCommitCommand', () => {
       ['file1.txt', 1, 2, 1], // modified in workdir only
     ]);
     
-    const result = await commitCommand.execute(['-m', 'Should fail']);
+    const result = await commitCommand.execute(['-m', 'Should fail'], mockPwd);
     
     expect(mockGit.commit).not.toHaveBeenCalled();
     
@@ -220,7 +219,7 @@ describe('GitCommitCommand', () => {
   it('should handle not being in a git repository', async () => {
     mockFS.stat = vi.fn().mockRejectedValue(new Error('Not a directory'));
     
-    const result = await commitCommand.execute(['-m', 'Test commit']);
+    const result = await commitCommand.execute(['-m', 'Test commit'], mockPwd);
     
     expect(mockGit.commit).not.toHaveBeenCalled();
     

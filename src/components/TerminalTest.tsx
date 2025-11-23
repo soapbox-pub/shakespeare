@@ -6,7 +6,7 @@ import { Terminal } from './Terminal';
 export function TerminalTest() {
   return (
     <div className="h-[500px] w-full">
-      <Terminal projectId="test" />
+      <Terminal cwd="/projects/test" />
     </div>
   );
 }

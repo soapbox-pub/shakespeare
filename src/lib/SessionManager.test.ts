@@ -53,6 +53,7 @@ const testConfig: AppConfig = {
   fsPathConfig: '/config',
   fsPathTmp: '/tmp',
   fsPathPlugins: '/plugins',
+  fsPathTemplates: '/templates',
   sentryDsn: '',
   sentryEnabled: false,
 };

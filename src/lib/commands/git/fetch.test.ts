@@ -26,7 +26,6 @@ const mockFS = {
 const mockOptions: GitSubcommandOptions = {
   git: mockGit,
   fs: mockFS,
-  pwd: '/test/repo',
 };
 
 describe('GitFetchCommand', () => {
@@ -144,21 +143,21 @@ describe('GitFetchCommand', () => {
         } as unknown as JSRuntimeFS,
       });
 
-      const result = await commandWithoutGit.execute([]);
+      const result = await commandWithoutGit.execute([], '/test/repo');
 
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toContain('fatal: not a git repository');
     });
 
     it('should fail when remote does not exist', async () => {
-      const result = await command.execute(['nonexistent']);
+      const result = await command.execute(['nonexistent'], '/test/repo');
 
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toContain("fatal: 'nonexistent' does not appear to be a git repository");
     });
 
     it('should fetch from default remote successfully', async () => {
-      const result = await command.execute([]);
+      const result = await command.execute([], '/test/repo');
 
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain('From https://github.com/user/repo.git');
@@ -166,7 +165,7 @@ describe('GitFetchCommand', () => {
     });
 
     it('should fetch from specific remote successfully', async () => {
-      const result = await command.execute(['upstream']);
+      const result = await command.execute(['upstream'], '/test/repo');
 
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain('From https://github.com/upstream/repo.git');
@@ -174,7 +173,7 @@ describe('GitFetchCommand', () => {
     });
 
     it('should fetch specific refs successfully', async () => {
-      const result = await command.execute(['origin', 'main']);
+      const result = await command.execute(['origin', 'main'], '/test/repo');
 
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain('From https://github.com/user/repo.git');
@@ -182,7 +181,7 @@ describe('GitFetchCommand', () => {
     });
 
     it('should fetch multiple specific refs successfully', async () => {
-      const result = await command.execute(['origin', 'main', 'develop']);
+      const result = await command.execute(['origin', 'main', 'develop'], '/test/repo');
 
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain('From https://github.com/user/repo.git');
@@ -201,7 +200,7 @@ describe('GitFetchCommand', () => {
         } as unknown as Git,
       });
 
-      const result = await commandWithAuthError.execute([]);
+      const result = await commandWithAuthError.execute([], '/test/repo');
 
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toContain('fatal: Authentication failed');
@@ -218,7 +217,7 @@ describe('GitFetchCommand', () => {
         } as unknown as Git,
       });
 
-      const result = await commandWithNetworkError.execute([]);
+      const result = await commandWithNetworkError.execute([], '/test/repo');
 
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toContain('fatal: unable to access remote repository');

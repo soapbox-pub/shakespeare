@@ -11,19 +11,17 @@ export class GitShowCommand implements GitSubcommand {
 
   private git: Git;
   private fs: JSRuntimeFS;
-  private pwd: string;
 
   constructor(options: GitSubcommandOptions) {
     this.git = options.git;
     this.fs = options.fs;
-    this.pwd = options.pwd;
   }
 
-  async execute(args: string[]): Promise<ShellCommandResult> {
+  async execute(args: string[], cwd: string): Promise<ShellCommandResult> {
     try {
       // Check if we're in a git repository
       try {
-        await this.fs.stat(`${this.pwd}/.git`);
+        await this.fs.stat(`${cwd}/.git`);
       } catch {
         return createErrorResult('fatal: not a git repository (or any of the parent directories): .git');
       }
@@ -31,12 +29,12 @@ export class GitShowCommand implements GitSubcommand {
       const { commit } = this.parseArgs(args);
 
       // Resolve the commit reference (handling relative refs like HEAD~1)
-      const resolvedCommit = await this.resolveCommitRef(commit);
+      const resolvedCommit = await this.resolveCommitRef(commit, cwd);
       if (!resolvedCommit) {
         return createErrorResult(`fatal: bad revision '${commit}'`);
       }
 
-      return await this.showCommit(resolvedCommit);
+      return await this.showCommit(resolvedCommit, cwd);
 
     } catch (error) {
       return createErrorResult(`git show: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -59,7 +57,7 @@ export class GitShowCommand implements GitSubcommand {
   /**
    * Resolve a commit reference, handling special syntax like HEAD~N and HEAD^N
    */
-  private async resolveCommitRef(ref: string): Promise<string | null> {
+  private async  resolveCommitRef(ref: string, cwd: string): Promise<string | null>  {
     try {
       // Handle HEAD~N syntax (ancestor)
       const tildeMatch = ref.match(/^(.+)~(\d+)$/);
@@ -69,17 +67,17 @@ export class GitShowCommand implements GitSubcommand {
         
         if (numSteps === 0) {
           // ~0 is the commit itself
-          return this.resolveCommitRef(baseRef);
+          return this.resolveCommitRef(baseRef, cwd);
         }
         
         // First resolve the base reference
-        const baseCommit = await this.resolveCommitRef(baseRef);
+        const baseCommit = await this.resolveCommitRef(baseRef, cwd);
         if (!baseCommit) {
           throw new Error(`Could not resolve base reference: ${baseRef}`);
         }
         
         // Walk back N steps in history
-        return this.walkBackNCommits(baseCommit, numSteps);
+        return this.walkBackNCommits(baseCommit, numSteps, cwd);
       }
       
       // Handle HEAD^N syntax (Nth parent)
@@ -89,19 +87,19 @@ export class GitShowCommand implements GitSubcommand {
         const parentIndex = parentNum ? parseInt(parentNum, 10) - 1 : 0; // Default to first parent
         
         // First resolve the base reference
-        const baseCommit = await this.resolveCommitRef(baseRef);
+        const baseCommit = await this.resolveCommitRef(baseRef, cwd);
         if (!baseCommit) {
           throw new Error(`Could not resolve base reference: ${baseRef}`);
         }
         
         // Get the specified parent
-        return this.getNthParent(baseCommit, parentIndex);
+        return this.getNthParent(baseCommit, parentIndex, cwd);
       }
       
       // Handle simple reference (direct resolution)
       try {
         return await this.git.resolveRef({
-          dir: this.pwd,
+          dir: cwd,
           ref,
         });
       } catch (error) {
@@ -119,14 +117,14 @@ export class GitShowCommand implements GitSubcommand {
   /**
    * Walk back N commits from the given commit
    */
-  private async walkBackNCommits(startCommit: string, steps: number): Promise<string | null> {
+  private async  walkBackNCommits(startCommit: string, steps: number, cwd: string): Promise<string | null>  {
     try {
       let currentCommit = startCommit;
       
       for (let i = 0; i < steps; i++) {
         // Get the commit object
         const commit = await this.git.readCommit({
-          dir: this.pwd,
+          dir: cwd,
           oid: currentCommit,
         });
         
@@ -149,11 +147,11 @@ export class GitShowCommand implements GitSubcommand {
   /**
    * Get the Nth parent of the given commit
    */
-  private async getNthParent(commit: string, parentIndex: number): Promise<string | null> {
+  private async  getNthParent(commit: string, parentIndex: number, cwd: string): Promise<string | null>  {
     try {
       // Get the commit object
       const commitObj = await this.git.readCommit({
-        dir: this.pwd,
+        dir: cwd,
         oid: commit,
       });
       
@@ -175,11 +173,11 @@ export class GitShowCommand implements GitSubcommand {
     }
   }
 
-  private async showCommit(commitRef: string): Promise<ShellCommandResult> {
+  private async  showCommit(commitRef: string, cwd: string): Promise<ShellCommandResult>  {
     try {
       // Get the commit
       const commits = await this.git.log({
-        dir: this.pwd,
+        dir: cwd,
         depth: 1,
         ref: commitRef,
       });
@@ -220,7 +218,7 @@ export class GitShowCommand implements GitSubcommand {
           
           // Get the tree for this commit
           const tree = await this.git.readTree({
-            dir: this.pwd,
+            dir: cwd,
             oid: commit.oid,
           });
 
@@ -237,12 +235,12 @@ export class GitShowCommand implements GitSubcommand {
           
           // Get the trees for both commits
           const parentTree = await this.git.readTree({
-            dir: this.pwd,
+            dir: cwd,
             oid: parentCommit,
           });
           
           const commitTree = await this.git.readTree({
-            dir: this.pwd,
+            dir: cwd,
             oid: commit.oid,
           });
           
@@ -285,7 +283,7 @@ export class GitShowCommand implements GitSubcommand {
             const result = new Map<string, TreeEntry>();
             try {
               const tree = await this.git.readTree({
-                dir: this.pwd,
+                dir: cwd,
                 oid,
               });
               
@@ -435,7 +433,7 @@ export class GitShowCommand implements GitSubcommand {
                   let parentContent = '';
                   try {
                     const parentBlob = await this.git.readBlob({
-                      dir: this.pwd,
+                      dir: cwd,
                       oid: parentCommit,
                       filepath: change.path,
                     });
@@ -449,7 +447,7 @@ export class GitShowCommand implements GitSubcommand {
                   let currentContent = '';
                   try {
                     const currentBlob = await this.git.readBlob({
-                      dir: this.pwd,
+                      dir: cwd,
                       oid: commit.oid,
                       filepath: change.path,
                     });

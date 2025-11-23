@@ -801,7 +801,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
                     </h3>
                   </div>
                   <div className="flex-1 min-h-0">
-                    <TerminalComponent projectId={projectId} />
+                    <TerminalComponent cwd={`${projectsPath}/${projectId}`} />
                   </div>
                 </>
               ) : (
@@ -895,7 +895,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
               <div className="flex-1 flex min-h-0">
                 {desktopCodeView === 'terminal' ? (
                   <div className="flex-1">
-                    <TerminalComponent projectId={projectId} />
+                    <TerminalComponent cwd={`${projectsPath}/${projectId}`} />
                   </div>
                 ) : (
                   <>

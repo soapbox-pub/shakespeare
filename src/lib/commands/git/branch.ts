@@ -11,19 +11,17 @@ export class GitBranchCommand implements GitSubcommand {
 
   private git: Git;
   private fs: JSRuntimeFS;
-  private pwd: string;
 
   constructor(options: GitSubcommandOptions) {
     this.git = options.git;
     this.fs = options.fs;
-    this.pwd = options.pwd;
   }
 
-  async execute(args: string[]): Promise<ShellCommandResult> {
+  async execute(args: string[], cwd: string): Promise<ShellCommandResult> {
     try {
       // Check if we're in a git repository
       try {
-        await this.fs.stat(`${this.pwd}/.git`);
+        await this.fs.stat(`${cwd}/.git`);
       } catch {
         return createErrorResult('fatal: not a git repository (or any of the parent directories): .git');
       }
@@ -32,13 +30,13 @@ export class GitBranchCommand implements GitSubcommand {
 
       switch (action) {
         case 'list':
-          return await this.listBranches();
+          return await this.listBranches(cwd);
         case 'create':
-          return await this.createBranch(branchName!);
+          return await this.createBranch(branchName!, cwd);
         case 'delete':
-          return await this.deleteBranch(branchName!, options.force);
+          return await this.deleteBranch(branchName!, options.force, cwd);
         default:
-          return await this.listBranches();
+          return await this.listBranches(cwd);
       }
 
     } catch (error) {
@@ -83,10 +81,10 @@ export class GitBranchCommand implements GitSubcommand {
     return { action, branchName, options };
   }
 
-  private async listBranches(): Promise<ShellCommandResult> {
+  private async  listBranches(cwd: string): Promise<ShellCommandResult>  {
     try {
       const branches = await this.git.listBranches({
-        dir: this.pwd,
+        dir: cwd,
       });
 
       if (branches.length === 0) {
@@ -98,7 +96,7 @@ export class GitBranchCommand implements GitSubcommand {
       try {
         currentBranch = await this.git.currentBranch({
           
-          dir: this.pwd,
+          dir: cwd,
         }) || null;
       } catch {
         // Might be in detached HEAD state
@@ -120,11 +118,11 @@ export class GitBranchCommand implements GitSubcommand {
     }
   }
 
-  private async createBranch(branchName: string): Promise<ShellCommandResult> {
+  private async  createBranch(branchName: string, cwd: string): Promise<ShellCommandResult>  {
     try {
       // Check if branch already exists
       const branches = await this.git.listBranches({
-        dir: this.pwd,
+        dir: cwd,
       });
 
       if (branches.includes(branchName)) {
@@ -136,7 +134,7 @@ export class GitBranchCommand implements GitSubcommand {
       try {
         currentRef = await this.git.resolveRef({
           
-          dir: this.pwd,
+          dir: cwd,
           ref: 'HEAD',
         });
       } catch {
@@ -145,7 +143,7 @@ export class GitBranchCommand implements GitSubcommand {
 
       // Create the new branch
       await this.git.branch({
-        dir: this.pwd,
+        dir: cwd,
         ref: branchName,
         object: currentRef,
       });
@@ -157,11 +155,11 @@ export class GitBranchCommand implements GitSubcommand {
     }
   }
 
-  private async deleteBranch(branchName: string, force: boolean): Promise<ShellCommandResult> {
+  private async  deleteBranch(branchName: string, force: boolean, cwd: string): Promise<ShellCommandResult>  {
     try {
       // Check if branch exists
       const branches = await this.git.listBranches({
-        dir: this.pwd,
+        dir: cwd,
       });
 
       if (!branches.includes(branchName)) {
@@ -173,19 +171,19 @@ export class GitBranchCommand implements GitSubcommand {
       try {
         currentBranch = await this.git.currentBranch({
           
-          dir: this.pwd,
+          dir: cwd,
         }) || null;
       } catch {
         // Continue
       }
 
       if (currentBranch === branchName) {
-        return createErrorResult(`error: Cannot delete branch '${branchName}' checked out at '${this.pwd}'`);
+        return createErrorResult(`error: Cannot delete branch '${branchName}' checked out at '${cwd}'`);
       }
 
       // Delete the branch
       await this.git.deleteBranch({
-        dir: this.pwd,
+        dir: cwd,
         ref: branchName,
       });
 

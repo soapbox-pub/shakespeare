@@ -319,12 +319,11 @@ describe('GitShowCommand', () => {
     showCommand = new GitShowCommand({
       git: mockGit as Git,
       fs: mockFS as JSRuntimeFS,
-      pwd: mockPwd,
     });
   });
 
   it('should show basic commit information', async () => {
-    const result = await showCommand.execute(['simple-commit']);
+    const result = await showCommand.execute(['simple-commit'], mockPwd);
     
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain('commit simple-commit');
@@ -333,7 +332,7 @@ describe('GitShowCommand', () => {
   });
 
   it('should handle initial commits properly', async () => {
-    const result = await showCommand.execute(['initial-commit']);
+    const result = await showCommand.execute(['initial-commit'], mockPwd);
     
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain('Initial commit');
@@ -344,7 +343,7 @@ describe('GitShowCommand', () => {
 
   it('should resolve HEAD~1 correctly', async () => {
     // First, check that the implementation correctly resolves HEAD~1
-    const result = await showCommand.execute(['HEAD~1']);
+    const result = await showCommand.execute(['HEAD~1'], mockPwd);
     
     // Verify that resolveRef was called with HEAD
     expect(mockGit.resolveRef).toHaveBeenCalledWith({
@@ -363,7 +362,7 @@ describe('GitShowCommand', () => {
   });
 
   it('should resolve HEAD^2 correctly', async () => {
-    const result = await showCommand.execute(['HEAD^2']);
+    const result = await showCommand.execute(['HEAD^2'], mockPwd);
     
     // Verify that resolveRef was called with HEAD
     expect(mockGit.resolveRef).toHaveBeenCalledWith({
@@ -411,7 +410,7 @@ describe('GitShowCommand', () => {
     });
     
     // Execute the command
-    const result = await showCommand.execute(['simple-commit']);
+    const result = await showCommand.execute(['simple-commit'], mockPwd);
     
     // Check that the command output contains the commit message
     expect(result.stdout).toContain('Simple changes');
@@ -569,7 +568,7 @@ describe('GitShowCommand', () => {
     });
     
     // Execute the command
-    const result = await showCommand.execute(['diff-test-commit']);
+    const result = await showCommand.execute(['diff-test-commit'], mockPwd);
     
     // Debug output
     console.log('Test output:', result.stdout);
@@ -596,7 +595,7 @@ describe('GitShowCommand', () => {
   });
 
   it('should return an error for invalid references', async () => {
-    const result = await showCommand.execute(['non-existent-ref']);
+    const result = await showCommand.execute(['non-existent-ref'], mockPwd);
     
     expect(result.exitCode).not.toBe(0);
     expect(result.stderr).toContain('bad revision');
@@ -605,7 +604,7 @@ describe('GitShowCommand', () => {
   it('should return an error when not in a git repository', async () => {
     mockFS.stat = vi.fn().mockRejectedValue(new Error('Not a directory'));
     
-    const result = await showCommand.execute([]);
+    const result = await showCommand.execute([], mockPwd);
     
     expect(result.exitCode).not.toBe(0);
     expect(result.stderr).toContain('not a git repository');

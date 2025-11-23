@@ -1,4 +1,4 @@
-import git, { GitHttpRequest, GitHttpResponse, HttpClient } from 'isomorphic-git';
+import git, { FetchResult, GitHttpRequest, GitHttpResponse, HttpClient } from 'isomorphic-git';
 import { NIP05 } from '@nostrify/nostrify';
 import { nip19 } from 'nostr-tools';
 import { proxyUrl } from './proxyUrl';
@@ -1615,7 +1615,7 @@ export class Git {
     return differences;
   }
 
-  private async nostrFetch(nostrUrl: string, options: Omit<Parameters<typeof git.fetch>[0], 'fs' | 'http' | 'corsProxy'> & { remote: string; dir: string }): Promise<{ fetchHead?: string; fetchHeadDescription?: string }> {
+  private async nostrFetch(nostrUrl: string, options: Omit<Parameters<typeof git.fetch>[0], 'fs' | 'http' | 'corsProxy'> & { remote: string; dir: string }): Promise<FetchResult> {
     // Parse the Nostr URI
     const nostrURI = await this.parseNostrCloneURI(nostrUrl);
     if (!nostrURI) {
@@ -1629,7 +1629,7 @@ export class Git {
 
     // If we have a state event, update our refs to match
     if (state) {
-      const foundAllData = async () => {
+      const foundAllData = async (): Promise<FetchResult> => {
         // identify out-of-sync grasp servers are in sync
         const cloneURLsStates = await this.listFromCloneUrls(repo);
         const outOfSyncRefsPerCloneUrl = this.nostrIdentifyCloneUrlStateDifferences(state, cloneURLsStates);
@@ -1657,8 +1657,9 @@ export class Git {
         );
 
         return {
-          fetchHead: state.headCommit,
+          fetchHead: state.headCommit || null,
           fetchHeadDescription: `Fetched from Nostr repository state`,
+          defaultBranch: state.headBranch || null,
         };
       };
 
@@ -2002,7 +2003,7 @@ export class Git {
   }
 
   /* just fetching the branches and tags so some refs (eg refs/nostr/<event-id>) wont be fetched (unless the remote refspec specifies?) */
-  private async nostrFetchDataFromGitRemote(httpsCloneUrl:string, dir: string): Promise<{ fetchHead?: string; fetchHeadDescription?: string }> {
+  private async nostrFetchDataFromGitRemote(httpsCloneUrl:string, dir: string): Promise<FetchResult> {
     try {
       console.log(`Fetching from Git remote: ${httpsCloneUrl}`);
 
@@ -2033,8 +2034,9 @@ export class Git {
         });
 
         return {
-          fetchHead: fetchResult.fetchHead || undefined,
+          fetchHead: fetchResult.fetchHead || null,
           fetchHeadDescription: `Fetched from Git remote: ${httpsCloneUrl}`,
+          defaultBranch: fetchResult.defaultBranch || null,
         };
       } catch (fetchError) {
         // Clean up the temporary remote

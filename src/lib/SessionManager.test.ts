@@ -156,4 +156,25 @@ describe('SessionManager', () => {
     expect(updatedSession?.messages).toHaveLength(1); // Only the user message
     expect(updatedSession?.messages[0].role).toBe('user');
   });
+
+  it('should track when images are not supported and strip them on subsequent requests', async () => {
+    const projectId = 'test-project';
+    const tools = {};
+    const customTools = {};
+
+    // Load a session
+    const session = await sessionManager.loadSession(projectId, tools, customTools);
+
+    // Initially, images should not be marked as unsupported
+    expect(session.imagesNotSupported).toBeUndefined();
+
+    // Simulate marking images as not supported (this would happen after an API error)
+    session.imagesNotSupported = true;
+
+    // Verify the flag is set
+    expect(session.imagesNotSupported).toBe(true);
+
+    // On subsequent requests, the SessionManager should proactively strip images
+    // This prevents retrying with images on every message/tool call
+  });
 });

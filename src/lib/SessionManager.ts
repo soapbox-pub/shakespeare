@@ -40,6 +40,7 @@ export interface SessionState {
   abortController?: AbortController;
   totalCost?: number; // Total cost in USD for this session
   lastInputTokens?: number; // Input tokens from the last AI request
+  imagesNotSupported?: boolean; // Track if this session's model doesn't support images
 }
 
 export interface SessionManagerEvents {
@@ -284,18 +285,18 @@ export class SessionManager {
             if (msg.role === 'user' && typeof msg.content !== 'string' && Array.isArray(msg.content)) {
               const filteredContent = msg.content.filter(part => {
                 if (part.type !== 'image_url') return true;
-                
+
                 const imagePart = part as OpenAI.Chat.Completions.ChatCompletionContentPartImage;
                 const url = imagePart.image_url.url.toLowerCase();
-                
+
                 // Keep only JPG/JPEG/PNG images
                 // Check file extension or data URL MIME type
-                return /\.(jpg|jpeg|png)(\?|$)/.test(url) || 
-                       url.startsWith('data:image/jpeg') || 
+                return /\.(jpg|jpeg|png)(\?|$)/.test(url) ||
+                       url.startsWith('data:image/jpeg') ||
                        url.startsWith('data:image/png') ||
                        url.startsWith('data:image/jpg');
               });
-              
+
               return {
                 ...msg,
                 content: filteredContent
@@ -311,7 +312,7 @@ export class SessionManager {
             if (msg.role === 'user' && typeof msg.content !== 'string' && Array.isArray(msg.content)) {
               // Keep only text parts (this includes "Added file: /tmp/..." paths)
               const textParts = msg.content.filter(part => part.type === 'text');
-              
+
               // If we had images, convert to string content (or empty if no text)
               if (textParts.length > 0) {
                 return {
@@ -319,7 +320,7 @@ export class SessionManager {
                   content: textParts.map(part => (part as OpenAI.Chat.Completions.ChatCompletionContentPartText).text).join('\n')
                 };
               }
-              
+
               // If no text parts, return empty string
               return {
                 ...msg,
@@ -340,6 +341,11 @@ export class SessionManager {
         // Filter out unsupported image formats (keep only JPG/JPEG/PNG for API)
         // This ensures the UI shows all image types, but API only receives supported formats
         messages = filterSupportedImages(messages);
+
+        // If this session has already determined images aren't supported, strip them proactively
+        if (session.imagesNotSupported) {
+          messages = stripImageUrls(messages);
+        }
 
         // Prepare completion options
         const completionOptions: OpenAI.Chat.Completions.ChatCompletionCreateParams = {
@@ -369,30 +375,35 @@ export class SessionManager {
             signal: session.abortController?.signal
           });
         } catch (error) {
-          // Check if this is likely an image-related error (400/404) and we haven't retried yet
+          // Check if this might be an image-related error and we have images to strip
           const errorObj = error as Record<string, unknown>;
           const errorStatus = typeof errorObj?.status === 'number' ? errorObj.status : undefined;
-          const isImageError = errorStatus === 400 || errorStatus === 404 || errorStatus === 500;
+          const isPotentialImageError = errorStatus === 400 || errorStatus === 404 || errorStatus === 500;
 
-          if (isImageError && hasImages && !retriedWithoutImages) {
-            console.warn('API call failed with image-related error, retrying without image_url parts (keeping VFS paths):', error);
+          if (isPotentialImageError && hasImages && !retriedWithoutImages) {
+            console.warn('API call failed, retrying without image_url parts (keeping VFS paths):', error);
             retriedWithoutImages = true;
 
             // Strip image_url parts but keep text parts (including VFS paths)
             const messagesWithoutImages = stripImageUrls(messages);
-            
+
             // Update completion options with stripped messages
             const retryOptions: OpenAI.Chat.Completions.ChatCompletionCreateParams = {
               ...completionOptions,
               messages: messagesWithoutImages
             };
 
-            // Retry the API call
+            // Retry the API call - if this succeeds, we know images were the problem
             stream = await openai.chat.completions.create(retryOptions, {
               signal: session.abortController?.signal
             });
+
+            // SUCCESS: The retry without images worked, so this model doesn't support images
+            // Mark this session as not supporting images to avoid future retries
+            session.imagesNotSupported = true;
+            console.log('Retry without images succeeded - marking this session as not supporting images');
           } else {
-            // Re-throw if not an image error or already retried
+            // Re-throw if not a potential image error or already retried
             throw error;
           }
         }

@@ -9,42 +9,41 @@ type ContentPart = OpenAI.Chat.Completions.ChatCompletionContentPartText | OpenA
 /**
  * Builds message content from text input, image URLs, and attached files.
  * Downloads image URLs to VFS and processes uploaded files.
- * 
+ *
  * - All image formats are included in the message content for UI display
  * - SessionManager filters to only pass JPG/JPEG/PNG to the OpenAI API
  * - All files are saved to VFS and get a text part with the path
- * 
+ * - Images are converted to base64-encoded data URLs for API consumption
+ *
  * Returns content as either a string (for simple text) or an array of content parts.
- * 
+ *
  * @param input - User text input that may contain image URLs
  * @param attachedFiles - Array of files to attach
  * @param fs - Filesystem instance for saving files
  * @param tmpPath - Temporary directory path for file storage
- * @param uploadFile - Optional upload function from useUploadFile hook for converting files to URLs
  * @returns Promise resolving to message content (string or array of content parts)
  */
 export async function buildMessageContent(
   input: string,
   attachedFiles: File[],
   fs: JSRuntimeFS,
-  tmpPath = '/tmp',
-  uploadFile?: (file: File) => Promise<Array<[string, string] | string[]>>
+  tmpPath = '/tmp'
 ): Promise<string | ContentPart[]> {
   const contentParts: ContentPart[] = [];
 
   // Parse user input to detect image URLs and split into content parts
   if (input.trim()) {
     const parsedParts = parseImageUrls(input.trim());
-    
+
     // Process each part: download image URLs to VFS and add text parts with VFS paths
     for (const part of parsedParts) {
       if (part.type === 'image_url') {
         // Download image to VFS and get the path
         const result = await urlToFile(part.image_url.url, fs, tmpPath);
-        
+
         // Always add image_url part for UI display (all formats)
         contentParts.push(part);
-        
+
         // Always add text part with VFS path so AI knows where the file is (can manipulate it)
         if (result?.vfsPath) {
           contentParts.push({
@@ -64,18 +63,18 @@ export async function buildMessageContent(
       try {
         // Save file to VFS (always do this)
         const savedPath = await saveFileToTmp(fs, file, tmpPath);
-        
+
         // Always add text part with VFS path
         const textPart: ContentPart = {
           type: 'text',
           text: `Added file: ${savedPath}`
         };
-        
-        // For all image types, also add as image_url for UI display (if uploadFile available)
+
+        // For all image types, also add as image_url for UI display with base64 encoding
         const isImage = file.type.startsWith('image/');
-        if (isImage && uploadFile) {
+        if (isImage) {
           try {
-            const imageUrl = await fileToUrl(file, uploadFile);
+            const imageUrl = await fileToUrl(file);
             // Return both parts: image_url for UI display and text for VFS path
             return [textPart, {
               type: 'image_url' as const,
@@ -83,10 +82,10 @@ export async function buildMessageContent(
             }];
           } catch (error) {
             // If URL conversion fails, just use text part
-            console.warn('Failed to convert image to URL, using text part only:', error);
+            console.warn('Failed to convert image to base64, using text part only:', error);
           }
         }
-        
+
         return [textPart];
       } catch (error) {
         console.error('Failed to save file:', error);
@@ -98,7 +97,7 @@ export async function buildMessageContent(
     });
 
     const fileResults = await Promise.all(filePromises);
-    
+
     // Flatten the results (each file can return multiple parts)
     for (const parts of fileResults) {
       contentParts.push(...parts);
@@ -109,7 +108,7 @@ export async function buildMessageContent(
   if (contentParts.length === 1 && contentParts[0].type === 'text') {
     return contentParts[0].text;
   }
-  
+
   // Return array for multiple parts or if contains image URLs
   return contentParts;
 }

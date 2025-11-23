@@ -2,37 +2,12 @@ import type { JSRuntimeFS } from '@/lib/JSRuntime';
 import { generateUniqueFilename } from './fileUtils';
 
 /**
- * Converts a File to a URL string for API consumption.
- * Tries useUploadFile first if available, otherwise falls back to data URL.
- * 
+ * Converts a File to a base64-encoded data URL for API consumption.
+ *
  * @param file - The file to convert
- * @param uploadFile - Optional upload function from useUploadFile hook
- * @returns Promise resolving to URL string
+ * @returns Promise resolving to base64 data URL string
  */
-export async function fileToUrl(
-  file: File,
-  uploadFile?: (file: File) => Promise<Array<[string, string] | string[]>>
-): Promise<string> {
-  // Try useUploadFile first if available
-  if (uploadFile) {
-    try {
-      const tags = await uploadFile(file);
-      // Extract URL from NIP-94 compatible tags
-      // The first tag contains the URL
-      if (tags && tags.length > 0 && tags[0]) {
-        const firstTag = tags[0];
-        // Handle both tuple [string, string] and array string[] formats
-        if (Array.isArray(firstTag) && firstTag.length > 1) {
-          return firstTag[1] as string;
-        }
-      }
-    } catch (error) {
-      console.warn('Failed to upload file via useUploadFile, falling back to data URL:', error);
-      // Fall through to data URL fallback
-    }
-  }
-
-  // Fallback to data URL
+export async function fileToUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
@@ -53,7 +28,7 @@ export async function fileToUrl(
  * Converts a URL to a file saved in the VFS.
  * Downloads an image from a URL and saves it to the VFS.
  * Returns both the original URL (for API calls) and the VFS path (for reference).
- * 
+ *
  * @param imageUrl - The image URL to download
  * @param fs - Filesystem instance for saving files
  * @param tmpPath - Temporary directory path for file storage
@@ -113,7 +88,7 @@ export async function urlToFile(
     let filename = 'downloaded_image';
     const urlPath = new URL(imageUrl).pathname;
     const urlFilename = urlPath.split('/').pop();
-    
+
     if (urlFilename && /\.(jpg|jpeg|png|gif|webp|svg|bmp|ico)$/i.test(urlFilename)) {
       filename = urlFilename;
     } else {

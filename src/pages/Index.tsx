@@ -24,8 +24,6 @@ import { ArrowUp } from 'lucide-react';
 import { useSeoMeta } from '@unhead/react';
 import { ShakespeareLogo } from '@/components/ShakespeareLogo';
 import { AppShowcase } from '@/components/AppShowcase';
-import { useUploadFile } from '@/hooks/useUploadFile';
-import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 export default function Index() {
   const { t } = useTranslation();
@@ -50,8 +48,6 @@ export default function Index() {
   });
   const isMobile = useIsMobile();
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
-  const { user } = useCurrentUser();
-  const { mutateAsync: uploadFile } = useUploadFile();
   const [isDragOver, setIsDragOver] = useState(false);
   const [quillyError, setQuillyError] = useState<Error | null>(null);
 
@@ -235,13 +231,12 @@ export default function Index() {
       const project = await projectsManager.createProject(prompt.trim(), config.projectTemplate, projectId);
 
       // Build message content from input and attached files
-      // Pass uploadFile function if user is logged in
+      // Images are converted to base64-encoded data URLs
       const messageContent = await buildMessageContent(
         prompt.trim(),
         attachedFiles,
         fs,
-        undefined,
-        user ? uploadFile : undefined
+        undefined
       );
 
       // Store the initial message in chat history using DotAI

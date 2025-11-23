@@ -7,6 +7,8 @@ import { UserMessage } from '@/components/UserMessage';
 import OpenAI from 'openai';
 import { useTheme } from '@/hooks/useTheme';
 import { isEmptyMessage } from '@/lib/isEmptyMessage';
+import { Dialog, DialogPortal, DialogOverlay } from '@/components/ui/dialog';
+import * as DialogPrimitive from '@radix-ui/react-dialog';
 
 // Type guard to check if message has reasoning content
 function hasReasoningContent(message: AIMessage): message is AIMessage & { reasoning_content: string } {
@@ -26,6 +28,7 @@ export const AIMessageItem = memo(({
 }: AIMessageItemProps) => {
   const [isToolExpanded, setIsToolExpanded] = useState(false);
   const [isReasoningExpanded, setIsReasoningExpanded] = useState(false);
+  const [expandedImageUrl, setExpandedImageUrl] = useState<string | null>(null);
   const { displayTheme } = useTheme();
 
   // Get content to display
@@ -295,20 +298,90 @@ export const AIMessageItem = memo(({
   // Regular rendering for non-tool messages
   if (message.role === 'user') {
     // User messages: right-aligned bubble without avatar/name
+    // Extract text and image parts from message content
+    const contentArray = Array.isArray(message.content) ? message.content : null;
+    const textParts = contentArray
+      ? contentArray.filter(part => part.type === 'text') as OpenAI.Chat.Completions.ChatCompletionContentPartText[]
+      : [];
     const userContent = typeof message.content === 'string'
       ? message.content
-      : Array.isArray(message.content)
-        ? message.content.filter(part => part.type === 'text') as OpenAI.Chat.Completions.ChatCompletionContentPartText[]
+      : textParts.length > 0
+        ? textParts.map(part => part.text).join('\n')
         : '';
 
+    // Extract image URLs from content array
+    const imageUrls = contentArray
+      ? contentArray
+        .filter(part => part.type === 'image_url')
+        .map(part => (part as OpenAI.Chat.Completions.ChatCompletionContentPartImage).image_url.url)
+      : [];
+
     return (
-      <div className="flex justify-end py-6">
-        <div className="max-w-[80%] bg-secondary rounded-2xl rounded-br-md px-4 py-3">
-          <div className="text-sm break-words">
-            <UserMessage content={userContent} />
+      <>
+        <div className="flex justify-end py-6">
+          <div className="max-w-[80%] bg-secondary rounded-2xl rounded-br-md px-4 py-3">
+            <div className="text-sm break-words space-y-2">
+              {/* Render text content and attachments first */}
+              {userContent && <UserMessage content={userContent} />}
+              {/* Render images after text and attachments */}
+              {imageUrls.length > 0 && (
+                <div className="space-y-2">
+                  {imageUrls.map((url, index) => (
+                    <div
+                      key={index}
+                      className="rounded-lg overflow-hidden border border-border cursor-pointer hover:opacity-90 transition-opacity"
+                      onClick={() => setExpandedImageUrl(url)}
+                    >
+                      <img
+                        src={url}
+                        alt={`User uploaded image ${index + 1}`}
+                        className="max-w-full h-auto max-h-96 object-contain"
+                        loading="lazy"
+                        onError={(e) => {
+                          // Fallback if image fails to load
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                          const fallback = document.createElement('div');
+                          fallback.className = 'p-2 text-xs text-muted-foreground bg-muted rounded';
+                          fallback.textContent = `Image failed to load: ${url}`;
+                          target.parentElement?.appendChild(fallback);
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+
+        {/* Image expansion dialog */}
+        <Dialog open={!!expandedImageUrl} onOpenChange={(open) => !open && setExpandedImageUrl(null)}>
+          <DialogPortal>
+            <DialogOverlay className="bg-black/95" />
+            <DialogPrimitive.Content
+              className={cn(
+                "fixed left-[50%] top-[50%] z-50 max-w-[95vw] max-h-[95vh] translate-x-[-50%] translate-y-[-50%] p-0 bg-transparent border-0 shadow-none",
+                "data-[state=open]:animate-in data-[state=closed]:animate-out",
+                "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+                "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
+              )}
+              onPointerDownOutside={() => setExpandedImageUrl(null)}
+              onEscapeKeyDown={() => setExpandedImageUrl(null)}
+            >
+              {expandedImageUrl && (
+                <div className="relative flex items-center justify-center">
+                  <img
+                    src={expandedImageUrl}
+                    alt="Expanded image"
+                    className="max-w-full max-h-[95vh] w-auto h-auto object-contain rounded-lg"
+                  />
+                </div>
+              )}
+            </DialogPrimitive.Content>
+          </DialogPortal>
+        </Dialog>
+      </>
     );
   }
 

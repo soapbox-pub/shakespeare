@@ -3,9 +3,10 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Save, Loader2 } from 'lucide-react';
+import { Save, Loader2, ImageOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useGitStatus } from '@/hooks/useGitStatus';
+import { isMediaFile } from '@/lib/fileUtils';
 
 interface FileEditorProps {
   filePath: string;
@@ -93,6 +94,7 @@ export function FileEditor({ filePath, content, onSave, isLoading, projectId }: 
   // Get git status for the current file
   const currentFileGitStatus = getFileGitStatus(filePath);
   const gitStatusClasses = getGitStatusClasses(currentFileGitStatus);
+  const isMedia = isMediaFile(filePath);
 
   return (
     <div className="h-full flex flex-col">
@@ -100,38 +102,46 @@ export function FileEditor({ filePath, content, onSave, isLoading, projectId }: 
         <div className="flex items-center justify-between">
           <CardTitle className={cn("text-sm sm:text-base truncate flex-1 mr-2", gitStatusClasses)}>{filePath}</CardTitle>
           <div className="flex items-center space-x-1 sm:space-x-2">
-            {hasChanges && (
+            {hasChanges && !isMedia && (
               <span className="text-xs sm:text-sm text-muted-foreground hidden sm:inline">{t('unsavedChanges')}</span>
             )}
-            <Button
-              onClick={handleSave}
-              disabled={!hasChanges || isSaving || isLoading}
-              size="sm"
-              className="focus-ring"
-            >
-              {isSaving ? (
-                <>
-                  <Loader2 className="mr-1 sm:mr-2 h-4 w-4 animate-spin" />
-                  <span className="hidden sm:inline">{t('saving')}</span>
-                </>
-              ) : (
-                <>
-                  <Save className="sm:mr-2 h-4 w-4" />
-                  <span className="hidden sm:inline">{t('save')}</span>
-                </>
-              )}
-            </Button>
+            {!isMedia && (
+              <Button
+                onClick={handleSave}
+                disabled={!hasChanges || isSaving || isLoading}
+                size="sm"
+                className="focus-ring"
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 className="mr-1 sm:mr-2 h-4 w-4 animate-spin" />
+                    <span className="hidden sm:inline">{t('saving')}</span>
+                  </>
+                ) : (
+                  <>
+                    <Save className="sm:mr-2 h-4 w-4" />
+                    <span className="hidden sm:inline">{t('save')}</span>
+                  </>
+                )}
+              </Button>
+            )}
           </div>
         </div>
-        <div className="text-xs text-muted-foreground mt-1">
-          {t('languageLabel')}: {getLanguageFromPath(filePath)}
-        </div>
+        {!isMedia && (
+          <div className="text-xs text-muted-foreground mt-1">
+            {t('languageLabel')}: {getLanguageFromPath(filePath)}
+          </div>
+        )}
       </CardHeader>
 
       <CardContent className="flex-1 p-0">
         {isLoading ? (
           <div className="flex items-center justify-center h-full">
             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+          </div>
+        ) : isMedia ? (
+          <div className="flex flex-col items-center justify-center h-full p-8 text-center">
+            <ImageOff className="h-16 w-16 text-muted-foreground" />
           </div>
         ) : (
           <Textarea

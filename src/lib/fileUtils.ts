@@ -68,3 +68,26 @@ export async function saveFileToTmp(fs: JSRuntimeFS, file: File, tmpPath = '/tmp
 
   return fullPath;
 }
+
+/**
+ * Check if a file path represents a media/binary file that cannot be edited as text
+ * @param path - File path to check
+ * @returns boolean - True if the file is a media/binary file
+ */
+export function isMediaFile(path: string): boolean {
+  const extension = path.split('.').pop()?.toLowerCase();
+  if (!extension) return false;
+  
+  const mediaExtensions = [
+    // Images
+    'jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'ico', 'avif', 'heic', 'heif',
+    // Videos
+    'mp4', 'webm', 'avi', 'mov', 'mkv', 'flv', 'wmv', 'm4v',
+    // Audio
+    'mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac', 'wma',
+    // Other binary formats
+    'pdf', 'zip', 'tar', 'gz', 'rar', '7z',
+  ];
+  
+  return mediaExtensions.includes(extension);
+}

@@ -12,15 +12,13 @@ export class GitCloneCommand implements GitSubcommand {
 
   private git: Git;
   private fs: JSRuntimeFS;
-  private pwd: string;
 
   constructor(options: GitSubcommandOptions) {
     this.git = options.git;
     this.fs = options.fs;
-    this.pwd = options.pwd;
   }
 
-  async execute(args: string[]): Promise<ShellCommandResult> {
+  async execute(args: string[], cwd: string): Promise<ShellCommandResult> {
     try {
       const { options, repository, directory } = this.parseArgs(args);
 
@@ -37,7 +35,7 @@ export class GitCloneCommand implements GitSubcommand {
         targetDir = repoName.replace(/\.git$/, ''); // Remove .git suffix if present
       }
 
-      const targetPath = `${this.pwd}/${targetDir}`;
+      const targetPath = `${cwd}/${targetDir}`;
 
       // Check if target directory already exists
       try {

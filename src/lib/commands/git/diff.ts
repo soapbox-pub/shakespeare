@@ -12,19 +12,17 @@ export class GitDiffCommand implements GitSubcommand {
 
   private git: Git;
   private fs: JSRuntimeFS;
-  private pwd: string;
 
   constructor(options: GitSubcommandOptions) {
     this.git = options.git;
     this.fs = options.fs;
-    this.pwd = options.pwd;
   }
 
-  async execute(args: string[]): Promise<ShellCommandResult> {
+  async execute(args: string[], cwd: string): Promise<ShellCommandResult> {
     try {
       // Check if we're in a git repository
       try {
-        await this.fs.stat(`${this.pwd}/.git`);
+        await this.fs.stat(`${cwd}/.git`);
       } catch {
         return createErrorResult('fatal: not a git repository (or any of the parent directories): .git');
       }
@@ -33,16 +31,16 @@ export class GitDiffCommand implements GitSubcommand {
 
       if (options.cached || options.staged) {
         // Show staged changes (index vs HEAD)
-        return await this.showStagedDiff(paths);
+        return await this.showStagedDiff(paths, cwd);
       } else if (commits.length === 0) {
         // Show working directory changes vs index
-        return await this.showWorkingDirectoryDiff(paths);
+        return await this.showWorkingDirectoryDiff(paths, cwd);
       } else if (commits.length === 1) {
         // Show changes between commit and working directory
-        return await this.showCommitDiff(commits[0], paths);
+        return await this.showCommitDiff(commits[0], paths, cwd);
       } else if (commits.length === 2) {
         // Show changes between two commits
-        return await this.showCommitRangeDiff(commits[0], commits[1], paths);
+        return await this.showCommitRangeDiff(commits[0], commits[1], paths, cwd);
       } else {
         return createErrorResult('usage: git diff [<commit>] [<commit>] [-- <path>...]');
       }
@@ -82,11 +80,11 @@ export class GitDiffCommand implements GitSubcommand {
     return { commits, paths, options };
   }
 
-  private async showWorkingDirectoryDiff(paths: string[]): Promise<ShellCommandResult> {
+  private async  showWorkingDirectoryDiff(paths: string[], cwd: string): Promise<ShellCommandResult>  {
     try {
       // Get status to find changed files
       const statusMatrix = await this.git.statusMatrix({
-        dir: this.pwd,
+        dir: cwd,
       });
 
       // Filter for files with working directory changes
@@ -120,7 +118,7 @@ export class GitDiffCommand implements GitSubcommand {
               // For files in the index, read from HEAD as the baseline
               // This represents the last committed version for comparison
               const headBlob = await this.git.readBlob({
-                dir: this.pwd,
+                dir: cwd,
                 oid: 'HEAD',
                 filepath,
               });
@@ -135,7 +133,7 @@ export class GitDiffCommand implements GitSubcommand {
           let workdirContent = '';
           if (workdirStatus === 2) {
             try {
-              workdirContent = await this.fs.readFile(`${this.pwd}/${filepath}`, 'utf8');
+              workdirContent = await this.fs.readFile(`${cwd}/${filepath}`, 'utf8');
             } catch {
               // File might be deleted
               workdirContent = '';
@@ -156,12 +154,12 @@ export class GitDiffCommand implements GitSubcommand {
           if (workdirStatus === 0 && (stageStatus === 1 || stageStatus === 2)) {
             // Deleted file
             diffLines.push('deleted file mode 100644');
-            diffLines.push(`index ${this.getShortHash(indexContent)}..0000000`);
+            diffLines.push(`index ${this.getShortHash(indexContent, cwd)}..0000000`);
             diffLines.push(`--- a/${filepath}`);
             diffLines.push('+++ /dev/null');
           } else {
             // Modified file
-            diffLines.push(`index ${this.getShortHash(indexContent)}..${this.getShortHash(workdirContent)} 100644`);
+            diffLines.push(`index ${this.getShortHash(indexContent, cwd)}..${this.getShortHash(workdirContent, cwd)} 100644`);
             diffLines.push(`--- a/${filepath}`);
             diffLines.push(`+++ b/${filepath}`);
           }
@@ -211,12 +209,11 @@ export class GitDiffCommand implements GitSubcommand {
     }
   }
 
-  private async showCommitDiff(commit: string, _paths: string[]): Promise<ShellCommandResult> {
+  private async  showCommitDiff(commit: string, _paths: string[], cwd: string): Promise<ShellCommandResult>  {
     try {
       // For simplicity, show the commit message and changed files
       const commits = await this.git.log({
-
-        dir: this.pwd,
+        dir: cwd,
         depth: 1,
         ref: commit,
       });
@@ -245,16 +242,16 @@ export class GitDiffCommand implements GitSubcommand {
     }
   }
 
-  private async showCommitRangeDiff(_commit1: string, _commit2: string, _paths: string[]): Promise<ShellCommandResult> {
+  private async  showCommitRangeDiff(_commit1: string, _commit2: string, _paths: string[], _cwd: string): Promise<ShellCommandResult>  {
     // This would require complex implementation to compare two commits
     return createErrorResult('Commit range diff is not implemented in this git command');
   }
 
-  private async showStagedDiff(paths: string[]): Promise<ShellCommandResult> {
+  private async  showStagedDiff(paths: string[], cwd: string): Promise<ShellCommandResult>  {
     try {
       // Get status to find staged files
       const statusMatrix = await this.git.statusMatrix({
-        dir: this.pwd,
+        dir: cwd,
       });
 
       // Filter for files with staged changes (index differs from HEAD)
@@ -282,7 +279,7 @@ export class GitDiffCommand implements GitSubcommand {
           if (headStatus === 1) {
             try {
               const headBlob = await this.git.readBlob({
-                dir: this.pwd,
+                dir: cwd,
                 oid: 'HEAD',
                 filepath,
               });
@@ -296,7 +293,7 @@ export class GitDiffCommand implements GitSubcommand {
           let stagedContent = '';
           if (stageStatus === 1 || stageStatus === 2) {
             try {
-              stagedContent = await this.fs.readFile(`${this.pwd}/${filepath}`, 'utf8');
+              stagedContent = await this.fs.readFile(`${cwd}/${filepath}`, 'utf8');
             } catch {
               stagedContent = '';
             }
@@ -308,18 +305,18 @@ export class GitDiffCommand implements GitSubcommand {
           if (headStatus === 0 && stageStatus === 2) {
             // New file staged
             diffLines.push('new file mode 100644');
-            diffLines.push(`index 0000000..${this.getShortHash(stagedContent)}`);
+            diffLines.push(`index 0000000..${this.getShortHash(stagedContent, cwd)}`);
             diffLines.push('--- /dev/null');
             diffLines.push(`+++ b/${filepath}`);
           } else if (headStatus === 1 && stageStatus === 0) {
             // File deleted from stage
             diffLines.push('deleted file mode 100644');
-            diffLines.push(`index ${this.getShortHash(headContent)}..0000000`);
+            diffLines.push(`index ${this.getShortHash(headContent, cwd)}..0000000`);
             diffLines.push(`--- a/${filepath}`);
             diffLines.push('+++ /dev/null');
           } else {
             // Modified file
-            diffLines.push(`index ${this.getShortHash(headContent)}..${this.getShortHash(stagedContent)} 100644`);
+            diffLines.push(`index ${this.getShortHash(headContent, cwd)}..${this.getShortHash(stagedContent, cwd)} 100644`);
             diffLines.push(`--- a/${filepath}`);
             diffLines.push(`+++ b/${filepath}`);
           }
@@ -367,7 +364,7 @@ export class GitDiffCommand implements GitSubcommand {
     }
   }
 
-  private getShortHash(content: string): string {
+  private  getShortHash(content: string, _cwd: string): string  {
     // Simple hash for demo purposes - not a real git hash
     let hash = 0;
     for (let i = 0; i < content.length; i++) {

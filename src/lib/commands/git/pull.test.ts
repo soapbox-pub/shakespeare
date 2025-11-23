@@ -21,7 +21,6 @@ const mockFS = {
 const mockOptions: GitSubcommandOptions = {
   git: mockGit,
   fs: mockFS,
-  pwd: '/test/repo',
 };
 
 describe('GitPullCommand', () => {
@@ -107,10 +106,9 @@ describe('GitPullCommand', () => {
       const commandWithChanges = new GitPullCommand({
         git: mockGitWithChanges,
         fs: mockFSWithGit,
-        pwd: '/test/repo',
       });
 
-      const result = await commandWithChanges.execute(['origin', 'main']);
+      const result = await commandWithChanges.execute(['origin', 'main'], '/test/repo');
 
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toContain('error: Your local changes to the following files would be overwritten by merge:');

@@ -11,19 +11,18 @@ export class GitStatusCommand implements GitSubcommand {
 
   private git: Git;
   private fs: JSRuntimeFS;
-  private pwd: string;
 
   constructor(options: GitSubcommandOptions) {
     this.git = options.git;
     this.fs = options.fs;
-    this.pwd = options.pwd;
   }
 
-  async execute(args: string[]): Promise<ShellCommandResult> {
+  async execute(args: string[], cwd: string): Promise<ShellCommandResult> {
     try {
+
       // Check if we're in a git repository
       try {
-        await this.fs.stat(`${this.pwd}/.git`);
+        await this.fs.stat(`${cwd}/.git`);
       } catch {
         return createErrorResult('fatal: not a git repository (or any of the parent directories): .git');
       }
@@ -32,23 +31,23 @@ export class GitStatusCommand implements GitSubcommand {
 
       // Get the status matrix
       const statusMatrix = await this.git.statusMatrix({
-        dir: this.pwd,
+        dir: cwd,
       });
 
       // Get current branch
       let currentBranch: string | null = null;
       try {
         currentBranch = await this.git.currentBranch({
-          dir: this.pwd,
+          dir: cwd,
         }) || null;
       } catch {
         // Might be an empty repository
       }
 
       if (options.porcelain || options.short) {
-        return this.formatPorcelainStatus(statusMatrix);
+        return this.formatPorcelainStatus(statusMatrix, cwd);
       } else {
-        return this.formatHumanStatus(statusMatrix, currentBranch);
+        return this.formatHumanStatus(statusMatrix, currentBranch, cwd);
       }
 
     } catch (error) {
@@ -70,7 +69,7 @@ export class GitStatusCommand implements GitSubcommand {
     return options;
   }
 
-  private formatPorcelainStatus(statusMatrix: Array<[string, number, number, number]>): ShellCommandResult {
+  private  formatPorcelainStatus(statusMatrix: Array<[string, number, number, number]>, _cwd: string): ShellCommandResult  {
     const lines: string[] = [];
 
     for (const [filepath, headStatus, workdirStatus, stageStatus] of statusMatrix) {
@@ -108,7 +107,7 @@ export class GitStatusCommand implements GitSubcommand {
     return createSuccessResult(lines.join('\n') + (lines.length > 0 ? '\n' : ''));
   }
 
-  private formatHumanStatus(statusMatrix: Array<[string, number, number, number]>, currentBranch: string | null): ShellCommandResult {
+  private  formatHumanStatus(statusMatrix: Array<[string, number, number, number]>, currentBranch: string | null, _cwd: string): ShellCommandResult  {
     const lines: string[] = [];
 
     // Show current branch

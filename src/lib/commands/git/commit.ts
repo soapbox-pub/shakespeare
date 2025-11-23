@@ -11,19 +11,17 @@ export class GitCommitCommand implements GitSubcommand {
 
   private git: Git;
   private fs: JSRuntimeFS;
-  private pwd: string;
 
   constructor(options: GitSubcommandOptions) {
     this.git = options.git;
     this.fs = options.fs;
-    this.pwd = options.pwd;
   }
 
-  async execute(args: string[]): Promise<ShellCommandResult> {
+  async execute(args: string[], cwd: string): Promise<ShellCommandResult> {
     try {
       // Check if we're in a git repository
       try {
-        await this.fs.stat(`${this.pwd}/.git`);
+        await this.fs.stat(`${cwd}/.git`);
       } catch {
         return createErrorResult('fatal: not a git repository (or any of the parent directories): .git');
       }
@@ -36,12 +34,12 @@ export class GitCommitCommand implements GitSubcommand {
       
       // If -a flag is provided, stage all tracked files with modifications
       if (options.addAll) {
-        await this.stageTrackedChanges();
+        await this.stageTrackedChanges(cwd);
       }
 
       // Get current status
       const statusMatrix = await this.git.statusMatrix({
-        dir: this.pwd,
+        dir: cwd,
       });
 
       // Check for staged changes
@@ -58,8 +56,7 @@ export class GitCommitCommand implements GitSubcommand {
         // Get the last commit message if amending
         try {
           const commits = await this.git.log({
-
-            dir: this.pwd,
+            dir: cwd,
             depth: 1,
           });
           if (commits.length > 0 && !message) {
@@ -77,8 +74,7 @@ export class GitCommitCommand implements GitSubcommand {
       let currentBranch = 'main';
       try {
         currentBranch = await this.git.currentBranch({
-
-          dir: this.pwd,
+          dir: cwd,
         }) || 'main';
       } catch {
         // Use default
@@ -90,7 +86,7 @@ export class GitCommitCommand implements GitSubcommand {
         message: string;
         parent?: string[];
       } = {
-        dir: this.pwd,
+        dir: cwd,
         message: commitMessage || 'Empty commit',
       };
 
@@ -98,7 +94,7 @@ export class GitCommitCommand implements GitSubcommand {
         // For amend, we need to reset to the parent of the current commit
         try {
           const commits = await this.git.log({
-            dir: this.pwd,
+            dir: cwd,
             depth: 2,
           });
           if (commits.length > 1) {
@@ -151,11 +147,11 @@ export class GitCommitCommand implements GitSubcommand {
    * Stage all tracked files with modifications
    * This is used when the -a flag is provided
    */
-  private async stageTrackedChanges(): Promise<void> {
+  private async  stageTrackedChanges(cwd: string): Promise<void>  {
     try {
       // Get the status matrix
       const statusMatrix = await this.git.statusMatrix({
-        dir: this.pwd,
+        dir: cwd,
       });
 
       // Process each file based on its status
@@ -165,13 +161,13 @@ export class GitCommitCommand implements GitSubcommand {
           if (workdirStatus === 0) {
             // File was deleted, use remove
             await this.git.remove({
-              dir: this.pwd,
+              dir: cwd,
               filepath,
             });
           } else {
             // File was modified, use add
             await this.git.add({
-              dir: this.pwd,
+              dir: cwd,
               filepath,
             });
           }

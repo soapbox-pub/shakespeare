@@ -12,19 +12,17 @@ export class GitResetCommand implements GitSubcommand {
 
   private git: Git;
   private fs: JSRuntimeFS;
-  private pwd: string;
 
   constructor(options: GitSubcommandOptions) {
     this.git = options.git;
     this.fs = options.fs;
-    this.pwd = options.pwd;
   }
 
-  async execute(args: string[]): Promise<ShellCommandResult> {
+  async execute(args: string[], cwd: string): Promise<ShellCommandResult> {
     try {
       // Check if we're in a git repository
       try {
-        await this.fs.stat(`${this.pwd}/.git`);
+        await this.fs.stat(`${cwd}/.git`);
       } catch {
         return createErrorResult('fatal: not a git repository (or any of the parent directories): .git');
       }
@@ -33,10 +31,10 @@ export class GitResetCommand implements GitSubcommand {
 
       if (isFileReset) {
         // Reset specific files or all files (unstage)
-        return await this.resetFiles(files);
+        return await this.resetFiles(files, cwd);
       } else {
         // Reset to commit
-        return await this.resetToCommit(target, mode);
+        return await this.resetToCommit(target, mode, cwd);
       }
 
     } catch (error) {
@@ -89,7 +87,7 @@ export class GitResetCommand implements GitSubcommand {
     return { mode, target, files, isFileReset };
   }
 
-  private async resetFiles(files: string[]): Promise<ShellCommandResult> {
+  private async  resetFiles(files: string[], cwd: string): Promise<ShellCommandResult>  {
     try {
       const resetFiles: string[] = [];
       const errors: string[] = [];
@@ -99,7 +97,7 @@ export class GitResetCommand implements GitSubcommand {
         try {
           // Get the status matrix to find all staged files
           const statusMatrix = await this.git.statusMatrix({
-            dir: this.pwd,
+            dir: cwd,
           });
 
           // Find files that are staged (differ from HEAD)
@@ -117,7 +115,7 @@ export class GitResetCommand implements GitSubcommand {
           for (const file of stagedFiles) {
             try {
               await this.git.resetIndex({
-                dir: this.pwd,
+                dir: cwd,
                 filepath: file,
               });
               resetFiles.push(file);
@@ -134,7 +132,7 @@ export class GitResetCommand implements GitSubcommand {
           try {
             // Remove from staging area (reset to HEAD)
             await this.git.resetIndex({
-              dir: this.pwd,
+              dir: cwd,
               filepath: file,
             });
             resetFiles.push(file);
@@ -159,14 +157,13 @@ export class GitResetCommand implements GitSubcommand {
     }
   }
 
-  private async resetToCommit(target: string, mode: 'soft' | 'mixed' | 'hard'): Promise<ShellCommandResult> {
+  private async  resetToCommit(target: string, mode: 'soft' | 'mixed' | 'hard', cwd: string): Promise<ShellCommandResult>  {
     try {
       // Resolve the target commit
       let targetOid: string;
       try {
         targetOid = await this.git.resolveRef({
-
-          dir: this.pwd,
+          dir: cwd,
           ref: target,
         });
       } catch {
@@ -177,8 +174,7 @@ export class GitResetCommand implements GitSubcommand {
       let currentOid: string;
       try {
         currentOid = await this.git.resolveRef({
-
-          dir: this.pwd,
+          dir: cwd,
           ref: 'HEAD',
         });
       } catch {
@@ -205,7 +201,7 @@ export class GitResetCommand implements GitSubcommand {
             let currentBranch: string | null = null;
             try {
               currentBranch = await this.git.currentBranch({
-                dir: this.pwd,
+                dir: cwd,
               }) || null;
             } catch {
               // Detached HEAD state
@@ -215,14 +211,14 @@ export class GitResetCommand implements GitSubcommand {
             if (currentOid !== targetOid) {
               if (currentBranch) {
                 await this.git.writeRef({
-                  dir: this.pwd,
+                  dir: cwd,
                   ref: `refs/heads/${currentBranch}`,
                   value: targetOid,
                   force: true,
                 });
               } else {
                 await this.git.writeRef({
-                  dir: this.pwd,
+                  dir: cwd,
                   ref: 'HEAD',
                   value: targetOid,
                   force: true,
@@ -233,7 +229,7 @@ export class GitResetCommand implements GitSubcommand {
             // Reset the index only (not the working directory)
             // Using noCheckout: true to only update the index, not the working directory
             await this.git.checkout({
-              dir: this.pwd,
+              dir: cwd,
               ref: targetOid,
               noCheckout: true,
               noUpdateHead: true,
@@ -253,7 +249,7 @@ export class GitResetCommand implements GitSubcommand {
 
             // Get the commit object to ensure it exists
             await this.git.readCommit({
-              dir: this.pwd,
+              dir: cwd,
               oid: targetOid,
             });
 
@@ -261,7 +257,7 @@ export class GitResetCommand implements GitSubcommand {
             let currentBranch: string | null = null;
             try {
               currentBranch = await this.git.currentBranch({
-                dir: this.pwd,
+                dir: cwd,
               }) || null;
             } catch {
               // Detached HEAD state
@@ -272,14 +268,14 @@ export class GitResetCommand implements GitSubcommand {
             if (currentOid !== targetOid) {
               if (currentBranch) {
                 await this.git.writeRef({
-                  dir: this.pwd,
+                  dir: cwd,
                   ref: `refs/heads/${currentBranch}`,
                   value: targetOid,
                   force: true,
                 });
               } else {
                 await this.git.writeRef({
-                  dir: this.pwd,
+                  dir: cwd,
                   ref: 'HEAD',
                   value: targetOid,
                   force: true,
@@ -291,7 +287,7 @@ export class GitResetCommand implements GitSubcommand {
             // Using noUpdateHead: true because we already updated HEAD above
             // Using force: true to overwrite any local changes
             await this.git.checkout({
-              dir: this.pwd,
+              dir: cwd,
               ref: targetOid,
               force: true,
               noUpdateHead: true,

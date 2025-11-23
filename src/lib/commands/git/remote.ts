@@ -12,19 +12,17 @@ export class GitRemoteCommand implements GitSubcommand {
 
   private git: Git;
   private fs: JSRuntimeFS;
-  private pwd: string;
 
   constructor(options: GitSubcommandOptions) {
     this.git = options.git;
     this.fs = options.fs;
-    this.pwd = options.pwd;
   }
 
-  async execute(args: string[]): Promise<ShellCommandResult> {
+  async execute(args: string[], cwd: string): Promise<ShellCommandResult> {
     try {
       // Check if we're in a git repository
       try {
-        await this.fs.stat(`${this.pwd}/.git`);
+        await this.fs.stat(`${cwd}/.git`);
       } catch {
         return createErrorResult('fatal: not a git repository (or any of the parent directories): .git');
       }
@@ -33,13 +31,13 @@ export class GitRemoteCommand implements GitSubcommand {
 
       switch (action) {
         case 'list':
-          return await this.listRemotes(options.verbose);
+          return await this.listRemotes(options.verbose, cwd);
         case 'add':
-          return await this.addRemote(name!, url!);
+          return await this.addRemote(name!, url!, cwd);
         case 'remove':
-          return await this.removeRemote(name!);
+          return await this.removeRemote(name!, cwd);
         default:
-          return await this.listRemotes(options.verbose);
+          return await this.listRemotes(options.verbose, cwd);
       }
 
     } catch (error) {
@@ -85,10 +83,10 @@ export class GitRemoteCommand implements GitSubcommand {
     return { action, name, url, options };
   }
 
-  private async listRemotes(verbose: boolean): Promise<ShellCommandResult> {
+  private async  listRemotes(verbose: boolean, cwd: string): Promise<ShellCommandResult>  {
     try {
       const remotes = await this.git.listRemotes({
-        dir: this.pwd,
+        dir: cwd,
       });
 
       if (remotes.length === 0) {
@@ -115,7 +113,7 @@ export class GitRemoteCommand implements GitSubcommand {
     }
   }
 
-  private async addRemote(name: string, url: string): Promise<ShellCommandResult> {
+  private async  addRemote(name: string, url: string, cwd: string): Promise<ShellCommandResult>  {
     try {
       if (!name || !url) {
         return createErrorResult('usage: git remote add <name> <url>');
@@ -125,7 +123,7 @@ export class GitRemoteCommand implements GitSubcommand {
       try {
         const remotes = await this.git.listRemotes({
           
-          dir: this.pwd,
+          dir: cwd,
         });
 
         const existingRemote = remotes.find(r => r.remote === name);
@@ -138,7 +136,7 @@ export class GitRemoteCommand implements GitSubcommand {
 
       // Add the remote
       await this.git.addRemote({
-        dir: this.pwd,
+        dir: cwd,
         remote: name,
         url: url,
       });
@@ -150,7 +148,7 @@ export class GitRemoteCommand implements GitSubcommand {
     }
   }
 
-  private async removeRemote(name: string): Promise<ShellCommandResult> {
+  private async  removeRemote(name: string, cwd: string): Promise<ShellCommandResult>  {
     try {
       if (!name) {
         return createErrorResult('usage: git remote remove <name>');
@@ -160,7 +158,7 @@ export class GitRemoteCommand implements GitSubcommand {
       try {
         const remotes = await this.git.listRemotes({
           
-          dir: this.pwd,
+          dir: cwd,
         });
 
         const existingRemote = remotes.find(r => r.remote === name);
@@ -173,7 +171,7 @@ export class GitRemoteCommand implements GitSubcommand {
 
       // Remove the remote
       await this.git.deleteRemote({
-        dir: this.pwd,
+        dir: cwd,
         remote: name,
       });
 

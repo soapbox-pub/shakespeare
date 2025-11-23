@@ -14,21 +14,19 @@ export class GitPushCommand implements GitSubcommand {
 
   private git: Git;
   private fs: JSRuntimeFS;
-  private pwd: string;
   private signer?: NostrSigner;
 
   constructor(options: GitSubcommandOptions) {
     this.git = options.git;
     this.fs = options.fs;
-    this.pwd = options.pwd;
     this.signer = options.signer;
   }
 
-  async execute(args: string[]): Promise<ShellCommandResult> {
+  async execute(args: string[], cwd: string): Promise<ShellCommandResult> {
     try {
       // Check if we're in a git repository
       try {
-        await this.fs.stat(`${this.pwd}/.git`);
+        await this.fs.stat(`${cwd}/.git`);
       } catch {
         return createErrorResult('fatal: not a git repository (or any of the parent directories): .git');
       }
@@ -40,8 +38,7 @@ export class GitPushCommand implements GitSubcommand {
       if (!targetBranch) {
         try {
           targetBranch = await this.git.currentBranch({
-
-            dir: this.pwd,
+            dir: cwd,
           }) || undefined;
           if (!targetBranch) {
             return createErrorResult('fatal: You are not currently on a branch.');
@@ -55,7 +52,7 @@ export class GitPushCommand implements GitSubcommand {
       let remoteUrl: string;
       try {
         const remotes = await this.git.listRemotes({
-          dir: this.pwd,
+          dir: cwd,
         });
 
         const targetRemote = remotes.find(r => r.remote === remote);
@@ -71,7 +68,7 @@ export class GitPushCommand implements GitSubcommand {
 
       try {
         await this.git.push({
-          dir: this.pwd,
+          dir: cwd,
           remote: remote,
           ref: targetBranch,
           remoteRef: targetBranch,

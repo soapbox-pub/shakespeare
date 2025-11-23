@@ -12,19 +12,17 @@ export class GitAddCommand implements GitSubcommand {
 
   private git: Git;
   private fs: JSRuntimeFS;
-  private pwd: string;
 
   constructor(options: GitSubcommandOptions) {
     this.git = options.git;
     this.fs = options.fs;
-    this.pwd = options.pwd;
   }
 
-  async execute(args: string[]): Promise<ShellCommandResult> {
+  async execute(args: string[], cwd: string): Promise<ShellCommandResult> {
     try {
       // Check if we're in a git repository
       try {
-        await this.fs.stat(`${this.pwd}/.git`);
+        await this.fs.stat(`${cwd}/.git`);
       } catch {
         return createErrorResult('fatal: not a git repository (or any of the parent directories): .git');
       }
@@ -33,12 +31,12 @@ export class GitAddCommand implements GitSubcommand {
 
       if (options.all) {
         // Add all files (git add -A)
-        return await this.addAllFiles();
+        return await this.addAllFiles(cwd);
       } else if (paths.length === 0) {
         return createErrorResult('Nothing specified, nothing added.\nMaybe you wanted to say \'git add .\'?');
       } else {
         // Add specific files
-        return await this.addSpecificFiles(paths);
+        return await this.addSpecificFiles(paths, cwd);
       }
 
     } catch (error) {
@@ -70,11 +68,11 @@ export class GitAddCommand implements GitSubcommand {
     return { options, paths };
   }
 
-  private async addAllFiles(): Promise<ShellCommandResult> {
+  private async addAllFiles(cwd: string): Promise<ShellCommandResult> {
     try {
       // Get status to find all changed files
       const statusMatrix = await this.git.statusMatrix({
-        dir: this.pwd,
+        dir: cwd,
       });
 
       for (const [filepath, headStatus, workdirStatus, stageStatus] of statusMatrix) {
@@ -82,15 +80,13 @@ export class GitAddCommand implements GitSubcommand {
           if (workdirStatus === 0 && headStatus === 1) {
             // File was deleted in working directory
             await this.git.remove({
-
-              dir: this.pwd,
+              dir: cwd,
               filepath,
             });
           } else if (workdirStatus === 2 && stageStatus !== 2) {
             // File exists and has changes that aren't staged yet
             await this.git.add({
-
-              dir: this.pwd,
+              dir: cwd,
               filepath,
             });
           }
@@ -108,7 +104,7 @@ export class GitAddCommand implements GitSubcommand {
     }
   }
 
-  private async addSpecificFiles(paths: string[]): Promise<ShellCommandResult> {
+  private async addSpecificFiles(paths: string[], cwd: string): Promise<ShellCommandResult> {
     const addedFiles: string[] = [];
     const errors: string[] = [];
 
@@ -117,8 +113,7 @@ export class GitAddCommand implements GitSubcommand {
         if (path === '.') {
           // Add current directory (all files in it)
           const statusMatrix = await this.git.statusMatrix({
-
-            dir: this.pwd,
+            dir: cwd,
           });
 
           for (const [filepath, headStatus, workdirStatus, stageStatus] of statusMatrix) {
@@ -126,16 +121,14 @@ export class GitAddCommand implements GitSubcommand {
               if (workdirStatus === 0 && headStatus === 1) {
                 // File was deleted in working directory
                 await this.git.remove({
-
-                  dir: this.pwd,
+                  dir: cwd,
                   filepath,
                 });
                 addedFiles.push(filepath);
               } else if (workdirStatus === 2 && stageStatus !== 2) {
                 // File exists and has changes that aren't staged yet
                 await this.git.add({
-
-                  dir: this.pwd,
+                  dir: cwd,
                   filepath,
                 });
                 addedFiles.push(filepath);
@@ -151,7 +144,7 @@ export class GitAddCommand implements GitSubcommand {
             continue;
           }
 
-          const absolutePath = join(this.pwd, path);
+          const absolutePath = join(cwd, path);
 
           // Check if file/directory exists
           try {
@@ -159,12 +152,11 @@ export class GitAddCommand implements GitSubcommand {
 
             if (stats.isDirectory()) {
               // Add all files in directory
-              await this.addDirectory(path, addedFiles);
+              await this.addDirectory(path, addedFiles, cwd);
             } else {
               // Add single file
               await this.git.add({
-
-                dir: this.pwd,
+                dir: cwd,
                 filepath: path,
               });
               addedFiles.push(path);
@@ -173,8 +165,7 @@ export class GitAddCommand implements GitSubcommand {
             // Check if it's a deleted file
             try {
               await this.git.remove({
-
-                dir: this.pwd,
+                dir: cwd,
                 filepath: path,
               });
               addedFiles.push(path);
@@ -196,8 +187,8 @@ export class GitAddCommand implements GitSubcommand {
     return createSuccessResult('');
   }
 
-  private async addDirectory(dirPath: string, addedFiles: string[]): Promise<void> {
-    const absolutePath = join(this.pwd, dirPath);
+  private async addDirectory(dirPath: string, addedFiles: string[], cwd: string): Promise<void> {
+    const absolutePath = join(cwd, dirPath);
     const entries = await this.fs.readdir(absolutePath, { withFileTypes: true });
 
     for (const entry of entries) {
@@ -208,12 +199,11 @@ export class GitAddCommand implements GitSubcommand {
       const entryPath = join(dirPath, entry.name);
 
       if (entry.isDirectory()) {
-        await this.addDirectory(entryPath, addedFiles);
+        await this.addDirectory(entryPath, addedFiles, cwd);
       } else {
         try {
           await this.git.add({
-
-            dir: this.pwd,
+            dir: cwd,
             filepath: entryPath,
           });
           addedFiles.push(entryPath);

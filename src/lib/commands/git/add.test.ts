@@ -57,7 +57,6 @@ describe('GitAddCommand', () => {
     addCommand = new GitAddCommand({
       git: mockGit,
       fs: mockFS,
-      pwd: testCwd,
     });
   });
 
@@ -71,14 +70,14 @@ describe('GitAddCommand', () => {
     // Mock stat to throw error for .git directory
     vi.mocked(mockFS.stat).mockRejectedValueOnce(new Error('ENOENT'));
 
-    const result = await addCommand.execute(['file.txt']);
+    const result = await addCommand.execute(['file.txt'], testCwd);
 
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain('fatal: not a git repository');
   });
 
   it('should return error when no files specified', async () => {
-    const result = await addCommand.execute([]);
+    const result = await addCommand.execute([], testCwd);
 
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain('Nothing specified, nothing added');
@@ -95,7 +94,7 @@ describe('GitAddCommand', () => {
       ['staged.txt', 1, 2, 2],       // Already staged file
     ]);
 
-    const result = await addCommand.execute(['--all']);
+    const result = await addCommand.execute(['--all'], testCwd);
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toBe(''); // Git add is silent on success
@@ -118,7 +117,7 @@ describe('GitAddCommand', () => {
       ['deleted.txt', 1, 0, 1],      // Deleted file (not staged)
     ]);
 
-    const result = await addCommand.execute(['--all']);
+    const result = await addCommand.execute(['--all'], testCwd);
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toBe('');
@@ -132,7 +131,7 @@ describe('GitAddCommand', () => {
   });
 
   it('should add specific file', async () => {
-    const result = await addCommand.execute(['file.txt']);
+    const result = await addCommand.execute(['file.txt'], testCwd);
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toBe('');
@@ -151,7 +150,7 @@ describe('GitAddCommand', () => {
       ['deleted.txt', 1, 0, 1],      // Deleted file
     ]);
 
-    const result = await addCommand.execute(['.']);
+    const result = await addCommand.execute(['.'], testCwd);
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toBe('');
@@ -174,7 +173,7 @@ describe('GitAddCommand', () => {
   });
 
   it('should reject absolute paths', async () => {
-    const result = await addCommand.execute(['/absolute/path/file.txt']);
+    const result = await addCommand.execute(['/absolute/path/file.txt'], testCwd);
 
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain('absolute paths are not supported');
@@ -205,7 +204,7 @@ describe('GitAddCommand', () => {
     // Mock git.remove to also throw error (file doesn't exist in git either)
     vi.mocked(mockGit.remove).mockRejectedValueOnce(new Error('File not found'));
 
-    const result = await addCommand.execute(['nonexistent.txt']);
+    const result = await addCommand.execute(['nonexistent.txt'], testCwd);
 
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain('pathspec \'nonexistent.txt\' did not match any files');
@@ -216,7 +215,7 @@ describe('GitAddCommand', () => {
       ['modified.txt', 1, 2, 1],     // Modified file
     ]);
 
-    const result = await addCommand.execute(['-A']);
+    const result = await addCommand.execute(['-A'], testCwd);
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toBe('');
@@ -233,7 +232,7 @@ describe('GitAddCommand', () => {
       ['modified.txt', 1, 2, 1],     // Modified file
     ]);
 
-    const result = await addCommand.execute(['--all', 'specific.txt']);
+    const result = await addCommand.execute(['--all', 'specific.txt'], testCwd);
 
     expect(result.exitCode).toBe(0);
 
@@ -242,7 +241,7 @@ describe('GitAddCommand', () => {
   });
 
   it('should handle double dash separator', async () => {
-    const result = await addCommand.execute(['--', 'file.txt']);
+    const result = await addCommand.execute(['--', 'file.txt'], testCwd);
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toBe('');
@@ -267,7 +266,7 @@ describe('GitAddCommand', () => {
       return Promise.resolve();
     });
 
-    const result = await addCommand.execute(['--all']);
+    const result = await addCommand.execute(['--all'], testCwd);
 
     expect(result.exitCode).toBe(0); // Should still succeed overall
     expect(mockGit.add).toHaveBeenCalledTimes(2);

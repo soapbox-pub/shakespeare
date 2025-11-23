@@ -50,7 +50,6 @@ const mockFS = {
 const mockOptions: GitSubcommandOptions = {
   git: mockGit,
   fs: mockFS,
-  pwd: '/test/repo',
 };
 
 describe('GitDiffCommand', () => {
@@ -106,14 +105,14 @@ describe('GitDiffCommand', () => {
         } as unknown as JSRuntimeFS,
       });
 
-      const result = await commandWithoutGit.execute([]);
+      const result = await commandWithoutGit.execute([], '/test/repo');
 
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toContain('fatal: not a git repository');
     });
 
     it('should show working directory diff for modified files', async () => {
-      const result = await command.execute([]);
+      const result = await command.execute([], '/test/repo');
 
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain('diff --git a/modified.txt b/modified.txt');
@@ -125,7 +124,7 @@ describe('GitDiffCommand', () => {
     });
 
     it('should NOT show untracked files in diff', async () => {
-      const result = await command.execute([]);
+      const result = await command.execute([], '/test/repo');
 
       expect(result.exitCode).toBe(0);
       // Untracked files should not appear in git diff output
@@ -135,7 +134,7 @@ describe('GitDiffCommand', () => {
     });
 
     it('should show deleted files in diff', async () => {
-      const result = await command.execute([]);
+      const result = await command.execute([], '/test/repo');
 
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain('diff --git a/deleted.txt b/deleted.txt');
@@ -146,7 +145,7 @@ describe('GitDiffCommand', () => {
     });
 
     it('should show staged diff with --cached option', async () => {
-      const result = await command.execute(['--cached']);
+      const result = await command.execute(['--cached'], '/test/repo');
 
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain('diff --git a/staged.txt b/staged.txt');
@@ -166,7 +165,7 @@ describe('GitDiffCommand', () => {
         } as unknown as Git,
       });
 
-      const result = await commandWithStagedNew.execute(['--cached']);
+      const result = await commandWithStagedNew.execute(['--cached'], '/test/repo');
 
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain('diff --git a/new-staged.txt b/new-staged.txt');
@@ -184,14 +183,14 @@ describe('GitDiffCommand', () => {
         } as unknown as Git,
       });
 
-      const result = await commandWithNoChanges.execute([]);
+      const result = await commandWithNoChanges.execute([], '/test/repo');
 
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toBe('');
     });
 
     it('should filter by path when specified', async () => {
-      const result = await command.execute(['--', 'modified.txt']);
+      const result = await command.execute(['--', 'modified.txt'], '/test/repo');
 
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain('diff --git a/modified.txt b/modified.txt');

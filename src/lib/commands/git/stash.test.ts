@@ -65,7 +65,6 @@ describe('GitStashCommand', () => {
     stashCommand = new GitStashCommand({
       git: mockGit,
       fs: mockFS,
-      pwd: testCwd,
     });
   });
 
@@ -78,14 +77,14 @@ describe('GitStashCommand', () => {
   it('should return error when not in a git repository', async () => {
     vi.mocked(mockFS.stat).mockRejectedValueOnce(new Error('ENOENT'));
 
-    const result = await stashCommand.execute(['push']);
+    const result = await stashCommand.execute(['push'], testCwd);
 
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain('fatal: not a git repository');
   });
 
   it('should show help with --help flag', async () => {
-    const result = await stashCommand.execute(['--help']);
+    const result = await stashCommand.execute(['--help'], testCwd);
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain('git stash list');
@@ -99,7 +98,7 @@ describe('GitStashCommand', () => {
         ['unchanged.txt', 1, 1, 1], // No changes
       ]);
 
-      const result = await stashCommand.execute(['push']);
+      const result = await stashCommand.execute(['push'], testCwd);
 
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toContain('No local changes to save');
@@ -119,7 +118,7 @@ describe('GitStashCommand', () => {
         return Promise.resolve('');
       });
 
-      const result = await stashCommand.execute(['push']);
+      const result = await stashCommand.execute(['push'], testCwd);
 
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain('Saved working directory and index state');
@@ -145,7 +144,7 @@ describe('GitStashCommand', () => {
         return Promise.resolve('');
       });
 
-      const result = await stashCommand.execute(['push', '-m', 'my custom message']);
+      const result = await stashCommand.execute(['push', '-m', 'my custom message'], testCwd);
 
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain('my custom message');
@@ -165,7 +164,7 @@ describe('GitStashCommand', () => {
         return Promise.resolve('');
       });
 
-      const result = await stashCommand.execute(['push', '-u']);
+      const result = await stashCommand.execute(['push', '-u'], testCwd);
 
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain('Saved working directory');
@@ -183,7 +182,7 @@ describe('GitStashCommand', () => {
         return Promise.resolve('');
       });
 
-      const result = await stashCommand.execute(['push']);
+      const result = await stashCommand.execute(['push'], testCwd);
 
       expect(result.exitCode).toBe(0);
       expect(mockGit.checkout).toHaveBeenCalledWith({
@@ -207,7 +206,7 @@ describe('GitStashCommand', () => {
         return Promise.resolve('');
       });
 
-      const result = await stashCommand.execute(['push']);
+      const result = await stashCommand.execute(['push'], testCwd);
 
       expect(result.exitCode).toBe(0);
       expect(mockGit.resetIndex).toHaveBeenCalledWith({
@@ -221,7 +220,7 @@ describe('GitStashCommand', () => {
     it('should return empty when no stashes', async () => {
       vi.mocked(mockFS.readFile).mockRejectedValue(new Error('ENOENT'));
 
-      const result = await stashCommand.execute(['list']);
+      const result = await stashCommand.execute(['list'], testCwd);
 
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toBe('');
@@ -234,7 +233,7 @@ describe('GitStashCommand', () => {
       ];
       vi.mocked(mockFS.readFile).mockResolvedValue(JSON.stringify(mockStashes));
 
-      const result = await stashCommand.execute(['list']);
+      const result = await stashCommand.execute(['list'], testCwd);
 
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain('stash@{0}: first stash');
@@ -246,7 +245,7 @@ describe('GitStashCommand', () => {
     it('should return error when no stashes', async () => {
       vi.mocked(mockFS.readFile).mockRejectedValue(new Error('ENOENT'));
 
-      const result = await stashCommand.execute(['show']);
+      const result = await stashCommand.execute(['show'], testCwd);
 
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toContain('No stash entries found');
@@ -267,7 +266,7 @@ describe('GitStashCommand', () => {
       ];
       vi.mocked(mockFS.readFile).mockResolvedValue(JSON.stringify(mockStashes));
 
-      const result = await stashCommand.execute(['show']);
+      const result = await stashCommand.execute(['show'], testCwd);
 
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain('M\tmodified.txt');
@@ -293,7 +292,7 @@ describe('GitStashCommand', () => {
       ];
       vi.mocked(mockFS.readFile).mockResolvedValue(JSON.stringify(mockStashes));
 
-      const result = await stashCommand.execute(['show', 'stash@{1}']);
+      const result = await stashCommand.execute(['show', 'stash@{1}'], testCwd);
 
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain('file1.txt');
@@ -305,7 +304,7 @@ describe('GitStashCommand', () => {
     it('should return error when no stashes', async () => {
       vi.mocked(mockFS.readFile).mockRejectedValue(new Error('ENOENT'));
 
-      const result = await stashCommand.execute(['apply']);
+      const result = await stashCommand.execute(['apply'], testCwd);
 
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toContain('No stash entries found');
@@ -325,7 +324,7 @@ describe('GitStashCommand', () => {
       ];
       vi.mocked(mockFS.readFile).mockResolvedValue(JSON.stringify(mockStashes));
 
-      const result = await stashCommand.execute(['apply']);
+      const result = await stashCommand.execute(['apply'], testCwd);
 
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain('test stash');
@@ -358,7 +357,7 @@ describe('GitStashCommand', () => {
       ];
       vi.mocked(mockFS.readFile).mockResolvedValue(JSON.stringify(mockStashes));
 
-      const result = await stashCommand.execute(['apply', 'stash@{1}']);
+      const result = await stashCommand.execute(['apply', 'stash@{1}'], testCwd);
 
       expect(result.exitCode).toBe(0);
       expect(mockFS.writeFile).toHaveBeenCalledWith(
@@ -379,7 +378,7 @@ describe('GitStashCommand', () => {
       ];
       vi.mocked(mockFS.readFile).mockResolvedValue(JSON.stringify(mockStashes));
 
-      const result = await stashCommand.execute(['apply']);
+      const result = await stashCommand.execute(['apply'], testCwd);
 
       expect(result.exitCode).toBe(0);
       expect(mockFS.unlink).toHaveBeenCalledWith(expect.stringContaining('deleted.txt'));
@@ -399,7 +398,7 @@ describe('GitStashCommand', () => {
       ];
       vi.mocked(mockFS.readFile).mockResolvedValue(JSON.stringify(mockStashes));
 
-      const result = await stashCommand.execute(['pop']);
+      const result = await stashCommand.execute(['pop'], testCwd);
 
       expect(result.exitCode).toBe(0);
       expect(mockFS.writeFile).toHaveBeenCalledWith(
@@ -418,7 +417,7 @@ describe('GitStashCommand', () => {
     it('should return error when no stashes', async () => {
       vi.mocked(mockFS.readFile).mockRejectedValue(new Error('ENOENT'));
 
-      const result = await stashCommand.execute(['drop']);
+      const result = await stashCommand.execute(['drop'], testCwd);
 
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toContain('No stash entries found');
@@ -431,7 +430,7 @@ describe('GitStashCommand', () => {
       ];
       vi.mocked(mockFS.readFile).mockResolvedValue(JSON.stringify(mockStashes));
 
-      const result = await stashCommand.execute(['drop']);
+      const result = await stashCommand.execute(['drop'], testCwd);
 
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain('Dropped stash@{0}');
@@ -449,7 +448,7 @@ describe('GitStashCommand', () => {
       ];
       vi.mocked(mockFS.readFile).mockResolvedValue(JSON.stringify(mockStashes));
 
-      const result = await stashCommand.execute(['drop', 'stash@{1}']);
+      const result = await stashCommand.execute(['drop', 'stash@{1}'], testCwd);
 
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain('Dropped stash@{1}');
@@ -461,7 +460,7 @@ describe('GitStashCommand', () => {
       ];
       vi.mocked(mockFS.readFile).mockResolvedValue(JSON.stringify(mockStashes));
 
-      const result = await stashCommand.execute(['drop', 'stash@{5}']);
+      const result = await stashCommand.execute(['drop', 'stash@{5}'], testCwd);
 
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toContain('is not a valid reference');
@@ -476,7 +475,7 @@ describe('GitStashCommand', () => {
       ];
       vi.mocked(mockFS.readFile).mockResolvedValue(JSON.stringify(mockStashes));
 
-      const result = await stashCommand.execute(['clear']);
+      const result = await stashCommand.execute(['clear'], testCwd);
 
       expect(result.exitCode).toBe(0);
       expect(mockFS.writeFile).toHaveBeenCalledWith(
@@ -501,7 +500,7 @@ describe('GitStashCommand', () => {
         return Promise.resolve('');
       });
 
-      const result = await stashCommand.execute(['save']);
+      const result = await stashCommand.execute(['save'], testCwd);
 
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain('Saved working directory');
@@ -521,7 +520,7 @@ describe('GitStashCommand', () => {
         return Promise.resolve('');
       });
 
-      const result = await stashCommand.execute([]);
+      const result = await stashCommand.execute([], testCwd);
 
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain('Saved working directory');

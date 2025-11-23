@@ -24,19 +24,17 @@ export class GitStashCommand implements GitSubcommand {
 
   private git: Git;
   private fs: JSRuntimeFS;
-  private pwd: string;
 
   constructor(options: GitSubcommandOptions) {
     this.git = options.git;
     this.fs = options.fs;
-    this.pwd = options.pwd;
   }
 
-  async execute(args: string[]): Promise<ShellCommandResult> {
+  async execute(args: string[], cwd: string): Promise<ShellCommandResult> {
     try {
       // Check if we're in a git repository
       try {
-        await this.fs.stat(`${this.pwd}/.git`);
+        await this.fs.stat(`${cwd}/.git`);
       } catch {
         return createErrorResult('fatal: not a git repository (or any of the parent directories): .git');
       }
@@ -47,26 +45,26 @@ export class GitStashCommand implements GitSubcommand {
       switch (subcommand) {
         case 'push':
         case 'save':
-          return await this.stashPush(subcommandArgs);
+          return await this.stashPush(subcommandArgs, cwd);
         case 'list':
-          return await this.stashList();
+          return await this.stashList(cwd);
         case 'apply':
-          return await this.stashApply(subcommandArgs);
+          return await this.stashApply(subcommandArgs, cwd);
         case 'pop':
-          return await this.stashPop(subcommandArgs);
+          return await this.stashPop(subcommandArgs, cwd);
         case 'drop':
-          return await this.stashDrop(subcommandArgs);
+          return await this.stashDrop(subcommandArgs, cwd);
         case 'clear':
-          return await this.stashClear();
+          return await this.stashClear(cwd);
         case 'show':
-          return await this.stashShow(subcommandArgs);
+          return await this.stashShow(subcommandArgs, cwd);
         case '--help':
         case '-h':
-          return this.showHelp();
+          return this.showHelp(cwd);
         default:
           // If first arg doesn't look like a subcommand, treat it as 'push'
           if (subcommand.startsWith('-')) {
-            return await this.stashPush(args);
+            return await this.stashPush(args, cwd);
           }
           return createErrorResult(`git stash: '${subcommand}' is not a stash command. See 'git stash --help'.`);
       }
@@ -76,7 +74,7 @@ export class GitStashCommand implements GitSubcommand {
     }
   }
 
-  private async stashPush(args: string[]): Promise<ShellCommandResult> {
+  private async  stashPush(args: string[], cwd: string): Promise<ShellCommandResult>  {
     try {
       // Parse arguments
       let message = 'WIP on';
@@ -96,13 +94,13 @@ export class GitStashCommand implements GitSubcommand {
       // Get current branch
       let currentBranch: string | null = null;
       try {
-        currentBranch = await this.git.currentBranch({ dir: this.pwd }) || null;
+        currentBranch = await this.git.currentBranch({ dir: cwd }) || null;
       } catch {
         currentBranch = 'HEAD';
       }
 
       // Get status to find changed files
-      const statusMatrix = await this.git.statusMatrix({ dir: this.pwd });
+      const statusMatrix = await this.git.statusMatrix({ dir: cwd });
 
       const filesToStash: StashEntry['files'] = [];
       const stagedFiles: string[] = [];
@@ -124,7 +122,7 @@ export class GitStashCommand implements GitSubcommand {
 
           // Untracked files (only with -u flag)
           if (includeUntracked && headStatus === 0 && stageStatus === 0 && workdirStatus === 2) {
-            const content = await this.fs.readFile(join(this.pwd, filepath), 'utf8');
+            const content = await this.fs.readFile(join(cwd, filepath), 'utf8');
             filesToStash.push({
               filepath,
               content,
@@ -141,7 +139,7 @@ export class GitStashCommand implements GitSubcommand {
           }
           // Staged new files or modified files (staged changes)
           else if (hasStagedChanges && workdirStatus === 2) {
-            const content = await this.fs.readFile(join(this.pwd, filepath), 'utf8');
+            const content = await this.fs.readFile(join(cwd, filepath), 'utf8');
             const status = headStatus === 0 ? 'added' : 'modified';
             filesToStash.push({
               filepath,
@@ -151,7 +149,7 @@ export class GitStashCommand implements GitSubcommand {
           }
           // Unstaged modifications in working directory
           else if (hasWorkdirChanges && workdirStatus === 2) {
-            const content = await this.fs.readFile(join(this.pwd, filepath), 'utf8');
+            const content = await this.fs.readFile(join(cwd, filepath), 'utf8');
             filesToStash.push({
               filepath,
               content,
@@ -177,7 +175,7 @@ export class GitStashCommand implements GitSubcommand {
       };
 
       // Save stash
-      await this.saveStash(stashEntry);
+      await this.saveStash(stashEntry, cwd);
 
       // Revert changes in working directory
       for (const file of filesToStash) {
@@ -185,21 +183,21 @@ export class GitStashCommand implements GitSubcommand {
           if (file.status === 'deleted') {
             // Restore deleted file from HEAD
             await this.git.checkout({
-              dir: this.pwd,
+              dir: cwd,
               filepaths: [file.filepath],
               force: true,
             });
           } else if (file.status === 'modified') {
             // Restore file from HEAD using checkout
             await this.git.checkout({
-              dir: this.pwd,
+              dir: cwd,
               filepaths: [file.filepath],
               force: true,
             });
           } else if (file.status === 'added') {
             // Delete new file (it doesn't exist in HEAD)
             try {
-              await this.fs.unlink(join(this.pwd, file.filepath));
+              await this.fs.unlink(join(cwd, file.filepath));
             } catch {
               // File might already be gone
             }
@@ -213,7 +211,7 @@ export class GitStashCommand implements GitSubcommand {
       for (const file of stagedFiles) {
         try {
           await this.git.resetIndex({
-            dir: this.pwd,
+            dir: cwd,
             filepath: file,
           });
         } catch {
@@ -228,9 +226,9 @@ export class GitStashCommand implements GitSubcommand {
     }
   }
 
-  private async stashList(): Promise<ShellCommandResult> {
+  private async  stashList(cwd: string): Promise<ShellCommandResult>  {
     try {
-      const stashes = await this.loadStashes();
+      const stashes = await this.loadStashes(cwd);
 
       if (stashes.length === 0) {
         return createSuccessResult('');
@@ -247,9 +245,9 @@ export class GitStashCommand implements GitSubcommand {
     }
   }
 
-  private async stashApply(args: string[]): Promise<ShellCommandResult> {
+  private async  stashApply(args: string[], cwd: string): Promise<ShellCommandResult>  {
     try {
-      const stashes = await this.loadStashes();
+      const stashes = await this.loadStashes(cwd);
       
       if (stashes.length === 0) {
         return createErrorResult('No stash entries found.');
@@ -257,7 +255,7 @@ export class GitStashCommand implements GitSubcommand {
 
       // Parse stash reference (e.g., stash@{0} or just 0)
       const stashRef = args[0] || 'stash@{0}';
-      const index = this.parseStashRef(stashRef);
+      const index = this.parseStashRef(stashRef, cwd);
 
       if (index < 0 || index >= stashes.length) {
         return createErrorResult(`stash@{${index}} is not a valid reference`);
@@ -271,19 +269,19 @@ export class GitStashCommand implements GitSubcommand {
           if (file.status === 'deleted') {
             // Delete the file
             try {
-              await this.fs.unlink(join(this.pwd, file.filepath));
+              await this.fs.unlink(join(cwd, file.filepath));
             } catch {
               // File might not exist
             }
           } else {
             // Create file with stashed content
-            const dir = join(this.pwd, file.filepath, '..');
+            const dir = join(cwd, file.filepath, '..');
             try {
               await this.fs.mkdir(dir, { recursive: true });
             } catch {
               // Directory might exist
             }
-            await this.fs.writeFile(join(this.pwd, file.filepath), file.content);
+            await this.fs.writeFile(join(cwd, file.filepath), file.content);
           }
         } catch (error) {
           console.warn(`Failed to apply ${file.filepath}:`, error);
@@ -294,7 +292,7 @@ export class GitStashCommand implements GitSubcommand {
       for (const filepath of stash.stagedFiles) {
         try {
           await this.git.add({
-            dir: this.pwd,
+            dir: cwd,
             filepath,
           });
         } catch {
@@ -309,17 +307,17 @@ export class GitStashCommand implements GitSubcommand {
     }
   }
 
-  private async stashPop(args: string[]): Promise<ShellCommandResult> {
+  private async  stashPop(args: string[], cwd: string): Promise<ShellCommandResult>  {
     try {
       // Apply the stash first
-      const result = await this.stashApply(args);
+      const result = await this.stashApply(args, cwd);
 
       if (result.exitCode !== 0) {
         return result;
       }
 
       // If apply succeeded, drop the stash
-      const dropResult = await this.stashDrop(args);
+      const dropResult = await this.stashDrop(args, cwd);
 
       if (dropResult.exitCode !== 0) {
         return createErrorResult(`Applied stash successfully but failed to drop: ${dropResult.stderr}`);
@@ -332,9 +330,9 @@ export class GitStashCommand implements GitSubcommand {
     }
   }
 
-  private async stashDrop(args: string[]): Promise<ShellCommandResult> {
+  private async  stashDrop(args: string[], cwd: string): Promise<ShellCommandResult>  {
     try {
-      const stashes = await this.loadStashes();
+      const stashes = await this.loadStashes(cwd);
 
       if (stashes.length === 0) {
         return createErrorResult('No stash entries found.');
@@ -342,7 +340,7 @@ export class GitStashCommand implements GitSubcommand {
 
       // Parse stash reference
       const stashRef = args[0] || 'stash@{0}';
-      const index = this.parseStashRef(stashRef);
+      const index = this.parseStashRef(stashRef, cwd);
 
       if (index < 0 || index >= stashes.length) {
         return createErrorResult(`stash@{${index}} is not a valid reference`);
@@ -350,7 +348,7 @@ export class GitStashCommand implements GitSubcommand {
 
       // Remove the stash
       stashes.splice(index, 1);
-      await this.saveStashes(stashes);
+      await this.saveStashes(stashes, cwd);
 
       return createSuccessResult(`Dropped stash@{${index}}\n`);
 
@@ -359,9 +357,9 @@ export class GitStashCommand implements GitSubcommand {
     }
   }
 
-  private async stashClear(): Promise<ShellCommandResult> {
+  private async  stashClear(cwd: string): Promise<ShellCommandResult>  {
     try {
-      await this.saveStashes([]);
+      await this.saveStashes([], cwd);
       return createSuccessResult('');
 
     } catch (error) {
@@ -369,9 +367,9 @@ export class GitStashCommand implements GitSubcommand {
     }
   }
 
-  private async stashShow(args: string[]): Promise<ShellCommandResult> {
+  private async  stashShow(args: string[], cwd: string): Promise<ShellCommandResult>  {
     try {
-      const stashes = await this.loadStashes();
+      const stashes = await this.loadStashes(cwd);
 
       if (stashes.length === 0) {
         return createErrorResult('No stash entries found.');
@@ -379,7 +377,7 @@ export class GitStashCommand implements GitSubcommand {
 
       // Parse stash reference
       const stashRef = args[0] || 'stash@{0}';
-      const index = this.parseStashRef(stashRef);
+      const index = this.parseStashRef(stashRef, cwd);
 
       if (index < 0 || index >= stashes.length) {
         return createErrorResult(`stash@{${index}} is not a valid reference`);
@@ -405,7 +403,7 @@ export class GitStashCommand implements GitSubcommand {
     }
   }
 
-  private parseStashRef(ref: string): number {
+  private  parseStashRef(ref: string, _cwd: string): number  {
     // Parse stash@{N} or just N
     const match = ref.match(/^(?:stash@\{)?(\d+)\}?$/);
     if (match) {
@@ -414,9 +412,9 @@ export class GitStashCommand implements GitSubcommand {
     return 0; // Default to stash@{0}
   }
 
-  private async loadStashes(): Promise<StashEntry[]> {
+  private async  loadStashes(cwd: string): Promise<StashEntry[]>  {
     try {
-      const stashPath = join(this.pwd, '.git', 'shakespeare_stash.json');
+      const stashPath = join(cwd, '.git', 'shakespeare_stash.json');
       const data = await this.fs.readFile(stashPath, 'utf8');
       return JSON.parse(data) as StashEntry[];
     } catch {
@@ -424,18 +422,18 @@ export class GitStashCommand implements GitSubcommand {
     }
   }
 
-  private async saveStash(stash: StashEntry): Promise<void> {
-    const stashes = await this.loadStashes();
+  private async  saveStash(stash: StashEntry, cwd: string): Promise<void>  {
+    const stashes = await this.loadStashes(cwd);
     stashes.unshift(stash); // Add to beginning of array
-    await this.saveStashes(stashes);
+    await this.saveStashes(stashes, cwd);
   }
 
-  private async saveStashes(stashes: StashEntry[]): Promise<void> {
-    const stashPath = join(this.pwd, '.git', 'shakespeare_stash.json');
+  private async  saveStashes(stashes: StashEntry[], cwd: string): Promise<void>  {
+    const stashPath = join(cwd, '.git', 'shakespeare_stash.json');
     await this.fs.writeFile(stashPath, JSON.stringify(stashes, null, 2));
   }
 
-  private showHelp(): ShellCommandResult {
+  private  showHelp(_cwd: string): ShellCommandResult  {
     const helpText = `usage: git stash list [<options>]
    or: git stash show [<stash>]
    or: git stash drop [<stash>]

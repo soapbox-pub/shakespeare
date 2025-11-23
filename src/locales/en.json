@@ -512,5 +512,6 @@
   "templateUpdateFailed": "Template Update Failed",
   "templateUpdateFailedDescription": "Failed to update the project template from the remote repository. Using the cached version instead.",
   "templatesDirectory": "Templates Directory",
-  "templatesDirectoryDescription": "Directory where project templates are cached in the virtual filesystem."
+  "templatesDirectoryDescription": "Directory where project templates are cached in the virtual filesystem.",
+  "terminal": "Terminal"
 }

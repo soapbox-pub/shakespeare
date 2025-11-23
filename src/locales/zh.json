@@ -437,5 +437,6 @@
   "giftCardAlreadyRedeemed": "此礼品卡已被兑换。",
   "modified": "已修改",
   "restoreToDefault": "恢复默认值",
-  "restoredToDefault": "已恢复默认值"
+  "restoredToDefault": "已恢复默认值",
+  "terminal": "终端"
 }

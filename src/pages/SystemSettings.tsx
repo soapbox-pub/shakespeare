@@ -13,6 +13,7 @@ import { useAppContext } from "@/hooks/useAppContext";
 import { useOffline } from "@/hooks/useOffline";
 import { useToast } from "@/hooks/useToast";
 import { defaultSystemPrompt } from "@/lib/system";
+import { Terminal } from "@/components/Terminal";
 
 export function SystemSettings() {
   const { t } = useTranslation();
@@ -1055,6 +1056,22 @@ export function SystemSettings() {
                 <p className="text-xs text-muted-foreground">
                   {t('systemPromptDescription')}
                 </p>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+
+        {/* Terminal */}
+        <Accordion type="single" collapsible className="w-full">
+          <AccordionItem value="terminal" className="border rounded-lg">
+            <AccordionTrigger className="px-4 py-3 hover:no-underline">
+              <div className="flex items-center gap-2">
+                <h4 className="text-sm font-medium">{t('terminal')}</h4>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="px-0 pb-0">
+              <div className="h-[500px]">
+                <Terminal cwd="/" />
               </div>
             </AccordionContent>
           </AccordionItem>

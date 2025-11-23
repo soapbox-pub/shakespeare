@@ -51,7 +51,6 @@ export class ShellTool implements Tool<ShellToolParams> {
   private cwd: string;
   private git: Git;
   private commands: Map<string, ShellCommand>;
-  private projectsPath: string;
   private signer?: NostrSigner;
   private corsProxy: string;
 
@@ -63,11 +62,10 @@ export class ShellTool implements Tool<ShellToolParams> {
     ),
   });
 
-  constructor(fs: JSRuntimeFS, cwd: string, git: Git, projectsPath: string = '/projects', corsProxy: string, signer?: NostrSigner) {
+  constructor(fs: JSRuntimeFS, cwd: string, git: Git, corsProxy: string, signer?: NostrSigner) {
     this.fs = fs;
     this.cwd = cwd;
     this.git = git;
-    this.projectsPath = projectsPath;
     this.corsProxy = corsProxy;
     this.signer = signer;
     this.commands = new Map();

@@ -172,7 +172,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
       nostr_read_nips_index: new NostrReadNipsIndexTool(),
       nostr_generate_kind: new NostrGenerateKindTool(),
       nostr_publish_events: new NostrPublishEventsTool(),
-      shell: new ShellTool(fs, cwd, git, projectsPath, config.corsProxy, user?.signer),
+      shell: new ShellTool(fs, cwd, git, config.corsProxy, user?.signer),
       read_console_messages: new ReadConsoleMessagesTool(),
       skill: new SkillTool(fs, pluginsPath),
     };

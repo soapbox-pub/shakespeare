@@ -437,5 +437,6 @@
   "giftCardAlreadyRedeemed": "Este cartão presente já foi resgatado.",
   "modified": "Modificado",
   "restoreToDefault": "Restaurar para padrão",
-  "restoredToDefault": "Restaurado para Padrão"
+  "restoredToDefault": "Restaurado para Padrão",
+  "terminal": "Terminal"
 }

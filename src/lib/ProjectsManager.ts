@@ -20,18 +20,22 @@ export interface ProjectsManagerOptions {
   fs: JSRuntimeFS;
   git: Git;
   /** Projects directory path (default: /projects) */
-  projectsPath?: string;
+  projectsPath: string;
+  /** Templates directory path (default: /templates) */
+  templatesPath: string;
 }
 
 export class ProjectsManager {
   fs: JSRuntimeFS;
   git: Git;
   dir: string;
+  templatesDir: string;
 
   constructor(options: ProjectsManagerOptions) {
     this.fs = options.fs;
     this.git = options.git;
-    this.dir = options.projectsPath || '/projects';
+    this.dir = options.projectsPath;
+    this.templatesDir = options.templatesPath;
   }
 
   async init() {
@@ -40,58 +44,239 @@ export class ProjectsManager {
     } catch {
       // Directory might already exist
     }
+    try {
+      await this.fs.mkdir(this.templatesDir);
+    } catch {
+      // Directory might already exist
+    }
   }
 
-  async createProject(name: string, templateUrl: string, customId?: string): Promise<Project> {
-    const project = await this.cloneProject(name, templateUrl, customId, { depth: 1 });
+  /**
+   * Ensure a template is cached locally and up-to-date.
+   * Returns the path to the cached template.
+   *
+   * @param templateUrl - Git repository URL of the template
+   * @param onUpdateError - Optional callback when template update fails (non-critical)
+   * @returns Path to the cached template directory
+   */
+  async updateTemplate(templateUrl: string, onUpdateError?: (error: Error) => void): Promise<string> {
+    // Generate a safe directory name from the template URL
+    const templateName = this.getTemplateNameFromUrl(templateUrl);
+    const templatePath = `${this.templatesDir}/${templateName}`;
 
-    // Delete README.md if it exists
     try {
-      await this.fs.unlink(`${project.path}/README.md`);
+      // Check if template already exists
+      await this.fs.stat(templatePath);
+
+      // Template exists, try to update it with force pull
+      try {
+        await this.forcePullTemplate(templatePath);
+      } catch (updateError) {
+        // Update failed, but we can continue with the existing template
+        console.warn(`Failed to update template at ${templatePath}:`, updateError);
+        if (onUpdateError) {
+          onUpdateError(updateError instanceof Error ? updateError : new Error(String(updateError)));
+        }
+      }
     } catch {
-      // README.md might not exist, ignore error
-    }
+      // Template doesn't exist, clone it shallowly
+      await this.fs.mkdir(templatePath, { recursive: true });
 
-    // Delete .git directory and reinitialize
-    try {
-      await this.deleteDirectory(`${project.path}/.git`);
-    } catch {
-      // .git directory might not exist, ignore error
-    }
-
-    // Initialize new git repository
-    await this.git.init({
-      dir: project.path,
-      defaultBranch: 'main',
-    });
-
-    // Add all files to git
-    const files = await this.getAllFiles(project.path);
-    for (const file of files) {
-      // Skip .git directory
-      if (!file.startsWith('.git/')) {
-        await this.git.add({
-          dir: project.path,
-          filepath: file,
+      try {
+        await this.git.clone({
+          dir: templatePath,
+          url: templateUrl,
+          singleBranch: true,
+          depth: 1,
         });
+      } catch (cloneError) {
+        // Clean up on clone failure
+        try {
+          await this.deleteDirectory(templatePath);
+        } catch {
+          // Ignore cleanup errors
+        }
+        throw cloneError;
       }
     }
 
-    // Make initial commit
-    await this.git.commit({
-      dir: project.path,
-      message: 'New project created with Shakespeare',
+    return templatePath;
+  }
+
+  /**
+   * Force pull the template repository to match remote, discarding any local changes.
+   * This ensures the template is always up-to-date with the remote.
+   */
+  private async forcePullTemplate(templatePath: string): Promise<void> {
+    // Fetch the latest changes from remote
+    const fetchResult = await this.git.fetch({
+      dir: templatePath,
+      singleBranch: true,
+      depth: 1,
     });
 
-    // Automatically request persistent storage after project creation
-    try {
-      await ensurePersistentStorage();
-    } catch (error) {
-      // Don't fail project creation if persistent storage request fails
-      console.warn('Failed to request persistent storage after project creation:', error);
+    // Get the current branch name
+    const branch = fetchResult.defaultBranch;
+
+    if (!branch) {
+      throw new Error('Could not determine current branch');
     }
 
-    return project;
+    // Reset hard to the remote branch, discarding all local changes
+    await this.git.checkout({
+      dir: templatePath,
+      ref: branch,
+      force: true,
+    });
+  }
+
+  /**
+   * Generate a safe directory name from a template URL
+   */
+  private getTemplateNameFromUrl(url: string): string {
+    // Extract a meaningful name from the URL
+    // e.g., "https://gitlab.com/soapbox-pub/mkstack.git" -> "mkstack"
+    // e.g., "nostr://alex@gleasonator.dev/shakespeare.diy/mkstack" -> "mkstack"
+
+    let name = url;
+
+    // Remove .git suffix if present
+    name = name.replace(/\.git$/, '');
+
+    // Remove trailing slash
+    name = name.replace(/\/$/, '');
+
+    // Extract the last part of the path
+    const parts = name.split('/');
+    name = parts[parts.length - 1] || '';
+
+    // Sanitize the name to be filesystem-safe
+    name = name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+
+    if (!name) {
+      throw new Error(`Could not derive template name from URL: ${url}`);
+    }
+
+    return name;
+  }
+
+  /**
+   * Copy a directory recursively from source to destination
+   */
+  private async copyDirectory(sourcePath: string, destPath: string): Promise<void> {
+    // Ensure destination directory exists
+    await this.fs.mkdir(destPath, { recursive: true });
+
+    const entries = await this.fs.readdir(sourcePath);
+
+    for (const entry of entries) {
+      // Skip .git directory
+      if (entry === '.git') continue;
+
+      const sourceFullPath = `${sourcePath}/${entry}`;
+      const destFullPath = `${destPath}/${entry}`;
+
+      try {
+        const stat = await this.fs.lstat(sourceFullPath);
+
+        if (stat.isDirectory()) {
+          // Recursively copy subdirectories
+          await this.copyDirectory(sourceFullPath, destFullPath);
+        } else if (stat.isFile()) {
+          // Copy file
+          const content = await this.fs.readFile(sourceFullPath);
+          await this.fs.writeFile(destFullPath, content);
+        }
+      } catch (error) {
+        console.warn(`Failed to copy ${sourceFullPath}:`, error);
+        // Continue copying other files
+      }
+    }
+  }
+
+  async createProject(name: string, templateUrl: string, customId?: string, onTemplateUpdateError?: (error: Error) => void): Promise<Project> {
+    const id = customId || await this.generateUniqueProjectId(name);
+
+    // Check if project with this ID already exists when using custom ID
+    if (customId && await this.projectExists(id)) {
+      throw new Error(`Project with ID "${id}" already exists`);
+    }
+
+    const projectPath = `${this.dir}/${id}`;
+
+    // Ensure template is cached and up-to-date
+    const templatePath = await this.updateTemplate(templateUrl, onTemplateUpdateError);
+
+    // Create project directory
+    await this.fs.mkdir(projectPath, { recursive: true });
+
+    try {
+      // Copy template to project directory (excluding .git)
+      await this.copyDirectory(templatePath, projectPath);
+
+      // Delete README.md if it exists
+      try {
+        await this.fs.unlink(`${projectPath}/README.md`);
+      } catch {
+        // README.md might not exist, ignore error
+      }
+
+      // Initialize new git repository
+      await this.git.init({
+        dir: projectPath,
+        defaultBranch: 'main',
+      });
+
+      // Add all files to git
+      const files = await this.getAllFiles(projectPath);
+      for (const file of files) {
+        // Skip .git directory
+        if (!file.startsWith('.git/')) {
+          await this.git.add({
+            dir: projectPath,
+            filepath: file,
+          });
+        }
+      }
+
+      // Make initial commit
+      await this.git.commit({
+        dir: projectPath,
+        message: 'New project created with Shakespeare',
+      });
+
+      // Get filesystem stats for timestamps
+      const stats = await this.fs.stat(projectPath);
+      const timestamp = stats.mtimeMs ? new Date(stats.mtimeMs) : new Date();
+
+      // Automatically request persistent storage after project creation
+      try {
+        await ensurePersistentStorage();
+      } catch (error) {
+        // Don't fail project creation if persistent storage request fails
+        console.warn('Failed to request persistent storage after project creation:', error);
+      }
+
+      return {
+        id,
+        name: this.formatProjectName(id),
+        path: projectPath,
+        lastModified: timestamp,
+      };
+    } catch (error) {
+      // Clean up the directory that was created if project creation fails
+      try {
+        await this.deleteDirectory(projectPath);
+      } catch (cleanupError) {
+        // Log cleanup error but don't mask the original error
+        console.warn('Failed to clean up directory after project creation failure:', cleanupError);
+      }
+      // Re-throw the original error
+      throw error;
+    }
   }
 
   async importProjectFromZip(zipFile: File, customId?: string, overwrite = false): Promise<Project> {

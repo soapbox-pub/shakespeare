@@ -32,6 +32,7 @@ export function SystemSettings() {
   const [fsPathConfigInput, setFsPathConfigInput] = useState(config.fsPathConfig);
   const [fsPathTmpInput, setFsPathTmpInput] = useState(config.fsPathTmp);
   const [fsPathPluginsInput, setFsPathPluginsInput] = useState(config.fsPathPlugins);
+  const [fsPathTemplatesInput, setFsPathTemplatesInput] = useState(config.fsPathTemplates);
   const [sentryDsnInput, setSentryDsnInput] = useState(config.sentryDsn);
   const [systemPromptInput, setSystemPromptInput] = useState(config.systemPrompt || defaultSystemPrompt);
 
@@ -48,6 +49,7 @@ export function SystemSettings() {
     fsPathConfig: config.fsPathConfig !== defaultConfig.fsPathConfig,
     fsPathTmp: config.fsPathTmp !== defaultConfig.fsPathTmp,
     fsPathPlugins: config.fsPathPlugins !== defaultConfig.fsPathPlugins,
+    fsPathTemplates: config.fsPathTemplates !== defaultConfig.fsPathTemplates,
     sentryDsn: config.sentryDsn !== defaultConfig.sentryDsn,
     systemPrompt: (config.systemPrompt || defaultSystemPrompt) !== (defaultConfig.systemPrompt || defaultSystemPrompt),
   }), [config, defaultConfig]);
@@ -146,6 +148,15 @@ export function SystemSettings() {
     setFsPathPluginsInput(defaultValue);
     updateConfig((current) => {
       const { fsPathPlugins, ...rest } = current;
+      return rest;
+    });
+  };
+
+  const restoreFsPathTemplates = () => {
+    const defaultValue = defaultConfig.fsPathTemplates;
+    setFsPathTemplatesInput(defaultValue);
+    updateConfig((current) => {
+      const { fsPathTemplates, ...rest } = current;
       return rest;
     });
   };
@@ -786,7 +797,7 @@ export function SystemSettings() {
             <AccordionTrigger className="px-4 py-3 hover:no-underline">
               <div className="flex items-center gap-2">
                 <h4 className="text-sm font-medium">{t('filesystemPaths')}</h4>
-                {(isModified.fsPathProjects || isModified.fsPathConfig || isModified.fsPathTmp || isModified.fsPathPlugins) && (
+                {(isModified.fsPathProjects || isModified.fsPathConfig || isModified.fsPathTmp || isModified.fsPathPlugins || isModified.fsPathTemplates) && (
                   <div className="h-2 w-2 rounded-full bg-yellow-500" title={t('modified')} />
                 )}
               </div>
@@ -954,6 +965,47 @@ export function SystemSettings() {
                   </div>
                   <p className="text-xs text-muted-foreground">
                     {t('pluginsDirectoryDescription')}
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="fs-path-templates" className="text-sm font-medium">
+                      {t('templatesDirectory')}
+                    </Label>
+                    {isModified.fsPathTemplates && (
+                      <div className="h-2 w-2 rounded-full bg-yellow-500" title={t('modified')} />
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <Input
+                      id="fs-path-templates"
+                      type="text"
+                      placeholder="/templates"
+                      value={fsPathTemplatesInput}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setFsPathTemplatesInput(value);
+                        updateConfig((current) => ({
+                          ...current,
+                          fsPathTemplates: value,
+                        }));
+                      }}
+                      className="flex-1"
+                    />
+                    {isModified.fsPathTemplates && (
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={restoreFsPathTemplates}
+                        title={t('restoreToDefault')}
+                      >
+                        <RotateCcw className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {t('templatesDirectoryDescription')}
                   </p>
                 </div>
               </div>

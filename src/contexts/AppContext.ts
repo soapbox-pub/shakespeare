@@ -40,6 +40,8 @@ export interface AppConfig {
   fsPathTmp: string;
   /** VFS path for plugins directory */
   fsPathPlugins: string;
+  /** VFS path for templates directory */
+  fsPathTemplates: string;
   /** Sentry DSN for error reporting (empty string = disabled) */
   sentryDsn: string;
   /** Whether the user has enabled Sentry error reporting */

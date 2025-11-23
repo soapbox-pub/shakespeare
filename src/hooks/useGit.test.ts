@@ -49,6 +49,7 @@ function createWrapper(corsProxy: string) {
       fsPathConfig: '/config',
       fsPathTmp: '/tmp',
       fsPathPlugins: '/plugins',
+      fsPathTemplates: '/templates',
       sentryDsn: '',
       sentryEnabled: false,
     };

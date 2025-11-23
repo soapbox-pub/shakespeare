@@ -11,11 +11,11 @@ import { useGit } from './useGit';
 export function useProjectsManager() {
   const { fs } = useFS();
   const { git } = useGit();
-  const { projectsPath } = useFSPaths();
+  const { projectsPath, templatesPath } = useFSPaths();
 
   const projectsManager = useMemo(() => {
-    return new ProjectsManager({ fs, git, projectsPath });
-  }, [fs, git, projectsPath]);
+    return new ProjectsManager({ fs, git, projectsPath, templatesPath });
+  }, [fs, git, projectsPath, templatesPath]);
 
   return projectsManager;
 }

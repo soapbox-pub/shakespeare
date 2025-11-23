@@ -219,7 +219,7 @@ describe('ProjectsManager', () => {
     fs = new MockFS() as unknown as JSRuntimeFS;
     nostr = createMockNostr();
     git = new Git({ fs, nostr });
-    projectsManager = new ProjectsManager({ fs, git });
+    projectsManager = new ProjectsManager({ fs, git, projectsPath: '/projects', templatesPath: '/templates' });
   });
 
   describe('getProjects', () => {

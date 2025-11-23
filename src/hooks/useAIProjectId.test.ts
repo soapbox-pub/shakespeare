@@ -56,6 +56,7 @@ describe('useAIProjectId', () => {
       fsPathConfig: '/config',
       fsPathTmp: '/tmp',
       fsPathPlugins: '/plugins',
+      fsPathTemplates: '/templates',
       sentryDsn: '',
       sentryEnabled: false,
     };

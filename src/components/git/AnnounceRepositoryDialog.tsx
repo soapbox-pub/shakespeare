@@ -410,7 +410,7 @@ export function AnnounceRepositoryDialog({
         </DialogHeader>
 
         <ScrollArea className="max-h-[60vh]">
-          <div className="space-y-6 pr-4">
+          <div className="space-y-6 p-1 pr-4">
             {/* Error alert */}
             {error && (
               <Alert variant="destructive">

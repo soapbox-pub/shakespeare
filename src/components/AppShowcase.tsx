@@ -35,25 +35,51 @@ export function AppShowcase() {
   }, [config.showcaseModerator]);
   const isModerator = user?.pubkey === MODERATOR_HEX;
 
-  // Filter and shuffle submissions - memoized with stable dependency
-  const { templateApps, featuredApps, approvedApps } = useMemo(() => {
-    // Filter visible submissions
-    const visibleSubmissions = submissions.filter(app => !app.isHidden);
-
-    // Separate template apps from other apps
-    const templates = shuffleArray(visibleSubmissions.filter(app => app.appTags.includes('Template')));
-    const nonTemplateSubmissions = visibleSubmissions.filter(app => !app.appTags.includes('Template'));
-
-    // Shuffle featured and approved apps for random display order
-    const featured = shuffleArray(nonTemplateSubmissions.filter(app => app.isFeatured));
-    const approved = shuffleArray(nonTemplateSubmissions.filter(app => app.isApproved && !app.isFeatured));
-
+  // Categorize and organize submissions - single pass for efficiency
+  const { 
+    displayedFeaturedApps, 
+    displayedTemplateApps, 
+    moreApps 
+  } = useMemo(() => {
+    const DISPLAY_LIMIT = 6;
+    
+    // Single pass categorization
+    const templates: typeof submissions = [];
+    const featured: typeof submissions = [];
+    const approved: typeof submissions = [];
+    
+    for (const app of submissions) {
+      if (app.isHidden) continue;
+      
+      const isTemplate = app.appTags.includes('Template');
+      const isFeatured = app.isFeatured;
+      const isApproved = app.isApproved;
+      
+      if (isTemplate) {
+        templates.push(app);
+      } else if (isFeatured) {
+        featured.push(app);
+      } else if (isApproved) {
+        approved.push(app);
+      }
+    }
+    
+    // Shuffle each category once
+    const shuffledTemplates = shuffleArray(templates);
+    const shuffledFeatured = shuffleArray(featured);
+    const shuffledApproved = shuffleArray(approved);
+    
+    // Split into display and more sections
     return {
-      templateApps: templates,
-      featuredApps: featured,
-      approvedApps: approved,
+      displayedFeaturedApps: shuffledFeatured.slice(0, DISPLAY_LIMIT),
+      displayedTemplateApps: shuffledTemplates.slice(0, DISPLAY_LIMIT),
+      moreApps: [
+        ...shuffledFeatured.slice(DISPLAY_LIMIT),
+        ...shuffledTemplates.slice(DISPLAY_LIMIT),
+        ...shuffledApproved,
+      ],
     };
-  }, [submissions]); // Only depend on submissions, not intermediate filtered arrays
+  }, [submissions]);
 
   // Don't show showcase if disabled in settings
   if (!config.showcaseEnabled) {
@@ -124,7 +150,7 @@ export function AppShowcase() {
       {/* Apps Grid */}
       <div className="space-y-12">
         {/* Featured Apps */}
-        {featuredApps.length > 0 && (
+        {displayedFeaturedApps.length > 0 && (
           <div>
             <div className="flex items-start gap-3 mb-6">
               <div className="flex-none w-8 h-8 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg flex items-center justify-center">
@@ -136,7 +162,7 @@ export function AppShowcase() {
               </div>
             </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {featuredApps.slice(0, 6).map((app) => (
+              {displayedFeaturedApps.map((app) => (
                 <AppShowcaseCard
                   key={app.id}
                   app={app}
@@ -149,7 +175,7 @@ export function AppShowcase() {
         )}
 
         {/* Templates Section */}
-        {templateApps.length > 0 && (
+        {displayedTemplateApps.length > 0 && (
           <div>
             <div className="flex items-start gap-3 mb-6">
               <div className="flex-none w-8 h-8 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
@@ -161,7 +187,7 @@ export function AppShowcase() {
               </div>
             </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {templateApps.slice(0, 6).map((app) => (
+              {displayedTemplateApps.map((app) => (
                 <AppShowcaseCard
                   key={app.id}
                   app={app}
@@ -173,8 +199,8 @@ export function AppShowcase() {
           </div>
         )}
 
-        {/* More Apps (Approved) - Collapsible */}
-        {approvedApps.length > 0 && (
+        {/* More Apps (Remaining Featured, Templates, and Approved) - Collapsible */}
+        {moreApps.length > 0 && (
           <div>
             <Collapsible open={showAllApps} onOpenChange={setShowAllApps}>
               <CollapsibleTrigger asChild>
@@ -185,7 +211,7 @@ export function AppShowcase() {
                     </div>
                     <div className="text-left">
                       <h3 className="text-xl font-bold text-foreground">
-                        {t('moreAppsCount', { count: approvedApps.length })}
+                        {t('moreAppsCount', { count: moreApps.length })}
                       </h3>
                       <p className="text-sm text-muted-foreground">
                         {showAllApps ? t('clickToCollapse') : t('clickToViewMore')}
@@ -196,7 +222,7 @@ export function AppShowcase() {
               </CollapsibleTrigger>
               <CollapsibleContent>
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {approvedApps.map((app) => (
+                  {moreApps.map((app) => (
                     <AppShowcaseCard
                       key={app.id}
                       app={app}

@@ -34,7 +34,7 @@ export default function Index() {
   const projectsManager = useProjectsManager();
   const { fs } = useFS();
   const { generateProjectId, isLoading: isGeneratingId } = useAIProjectId();
-  const { settings, addRecentlyUsedModel, isConfigured } = useAISettings();
+  const { settings, addRecentlyUsedModel } = useAISettings();
   const { config } = useAppContext();
   const [providerModel, setProviderModel] = useState(() => {
     // Initialize with first recently used model if available, otherwise empty

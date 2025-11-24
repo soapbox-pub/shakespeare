@@ -4,8 +4,6 @@ import { useTranslation } from 'react-i18next';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { useAIProjectId } from '@/hooks/useAIProjectId';
 import { useFS } from '@/hooks/useFS';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
-import { useIsMobile } from '@/hooks/useIsMobile';
 import { useAISettings } from '@/hooks/useAISettings';
 import { useAppContext } from '@/hooks/useAppContext';
 import { AppLayout } from '@/components/AppLayout';
@@ -16,11 +14,7 @@ import { Quilly } from '@/components/Quilly';
 import { DotAI } from '@/lib/DotAI';
 import type { AIMessage } from '@/lib/SessionManager';
 import { buildMessageContent } from '@/lib/buildMessageContent';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { ModelSelector } from '@/components/ModelSelector';
-import { FileAttachment } from '@/components/ui/file-attachment';
-import { ArrowUp } from 'lucide-react';
+import { ChatInput } from '@/components/Shakespeare/ChatInput';
 import { useSeoMeta } from '@unhead/react';
 import { ShakespeareLogo } from '@/components/ShakespeareLogo';
 import { AppShowcase } from '@/components/AppShowcase';
@@ -29,9 +23,7 @@ import { useToast } from '@/hooks/useToast';
 export default function Index() {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const [prompt, setPrompt] = useState('');
   const [isCreating, setIsCreating] = useState(false);
-  const [storedPrompt, setStoredPrompt] = useLocalStorage('shakespeare-draft-prompt', '');
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showAct1Dialog, setShowAct1Dialog] = useState(false);
   const [showGiftCardDialog, setShowGiftCardDialog] = useState(false);
@@ -42,16 +34,15 @@ export default function Index() {
   const projectsManager = useProjectsManager();
   const { fs } = useFS();
   const { generateProjectId, isLoading: isGeneratingId } = useAIProjectId();
-  const { settings, addRecentlyUsedModel } = useAISettings();
+  const { settings, addRecentlyUsedModel, isConfigured } = useAISettings();
   const { config } = useAppContext();
   const [providerModel, setProviderModel] = useState(() => {
     // Initialize with first recently used model if available, otherwise empty
     return settings.recentlyUsedModels?.[0] || '';
   });
-  const isMobile = useIsMobile();
-  const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
   const [quillyError, setQuillyError] = useState<Error | null>(null);
+  const [isModelSelectorOpen, setIsModelSelectorOpen] = useState(false);
 
   // Check if any providers are configured
   const hasProvidersConfigured = settings.providers.length > 0;
@@ -67,12 +58,6 @@ export default function Index() {
     description: 'Build custom apps with AI assistance using Shakespeare, an AI-powered development environment.',
   });
 
-  // Restore prompt from local storage on mount
-  useEffect(() => {
-    if (storedPrompt) {
-      setPrompt(storedPrompt);
-    }
-  }, [storedPrompt]);
 
   // Check for Act 1 users and show welcome dialog
   useEffect(() => {
@@ -105,21 +90,6 @@ export default function Index() {
       }
     }
   }, [location, navigate]);
-
-  // Sync prompt with local storage
-  const handlePromptChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const newPrompt = e.target.value;
-    setPrompt(newPrompt);
-    setStoredPrompt(newPrompt);
-  };
-
-  const handleFileSelect = (file: File) => {
-    setAttachedFiles(prev => [...prev, file]);
-  };
-
-  const handleFileRemove = (fileToRemove: File) => {
-    setAttachedFiles(prev => prev.filter(file => file !== fileToRemove));
-  };
 
   // Drag and drop handlers
   const handleDragEnter = (e: React.DragEvent) => {
@@ -154,41 +124,10 @@ export default function Index() {
     e.preventDefault();
     e.stopPropagation();
     setIsDragOver(false);
-
-    if (isCreating || isGeneratingId || !providerModel.trim()) return;
-
-    const files = Array.from(e.dataTransfer.files);
-    if (files.length === 0) return;
-
-    // Add all files without validation
-    setAttachedFiles(prev => [...prev, ...files]);
   };
 
-  // Handle keyboard shortcuts (physical keyboards only)
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter') {
-      // On mobile devices, always allow Enter to create new lines
-      // since there's no Shift key available for multi-line input
-      if (isMobile) {
-        return;
-      }
-
-      if (e.shiftKey) {
-        // Shift+Enter on desktop: Allow new line (default behavior)
-        return;
-      }
-
-      // Enter without Shift on desktop: Submit only if no newlines exist in prompt and model is selected
-      if (!prompt.includes('\n') && providerModel.trim()) {
-        e.preventDefault();
-        handleCreateProject();
-      }
-      // If prompt contains newlines or no model selected, allow Enter to create new line (default behavior)
-    }
-  };
-
-  // Handle textarea click - show onboarding if no providers configured
-  const handleTextareaClick = () => {
+  // Handle textarea focus - show onboarding if no providers configured
+  const handleTextareaFocus = () => {
     if (!hasProvidersConfigured) {
       setShowOnboarding(true);
     }
@@ -200,10 +139,7 @@ export default function Index() {
   };
 
   const handleQuillyNewChat = () => {
-    // Clear current prompt and start fresh
-    setPrompt('');
-    setStoredPrompt('');
-    setAttachedFiles([]);
+    // Clear error - ChatInput manages its own state
     setQuillyError(null);
   };
 
@@ -215,23 +151,21 @@ export default function Index() {
     setQuillyError(null);
   };
 
-  const handleCreateProject = async () => {
-    if (!prompt.trim() || !providerModel.trim()) return;
-
-    // Clear stored prompt when creating project
-    setStoredPrompt('');
+  const handleSend = async (input: string, files: File[]) => {
+    if (!input.trim() && files.length === 0) return;
+    if (!providerModel.trim()) return;
 
     setIsCreating(true);
     try {
       // Use AI to generate project ID
-      const projectId = await generateProjectId(providerModel, prompt.trim());
+      const projectId = await generateProjectId(providerModel, input.trim());
 
       // Add model to recently used when creating project with AI
       addRecentlyUsedModel(providerModel.trim());
 
       // Create project with AI-generated ID and handle template update errors
       const project = await projectsManager.createProject(
-        prompt.trim(),
+        input.trim(),
         config.projectTemplate,
         projectId,
         () => {
@@ -247,8 +181,8 @@ export default function Index() {
       // Build message content from input and attached files
       // Images are converted to base64-encoded data URLs
       const messageContent = await buildMessageContent(
-        prompt.trim(),
-        attachedFiles,
+        input.trim(),
+        files,
         fs,
         undefined
       );
@@ -262,9 +196,6 @@ export default function Index() {
         content: messageContent
       };
       await dotAI.setHistory(sessionName, [initialMessage]);
-
-      // Clear attached files after successful creation
-      setAttachedFiles([]);
 
       // Navigate to the project with autostart parameter and model
       const searchParams = new URLSearchParams({
@@ -313,84 +244,30 @@ export default function Index() {
               </div>
             )}
 
-            {/* Chat Input Container - matching the ChatPane style */}
-            <div
-              className={`relative rounded-2xl border border-input bg-background shadow-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 transition-all ${isDragOver ? 'border-primary bg-primary/5 ring-2 ring-primary/20' : ''
-              }`}
+            {/* Chat Input */}
+            <ChatInput
+              isLoading={isCreating || isGeneratingId}
+              isConfigured={hasProvidersConfigured}
+              providerModel={providerModel}
+              onProviderModelChange={setProviderModel}
+              onSend={handleSend}
+              onStop={() => {
+                // No-op for Index page - project creation can't be stopped
+              }}
+              onFocus={handleTextareaFocus}
+              onFirstInteraction={() => {
+                // No-op for Index page
+              }}
+              isModelSelectorOpen={isModelSelectorOpen}
+              onModelSelectorOpenChange={setIsModelSelectorOpen}
+              contextUsagePercentage={0}
+              totalCost={0}
+              isDragOver={isDragOver}
               onDragEnter={handleDragEnter}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
-            >
-              <Textarea
-                placeholder={
-                  !hasProvidersConfigured
-                    ? t('examplePrompt')
-                    : !providerModel.trim()
-                      ? t('selectModelToDescribe')
-                      : t('examplePrompt')
-                }
-                value={prompt}
-                onChange={handlePromptChange}
-                onKeyDown={handleKeyDown}
-                onClick={handleTextareaClick}
-                className="min-h-[120px] max-h-64 resize-none border-0 bg-transparent px-4 py-3 pb-16 text-sm focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground"
-                disabled={isCreating || isGeneratingId || (hasProvidersConfigured && !providerModel.trim())}
-                rows={4}
-                style={{
-                  height: 'auto',
-                  minHeight: '120px'
-                }}
-                onInput={(e) => {
-                  const target = e.target as HTMLTextAreaElement;
-                  target.style.height = 'auto';
-                  target.style.height = Math.min(target.scrollHeight, 256) + 'px';
-                }}
-              />
-
-              {/* Bottom Controls Row */}
-              <div className="absolute bottom-3 left-3 right-3 flex items-center justify-end gap-4 overflow-hidden">
-                {/* File Attachment */}
-                <FileAttachment
-                  className="mr-auto"
-                  onFileSelect={handleFileSelect}
-                  onFileRemove={handleFileRemove}
-                  selectedFiles={attachedFiles}
-                  disabled={isCreating || isGeneratingId}
-                  multiple={true}
-                />
-
-                {/* Model Selector - always show to allow configuration */}
-                <div className="overflow-hidden">
-                  <ModelSelector
-                    value={providerModel}
-                    onChange={setProviderModel}
-                    className="w-full"
-                    disabled={isCreating || isGeneratingId}
-                    placeholder={t('chooseModel')}
-                  />
-                </div>
-
-                {/* Create Project Button */}
-                <Button
-                  onClick={handleCreateProject}
-                  disabled={
-                    !prompt.trim() ||
-                    isCreating ||
-                    isGeneratingId ||
-                    (hasProvidersConfigured && !providerModel.trim())
-                  }
-                  size="sm"
-                  className="size-8 [&_svg]:size-5 rounded-full p-0"
-                >
-                  {isCreating || isGeneratingId ? (
-                    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white" />
-                  ) : (
-                    <ArrowUp />
-                  )}
-                </Button>
-              </div>
-            </div>
+            />
           </div>
         </div>
 

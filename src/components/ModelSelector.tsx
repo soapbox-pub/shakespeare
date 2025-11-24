@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { Decimal } from 'decimal.js';
 import { Check, ChevronDown, Edit3, RefreshCw, AlertCircle, Settings, TriangleAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,8 +24,8 @@ type ModelType = {
   description?: string;
   contextLength?: number;
   pricing?: {
-    prompt: any;
-    completion: any;
+    prompt: Decimal;
+    completion: Decimal;
   };
 };
 
@@ -91,20 +92,24 @@ interface ModelSelectorProps {
 }
 
 // Render a model item in the list
-const ModelItem = memo(({ model, currentValue, onSelect }: {
+const ModelItem = memo(({ model, currentValue, onSelect, valuePrefix = '' }: {
   model: ModelType;
   currentValue: string;
   onSelect: (value: string) => void;
+  valuePrefix?: string;
 }) => {
   const parsed = parseModelId(model.fullId);
   const displayText = parsed.company 
     ? `${parsed.company}/${parsed.modelName}`
     : parsed.modelName;
+  
+  // Use prefix to make value unique (prevents both recently used and available from highlighting together)
+  const uniqueValue = valuePrefix ? `${valuePrefix}-${model.fullId}` : model.fullId;
 
   return (
     <CommandItem
       key={model.fullId}
-      value={model.fullId}
+      value={uniqueValue}
       keywords={[model.fullId]}
       onSelect={() => onSelect(model.fullId)}
       className="cursor-pointer"
@@ -154,13 +159,10 @@ export const ModelSelector = memo(function ModelSelector({
 
   const recentlyUsedModels = useMemo(() => settings.recentlyUsedModels || [], [settings.recentlyUsedModels]);
 
-  // Create a Set of recently used model IDs for efficient lookup
-  const recentlyUsedSet = useMemo(() => new Set(recentlyUsedModels), [recentlyUsedModels]);
-
-  // Group models by provider
-  const modelGroups = useMemo(() => 
-    groupModelsByProvider(models, recentlyUsedSet),
-    [models, recentlyUsedSet]
+  // Group models by provider (don't exclude recently used - they should appear in both sections)
+  const modelGroups = useMemo(
+    () => groupModelsByProvider(models, new Set()),
+    [models]
   );
 
   // Determine if we should show the "Recently Used" section
@@ -428,6 +430,7 @@ export const ModelSelector = memo(function ModelSelector({
                             model={model}
                             currentValue={value}
                             onSelect={handleSelect}
+                            valuePrefix="recent"
                           />
                         ))}
                       </CommandGroup>
@@ -438,7 +441,7 @@ export const ModelSelector = memo(function ModelSelector({
 
                 {/* Available Models section */}
                 {!isLoading && modelGroups.length > 0 && (
-                  <CommandGroup heading="Available Models" />
+                  <CommandGroup heading={t('availableModels')} />
                 )}
 
                 {/* Loading state */}
@@ -475,6 +478,13 @@ export const ModelSelector = memo(function ModelSelector({
                       </div>
                     </div>
                   </CommandGroup>
+                )}
+
+                {/* No models available state */}
+                {!isLoading && !error && !shouldShowRecentlyUsed && modelGroups.length === 0 && (
+                  <div className="py-12 text-center text-sm text-muted-foreground">
+                    <p>{t('noModelsFound')}</p>
+                  </div>
                 )}
 
                 {/* Provider models */}

@@ -281,6 +281,7 @@
   "noModelsFound": "No models found.",
   "tryCustomModel": "Try using a custom model instead.",
   "recentlyUsed": "Recently Used",
+  "availableModels": "Available Models",
   "errorLoadingModels": "Error Loading Models",
   "apiAuthenticationFailed": "API Authentication Failed",
   "invalidApiKey": "Invalid API key for {{provider}}. Please check your API key in Settings.",

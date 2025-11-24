@@ -267,6 +267,7 @@
   "noModelsFound": "Ba a sami samfura ba.",
   "tryCustomModel": "Gwada amfani da samfuri na musamman.",
   "recentlyUsed": "An yi amfani da su kwanan nan",
+  "availableModels": "Samfura Masu Samuwa",
   "errorLoadingModels": "Kuskure wajen Lodin Samfura",
   "apiAuthenticationFailed": "Gazawar Tabbatarwar API",
   "invalidApiKey": "Maɓallin API na {{provider}} ba daidai ba ne. Da fatan za a duba maɓallin API a cikin Saitunan.",

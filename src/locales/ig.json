@@ -267,6 +267,7 @@
   "noModelsFound": "Ahụghị ụdịdị ọ bụla.",
   "tryCustomModel": "Gbalịa iji ụdịdị omenala kama.",
   "recentlyUsed": "Ejiri Na Nso Nso A",
+  "availableModels": "Ụdịdị Dị",
   "errorLoadingModels": "Njehie Na-ebu Ụdịdị",
   "contextUsage": "Ojiji ọnọdụ: {{tokens}} / {{total}} tokens ({{percentage}}%)",
   "totalCostSession": "Mkpokọta ọnụ ahịa maka oge nkata a",

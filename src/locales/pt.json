@@ -277,6 +277,7 @@
   "noModelsFound": "Nenhum modelo encontrado.",
   "tryCustomModel": "Tente usar um modelo personalizado.",
   "recentlyUsed": "Usados Recentemente",
+  "availableModels": "Modelos Disponíveis",
   "errorLoadingModels": "Erro ao Carregar Modelos",
   "apiAuthenticationFailed": "Falha na Autenticação da API",
   "invalidApiKey": "Chave de API inválida para {{provider}}. Verifique sua chave de API nas Configurações.",

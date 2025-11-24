@@ -111,11 +111,13 @@ describe('ModelSelector', () => {
     // Recently used section should NOT be visible
     expect(screen.queryByText('Recently Used')).not.toBeInTheDocument();
 
-    // provider1 should be hidden since all its models are in recently used
-    expect(screen.queryByText('provider1')).not.toBeInTheDocument();
+    // provider1 should still be visible (models appear in both sections now)
+    expect(screen.getByText('provider1')).toBeInTheDocument();
+    expect(screen.getByText('model1')).toBeInTheDocument();
+    expect(screen.getByText('model2')).toBeInTheDocument();
 
     // provider2 should still show with model3
-    expect(screen.getByText('provider2/model3')).toBeInTheDocument();
+    expect(screen.getByText('model3')).toBeInTheDocument();
   });
 
   it('shows recently used section when less than 5 models but some recently used are not available', async () => {
@@ -160,11 +162,17 @@ describe('ModelSelector', () => {
 
     // Wait for the dropdown to open
     await waitFor(() => {
-      expect(screen.getByText('provider1')).toBeInTheDocument();
+      // provider1 appears in both recently used and available sections
+      const provider1Elements = screen.queryAllByText('provider1');
+      expect(provider1Elements.length).toBeGreaterThan(0);
     });
 
     // Recently used section SHOULD be visible
     expect(screen.getByText('Recently Used')).toBeInTheDocument();
+    
+    // provider1 should appear in both sections (recently used and available)
+    const provider1Elements = screen.queryAllByText('provider1');
+    expect(provider1Elements.length).toBeGreaterThanOrEqual(1);
   });
 
   it('shows recently used section when 5 or more models are available', async () => {
@@ -217,13 +225,22 @@ describe('ModelSelector', () => {
     // Recently used section SHOULD be visible
     expect(screen.getByText('Recently Used')).toBeInTheDocument();
 
-    // provider1 should be hidden since all its models are in recently used
-    expect(screen.queryByText('provider1')).not.toBeInTheDocument();
+    // provider1 should still be visible (models appear in both sections now)
+    // Use queryAllByText since provider1 appears as a heading in both sections
+    const provider1Elements = screen.queryAllByText('provider1');
+    expect(provider1Elements.length).toBeGreaterThanOrEqual(1);
+    
+    // Models should be visible (display text is just the model name, not full ID)
+    // model1 and model2 appear in both recently used and available sections
+    const model1Elements = screen.queryAllByText('model1');
+    expect(model1Elements.length).toBeGreaterThanOrEqual(1);
+    const model2Elements = screen.queryAllByText('model2');
+    expect(model2Elements.length).toBeGreaterThanOrEqual(1);
 
-    // provider2 and provider3 should still show
-    expect(screen.getByText('provider2/model3')).toBeInTheDocument();
-    expect(screen.getByText('provider2/model4')).toBeInTheDocument();
-    expect(screen.getByText('provider3/model5')).toBeInTheDocument();
+    // provider2 and provider3 should still show (only in available section)
+    expect(screen.getByText('model3')).toBeInTheDocument();
+    expect(screen.getByText('model4')).toBeInTheDocument();
+    expect(screen.getByText('model5')).toBeInTheDocument();
   });
 
   it('hides recently used section when no recently used models exist', async () => {

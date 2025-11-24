@@ -277,6 +277,7 @@
   "noModelsFound": "未找到模型。",
   "tryCustomModel": "尝试使用自定义模型。",
   "recentlyUsed": "最近使用",
+  "availableModels": "可用模型",
   "errorLoadingModels": "加载模型时出错",
   "apiAuthenticationFailed": "API身份验证失败",
   "invalidApiKey": "{{provider}}的API密钥无效。请在设置中检查您的API密钥。",

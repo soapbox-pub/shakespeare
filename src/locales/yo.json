@@ -267,6 +267,7 @@
   "noModelsFound": "Ko si awọn awoṣe ti a ri.",
   "tryCustomModel": "Gbiyanju lilo awoṣe aṣa dipo.",
   "recentlyUsed": "Ti a Lo Laipẹ",
+  "availableModels": "Awọn awoṣe Ti O Wa",
   "errorLoadingModels": "Aṣiṣe Gbigbe Awọn awoṣe",
   "contextUsage": "Lilo aaye oro: {{tokens}} / {{total}} awọn token ({{percentage}}%)",
   "totalCostSession": "Lapapọ iye owo fun igba ibaraẹnisọrọ yii",

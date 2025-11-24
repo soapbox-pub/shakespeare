@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Check, ChevronDown, Edit3, RefreshCw, AlertCircle, Settings, TriangleAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from '@/components/ui/command';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -13,6 +13,72 @@ import { useProviderModels } from '@/hooks/useProviderModels';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { ModelPricing } from '@/components/ModelPricing';
 import { cn } from '@/lib/utils';
+
+// Type for model (matches ProviderModel from useProviderModels)
+type ModelType = {
+  id: string;
+  name?: string;
+  provider: string;
+  fullId: string;
+  description?: string;
+  contextLength?: number;
+  pricing?: {
+    prompt: any;
+    completion: any;
+  };
+};
+
+// Interface for grouped models by provider
+interface ModelGroup {
+  provider: string;
+  models: ModelType[];
+}
+
+// Parse model ID into components (provider/company/model or provider/model)
+function parseModelId(fullId: string) {
+  const parts = fullId.split('/');
+  return {
+    provider: parts[0] || '',
+    company: parts.length >= 3 ? parts[1] : null,
+    modelName: parts.length >= 3 ? parts.slice(2).join('/') : parts[1] || '',
+  };
+}
+
+// Group models by provider and sort
+function groupModelsByProvider(models: ModelType[], excludeIds: Set<string>): ModelGroup[] {
+  const groups: Record<string, ModelType[]> = {};
+
+  // Group by provider
+  models.forEach(model => {
+    if (!excludeIds.has(model.fullId)) {
+      const { provider } = parseModelId(model.fullId);
+      if (!groups[provider]) groups[provider] = [];
+      groups[provider].push(model);
+    }
+  });
+
+  // Sort models within each group and convert to array
+  return Object.entries(groups)
+    .map(([provider, models]) => ({
+      provider,
+      models: models.sort((a, b) => {
+        const aParsed = parseModelId(a.fullId);
+        const bParsed = parseModelId(b.fullId);
+        // Sort by company, then model name
+        if (aParsed.company && bParsed.company) {
+          const diff = aParsed.company.localeCompare(bParsed.company);
+          if (diff !== 0) return diff;
+        }
+        return aParsed.modelName.localeCompare(bParsed.modelName);
+      }),
+    }))
+    .sort((a, b) => {
+      // Shakespeare first, then alphabetical
+      if (a.provider === 'shakespeare') return -1;
+      if (b.provider === 'shakespeare') return 1;
+      return a.provider.localeCompare(b.provider);
+    });
+}
 
 interface ModelSelectorProps {
   value: string;
@@ -23,6 +89,42 @@ interface ModelSelectorProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 }
+
+// Render a model item in the list
+const ModelItem = memo(({ model, currentValue, onSelect }: {
+  model: ModelType;
+  currentValue: string;
+  onSelect: (value: string) => void;
+}) => {
+  const parsed = parseModelId(model.fullId);
+  const displayText = parsed.company 
+    ? `${parsed.company}/${parsed.modelName}`
+    : parsed.modelName;
+
+  return (
+    <CommandItem
+      key={model.fullId}
+      value={model.fullId}
+      keywords={[model.fullId]}
+      onSelect={() => onSelect(model.fullId)}
+      className="cursor-pointer"
+      title={model.fullId}
+    >
+      <Check
+        className={cn(
+          "mr-2 h-4 w-4 shrink-0",
+          currentValue === model.fullId ? "opacity-100" : "opacity-0"
+        )}
+      />
+      <span className="flex-1 min-w-0 truncate">
+        {displayText}
+      </span>
+      {model.pricing && (
+        <ModelPricing pricing={model.pricing} className="ml-2 shrink-0" />
+      )}
+    </CommandItem>
+  );
+});
 
 export const ModelSelector = memo(function ModelSelector({
   value,
@@ -55,22 +157,11 @@ export const ModelSelector = memo(function ModelSelector({
   // Create a Set of recently used model IDs for efficient lookup
   const recentlyUsedSet = useMemo(() => new Set(recentlyUsedModels), [recentlyUsedModels]);
 
-  // Group models by provider, excluding models that are in the recently used section
-  const modelsByProvider = useMemo(() => {
-    const groups: Record<string, typeof models> = {};
-    for (const model of models) {
-      // Skip models that are already shown in recently used
-      if (recentlyUsedSet.has(model.fullId)) {
-        continue;
-      }
-
-      if (!groups[model.provider]) {
-        groups[model.provider] = [];
-      }
-      groups[model.provider].push(model);
-    }
-    return groups;
-  }, [models, recentlyUsedSet]);
+  // Group models by provider
+  const modelGroups = useMemo(() => 
+    groupModelsByProvider(models, recentlyUsedSet),
+    [models, recentlyUsedSet]
+  );
 
   // Determine if we should show the "Recently Used" section
   const shouldShowRecentlyUsed = useMemo(() => {
@@ -94,6 +185,15 @@ export const ModelSelector = memo(function ModelSelector({
     // Hide recently used section if all recently used models are already available
     return !allRecentlyUsedAreAvailable;
   }, [recentlyUsedModels, models]);
+
+  // Group recently used models (same structure as available models)
+  const recentlyUsedGroups = useMemo(() => {
+    if (!shouldShowRecentlyUsed) return [];
+    const recentModels = recentlyUsedModels
+      .map(id => models.find(m => m.fullId === id))
+      .filter((m): m is ModelType => m !== undefined);
+    return groupModelsByProvider(recentModels, new Set());
+  }, [recentlyUsedModels, models, shouldShowRecentlyUsed]);
 
   // Check if the current model is free
   const isCurrentModelFree = useMemo(() => {
@@ -271,8 +371,8 @@ export const ModelSelector = memo(function ModelSelector({
             </TooltipContent>
           </Tooltip>
         )}
-        <Popover open={open} onOpenChange={setOpen}>
-          <PopoverTrigger asChild>
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild>
             <Button
               variant="ghost"
               role="combobox"
@@ -287,13 +387,28 @@ export const ModelSelector = memo(function ModelSelector({
               </span>
               <ChevronDown className="size-3 shrink-0 opacity-50" />
             </Button>
-          </PopoverTrigger>
-          <PopoverContent className="p-0 w-80" align="end">
-            <Command>
+          </DialogTrigger>
+          <DialogContent 
+            className={cn(
+              "p-0 max-w-[90vw] sm:max-w-lg md:max-w-2xl",
+              "max-h-[85vh] overflow-hidden flex flex-col"
+            )}
+            onOpenAutoFocus={(e) => e.preventDefault()}
+          >
+            <Command 
+              className="flex flex-col h-full overflow-hidden"
+              filter={(value, search, keywords) => {
+                // Substring search: match if search appears anywhere in value or keywords
+                const s = search.toLowerCase();
+                if (value.toLowerCase().includes(s)) return 1;
+                if (keywords?.some(k => typeof k === 'string' && k.toLowerCase().includes(s))) return 1;
+                return 0;
+              }}
+            >
               {(isConfigured && models.length >= 5) && (
-                <CommandInput placeholder={t('searchModels')} className="h-9" />
+                <CommandInput placeholder={t('searchModels')} className="h-9" autoFocus={false} />
               )}
-              <CommandList>
+              <CommandList className="flex-1 overflow-y-auto overflow-x-hidden">
                 <CommandEmpty>
                   <div className="py-6 text-center text-sm text-muted-foreground">
                     <p>{t('noModelsFound')}</p>
@@ -301,34 +416,30 @@ export const ModelSelector = memo(function ModelSelector({
                   </div>
                 </CommandEmpty>
 
+                {/* Recently Used section */}
                 {shouldShowRecentlyUsed && (
-                  <CommandGroup heading={t('recentlyUsed')}>
-                    {recentlyUsedModels.map((modelId) => {
-                      const modelData = models.find(m => m.fullId === modelId);
-                      return (
-                        <CommandItem
-                          key={modelId}
-                          value={modelId}
-                          onSelect={() => handleSelect(modelId)}
-                          className="cursor-pointer"
-                        >
-                          <Check
-                            className={cn(
-                              "mr-2 h-4 w-4",
-                              value === modelId ? "opacity-100" : "opacity-0"
-                            )}
+                  <>
+                    <CommandGroup heading={t('recentlyUsed')} />
+                    {recentlyUsedGroups.map((group) => (
+                      <CommandGroup key={`recent-${group.provider}`} heading={group.provider}>
+                        {group.models.map((model) => (
+                          <ModelItem
+                            key={model.fullId}
+                            model={model}
+                            currentValue={value}
+                            onSelect={handleSelect}
                           />
-                          <span className="truncate flex-1">{modelId}</span>
-                          {modelData?.pricing && (
-                            <ModelPricing pricing={modelData.pricing} className="ml-2" />
-                          )}
-                        </CommandItem>
-                      );
-                    })}
-                  </CommandGroup>
+                        ))}
+                      </CommandGroup>
+                    ))}
+                    {modelGroups.length > 0 && <CommandSeparator />}
+                  </>
                 )}
 
-                {shouldShowRecentlyUsed && <CommandSeparator />}
+                {/* Available Models section */}
+                {!isLoading && modelGroups.length > 0 && (
+                  <CommandGroup heading="Available Models" />
+                )}
 
                 {/* Loading state */}
                 {isLoading && (
@@ -367,31 +478,17 @@ export const ModelSelector = memo(function ModelSelector({
                 )}
 
                 {/* Provider models */}
-                {!isLoading && Object.entries(modelsByProvider).map(([provider, providerModels]) => (
-                  <div key={provider}>
-                    <CommandSeparator />
-                    <CommandGroup heading={provider}>
-                      {providerModels.map((model) => (
-                        <CommandItem
-                          key={model.fullId}
-                          value={model.fullId}
-                          onSelect={() => handleSelect(model.fullId)}
-                          className="cursor-pointer"
-                        >
-                          <Check
-                            className={cn(
-                              "mr-2 h-4 w-4",
-                              value === model.fullId ? "opacity-100" : "opacity-0"
-                            )}
-                          />
-                          <span className="truncate flex-1">{model.fullId}</span>
-                          {model.pricing && (
-                            <ModelPricing pricing={model.pricing} className="ml-2" />
-                          )}
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </div>
+                {!isLoading && modelGroups.map((group) => (
+                  <CommandGroup key={group.provider} heading={group.provider}>
+                    {group.models.map((model) => (
+                      <ModelItem
+                        key={model.fullId}
+                        model={model}
+                        currentValue={value}
+                        onSelect={handleSelect}
+                      />
+                    ))}
+                  </CommandGroup>
                 ))}
 
                 {/* Custom model option and manage providers - moved to bottom */}
@@ -418,8 +515,8 @@ export const ModelSelector = memo(function ModelSelector({
                 </CommandGroup>
               </CommandList>
             </Command>
-          </PopoverContent>
-        </Popover>
+          </DialogContent>
+        </Dialog>
       </div>
     </TooltipProvider>
   );

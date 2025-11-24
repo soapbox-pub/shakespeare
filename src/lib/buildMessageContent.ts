@@ -1,14 +1,12 @@
 import type OpenAI from 'openai';
 import type { JSRuntimeFS } from '@/lib/JSRuntime';
-import { parseImageUrls } from './parseImageUrls';
 import { saveFileToTmp } from './fileUtils';
-import { fileToUrl, urlToFile } from './imageUtils';
+import { fileToUrl } from './imageUtils';
 
 type ContentPart = OpenAI.Chat.Completions.ChatCompletionContentPartText | OpenAI.Chat.Completions.ChatCompletionContentPartImage;
 
 /**
- * Builds message content from text input, image URLs, and attached files.
- * Downloads image URLs to VFS and processes uploaded files.
+ * Builds message content from text input and attached files.
  *
  * - All image formats are included in the message content for UI display
  * - SessionManager filters to only pass JPG/JPEG/PNG to the OpenAI API
@@ -17,7 +15,7 @@ type ContentPart = OpenAI.Chat.Completions.ChatCompletionContentPartText | OpenA
  *
  * Returns content as either a string (for simple text) or an array of content parts.
  *
- * @param input - User text input that may contain image URLs
+ * @param input - User text input
  * @param attachedFiles - Array of files to attach
  * @param fs - Filesystem instance for saving files
  * @param tmpPath - Temporary directory path for file storage
@@ -31,30 +29,12 @@ export async function buildMessageContent(
 ): Promise<string | ContentPart[]> {
   const contentParts: ContentPart[] = [];
 
-  // Parse user input to detect image URLs and split into content parts
+  // Add user input as text part if present
   if (input.trim()) {
-    const parsedParts = parseImageUrls(input.trim());
-
-    // Process each part: download image URLs to VFS and add text parts with VFS paths
-    for (const part of parsedParts) {
-      if (part.type === 'image_url') {
-        // Download image to VFS and get the path
-        const result = await urlToFile(part.image_url.url, fs, tmpPath);
-
-        // Always add image_url part for UI display (all formats)
-        contentParts.push(part);
-
-        // Always add text part with VFS path so AI knows where the file is (can manipulate it)
-        if (result?.vfsPath) {
-          contentParts.push({
-            type: 'text',
-            text: `Added file: ${result.vfsPath}`
-          });
-        }
-      } else {
-        contentParts.push(part);
-      }
-    }
+    contentParts.push({
+      type: 'text',
+      text: input.trim()
+    });
   }
 
   // Process attached files: save to VFS and add image_url for UI display (all image types)

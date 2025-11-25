@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import QRCode from 'qrcode';
 import { CreditCard, Zap, ExternalLink, RefreshCw, Check, X, Clock, AlertCircle, Copy, RotateCcw, ArrowLeft, Gift, Plus, History, DollarSign, Printer, Download } from 'lucide-react';
@@ -85,16 +85,32 @@ const PRESET_AMOUNTS = [5, 10, 25, 50, 100];
 interface LightningPaymentProps {
   invoice: string;
   amount: number;
+  paymentId: string;
+  provider: AIProvider;
   onClose: () => void;
+  onPaymentCompleted: () => void;
 }
 
-function LightningPayment({ invoice, amount, onClose }: LightningPaymentProps) {
+function LightningPayment({ invoice, amount, paymentId, provider, onClose, onPaymentCompleted }: LightningPaymentProps) {
   const { t } = useTranslation();
+  const { user } = useCurrentUser();
+  const { config } = useAppContext();
+  const queryClient = useQueryClient();
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const [isWebLNAvailable, setIsWebLNAvailable] = useState(false);
   const [isPayingWithWebLN, setIsPayingWithWebLN] = useState(false);
   const [showCopiedTooltip, setShowCopiedTooltip] = useState(false);
+  const [paymentCompleted, setPaymentCompleted] = useState(false);
   const { toast } = useToast();
+
+  const formatCurrency = useCallback((amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  }, []);
 
   useEffect(() => {
     // Generate QR code
@@ -112,6 +128,98 @@ function LightningPayment({ invoice, amount, onClose }: LightningPaymentProps) {
     // Check for WebLN availability
     setIsWebLNAvailable(typeof window !== 'undefined' && 'webln' in window);
   }, [invoice]);
+
+  // Poll payment status
+  useEffect(() => {
+    // Don't poll if payment already completed
+    if (paymentCompleted) return;
+
+    let intervalId: NodeJS.Timeout | null = null;
+
+    const pollPaymentStatus = async () => {
+      // Double-check in case state updated during async operation
+      if (paymentCompleted) return;
+
+      try {
+        const ai = createAIClient(provider, user, config.corsProxy);
+        const payment = await ai.get(`/credits/payments/${paymentId}`) as Payment;
+
+        if (payment.status === 'completed') {
+          // Mark as completed to prevent further polling
+          setPaymentCompleted(true);
+
+          // Clear the interval immediately
+          if (intervalId) {
+            clearInterval(intervalId);
+            intervalId = null;
+          }
+
+          // Update credits balance
+          queryClient.invalidateQueries({
+            queryKey: ['ai-credits', provider.nostr ? user?.pubkey ?? '' : '', provider.id],
+          });
+
+          // Update payments list
+          queryClient.invalidateQueries({
+            queryKey: ['ai-payments', provider.nostr ? user?.pubkey ?? '' : '', provider.id],
+          });
+
+          // Show toast
+          toast({
+            title: t('paymentCompleted'),
+            description: t('creditsAddedToAccount', { amount: formatCurrency(payment.amount) }),
+          });
+
+          // Close dialog immediately
+          onPaymentCompleted();
+        } else if (payment.status === 'failed') {
+          // Mark as completed to prevent further polling
+          setPaymentCompleted(true);
+
+          // Clear the interval immediately
+          if (intervalId) {
+            clearInterval(intervalId);
+            intervalId = null;
+          }
+
+          toast({
+            title: t('paymentFailed'),
+            description: t('paymentFailed'),
+            variant: 'destructive',
+          });
+        } else if (payment.status === 'expired') {
+          // Mark as completed to prevent further polling
+          setPaymentCompleted(true);
+
+          // Clear the interval immediately
+          if (intervalId) {
+            clearInterval(intervalId);
+            intervalId = null;
+          }
+
+          toast({
+            title: t('paymentExpired'),
+            description: t('paymentExpiredMessage'),
+            variant: 'destructive',
+          });
+        }
+      } catch (error) {
+        console.error('Failed to poll payment status:', error);
+      }
+    };
+
+    // Poll immediately on mount
+    pollPaymentStatus();
+
+    // Then poll every 3 seconds
+    intervalId = setInterval(pollPaymentStatus, 3000);
+
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [paymentId, provider, user, config.corsProxy, queryClient, toast, t, onPaymentCompleted, formatCurrency, paymentCompleted]);
 
   const handleWebLNPay = async () => {
     if (!window.webln) return;
@@ -143,15 +251,6 @@ function LightningPayment({ invoice, amount, onClose }: LightningPaymentProps) {
     navigator.clipboard.writeText(invoice);
     setShowCopiedTooltip(true);
     setTimeout(() => setShowCopiedTooltip(false), 2000);
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(amount);
   };
 
   return (
@@ -223,6 +322,7 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
   const [amount, setAmount] = useState<number>(10);
   const [paymentMethod, setPaymentMethod] = useState<'stripe' | 'lightning'>('stripe');
   const [lightningInvoice, setLightningInvoice] = useState<string | null>(null);
+  const [lightningPaymentId, setLightningPaymentId] = useState<string | null>(null);
   const [refreshingPayments, setRefreshingPayments] = useState<Set<string>>(new Set());
   const [giftcardAmount, setGiftcardAmount] = useState<number>(10);
   const [giftcardQuantity, setGiftcardQuantity] = useState<number>(1);
@@ -301,6 +401,7 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
       } else if (payment.method === 'lightning') {
         // Show Lightning payment interface
         setLightningInvoice(payment.url);
+        setLightningPaymentId(payment.id);
       }
 
       // Refresh payments list
@@ -486,6 +587,7 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
       } else if (paymentPreview.method === 'lightning') {
         // Show Lightning payment interface
         setLightningInvoice(paymentPreview.url);
+        setLightningPaymentId(paymentPreview.id);
       }
 
       // Refresh payments list
@@ -882,12 +984,22 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
         </DialogHeader>
 
         {/* Lightning Payment Interface */}
-        {lightningInvoice ? (
+        {lightningInvoice && lightningPaymentId ? (
           <div className="flex-1 overflow-y-auto px-1 -mx-1">
             <LightningPayment
               invoice={lightningInvoice}
               amount={amount}
-              onClose={() => setLightningInvoice(null)}
+              paymentId={lightningPaymentId}
+              provider={provider}
+              onClose={() => {
+                setLightningInvoice(null);
+                setLightningPaymentId(null);
+              }}
+              onPaymentCompleted={() => {
+                // Close the lightning payment view immediately
+                setLightningInvoice(null);
+                setLightningPaymentId(null);
+              }}
             />
           </div>
         ) : (
@@ -1054,6 +1166,7 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
                                       onClick={() => {
                                         if (payment.method === 'lightning') {
                                           setLightningInvoice(payment.url);
+                                          setLightningPaymentId(payment.id);
                                         } else {
                                           window.open(payment.url, '_blank');
                                         }

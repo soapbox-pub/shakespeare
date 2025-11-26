@@ -197,7 +197,13 @@ function QuillyContent({ error, onDismiss, onNewChat, onOpenModelSelector, onTry
       message: error.message
         ? `AI service error: ${error.message}`
         : 'Sorry, I encountered an unexpected error. Please try again.',
-      actions: [],
+      actions: onTryAgain ? [{
+        label: 'Try again',
+        onClick: () => {
+          onTryAgain();
+          onDismiss();
+        },
+      }] : [],
     };
   };
 

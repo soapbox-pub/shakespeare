@@ -303,7 +303,7 @@ export function AISettings() {
               {t('aiSettings')}
             </h1>
             <p className="text-muted-foreground">
-              {t('aiSettingsDescriptionLong')}
+              {t('aiSettingsDescription')}
             </p>
           </div>
         </div>
@@ -316,7 +316,7 @@ export function AISettings() {
             {t('aiSettings')}
           </h1>
           <p className="text-muted-foreground">
-            {t('aiSettingsDescriptionLong')}
+            {t('aiSettingsDescription')}
           </p>
         </div>
       )}

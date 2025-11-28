@@ -126,7 +126,7 @@ export function GitSettings() {
               {t('gitSettings')}
             </h1>
             <p className="text-muted-foreground">
-              {t('gitSettingsDescriptionLong')}
+              {t('gitSettingsDescription')}
             </p>
           </div>
         </div>
@@ -139,7 +139,7 @@ export function GitSettings() {
             {t('gitSettings')}
           </h1>
           <p className="text-muted-foreground">
-            {t('gitSettingsDescriptionLong')}
+            {t('gitSettingsDescription')}
           </p>
         </div>
       )}

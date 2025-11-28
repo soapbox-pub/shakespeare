@@ -288,7 +288,7 @@ export function StorageSettings() {
               {t('storageSettings')}
             </h1>
             <p className="text-muted-foreground">
-              {t('dataSettingsDescriptionLong')}
+              {t('storageSettingsDescription')}
             </p>
           </div>
         </div>
@@ -301,7 +301,7 @@ export function StorageSettings() {
             {t('storageSettings')}
           </h1>
           <p className="text-muted-foreground">
-            {t('dataSettingsDescriptionLong')}
+            {t('storageSettingsDescription')}
           </p>
         </div>
       )}

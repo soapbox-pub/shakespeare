@@ -519,7 +519,7 @@ export function DeploySettings() {
               {t('deploySettings')}
             </h1>
             <p className="text-muted-foreground">
-              {t('deploySettingsDescriptionLong')}
+              {t('deploySettingsDescription')}
             </p>
           </div>
         </div>
@@ -532,7 +532,7 @@ export function DeploySettings() {
             {t('deploySettings')}
           </h1>
           <p className="text-muted-foreground">
-            {t('deploySettingsDescriptionLong')}
+            {t('deploySettingsDescription')}
           </p>
         </div>
       )}

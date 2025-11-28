@@ -15,7 +15,7 @@ describe('StorageSettings', () => {
     expect(screen.getByText('Storage')).toBeInTheDocument();
 
     // Check for description
-    expect(screen.getByText('Export files and manage local data.')).toBeInTheDocument();
+    expect(screen.getByText('Export files and manage local data')).toBeInTheDocument();
 
     // Check for Persist Data section
     expect(screen.getByText('Persist Data')).toBeInTheDocument();

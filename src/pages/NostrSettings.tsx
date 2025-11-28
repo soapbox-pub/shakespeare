@@ -150,7 +150,7 @@ export function NostrSettings() {
               {t('nostrSettings')}
             </h1>
             <p className="text-muted-foreground">
-              {t('nostrSettingsDescriptionLong')}
+              {t('nostrSettingsDescription')}
             </p>
           </div>
         </div>
@@ -163,7 +163,7 @@ export function NostrSettings() {
             {t('nostrSettings')}
           </h1>
           <p className="text-muted-foreground">
-            {t('nostrSettingsDescriptionLong')}
+            {t('nostrSettingsDescription')}
           </p>
         </div>
       )}

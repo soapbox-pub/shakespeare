@@ -1244,7 +1244,6 @@ export class Git {
                     fs: this.fs,
                     dir: options.dir,
                     ref: expectedBranch,
-                    force: true,
                   });
                 } catch (checkoutError) {
                   console.warn(`Failed to checkout branch ${expectedBranch}:`, checkoutError);

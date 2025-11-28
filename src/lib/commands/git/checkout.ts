@@ -122,7 +122,6 @@ export class GitCheckoutCommand implements GitSubcommand {
       await this.git.checkout({
         dir: cwd,
         ref: branchName,
-        force: true,
       });
 
       return createSuccessResult(`Switched to branch '${branchName}'\n`);
@@ -165,7 +164,6 @@ export class GitCheckoutCommand implements GitSubcommand {
       await this.git.checkout({
         dir: cwd,
         ref: branchName,
-        force: true,
       });
 
       return createSuccessResult(`Switched to a new branch '${branchName}'\n`);

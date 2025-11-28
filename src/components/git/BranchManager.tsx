@@ -223,7 +223,6 @@ export function BranchManager({ projectId, currentBranch, onBranchChange }: Bran
       await git.checkout({
         dir: projectPath,
         ref: branchName,
-        force: true,
       });
 
       toast({

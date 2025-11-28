@@ -199,7 +199,7 @@ export function ProjectView() {
               onClick={() => setIsSidebarVisible(false)}
             />
             {/* Sidebar - positioned above the backdrop */}
-            <div className="relative left-0 top-0 h-full w-80 max-w-[80vw] bg-background border-r shadow-lg z-10">
+            <div className="relative left-0 top-0 h-full w-72 max-w-[80vw] bg-background border-r shadow-lg z-10">
               <ProjectSidebar
                 selectedProject={project}
                 onSelectProject={(selectedProject) => {
@@ -314,7 +314,7 @@ export function ProjectView() {
   return (
     <div className="h-screen flex bg-background">
       {/* Fixed Sidebar */}
-      <div className={`w-80 border-r bg-sidebar duration-300 ${isSidebarVisible ? 'block' : 'hidden'}`}>
+      <div className={`w-72 border-r bg-sidebar duration-300 ${isSidebarVisible ? 'block' : 'hidden'}`}>
         <ProjectSidebar
           selectedProject={project}
           onSelectProject={(selectedProject) => {

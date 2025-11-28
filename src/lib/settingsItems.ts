@@ -1,73 +1,86 @@
 import { Bot, GitBranch, Database, Wifi, Settings2, Info, Settings, Rocket } from 'lucide-react';
 
-export interface SettingsItem {
+export interface SettingsItemConfig {
   id: string;
-  title: string;
-  description: string;
   icon: React.ComponentType<{ className?: string }>;
+  titleKey: string;
   href: string;
 }
 
+export interface SettingsCategoryConfig {
+  id: string;
+  titleKey: string;
+  items: SettingsItemConfig[];
+}
+
 /**
- * Get the list of settings items with translations
- * @param t - Translation function from useTranslation hook
- * @returns Array of settings items
+ * Settings structure organized by category
  */
-export const getSettingsItems = (t: (key: string) => string): SettingsItem[] => [
+export const settingsCategories: SettingsCategoryConfig[] = [
   {
-    id: 'preferences',
-    title: t('preferences'),
-    description: t('preferencesDescription'),
-    icon: Settings2,
-    href: '/settings/preferences',
+    id: 'general',
+    titleKey: 'general',
+    items: [
+      {
+        id: 'preferences',
+        icon: Settings2,
+        titleKey: 'preferences',
+        href: '/settings/preferences',
+      },
+    ],
   },
   {
-    id: 'ai',
-    title: t('aiSettings'),
-    description: t('aiSettingsDescription'),
-    icon: Bot,
-    href: '/settings/ai',
+    id: 'integrations',
+    titleKey: 'integrations',
+    items: [
+      {
+        id: 'ai',
+        icon: Bot,
+        titleKey: 'aiSettings',
+        href: '/settings/ai',
+      },
+      {
+        id: 'git',
+        icon: GitBranch,
+        titleKey: 'gitSettings',
+        href: '/settings/git',
+      },
+      {
+        id: 'nostr',
+        icon: Wifi,
+        titleKey: 'nostrSettings',
+        href: '/settings/nostr',
+      },
+      {
+        id: 'deploy',
+        icon: Rocket,
+        titleKey: 'deploySettings',
+        href: '/settings/deploy',
+      },
+    ],
   },
   {
-    id: 'git',
-    title: t('gitSettings'),
-    description: t('gitSettingsDescription'),
-    icon: GitBranch,
-    href: '/settings/git',
-  },
-  {
-    id: 'deploy',
-    title: t('deploySettings'),
-    description: t('deploySettingsDescription'),
-    icon: Rocket,
-    href: '/settings/deploy',
-  },
-  {
-    id: 'nostr',
-    title: t('nostrSettings'),
-    description: t('nostrSettingsDescription'),
-    icon: Wifi,
-    href: '/settings/nostr',
-  },
-  {
-    id: 'storage',
-    title: t('storageSettings'),
-    description: t('storageSettingsDescription'),
-    icon: Database,
-    href: '/settings/storage',
-  },
-  {
-    id: 'system',
-    title: t('systemSettings'),
-    description: t('systemSettingsDescription'),
-    icon: Settings,
-    href: '/settings/system',
-  },
-  {
-    id: 'about',
-    title: t('aboutShakespeare'),
-    description: t('aboutShakespeareDescription'),
-    icon: Info,
-    href: '/settings/about',
+    id: 'advanced',
+    titleKey: 'advanced',
+    items: [
+      {
+        id: 'storage',
+        icon: Database,
+        titleKey: 'storageSettings',
+        href: '/settings/storage',
+      },
+      {
+        id: 'system',
+        icon: Settings,
+        titleKey: 'systemSettings',
+        href: '/settings/system',
+      },
+      {
+        id: 'about',
+        icon: Info,
+        titleKey: 'aboutShakespeare',
+        href: '/settings/about',
+      },
+    ],
   },
 ];

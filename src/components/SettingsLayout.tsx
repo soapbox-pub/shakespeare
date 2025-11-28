@@ -8,8 +8,8 @@ import { ProjectSidebar } from '@/components/ProjectSidebar';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { type Project } from '@/lib/ProjectsManager';
-import { cn } from '@/lib/utils';
-import { getSettingsItems } from '@/lib/settingsItems';
+import { settingsCategories } from '@/lib/settingsItems';
+import { SettingsItem } from '@/components/SettingsItem';
 
 export function SettingsLayout() {
   const { t } = useTranslation();
@@ -60,9 +60,10 @@ export function SettingsLayout() {
   };
 
   // Get current settings page
-  const settingsItems = getSettingsItems(t);
   const currentPath = location.pathname;
-  const currentSettingsId = settingsItems.find(item => item.href === currentPath)?.id;
+  const currentSettingsId = settingsCategories
+    .flatMap(category => category.items)
+    .find(item => item.href === currentPath)?.id;
 
   if (isMobile) {
     return (
@@ -89,7 +90,7 @@ export function SettingsLayout() {
               className="absolute inset-0"
               onClick={() => setIsSidebarVisible(false)}
             />
-            <div className="relative left-0 top-0 h-full w-80 max-w-[80vw] bg-background border-r shadow-lg z-10">
+            <div className="relative left-0 top-0 h-full w-72 max-w-[80vw] bg-background border-r shadow-lg z-10">
               <ProjectSidebar
                 selectedProject={null}
                 onSelectProject={(project) => {
@@ -112,7 +113,7 @@ export function SettingsLayout() {
     <div className="h-screen flex bg-background overflow-hidden">
       {/* Left Column - Projects Sidebar (optionally hidden) */}
       {isSidebarVisible && (
-        <div className="w-80 border-r bg-sidebar flex-shrink-0">
+        <div className="w-72 border-r bg-sidebar flex-shrink-0">
           <ProjectSidebar
             selectedProject={null}
             onSelectProject={handleProjectSelect}
@@ -123,7 +124,7 @@ export function SettingsLayout() {
       )}
 
       {/* Middle Column - Settings Navigation */}
-      <div className="w-96 border-r bg-background flex flex-col flex-shrink-0">
+      <div className="w-72 border-r bg-background flex flex-col flex-shrink-0">
         {/* Header with toggle button */}
         <div className="h-12 px-4 py-2 border-b flex-shrink-0">
           <div className="flex items-center gap-3">
@@ -146,36 +147,29 @@ export function SettingsLayout() {
 
         {/* Settings Navigation - Scrollable */}
         <ScrollArea className="flex-1">
-          <div className="p-4">
-            <div className="space-y-2">
-              {settingsItems.map((item) => {
-                const Icon = item.icon;
-                const isActive = currentSettingsId === item.id;
+          <div className="p-4 space-y-6">
+            {settingsCategories.map((category) => (
+              <div key={category.id}>
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-2">
+                  {t(category.titleKey)}
+                </h3>
+                <div className="space-y-1">
+                  {category.items.map((item) => {
+                    const isActive = currentSettingsId === item.id;
 
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => navigate(item.href)}
-                    className={cn('w-full text-left p-3 rounded-lg transition-colors border border-transparent', {
-                      'bg-primary/10 border border-primary/20': isActive,
-                      'hover:bg-muted/50': !isActive,
-                    })}
-                  >
-                    <div className="flex items-start gap-3">
-                      <Icon className={`h-5 w-5 mt-0.5 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
-                      <div className="flex-1 min-w-0">
-                        <div className={`font-medium ${isActive ? 'text-primary' : 'text-foreground'}`}>
-                          {item.title}
-                        </div>
-                        <div className="text-sm text-muted-foreground mt-0.5">
-                          {item.description}
-                        </div>
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
+                    return (
+                      <SettingsItem
+                        key={item.id}
+                        icon={item.icon}
+                        title={t(item.titleKey)}
+                        onClick={() => navigate(item.href)}
+                        isActive={isActive}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
         </ScrollArea>
       </div>

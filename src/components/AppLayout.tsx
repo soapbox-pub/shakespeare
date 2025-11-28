@@ -99,7 +99,7 @@ export function AppLayout({
               onClick={() => setIsSidebarVisible(false)}
             />
             {/* Sidebar - positioned above the backdrop */}
-            <div className="relative left-0 top-0 h-full w-80 max-w-[80vw] bg-background border-r shadow-lg z-10">
+            <div className="relative left-0 top-0 h-full w-72 max-w-[80vw] bg-background border-r shadow-lg z-10">
               <ProjectSidebar
                 selectedProject={selectedProject}
                 onSelectProject={(project) => {
@@ -123,7 +123,7 @@ export function AppLayout({
     <div className="min-h-screen flex bg-background">
       {/* Fixed Sidebar - show if showSidebar is true and sidebar is visible */}
       {showSidebar && isSidebarVisible && (
-        <div className="w-80 border-r bg-sidebar transition-all duration-300">
+        <div className="w-72 border-r bg-sidebar transition-all duration-300">
           <ProjectSidebar
             selectedProject={selectedProject}
             onSelectProject={handleProjectSelect}

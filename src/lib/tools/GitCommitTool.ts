@@ -41,6 +41,26 @@ export class GitCommitTool implements Tool<GitCommitParams> {
         throw new Error(`❌ Commit message cannot be empty.`);
       }
 
+      // Check for detached HEAD state before doing any work
+      // currentBranch returns null when HEAD is detached
+      const currentBranch = await this.git.currentBranch({
+        dir: this.cwd,
+      });
+
+      if (currentBranch === null || currentBranch === undefined) {
+        throw new Error(
+          `❌ Cannot commit: Git is in a detached HEAD state.\n\n` +
+          `This usually happens after checking out a specific commit. ` +
+          `Your changes need to be on a branch before committing.\n\n` +
+          `To fix this and preserve your staged changes:\n` +
+          `  1. Run: git checkout -b temp-branch\n` +
+          `     (This creates a new branch from your current state, preserving all changes)\n` +
+          `  2. Then try the commit again\n` +
+          `  3. After committing, you can merge to main with:\n` +
+          `     git checkout main && git merge temp-branch`
+        );
+      }
+
       // Get git status to see what files have changed
       const statusMatrix = await this.git.statusMatrix({
         dir: this.cwd,
@@ -77,16 +97,6 @@ export class GitCommitTool implements Tool<GitCommitParams> {
             console.warn(`Failed to stage file: ${filepath}`);
           }
         }
-      }
-
-      // Get current branch name
-      let currentBranch = 'main';
-      try {
-        currentBranch = await this.git.currentBranch({
-          dir: this.cwd,
-        }) || 'main';
-      } catch {
-        // Default to 'main' if we can't get the current branch
       }
 
       // Commit the changes (author/committer will be set automatically by Git class)

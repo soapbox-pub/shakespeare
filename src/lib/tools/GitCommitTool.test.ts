@@ -185,4 +185,58 @@ describe('GitCommitTool', () => {
 
     expect(result).toContain('✅ Successfully committed');
   });
+
+  it('should error when HEAD is detached (currentBranch returns null)', async () => {
+    // Mock .git directory exists
+    vi.mocked(mockFS.stat).mockResolvedValue({
+      isDirectory: () => true,
+      isFile: () => false,
+    });
+
+    // Mock detached HEAD state - currentBranch returns null
+    vi.mocked(mockGitInstance.currentBranch).mockResolvedValue(null);
+
+    await expect(tool.execute({ message: 'Test commit' })).rejects.toThrow('❌ Cannot commit: Git is in a detached HEAD state');
+
+    // Verify commit was never called
+    expect(mockGitInstance.commit).not.toHaveBeenCalled();
+  });
+
+  it('should error when HEAD is detached (currentBranch returns undefined)', async () => {
+    // Mock .git directory exists
+    vi.mocked(mockFS.stat).mockResolvedValue({
+      isDirectory: () => true,
+      isFile: () => false,
+    });
+
+    // Mock detached HEAD state - currentBranch returns undefined
+    vi.mocked(mockGitInstance.currentBranch).mockResolvedValue(undefined);
+
+    await expect(tool.execute({ message: 'Test commit' })).rejects.toThrow('❌ Cannot commit: Git is in a detached HEAD state');
+
+    // Verify commit was never called
+    expect(mockGitInstance.commit).not.toHaveBeenCalled();
+  });
+
+  it('should provide helpful instructions when HEAD is detached', async () => {
+    // Mock .git directory exists
+    vi.mocked(mockFS.stat).mockResolvedValue({
+      isDirectory: () => true,
+      isFile: () => false,
+    });
+
+    // Mock detached HEAD state
+    vi.mocked(mockGitInstance.currentBranch).mockResolvedValue(null);
+
+    try {
+      await tool.execute({ message: 'Test commit' });
+      expect.fail('Should have thrown an error');
+    } catch (error) {
+      const errorMessage = (error as Error).message;
+      // Verify the error message contains safe instructions that preserve changes
+      expect(errorMessage).toContain('git checkout -b temp-branch');
+      expect(errorMessage).toContain('try the commit again');
+      expect(errorMessage).toContain('preserving all changes');
+    }
+  });
 });

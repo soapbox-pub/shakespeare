@@ -1,84 +1,86 @@
 import { Bot, GitBranch, Database, Wifi, Settings2, Info, Settings, Rocket } from 'lucide-react';
 
-export interface SettingsItemConfig {
+export interface SettingsItem {
   id: string;
   icon: React.ComponentType<{ className?: string }>;
-  titleKey: string;
+  title: string;
   href: string;
 }
 
-export interface SettingsCategoryConfig {
+export interface SettingsCategory {
   id: string;
-  titleKey: string;
-  items: SettingsItemConfig[];
+  title: string;
+  items: SettingsItem[];
 }
 
 /**
- * Settings structure organized by category
+ * Get the categorized list of settings items with translations
+ * @param t - Translation function from useTranslation hook
+ * @returns Array of settings categories with translated items
  */
-export const settingsCategories: SettingsCategoryConfig[] = [
+export const getSettingsCategories = (t: (key: string) => string): SettingsCategory[] => [
   {
     id: 'general',
-    titleKey: 'general',
+    title: t('general'),
     items: [
       {
         id: 'preferences',
         icon: Settings2,
-        titleKey: 'preferences',
+        title: t('preferences'),
         href: '/settings/preferences',
       },
     ],
   },
   {
     id: 'integrations',
-    titleKey: 'integrations',
+    title: t('integrations'),
     items: [
       {
         id: 'ai',
         icon: Bot,
-        titleKey: 'aiSettings',
+        title: t('aiSettings'),
         href: '/settings/ai',
       },
       {
         id: 'git',
         icon: GitBranch,
-        titleKey: 'gitSettings',
+        title: t('gitSettings'),
         href: '/settings/git',
       },
       {
         id: 'nostr',
         icon: Wifi,
-        titleKey: 'nostrSettings',
+        title: t('nostrSettings'),
         href: '/settings/nostr',
       },
       {
         id: 'deploy',
         icon: Rocket,
-        titleKey: 'deploySettings',
+        title: t('deploySettings'),
         href: '/settings/deploy',
       },
     ],
   },
   {
     id: 'advanced',
-    titleKey: 'advanced',
+    title: t('advanced'),
     items: [
       {
         id: 'storage',
         icon: Database,
-        titleKey: 'storageSettings',
+        title: t('storageSettings'),
         href: '/settings/storage',
       },
       {
         id: 'system',
         icon: Settings,
-        titleKey: 'systemSettings',
+        title: t('systemSettings'),
         href: '/settings/system',
       },
       {
         id: 'about',
         icon: Info,
-        titleKey: 'aboutShakespeare',
+        title: t('aboutShakespeare'),
         href: '/settings/about',
       },
     ],

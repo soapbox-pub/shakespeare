@@ -8,7 +8,7 @@ import { ProjectSidebar } from '@/components/ProjectSidebar';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { type Project } from '@/lib/ProjectsManager';
-import { settingsCategories } from '@/lib/settingsItems';
+import { getSettingsCategories } from '@/lib/settingsItems';
 import { SettingsItem } from '@/components/SettingsItem';
 
 export function SettingsLayout() {
@@ -60,6 +60,7 @@ export function SettingsLayout() {
   };
 
   // Get current settings page
+  const settingsCategories = getSettingsCategories(t);
   const currentPath = location.pathname;
   const currentSettingsId = settingsCategories
     .flatMap(category => category.items)
@@ -151,7 +152,7 @@ export function SettingsLayout() {
             {settingsCategories.map((category) => (
               <div key={category.id}>
                 <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-2">
-                  {t(category.titleKey)}
+                  {category.title}
                 </h3>
                 <div className="space-y-1">
                   {category.items.map((item) => {
@@ -161,7 +162,7 @@ export function SettingsLayout() {
                       <SettingsItem
                         key={item.id}
                         icon={item.icon}
-                        title={t(item.titleKey)}
+                        title={item.title}
                         onClick={() => navigate(item.href)}
                         isActive={isActive}
                       />

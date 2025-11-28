@@ -1,9 +1,10 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Plus, Folder, GitBranch, Loader2, ChevronDown, Star, Columns2, X, Settings, HelpCircle } from 'lucide-react';
+import { Plus, Folder, GitBranch, Loader2, ChevronDown, Star, Columns2, X, Settings, HelpCircle, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useProjects } from '@/hooks/useProjects';
 import { useProjectSessionStatus } from '@/hooks/useProjectSessionStatus';
@@ -93,9 +94,23 @@ export function ProjectSidebar({
   const queryClient = useQueryClient();
   const { data: projects = [], isLoading, error } = useProjects();
   const [favorites] = useLocalStorage<string[]>('project-favorites', []);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const isMobile = useIsMobile();
   const navigate = useNavigate();
+
+  // Fast in-memory search filtering
+  const filteredProjects = useMemo(() => {
+    if (!searchQuery.trim()) {
+      return projects;
+    }
+
+    const query = searchQuery.toLowerCase();
+    return projects.filter(project =>
+      project.id.toLowerCase().includes(query) ||
+      project.name.toLowerCase().includes(query)
+    );
+  }, [projects, searchQuery]);
 
   // Custom navigate function that closes sidebar on mobile
   const navigateAndClose = (path: string) => {
@@ -166,7 +181,7 @@ export function ProjectSidebar({
 
       <div className="flex-1 overflow-y-auto">
         <div className="p-2">
-          <div className="mb-2">
+          <div className="mb-2 space-y-3">
             <div className="relative rounded-md bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 transition-all duration-200">
               <div className="flex">
                 <button
@@ -195,6 +210,20 @@ export function ProjectSidebar({
                 </DropdownMenu>
               </div>
             </div>
+
+            {/* Search Input */}
+            {projects.length > 0 && (
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                <Input
+                  type="text"
+                  placeholder={t('searchProjects')}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 h-9 bg-sidebar-accent/50 border-sidebar-border focus-visible:ring-primary/50"
+                />
+              </div>
+            )}
           </div>
 
           {isLoading ? (
@@ -214,9 +243,15 @@ export function ProjectSidebar({
               <p className="text-sm">{t('noProjectsYet')}</p>
               <p className="text-xs">{t('createFirstProject')}</p>
             </div>
+          ) : filteredProjects.length === 0 ? (
+            <div className="text-center p-6 text-muted-foreground">
+              <Search className="h-8 w-8 mx-auto mb-2 opacity-50" />
+              <p className="text-sm">{t('noProjectsFound')}</p>
+              <p className="text-xs">{t('tryDifferentSearch')}</p>
+            </div>
           ) : (
             <div className="space-y-1">
-              {projects.map((project) => (
+              {filteredProjects.map((project) => (
                 <ProjectItem
                   key={project.id}
                   project={project}

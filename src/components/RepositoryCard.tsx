@@ -8,6 +8,7 @@ import { useAuthor } from '@/hooks/useAuthor';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { genUserName } from '@/lib/genUserName';
 import { useNavigate } from 'react-router-dom';
+import { nip19 } from 'nostr-tools';
 
 interface RepositoryCardProps {
   repo: Repository;
@@ -20,14 +21,12 @@ export function RepositoryCard({ repo }: RepositoryCardProps) {
   const displayName = authorData?.metadata?.name || genUserName(repo.pubkey);
   const profileImage = authorData?.metadata?.picture;
 
-  // Get the first clone URL (prefer HTTPS)
-  const primaryCloneUrl = repo.cloneUrls.find(url => url.startsWith('https://')) || repo.cloneUrls[0];
+  // Construct Nostr clone URL
+  const nostrCloneUrl = `nostr://${nip19.npubEncode(repo.pubkey)}/${repo.repoId}`;
 
   const handleClone = () => {
-    if (primaryCloneUrl) {
-      // Navigate to clone page with URL parameter
-      navigate(`/clone?url=${encodeURIComponent(primaryCloneUrl)}`);
-    }
+    // Navigate to clone page with Nostr URL parameter
+    navigate(`/clone?url=${encodeURIComponent(nostrCloneUrl)}`);
   };
 
   return (
@@ -85,16 +84,14 @@ export function RepositoryCard({ repo }: RepositoryCardProps) {
 
         {/* Actions */}
         <div className="mt-auto">
-          {primaryCloneUrl && (
-            <Button
-              size="sm"
-              className="w-full"
-              onClick={handleClone}
-            >
-              <GitBranch className="h-4 w-4 mr-2" />
-              Clone
-            </Button>
-          )}
+          <Button
+            size="sm"
+            className="w-full"
+            onClick={handleClone}
+          >
+            <GitBranch className="h-4 w-4 mr-2" />
+            Clone
+          </Button>
         </div>
       </CardContent>
     </Card>

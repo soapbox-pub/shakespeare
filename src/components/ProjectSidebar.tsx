@@ -186,7 +186,7 @@ export function ProjectSidebar({
               <div className="flex">
                 <button
                   onClick={handleNewProject}
-                  className="flex-1 flex items-center justify-center px-3 py-2 text-sm font-medium text-primary-foreground rounded-l-md hover:bg-white/10 transition-colors"
+                  className="flex-1 flex items-center justify-center px-3 py-2.5 text-sm font-medium text-primary-foreground rounded-l-md hover:bg-white/10 transition-colors"
                 >
                   <Plus className="h-4 w-4 mr-2" />
                   {t('newProject')}
@@ -194,7 +194,7 @@ export function ProjectSidebar({
                 <div className="w-px bg-white/20" />
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <button className="px-2 py-2 text-primary-foreground hover:bg-white/10 rounded-r-md transition-colors">
+                    <button className="px-3 py-2.5 text-primary-foreground hover:bg-white/10 rounded-r-md transition-colors">
                       <ChevronDown className="h-4 w-4" />
                     </button>
                   </DropdownMenuTrigger>
@@ -220,7 +220,7 @@ export function ProjectSidebar({
                   placeholder={t('searchProjects')}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 h-9 bg-sidebar-accent/50 border-sidebar-border focus-visible:ring-primary/50"
+                  className="pl-9 h-9 text-sm bg-sidebar-accent/50 border-sidebar-border focus-visible:ring-primary/50"
                 />
               </div>
             )}

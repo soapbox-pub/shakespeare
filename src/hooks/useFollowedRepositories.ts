@@ -58,6 +58,12 @@ export function useFollowedRepositories(followedPubkeys: string[] = []) {
           const earliestUniqueCommit = event.tags.find(tag => tag[0] === 'r' && tag[2] === 'euc')?.[1];
           const isPersonalFork = event.tags.some(tag => tag[0] === 't' && tag[1] === 'personal-fork');
 
+          // Filter out invalid repositories without clone URLs
+          if (cloneUrls.length === 0) {
+            console.warn('Skipping repository without clone URLs:', dTag);
+            continue;
+          }
+
           repositories.push({
             ...event,
             repoId: dTag,

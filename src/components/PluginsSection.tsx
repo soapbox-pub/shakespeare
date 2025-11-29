@@ -122,7 +122,7 @@ export function PluginsSection() {
 
       {/* Add Plugin Section */}
       <Accordion type="single" collapsible className="w-full">
-        <AccordionItem value="add-plugin" className="border rounded-lg">
+        <AccordionItem value="add-plugin">
           <AccordionTrigger className="px-4 py-3 hover:no-underline">
             <div className="flex items-center gap-2">
               <Plus className="h-4 w-4" />

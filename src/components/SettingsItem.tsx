@@ -29,13 +29,7 @@ export function SettingsItem({
       )}
     >
       <div className="flex items-center gap-3">
-        <div className={cn(
-          'p-1.5 rounded-md transition-all duration-200',
-          {
-            'bg-primary/10': isActive,
-            'group-hover:bg-primary/5': !isActive,
-          }
-        )}>
+        <div className="p-1.5 rounded-md transition-all duration-200">
           <Icon className={cn('h-4 w-4 flex-shrink-0 transition-colors duration-200', {
             'text-primary': isActive,
             'text-muted-foreground group-hover:text-foreground': !isActive,

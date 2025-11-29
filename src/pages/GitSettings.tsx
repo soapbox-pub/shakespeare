@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Card, CardContent } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import {
   DropdownMenu,
@@ -156,7 +157,7 @@ export function GitSettings() {
                 const isCustom = !preset;
 
                 return (
-                  <AccordionItem key={origin} value={origin} className="border rounded-lg">
+                  <AccordionItem key={origin} value={origin}>
                     <AccordionTrigger className="px-4 py-3 hover:no-underline">
                       <div className="flex items-center gap-2">
                         <ExternalFavicon
@@ -223,28 +224,29 @@ export function GitSettings() {
             <h4 className="text-sm font-medium">{t('addProvider')}</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {availablePresets.map((preset) => (
-                <div key={preset.id} className="border rounded-lg p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <ExternalFavicon
-                        url={preset.origin}
-                        size={16}
-                        fallback={<GitBranch size={16} />}
-                      />
-                      <h5 className="font-medium">{preset.name}</h5>
+                <Card key={preset.id}>
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <ExternalFavicon
+                          url={preset.origin}
+                          size={16}
+                          fallback={<GitBranch size={16} />}
+                        />
+                        <h5 className="font-medium">{preset.name}</h5>
+                      </div>
+                      {preset.tokenURL && (preset.id !== 'github' || !isOAuthConfigured) && (
+                        <button
+                          type="button"
+                          className="text-xs text-muted-foreground underline hover:text-foreground"
+                          onClick={() => window.open(preset.tokenURL, '_blank')}
+                        >
+                          {t('getToken')}
+                        </button>
+                      )}
                     </div>
-                    {preset.tokenURL && (preset.id !== 'github' || !isOAuthConfigured) && (
-                      <button
-                        type="button"
-                        className="text-xs text-muted-foreground underline hover:text-foreground"
-                        onClick={() => window.open(preset.tokenURL, '_blank')}
-                      >
-                        {t('getToken')}
-                      </button>
-                    )}
-                  </div>
 
-                  {preset.id === 'github' ? (
+                    {preset.id === 'github' ? (
                     // Special rendering for GitHub - OAuth button if configured, otherwise token input
                     isOAuthConfigured && !forceManualEntry[preset.id] ? (
                       <div className="space-y-3">
@@ -349,7 +351,8 @@ export function GitSettings() {
                       </Button>
                     </div>
                   )}
-                </div>
+                  </CardContent>
+                </Card>
               ))}
             </div>
           </div>
@@ -358,7 +361,7 @@ export function GitSettings() {
         {/* Custom Provider */}
         <div className="space-y-3">
           <Accordion type="single" collapsible className="w-full">
-            <AccordionItem value="custom-provider" className="border rounded-lg">
+            <AccordionItem value="custom-provider">
               <AccordionTrigger className="px-4 py-3 hover:no-underline">
                 <h4 className="text-sm font-medium">{t('addCustomProvider')}</h4>
               </AccordionTrigger>
@@ -419,7 +422,7 @@ export function GitSettings() {
         {/* Git Identity */}
         <div className="space-y-3">
           <Accordion type="single" collapsible className="w-full">
-            <AccordionItem value="git-identity" className="border rounded-lg">
+            <AccordionItem value="git-identity">
               <AccordionTrigger className="px-4 py-3 hover:no-underline">
                 <h4 className="text-sm font-medium">{t('gitIdentity')}</h4>
               </AccordionTrigger>

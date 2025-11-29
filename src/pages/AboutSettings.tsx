@@ -5,6 +5,7 @@ import { Info, ExternalLink, Loader2, AlertTriangle, ArrowLeft, Code, Globe } fr
 import { Button } from '@/components/ui/button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Card, CardContent } from '@/components/ui/card';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { EmailSubscription } from '@/components/EmailSubscription';
 
@@ -85,7 +86,7 @@ export function AboutSettings() {
         <div className="space-y-3">
           {/* Mirrors */}
           <Accordion type="single" collapsible className="w-full">
-            <AccordionItem value="mirrors" className="border rounded-lg">
+            <AccordionItem value="mirrors">
               <AccordionTrigger className="px-4 py-3 hover:no-underline">
                 <div className="flex items-center gap-2">
                   <Globe className="h-5 w-5" />
@@ -131,21 +132,25 @@ export function AboutSettings() {
           </Accordion>
 
           {/* Project Information */}
-          <Button
-            variant="outline"
-            className="w-full h-12 flex items-center gap-2 justify-start text-base"
-            asChild
-          >
-            <a href="https://gitlab.com/soapbox-pub/shakespeare" target="_blank">
-              <Code className="!size-5" />
-              {t('sourceCode')}
-              <ExternalLink className="ml-auto" />
-            </a>
-          </Button>
+          <Card>
+            <CardContent className="p-0">
+              <Button
+                variant="ghost"
+                className="w-full h-12 flex items-center gap-2 justify-start text-base"
+                asChild
+              >
+                <a href="https://gitlab.com/soapbox-pub/shakespeare" target="_blank">
+                  <Code className="!size-5" />
+                  {t('sourceCode')}
+                  <ExternalLink className="ml-auto" />
+                </a>
+              </Button>
+            </CardContent>
+          </Card>
 
           {/* License */}
           <Accordion type="single" collapsible className="w-full">
-            <AccordionItem value="license-text" className="border rounded-lg">
+            <AccordionItem value="license-text">
               <AccordionTrigger className="px-4 py-3 hover:no-underline">
                 <div className="flex items-center gap-2">
                   <Info className="h-5 w-5" />

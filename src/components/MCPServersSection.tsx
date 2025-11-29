@@ -269,7 +269,7 @@ export function MCPServersSection() {
 
       {/* Add New MCP Server */}
       <Accordion type="single" collapsible className="w-full">
-        <AccordionItem value="add-server" className="border rounded-lg">
+        <AccordionItem value="add-server">
           <AccordionTrigger className="px-4 py-3 hover:no-underline">
             <div className="flex items-center gap-2">
               <Plus className="h-4 w-4" />

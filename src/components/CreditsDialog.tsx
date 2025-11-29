@@ -1285,7 +1285,7 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
               </AccordionItem>
 
               {/* Your Gift Cards Accordion */}
-              <AccordionItem value="list" className="border-b-0">
+              <AccordionItem value="list">
                 <AccordionTrigger className="hover:no-underline">
                   <div className="flex items-center gap-2">
                     <CreditCard className="h-4 w-4" />

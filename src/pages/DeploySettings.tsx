@@ -32,6 +32,7 @@ import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
 import { Label } from '@/components/ui/label';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useDeploySettings } from '@/hooks/useDeploySettings';
 import { useNetlifyOAuth } from '@/hooks/useNetlifyOAuth';
@@ -83,7 +84,6 @@ function SortableProviderItem({ provider, index, preset, onRemove, onUpdate, sho
       ref={setNodeRef}
       style={style}
       value={String(index)}
-      className="border rounded-lg"
     >
       <AccordionTrigger className="px-4 py-3 hover:no-underline">
         <div className="flex items-center gap-2">
@@ -591,36 +591,37 @@ export function DeploySettings() {
                 const oauthError = oauthHook?.error ?? null;
 
                 return (
-                  <div key={preset.id} className="border rounded-lg p-4 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        {(() => {
-                          const url = getProviderUrl(preset);
-                          return url ? (
-                            <ExternalFavicon
-                              url={url}
-                              size={16}
-                              fallback={<Rocket size={16} />}
-                            />
-                          ) : (
-                            <Rocket size={16} />
-                          );
-                        })()}
-                        <h5 className="font-medium">{preset.name}</h5>
+                  <Card key={preset.id}>
+                    <CardContent className="p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          {(() => {
+                            const url = getProviderUrl(preset);
+                            return url ? (
+                              <ExternalFavicon
+                                url={url}
+                                size={16}
+                                fallback={<Rocket size={16} />}
+                              />
+                            ) : (
+                              <Rocket size={16} />
+                            );
+                          })()}
+                          <h5 className="font-medium">{preset.name}</h5>
+                        </div>
+                        {preset.apiKeyURL && !isOAuthConfigured && (
+                          <button
+                            type="button"
+                            className="text-xs text-muted-foreground underline hover:text-foreground"
+                            onClick={() => window.open(preset.apiKeyURL, '_blank')}
+                          >
+                            {t('getApiKey')}
+                          </button>
+                        )}
                       </div>
-                      {preset.apiKeyURL && !isOAuthConfigured && (
-                        <button
-                          type="button"
-                          className="text-xs text-muted-foreground underline hover:text-foreground"
-                          onClick={() => window.open(preset.apiKeyURL, '_blank')}
-                        >
-                          {t('getApiKey')}
-                        </button>
-                      )}
-                    </div>
-                    <p className="text-sm text-muted-foreground">{preset.description}</p>
+                      <p className="text-sm text-muted-foreground">{preset.description}</p>
 
-                    {showNostrLoginRequired ? (
+                      {showNostrLoginRequired ? (
                       <div className="space-y-2">
                         <p className="text-sm text-muted-foreground">
                           {t('loginToNostrRequired')}
@@ -724,7 +725,8 @@ export function DeploySettings() {
                         </div>
                       </div>
                     )}
-                  </div>
+                    </CardContent>
+                  </Card>
                 );
               })}
             </div>
@@ -734,7 +736,7 @@ export function DeploySettings() {
         {/* Custom Provider */}
         <div className="space-y-3">
           <Accordion type="single" collapsible className="w-full">
-            <AccordionItem value="custom-provider" className="border rounded-lg">
+            <AccordionItem value="custom-provider">
               <AccordionTrigger className="px-4 py-3 hover:no-underline">
                 <h4 className="text-sm font-medium">{t('addCustomProvider')}</h4>
               </AccordionTrigger>

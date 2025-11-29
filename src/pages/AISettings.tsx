@@ -26,6 +26,7 @@ import { PasswordInput } from '@/components/ui/password-input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Card, CardContent } from '@/components/ui/card';
 import { CreditsBadge } from '@/components/CreditsBadge';
 import { CreditsDialog } from '@/components/CreditsDialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -368,43 +369,44 @@ export function AISettings() {
                 const showNostrLoginRequired = isNostrPreset && !isLoggedIntoNostr;
 
                 return (
-                  <div key={preset.id} className="border rounded-lg p-4 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <ExternalFavicon
-                          url={preset.baseURL}
-                          size={16}
-                          fallback={<Bot size={16} />}
-                        />
-                        <h5 className="font-medium">{preset.name}</h5>
+                  <Card key={preset.id}>
+                    <CardContent className="p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <ExternalFavicon
+                            url={preset.baseURL}
+                            size={16}
+                            fallback={<Bot size={16} />}
+                          />
+                          <h5 className="font-medium">{preset.name}</h5>
+                        </div>
+                        {(preset.apiKeysURL && preset.id !== "routstr") && (
+                          <button
+                            type="button"
+                            className="text-xs text-muted-foreground underline hover:text-foreground"
+                            onClick={() => window.open(preset.apiKeysURL, '_blank')}
+                          >
+                            {t('getApiKey')}
+                          </button>
+                        )}
                       </div>
-                      {(preset.apiKeysURL && preset.id !== "routstr") && (
-                        <button
-                          type="button"
-                          className="text-xs text-muted-foreground underline hover:text-foreground"
-                          onClick={() => window.open(preset.apiKeysURL, '_blank')}
-                        >
-                          {t('getApiKey')}
-                        </button>
-                      )}
-                    </div>
 
-                    {showNostrLoginRequired ? (
-                      <div className="space-y-2">
-                        <p className="text-sm text-muted-foreground">
-                          {t('loginToNostrRequired')}
-                        </p>
-                        <Button
-                          asChild
-                          className="w-full"
-                        >
-                          <Link to="/settings/nostr">
-                            {t('goToNostrSettings')}
-                          </Link>
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
+                      {showNostrLoginRequired ? (
+                        <div className="space-y-2">
+                          <p className="text-sm text-muted-foreground">
+                            {t('loginToNostrRequired')}
+                          </p>
+                          <Button
+                            asChild
+                            className="w-full"
+                          >
+                            <Link to="/settings/nostr">
+                              {t('goToNostrSettings')}
+                            </Link>
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
                         <div className="flex gap-2">
                           {!preset.nostr && (
                             <PasswordInput
@@ -469,7 +471,8 @@ export function AISettings() {
                         </div>
                       </div>
                     )}
-                  </div>
+                    </CardContent>
+                  </Card>
                 );
               })}
             </div>
@@ -479,7 +482,7 @@ export function AISettings() {
         {/* Custom Provider */}
         <div className="space-y-3">
           <Accordion type="single" collapsible className="w-full">
-            <AccordionItem value="custom-provider" className="border rounded-lg">
+            <AccordionItem value="custom-provider">
               <AccordionTrigger className="px-4 py-3 hover:no-underline">
                 <h4 className="text-sm font-medium">{t('addCustomProvider')}</h4>
               </AccordionTrigger>

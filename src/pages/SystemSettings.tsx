@@ -308,7 +308,7 @@ export function SystemSettings() {
       <div className="space-y-3 max-w-xl">
         {/* Service Worker Configuration */}
         <Accordion type="single" collapsible className="w-full">
-          <AccordionItem value="service-worker" className="border rounded-lg">
+          <AccordionItem value="service-worker">
             <AccordionTrigger className="px-4 py-3 hover:no-underline">
               <h4 className="text-sm font-medium">{t('serviceWorker')}</h4>
             </AccordionTrigger>
@@ -411,7 +411,7 @@ export function SystemSettings() {
 
         {/* Project Template Configuration */}
         <Accordion type="single" collapsible className="w-full">
-          <AccordionItem value="project-template" className="border rounded-lg">
+          <AccordionItem value="project-template">
             <AccordionTrigger className="px-4 py-3 hover:no-underline">
               <div className="flex items-center gap-2">
                 <h4 className="text-sm font-medium">{t('projectTemplate')}</h4>
@@ -459,7 +459,7 @@ export function SystemSettings() {
 
         {/* CORS Proxy Configuration */}
         <Accordion type="single" collapsible className="w-full">
-          <AccordionItem value="cors-proxy" className="border rounded-lg">
+          <AccordionItem value="cors-proxy">
             <AccordionTrigger className="px-4 py-3 hover:no-underline">
               <div className="flex items-center gap-2">
                 <h4 className="text-sm font-medium">{t('corsProxy')}</h4>
@@ -507,7 +507,7 @@ export function SystemSettings() {
 
         {/* Favicon URL Configuration */}
         <Accordion type="single" collapsible className="w-full">
-          <AccordionItem value="favicon-url" className="border rounded-lg">
+          <AccordionItem value="favicon-url">
             <AccordionTrigger className="px-4 py-3 hover:no-underline">
               <div className="flex items-center gap-2">
                 <h4 className="text-sm font-medium">{t('faviconUrl')}</h4>
@@ -555,7 +555,7 @@ export function SystemSettings() {
 
         {/* JavaScript CDN Configuration */}
         <Accordion type="single" collapsible className="w-full">
-          <AccordionItem value="esm-url" className="border rounded-lg">
+          <AccordionItem value="esm-url">
             <AccordionTrigger className="px-4 py-3 hover:no-underline">
               <div className="flex items-center gap-2">
                 <h4 className="text-sm font-medium">{t('esmUrl')}</h4>
@@ -604,7 +604,7 @@ export function SystemSettings() {
 
         {/* Preview Domain Configuration */}
         <Accordion type="single" collapsible className="w-full">
-          <AccordionItem value="preview-domain" className="border rounded-lg">
+          <AccordionItem value="preview-domain">
             <AccordionTrigger className="px-4 py-3 hover:no-underline">
               <div className="flex items-center gap-2">
                 <h4 className="text-sm font-medium">{t('previewDomain')}</h4>
@@ -652,7 +652,7 @@ export function SystemSettings() {
 
         {/* Showcase Configuration */}
         <Accordion type="single" collapsible className="w-full">
-          <AccordionItem value="showcase" className="border rounded-lg">
+          <AccordionItem value="showcase">
             <AccordionTrigger className="px-4 py-3 hover:no-underline">
               <div className="flex items-center gap-2">
                 <h4 className="text-sm font-medium">{t('showcase')}</h4>
@@ -746,7 +746,7 @@ export function SystemSettings() {
 
         {/* Sentry DSN Configuration */}
         <Accordion type="single" collapsible className="w-full">
-          <AccordionItem value="sentry-dsn" className="border rounded-lg">
+          <AccordionItem value="sentry-dsn">
             <AccordionTrigger className="px-4 py-3 hover:no-underline">
               <div className="flex items-center gap-2">
                 <h4 className="text-sm font-medium">{t('sentryDsn')}</h4>
@@ -794,7 +794,7 @@ export function SystemSettings() {
 
         {/* Filesystem Paths Configuration */}
         <Accordion type="single" collapsible className="w-full">
-          <AccordionItem value="filesystem-paths" className="border rounded-lg">
+          <AccordionItem value="filesystem-paths">
             <AccordionTrigger className="px-4 py-3 hover:no-underline">
               <div className="flex items-center gap-2">
                 <h4 className="text-sm font-medium">{t('filesystemPaths')}</h4>
@@ -1016,7 +1016,7 @@ export function SystemSettings() {
 
         {/* System Prompt Configuration */}
         <Accordion type="single" collapsible className="w-full">
-          <AccordionItem value="system-prompt" className="border rounded-lg">
+          <AccordionItem value="system-prompt">
             <AccordionTrigger className="px-4 py-3 hover:no-underline">
               <div className="flex items-center gap-2">
                 <h4 className="text-sm font-medium">{t('systemPrompt')}</h4>
@@ -1063,7 +1063,7 @@ export function SystemSettings() {
 
         {/* Terminal */}
         <Accordion type="single" collapsible className="w-full">
-          <AccordionItem value="terminal" className="border rounded-lg">
+          <AccordionItem value="terminal">
             <AccordionTrigger className="px-4 py-3 hover:no-underline">
               <div className="flex items-center gap-2">
                 <h4 className="text-sm font-medium">{t('terminal')}</h4>

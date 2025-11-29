@@ -28,8 +28,8 @@ export function SettingsItem({
         className
       )}
     >
-      <div className="flex items-center gap-3">
-        <div className="p-1.5 rounded-md transition-all duration-200">
+      <div className="flex items-center gap-2.5">
+        <div className="rounded-md transition-all duration-200">
           <Icon className={cn('h-4 w-4 flex-shrink-0 transition-colors duration-200', {
             'text-primary': isActive,
             'text-muted-foreground group-hover:text-foreground': !isActive,

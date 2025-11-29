@@ -12,9 +12,12 @@ import { useSeoMeta } from '@unhead/react';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useUserRepositories } from '@/hooks/useUserRepositories';
+import { useContacts } from '@/hooks/useContacts';
+import { useFollowedRepositories } from '@/hooks/useFollowedRepositories';
 import { RepositoryCard } from '@/components/RepositoryCard';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent } from '@/components/ui/card';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 
 export default function Clone() {
   const { t } = useTranslation();
@@ -29,6 +32,9 @@ export default function Clone() {
   const [isZipDialogOpen, setIsZipDialogOpen] = useState(false);
   const { user } = useCurrentUser();
   const { data: repositories = [], isLoading: isLoadingRepos } = useUserRepositories(user?.pubkey);
+  const { data: contacts = [] } = useContacts(user?.pubkey);
+  const { data: followedRepositories = [], isLoading: isLoadingFollowedRepos } = useFollowedRepositories(contacts);
+  const [activeTab, setActiveTab] = useState<'my-projects' | 'follows'>('my-projects');
 
   useSeoMeta({
     title: `${t('importRepository')} - Shakespeare`,
@@ -284,44 +290,125 @@ export default function Clone() {
         onOpenChange={setIsZipDialogOpen}
       />
 
-      {/* User's NIP-34 Repositories */}
-      {user && (isLoadingRepos || repositories.length > 0) && (
+      {/* NIP-34 Repositories with Tabs */}
+      {user && (
         <div className="mt-16 max-w-7xl mx-auto">
-          {isLoadingRepos ? (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <Card key={i} className="h-full flex flex-col">
-                  <CardContent className="p-6 flex flex-col flex-1">
-                    <div className="flex items-start gap-3 mb-4">
-                      <Skeleton className="w-12 h-12 rounded-lg" />
-                      <div className="flex-1 space-y-2">
-                        <Skeleton className="h-5 w-32" />
-                        <Skeleton className="h-4 w-24" />
-                      </div>
-                    </div>
-                    <div className="space-y-2 mb-4">
-                      <Skeleton className="h-4 w-full" />
-                      <Skeleton className="h-4 w-4/5" />
-                    </div>
-                    <div className="flex gap-1 mb-4">
-                      <Skeleton className="h-5 w-16" />
-                      <Skeleton className="h-5 w-20" />
-                    </div>
-                    <div className="mt-auto flex gap-2">
-                      <Skeleton className="h-9 flex-1" />
-                      <Skeleton className="h-9 w-9" />
+          <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'my-projects' | 'follows')}>
+            <TabsList className="mb-6">
+              <TabsTrigger value="my-projects">
+                My Projects
+              </TabsTrigger>
+              <TabsTrigger value="follows">
+                Follows
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="my-projects">
+              {isLoadingRepos ? (
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <Card key={i} className="h-full flex flex-col">
+                      <CardContent className="p-6 flex flex-col flex-1">
+                        <div className="flex items-start gap-3 mb-4">
+                          <Skeleton className="w-12 h-12 rounded-lg" />
+                          <div className="flex-1 space-y-2">
+                            <Skeleton className="h-5 w-32" />
+                            <Skeleton className="h-4 w-24" />
+                          </div>
+                        </div>
+                        <div className="space-y-2 mb-4">
+                          <Skeleton className="h-4 w-full" />
+                          <Skeleton className="h-4 w-4/5" />
+                        </div>
+                        <div className="flex gap-1 mb-4">
+                          <Skeleton className="h-5 w-16" />
+                          <Skeleton className="h-5 w-20" />
+                        </div>
+                        <div className="mt-auto flex gap-2">
+                          <Skeleton className="h-9 flex-1" />
+                          <Skeleton className="h-9 w-9" />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : repositories.length > 0 ? (
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {repositories.map((repo) => (
+                    <RepositoryCard key={repo.id} repo={repo} />
+                  ))}
+                </div>
+              ) : (
+                <Card className="border-dashed">
+                  <CardContent className="py-12 px-8 text-center">
+                    <div className="max-w-sm mx-auto space-y-4">
+                      <p className="text-muted-foreground">
+                        No repositories found. Publish your first repository to Nostr to see it here.
+                      </p>
                     </div>
                   </CardContent>
                 </Card>
-              ))}
-            </div>
-          ) : (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {repositories.map((repo) => (
-                <RepositoryCard key={repo.id} repo={repo} />
-              ))}
-            </div>
-          )}
+              )}
+            </TabsContent>
+
+            <TabsContent value="follows">
+              {isLoadingFollowedRepos ? (
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <Card key={i} className="h-full flex flex-col">
+                      <CardContent className="p-6 flex flex-col flex-1">
+                        <div className="flex items-start gap-3 mb-4">
+                          <Skeleton className="w-12 h-12 rounded-lg" />
+                          <div className="flex-1 space-y-2">
+                            <Skeleton className="h-5 w-32" />
+                            <Skeleton className="h-4 w-24" />
+                          </div>
+                        </div>
+                        <div className="space-y-2 mb-4">
+                          <Skeleton className="h-4 w-full" />
+                          <Skeleton className="h-4 w-4/5" />
+                        </div>
+                        <div className="flex gap-1 mb-4">
+                          <Skeleton className="h-5 w-16" />
+                          <Skeleton className="h-5 w-20" />
+                        </div>
+                        <div className="mt-auto flex gap-2">
+                          <Skeleton className="h-9 flex-1" />
+                          <Skeleton className="h-9 w-9" />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : followedRepositories.length > 0 ? (
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {followedRepositories.map((repo) => (
+                    <RepositoryCard key={repo.id} repo={repo} />
+                  ))}
+                </div>
+              ) : contacts.length > 0 ? (
+                <Card className="border-dashed">
+                  <CardContent className="py-12 px-8 text-center">
+                    <div className="max-w-sm mx-auto space-y-4">
+                      <p className="text-muted-foreground">
+                        None of the people you follow have published repositories yet.
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card className="border-dashed">
+                  <CardContent className="py-12 px-8 text-center">
+                    <div className="max-w-sm mx-auto space-y-4">
+                      <p className="text-muted-foreground">
+                        You're not following anyone yet. Follow people on Nostr to see their repositories here.
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+          </Tabs>
         </div>
       )}
     </AppLayout>

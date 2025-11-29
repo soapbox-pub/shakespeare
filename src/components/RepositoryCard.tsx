@@ -1,18 +1,12 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import {
-  GitBranch,
-  ExternalLink,
-  Copy,
-  Check,
-} from 'lucide-react';
+import { GitBranch } from 'lucide-react';
 import type { Repository } from '@/hooks/useUserRepositories';
 import { useAuthor } from '@/hooks/useAuthor';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { genUserName } from '@/lib/genUserName';
-import { useToast } from '@/hooks/useToast';
 import { useNavigate } from 'react-router-dom';
 
 interface RepositoryCardProps {
@@ -21,36 +15,13 @@ interface RepositoryCardProps {
 
 export function RepositoryCard({ repo }: RepositoryCardProps) {
   const { data: authorData } = useAuthor(repo.pubkey);
-  const { toast } = useToast();
   const navigate = useNavigate();
-  const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
 
   const displayName = authorData?.metadata?.name || genUserName(repo.pubkey);
   const profileImage = authorData?.metadata?.picture;
 
   // Get the first clone URL (prefer HTTPS)
   const primaryCloneUrl = repo.cloneUrls.find(url => url.startsWith('https://')) || repo.cloneUrls[0];
-  const webUrl = repo.webUrls[0];
-
-  const handleCopyUrl = async (url: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    try {
-      await navigator.clipboard.writeText(url);
-      setCopiedUrl(url);
-      toast({
-        title: 'Copied to clipboard',
-        description: 'Repository URL copied successfully',
-      });
-      setTimeout(() => setCopiedUrl(null), 2000);
-    } catch (error) {
-      console.error('Failed to copy URL:', error);
-      toast({
-        title: 'Failed to copy',
-        description: 'Could not copy URL to clipboard',
-        variant: 'destructive',
-      });
-    }
-  };
 
   const handleClone = () => {
     if (primaryCloneUrl) {
@@ -113,42 +84,15 @@ export function RepositoryCard({ repo }: RepositoryCardProps) {
         )}
 
         {/* Actions */}
-        <div className="mt-auto flex gap-2">
+        <div className="mt-auto">
           {primaryCloneUrl && (
-            <>
-              <Button
-                size="sm"
-                className="flex-1"
-                onClick={handleClone}
-              >
-                <GitBranch className="h-4 w-4 mr-2" />
-                Clone
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                className="px-3"
-                onClick={(e) => handleCopyUrl(primaryCloneUrl, e)}
-              >
-                {copiedUrl === primaryCloneUrl ? (
-                  <Check className="h-4 w-4" />
-                ) : (
-                  <Copy className="h-4 w-4" />
-                )}
-              </Button>
-            </>
-          )}
-          {webUrl && (
             <Button
               size="sm"
-              variant="outline"
-              className="px-3"
-              asChild
-              onClick={(e) => e.stopPropagation()}
+              className="w-full"
+              onClick={handleClone}
             >
-              <a href={webUrl} target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="h-4 w-4" />
-              </a>
+              <GitBranch className="h-4 w-4 mr-2" />
+              Clone
             </Button>
           )}
         </div>

@@ -19,6 +19,7 @@ export interface MakeSystemPromptOpts {
   metadata?: NostrMetadata;
   repositoryUrl?: string;
   template?: string;
+  projectTemplate?: { name: string; description: string; url: string };
 }
 
 /**
@@ -34,7 +35,10 @@ You are operating within **Shakespeare**, an AI-powered website builder that all
 - **Current Date**: {{ date }}
 - **Current Page**: {{ location.href }}
 - **Current Working Directory**: {{ cwd }}
-- **Repository URL**: {{ repositoryUrl }}
+- **Repository URL**: {{ repositoryUrl }}{% if projectTemplate %}
+- **Project Template**: {{ projectTemplate.name }}{% endif %}
+
+Users can add or remove templates in Settings > System (\`{{ location.origin }}/settings/system\`).
 
 ## What Shakespeare Is
 
@@ -149,13 +153,24 @@ As the AI assistant in Shakespeare, you help users by:
 
 The user expects you to handle all technical implementation while they focus on describing their vision and requirements. You can leverage the knowledge from other projects in the VFS to build better, more sophisticated applications.
 
-**Always commit your code changes** after completing work on a feature, fix, or meaningful set of changes.{% if tools.length > 0 %}
+**Always commit your code changes** after completing work on a feature, fix, or meaningful set of changes.
+
+## Project Templates
+
+When a project is first created, you (the AI) choose an appropriate template from the available options based on the user's requirements. Once a project is created, the template cannot be changed—the user would need to create a new project to use a different template.
+
+**Available Templates:**
+{% for template in config.templates %}
+- **{{ template.name }}**{% if projectTemplate and projectTemplate.url === template.url %} **(CURRENT TEMPLATE)**{% endif %}: {{ template.description }}
+  - URL: {{ template.url }}
+{% endfor %}
 
 ## Available Tools
-
+{% if tools.length > 0 %}
 You have access to the following tools:
 {% for tool in tools %}{% if tool.type === 'function' %}
-- **{{ tool.function.name }}**: {{ tool.function.description or 'No description available' }}{% endif %}{% endfor %}{% endif %}
+- **{{ tool.function.name }}**: {{ tool.function.description or 'No description available' }}{% endif %}{% endfor %}{% else %}
+There are no tools available to you.{% endif %}
 
 ## Skills
 
@@ -170,7 +185,7 @@ Available skills:
 
 **Important**: When a task matches a skill's description, you MUST use that skill by calling the skill tool. Skills contain specialized workflows and best practices for specific tasks.{% else %}No skills are currently configured. Skills are reusable AI workflows that can be added via plugins.{% endif %}
 
-Users can configure skills in Settings > AI ({{ location.origin }}/settings/ai) by adding plugins that contain skills.{% if config.corsProxy %}
+Users can configure skills in Settings > AI (\`{{ location.origin }}/settings/ai\`) by adding plugins that contain skills.{% if config.corsProxy %}
 
 ## Working Around CORS Issues
 
@@ -207,7 +222,7 @@ Note: the badge should be displayed at its natural size. It is recommended to om
 {{ AGENTS }}{% endif %}`;
 
 export async function makeSystemPrompt(opts: MakeSystemPromptOpts): Promise<string> {
-  const { tools, mode, fs, cwd, config, defaultConfig, user, metadata, repositoryUrl, template } = opts;
+  const { tools, mode, fs, cwd, config, defaultConfig, user, metadata, repositoryUrl, template, projectTemplate } = opts;
 
   // Add current date
   const date = new Date().toLocaleDateString("en-US", {
@@ -288,6 +303,7 @@ export async function makeSystemPrompt(opts: MakeSystemPromptOpts): Promise<stri
     editUrl,
     README: readmeText,
     AGENTS: agentsText,
+    projectTemplate,
   };
 
   // Render the template with the context

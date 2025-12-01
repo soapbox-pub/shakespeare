@@ -266,6 +266,16 @@ export class SessionManager {
           // No repository URL available
         }
 
+        // Get project template metadata if available
+        let projectTemplate: { name: string; description: string; url: string } | undefined;
+        try {
+          const dotai = new DotAI(this.fs, `${config.fsPathProjects}/${projectId}`);
+          const template = await dotai.readTemplate();
+          projectTemplate = template || undefined;
+        } catch {
+          // Template metadata not available
+        }
+
         const systemPrompt = await makeSystemPrompt({
           cwd: `${config.fsPathProjects}/${projectId}`,
           fs: this.fs,
@@ -277,6 +287,7 @@ export class SessionManager {
           metadata,
           repositoryUrl,
           template: config.systemPrompt,
+          projectTemplate,
         });
 
         // Helper function to filter out unsupported image formats (keep only JPG/JPEG/PNG)

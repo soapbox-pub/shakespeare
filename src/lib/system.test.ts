@@ -185,10 +185,11 @@ describe('makeSystemPrompt', () => {
   });
 
   describe('tools section', () => {
-    it('should not include tools section when no tools are provided', async () => {
+    it('should show no tools message when no tools are provided', async () => {
       const result = await makeSystemPrompt(baseOpts);
 
-      expect(result).not.toContain('## Available Tools');
+      expect(result).toContain('## Available Tools');
+      expect(result).toContain('There are no tools available to you.');
     });
 
     it('should list available tools with descriptions', async () => {
@@ -425,6 +426,7 @@ describe('makeSystemPrompt', () => {
       expect(result).toContain('## User Actions');
       expect(result).toContain('## Virtual Filesystem Structure');
       expect(result).toContain('## Your Role');
+      expect(result).toContain('## Project Templates');
       expect(result).toContain('## Skills');
       expect(result).toContain('## Working Around CORS Issues');
       expect(result).toContain('## Edit with Shakespeare');
@@ -518,6 +520,100 @@ Skills: {{ skills.length }}`;
       expect(result).toContain('CWD: /projects/test-project');
       expect(result).toContain('Origin: http://localhost:3000');
       expect(result).toContain('Skills: 0');
+    });
+  });
+
+  describe('project template metadata', () => {
+    it('should include template name when projectTemplate is provided', async () => {
+      const projectTemplate = {
+        name: 'MKStack',
+        description: 'Build Nostr clients with React.',
+        url: 'https://gitlab.com/soapbox-pub/mkstack.git',
+      };
+
+      const result = await makeSystemPrompt({
+        ...baseOpts,
+        projectTemplate,
+      });
+
+      expect(result).toContain('**Project Template**: MKStack');
+    });
+
+    it('should not include template section when projectTemplate is undefined', async () => {
+      const result = await makeSystemPrompt(baseOpts);
+
+      expect(result).not.toContain('**Project Template**:');
+    });
+
+    it('should make projectTemplate accessible in custom templates', async () => {
+      const projectTemplate = {
+        name: 'MKStack',
+        description: 'Build Nostr clients with React.',
+        url: 'https://gitlab.com/soapbox-pub/mkstack.git',
+      };
+
+      const customTemplate = `{% if projectTemplate %}Template: {{ projectTemplate.name }} - {{ projectTemplate.description }}{% else %}No template{% endif %}`;
+
+      const result = await makeSystemPrompt({
+        ...baseOpts,
+        projectTemplate,
+        template: customTemplate,
+      });
+
+      expect(result).toContain('Template: MKStack - Build Nostr clients with React.');
+    });
+
+    it('should handle missing projectTemplate in custom templates', async () => {
+      const customTemplate = `{% if projectTemplate %}Template: {{ projectTemplate.name }}{% else %}No template{% endif %}`;
+
+      const result = await makeSystemPrompt({
+        ...baseOpts,
+        template: customTemplate,
+      });
+
+      expect(result).toContain('No template');
+    });
+
+    it('should list all available templates from config', async () => {
+      const result = await makeSystemPrompt(baseOpts);
+
+      expect(result).toContain('## Project Templates');
+      expect(result).toContain('**Available Templates:**');
+      expect(result).toContain('**MKStack**');
+      expect(result).toContain('Build Nostr clients with React.');
+      expect(result).toContain('https://gitlab.com/soapbox-pub/mkstack.git');
+      expect(result).toContain('Settings > System');
+    });
+
+    it('should highlight current template when it matches a configured template', async () => {
+      const projectTemplate = {
+        name: 'MKStack',
+        description: 'Build Nostr clients with React.',
+        url: 'https://gitlab.com/soapbox-pub/mkstack.git',
+      };
+
+      const result = await makeSystemPrompt({
+        ...baseOpts,
+        projectTemplate,
+      });
+
+      expect(result).toContain('**MKStack** **(CURRENT TEMPLATE)**');
+    });
+
+    it('should not highlight any template when current template does not match configured templates', async () => {
+      const projectTemplate = {
+        name: 'Custom Template',
+        description: 'A custom template.',
+        url: 'https://example.com/custom-template.git',
+      };
+
+      const result = await makeSystemPrompt({
+        ...baseOpts,
+        projectTemplate,
+      });
+
+      expect(result).toContain('**MKStack**');
+      expect(result).not.toContain('**(CURRENT TEMPLATE)**');
     });
   });
 });

@@ -445,9 +445,8 @@ export function SystemSettings() {
                       </div>
                       <div>
                         <Label htmlFor={`template-description-${index}`} className="text-xs">Description</Label>
-                        <Input
+                        <Textarea
                           id={`template-description-${index}`}
-                          type="text"
                           placeholder="Build Nostr clients with React."
                           value={template.description}
                           onChange={(e) => {
@@ -459,6 +458,7 @@ export function SystemSettings() {
                               templates: newTemplates,
                             }));
                           }}
+                          className="min-h-[80px]"
                         />
                       </div>
                       <div>

@@ -13,7 +13,11 @@ interface UseGenerateProjectInfoOptions {
 
 interface ProjectInfo {
   projectId: string;
-  templateUrl: string;
+  template: {
+    name: string;
+    description: string;
+    url: string;
+  };
 }
 
 export function useGenerateProjectInfo({ onError }: UseGenerateProjectInfoOptions = {}) {
@@ -24,7 +28,7 @@ export function useGenerateProjectInfo({ onError }: UseGenerateProjectInfoOption
   const projectsManager = useProjectsManager();
 
   // Helper function to generate untitled project name
-  const fallbackWithUntitled = useCallback(async (templateUrl: string): Promise<ProjectInfo> => {
+  const fallbackWithUntitled = useCallback(async (template: { url: string; name: string; description: string }): Promise<ProjectInfo> => {
     let fallbackId = 'untitled';
     let counter = 1;
 
@@ -40,7 +44,7 @@ export function useGenerateProjectInfo({ onError }: UseGenerateProjectInfoOption
 
     return {
       projectId: fallbackId,
-      templateUrl,
+      template,
     };
   }, [projectsManager]);
 
@@ -126,8 +130,7 @@ You MUST call the create_project tool with your choices.`;
       if (!selectedTemplate) {
         // Fallback to first template if invalid URL selected
         console.warn(`Invalid template URL selected: ${templateUrl}, falling back to first template`);
-        const fallbackTemplate = config.templates[0];
-        return await fallbackWithUntitled(fallbackTemplate.url);
+        return await fallbackWithUntitled(config.templates[0]);
       }
 
       // Validate the generated project ID
@@ -139,14 +142,14 @@ You MUST call the create_project tool with your choices.`;
           // Valid and unique project ID
           return {
             projectId,
-            templateUrl: selectedTemplate.url,
+            template: selectedTemplate,
           };
         }
       }
 
       // If we reach here, either the regex failed or the project already exists
       // Fall back to "untitled" with number suffixes
-      return await fallbackWithUntitled(selectedTemplate.url);
+      return await fallbackWithUntitled(selectedTemplate);
     } catch (error) {
       // On any error, fall back to first template with untitled name
       console.error('Error generating project info:', error);
@@ -157,7 +160,7 @@ You MUST call the create_project tool with your choices.`;
         throw new Error(errorMessage);
       }
 
-      return await fallbackWithUntitled(config.templates[0].url);
+      return await fallbackWithUntitled(config.templates[0]);
     } finally {
       setIsLoading(false);
     }

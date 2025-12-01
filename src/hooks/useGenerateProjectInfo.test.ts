@@ -264,7 +264,11 @@ describe('useGenerateProjectInfo', () => {
 
     expect(projectInfo).toEqual({
       projectId: 'test-project-name',
-      templateUrl: 'https://gitlab.com/soapbox-pub/mkstack.git'
+      template: {
+        name: 'MKStack',
+        description: 'Build Nostr clients with React.',
+        url: 'https://gitlab.com/soapbox-pub/mkstack.git'
+      }
     });
     expect(mockParseProviderModel).toHaveBeenCalledWith('openai/gpt-4', [
       { id: 'openai', apiKey: 'test-key', baseURL: 'https://api.openai.com/v1' }
@@ -325,7 +329,7 @@ describe('useGenerateProjectInfo', () => {
 
     const projectInfo = await result.current.generateProjectInfo('openai/gpt-4', 'test prompt');
 
-    expect(projectInfo.templateUrl).toBe('https://gitlab.com/soapbox-pub/mkstack.git');
+    expect(projectInfo.template.url).toBe('https://gitlab.com/soapbox-pub/mkstack.git');
     expect(projectInfo.projectId).toBe('untitled');
   });
 
@@ -363,7 +367,7 @@ describe('useGenerateProjectInfo', () => {
     const projectInfo = await result.current.generateProjectInfo('openai/gpt-4', 'test prompt');
 
     expect(projectInfo.projectId).toBe('untitled');
-    expect(projectInfo.templateUrl).toBe('https://gitlab.com/soapbox-pub/mkstack.git');
+    expect(projectInfo.template.url).toBe('https://gitlab.com/soapbox-pub/mkstack.git');
     expect(mockGetProject).toHaveBeenCalledTimes(2);
   });
 
@@ -450,7 +454,11 @@ describe('useGenerateProjectInfo', () => {
 
     expect(projectInfo).toEqual({
       projectId: 'vanilla-app',
-      templateUrl: 'https://github.com/example/vanilla-template.git'
+      template: {
+        name: 'VanillaJS',
+        description: 'Simple vanilla JavaScript template.',
+        url: 'https://github.com/example/vanilla-template.git'
+      }
     });
   });
 });

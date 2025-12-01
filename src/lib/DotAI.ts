@@ -312,4 +312,50 @@ export class DotAI {
       console.warn(`Failed to write .git/shakespeare/COST file: ${error}`);
     }
   }
+
+  /**
+   * Read template metadata from .git/shakespeare/template.json file
+   * @returns Template metadata object or null if not found or invalid
+   */
+  async readTemplate(): Promise<{ name: string; description: string; url: string } | null> {
+    try {
+      const templatePath = join(this.workingDir, ".git", "shakespeare", "template.json");
+      const content = await this.fs.readFile(templatePath, "utf8");
+      const template = JSON.parse(content);
+
+      // Validate that required fields exist
+      if (template && typeof template.name === 'string' &&
+          typeof template.description === 'string' &&
+          typeof template.url === 'string') {
+        return {
+          name: template.name,
+          description: template.description,
+          url: template.url,
+        };
+      }
+
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Write template metadata to .git/shakespeare/template.json file
+   * @param template Template metadata with name, description, and url
+   */
+  async writeTemplate(template: { name: string; description: string; url: string }): Promise<void> {
+    const shakespeareDir = join(this.workingDir, ".git", "shakespeare");
+    const templatePath = join(shakespeareDir, "template.json");
+
+    try {
+      // Ensure .git/shakespeare directory exists
+      await this.fs.mkdir(shakespeareDir, { recursive: true });
+
+      // Write the template metadata as formatted JSON
+      await this.fs.writeFile(templatePath, JSON.stringify(template, null, 2) + "\n");
+    } catch (error) {
+      console.warn(`Failed to write .git/shakespeare/template.json file: ${error}`);
+    }
+  }
 }

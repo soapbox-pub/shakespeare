@@ -34,6 +34,8 @@ import {
   Trash2,
   Save,
   DollarSign,
+  ExternalLink,
+  FileCode,
 } from 'lucide-react';
 import JSZip from 'jszip';
 import { Separator } from './ui/separator';
@@ -52,6 +54,7 @@ export function ProjectDetailsDialog({ project, open, onOpenChange, onProjectDel
   const [isRenaming, setIsRenaming] = useState(false);
   const [newProjectName, setNewProjectName] = useState(project.id);
   const [totalCost, setTotalCost] = useState<number | null>(null);
+  const [templateInfo, setTemplateInfo] = useState<{ name: string; description: string; url: string } | null>(null);
   const { toast } = useToast();
   const { fs } = useFS();
   const { projectsPath } = useFSPaths();
@@ -65,21 +68,28 @@ export function ProjectDetailsDialog({ project, open, onOpenChange, onProjectDel
     setIsRenaming(false);
   }, [project.id]);
 
-  // Load total project cost
+  // Load total project cost and template info
   useEffect(() => {
-    const loadCost = async () => {
+    const loadProjectData = async () => {
       try {
         const dotAI = new DotAI(fs, `${projectsPath}/${project.id}`);
+
+        // Load cost
         const cost = await dotAI.readCost();
         setTotalCost(cost);
+
+        // Load template info
+        const template = await dotAI.readTemplate();
+        setTemplateInfo(template);
       } catch (error) {
-        console.warn('Failed to load project cost:', error);
+        console.warn('Failed to load project data:', error);
         setTotalCost(null);
+        setTemplateInfo(null);
       }
     };
 
     if (open) {
-      loadCost();
+      loadProjectData();
     }
   }, [fs, projectsPath, project.id, open]);
 
@@ -253,6 +263,23 @@ export function ProjectDetailsDialog({ project, open, onOpenChange, onProjectDel
               <DollarSign className="h-4 w-4 text-muted-foreground" />
               <span className="text-muted-foreground">Total Cost:</span>
               <span className="font-mono">${totalCost.toFixed(6)}</span>
+            </div>
+          )}
+
+          {/* Template Info */}
+          {templateInfo && (
+            <div className="flex items-center gap-2 text-sm">
+              <FileCode className="h-4 w-4 text-muted-foreground" />
+              <span className="text-muted-foreground">Template:</span>
+              <a
+                href={templateInfo.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-primary hover:underline"
+              >
+                {templateInfo.name}
+                <ExternalLink className="h-3 w-3" />
+              </a>
             </div>
           )}
 

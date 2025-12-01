@@ -224,7 +224,7 @@ export default function Index() {
     setIsCreating(true);
     try {
       // Use AI to generate project ID and select template
-      const { projectId, templateUrl } = await generateProjectInfo(providerModel, prompt.trim());
+      const { projectId, template } = await generateProjectInfo(providerModel, prompt.trim());
 
       // Add model to recently used when creating project with AI
       addRecentlyUsedModel(providerModel.trim());
@@ -232,7 +232,7 @@ export default function Index() {
       // Create project with AI-generated ID and selected template
       const project = await projectsManager.createProject(
         prompt.trim(),
-        templateUrl,
+        template.url,
         projectId,
         () => {
           // Show a toast if template update fails (non-critical)
@@ -241,7 +241,8 @@ export default function Index() {
             description: t('templateUpdateFailedDescription'),
             variant: 'default',
           });
-        }
+        },
+        { name: template.name, description: template.description }
       );
 
       // Build message content from input and attached files

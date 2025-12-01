@@ -3,6 +3,7 @@ import JSZip from 'jszip';
 import { Git } from '@/lib/git';
 import type { JSRuntimeFS } from '@/lib/JSRuntime';
 import { ensurePersistentStorage } from '@/lib/persistentStorage';
+import { DotAI } from '@/lib/DotAI';
 
 // Polyfill Buffer for browser
 if (typeof window !== 'undefined') {
@@ -197,7 +198,7 @@ export class ProjectsManager {
     }
   }
 
-  async createProject(name: string, templateUrl: string, customId?: string, onTemplateUpdateError?: (error: Error) => void): Promise<Project> {
+  async createProject(name: string, templateUrl: string, customId?: string, onTemplateUpdateError?: (error: Error) => void, templateMetadata?: { name: string; description: string }): Promise<Project> {
     const id = customId || await this.generateUniqueProjectId(name);
 
     // Check if project with this ID already exists when using custom ID
@@ -229,6 +230,21 @@ export class ProjectsManager {
         dir: projectPath,
         defaultBranch: 'main',
       });
+
+      // Save template metadata to .git/shakespeare/template.json if provided
+      if (templateMetadata) {
+        try {
+          const dotAI = new DotAI(this.fs, projectPath);
+          await dotAI.writeTemplate({
+            name: templateMetadata.name,
+            description: templateMetadata.description,
+            url: templateUrl,
+          });
+        } catch (error) {
+          // Don't fail project creation if template metadata save fails
+          console.warn('Failed to save template metadata:', error);
+        }
+      }
 
       // Add all files to git
       const files = await this.getAllFiles(projectPath);

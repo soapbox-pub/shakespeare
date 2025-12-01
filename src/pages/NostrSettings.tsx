@@ -3,9 +3,9 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Separator } from '@/components/ui/separator';
 import { RelayListManager } from '@/components/RelayListManager';
 import SimpleLoginDialog from '@/components/auth/SimpleLoginDialog';
 import SimpleSignupDialog from '@/components/auth/SimpleSignupDialog';
@@ -168,16 +168,14 @@ export function NostrSettings() {
         </div>
       )}
 
-      <div className="space-y-6">
+      <div className="space-y-6 max-w-xl">
         {/* Account Management */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              {t('nostrAccounts')}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <Users className="h-5 w-5 text-primary" />
+            <h3 className="text-lg font-semibold">{t('nostrAccounts')}</h3>
+          </div>
+          <div className="space-y-4">
             {isLoading ? (
               <div className="border rounded-lg overflow-hidden">
                 {/* Loading skeleton for accounts */}
@@ -287,31 +285,29 @@ export function NostrSettings() {
                 </div>
               </>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
+
+        <Separator />
 
         {/* Relay Configuration */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Wifi className="h-5 w-5" />
-              {t('relayConfiguration')}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <RelayListManager />
-          </CardContent>
-        </Card>
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <Wifi className="h-5 w-5 text-primary" />
+            <h3 className="text-lg font-semibold">{t('relayConfiguration')}</h3>
+          </div>
+          <RelayListManager />
+        </div>
+
+        <Separator />
 
         {/* Nostr Git Servers */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Server className="h-5 w-5" />
-              {t('nostrGitServers')}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <Server className="h-5 w-5 text-primary" />
+            <h3 className="text-lg font-semibold">{t('nostrGitServers')}</h3>
+          </div>
+          <div className="space-y-4">
             {/* Server List */}
             <div className="space-y-2">
               {config.ngitServers.map((hostname) => (
@@ -365,8 +361,8 @@ export function NostrSettings() {
                 {t('addServer')}
               </Button>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
 
       {/* Login Dialog */}

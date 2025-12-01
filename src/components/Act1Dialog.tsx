@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useAICredits } from '@/hooks/useAICredits';
-import { getShakespeareProvider } from '@/lib/aiProviderPresets';
+import { getPresetProvider, type PresetProvider } from '@/lib/aiProviderPresets';
 
 interface Act1DialogProps {
   open: boolean;
@@ -13,6 +13,15 @@ interface Act1DialogProps {
 }
 
 type DialogStep = 'welcome' | 'migration' | 'credits' | 'conclusion';
+
+// Helper function to get the Shakespeare provider preset
+function getShakespeareProvider(): PresetProvider {
+  const shakespeare = getPresetProvider("shakespeare");
+  if (!shakespeare) {
+    throw new Error("Shakespeare provider preset not found");
+  }
+  return shakespeare;
+}
 
 export function Act1Dialog({ open, onOpenChange }: Act1DialogProps) {
   const [step, setStep] = useState<DialogStep>('welcome');

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { AI_PROVIDER_PRESETS, getPresetProvider, getShakespeareProvider } from './aiProviderPresets';
+import { AI_PROVIDER_PRESETS, getPresetProvider } from './aiProviderPresets';
 
 describe('AI Provider Presets', () => {
   it('should export preset providers array', () => {
@@ -28,14 +28,6 @@ describe('AI Provider Presets', () => {
     
     const nonExistent = getPresetProvider('non-existent');
     expect(nonExistent).toBeUndefined();
-  });
-
-  it('should get Shakespeare provider', () => {
-    const shakespeare = getShakespeareProvider();
-    expect(shakespeare).toBeDefined();
-    expect(shakespeare.id).toBe('shakespeare');
-    expect(shakespeare.name).toBe('Shakespeare AI');
-    expect(shakespeare.nostr).toBe(true);
   });
 
   it('should have valid preset structure', () => {

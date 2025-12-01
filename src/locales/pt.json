@@ -87,6 +87,7 @@
   "remove": "Remover",
   "retry": "Tentar novamente",
   "name": "Nome",
+  "id": "ID",
   "email": "Email",
   "buildNostrApps": "Construa aplicativos com IA",
   "whatToBuild": "O que você gostaria de construir?",

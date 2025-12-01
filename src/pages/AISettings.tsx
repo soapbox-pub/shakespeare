@@ -38,7 +38,7 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useAppContext } from '@/hooks/useAppContext';
 import { useNavigate, Link } from 'react-router-dom';
 import type { AIProvider } from '@/contexts/AISettingsContext';
-import { AI_PROVIDER_PRESETS, type PresetProvider } from '@/lib/aiProviderPresets';
+import { AI_PROVIDER_PRESETS, type PresetProvider, getProviderDisplayName } from '@/lib/aiProviderPresets';
 import { ExternalFavicon } from '@/components/ExternalFavicon';
 import { MCPServersSection } from '@/components/MCPServersSection';
 import { PluginsSection } from '@/components/PluginsSection';
@@ -99,7 +99,7 @@ function SortableProviderItem({ provider, preset, onRemove, onSetProvider, onOpe
             <Bot size={16} />
           )}
           <span className="font-medium">
-            {preset?.name || provider.id}
+            {getProviderDisplayName(provider)}
           </span>
           <div className="ml-auto">
             <CreditsBadge
@@ -111,6 +111,15 @@ function SortableProviderItem({ provider, preset, onRemove, onSetProvider, onOpe
       </AccordionTrigger>
       <AccordionContent className="px-4 pb-4">
         <div className="space-y-3">
+          <div className="grid gap-2">
+            <Label htmlFor={`${provider.id}-name`}>{t('name')}</Label>
+            <Input
+              id={`${provider.id}-name`}
+              placeholder={preset?.name || provider.id}
+              value={provider.name || ''}
+              onChange={(e) => onSetProvider({ ...provider, name: e.target.value || undefined })}
+            />
+          </div>
           <div className="grid gap-2">
             <Label htmlFor={`${provider.id}-baseURL`}>{t('baseUrl')}</Label>
             <Input
@@ -177,6 +186,14 @@ function SortableProviderItem({ provider, preset, onRemove, onSetProvider, onOpe
   );
 }
 
+// Helper function to generate ID from name
+function generateIdFromName(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-') // Replace non-alphanumeric chars with hyphens
+    .replace(/^-+|-+$/g, ''); // Remove leading/trailing hyphens
+}
+
 export function AISettings() {
   const { t } = useTranslation();
   const { settings, setProvider, removeProvider, setProviders } = useAISettings();
@@ -185,6 +202,8 @@ export function AISettings() {
   const { user } = useCurrentUser();
   const { config, defaultConfig, updateConfig } = useAppContext();
   const [customProviderName, setCustomProviderName] = useState('');
+  const [customProviderId, setCustomProviderId] = useState('');
+  const [customIdManuallyEdited, setCustomIdManuallyEdited] = useState(false);
   const [customBaseURL, setCustomBaseURL] = useState('');
   const [customApiKey, setCustomApiKey] = useState('');
   const [customAuthMethod, setCustomAuthMethod] = useState<'api-key' | 'nostr'>('api-key');
@@ -224,6 +243,7 @@ export function AISettings() {
 
     const newProvider: AIProvider = {
       id: preset.id,
+      name: preset.name,
       baseURL: preset.baseURL,
     };
 
@@ -252,10 +272,11 @@ export function AISettings() {
   };
 
   const handleAddCustomProvider = () => {
-    if (!customProviderName.trim() || !customBaseURL.trim()) return;
+    if (!customProviderName.trim() || !customProviderId.trim() || !customBaseURL.trim()) return;
 
     const newProvider: AIProvider = {
-      id: customProviderName.trim(),
+      id: customProviderId.trim(),
+      name: customProviderName.trim(),
       baseURL: customBaseURL.trim(),
       apiKey: customAuthMethod === 'nostr' ? undefined : customApiKey.trim(),
       nostr: customAuthMethod === 'nostr' || undefined,
@@ -266,6 +287,8 @@ export function AISettings() {
     setProvider(newProvider);
 
     setCustomProviderName('');
+    setCustomProviderId('');
+    setCustomIdManuallyEdited(false);
     setCustomBaseURL('');
     setCustomApiKey('');
     setCustomAuthMethod('api-key');
@@ -510,17 +533,45 @@ export function AISettings() {
               </AccordionTrigger>
               <AccordionContent className="px-4 pb-4">
                 <div className="space-y-3">
-                  <div className="grid gap-2">
-                    <Label htmlFor="custom-name">{t('providerName')}</Label>
-                    <Input
-                      id="custom-name"
-                      placeholder="e.g., my-custom-api"
-                      value={customProviderName}
-                      onChange={(e) => setCustomProviderName(e.target.value)}
-                    />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="grid gap-2">
+                      <Label htmlFor="custom-name">
+                        {t('name')} <span className="text-destructive">*</span>
+                      </Label>
+                      <Input
+                        id="custom-name"
+                        placeholder="e.g., My Custom API"
+                        value={customProviderName}
+                        onChange={(e) => {
+                          const newName = e.target.value;
+                          setCustomProviderName(newName);
+
+                          // Auto-generate ID from name if ID hasn't been manually edited
+                          if (!customIdManuallyEdited) {
+                            setCustomProviderId(generateIdFromName(newName));
+                          }
+                        }}
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="custom-id">
+                        {t('id')} <span className="text-destructive">*</span>
+                      </Label>
+                      <Input
+                        id="custom-id"
+                        placeholder="e.g., my-custom-api"
+                        value={customProviderId}
+                        onChange={(e) => {
+                          setCustomProviderId(e.target.value);
+                          setCustomIdManuallyEdited(true);
+                        }}
+                      />
+                    </div>
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="custom-baseurl">{t('baseUrl')}</Label>
+                    <Label htmlFor="custom-baseurl">
+                      {t('baseUrl')} <span className="text-destructive">*</span>
+                    </Label>
                     <Input
                       id="custom-baseurl"
                       placeholder="https://api.example.com/v1"
@@ -573,15 +624,16 @@ export function AISettings() {
                     onClick={handleAddCustomProvider}
                     disabled={
                       !customProviderName.trim() ||
+                      !customProviderId.trim() ||
                       !customBaseURL.trim() ||
-                      settings.providers.some(p => p.id === customProviderName.trim())
+                      settings.providers.some(p => p.id === customProviderId.trim())
                     }
                     className="gap-2 ml-auto"
                   >
                     <Check className="h-4 w-4" />
                     {t('addCustomProviderButton')}
                   </Button>
-                  {settings.providers.some(p => p.id === customProviderName.trim()) && (
+                  {settings.providers.some(p => p.id === customProviderId.trim()) && (
                     <p className="text-sm text-destructive">
                       {t('providerExists')}
                     </p>

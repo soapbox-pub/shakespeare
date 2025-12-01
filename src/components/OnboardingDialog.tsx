@@ -23,6 +23,7 @@ import { ExternalFavicon } from '@/components/ExternalFavicon';
 import { AI_PROVIDER_PRESETS, type PresetProvider } from '@/lib/aiProviderPresets';
 import { cn } from '@/lib/utils';
 import { LoginArea } from '@/components/auth/LoginArea';
+import { AIProvider } from '@/contexts/AISettingsContext';
 
 interface OnboardingDialogProps {
   open: boolean;
@@ -57,6 +58,7 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
     selectedProvider && selectedProvider.nostr && user
       ? {
         id: selectedProvider.id,
+        name: selectedProvider.name,
         baseURL: selectedProvider.baseURL,
         nostr: selectedProvider.nostr,
       }
@@ -122,8 +124,9 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
       }
 
       // Add selected provider to their config
-      const providerConfig = {
+      const providerConfig: AIProvider = {
         id: selectedProvider.id,
+        name: selectedProvider.name,
         baseURL: selectedProvider.baseURL,
         nostr: selectedProvider.nostr || undefined,
         apiKey: requiresApiKey ? providerApiKey.trim() : undefined,
@@ -151,8 +154,9 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
       }
 
       // Add selected provider to their config
-      const providerConfig = {
+      const providerConfig: AIProvider = {
         id: selectedProvider.id,
+        name: selectedProvider.name,
         baseURL: selectedProvider.baseURL,
         nostr: selectedProvider.nostr || undefined,
       };
@@ -726,6 +730,7 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
           }}
           provider={{
             id: selectedProvider.id,
+            name: selectedProvider.name,
             baseURL: selectedProvider.baseURL,
             nostr: selectedProvider.nostr || undefined,
           }}

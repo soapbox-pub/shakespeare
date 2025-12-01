@@ -91,6 +91,7 @@
   "remove": "Remove",
   "retry": "Retry",
   "name": "Name",
+  "id": "ID",
   "email": "Email",
   "buildNostrApps": "Build apps with AI",
   "whatToBuild": "What would you like to build?",

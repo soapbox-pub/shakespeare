@@ -87,6 +87,7 @@
   "remove": "移除",
   "retry": "重试",
   "name": "名称",
+  "id": "ID",
   "email": "邮箱",
   "buildNostrApps": "使用AI构建应用",
   "whatToBuild": "您想构建什么？",

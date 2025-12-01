@@ -31,6 +31,7 @@ function getDeployConfigPath(configPath = '/config'): string {
 
 const aiProviderSchema: z.ZodType<AIProvider> = z.object({
   id: z.string(),
+  name: z.string().optional(),
   baseURL: z.string().url(),
   apiKey: z.string().optional(),
   nostr: z.boolean().optional(),

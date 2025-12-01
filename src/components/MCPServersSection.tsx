@@ -7,7 +7,6 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAISettings } from '@/hooks/useAISettings';
 import { useToast } from '@/hooks/useToast';
 import { useMCPServerStatus } from '@/hooks/useMCPServerStatus';
@@ -207,7 +206,7 @@ export function MCPServersSection() {
       </div>
 
       {/* Configured MCP Servers List */}
-      {serverEntries.length > 0 ? (
+      {serverEntries.length > 0 && (
         <div className="space-y-2">
           {serverEntries.map(([name, server]) => (
             <Accordion key={name} type="single" collapsible className="w-full">
@@ -259,12 +258,6 @@ export function MCPServersSection() {
             </Accordion>
           ))}
         </div>
-      ) : (
-        <Alert>
-          <AlertDescription className="text-sm">
-            {t('noMcpServersConfigured')}
-          </AlertDescription>
-        </Alert>
       )}
 
       {/* Add New MCP Server */}

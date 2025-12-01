@@ -9,7 +9,6 @@ import { Separator } from '@/components/ui/separator';
 import { usePlugins } from '@/hooks/usePlugins';
 import { usePluginGitInfo } from '@/hooks/usePluginGitInfo';
 import { useToast } from '@/hooks/useToast';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export function PluginsSection() {
   const { t } = useTranslation();
@@ -94,7 +93,7 @@ export function PluginsSection() {
       </div>
 
       {/* Configured Plugins List */}
-      {plugins.length > 0 ? (
+      {plugins.length > 0 && (
         <div className="space-y-2">
           {plugins.map((pluginName) => {
             const pluginSkills = skillsByPlugin[pluginName] || [];
@@ -112,12 +111,6 @@ export function PluginsSection() {
             />;
           })}
         </div>
-      ) : (
-        <Alert>
-          <AlertDescription className="text-sm">
-            {t('noPluginsConfigured')}
-          </AlertDescription>
-        </Alert>
       )}
 
       {/* Add Plugin Section */}
@@ -222,14 +215,6 @@ function PluginItem({ pluginName, pluginSkills, isSyncing, isDeleting, onSync, o
                   ))}
                 </div>
               </div>
-            )}
-
-            {pluginSkills.length === 0 && (
-              <Alert>
-                <AlertDescription className="text-xs">
-                  {t('noSkillsFound')}
-                </AlertDescription>
-              </Alert>
             )}
 
             {/* Plugin Actions and Git Info */}

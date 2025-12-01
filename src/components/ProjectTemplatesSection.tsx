@@ -7,7 +7,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAppContext } from '@/hooks/useAppContext';
 import { useToast } from '@/hooks/useToast';
 
@@ -95,7 +94,7 @@ export function ProjectTemplatesSection() {
       </div>
 
       {/* Configured Templates List */}
-      {templates.length > 0 ? (
+      {templates.length > 0 && (
         <div className="space-y-2">
           {templates.map((template, index) => (
             <Accordion key={index} type="single" collapsible className="w-full">
@@ -153,12 +152,6 @@ export function ProjectTemplatesSection() {
             </Accordion>
           ))}
         </div>
-      ) : (
-        <Alert>
-          <AlertDescription className="text-sm">
-            {t('noTemplatesConfigured')}
-          </AlertDescription>
-        </Alert>
       )}
 
       {/* Add New Template */}

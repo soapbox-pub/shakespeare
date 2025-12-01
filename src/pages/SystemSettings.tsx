@@ -5,14 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useNavigate } from "react-router-dom";
 import { useAppContext } from "@/hooks/useAppContext";
 import { useOffline } from "@/hooks/useOffline";
 import { useToast } from "@/hooks/useToast";
-import { defaultSystemPrompt } from "@/lib/system";
 import { Terminal } from "@/components/Terminal";
 
 export function SystemSettings() {
@@ -34,7 +32,6 @@ export function SystemSettings() {
   const [fsPathPluginsInput, setFsPathPluginsInput] = useState(config.fsPathPlugins);
   const [fsPathTemplatesInput, setFsPathTemplatesInput] = useState(config.fsPathTemplates);
   const [sentryDsnInput, setSentryDsnInput] = useState(config.sentryDsn);
-  const [systemPromptInput, setSystemPromptInput] = useState(config.systemPrompt || defaultSystemPrompt);
 
   // Check which settings differ from defaults
   const isModified = useMemo(() => ({
@@ -50,7 +47,6 @@ export function SystemSettings() {
     fsPathPlugins: config.fsPathPlugins !== defaultConfig.fsPathPlugins,
     fsPathTemplates: config.fsPathTemplates !== defaultConfig.fsPathTemplates,
     sentryDsn: config.sentryDsn !== defaultConfig.sentryDsn,
-    systemPrompt: (config.systemPrompt || defaultSystemPrompt) !== (defaultConfig.systemPrompt || defaultSystemPrompt),
   }), [config, defaultConfig]);
 
   // Restore functions - clear the value from config to use the default
@@ -156,15 +152,6 @@ export function SystemSettings() {
     setSentryDsnInput(defaultValue);
     updateConfig((current) => {
       const { sentryDsn, ...rest } = current;
-      return rest;
-    });
-  };
-
-  const restoreSystemPrompt = () => {
-    const defaultValue = defaultSystemPrompt;
-    setSystemPromptInput(defaultValue);
-    updateConfig((current) => {
-      const { systemPrompt, ...rest } = current;
       return rest;
     });
   };
@@ -950,53 +937,6 @@ export function SystemSettings() {
                     {t('templatesDirectoryDescription')}
                   </p>
                 </div>
-              </div>
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
-
-        {/* System Prompt Configuration */}
-        <Accordion type="single" collapsible className="w-full">
-          <AccordionItem value="system-prompt">
-            <AccordionTrigger className="px-4 py-3 hover:no-underline">
-              <div className="flex items-center gap-2">
-                <h4 className="text-sm font-medium">{t('systemPrompt')}</h4>
-                {isModified.systemPrompt && (
-                  <div className="h-2 w-2 rounded-full bg-yellow-500" title={t('modified')} />
-                )}
-              </div>
-            </AccordionTrigger>
-            <AccordionContent className="px-4 pb-4">
-              <div className="py-1 space-y-2">
-                <div className="flex gap-2 flex-col">
-                  <Textarea
-                    id="system-prompt"
-                    placeholder="Enter EJS template..."
-                    value={systemPromptInput}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      setSystemPromptInput(value);
-                      updateConfig((current) => ({
-                        ...current,
-                        systemPrompt: value,
-                      }));
-                    }}
-                    className="flex-1 font-mono text-xs min-h-[400px]"
-                  />
-                  {isModified.systemPrompt && (
-                    <Button
-                      variant="outline"
-                      onClick={restoreSystemPrompt}
-                      className="w-full"
-                    >
-                      <RotateCcw className="h-4 w-4 mr-2" />
-                      {t('restoreToDefault')}
-                    </Button>
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {t('systemPromptDescription')}
-                </p>
               </div>
             </AccordionContent>
           </AccordionItem>

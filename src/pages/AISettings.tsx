@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Check, Bot, ArrowLeft, Trash2, GripVertical, ChevronDown } from 'lucide-react';
+import { Check, Bot, ArrowLeft, Trash2, GripVertical, ChevronDown, RotateCcw, FileText } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -25,6 +25,7 @@ import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Textarea } from '@/components/ui/textarea';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Card, CardContent } from '@/components/ui/card';
 import { CreditsBadge } from '@/components/CreditsBadge';
@@ -34,6 +35,7 @@ import { Separator } from '@/components/ui/separator';
 import { useAISettings } from '@/hooks/useAISettings';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useAppContext } from '@/hooks/useAppContext';
 import { useNavigate, Link } from 'react-router-dom';
 import type { AIProvider } from '@/contexts/AISettingsContext';
 import { AI_PROVIDER_PRESETS, type PresetProvider } from '@/lib/aiProviderPresets';
@@ -41,6 +43,7 @@ import { ExternalFavicon } from '@/components/ExternalFavicon';
 import { MCPServersSection } from '@/components/MCPServersSection';
 import { PluginsSection } from '@/components/PluginsSection';
 import { ProjectTemplatesSection } from '@/components/ProjectTemplatesSection';
+import { defaultSystemPrompt } from '@/lib/system';
 
 interface SortableProviderItemProps {
   provider: AIProvider;
@@ -180,6 +183,7 @@ export function AISettings() {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const { user } = useCurrentUser();
+  const { config, defaultConfig, updateConfig } = useAppContext();
   const [customProviderName, setCustomProviderName] = useState('');
   const [customBaseURL, setCustomBaseURL] = useState('');
   const [customApiKey, setCustomApiKey] = useState('');
@@ -189,6 +193,22 @@ export function AISettings() {
   const [presetTermsAgreements, setPresetTermsAgreements] = useState<Record<string, boolean>>({});
   const [activeCreditsDialog, setActiveCreditsDialog] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [systemPromptInput, setSystemPromptInput] = useState(config.systemPrompt || defaultSystemPrompt);
+
+  // Check if system prompt differs from default
+  const isSystemPromptModified = useMemo(() =>
+    (config.systemPrompt || defaultSystemPrompt) !== (defaultConfig.systemPrompt || defaultSystemPrompt),
+    [config, defaultConfig]
+  );
+
+  const restoreSystemPrompt = () => {
+    const defaultValue = defaultSystemPrompt;
+    setSystemPromptInput(defaultValue);
+    updateConfig((current) => {
+      const { systemPrompt, ...rest } = current;
+      return rest;
+    });
+  };
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -599,6 +619,58 @@ export function AISettings() {
 
               {/* Plugins Section */}
               <PluginsSection />
+              <Separator />
+
+              {/* System Prompt Configuration */}
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-5 w-5 text-primary" />
+                    <h3 className="text-lg font-semibold">{t('systemPrompt')}</h3>
+                    {isSystemPromptModified && (
+                      <div className="h-2 w-2 rounded-full bg-yellow-500" title={t('modified')} />
+                    )}
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {t('systemPromptDescription')}
+                  </p>
+                </div>
+                <Accordion type="single" collapsible className="w-full">
+                  <AccordionItem value="system-prompt" className="border rounded-lg">
+                    <AccordionTrigger className="px-4 py-3 hover:no-underline">
+                      <span className="font-medium">{t('systemPrompt')}</span>
+                    </AccordionTrigger>
+                    <AccordionContent className="px-4 pb-4">
+                      <div className="space-y-2">
+                        <Textarea
+                          id="system-prompt"
+                          placeholder="Enter EJS template..."
+                          value={systemPromptInput}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            setSystemPromptInput(value);
+                            updateConfig((current) => ({
+                              ...current,
+                              systemPrompt: value,
+                            }));
+                          }}
+                          className="flex-1 font-mono text-xs min-h-[400px]"
+                        />
+                        {isSystemPromptModified && (
+                          <Button
+                            variant="outline"
+                            onClick={restoreSystemPrompt}
+                            className="w-full"
+                          >
+                            <RotateCcw className="h-4 w-4 mr-2" />
+                            {t('restoreToDefault')}
+                          </Button>
+                        )}
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
+              </div>
             </div>
           )}
         </div>

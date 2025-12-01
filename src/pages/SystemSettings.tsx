@@ -1,4 +1,4 @@
-import { Settings, ArrowLeft, RefreshCw, Trash2, XCircle, Loader2, RotateCcw } from "lucide-react";
+import { Settings, ArrowLeft, RefreshCw, Trash2, XCircle, Loader2, RotateCcw, Cog, Globe, Image, Code, Monitor, Award, Bug, FolderTree, Terminal as TerminalIcon } from "lucide-react";
 import { useTranslation } from 'react-i18next';
 import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
@@ -286,7 +286,10 @@ export function SystemSettings() {
         <Accordion type="single" collapsible className="w-full">
           <AccordionItem value="service-worker">
             <AccordionTrigger className="px-4 py-3 hover:no-underline">
-              <h4 className="text-sm font-medium">{t('serviceWorker')}</h4>
+              <div className="flex items-center gap-2">
+                <Cog className="h-4 w-4 text-muted-foreground" />
+                <h4 className="text-sm font-medium">{t('serviceWorker')}</h4>
+              </div>
             </AccordionTrigger>
             <AccordionContent className="px-4 pb-4">
               <div className="py-1 space-y-4">
@@ -390,6 +393,7 @@ export function SystemSettings() {
           <AccordionItem value="cors-proxy">
             <AccordionTrigger className="px-4 py-3 hover:no-underline">
               <div className="flex items-center gap-2">
+                <Globe className="h-4 w-4 text-muted-foreground" />
                 <h4 className="text-sm font-medium">{t('corsProxy')}</h4>
                 {isModified.corsProxy && (
                   <div className="h-2 w-2 rounded-full bg-yellow-500" title={t('modified')} />
@@ -438,6 +442,7 @@ export function SystemSettings() {
           <AccordionItem value="favicon-url">
             <AccordionTrigger className="px-4 py-3 hover:no-underline">
               <div className="flex items-center gap-2">
+                <Image className="h-4 w-4 text-muted-foreground" />
                 <h4 className="text-sm font-medium">{t('faviconUrl')}</h4>
                 {isModified.faviconUrl && (
                   <div className="h-2 w-2 rounded-full bg-yellow-500" title={t('modified')} />
@@ -486,6 +491,7 @@ export function SystemSettings() {
           <AccordionItem value="esm-url">
             <AccordionTrigger className="px-4 py-3 hover:no-underline">
               <div className="flex items-center gap-2">
+                <Code className="h-4 w-4 text-muted-foreground" />
                 <h4 className="text-sm font-medium">{t('esmUrl')}</h4>
                 {isModified.esmUrl && (
                   <div className="h-2 w-2 rounded-full bg-yellow-500" title={t('modified')} />
@@ -535,6 +541,7 @@ export function SystemSettings() {
           <AccordionItem value="preview-domain">
             <AccordionTrigger className="px-4 py-3 hover:no-underline">
               <div className="flex items-center gap-2">
+                <Monitor className="h-4 w-4 text-muted-foreground" />
                 <h4 className="text-sm font-medium">{t('previewDomain')}</h4>
                 {isModified.previewDomain && (
                   <div className="h-2 w-2 rounded-full bg-yellow-500" title={t('modified')} />
@@ -583,6 +590,7 @@ export function SystemSettings() {
           <AccordionItem value="showcase">
             <AccordionTrigger className="px-4 py-3 hover:no-underline">
               <div className="flex items-center gap-2">
+                <Award className="h-4 w-4 text-muted-foreground" />
                 <h4 className="text-sm font-medium">{t('showcase')}</h4>
                 {(isModified.showcaseEnabled || isModified.showcaseModerator) && (
                   <div className="h-2 w-2 rounded-full bg-yellow-500" title={t('modified')} />
@@ -677,6 +685,7 @@ export function SystemSettings() {
           <AccordionItem value="sentry-dsn">
             <AccordionTrigger className="px-4 py-3 hover:no-underline">
               <div className="flex items-center gap-2">
+                <Bug className="h-4 w-4 text-muted-foreground" />
                 <h4 className="text-sm font-medium">{t('sentryDsn')}</h4>
                 {isModified.sentryDsn && (
                   <div className="h-2 w-2 rounded-full bg-yellow-500" title={t('modified')} />
@@ -725,6 +734,7 @@ export function SystemSettings() {
           <AccordionItem value="filesystem-paths">
             <AccordionTrigger className="px-4 py-3 hover:no-underline">
               <div className="flex items-center gap-2">
+                <FolderTree className="h-4 w-4 text-muted-foreground" />
                 <h4 className="text-sm font-medium">{t('filesystemPaths')}</h4>
                 {(isModified.fsPathProjects || isModified.fsPathConfig || isModified.fsPathTmp || isModified.fsPathPlugins || isModified.fsPathTemplates) && (
                   <div className="h-2 w-2 rounded-full bg-yellow-500" title={t('modified')} />
@@ -947,6 +957,7 @@ export function SystemSettings() {
           <AccordionItem value="terminal">
             <AccordionTrigger className="px-4 py-3 hover:no-underline">
               <div className="flex items-center gap-2">
+                <TerminalIcon className="h-4 w-4 text-muted-foreground" />
                 <h4 className="text-sm font-medium">{t('terminal')}</h4>
               </div>
             </AccordionTrigger>

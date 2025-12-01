@@ -85,7 +85,7 @@ function SortableTemplateItem({
               <GripVertical className="h-4 w-4" />
             </div>
           )}
-          <FileCode2 size={16} className="text-primary" />
+          <FileCode2 size={16} className="text-muted-foreground" />
           <span className="font-medium">{template.name}</span>
         </div>
       </AccordionTrigger>

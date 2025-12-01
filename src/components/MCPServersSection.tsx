@@ -209,7 +209,7 @@ export function MCPServersSection() {
               <AccordionItem value={name} className="border rounded-lg">
                 <AccordionTrigger className="px-4 py-3 hover:no-underline">
                   <div className="flex items-center gap-2 w-full mr-3">
-                    <Server size={16} className="text-primary" />
+                    <Server size={16} className="text-muted-foreground" />
                     <span className="font-medium">{name}</span>
                     <MCPConnectionStatus server={server} />
                   </div>

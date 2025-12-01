@@ -180,7 +180,7 @@ function PluginItem({ pluginName, pluginSkills, isSyncing, isDeleting, onSync, o
       <AccordionItem value={pluginName} className="border rounded-lg">
         <AccordionTrigger className="px-4 py-3 hover:no-underline">
           <div className="flex items-center gap-2">
-            <Puzzle className="h-4 w-4 text-primary" />
+            <Puzzle className="h-4 w-4 text-muted-foreground" />
             <span className="font-medium">{pluginName}</span>
             {pluginSkills.length > 0 && (
               <span className="text-xs text-muted-foreground">

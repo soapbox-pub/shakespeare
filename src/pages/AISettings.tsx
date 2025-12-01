@@ -198,8 +198,7 @@ export function AISettings() {
   // Check if system prompt differs from default
   const isSystemPromptModified = useMemo(() =>
     (config.systemPrompt || defaultSystemPrompt) !== (defaultConfig.systemPrompt || defaultSystemPrompt),
-    [config, defaultConfig]
-  );
+  [config, defaultConfig]);
 
   const restoreSystemPrompt = () => {
     const defaultValue = defaultSystemPrompt;

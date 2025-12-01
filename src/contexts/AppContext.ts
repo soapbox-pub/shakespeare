@@ -9,13 +9,22 @@ export interface RelayMetadata {
   updatedAt: number;
 }
 
+export interface ProjectTemplate {
+  /** Template name */
+  name: string;
+  /** Template description */
+  description: string;
+  /** Git repository URL */
+  url: string;
+}
+
 export interface AppConfig {
   /** Current theme */
   theme: Theme;
   /** NIP-65 relay list metadata */
   relayMetadata: RelayMetadata;
-  /** Git repository URL to use as project template */
-  projectTemplate: string;
+  /** Available project templates */
+  templates: ProjectTemplate[];
   /** ESM CDN URL for package imports */
   esmUrl: string;
   /** HTTP proxy used to bypass CORS for AI and Git operations */

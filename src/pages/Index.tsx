@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
-import { useAIProjectId } from '@/hooks/useAIProjectId';
+import { useGenerateProjectInfo } from '@/hooks/useGenerateProjectInfo';
 import { useFS } from '@/hooks/useFS';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useIsMobile } from '@/hooks/useIsMobile';
@@ -41,7 +41,7 @@ export default function Index() {
   const location = useLocation();
   const projectsManager = useProjectsManager();
   const { fs } = useFS();
-  const { generateProjectId, isLoading: isGeneratingId } = useAIProjectId();
+  const { generateProjectInfo, isLoading: isGeneratingInfo } = useGenerateProjectInfo();
   const { settings, addRecentlyUsedModel } = useAISettings();
   const { config } = useAppContext();
   const [providerModel, setProviderModel] = useState(() => {
@@ -155,7 +155,7 @@ export default function Index() {
     e.stopPropagation();
     setIsDragOver(false);
 
-    if (isCreating || isGeneratingId || !providerModel.trim()) return;
+    if (isCreating || isGeneratingInfo || !providerModel.trim()) return;
 
     const files = Array.from(e.dataTransfer.files);
     if (files.length === 0) return;
@@ -223,16 +223,16 @@ export default function Index() {
 
     setIsCreating(true);
     try {
-      // Use AI to generate project ID
-      const projectId = await generateProjectId(providerModel, prompt.trim());
+      // Use AI to generate project ID and select template
+      const { projectId, templateUrl } = await generateProjectInfo(providerModel, prompt.trim());
 
       // Add model to recently used when creating project with AI
       addRecentlyUsedModel(providerModel.trim());
 
-      // Create project with AI-generated ID and handle template update errors
+      // Create project with AI-generated ID and selected template
       const project = await projectsManager.createProject(
         prompt.trim(),
-        config.projectTemplate,
+        templateUrl,
         projectId,
         () => {
           // Show a toast if template update fails (non-critical)
@@ -335,7 +335,7 @@ export default function Index() {
                 onKeyDown={handleKeyDown}
                 onClick={handleTextareaClick}
                 className="min-h-[120px] max-h-64 resize-none border-0 bg-transparent px-4 py-3 pb-16 text-sm focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground"
-                disabled={isCreating || isGeneratingId || (hasProvidersConfigured && !providerModel.trim())}
+                disabled={isCreating || isGeneratingInfo || (hasProvidersConfigured && !providerModel.trim())}
                 rows={4}
                 style={{
                   height: 'auto',
@@ -356,7 +356,7 @@ export default function Index() {
                   onFileSelect={handleFileSelect}
                   onFileRemove={handleFileRemove}
                   selectedFiles={attachedFiles}
-                  disabled={isCreating || isGeneratingId}
+                  disabled={isCreating || isGeneratingInfo}
                   multiple={true}
                 />
 
@@ -366,7 +366,7 @@ export default function Index() {
                     value={providerModel}
                     onChange={setProviderModel}
                     className="w-full"
-                    disabled={isCreating || isGeneratingId}
+                    disabled={isCreating || isGeneratingInfo}
                     placeholder={t('chooseModel')}
                   />
                 </div>
@@ -377,13 +377,13 @@ export default function Index() {
                   disabled={
                     !prompt.trim() ||
                     isCreating ||
-                    isGeneratingId ||
+                    isGeneratingInfo ||
                     (hasProvidersConfigured && !providerModel.trim())
                   }
                   size="sm"
                   className="size-8 [&_svg]:size-5 rounded-full p-0"
                 >
-                  {isCreating || isGeneratingId ? (
+                  {isCreating || isGeneratingInfo ? (
                     <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white" />
                   ) : (
                     <ArrowUp />

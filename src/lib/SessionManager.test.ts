@@ -40,7 +40,7 @@ const testConfig: AppConfig = {
     ],
     updatedAt: 0,
   },
-  projectTemplate: 'https://gitlab.com/soapbox-pub/mkstack.git',
+  templates: [{ name: 'MKStack', description: 'Build Nostr clients with React.', url: 'https://gitlab.com/soapbox-pub/mkstack.git' }],
   esmUrl: 'https://esm.shakespeare.diy',
   corsProxy: 'https://proxy.shakespeare.diy/?url={href}',
   faviconUrl: 'https://external-content.duckduckgo.com/ip3/{hostname}.ico',

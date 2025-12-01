@@ -22,11 +22,18 @@ const RelayMetadataSchema = z.object({
   updatedAt: z.number(),
 }) satisfies z.ZodType<RelayMetadata>;
 
+// Zod schema for ProjectTemplate
+const ProjectTemplateSchema = z.object({
+  name: z.string().min(1),
+  description: z.string().min(1),
+  url: z.string().url(),
+});
+
 // Zod schema for AppConfig validation
 const AppConfigSchema = z.object({
   theme: z.enum(['dark', 'light', 'system']),
   relayMetadata: RelayMetadataSchema,
-  projectTemplate: z.string().url(),
+  templates: z.array(ProjectTemplateSchema),
   esmUrl: z.string().url(),
   corsProxy: z.string().url(),
   faviconUrl: z.string().url(),

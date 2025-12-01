@@ -37,7 +37,7 @@ function createWrapper(corsProxy: string) {
         relays: [{ url: 'wss://relay.test', read: true, write: true }],
         updatedAt: 0,
       },
-      projectTemplate: 'https://gitlab.com/soapbox-pub/mkstack.git',
+      templates: [{ name: 'MKStack', description: 'Build Nostr clients with React.', url: 'https://gitlab.com/soapbox-pub/mkstack.git' }],
       esmUrl: 'https://esm.test',
       corsProxy,
       faviconUrl: 'https://external-content.duckduckgo.com/ip3/{hostname}.ico',

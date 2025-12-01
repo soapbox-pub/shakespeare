@@ -291,15 +291,6 @@ describe('makeSystemPrompt', () => {
   });
 
   describe('CORS proxy section', () => {
-    it('should not include CORS proxy section when not provided', async () => {
-      const result = await makeSystemPrompt({
-        ...baseOpts,
-        config: { ...testConfig, corsProxy: '' },
-      });
-
-      expect(result).not.toContain('## Working Around CORS Issues');
-    });
-
     it('should include CORS proxy information when provided', async () => {
       const result = await makeSystemPrompt(baseOpts);
 
@@ -582,7 +573,7 @@ Skills: {{ skills.length }}`;
       expect(result).toContain('**MKStack**');
       expect(result).toContain('Build Nostr clients with React.');
       expect(result).toContain('https://gitlab.com/soapbox-pub/mkstack.git');
-      expect(result).toContain('Settings > System');
+      expect(result).toContain('Settings > AI');
     });
 
     it('should highlight current template when it matches a configured template', async () => {

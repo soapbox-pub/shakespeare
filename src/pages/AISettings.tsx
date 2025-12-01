@@ -39,6 +39,7 @@ import { AI_PROVIDER_PRESETS, type PresetProvider } from '@/lib/aiProviderPreset
 import { ExternalFavicon } from '@/components/ExternalFavicon';
 import { MCPServersSection } from '@/components/MCPServersSection';
 import { PluginsSection } from '@/components/PluginsSection';
+import { ProjectTemplatesSection } from '@/components/ProjectTemplatesSection';
 
 interface SortableProviderItemProps {
   provider: AIProvider;
@@ -569,6 +570,9 @@ export function AISettings() {
             </AccordionItem>
           </Accordion>
         </div>
+
+        {/* Project Templates Section */}
+        <ProjectTemplatesSection />
 
         {/* MCP Servers Section */}
         <MCPServersSection />

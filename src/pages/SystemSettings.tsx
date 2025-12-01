@@ -1,4 +1,4 @@
-import { Settings, ArrowLeft, RefreshCw, Trash2, XCircle, Loader2, RotateCcw, Plus } from "lucide-react";
+import { Settings, ArrowLeft, RefreshCw, Trash2, XCircle, Loader2, RotateCcw } from "lucide-react";
 import { useTranslation } from 'react-i18next';
 import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
@@ -23,7 +23,6 @@ export function SystemSettings() {
   const { toast } = useToast();
   const { serviceWorkerRegistration, updateServiceWorker, clearCache } = useOffline();
 
-  const [templatesInput, setTemplatesInput] = useState(config.templates);
   const [esmUrlInput, setEsmUrlInput] = useState(config.esmUrl);
   const [corsProxyInput, setCorsProxyInput] = useState(config.corsProxy);
   const [faviconUrlInput, setFaviconUrlInput] = useState(config.faviconUrl);
@@ -39,7 +38,6 @@ export function SystemSettings() {
 
   // Check which settings differ from defaults
   const isModified = useMemo(() => ({
-    templates: JSON.stringify(config.templates) !== JSON.stringify(defaultConfig.templates),
     esmUrl: config.esmUrl !== defaultConfig.esmUrl,
     corsProxy: config.corsProxy !== defaultConfig.corsProxy,
     faviconUrl: config.faviconUrl !== defaultConfig.faviconUrl,
@@ -56,15 +54,6 @@ export function SystemSettings() {
   }), [config, defaultConfig]);
 
   // Restore functions - clear the value from config to use the default
-  const restoreTemplates = () => {
-    const defaultValue = defaultConfig.templates;
-    setTemplatesInput(defaultValue);
-    updateConfig((current) => {
-      const { templates, ...rest } = current;
-      return rest;
-    });
-  };
-
   const restoreEsmUrl = () => {
     const defaultValue = defaultConfig.esmUrl;
     setEsmUrlInput(defaultValue);
@@ -404,137 +393,6 @@ export function SystemSettings() {
                     {t('serviceWorkerNotRegistered')}
                   </div>
                 )}
-              </div>
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
-
-        {/* Project Templates Configuration */}
-        <Accordion type="single" collapsible className="w-full">
-          <AccordionItem value="project-templates">
-            <AccordionTrigger className="px-4 py-3 hover:no-underline">
-              <div className="flex items-center gap-2">
-                <h4 className="text-sm font-medium">{t('projectTemplates')}</h4>
-                {isModified.templates && (
-                  <div className="h-2 w-2 rounded-full bg-yellow-500" title={t('modified')} />
-                )}
-              </div>
-            </AccordionTrigger>
-            <AccordionContent className="px-4 pb-4">
-              <div className="py-1 space-y-4">
-                {templatesInput.map((template, index) => (
-                  <div key={index} className="space-y-2 p-3 border rounded-lg">
-                    <div className="space-y-2">
-                      <div>
-                        <Label htmlFor={`template-name-${index}`} className="text-xs">Name</Label>
-                        <Input
-                          id={`template-name-${index}`}
-                          type="text"
-                          placeholder="MKStack"
-                          value={template.name}
-                          onChange={(e) => {
-                            const newTemplates = [...templatesInput];
-                            newTemplates[index] = { ...template, name: e.target.value };
-                            setTemplatesInput(newTemplates);
-                            updateConfig((current) => ({
-                              ...current,
-                              templates: newTemplates,
-                            }));
-                          }}
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor={`template-description-${index}`} className="text-xs">Description</Label>
-                        <Textarea
-                          id={`template-description-${index}`}
-                          placeholder="Build Nostr clients with React."
-                          value={template.description}
-                          onChange={(e) => {
-                            const newTemplates = [...templatesInput];
-                            newTemplates[index] = { ...template, description: e.target.value };
-                            setTemplatesInput(newTemplates);
-                            updateConfig((current) => ({
-                              ...current,
-                              templates: newTemplates,
-                            }));
-                          }}
-                          className="min-h-[80px]"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor={`template-url-${index}`} className="text-xs">Git URL</Label>
-                        <Input
-                          id={`template-url-${index}`}
-                          type="url"
-                          placeholder="https://gitlab.com/soapbox-pub/mkstack.git"
-                          value={template.url}
-                          onChange={(e) => {
-                            const newTemplates = [...templatesInput];
-                            newTemplates[index] = { ...template, url: e.target.value };
-                            setTemplatesInput(newTemplates);
-                            updateConfig((current) => ({
-                              ...current,
-                              templates: newTemplates,
-                            }));
-                          }}
-                        />
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          const newTemplates = templatesInput.filter((_, i) => i !== index);
-                          setTemplatesInput(newTemplates);
-                          updateConfig((current) => ({
-                            ...current,
-                            templates: newTemplates,
-                          }));
-                        }}
-                        disabled={templatesInput.length === 1}
-                        title={templatesInput.length === 1 ? "At least one template is required" : "Remove template"}
-                        className="w-full"
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Remove Template
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      const newTemplates = [
-                        ...templatesInput,
-                        { name: '', description: '', url: '' }
-                      ];
-                      setTemplatesInput(newTemplates);
-                      updateConfig((current) => ({
-                        ...current,
-                        templates: newTemplates,
-                      }));
-                    }}
-                    className="w-full"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Template
-                  </Button>
-                  {isModified.templates && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={restoreTemplates}
-                      title={t('restoreToDefault')}
-                    >
-                      <RotateCcw className="h-4 w-4 mr-2" />
-                      Reset
-                    </Button>
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {t('projectTemplatesDescription')}
-                </p>
               </div>
             </AccordionContent>
           </AccordionItem>

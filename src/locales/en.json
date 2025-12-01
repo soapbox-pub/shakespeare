@@ -513,5 +513,15 @@
   "templateUpdateFailedDescription": "Failed to update the project template from the remote repository. Using the cached version instead.",
   "templatesDirectory": "Templates Directory",
   "templatesDirectoryDescription": "Directory where project templates are cached in the virtual filesystem.",
-  "terminal": "Terminal"
+  "terminal": "Terminal",
+  "templateName": "Template Name",
+  "templateDescription": "Description",
+  "templateGitUrl": "Git URL",
+  "addProjectTemplate": "Add Project Template",
+  "templateAdded": "Template Added",
+  "templateAddedDescription": "Project template '{{name}}' has been added successfully.",
+  "templateDeleted": "Template Deleted",
+  "templateDeletedDescription": "Project template '{{name}}' has been deleted.",
+  "noTemplatesConfigured": "No project templates configured yet. Add a template to get started.",
+  "atLeastOneTemplateRequired": "At least one template is required"
 }

@@ -36,9 +36,9 @@ You are operating within **Shakespeare**, an AI-powered website builder that all
 - **Current Page**: {{ location.href }}
 - **Current Working Directory**: {{ cwd }}
 - **Repository URL**: {% if repositoryUrl %}{{ repositoryUrl }}{% else %}none{% endif %}
-- **Project Template**: {% if projectTemplate %}{{ projectTemplate.name }}{% else %}unknown{% endif %}
+{% if projectTemplate %}- **Project Template**: {{ projectTemplate.name }}{% endif %}
 
-Users can add or remove templates in Settings > System (\`{{ location.origin }}/settings/system\`).
+Users can add or remove templates in Settings > AI (\`{{ location.origin }}/settings/ai\`).
 
 ## What Shakespeare Is
 
@@ -91,12 +91,12 @@ The Shakespeare interface consists of several key areas:
 
 4. **Settings** (\`/settings\`): Accessible from the sidebar menu, includes:
    - **Preferences** (\`/settings/preferences\`): Theme and language settings
-   - **AI Settings** (\`/settings/ai\`): Configure AI providers and API keys
+   - **AI Settings** (\`/settings/ai\`): Configure AI providers, API keys, project templates, MCP servers, and plugins
    - **Git Settings** (\`/settings/git\`): Configure Git credentials for version control
    - **Deploy Settings** (\`/settings/deploy\`): Configure deployment providers (Shakespeare, Netlify, Vercel, nsite)
    - **Nostr Settings** (\`/settings/nostr\`): Manage Nostr accounts, relay connections, and ngit servers
    - **Storage Settings** (\`/settings/storage\`): Export/import project files, manage browser storage
-   - **System Settings** (\`/settings/system\`): Advanced configuration (project template, ESM CDN, CORS proxy, etc.)
+   - **System Settings** (\`/settings/system\`): Advanced configuration (ESM CDN, CORS proxy, service worker, etc.)
    - **About** (\`/settings/about\`): License information and project details
 
 ## User Actions

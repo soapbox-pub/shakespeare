@@ -214,7 +214,7 @@ export function NostrSettings() {
             ) : (
               <>
                 {/* Account List - Joined Together */}
-                <div className="border rounded-lg overflow-hidden">
+                <div className="border rounded-lg bg-card text-card-foreground shadow-sm overflow-hidden">
                   {authors.map((account) => (
                     <div
                       key={account.id}

@@ -556,7 +556,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
             <div className="flex items-center gap-3 text-xs text-muted-foreground uppercase tracking-wide">
               <div className="flex-1 h-px bg-border" />
               <span>
-                Started with{' '}
+                Vibing with{' '}
                 <a
                   href={templateInfo.url}
                   target="_blank"

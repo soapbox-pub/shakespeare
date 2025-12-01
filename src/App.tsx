@@ -109,7 +109,7 @@ const defaultConfig: AppConfig = {
   templates: [
     {
       name: "MKStack",
-      description: "Build Nostr clients with React. This is the default template that you should choose in the majority of cases. It ships with complete Nostr integration out of the box, enabling a variety of use-cases from social media to blogging to AI-powered apps.",
+      description: "Build Nostr clients with React. This is the default template that you should choose in the majority of cases. It ships with complete Nostr integration out of the box, enabling a variety of use-cases from social media to blogging to AI-powered apps. If you're not sure which template to choose, choose this one.",
       url: "https://gitlab.com/soapbox-pub/mkstack.git",
     },
     {

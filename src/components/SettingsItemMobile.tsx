@@ -20,7 +20,7 @@ export function SettingsItemMobile({
     <button
       onClick={onClick}
       className={cn(
-        'w-full text-left px-4 py-3.5 bg-background transition-colors active:bg-muted/50',
+        'w-full text-left px-4 py-3.5 bg-card text-card-foreground transition-colors active:bg-muted/50',
         'flex items-center gap-3',
         'border-b border-border last:border-b-0',
         {
@@ -33,7 +33,7 @@ export function SettingsItemMobile({
         <Icon className="h-4 w-4 text-primary flex-shrink-0" />
       </div>
       <div className="flex-1 min-w-0">
-        <div className="text-base text-foreground">
+        <div className="text-base">
           {title}
         </div>
       </div>

@@ -89,7 +89,7 @@ export function AboutSettings() {
             <AccordionItem value="mirrors">
               <AccordionTrigger className="px-4 py-3 hover:no-underline">
                 <div className="flex items-center gap-2">
-                  <Globe className="h-5 w-5" />
+                  <Globe className="size-5 text-muted-foreground" />
                   {t('mirrors')}
                 </div>
               </AccordionTrigger>
@@ -103,7 +103,7 @@ export function AboutSettings() {
                   >
                     <a href="https://shakespeare.diy" target="_blank" rel="noopener noreferrer">
                       <span className="font-mono text-sm">shakespeare.diy</span>
-                      <ExternalLink className="ml-auto h-4 w-4" />
+                      <ExternalLink className="ml-auto h-4 w-4 text-muted-foreground" />
                     </a>
                   </Button>
                   <Button
@@ -113,7 +113,7 @@ export function AboutSettings() {
                   >
                     <a href="https://shakespeare-diy.github.io" target="_blank" rel="noopener noreferrer">
                       <span className="font-mono text-sm">shakespeare-diy.github.io</span>
-                      <ExternalLink className="ml-auto h-4 w-4" />
+                      <ExternalLink className="ml-auto h-4 w-4 text-muted-foreground" />
                     </a>
                   </Button>
                   <Button
@@ -123,7 +123,7 @@ export function AboutSettings() {
                   >
                     <a href="https://shakespeare-b0b9c8.gitlab.io" target="_blank" rel="noopener noreferrer">
                       <span className="font-mono text-sm">shakespeare-b0b9c8.gitlab.io</span>
-                      <ExternalLink className="ml-auto h-4 w-4" />
+                      <ExternalLink className="ml-auto h-4 w-4 text-muted-foreground" />
                     </a>
                   </Button>
                 </div>
@@ -140,7 +140,7 @@ export function AboutSettings() {
                 asChild
               >
                 <a href="https://gitlab.com/soapbox-pub/shakespeare" target="_blank">
-                  <Code className="!size-5" />
+                  <Code className="!size-5 text-muted-foreground" />
                   {t('sourceCode')}
                   <ExternalLink className="ml-auto" />
                 </a>
@@ -153,7 +153,7 @@ export function AboutSettings() {
             <AccordionItem value="license-text">
               <AccordionTrigger className="px-4 py-3 hover:no-underline">
                 <div className="flex items-center gap-2">
-                  <Info className="h-5 w-5" />
+                  <Info className="size-5 text-muted-foreground" />
                   {t('license')}
                 </div>
               </AccordionTrigger>

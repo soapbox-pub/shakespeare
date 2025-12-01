@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Separator } from '@/components/ui/separator';
 import { usePlugins } from '@/hooks/usePlugins';
 import { usePluginGitInfo } from '@/hooks/usePluginGitInfo';
 import { useToast } from '@/hooks/useToast';
@@ -78,9 +77,6 @@ export function PluginsSection() {
 
   return (
     <div className="space-y-4">
-      {/* Divider */}
-      <Separator className="my-6" />
-
       {/* Plugins Header */}
       <div className="space-y-2">
         <div className="flex items-center gap-2">

@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Separator } from '@/components/ui/separator';
 import { useAISettings } from '@/hooks/useAISettings';
 import { useToast } from '@/hooks/useToast';
 import { useMCPServerStatus } from '@/hooks/useMCPServerStatus';
@@ -191,9 +190,6 @@ export function MCPServersSection() {
 
   return (
     <div className="space-y-4">
-      {/* Divider */}
-      <Separator className="my-6" />
-
       {/* MCP Servers Header */}
       <div className="space-y-2">
         <div className="flex items-center gap-2">

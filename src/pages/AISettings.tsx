@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Check, Bot, ArrowLeft, Trash2, GripVertical } from 'lucide-react';
+import { Check, Bot, ArrowLeft, Trash2, GripVertical, ChevronDown } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -30,6 +30,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { CreditsBadge } from '@/components/CreditsBadge';
 import { CreditsDialog } from '@/components/CreditsDialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
 import { useAISettings } from '@/hooks/useAISettings';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
@@ -187,6 +188,7 @@ export function AISettings() {
   const [presetApiKeys, setPresetApiKeys] = useState<Record<string, string>>({});
   const [presetTermsAgreements, setPresetTermsAgreements] = useState<Record<string, boolean>>({});
   const [activeCreditsDialog, setActiveCreditsDialog] = useState<string | null>(null);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -287,7 +289,7 @@ export function AISettings() {
   const availablePresets = AI_PROVIDER_PRESETS.filter(preset => !configuredProviderIds.includes(preset.id));
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6 pb-16">
       {isMobile && (
         <div className="space-y-3">
           <Button
@@ -571,14 +573,35 @@ export function AISettings() {
           </Accordion>
         </div>
 
-        {/* Project Templates Section */}
-        <ProjectTemplatesSection />
+        {/* Advanced Settings */}
+        <div className="space-y-4">
+          <Separator className="my-6" />
+          <button
+            type="button"
+            onClick={() => setShowAdvanced(!showAdvanced)}
+            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <span>{t('advanced')}</span>
+            <ChevronDown
+              className={`h-4 w-4 transition-transform ${showAdvanced ? 'rotate-180' : ''}`}
+            />
+          </button>
 
-        {/* MCP Servers Section */}
-        <MCPServersSection />
+          {showAdvanced && (
+            <div className="space-y-6">
+              {/* Project Templates Section */}
+              <ProjectTemplatesSection />
+              <Separator />
 
-        {/* Plugins Section */}
-        <PluginsSection />
+              {/* MCP Servers Section */}
+              <MCPServersSection />
+              <Separator />
+
+              {/* Plugins Section */}
+              <PluginsSection />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Render credits dialog outside of accordion structure */}

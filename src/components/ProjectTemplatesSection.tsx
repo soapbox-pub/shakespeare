@@ -25,7 +25,6 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Separator } from '@/components/ui/separator';
 import { useAppContext } from '@/hooks/useAppContext';
 import { useToast } from '@/hooks/useToast';
 
@@ -236,9 +235,6 @@ export function ProjectTemplatesSection() {
 
   return (
     <div className="space-y-4">
-      {/* Divider */}
-      <Separator className="my-6" />
-
       {/* Project Templates Header */}
       <div className="space-y-2">
         <div className="flex items-center gap-2">

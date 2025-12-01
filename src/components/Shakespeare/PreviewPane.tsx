@@ -26,6 +26,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import { NostrPermissionDialog } from '@/components/NostrPermissionDialog';
+import { NostrSignerRequiredDialog } from '@/components/NostrSignerRequiredDialog';
 import { cn } from '@/lib/utils';
 import { FileTree } from './FileTree';
 import { FileEditor } from './FileEditor';
@@ -331,6 +333,46 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
     }
   }, [historyIndex, navigationHistory, sendNavigationCommand]);
 
+  // Track which projects have been granted Nostr access
+  const [nostrPermissions, setNostrPermissions] = useState<Set<string>>(new Set());
+  const [nostrPermissionDialog, setNostrPermissionDialog] = useState<{
+    open: boolean;
+    projectId: string;
+    resolve: (granted: boolean) => void;
+      } | null>(null);
+  const [noSignerDialog, setNoSignerDialog] = useState(false);
+
+  const requestNostrPermission = useCallback(async (projectId: string): Promise<boolean> => {
+    // Check if permission already granted
+    if (nostrPermissions.has(projectId)) {
+      return true;
+    }
+
+    // Show permission dialog and wait for user response
+    return new Promise<boolean>((resolve) => {
+      setNostrPermissionDialog({
+        open: true,
+        projectId,
+        resolve,
+      });
+    });
+  }, [nostrPermissions]);
+
+  const handleNostrPermissionResponse = useCallback((granted: boolean) => {
+    if (nostrPermissionDialog) {
+      const { projectId, resolve } = nostrPermissionDialog;
+      
+      if (granted) {
+        // Grant permission for this project
+        setNostrPermissions(prev => new Set([...prev, projectId]));
+      }
+      
+      // Close dialog and resolve the promise
+      setNostrPermissionDialog(null);
+      resolve(granted);
+    }
+  }, [nostrPermissionDialog]);
+
   const handleNostr = useCallback(async (request: NostrRPCRequest) => {
     const { params, id } = request;
     const { method, args } = params;
@@ -338,9 +380,18 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
     console.log('[NOSTR BRIDGE] Handling request:', method, args);
 
     try {
-      // Check if user is logged in
+      // Check if user is logged in with a signer
       if (!user?.signer) {
-        throw new Error('No Nostr signer available. Please log in with a Nostr extension.');
+        // Show the "no signer" dialog
+        setNoSignerDialog(true);
+        throw new Error('NO_SIGNER_INSTALLED');
+      }
+
+      // Request permission if this is the first Nostr access from this project
+      const hasPermission = await requestNostrPermission(projectId);
+      
+      if (!hasPermission) {
+        throw new Error('User denied Nostr access');
       }
 
       let result: unknown;
@@ -429,7 +480,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
         }, targetOrigin);
       }
     }
-  }, [user, projectId, previewDomain]);
+  }, [user, projectId, previewDomain, requestNostrPermission]);
 
   const handleFetch = useCallback(async (request: JSONRPCRequest) => {
     const { params, id } = request;
@@ -1062,6 +1113,18 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
           onOpenChange={setDeployDialogOpen}
         />
       )}
+
+      {/* Nostr Permission Dialog */}
+      <NostrPermissionDialog
+        open={nostrPermissionDialog?.open ?? false}
+        onResponse={handleNostrPermissionResponse}
+      />
+
+      {/* No Signer Installed Dialog */}
+      <NostrSignerRequiredDialog
+        open={noSignerDialog}
+        onOpenChange={setNoSignerDialog}
+      />
     </div>
   );
 }

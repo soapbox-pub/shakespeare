@@ -92,12 +92,14 @@ export const ModelSelector = memo(function ModelSelector({
     const providerId = value.split('/')[0];
     const modelId = value.split('/').slice(1).join('/') || value;
     const providerInfo = getProviderInfo(providerId);
+    const modelData = models.find(m => m.fullId === value);
+    const displayName = modelData?.name || modelId;
 
     return {
-      modelId,
+      displayName,
       baseURL: providerInfo.baseURL,
     };
-  }, [value, getProviderInfo]);
+  }, [value, getProviderInfo, models]);
 
   // Determine if we should show the "Recently Used" section
   const shouldShowRecentlyUsed = useMemo(() => {
@@ -322,7 +324,7 @@ export const ModelSelector = memo(function ModelSelector({
                     <Bot size={16} className="flex-shrink-0" />
                   )}
                   <span className="truncate">
-                    {selectedModelDisplay.modelId}
+                    {selectedModelDisplay.displayName}
                   </span>
                 </>
               ) : (
@@ -353,6 +355,7 @@ export const ModelSelector = memo(function ModelSelector({
                       const providerId = modelId.split('/')[0];
                       const providerInfo = getProviderInfo(providerId);
                       const displayModelId = modelId.split('/').slice(1).join('/') || modelId;
+                      const displayName = modelData?.name || displayModelId;
 
                       return (
                         <CommandItem
@@ -377,7 +380,7 @@ export const ModelSelector = memo(function ModelSelector({
                           ) : (
                             <Bot size={16} className="mr-2 flex-shrink-0" />
                           )}
-                          <span className="truncate flex-1">{displayModelId}</span>
+                          <span className="truncate flex-1">{displayName}</span>
                           {modelData?.pricing && (
                             <ModelPricing pricing={modelData.pricing} className="ml-2" />
                           )}
@@ -456,7 +459,7 @@ export const ModelSelector = memo(function ModelSelector({
                             ) : (
                               <Bot size={16} className="mr-2 flex-shrink-0" />
                             )}
-                            <span className="truncate flex-1">{model.id}</span>
+                            <span className="truncate flex-1">{model.name || model.id}</span>
                             {model.pricing && (
                               <ModelPricing pricing={model.pricing} className="ml-2" />
                             )}

@@ -19,7 +19,7 @@
   "esmUrl": "Javascript CDN",
   "esmUrlDescription": "Javascript CDN URL for package imports.",
   "projectTemplates": "Project Templates",
-  "projectTemplatesDescription": "Configure multiple project templates. The AI will automatically select the most appropriate template based on the user's project description.",
+  "projectTemplatesDescription": "Templates available to the AI when creating new projects.",
   "previewDomain": "Preview Domain",
   "previewDomainDescription": "Domain used for iframe preview sandboxing.",
   "corsProxy": "CORS Proxy",

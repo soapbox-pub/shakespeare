@@ -38,7 +38,14 @@ class JSONRPCClient {
     }
   }
 
-  async fetch(request) {
+  /**
+   * Generic JSON-RPC call method
+   * @param {string} method - The RPC method name
+   * @param {object} params - Parameters for the method
+   * @param {number} timeout - Timeout in milliseconds (default: 10000)
+   * @returns {Promise} - Resolves with the result or rejects with error
+   */
+  async call(method, params, timeout = 10000) {
     const id = ++this.requestId;
 
     return new Promise((resolve, reject) => {
@@ -47,19 +54,23 @@ class JSONRPCClient {
       // Send JSON-RPC request to parent
       window.parent.postMessage({
         jsonrpc: "2.0",
-        method: "fetch",
-        params: { request },
+        method,
+        params,
         id,
       }, "*");
 
-      // Timeout after 10 seconds
+      // Timeout handling
       setTimeout(() => {
         if (this.pendingRequests.has(id)) {
           this.pendingRequests.delete(id);
-          reject(new Error(`Timeout fetching: ${request.url}`));
+          reject(new Error(`RPC call to ${method} with ID ${id} timed out`));
         }
-      }, 10000);
+      }, timeout);
     });
+  }
+
+  async fetch(request) {
+    return this.call("fetch", { request }, 10000);
   }
 
   handleResponse(message) {
@@ -150,6 +161,38 @@ class ConsoleInterceptor {
         }
       }, 100);
     }
+  }
+}
+
+// Nostr Bridge - proxies window.nostr calls to parent window
+class NostrBridge {
+  constructor(rpcClient) {
+    this.rpcClient = rpcClient;
+    console.log('[NostrBridge] initializing...');
+    this.injectNostr();
+  }
+
+  injectNostr() {
+    // Create the window.nostr object
+    window.nostr = {
+      getPublicKey: () => this.callNostrMethod('getPublicKey', []),
+      signEvent: (event) => this.callNostrMethod('signEvent', [event]),
+      nip04: {
+        encrypt: (pubkey, plaintext) => this.callNostrMethod('nip04.encrypt', [pubkey, plaintext]),
+        decrypt: (pubkey, ciphertext) => this.callNostrMethod('nip04.decrypt', [pubkey, ciphertext]),
+      },
+      nip44: {
+        encrypt: (pubkey, plaintext) => this.callNostrMethod('nip44.encrypt', [pubkey, plaintext]),
+        decrypt: (pubkey, ciphertext) => this.callNostrMethod('nip44.decrypt', [pubkey, ciphertext]),
+      },
+    };
+    console.log('[NostrBridge] window.nostr injected');
+  }
+
+  async callNostrMethod(method, args) {
+    // Use the generic RPC client call method
+    // Extension prompts may take time, so use 30 second timeout
+    return this.rpcClient.call('nostr', { method, args }, 30000);
   }
 }
 
@@ -319,8 +362,8 @@ class NavigationHandler {
 
 // Main Fetch Client
 class FetchClient {
-  constructor() {
-    this.rpcClient = new JSONRPCClient();
+  constructor(rpcClient) {
+    this.rpcClient = rpcClient;
     this.consoleInterceptor = new ConsoleInterceptor();
     this.navigationHandler = new NavigationHandler();
     this.init();
@@ -393,8 +436,8 @@ class FetchClient {
         active: navigator.serviceWorker.controller,
         installing: null,
         waiting: null,
-        addEventListener: () => {},
-        removeEventListener: () => {},
+        addEventListener: () => { },
+        removeEventListener: () => { },
       });
     };
   }
@@ -569,8 +612,14 @@ const setupGlobalErrorHandlers = () => {
 // Initialize
 setupGlobalErrorHandlers();
 
+const init = () => {
+  const rpcClient = new JSONRPCClient();
+  new FetchClient(rpcClient);
+  new NostrBridge(rpcClient);
+}
+
 if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", () => new FetchClient());
+  document.addEventListener("DOMContentLoaded", init);
 } else {
-  new FetchClient();
+  init();
 }

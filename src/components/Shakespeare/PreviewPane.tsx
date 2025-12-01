@@ -7,6 +7,7 @@ import { useFSPaths } from '@/hooks/useFSPaths';
 import { addConsoleMessage, getConsoleMessages, type ConsoleMessage } from '@/lib/consoleMessages';
 import { useConsoleError } from '@/hooks/useConsoleError';
 import { useBuildProject } from '@/hooks/useBuildProject';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
@@ -57,6 +58,16 @@ interface JSONRPCRequest {
   id: number;
 }
 
+interface NostrRPCRequest {
+  jsonrpc: '2.0';
+  method: 'nostr';
+  params: {
+    method: string;
+    args: unknown[];
+  };
+  id: number;
+}
+
 interface JSONRPCResponse {
   jsonrpc: '2.0';
   result?: {
@@ -93,6 +104,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
   const { fs } = useFS();
   const { projectsPath } = useFSPaths();
   const projectsManager = useProjectsManager();
+  const { user } = useCurrentUser();
 
   // Use console error state from provider
   const { hasErrors: hasConsoleErrors, clearErrors } = useConsoleError();
@@ -319,6 +331,106 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
     }
   }, [historyIndex, navigationHistory, sendNavigationCommand]);
 
+  const handleNostr = useCallback(async (request: NostrRPCRequest) => {
+    const { params, id } = request;
+    const { method, args } = params;
+
+    console.log('[NOSTR BRIDGE] Handling request:', method, args);
+
+    try {
+      // Check if user is logged in
+      if (!user?.signer) {
+        throw new Error('No Nostr signer available. Please log in with a Nostr extension.');
+      }
+
+      let result: unknown;
+
+      // Route to appropriate signer method
+      switch (method) {
+        case 'getPublicKey':
+          result = await user.signer.getPublicKey();
+          break;
+        
+        case 'signEvent':
+          if (!args[0] || typeof args[0] !== 'object') {
+            throw new Error('Invalid event object');
+          }
+          result = await user.signer.signEvent(args[0] as Parameters<typeof user.signer.signEvent>[0]);
+          break;
+        
+        case 'nip04.encrypt':
+          if (!user.signer.nip04?.encrypt) {
+            throw new Error('NIP-04 encryption not supported by signer');
+          }
+          if (typeof args[0] !== 'string' || typeof args[1] !== 'string') {
+            throw new Error('Invalid arguments for nip04.encrypt');
+          }
+          result = await user.signer.nip04.encrypt(args[0], args[1]);
+          break;
+        
+        case 'nip04.decrypt':
+          if (!user.signer.nip04?.decrypt) {
+            throw new Error('NIP-04 decryption not supported by signer');
+          }
+          if (typeof args[0] !== 'string' || typeof args[1] !== 'string') {
+            throw new Error('Invalid arguments for nip04.decrypt');
+          }
+          result = await user.signer.nip04.decrypt(args[0], args[1]);
+          break;
+        
+        case 'nip44.encrypt':
+          if (!user.signer.nip44?.encrypt) {
+            throw new Error('NIP-44 encryption not supported by signer');
+          }
+          if (typeof args[0] !== 'string' || typeof args[1] !== 'string') {
+            throw new Error('Invalid arguments for nip44.encrypt');
+          }
+          result = await user.signer.nip44.encrypt(args[0], args[1]);
+          break;
+        
+        case 'nip44.decrypt':
+          if (!user.signer.nip44?.decrypt) {
+            throw new Error('NIP-44 decryption not supported by signer');
+          }
+          if (typeof args[0] !== 'string' || typeof args[1] !== 'string') {
+            throw new Error('Invalid arguments for nip44.decrypt');
+          }
+          result = await user.signer.nip44.decrypt(args[0], args[1]);
+          break;
+        
+        default:
+          throw new Error(`Unsupported Nostr method: ${method}`);
+      }
+
+      console.log('[NOSTR BRIDGE] Success:', method, result);
+
+      // Send success response
+      if (iframeRef.current?.contentWindow) {
+        const targetOrigin = `https://${projectId}.${previewDomain}`;
+        iframeRef.current.contentWindow.postMessage({
+          jsonrpc: '2.0',
+          result,
+          id
+        }, targetOrigin);
+      }
+    } catch (error) {
+      console.error('[NOSTR BRIDGE] Error:', method, error);
+
+      // Send error response
+      if (iframeRef.current?.contentWindow) {
+        const targetOrigin = `https://${projectId}.${previewDomain}`;
+        iframeRef.current.contentWindow.postMessage({
+          jsonrpc: '2.0',
+          error: {
+            code: -32000,
+            message: error instanceof Error ? error.message : String(error),
+          },
+          id
+        }, targetOrigin);
+      }
+    }
+  }, [user, projectId, previewDomain]);
+
   const handleFetch = useCallback(async (request: JSONRPCRequest) => {
     const { params, id } = request;
     const { request: fetchRequest } = params;
@@ -441,7 +553,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
       // Verify origin for security
       const expectedOrigin = `https://${projectId}.${previewDomain}`;
       if (event.origin !== expectedOrigin) {
-        console.log(`Ignoring message from unexpected origin: ${event.origin}, expected: ${expectedOrigin}`);
+        console.log(`Ignoring message with source ${event.data.source} from unexpected origin: ${event.origin}, expected: ${expectedOrigin}`);
         return;
       }
 
@@ -449,6 +561,8 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
       console.log('Received message from iframe:', message);
       if (message.jsonrpc === '2.0' && message.method === 'fetch') {
         handleFetch(message);
+      } else if (message.jsonrpc === '2.0' && message.method === 'nostr') {
+        handleNostr(message);
       } else if (message.jsonrpc === '2.0' && message.method === 'console') {
         handleConsoleMessage(message);
       } else if (message.jsonrpc === '2.0' && message.method === 'updateNavigationState') {
@@ -458,7 +572,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [handleFetch, handleConsoleMessage, handleUpdateNavigationState, projectId, previewDomain]);
+  }, [handleFetch, handleNostr, handleConsoleMessage, handleUpdateNavigationState, projectId, previewDomain]);
 
   useEffect(() => {
     if (selectedFile) {

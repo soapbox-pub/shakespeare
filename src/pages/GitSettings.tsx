@@ -247,60 +247,86 @@ export function GitSettings() {
                     </div>
 
                     {preset.id === 'github' ? (
-                    // Special rendering for GitHub - OAuth button if configured, otherwise token input
-                    isOAuthConfigured && !forceManualEntry[preset.id] ? (
-                      <div className="space-y-3">
-                        <div className="flex gap-0">
-                          <Button
-                            onClick={initiateOAuth}
-                            disabled={isOAuthLoading}
-                            className="flex-1 rounded-r-none gap-2"
-                            variant="default"
-                          >
-                            {isOAuthLoading ? (
-                              <>
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                                Connecting...
-                              </>
-                            ) : (
-                              <>
-                                <ExternalFavicon
-                                  url="https://github.com"
-                                  size={16}
-                                  fallback={<GitBranch size={16} />}
-                                />
-                                <span className="truncate text-ellipsis overflow-hidden">
-                                  Connect to GitHub
-                                </span>
-                              </>
-                            )}
-                          </Button>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="default"
-                                className="rounded-l-none border-l border-primary-foreground/20 px-2"
-                                disabled={isOAuthLoading}
-                              >
-                                <ChevronDown className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem
-                                onClick={() => setForceManualEntry(prev => ({ ...prev, [preset.id]: true }))}
-                              >
-                                Enter API key
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                      // Special rendering for GitHub - OAuth button if configured, otherwise token input
+                      isOAuthConfigured && !forceManualEntry[preset.id] ? (
+                        <div className="space-y-3">
+                          <div className="flex gap-0">
+                            <Button
+                              onClick={initiateOAuth}
+                              disabled={isOAuthLoading}
+                              className="flex-1 rounded-r-none gap-2"
+                              variant="default"
+                            >
+                              {isOAuthLoading ? (
+                                <>
+                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                  Connecting...
+                                </>
+                              ) : (
+                                <>
+                                  <ExternalFavicon
+                                    url="https://github.com"
+                                    size={16}
+                                    fallback={<GitBranch size={16} />}
+                                  />
+                                  <span className="truncate text-ellipsis overflow-hidden">
+                                    Connect to GitHub
+                                  </span>
+                                </>
+                              )}
+                            </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="default"
+                                  className="rounded-l-none border-l border-primary-foreground/20 px-2"
+                                  disabled={isOAuthLoading}
+                                >
+                                  <ChevronDown className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                  onClick={() => setForceManualEntry(prev => ({ ...prev, [preset.id]: true }))}
+                                >
+                                  Enter API key
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                          {oauthError && (
+                            <p className="text-sm text-destructive">
+                              {oauthError}
+                            </p>
+                          )}
                         </div>
-                        {oauthError && (
-                          <p className="text-sm text-destructive">
-                            {oauthError}
-                          </p>
-                        )}
-                      </div>
+                      ) : (
+                        <div className="flex gap-2">
+                          <PasswordInput
+                            placeholder={t('enterToken')}
+                            className="flex-1"
+                            value={presetTokens[preset.id] || ''}
+                            onChange={(e) => setPresetTokens(prev => ({
+                              ...prev,
+                              [preset.id]: e.target.value,
+                            }))}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && presetTokens[preset.id]?.trim()) {
+                                handleAddPresetProvider(preset);
+                              }
+                            }}
+                          />
+                          <Button
+                            onClick={() => handleAddPresetProvider(preset)}
+                            disabled={!presetTokens[preset.id]?.trim()}
+                            size="sm"
+                          >
+                            {t('add')}
+                          </Button>
+                        </div>
+                      )
                     ) : (
+                      // Standard rendering for other providers
                       <div className="flex gap-2">
                         <PasswordInput
                           placeholder={t('enterToken')}
@@ -324,33 +350,7 @@ export function GitSettings() {
                           {t('add')}
                         </Button>
                       </div>
-                    )
-                  ) : (
-                    // Standard rendering for other providers
-                    <div className="flex gap-2">
-                      <PasswordInput
-                        placeholder={t('enterToken')}
-                        className="flex-1"
-                        value={presetTokens[preset.id] || ''}
-                        onChange={(e) => setPresetTokens(prev => ({
-                          ...prev,
-                          [preset.id]: e.target.value,
-                        }))}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && presetTokens[preset.id]?.trim()) {
-                            handleAddPresetProvider(preset);
-                          }
-                        }}
-                      />
-                      <Button
-                        onClick={() => handleAddPresetProvider(preset)}
-                        disabled={!presetTokens[preset.id]?.trim()}
-                        size="sm"
-                      >
-                        {t('add')}
-                      </Button>
-                    </div>
-                  )}
+                    )}
                   </CardContent>
                 </Card>
               ))}

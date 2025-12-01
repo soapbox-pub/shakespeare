@@ -408,70 +408,70 @@ export function AISettings() {
                         </div>
                       ) : (
                         <div className="space-y-2">
-                        <div className="flex gap-2">
-                          {!preset.nostr && (
-                            <PasswordInput
-                              placeholder={preset.id === "routstr" ? t('enterCashuToken') : t('enterApiKey')}
-                              className="flex-1"
-                              value={presetApiKeys[preset.id] || ''}
-                              onChange={(e) => setPresetApiKeys(prev => ({
-                                ...prev,
-                                [preset.id]: e.target.value,
-                              }))}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter' &&
-                                    presetApiKeys[preset.id]?.trim() &&
-                                    presetTermsAgreements[preset.id]) {
-                                  handleAddPresetProvider(preset);
-                                }
-                              }}
-                            />
-                          )}
-                          <Button
-                            onClick={() => handleAddPresetProvider(preset)}
-                            disabled={
-                              !presetTermsAgreements[preset.id] ||
-                              (!!preset.apiKeysURL && !presetApiKeys[preset.id]?.trim())
-                            }
-                            className={preset.nostr ? "w-full" : "h-10 px-4 ml-auto"}
-                          >
-                            {t('add')}
-                          </Button>
-                        </div>
-
-                        {/* Terms of Service Agreement */}
-                        <div className="flex items-center gap-1.5">
-                          <Checkbox
-                            id={`agree-terms-${preset.id}`}
-                            checked={presetTermsAgreements[preset.id] || false}
-                            onCheckedChange={(checked) => setPresetTermsAgreements(prev => ({
-                              ...prev,
-                              [preset.id]: checked === true,
-                            }))}
-                            className="size-3 [&_svg]:size-3"
-                          />
-                          <label
-                            htmlFor={`agree-terms-${preset.id}`}
-                            className="text-xs text-muted-foreground leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                          >
-                            {t('agreeToTermsOfService', { providerName: preset.name })}{' '}
-                            {preset.tosURL ? (
-                              <a
-                                href={preset.tosURL}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-muted-foreground underline hover:text-foreground hover:no-underline"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                {t('termsOfService')}
-                              </a>
-                            ) : (
-                              t('termsOfService')
+                          <div className="flex gap-2">
+                            {!preset.nostr && (
+                              <PasswordInput
+                                placeholder={preset.id === "routstr" ? t('enterCashuToken') : t('enterApiKey')}
+                                className="flex-1"
+                                value={presetApiKeys[preset.id] || ''}
+                                onChange={(e) => setPresetApiKeys(prev => ({
+                                  ...prev,
+                                  [preset.id]: e.target.value,
+                                }))}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' &&
+                                      presetApiKeys[preset.id]?.trim() &&
+                                      presetTermsAgreements[preset.id]) {
+                                    handleAddPresetProvider(preset);
+                                  }
+                                }}
+                              />
                             )}
-                          </label>
+                            <Button
+                              onClick={() => handleAddPresetProvider(preset)}
+                              disabled={
+                                !presetTermsAgreements[preset.id] ||
+                                (!!preset.apiKeysURL && !presetApiKeys[preset.id]?.trim())
+                              }
+                              className={preset.nostr ? "w-full" : "h-10 px-4 ml-auto"}
+                            >
+                              {t('add')}
+                            </Button>
+                          </div>
+
+                          {/* Terms of Service Agreement */}
+                          <div className="flex items-center gap-1.5">
+                            <Checkbox
+                              id={`agree-terms-${preset.id}`}
+                              checked={presetTermsAgreements[preset.id] || false}
+                              onCheckedChange={(checked) => setPresetTermsAgreements(prev => ({
+                                ...prev,
+                                [preset.id]: checked === true,
+                              }))}
+                              className="size-3 [&_svg]:size-3"
+                            />
+                            <label
+                              htmlFor={`agree-terms-${preset.id}`}
+                              className="text-xs text-muted-foreground leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                            >
+                              {t('agreeToTermsOfService', { providerName: preset.name })}{' '}
+                              {preset.tosURL ? (
+                                <a
+                                  href={preset.tosURL}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-muted-foreground underline hover:text-foreground hover:no-underline"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  {t('termsOfService')}
+                                </a>
+                              ) : (
+                                t('termsOfService')
+                              )}
+                            </label>
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
                     </CardContent>
                   </Card>
                 );

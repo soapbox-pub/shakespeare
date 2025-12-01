@@ -622,109 +622,109 @@ export function DeploySettings() {
                       <p className="text-sm text-muted-foreground">{preset.description}</p>
 
                       {showNostrLoginRequired ? (
-                      <div className="space-y-2">
-                        <p className="text-sm text-muted-foreground">
-                          {t('loginToNostrRequired')}
-                        </p>
-                        <Button asChild className="w-full">
-                          <Link to="/settings/nostr">
-                            {t('goToNostrSettings')}
-                          </Link>
-                        </Button>
-                      </div>
-                    ) : isOAuthConfigured && !forceManualEntry[preset.id] ? (
-                      // Show OAuth button if OAuth is configured and not forced to manual
-                      <div className="space-y-3">
-                        <div className="flex gap-0">
-                          <Button
-                            onClick={() => oauthHook?.initiateOAuth()}
-                            disabled={isOAuthLoading}
-                            className="flex-1 rounded-r-none gap-2"
-                            variant="default"
-                          >
-                            {isOAuthLoading ? (
-                              <>
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                                Connecting...
-                              </>
-                            ) : (
-                              <>
-                                {(() => {
-                                  const url = getProviderUrl(preset);
-                                  return url ? (
-                                    <ExternalFavicon
-                                      url={url}
-                                      size={16}
-                                      fallback={<Rocket size={16} />}
-                                    />
-                                  ) : (
-                                    <Rocket size={16} />
-                                  );
-                                })()}
-                                <span className="truncate text-ellipsis overflow-hidden">
-                                  Connect to {preset.name}
-                                </span>
-                              </>
-                            )}
-                          </Button>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="default"
-                                className="rounded-l-none border-l border-primary-foreground/20 px-2"
-                                disabled={isOAuthLoading}
-                              >
-                                <ChevronDown className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem
-                                onClick={() => setForceManualEntry(prev => ({ ...prev, [preset.id]: true }))}
-                              >
-                                Enter API key
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                        {oauthError && (
-                          <p className="text-sm text-destructive">
-                            {oauthError}
+                        <div className="space-y-2">
+                          <p className="text-sm text-muted-foreground">
+                            {t('loginToNostrRequired')}
                           </p>
-                        )}
-                      </div>
-                    ) : (
-                      // Show manual token input
-                      <div className="space-y-2">
-                        <div className="flex gap-2">
-                          {!preset.requiresNostr && preset.type !== 'nsite' && (
-                            <PasswordInput
-                              placeholder={preset.apiKeyLabel || t('enterApiKey')}
-                              className="flex-1"
-                              value={presetApiKeys[preset.id] || ''}
-                              onChange={(e) => setPresetApiKeys(prev => ({
-                                ...prev,
-                                [preset.id]: e.target.value,
-                              }))}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter' && presetApiKeys[preset.id]?.trim()) {
-                                  handleAddPresetProvider(preset);
-                                }
-                              }}
-                            />
-                          )}
-                          <Button
-                            onClick={() => handleAddPresetProvider(preset)}
-                            disabled={
-                              (preset.requiresNostr && !isLoggedIntoNostr) ||
-                              (!preset.requiresNostr && preset.type !== 'nsite' && !presetApiKeys[preset.id]?.trim())
-                            }
-                            className={(preset.requiresNostr || preset.type === 'nsite') ? "w-full" : "h-10 px-4 ml-auto"}
-                          >
-                            {t('add')}
+                          <Button asChild className="w-full">
+                            <Link to="/settings/nostr">
+                              {t('goToNostrSettings')}
+                            </Link>
                           </Button>
                         </div>
-                      </div>
-                    )}
+                      ) : isOAuthConfigured && !forceManualEntry[preset.id] ? (
+                        // Show OAuth button if OAuth is configured and not forced to manual
+                        <div className="space-y-3">
+                          <div className="flex gap-0">
+                            <Button
+                              onClick={() => oauthHook?.initiateOAuth()}
+                              disabled={isOAuthLoading}
+                              className="flex-1 rounded-r-none gap-2"
+                              variant="default"
+                            >
+                              {isOAuthLoading ? (
+                                <>
+                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                  Connecting...
+                                </>
+                              ) : (
+                                <>
+                                  {(() => {
+                                    const url = getProviderUrl(preset);
+                                    return url ? (
+                                      <ExternalFavicon
+                                        url={url}
+                                        size={16}
+                                        fallback={<Rocket size={16} />}
+                                      />
+                                    ) : (
+                                      <Rocket size={16} />
+                                    );
+                                  })()}
+                                  <span className="truncate text-ellipsis overflow-hidden">
+                                    Connect to {preset.name}
+                                  </span>
+                                </>
+                              )}
+                            </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="default"
+                                  className="rounded-l-none border-l border-primary-foreground/20 px-2"
+                                  disabled={isOAuthLoading}
+                                >
+                                  <ChevronDown className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                  onClick={() => setForceManualEntry(prev => ({ ...prev, [preset.id]: true }))}
+                                >
+                                  Enter API key
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                          {oauthError && (
+                            <p className="text-sm text-destructive">
+                              {oauthError}
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        // Show manual token input
+                        <div className="space-y-2">
+                          <div className="flex gap-2">
+                            {!preset.requiresNostr && preset.type !== 'nsite' && (
+                              <PasswordInput
+                                placeholder={preset.apiKeyLabel || t('enterApiKey')}
+                                className="flex-1"
+                                value={presetApiKeys[preset.id] || ''}
+                                onChange={(e) => setPresetApiKeys(prev => ({
+                                  ...prev,
+                                  [preset.id]: e.target.value,
+                                }))}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' && presetApiKeys[preset.id]?.trim()) {
+                                    handleAddPresetProvider(preset);
+                                  }
+                                }}
+                              />
+                            )}
+                            <Button
+                              onClick={() => handleAddPresetProvider(preset)}
+                              disabled={
+                                (preset.requiresNostr && !isLoggedIntoNostr) ||
+                                (!preset.requiresNostr && preset.type !== 'nsite' && !presetApiKeys[preset.id]?.trim())
+                              }
+                              className={(preset.requiresNostr || preset.type === 'nsite') ? "w-full" : "h-10 px-4 ml-auto"}
+                            >
+                              {t('add')}
+                            </Button>
+                          </div>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 );

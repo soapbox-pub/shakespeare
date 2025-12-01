@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Check, ChevronDown, Edit3, RefreshCw, AlertCircle, Settings, TriangleAlert } from 'lucide-react';
+import { Check, ChevronDown, Edit3, RefreshCw, AlertCircle, Settings, TriangleAlert, Bot } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -12,6 +12,8 @@ import { useAISettings } from '@/hooks/useAISettings';
 import { useProviderModels } from '@/hooks/useProviderModels';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { ModelPricing } from '@/components/ModelPricing';
+import { ExternalFavicon } from '@/components/ExternalFavicon';
+import { getProviderDisplayName } from '@/lib/aiProviderPresets';
 import { cn } from '@/lib/utils';
 
 interface ModelSelectorProps {
@@ -71,6 +73,31 @@ export const ModelSelector = memo(function ModelSelector({
     }
     return groups;
   }, [models, recentlyUsedSet]);
+
+  // Get provider display name and baseURL for a given provider ID
+  const getProviderInfo = useMemo(() => {
+    return (providerId: string) => {
+      const provider = settings.providers.find(p => p.id === providerId);
+      return {
+        displayName: provider ? getProviderDisplayName(provider) : providerId,
+        baseURL: provider?.baseURL,
+      };
+    };
+  }, [settings.providers]);
+
+  // Get display info for the selected model
+  const selectedModelDisplay = useMemo(() => {
+    if (!value) return null;
+
+    const providerId = value.split('/')[0];
+    const modelId = value.split('/').slice(1).join('/') || value;
+    const providerInfo = getProviderInfo(providerId);
+
+    return {
+      modelId,
+      baseURL: providerInfo.baseURL,
+    };
+  }, [value, getProviderInfo]);
 
   // Determine if we should show the "Recently Used" section
   const shouldShowRecentlyUsed = useMemo(() => {
@@ -278,13 +305,31 @@ export const ModelSelector = memo(function ModelSelector({
               role="combobox"
               aria-expanded={open}
               className={cn(
-                "h-8 p-0 gap-0.5 text-xs border-0 bg-transparent hover:bg-transparent hover:text-foreground focus-visible:ring-0 focus-visible:ring-offset-0 text-muted-foreground text-right min-w-0 max-w-[280px]"
+                "h-8 p-0 gap-1 text-xs border-0 bg-transparent hover:bg-transparent hover:text-foreground focus-visible:ring-0 focus-visible:ring-offset-0 text-muted-foreground text-right min-w-0 max-w-[280px]"
               )}
               disabled={disabled}
             >
-              <span className="truncate">
-                {value || placeholder || defaultPlaceholder}
-              </span>
+              {selectedModelDisplay ? (
+                <>
+                  {selectedModelDisplay.baseURL ? (
+                    <ExternalFavicon
+                      url={selectedModelDisplay.baseURL}
+                      size={16}
+                      fallback={<Bot size={16} />}
+                      className="flex-shrink-0"
+                    />
+                  ) : (
+                    <Bot size={16} className="flex-shrink-0" />
+                  )}
+                  <span className="truncate">
+                    {selectedModelDisplay.modelId}
+                  </span>
+                </>
+              ) : (
+                <span className="truncate">
+                  {placeholder || defaultPlaceholder}
+                </span>
+              )}
               <ChevronDown className="size-3 shrink-0 opacity-50" />
             </Button>
           </PopoverTrigger>
@@ -305,6 +350,10 @@ export const ModelSelector = memo(function ModelSelector({
                   <CommandGroup heading={t('recentlyUsed')}>
                     {recentlyUsedModels.map((modelId) => {
                       const modelData = models.find(m => m.fullId === modelId);
+                      const providerId = modelId.split('/')[0];
+                      const providerInfo = getProviderInfo(providerId);
+                      const displayModelId = modelId.split('/').slice(1).join('/') || modelId;
+
                       return (
                         <CommandItem
                           key={modelId}
@@ -318,7 +367,17 @@ export const ModelSelector = memo(function ModelSelector({
                               value === modelId ? "opacity-100" : "opacity-0"
                             )}
                           />
-                          <span className="truncate flex-1">{modelId}</span>
+                          {providerInfo.baseURL ? (
+                            <ExternalFavicon
+                              url={providerInfo.baseURL}
+                              size={16}
+                              fallback={<Bot size={16} />}
+                              className="mr-2 flex-shrink-0"
+                            />
+                          ) : (
+                            <Bot size={16} className="mr-2 flex-shrink-0" />
+                          )}
+                          <span className="truncate flex-1">{displayModelId}</span>
                           {modelData?.pricing && (
                             <ModelPricing pricing={modelData.pricing} className="ml-2" />
                           )}
@@ -367,32 +426,46 @@ export const ModelSelector = memo(function ModelSelector({
                 )}
 
                 {/* Provider models */}
-                {!isLoading && Object.entries(modelsByProvider).map(([provider, providerModels]) => (
-                  <div key={provider}>
-                    <CommandSeparator />
-                    <CommandGroup heading={provider}>
-                      {providerModels.map((model) => (
-                        <CommandItem
-                          key={model.fullId}
-                          value={model.fullId}
-                          onSelect={() => handleSelect(model.fullId)}
-                          className="cursor-pointer"
-                        >
-                          <Check
-                            className={cn(
-                              "mr-2 h-4 w-4",
-                              value === model.fullId ? "opacity-100" : "opacity-0"
+                {!isLoading && Object.entries(modelsByProvider).map(([providerId, providerModels]) => {
+                  const providerInfo = getProviderInfo(providerId);
+
+                  return (
+                    <div key={providerId}>
+                      <CommandSeparator />
+                      <CommandGroup heading={providerInfo.displayName}>
+                        {providerModels.map((model) => (
+                          <CommandItem
+                            key={model.fullId}
+                            value={model.fullId}
+                            onSelect={() => handleSelect(model.fullId)}
+                            className="cursor-pointer"
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                value === model.fullId ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            {providerInfo.baseURL ? (
+                              <ExternalFavicon
+                                url={providerInfo.baseURL}
+                                size={16}
+                                fallback={<Bot size={16} />}
+                                className="mr-2 flex-shrink-0"
+                              />
+                            ) : (
+                              <Bot size={16} className="mr-2 flex-shrink-0" />
                             )}
-                          />
-                          <span className="truncate flex-1">{model.fullId}</span>
-                          {model.pricing && (
-                            <ModelPricing pricing={model.pricing} className="ml-2" />
-                          )}
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </div>
-                ))}
+                            <span className="truncate flex-1">{model.id}</span>
+                            {model.pricing && (
+                              <ModelPricing pricing={model.pricing} className="ml-2" />
+                            )}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </div>
+                  );
+                })}
 
                 {/* Custom model option and manage providers - moved to bottom */}
                 <CommandSeparator />

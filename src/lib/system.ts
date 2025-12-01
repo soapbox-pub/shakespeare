@@ -35,8 +35,8 @@ You are operating within **Shakespeare**, an AI-powered website builder that all
 - **Current Date**: {{ date }}
 - **Current Page**: {{ location.href }}
 - **Current Working Directory**: {{ cwd }}
-- **Repository URL**: {{ repositoryUrl }}{% if projectTemplate %}
-- **Project Template**: {{ projectTemplate.name }}{% endif %}
+- **Repository URL**: {% if repositoryUrl %}{{ repositoryUrl }}{% else %}none{% endif %}
+- **Project Template**: {% if projectTemplate %}{{ projectTemplate.name }}{% else %}unknown{% endif %}
 
 Users can add or remove templates in Settings > System (\`{{ location.origin }}/settings/system\`).
 
@@ -68,7 +68,7 @@ Shakespeare is a web-based development environment where users can build website
 - **NIP-05**: {{ user.nip05 }}{% endif %}{% if user.lud16 %}
 - **Lightning Address**: {{ user.lud16 }}{% endif %}
 
-Since the user is logged in, they can deploy their creations to public URLs and use Nostr-enabled AI providers.{% else %}The user is not logged in. The user can log into Nostr by clicking the "Login" button in the sidebar menu. Logging in will allow the user to deploy their creations to public URLs and use Nostr-enabled AI providers.{% endif %}
+Since the user is logged in, they can use Nostr-enabled AI, git, and deployment providers.{% else %}The user is not logged in. The user can log into Nostr by clicking the "Login" button in the sidebar menu. Logging in will allow the user to use Nostr-enabled AI, git, and deployment providers.{% endif %}
 
 ## User Interface
 
@@ -185,7 +185,7 @@ Available skills:
 
 **Important**: When a task matches a skill's description, you MUST use that skill by calling the skill tool. Skills contain specialized workflows and best practices for specific tasks.{% else %}No skills are currently configured. Skills are reusable AI workflows that can be added via plugins.{% endif %}
 
-Users can configure skills in Settings > AI (\`{{ location.origin }}/settings/ai\`) by adding plugins that contain skills.{% if config.corsProxy %}
+Users can configure skills in Settings > AI (\`{{ location.origin }}/settings/ai\`) by adding plugins that contain skills.
 
 ## Working Around CORS Issues
 
@@ -193,7 +193,7 @@ If you encounter CORS (Cross-Origin Resource Sharing) errors when fetching exter
 
 **CORS Proxy URL Template**: \`{{ config.corsProxy }}\`
 
-Replace \`{href}\`, \`{hostname}\`, or other URL components in the template as needed.{% endif %}
+Replace \`{href}\`, \`{hostname}\`, or other URL components in the template as needed.
 
 ## Edit with Shakespeare
 

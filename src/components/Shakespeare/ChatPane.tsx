@@ -46,6 +46,7 @@ import { Quilly } from '@/components/Quilly';
 import { ShakespeareLogo } from '@/components/ShakespeareLogo';
 import { ChatInput } from '@/components/Shakespeare/ChatInput';
 import { buildMessageContent } from '@/lib/buildMessageContent';
+import { DotAI } from '@/lib/DotAI';
 
 // Clean interfaces now handled by proper hooks
 
@@ -88,6 +89,8 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [isStuck, setIsStuck] = useState(false);
   const [aiError, setAIError] = useState<Error | null>(null);
+  const [templateInfo, setTemplateInfo] = useState<{ name: string; description: string; url: string } | null>(null);
+  const [showTemplateInfo, setShowTemplateInfo] = useState(false);
 
   // Determine which error to show - console error takes priority over AI errors
   const displayError = consoleError || aiError;
@@ -251,6 +254,52 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     onUpdateMetadata,
     onAIError,
   });
+
+  // Check if we should show the template info banner
+  useEffect(() => {
+    const checkTemplateInfo = async () => {
+      try {
+        // Only check if we have at least 1 message
+        if (messages.length === 0) {
+          setShowTemplateInfo(false);
+          return;
+        }
+
+        const projectCwd = `${projectsPath}/${projectId}`;
+        const dotAI = new DotAI(fs, projectCwd);
+
+        // Check if template.json exists
+        const template = await dotAI.readTemplate();
+        if (!template) {
+          setShowTemplateInfo(false);
+          return;
+        }
+
+        // Check if exactly 1 history file exists
+        const historyDirExists = await dotAI.historyDirExists();
+        if (!historyDirExists) {
+          setShowTemplateInfo(false);
+          return;
+        }
+
+        const historyDir = `${projectCwd}/.git/ai/history`;
+        const files = await fs.readdir(historyDir);
+        const historyFiles = files.filter(file => file.endsWith('.jsonl'));
+
+        if (historyFiles.length === 1) {
+          setTemplateInfo(template);
+          setShowTemplateInfo(true);
+        } else {
+          setShowTemplateInfo(false);
+        }
+      } catch (error) {
+        console.warn('Failed to check template info:', error);
+        setShowTemplateInfo(false);
+      }
+    };
+
+    checkTemplateInfo();
+  }, [fs, projectsPath, projectId, messages.length]);
 
   // Handle console error help requests
   const handleConsoleErrorHelp = useCallback(async () => {
@@ -502,6 +551,25 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
 
       <div className="flex-1 overflow-y-scroll overflow-x-hidden" ref={scrollAreaRef}>
         <div className="p-4 space-y-4">
+          {/* Template info banner - shown when conditions are met */}
+          {showTemplateInfo && templateInfo && (
+            <div className="flex items-center gap-3 text-xs text-muted-foreground uppercase tracking-wide">
+              <div className="flex-1 h-px bg-border" />
+              <span>
+                Started with{' '}
+                <a
+                  href={templateInfo.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-foreground transition-colors"
+                >
+                  {templateInfo.name}
+                </a>
+              </span>
+              <div className="flex-1 h-px bg-border" />
+            </div>
+          )}
+
           {/* Empty state when no messages and not loading */}
           {messages.length === 0 && !streamingMessage && !isLoading && (
             <div className="flex-1 flex items-center justify-center min-h-[400px]">

@@ -38,7 +38,7 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useAppContext } from '@/hooks/useAppContext';
 import { useNavigate, Link } from 'react-router-dom';
 import type { AIProvider } from '@/contexts/AISettingsContext';
-import { AI_PROVIDER_PRESETS, type PresetProvider, getProviderDisplayName } from '@/lib/aiProviderPresets';
+import { AI_PROVIDER_PRESETS, type PresetProvider } from '@/lib/aiProviderPresets';
 import { ExternalFavicon } from '@/components/ExternalFavicon';
 import { MCPServersSection } from '@/components/MCPServersSection';
 import { PluginsSection } from '@/components/PluginsSection';
@@ -99,7 +99,7 @@ function SortableProviderItem({ provider, preset, onRemove, onSetProvider, onOpe
             <Bot size={16} />
           )}
           <span className="font-medium">
-            {getProviderDisplayName(provider)}
+            {provider.name}
           </span>
           <div className="ml-auto">
             <CreditsBadge
@@ -117,7 +117,7 @@ function SortableProviderItem({ provider, preset, onRemove, onSetProvider, onOpe
               id={`${provider.id}-name`}
               placeholder={preset?.name || provider.id}
               value={provider.name || ''}
-              onChange={(e) => onSetProvider({ ...provider, name: e.target.value || undefined })}
+              onChange={(e) => onSetProvider({ ...provider, name: e.target.value })}
             />
           </div>
           <div className="grid gap-2">

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { AI_PROVIDER_PRESETS, getPresetProvider } from './aiProviderPresets';
+import { AI_PROVIDER_PRESETS } from './aiProviderPresets';
 
 describe('AI Provider Presets', () => {
   it('should export preset providers array', () => {
@@ -22,11 +22,11 @@ describe('AI Provider Presets', () => {
   });
 
   it('should get preset provider by id', () => {
-    const openai = getPresetProvider('openai');
+    const openai = AI_PROVIDER_PRESETS.find(p => p.id === 'openai');
     expect(openai).toBeDefined();
     expect(openai?.name).toBe('OpenAI');
-    
-    const nonExistent = getPresetProvider('non-existent');
+
+    const nonExistent = AI_PROVIDER_PRESETS.find(p => p.id === 'non-existent');
     expect(nonExistent).toBeUndefined();
   });
 
@@ -39,7 +39,7 @@ describe('AI Provider Presets', () => {
       expect(preset.baseURL).toBeDefined();
       expect(typeof preset.baseURL).toBe('string');
       expect(preset.baseURL).toMatch(/^https?:\/\//);
-      
+
       // Optional fields
       if (preset.apiKeysURL) {
         expect(typeof preset.apiKeysURL).toBe('string');

@@ -13,7 +13,6 @@ import { useProviderModels } from '@/hooks/useProviderModels';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { ModelPricing } from '@/components/ModelPricing';
 import { ExternalFavicon } from '@/components/ExternalFavicon';
-import { getProviderDisplayName } from '@/lib/aiProviderPresets';
 import { cn } from '@/lib/utils';
 
 interface ModelSelectorProps {
@@ -79,7 +78,7 @@ export const ModelSelector = memo(function ModelSelector({
     return (providerId: string) => {
       const provider = settings.providers.find(p => p.id === providerId);
       return {
-        displayName: provider ? getProviderDisplayName(provider) : providerId,
+        displayName: provider ? provider.name : providerId,
         baseURL: provider?.baseURL,
       };
     };

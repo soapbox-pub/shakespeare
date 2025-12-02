@@ -2,7 +2,7 @@ import { createContext } from 'react';
 
 export interface AIProvider {
   id: string;
-  name?: string;
+  name: string;
   baseURL: string;
   apiKey?: string;
   nostr?: boolean;

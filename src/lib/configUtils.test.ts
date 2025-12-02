@@ -76,6 +76,14 @@ describe('configUtils', () => {
         expect(mockFS.readFile).toHaveBeenCalledWith('/config/ai.json', 'utf8');
         expect(result).toEqual({
           ...sampleAISettings,
+          providers: [
+            {
+              id: 'openai',
+              baseURL: 'https://api.openai.com/v1',
+              apiKey: 'sk-test123',
+              name: 'OpenAI', // Name is now filled in from presets
+            },
+          ],
           mcpServers: {},
         });
       });

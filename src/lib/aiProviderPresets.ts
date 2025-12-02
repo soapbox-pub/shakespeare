@@ -90,25 +90,3 @@ export const AI_PROVIDER_PRESETS: PresetProvider[] = [
     proxy: true,
   },
 ];
-
-// Helper function to get a specific preset by ID
-export function getPresetProvider(id: string): PresetProvider | undefined {
-  return AI_PROVIDER_PRESETS.find(preset => preset.id === id);
-}
-
-// Helper function to get display name for a provider
-export function getProviderDisplayName(provider: { id: string; name?: string }): string {
-  // If name is provided, use it
-  if (provider.name) {
-    return provider.name;
-  }
-
-  // Try to find a matching preset by ID
-  const preset = getPresetProvider(provider.id);
-  if (preset) {
-    return preset.name;
-  }
-
-  // Fallback to ID
-  return provider.id;
-}

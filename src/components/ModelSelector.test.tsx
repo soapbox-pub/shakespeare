@@ -83,8 +83,8 @@ describe('ModelSelector', () => {
     mockUseAISettings.mockReturnValue({
       settings: {
         providers: [
-          { id: 'provider1', baseURL: 'https://api.provider1.com' },
-          { id: 'provider2', baseURL: 'https://api.provider2.com' },
+          { id: 'provider1', name: 'Provider 1', baseURL: 'https://api.provider1.com' },
+          { id: 'provider2', name: 'Provider 2', baseURL: 'https://api.provider2.com' },
         ],
         recentlyUsedModels,
         mcpServers: {},
@@ -112,7 +112,7 @@ describe('ModelSelector', () => {
 
     // Wait for the dropdown to open
     await waitFor(() => {
-      expect(screen.getByText('provider2')).toBeInTheDocument();
+      expect(screen.getByText('Provider 2')).toBeInTheDocument();
     });
 
     // Recently used section should NOT be visible
@@ -145,9 +145,9 @@ describe('ModelSelector', () => {
     mockUseAISettings.mockReturnValue({
       settings: {
         providers: [
-          { id: 'provider1', baseURL: 'https://api.provider1.com' },
-          { id: 'provider2', baseURL: 'https://api.provider2.com' },
-          { id: 'provider3', baseURL: 'https://api.provider3.com' },
+          { id: 'provider1', name: 'Provider 1', baseURL: 'https://api.provider1.com' },
+          { id: 'provider2', name: 'Provider 2', baseURL: 'https://api.provider2.com' },
+          { id: 'provider3', name: 'Provider 3', baseURL: 'https://api.provider3.com' },
         ],
         recentlyUsedModels,
         mcpServers: {},
@@ -175,7 +175,7 @@ describe('ModelSelector', () => {
 
     // Wait for the dropdown to open
     await waitFor(() => {
-      expect(screen.getByText('provider1')).toBeInTheDocument();
+      expect(screen.getByText('Provider 1')).toBeInTheDocument();
     });
 
     // Recently used section SHOULD be visible
@@ -204,9 +204,9 @@ describe('ModelSelector', () => {
     mockUseAISettings.mockReturnValue({
       settings: {
         providers: [
-          { id: 'provider1', baseURL: 'https://api.provider1.com' },
-          { id: 'provider2', baseURL: 'https://api.provider2.com' },
-          { id: 'provider3', baseURL: 'https://api.provider3.com' },
+          { id: 'provider1', name: 'Provider 1', baseURL: 'https://api.provider1.com' },
+          { id: 'provider2', name: 'Provider 2', baseURL: 'https://api.provider2.com' },
+          { id: 'provider3', name: 'Provider 3', baseURL: 'https://api.provider3.com' },
         ],
         recentlyUsedModels,
         mcpServers: {},
@@ -234,7 +234,7 @@ describe('ModelSelector', () => {
 
     // Wait for the dropdown to open
     await waitFor(() => {
-      expect(screen.getByText('provider2')).toBeInTheDocument();
+      expect(screen.getByText('Provider 2')).toBeInTheDocument();
     });
 
     // Recently used section SHOULD be visible

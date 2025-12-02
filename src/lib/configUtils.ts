@@ -1,7 +1,8 @@
 import z from 'zod';
 import { filteredArray } from '@/lib/schema';
+import { AI_PROVIDER_PRESETS } from '@/lib/aiProviderPresets';
 import type { JSRuntimeFS } from '@/lib/JSRuntime';
-import type { AIProvider, AISettings, MCPServer } from '@/contexts/AISettingsContext';
+import type { AISettings, MCPServer } from '@/contexts/AISettingsContext';
 import type { GitSettings } from '@/contexts/GitSettingsContext';
 import type { DeployProvider, DeploySettings } from '@/contexts/DeploySettingsContext';
 
@@ -29,7 +30,7 @@ function getDeployConfigPath(configPath = '/config'): string {
   return `${configPath}/deploy.json`;
 }
 
-const aiProviderSchema: z.ZodType<AIProvider> = z.object({
+const aiProviderSchema = z.object({
   id: z.string(),
   name: z.string().optional(),
   baseURL: z.string().url(),
@@ -146,9 +147,30 @@ export async function readAISettings(fs: JSRuntimeFS, configPath = '/config'): P
     const content = await fs.readFile(aiConfigPath, 'utf8');
     const data = JSON.parse(content);
     const parsed = aiSettingsSchema.parse(data);
-    // Ensure mcpServers exists even if not in parsed data
+
     return {
       ...parsed,
+      providers: parsed.providers.map((provider) => {
+        let name = provider.name;
+
+        // Fill in name from presets if missing
+        if (typeof name !== 'string') {
+          const presetProvider = AI_PROVIDER_PRESETS.find(preset => preset.id === provider.id);
+          if (presetProvider) {
+            name = presetProvider.name;
+          }
+        }
+
+        // Fallback to id if name is still missing
+        if (typeof name !== 'string') {
+          name = provider.id;
+        }
+
+        return {
+          ...provider,
+          name,
+        }
+      }),
       mcpServers: parsed.mcpServers || {},
     };
   } catch (error) {

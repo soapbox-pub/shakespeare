@@ -232,11 +232,11 @@ export async function makeSystemPrompt(opts: MakeSystemPromptOpts): Promise<stri
     day: "numeric",
   });
 
-  // Get skills
+  // Get skills from both plugins and project
   let skills: Array<{ name: string; description: string; plugin: string; path: string }> = [];
   if (config.fsPathPlugins) {
     try {
-      skills = await getAllSkills(fs, config.fsPathPlugins);
+      skills = await getAllSkills(fs, config.fsPathPlugins, cwd);
     } catch {
       // Skills not available, use empty array
       skills = [];

@@ -3,6 +3,7 @@ import type { JSRuntimeFS } from './JSRuntime';
 import {
   getPlugins,
   getPluginSkills,
+  getProjectSkills,
   getAllSkills,
   findSkill,
   readSkillContent,
@@ -200,14 +201,12 @@ describe('plugins', () => {
   });
 
   describe('getPluginSkills', () => {
-    it('should return empty array when plugin has no skills', async () => {
-      await fs.mkdir('/plugins/plugin1', { recursive: true });
-
-      const skills = await getPluginSkills(fs, '/plugins', 'plugin1');
+    it('should return empty array when no plugins exist', async () => {
+      const skills = await getPluginSkills(fs, '/plugins');
       expect(skills).toEqual([]);
     });
 
-    it('should return skills with valid SKILL.md files', async () => {
+    it('should return skills from all plugins', async () => {
       const skillPath = '/plugins/testplugin/skills/myskill';
       await fs.mkdir(skillPath, { recursive: true });
       await fs.writeFile(
@@ -222,7 +221,7 @@ description: A test skill
 This is a test skill.`
       );
 
-      const skills = await getPluginSkills(fs, '/plugins', 'testplugin');
+      const skills = await getPluginSkills(fs, '/plugins');
       expect(skills).toHaveLength(1);
       expect(skills[0]).toEqual({
         name: 'myskill',
@@ -245,7 +244,7 @@ description: Has uppercase letters
 Content`
       );
 
-      const skills = await getPluginSkills(fs, '/plugins', 'testplugin');
+      const skills = await getPluginSkills(fs, '/plugins');
       expect(skills).toEqual([]);
     });
 
@@ -261,48 +260,131 @@ name: incomplete
 Missing description`
       );
 
-      const skills = await getPluginSkills(fs, '/plugins', 'testplugin');
+      const skills = await getPluginSkills(fs, '/plugins');
       expect(skills).toEqual([]);
     });
   });
 
   describe('getAllSkills', () => {
-    it('should return skills from all plugins', async () => {
-      // Plugin 1
-      const skill1Path = '/plugins/plugin1/skills/skill1';
-      await fs.mkdir(skill1Path, { recursive: true });
+    it('should combine plugin and project skills', async () => {
+      const pluginPath = '/plugins/testplugin/skills/pluginskill';
+      const projectPath = '/projects/myproject';
+      const projectSkillPath = `${projectPath}/skills/projectskill`;
+
+      // Create plugin skill
+      await fs.mkdir(pluginPath, { recursive: true });
       await fs.writeFile(
-        `${skill1Path}/SKILL.md`,
+        `${pluginPath}/SKILL.md`,
         `---
-name: skill1
-description: First skill
+name: plugin-skill
+description: A plugin skill
 ---
 
 Content`
       );
 
-      // Plugin 2
-      const skill2Path = '/plugins/plugin2/skills/skill2';
-      await fs.mkdir(skill2Path, { recursive: true });
+      // Create project skill
+      await fs.mkdir(projectSkillPath, { recursive: true });
       await fs.writeFile(
-        `${skill2Path}/SKILL.md`,
+        `${projectSkillPath}/SKILL.md`,
         `---
-name: skill2
-description: Second skill
+name: project-skill
+description: A project skill
 ---
 
 Content`
       );
 
-      const skills = await getAllSkills(fs, '/plugins');
+      const skills = await getAllSkills(fs, '/plugins', projectPath);
+
       expect(skills).toHaveLength(2);
-      expect(skills.map((s) => s.name)).toContain('skill1');
-      expect(skills.map((s) => s.name)).toContain('skill2');
+      expect(skills.map((s) => s.name)).toContain('plugin-skill');
+      expect(skills.map((s) => s.name)).toContain('project-skill');
+    });
+
+    it('should give precedence to project skills over plugin skills with same name', async () => {
+      const pluginPath = '/plugins/testplugin/skills/samename';
+      const projectPath = '/projects/myproject';
+      const projectSkillPath = `${projectPath}/skills/samename`;
+
+      // Create plugin skill
+      await fs.mkdir(pluginPath, { recursive: true });
+      await fs.writeFile(
+        `${pluginPath}/SKILL.md`,
+        `---
+name: same-name
+description: Plugin version
+---
+
+Plugin content`
+      );
+
+      // Create project skill with same name
+      await fs.mkdir(projectSkillPath, { recursive: true });
+      await fs.writeFile(
+        `${projectSkillPath}/SKILL.md`,
+        `---
+name: same-name
+description: Project version
+---
+
+Project content`
+      );
+
+      const skills = await getAllSkills(fs, '/plugins', projectPath);
+
+      expect(skills).toHaveLength(1);
+      expect(skills[0].name).toBe('same-name');
+      expect(skills[0].description).toBe('Project version');
+      expect(skills[0].plugin).toBe('project');
+    });
+
+    it('should return only plugin skills when project has no skills', async () => {
+      const pluginPath = '/plugins/testplugin/skills/pluginskill';
+
+      await fs.mkdir(pluginPath, { recursive: true });
+      await fs.writeFile(
+        `${pluginPath}/SKILL.md`,
+        `---
+name: plugin-skill
+description: A plugin skill
+---
+
+Content`
+      );
+
+      const skills = await getAllSkills(fs, '/plugins', '/projects/emptyproject');
+
+      expect(skills).toHaveLength(1);
+      expect(skills[0].name).toBe('plugin-skill');
+      expect(skills[0].plugin).toBe('testplugin');
+    });
+
+    it('should return only project skills when there are no plugins', async () => {
+      const projectPath = '/projects/myproject';
+      const projectSkillPath = `${projectPath}/skills/projectskill`;
+
+      await fs.mkdir(projectSkillPath, { recursive: true });
+      await fs.writeFile(
+        `${projectSkillPath}/SKILL.md`,
+        `---
+name: project-skill
+description: A project skill
+---
+
+Content`
+      );
+
+      const skills = await getAllSkills(fs, '/empty-plugins', projectPath);
+
+      expect(skills).toHaveLength(1);
+      expect(skills[0].name).toBe('project-skill');
+      expect(skills[0].plugin).toBe('project');
     });
   });
 
   describe('findSkill', () => {
-    it('should find a skill by name', async () => {
+    it('should find a plugin skill by name', async () => {
       const skillPath = '/plugins/testplugin/skills/findme';
       await fs.mkdir(skillPath, { recursive: true });
       await fs.writeFile(
@@ -315,16 +397,75 @@ description: Find this skill
 Content`
       );
 
-      const skill = await findSkill(fs, '/plugins', 'findme');
+      const skill = await findSkill(fs, '/plugins', '/projects/myproject', 'findme');
       expect(skill).not.toBeNull();
       expect(skill?.name).toBe('findme');
+      expect(skill?.plugin).toBe('testplugin');
     });
 
-    it('should return null when skill not found', async () => {
-      const skill = await findSkill(fs, '/plugins', 'nonexistent');
+    it('should find a project skill by name', async () => {
+      const projectPath = '/projects/myproject';
+      const skillPath = `${projectPath}/skills/projectskill`;
+      await fs.mkdir(skillPath, { recursive: true });
+      await fs.writeFile(
+        `${skillPath}/SKILL.md`,
+        `---
+name: projectskill
+description: A project skill
+---
+
+Content`
+      );
+
+      const skill = await findSkill(fs, '/plugins', projectPath, 'projectskill');
+      expect(skill).not.toBeNull();
+      expect(skill?.name).toBe('projectskill');
+      expect(skill?.plugin).toBe('project');
+    });
+
+    it('should prefer project skill over plugin skill with same name', async () => {
+      const pluginPath = '/plugins/testplugin/skills/samename';
+      const projectPath = '/projects/myproject';
+      const projectSkillPath = `${projectPath}/skills/samename`;
+
+      // Create plugin skill
+      await fs.mkdir(pluginPath, { recursive: true });
+      await fs.writeFile(
+        `${pluginPath}/SKILL.md`,
+        `---
+name: samename
+description: Plugin version
+---
+
+Plugin content`
+      );
+
+      // Create project skill with same name
+      await fs.mkdir(projectSkillPath, { recursive: true });
+      await fs.writeFile(
+        `${projectSkillPath}/SKILL.md`,
+        `---
+name: samename
+description: Project version
+---
+
+Project content`
+      );
+
+      const skill = await findSkill(fs, '/plugins', projectPath, 'samename');
+      expect(skill).not.toBeNull();
+      expect(skill?.name).toBe('samename');
+      expect(skill?.description).toBe('Project version');
+      expect(skill?.plugin).toBe('project');
+    });
+
+    it('should return null when skill not found in either plugins or project', async () => {
+      const skill = await findSkill(fs, '/plugins', '/projects/myproject', 'nonexistent');
       expect(skill).toBeNull();
     });
   });
+
+
 
   describe('readSkillContent', () => {
     it('should read the full SKILL.md content', async () => {
@@ -352,4 +493,69 @@ This is the skill content.`;
       expect(readContent).toBe(content);
     });
   });
+
+  describe('getProjectSkills', () => {
+    it('should get skills from project skills directory', async () => {
+      const projectPath = '/projects/myproject';
+      const skillPath1 = `${projectPath}/skills/skill1`;
+      const skillPath2 = `${projectPath}/skills/skill2`;
+
+      await fs.mkdir(skillPath1, { recursive: true });
+      await fs.mkdir(skillPath2, { recursive: true });
+
+      await fs.writeFile(
+        `${skillPath1}/SKILL.md`,
+        `---
+name: project-skill-1
+description: First project skill
+---
+
+Content`
+      );
+
+      await fs.writeFile(
+        `${skillPath2}/SKILL.md`,
+        `---
+name: project-skill-2
+description: Second project skill
+---
+
+Content`
+      );
+
+      const skills = await getProjectSkills(fs, projectPath);
+
+      expect(skills).toHaveLength(2);
+      expect(skills[0].name).toBe('project-skill-1');
+      expect(skills[0].plugin).toBe('project');
+      expect(skills[1].name).toBe('project-skill-2');
+      expect(skills[1].plugin).toBe('project');
+    });
+
+    it('should return empty array when project has no skills directory', async () => {
+      const skills = await getProjectSkills(fs, '/projects/emptyproject');
+      expect(skills).toEqual([]);
+    });
+
+    it('should skip skills with invalid names', async () => {
+      const projectPath = '/projects/myproject';
+      const skillPath = `${projectPath}/skills/badskill`;
+
+      await fs.mkdir(skillPath, { recursive: true });
+      await fs.writeFile(
+        `${skillPath}/SKILL.md`,
+        `---
+name: Invalid_Skill_Name
+description: This has uppercase and underscores
+---
+
+Content`
+      );
+
+      const skills = await getProjectSkills(fs, projectPath);
+      expect(skills).toEqual([]);
+    });
+  });
+
+
 });

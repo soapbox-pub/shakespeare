@@ -10,24 +10,26 @@ interface SkillParams {
 export class SkillTool implements Tool<SkillParams> {
   private fs: JSRuntimeFS;
   private pluginsPath: string;
+  private projectPath: string;
 
-  readonly description = 'Load and execute a skill from the configured plugins. Skills are reusable AI workflows that can be invoked by name.';
+  readonly description = 'Load and execute a skill from the configured plugins or project. Skills are reusable AI workflows that can be invoked by name.';
 
   readonly inputSchema = z.object({
     name: z.string().describe('The name of the skill to execute (lowercase alphanumeric with hyphens)'),
   });
 
-  constructor(fs: JSRuntimeFS, pluginsPath: string) {
+  constructor(fs: JSRuntimeFS, pluginsPath: string, projectPath: string) {
     this.fs = fs;
     this.pluginsPath = pluginsPath;
+    this.projectPath = projectPath;
   }
 
   async execute(args: SkillParams): Promise<string> {
     const { name } = args;
 
     try {
-      // Find the skill across all plugins
-      const skill = await findSkill(this.fs, this.pluginsPath, name);
+      // Find the skill across all plugins and project
+      const skill = await findSkill(this.fs, this.pluginsPath, this.projectPath, name);
 
       if (!skill) {
         throw new Error(`Skill "${name}" not found. Use the skill tool to list available skills or configure plugins in Settings > AI.`);
@@ -38,7 +40,7 @@ export class SkillTool implements Tool<SkillParams> {
 
       return `# Skill: ${skill.name}
 
-**Plugin**: ${skill.plugin}
+**Source**: ${skill.plugin === 'project' ? 'Project' : `Plugin: ${skill.plugin}`}
 **Description**: ${skill.description}
 **Path**: ${skill.path}
 

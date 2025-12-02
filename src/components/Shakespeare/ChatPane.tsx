@@ -177,7 +177,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
       nostr_publish_events: new NostrPublishEventsTool(),
       shell: new ShellTool(fs, cwd, git, config.corsProxy, user?.signer),
       read_console_messages: new ReadConsoleMessagesTool(),
-      skill: new SkillTool(fs, pluginsPath),
+      skill: new SkillTool(fs, pluginsPath, cwd),
     };
 
     // Add deploy tool only if user is logged in

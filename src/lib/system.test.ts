@@ -253,7 +253,7 @@ describe('makeSystemPrompt', () => {
       const result = await makeSystemPrompt(baseOpts);
 
       expect(result).toContain('No skills are currently configured');
-      expect(getAllSkills).toHaveBeenCalledWith(mockFs, '/plugins');
+      expect(getAllSkills).toHaveBeenCalledWith(mockFs, '/plugins', '/projects/test-project');
     });
 
     it('should list available skills when they exist', async () => {

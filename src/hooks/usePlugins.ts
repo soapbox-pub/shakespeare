@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useFS } from './useFS';
 import { useFSPaths } from './useFSPaths';
-import { getPlugins, getAllSkills, deletePlugin as deletePluginFn } from '@/lib/plugins';
+import { getPlugins, getPluginSkills, deletePlugin as deletePluginFn } from '@/lib/plugins';
 import { useGit } from './useGit';
 import { join } from 'path-browserify';
 
@@ -22,11 +22,11 @@ export function usePlugins() {
     },
   });
 
-  // Query to get all skills
+  // Query to get all plugin skills (not including project skills)
   const skillsQuery = useQuery({
     queryKey: ['skills', pluginsPath],
     queryFn: async () => {
-      return await getAllSkills(fs, pluginsPath);
+      return await getPluginSkills(fs, pluginsPath);
     },
   });
 

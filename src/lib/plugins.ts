@@ -56,15 +56,25 @@ export async function getPlugins(fs: JSRuntimeFS, pluginsPath: string): Promise<
 }
 
 /**
- * Get all skills from a plugin
+ * Get all skills from a single plugin
  */
-export async function getPluginSkills(
+function getSkillsFromPlugin(
   fs: JSRuntimeFS,
   pluginsPath: string,
   pluginName: string
 ): Promise<Skill[]> {
+  return getSkillsFromDirectory(fs, join(pluginsPath, pluginName, 'skills'), pluginName);
+}
+
+/**
+ * Get skills from a directory with a given plugin/source name
+ */
+async function getSkillsFromDirectory(
+  fs: JSRuntimeFS,
+  skillsDir: string,
+  sourceName: string
+): Promise<Skill[]> {
   const skills: Skill[] = [];
-  const skillsDir = join(pluginsPath, pluginName, 'skills');
 
   try {
     const skillDirs = await fs.readdir(skillsDir);
@@ -99,7 +109,7 @@ export async function getPluginSkills(
           name: frontmatter.name,
           description: frontmatter.description,
           path: skillPath,
-          plugin: pluginName,
+          plugin: sourceName,
         });
       } catch {
         // SKILL.md not found or invalid, skip this directory
@@ -107,7 +117,7 @@ export async function getPluginSkills(
       }
     }
   } catch {
-    // Skills directory doesn't exist for this plugin
+    // Skills directory doesn't exist
     return [];
   }
 
@@ -115,14 +125,24 @@ export async function getPluginSkills(
 }
 
 /**
- * Get all skills from all plugins
+ * Get all skills from a project's skills directory
  */
-export async function getAllSkills(fs: JSRuntimeFS, pluginsPath: string): Promise<Skill[]> {
+export async function getProjectSkills(
+  fs: JSRuntimeFS,
+  projectPath: string
+): Promise<Skill[]> {
+  return getSkillsFromDirectory(fs, join(projectPath, 'skills'), 'project');
+}
+
+/**
+ * Get all skills from all plugins (without project skills)
+ */
+export async function getPluginSkills(fs: JSRuntimeFS, pluginsPath: string): Promise<Skill[]> {
   const plugins = await getPlugins(fs, pluginsPath);
   const allSkills: Skill[] = [];
 
   for (const plugin of plugins) {
-    const skills = await getPluginSkills(fs, pluginsPath, plugin);
+    const skills = await getSkillsFromPlugin(fs, pluginsPath, plugin);
     allSkills.push(...skills);
   }
 
@@ -130,14 +150,44 @@ export async function getAllSkills(fs: JSRuntimeFS, pluginsPath: string): Promis
 }
 
 /**
- * Find a skill by name across all plugins
+ * Get all skills from both plugins and project, with project skills taking precedence
+ */
+export async function getAllSkills(
+  fs: JSRuntimeFS,
+  pluginsPath: string,
+  projectPath: string
+): Promise<Skill[]> {
+  // Get skills from both sources
+  const pluginSkills = await getPluginSkills(fs, pluginsPath);
+  const projectSkills = await getProjectSkills(fs, projectPath);
+
+  // Create a map to handle name collisions, with project skills taking precedence
+  const skillsMap = new Map<string, Skill>();
+
+  // Add plugin skills first
+  for (const skill of pluginSkills) {
+    skillsMap.set(skill.name, skill);
+  }
+
+  // Add project skills, overwriting any plugin skills with the same name
+  for (const skill of projectSkills) {
+    skillsMap.set(skill.name, skill);
+  }
+
+  // Return all skills as an array
+  return Array.from(skillsMap.values());
+}
+
+/**
+ * Find a skill by name across both plugins and project, with project skills taking precedence
  */
 export async function findSkill(
   fs: JSRuntimeFS,
   pluginsPath: string,
+  projectPath: string,
   skillName: string
 ): Promise<Skill | null> {
-  const skills = await getAllSkills(fs, pluginsPath);
+  const skills = await getAllSkills(fs, pluginsPath, projectPath);
   return skills.find(skill => skill.name === skillName) || null;
 }
 

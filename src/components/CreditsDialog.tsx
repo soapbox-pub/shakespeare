@@ -1004,17 +1004,17 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
           </div>
         ) : (
           <div className="flex-1 overflow-y-auto px-1 -mx-1">
-            <Accordion type="multiple" defaultValue={["add"]} className="w-full">
+            <Accordion type="multiple" defaultValue={["add"]} className="w-full space-y-2">
               {/* Buy Credits Accordion */}
               <AccordionItem value="add">
-                <AccordionTrigger className="hover:no-underline">
+                <AccordionTrigger className="hover:no-underline px-4 py-3">
                   <div className="flex items-center gap-2">
-                    <DollarSign className="h-4 w-4" />
+                    <DollarSign className="h-4 w-4 text-muted-foreground" />
                     {t('buyCredits')}
                   </div>
                 </AccordionTrigger>
-                <AccordionContent>
-                  <div className="space-y-3 pt-2">
+                <AccordionContent className="px-4">
+                  <div className="space-y-3 pt-2 pb-3">
                     <div className="space-y-3">
                       <Label htmlFor="amount" className="text-sm font-medium">{t('amountUSD')}</Label>
                       <div className="space-y-3">
@@ -1098,14 +1098,14 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
 
               {/* Transaction History Accordion */}
               <AccordionItem value="history">
-                <AccordionTrigger className="hover:no-underline">
+                <AccordionTrigger className="hover:no-underline px-4 py-3">
                   <div className="flex items-center gap-2">
-                    <History className="h-4 w-4" />
+                    <History className="h-4 w-4 text-muted-foreground" />
                     {t('recentTransactions')}
                   </div>
                 </AccordionTrigger>
-                <AccordionContent>
-                  <div className="pt-2">
+                <AccordionContent className="px-4">
+                  <div className="pt-2 pb-3">
                     {isLoadingPayments ? (
                       <div className="p-3 border rounded-lg space-y-2">
                         <div className="flex items-center gap-2">
@@ -1190,14 +1190,14 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
 
               {/* Redeem Gift Card Accordion */}
               <AccordionItem value="redeem">
-                <AccordionTrigger className="hover:no-underline">
+                <AccordionTrigger className="hover:no-underline px-4 py-3">
                   <div className="flex items-center gap-2">
-                    <Plus className="h-4 w-4" />
+                    <Plus className="h-4 w-4 text-muted-foreground" />
                     {t('redeemGiftCard')}
                   </div>
                 </AccordionTrigger>
-                <AccordionContent>
-                  <div className="space-y-3 pt-2">
+                <AccordionContent className="px-4">
+                  <div className="space-y-3 pt-2 pb-3">
                     <div className="flex gap-2">
                       <Input
                         id="redeem-code"
@@ -1222,14 +1222,14 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
 
               {/* Create Gift Card Accordion */}
               <AccordionItem value="create">
-                <AccordionTrigger className="hover:no-underline">
+                <AccordionTrigger className="hover:no-underline px-4 py-3">
                   <div className="flex items-center gap-2">
-                    <Gift className="h-4 w-4" />
+                    <Gift className="h-4 w-4 text-muted-foreground" />
                     {t('createGiftCard')}
                   </div>
                 </AccordionTrigger>
-                <AccordionContent>
-                  <div className="space-y-3 pt-2">
+                <AccordionContent className="px-4">
+                  <div className="space-y-3 pt-2 pb-3">
                     <div className="grid grid-cols-2 gap-2">
                       <div className="space-y-2">
                         <Label htmlFor="giftcard-amount" className="text-xs text-muted-foreground">{t('amountUSD')}</Label>
@@ -1286,14 +1286,14 @@ export function CreditsDialog({ open, onOpenChange, provider }: CreditsDialogPro
 
               {/* Your Gift Cards Accordion */}
               <AccordionItem value="list">
-                <AccordionTrigger className="hover:no-underline">
+                <AccordionTrigger className="hover:no-underline px-4 py-3">
                   <div className="flex items-center gap-2">
-                    <CreditCard className="h-4 w-4" />
+                    <CreditCard className="h-4 w-4 text-muted-foreground" />
                     {t('yourGiftCards')}
                   </div>
                 </AccordionTrigger>
-                <AccordionContent className="pb-0">
-                  <div className="pt-2 space-y-3">
+                <AccordionContent className="px-4">
+                  <div className="pt-2 pb-3 space-y-3">
                     {giftcards && giftcards.filter(gc => !gc.redeemed).length > 0 && (
                       <div className="grid grid-cols-2 gap-2">
                         <Button

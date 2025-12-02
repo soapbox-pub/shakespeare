@@ -27,19 +27,30 @@ export function useGenerateProjectInfo({ onError }: UseGenerateProjectInfoOption
   const { config } = useAppContext();
   const projectsManager = useProjectsManager();
 
-  // Helper function to generate untitled project name
-  const fallbackWithUntitled = useCallback(async (template: { url: string; name: string; description: string }): Promise<ProjectInfo> => {
-    let fallbackId = 'untitled';
-    let counter = 1;
+  // Helper function to generate incremented project name
+  // Note: This assumes the baseId already exists (caller has verified this)
+  const generateIncrementedId = useCallback(async (baseId: string, template: { url: string; name: string; description: string }, baseExists: boolean = true): Promise<ProjectInfo> => {
+    // If base doesn't exist, just use it
+    if (!baseExists) {
+      const existingProject = await projectsManager.getProject(baseId);
+      if (existingProject === null) {
+        return {
+          projectId: baseId,
+          template,
+        };
+      }
+    }
 
-    // Check if base "untitled" exists
+    // Start incrementing from -1
+    let counter = 1;
+    let fallbackId = `${baseId}-${counter}`;
     let existingProject = await projectsManager.getProject(fallbackId);
 
     // Keep incrementing until we find an available name
     while (existingProject !== null) {
-      fallbackId = `untitled-${counter}`;
-      existingProject = await projectsManager.getProject(fallbackId);
       counter++;
+      fallbackId = `${baseId}-${counter}`;
+      existingProject = await projectsManager.getProject(fallbackId);
     }
 
     return {
@@ -130,7 +141,7 @@ You MUST call the create_project tool with your choices.`;
       if (!selectedTemplate) {
         // Fallback to first template if invalid URL selected
         console.warn(`Invalid template URL selected: ${templateUrl}, falling back to first template`);
-        return await fallbackWithUntitled(config.templates[0]);
+        return await generateIncrementedId('untitled', config.templates[0], false);
       }
 
       // Validate the generated project ID
@@ -145,11 +156,13 @@ You MUST call the create_project tool with your choices.`;
             template: selectedTemplate,
           };
         }
+
+        // Project already exists - increment the AI-generated ID (baseExists = true)
+        return await generateIncrementedId(projectId, selectedTemplate, true);
       }
 
-      // If we reach here, either the regex failed or the project already exists
-      // Fall back to "untitled" with number suffixes
-      return await fallbackWithUntitled(selectedTemplate);
+      // If we reach here, the regex failed - fall back to "untitled" with number suffixes
+      return await generateIncrementedId('untitled', selectedTemplate, false);
     } catch (error) {
       // On any error, fall back to first template with untitled name
       console.error('Error generating project info:', error);
@@ -160,11 +173,11 @@ You MUST call the create_project tool with your choices.`;
         throw new Error(errorMessage);
       }
 
-      return await fallbackWithUntitled(config.templates[0]);
+      return await generateIncrementedId('untitled', config.templates[0], false);
     } finally {
       setIsLoading(false);
     }
-  }, [isConfigured, settings, onError, user, projectsManager, config.corsProxy, config.templates, fallbackWithUntitled]);
+  }, [isConfigured, settings, onError, user, projectsManager, config.corsProxy, config.templates, generateIncrementedId]);
 
   return {
     generateProjectInfo,

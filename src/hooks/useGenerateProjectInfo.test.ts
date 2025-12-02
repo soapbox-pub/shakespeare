@@ -39,6 +39,8 @@ describe('useGenerateProjectInfo', () => {
     }
   ];
 
+  let mockGetProject: ReturnType<typeof vi.fn>;
+
   beforeEach(() => {
     vi.clearAllMocks();
 
@@ -81,8 +83,9 @@ describe('useGenerateProjectInfo', () => {
     });
 
     // Mock useProjectsManager
+    mockGetProject = vi.fn().mockResolvedValue(null);
     const mockProjectsManager = {
-      getProject: vi.fn().mockResolvedValue(null),
+      getProject: mockGetProject,
     } as unknown as ProjectsManager;
     mockUseProjectsManager.mockReturnValue(mockProjectsManager);
 
@@ -333,7 +336,7 @@ describe('useGenerateProjectInfo', () => {
     expect(projectInfo.projectId).toBe('untitled');
   });
 
-  it('should fallback to untitled when project already exists', async () => {
+  it('should increment AI-generated ID when project already exists', async () => {
     mockUseAISettings.mockReturnValue({
       settings: {
         providers: [
@@ -352,23 +355,59 @@ describe('useGenerateProjectInfo', () => {
       removeMCPServer: vi.fn(),
     });
 
-    // Mock getProject - first call returns project (exists), second returns null (untitled is available)
-    const mockGetProject = vi.fn()
+    // Reset and override the mock to return project on first call, null on second
+    mockGetProject.mockReset();
+    mockGetProject
       .mockResolvedValueOnce({ id: 'test-project-name', name: 'Test Project', path: '/projects/test-project-name', lastModified: new Date() })
-      .mockResolvedValueOnce(null);
-
-    const mockProjectsManager = {
-      getProject: mockGetProject,
-    } as unknown as ProjectsManager;
-    mockUseProjectsManager.mockReturnValue(mockProjectsManager);
+      .mockResolvedValue(null);
 
     const { result } = renderHook(() => useGenerateProjectInfo());
 
     const projectInfo = await result.current.generateProjectInfo('openai/gpt-4', 'test prompt');
 
-    expect(projectInfo.projectId).toBe('untitled');
+    expect(projectInfo.projectId).toBe('test-project-name-1');
     expect(projectInfo.template.url).toBe('https://gitlab.com/soapbox-pub/mkstack.git');
     expect(mockGetProject).toHaveBeenCalledTimes(2);
+    expect(mockGetProject).toHaveBeenNthCalledWith(1, 'test-project-name');
+    expect(mockGetProject).toHaveBeenNthCalledWith(2, 'test-project-name-1');
+  });
+
+  it('should increment multiple times when necessary', async () => {
+    mockUseAISettings.mockReturnValue({
+      settings: {
+        providers: [
+          { id: 'openai', name: 'OpenAI', apiKey: 'test-key', baseURL: 'https://api.openai.com/v1' }
+        ],
+        recentlyUsedModels: [],
+        mcpServers: {}
+      },
+      isConfigured: true,
+      updateSettings: vi.fn(),
+      setProvider: vi.fn(),
+      removeProvider: vi.fn(),
+      setProviders: vi.fn(),
+      addRecentlyUsedModel: vi.fn(),
+      setMCPServer: vi.fn(),
+      removeMCPServer: vi.fn(),
+    });
+
+    // Reset and override the mock - base and -1 exist, -2 is available
+    mockGetProject.mockReset();
+    mockGetProject
+      .mockResolvedValueOnce({ id: 'test-project-name', name: 'Test Project', path: '/projects/test-project-name', lastModified: new Date() })
+      .mockResolvedValueOnce({ id: 'test-project-name-1', name: 'Test Project 1', path: '/projects/test-project-name-1', lastModified: new Date() })
+      .mockResolvedValue(null);
+
+    const { result } = renderHook(() => useGenerateProjectInfo());
+
+    const projectInfo = await result.current.generateProjectInfo('openai/gpt-4', 'test prompt');
+
+    expect(projectInfo.projectId).toBe('test-project-name-2');
+    expect(projectInfo.template.url).toBe('https://gitlab.com/soapbox-pub/mkstack.git');
+    expect(mockGetProject).toHaveBeenCalledTimes(3);
+    expect(mockGetProject).toHaveBeenNthCalledWith(1, 'test-project-name');
+    expect(mockGetProject).toHaveBeenNthCalledWith(2, 'test-project-name-1');
+    expect(mockGetProject).toHaveBeenNthCalledWith(3, 'test-project-name-2');
   });
 
   it('should handle loading state correctly', async () => {

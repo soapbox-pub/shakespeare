@@ -107,26 +107,53 @@ export class ProjectsManager {
   /**
    * Force pull the template repository to match remote, discarding any local changes.
    * This ensures the template is always up-to-date with the remote.
+   *
+   * Since templates are cloned with depth=1 (shallow), we can't use merge because
+   * isomorphic-git can't verify the commit history. Instead, we fetch and directly
+   * checkout the remote branch, which is safe since we always want templates to
+   * exactly match the remote.
    */
   private async forcePullTemplate(templatePath: string): Promise<void> {
-    // Fetch the latest changes from remote
+    // Fetch the latest changes from remote (shallow fetch for efficiency)
     const fetchResult = await this.git.fetch({
       dir: templatePath,
       singleBranch: true,
       depth: 1,
     });
 
-    // Get the current branch name
-    const branch = fetchResult.defaultBranch;
+    // Get the current branch name (e.g., "refs/heads/main")
+    const branchRef = fetchResult.defaultBranch;
 
-    if (!branch) {
+    if (!branchRef) {
       throw new Error('Could not determine current branch');
     }
 
-    // Reset hard to the remote branch, discarding all local changes
+    // Extract just the branch name (e.g., "main" from "refs/heads/main")
+    const branchName = branchRef.replace(/^refs\/heads\//, '');
+
+    // Get the remote ref OID
+    // The fetch stores it as refs/remotes/origin/{branchName}, not refs/remotes/origin/refs/heads/{branchName}
+    const remoteRef = `refs/remotes/origin/${branchName}`;
+    const remoteOid = await this.git.resolveRef({
+      dir: templatePath,
+      ref: remoteRef,
+    });
+
+    // Update the local branch ref to point to the remote commit
+    await this.git.writeRef({
+      dir: templatePath,
+      ref: branchRef, // Use the full ref like "refs/heads/main"
+      value: remoteOid,
+      force: true,
+    });
+
+    // Directly checkout the remote commit to update working directory
+    // This bypasses merge entirely and just makes the working directory
+    // match the remote commit exactly. Safe for templates.
+    // Using force: true to overwrite any local changes
     await this.git.checkout({
       dir: templatePath,
-      ref: branch,
+      ref: remoteOid,
       force: true,
     });
   }

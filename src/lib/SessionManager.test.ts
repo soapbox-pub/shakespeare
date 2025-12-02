@@ -64,6 +64,7 @@ describe('SessionManager', () => {
     providers: [
       {
         id: 'test-provider',
+        name: 'Test Provider',
         baseURL: 'https://api.test.com',
         apiKey: 'test-key'
       }

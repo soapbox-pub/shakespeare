@@ -125,6 +125,7 @@ describe('AISettingsProvider', () => {
       providers: [
         {
           id: 'openrouter',
+          name: 'OpenRouter',
           baseURL: 'https://openrouter.ai/api/v1',
           apiKey: 'test-key'
         }
@@ -173,6 +174,7 @@ describe('AISettingsProvider', () => {
         providers: [
           {
             id: 'test-provider',
+            name: 'Test Provider',
             baseURL: 'https://api.test.com/v1',
             apiKey: 'test-key'
           }

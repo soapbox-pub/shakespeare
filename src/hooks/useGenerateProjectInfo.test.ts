@@ -88,7 +88,7 @@ describe('useGenerateProjectInfo', () => {
 
     // Mock parseProviderModel
     mockParseProviderModel.mockReturnValue({
-      provider: { id: 'openai', apiKey: 'test-key', baseURL: 'https://api.openai.com/v1' },
+      provider: { id: 'openai', name: 'OpenAI', apiKey: 'test-key', baseURL: 'https://api.openai.com/v1' },
       model: 'gpt-4',
     });
 
@@ -162,7 +162,7 @@ describe('useGenerateProjectInfo', () => {
     mockUseAISettings.mockReturnValue({
       settings: {
         providers: [
-          { id: 'openai', apiKey: 'test-key', baseURL: 'https://api.openai.com/v1' }
+          { id: 'openai', name: 'OpenAI', apiKey: 'test-key', baseURL: 'https://api.openai.com/v1' }
         ],
         recentlyUsedModels: [],
         mcpServers: {}
@@ -188,7 +188,7 @@ describe('useGenerateProjectInfo', () => {
     mockUseAISettings.mockReturnValue({
       settings: {
         providers: [
-          { id: 'openai', apiKey: 'test-key', baseURL: 'https://api.openai.com/v1' }
+          { id: 'openai', name: 'OpenAI', apiKey: 'test-key', baseURL: 'https://api.openai.com/v1' }
         ],
         recentlyUsedModels: [],
         mcpServers: {}
@@ -243,7 +243,7 @@ describe('useGenerateProjectInfo', () => {
     mockUseAISettings.mockReturnValue({
       settings: {
         providers: [
-          { id: 'openai', apiKey: 'test-key', baseURL: 'https://api.openai.com/v1' }
+          { id: 'openai', name: 'OpenAI', apiKey: 'test-key', baseURL: 'https://api.openai.com/v1' }
         ],
         recentlyUsedModels: [],
         mcpServers: {}
@@ -271,10 +271,10 @@ describe('useGenerateProjectInfo', () => {
       }
     });
     expect(mockParseProviderModel).toHaveBeenCalledWith('openai/gpt-4', [
-      { id: 'openai', apiKey: 'test-key', baseURL: 'https://api.openai.com/v1' }
+      { id: 'openai', name: 'OpenAI', apiKey: 'test-key', baseURL: 'https://api.openai.com/v1' }
     ]);
     expect(mockCreateAIClient).toHaveBeenCalledWith(
-      { id: 'openai', apiKey: 'test-key', baseURL: 'https://api.openai.com/v1' },
+      { id: 'openai', name: 'OpenAI', apiKey: 'test-key', baseURL: 'https://api.openai.com/v1' },
       undefined,
       'https://proxy.example.com/{href}'
     );
@@ -284,7 +284,7 @@ describe('useGenerateProjectInfo', () => {
     mockUseAISettings.mockReturnValue({
       settings: {
         providers: [
-          { id: 'openai', apiKey: 'test-key', baseURL: 'https://api.openai.com/v1' }
+          { id: 'openai', name: 'OpenAI', apiKey: 'test-key', baseURL: 'https://api.openai.com/v1' }
         ],
         recentlyUsedModels: [],
         mcpServers: {}
@@ -337,7 +337,7 @@ describe('useGenerateProjectInfo', () => {
     mockUseAISettings.mockReturnValue({
       settings: {
         providers: [
-          { id: 'openai', apiKey: 'test-key', baseURL: 'https://api.openai.com/v1' }
+          { id: 'openai', name: 'OpenAI', apiKey: 'test-key', baseURL: 'https://api.openai.com/v1' }
         ],
         recentlyUsedModels: [],
         mcpServers: {}
@@ -375,7 +375,7 @@ describe('useGenerateProjectInfo', () => {
     mockUseAISettings.mockReturnValue({
       settings: {
         providers: [
-          { id: 'openai', apiKey: 'test-key', baseURL: 'https://api.openai.com/v1' }
+          { id: 'openai', name: 'OpenAI', apiKey: 'test-key', baseURL: 'https://api.openai.com/v1' }
         ],
         recentlyUsedModels: [],
         mcpServers: {}
@@ -407,7 +407,7 @@ describe('useGenerateProjectInfo', () => {
     mockUseAISettings.mockReturnValue({
       settings: {
         providers: [
-          { id: 'openai', apiKey: 'test-key', baseURL: 'https://api.openai.com/v1' }
+          { id: 'openai', name: 'OpenAI', apiKey: 'test-key', baseURL: 'https://api.openai.com/v1' }
         ],
         recentlyUsedModels: [],
         mcpServers: {}

@@ -17,6 +17,7 @@ const mockUseAICredits = vi.mocked(useAICredits);
 describe('OnboardingCreditsBadge', () => {
   const mockProvider = {
     id: 'shakespeare',
+    name: 'Shakespeare',
     baseURL: 'https://ai.shakespeare.diy/v1',
     nostr: true,
   };

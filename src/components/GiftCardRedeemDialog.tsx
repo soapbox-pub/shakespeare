@@ -164,6 +164,7 @@ export function GiftCardRedeemDialog({ open, onOpenChange, baseURL, code }: Gift
 
       const providerConfig = {
         id: matchingPreset.id,
+        name: matchingPreset.name,
         baseURL: matchingPreset.baseURL,
         nostr: matchingPreset.nostr || undefined,
       };

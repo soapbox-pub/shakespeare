@@ -62,7 +62,7 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
         baseURL: selectedProvider.baseURL,
         nostr: selectedProvider.nostr,
       }
-      : { id: '', baseURL: '', nostr: undefined }
+      : { id: '', name: '', baseURL: '', nostr: undefined }
   );
 
   // Filter models to only show selected provider models

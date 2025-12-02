@@ -17,6 +17,7 @@ global.fetch = vi.fn();
 
 const mockProvider = {
   id: 'test-provider',
+  name: 'Test Provider',
   baseURL: 'https://api.test.com/v1',
   apiKey: 'test-key',
 };

@@ -6,21 +6,25 @@ describe('parseProviderModel', () => {
   const mockProviders: AIProvider[] = [
     {
       id: 'openai',
+      name: 'OpenAI',
       baseURL: 'https://api.openai.com/v1',
       apiKey: 'sk-test-key',
     },
     {
       id: 'openrouter',
+      name: 'OpenRouter',
       baseURL: 'https://openrouter.ai/api/v1',
       apiKey: 'sk-or-test-key',
     },
     {
       id: 'anthropic',
+      name: 'Anthropic',
       baseURL: 'https://api.anthropic.com',
       apiKey: 'sk-ant-test-key',
     },
     {
       id: 'unconfigured',
+      name: 'Unconfigured',
       baseURL: 'https://example.com/v1',
       apiKey: '',
     },
@@ -32,6 +36,7 @@ describe('parseProviderModel', () => {
     expect(result.model).toBe('gpt-4o');
     expect(result.provider).toEqual({
       id: 'openai',
+      name: mockProviders[0].name,
       baseURL: mockProviders[0].baseURL,
       apiKey: mockProviders[0].apiKey,
       nostr: mockProviders[0].nostr,
@@ -44,6 +49,7 @@ describe('parseProviderModel', () => {
     expect(result.model).toBe('anthropic/claude-sonnet-4');
     expect(result.provider).toEqual({
       id: 'openrouter',
+      name: mockProviders[1].name,
       baseURL: mockProviders[1].baseURL,
       apiKey: mockProviders[1].apiKey,
       nostr: mockProviders[1].nostr,
@@ -56,6 +62,7 @@ describe('parseProviderModel', () => {
     expect(result.model).toBe('meta/llama-3.1-405b-instruct');
     expect(result.provider).toEqual({
       id: 'openrouter',
+      name: mockProviders[1].name,
       baseURL: mockProviders[1].baseURL,
       apiKey: mockProviders[1].apiKey,
       nostr: mockProviders[1].nostr,

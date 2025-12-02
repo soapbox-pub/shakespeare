@@ -60,6 +60,7 @@ describe('configUtils', () => {
       providers: [
         {
           id: 'openai',
+          name: 'OpenAI',
           baseURL: 'https://api.openai.com/v1',
           apiKey: 'sk-test123',
         },

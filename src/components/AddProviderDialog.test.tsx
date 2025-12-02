@@ -8,6 +8,7 @@ import type { AIProvider } from '@/contexts/AISettingsContext';
 describe('AddProviderDialog', () => {
   const mockProvider: AIProvider = {
     id: 'test-provider',
+    name: 'Test Provider',
     baseURL: 'https://api.test.com/v1',
     apiKey: 'sk-test-key-123',
   };
@@ -92,6 +93,7 @@ describe('AddProviderDialog', () => {
     // Use a provider that exists in presets
     const openrouterProvider: AIProvider = {
       id: 'openrouter',
+      name: 'OpenRouter',
       baseURL: 'https://openrouter.ai/api/v1',
       apiKey: 'sk-test-123',
     };
@@ -114,6 +116,7 @@ describe('AddProviderDialog', () => {
     const onOpenChange = vi.fn();
     const customProvider: AIProvider = {
       id: 'my-custom-provider',
+      name: 'My Custom Provider',
       baseURL: 'https://api.custom.com/v1',
     };
 

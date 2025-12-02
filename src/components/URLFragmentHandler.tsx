@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AddProviderDialog } from '@/components/AddProviderDialog';
 import type { AIProvider } from '@/contexts/AISettingsContext';
+import { AI_PROVIDER_PRESETS } from '@/lib/aiProviderPresets';
 
 /**
  * Component that handles URL fragments for adding AI providers
@@ -30,9 +31,15 @@ export function URLFragmentHandler() {
       return;
     }
 
+    // Get name from URL params or derive from presets or id
+    const nameParam = params.get('name');
+    const preset = AI_PROVIDER_PRESETS.find(p => p.id === id);
+    const name = nameParam || preset?.name || id;
+
     // Build the provider object
     const provider: AIProvider = {
       id,
+      name,
       baseURL,
     };
 

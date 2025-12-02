@@ -21,6 +21,7 @@ const { CreditsDialog } = await import('./CreditsDialog');
 
 const mockProvider: AIProvider = {
   id: 'test-provider',
+  name: 'Test Provider',
   baseURL: 'https://api.test.com/v1',
   apiKey: 'test-key',
   nostr: false,

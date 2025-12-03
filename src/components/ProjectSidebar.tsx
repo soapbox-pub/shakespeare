@@ -85,6 +85,7 @@ interface ChatItemProps {
 
 const ChatItem: React.FC<ChatItemProps> = ({ chat, isSelected, onSelect }) => {
   const navigate = useNavigate();
+  const { hasRunningSessions } = useProjectSessionStatus(chat.id);
 
   const handleClick = () => {
     onSelect(chat);
@@ -105,7 +106,11 @@ const ChatItem: React.FC<ChatItemProps> = ({ chat, isSelected, onSelect }) => {
         />
         <div className="flex items-center gap-3">
           <div className="flex-shrink-0">
-            <MessageSquareText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            {hasRunningSessions ? (
+              <Loader2 className="h-4 w-4 animate-spin text-blue-600 dark:text-blue-400" />
+            ) : (
+              <MessageSquareText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            )}
           </div>
           <div className="flex justify-between gap-2 flex-1 min-w-0">
             <div className="min-w-0 flex-1 flex items-center">

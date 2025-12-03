@@ -178,7 +178,7 @@ You MUST call either start_project or start_chat based on the user's intent.`;
 
         // Validate the chat name - allow most characters except filesystem-invalid ones
         // Invalid characters: / \ : * ? " < > |
-        const invalidCharsRegex = /[\/\\:*?"<>|]/;
+        const invalidCharsRegex = /[/\\:*?"<>|]/;
 
         if (chatName && chatName.length >= 2 && chatName.length <= 50 && !invalidCharsRegex.test(chatName)) {
           return {

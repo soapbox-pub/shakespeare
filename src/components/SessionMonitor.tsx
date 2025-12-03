@@ -24,13 +24,12 @@ export function SessionMonitor() {
         const session = sessionManager.getSession(projectId);
         if (!session) return;
 
-        // Check if user is currently viewing this project or chat
-        const pathParts = location.pathname.split('/');
-        const currentId = pathParts[2]; // /project/{projectId} or /chat/{chatId}
-        const isCurrentView = session.projectId === currentId;
+        // Check if user is currently viewing this project
+        const currentProjectId = location.pathname.split('/')[2]; // /project/{projectId}
+        const isCurrentProject = session.projectId === currentProjectId;
 
-        // Only show notification if user is not currently viewing this project or chat
-        if (!isCurrentView) {
+        // Only show notification if user is not currently viewing this project
+        if (!isCurrentProject) {
           toast({
             title: "AI Session Complete",
             description: `Finished working on ${session.projectId}`,

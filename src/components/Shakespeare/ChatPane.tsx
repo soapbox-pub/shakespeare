@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, forwardRef, useImperativeHandle, useMemo, useCallback } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -36,15 +36,12 @@ import { ShellTool } from '@/lib/tools/ShellTool';
 import { TypecheckTool } from '@/lib/tools/TypecheckTool';
 import { ReadConsoleMessagesTool } from '@/lib/tools/ReadConsoleMessagesTool';
 import { SkillTool } from '@/lib/tools/SkillTool';
-import { StartProjectTool } from '@/lib/tools/StartProjectTool';
 import { createMCPTools } from '@/lib/tools/MCPTool';
 import { ProjectPreviewConsoleError } from '@/lib/consoleMessages';
 import { toolToOpenAI } from '@/lib/tools/openai-adapter';
 import { Tool } from '@/lib/tools/Tool';
 import OpenAI from 'openai';
 import { useGit } from '@/hooks/useGit';
-import { useProjectsManager } from '@/hooks/useProjectsManager';
-import type { StartProjectResult } from '@/lib/tools/StartProjectTool';
 import { Quilly } from '@/components/Quilly';
 import { ShakespeareLogo } from '@/components/ShakespeareLogo';
 import { ChatInput } from '@/components/Shakespeare/ChatInput';
@@ -62,7 +59,6 @@ interface ChatPaneProps {
   isBuildLoading?: boolean;
   consoleError?: ProjectPreviewConsoleError | null;
   onDismissConsoleError?: () => void;
-  isChat?: boolean; // Flag to indicate this is a chat session, not a project
 }
 
 export interface ChatPaneRef {
@@ -76,19 +72,16 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   onLoadingChange,
   isLoading: externalIsLoading,
   isBuildLoading: externalIsBuildLoading,
-  isChat = false,
   consoleError,
   onDismissConsoleError,
 }, ref) => {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { fs } = useFS();
   const { git } = useGit();
   const { user } = useCurrentUser();
   const { models } = useProviderModels();
   const { config } = useAppContext();
-  const projectsManager = useProjectsManager();
   const { projectsPath, tmpPath, pluginsPath } = useFSPaths();
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -150,8 +143,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   }, [projectId, providerModel]);
 
   // Initialize AI chat with tools
-  const { chatsPath } = useFSPaths();
-  const cwd = isChat ? `${chatsPath}/${projectId}` : `${projectsPath}/${projectId}`;
+  const cwd = `${projectsPath}/${projectId}`;
   const esmUrlRef = useRef(config.esmUrl);
   const sessionManager = useSessionManager();
 
@@ -161,58 +153,11 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     sessionManager.emit('fileChanged', projectId, filePath);
   }, [sessionManager, projectId]);
 
-  // Callback for when a project is created via start_project tool
-  const handleProjectCreated = useCallback(async (result: StartProjectResult) => {
-    // Stop current chat generation
-    sessionManager.stopGeneration(projectId);
-
-    // Create a minimal set of tools for the new project session
-    // We don't need the full tools here, just enough to create the session
-    const projectTools: Record<string, OpenAI.Chat.Completions.ChatCompletionTool> = {};
-    const projectCustomTools: Record<string, Tool<unknown>> = {};
-
-    // Load the new project's session
-    await sessionManager.loadSession(
-      result.projectId,
-      projectTools,
-      projectCustomTools,
-      50, // maxSteps
-      undefined, // workingDir (will use default projectsPath)
-      false // isChat (this is a project, not a chat)
-    );
-
-    // Add the initial message to the new project's session
-    await sessionManager.addMessage(result.projectId, {
-      role: 'user',
-      content: result.initialMessage,
-    });
-
-    // Navigate to the new project with autostart
-    navigate(`/project/${result.projectId}?autostart=true&model=${encodeURIComponent(providerModel)}`);
-  }, [sessionManager, projectId, navigate, providerModel]);
-
   // Fetch MCP tools
   const { tools: mcpOpenAITools, clients: mcpClients } = useMCPTools();
 
   // Separate built-in tools from MCP tools for clarity
   const builtInTools = useMemo(() => {
-    // For chat mode, provide minimal tools (no project-specific tools)
-    if (isChat) {
-      const tools: Record<string, Tool<unknown>> = {
-        nostr_read_nip: new NostrReadNipTool(),
-        nostr_fetch_event: new NostrFetchEventTool(),
-        nostr_read_kind: new NostrReadKindTool(),
-        nostr_read_tag: new NostrReadTagTool(),
-        nostr_read_protocol: new NostrReadProtocolTool(),
-        nostr_read_nips_index: new NostrReadNipsIndexTool(),
-        nostr_generate_kind: new NostrGenerateKindTool(),
-        nostr_publish_events: new NostrPublishEventsTool(),
-        start_project: new StartProjectTool(projectsManager, config, handleProjectCreated),
-      };
-      return tools;
-    }
-
-    // For project mode, provide full set of tools
     const tools: Record<string, Tool<unknown>> = {
       git_commit: new GitCommitTool(fs, cwd, git),
       text_editor_view: new TextEditorViewTool(fs, cwd, { projectsPath }),
@@ -241,7 +186,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     }
 
     return tools;
-  }, [isChat, fs, git, cwd, user, projectId, projectsPath, tmpPath, pluginsPath, config, projectsManager, handleProjectCreated, handleFileChanged]);
+  }, [fs, git, cwd, user, projectId, projectsPath, tmpPath, pluginsPath, config.corsProxy, handleFileChanged]);
 
   // MCP tools wrapped for execution
   const mcpToolWrappers = useMemo(() => createMCPTools(mcpClients), [mcpClients]);
@@ -308,11 +253,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     customTools,
     onUpdateMetadata,
     onAIError,
-    workingDir: isChat ? cwd : undefined, // Pass working dir for chats
-    isChat, // Pass isChat flag
   });
-
-
 
   // Check if we should show the template info banner
   useEffect(() => {
@@ -455,14 +396,13 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   useEffect(() => {
     if (autostartedRef.current) return;
 
-    // Only autostart if we have messages (initial message has been added)
-    if (shouldAutostart && providerModel && isConfigured && messages.length > 0) {
+    if (shouldAutostart && providerModel && isConfigured) {
       // Start AI generation
       addRecentlyUsedModel(providerModel);
       startGeneration(providerModel);
       autostartedRef.current = true;
     }
-  }, [addRecentlyUsedModel, isConfigured, providerModel, shouldAutostart, startGeneration, messages.length]);
+  }, [addRecentlyUsedModel, isConfigured, providerModel, shouldAutostart, startGeneration]);
 
   // Simple scroll event listener
   useEffect(() => {
@@ -610,7 +550,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     <div className="h-full flex flex-col relative">
 
       <div className="flex-1 overflow-y-scroll overflow-x-hidden" ref={scrollAreaRef}>
-        <div className={`p-4 space-y-4 ${isChat ? 'max-w-3xl mx-auto w-full' : ''}`}>
+        <div className="p-4 space-y-4">
           {/* Template info banner - shown when conditions are met */}
           {showTemplateInfo && templateInfo && (
             <div className="flex items-center gap-3 text-xs text-muted-foreground uppercase tracking-wide">
@@ -748,29 +688,27 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
         </div>
       )}
 
-      <div className={`border-t ${isChat ? 'max-w-3xl mx-auto w-full' : ''}`}>
-        <ChatInput
-          isLoading={isLoading}
-          isConfigured={isConfigured}
-          providerModel={providerModel}
-          onProviderModelChange={handleModelChange}
-          onSend={handleSend}
-          onStop={stopGeneration}
-          onFocus={handleTextareaFocus}
-          onFirstInteraction={handleFirstInteraction}
-          isModelSelectorOpen={isModelSelectorOpen}
-          onModelSelectorOpenChange={setIsModelSelectorOpen}
-          contextUsagePercentage={contextUsagePercentage}
-          currentModelContextLength={currentModel?.contextLength}
-          lastInputTokens={lastInputTokens}
-          totalCost={totalCost}
-          isDragOver={isDragOver}
-          onDragEnter={handleDragEnter}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-        />
-      </div>
+      <ChatInput
+        isLoading={isLoading}
+        isConfigured={isConfigured}
+        providerModel={providerModel}
+        onProviderModelChange={handleModelChange}
+        onSend={handleSend}
+        onStop={stopGeneration}
+        onFocus={handleTextareaFocus}
+        onFirstInteraction={handleFirstInteraction}
+        isModelSelectorOpen={isModelSelectorOpen}
+        onModelSelectorOpenChange={setIsModelSelectorOpen}
+        contextUsagePercentage={contextUsagePercentage}
+        currentModelContextLength={currentModel?.contextLength}
+        lastInputTokens={lastInputTokens}
+        totalCost={totalCost}
+        isDragOver={isDragOver}
+        onDragEnter={handleDragEnter}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      />
 
       {/* Onboarding Dialog */}
       <OnboardingDialog

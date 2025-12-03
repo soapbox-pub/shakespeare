@@ -13,8 +13,6 @@ interface UseAIChatSessionOptions {
   maxSteps?: number;
   onUpdateMetadata?: (title: string, description: string) => void;
   onAIError?: (error: Error) => void;
-  workingDir?: string; // Optional working directory (for chats)
-  isChat?: boolean; // Whether this is a chat session (vs a project session)
 }
 
 interface StreamingMessage {
@@ -34,9 +32,7 @@ export function useAIChat({
   customTools = {},
   maxSteps = 50,
   onUpdateMetadata,
-  onAIError,
-  workingDir,
-  isChat
+  onAIError
 }: UseAIChatSessionOptions) {
   const sessionManager = useSessionManager();
   const { isConfigured } = useAISettings();
@@ -50,14 +46,14 @@ export function useAIChat({
 
   const initSession = useCallback(async () => {
     // Load or update session
-    const session = await sessionManager.loadSession(projectId, tools, customTools, maxSteps, workingDir, isChat);
+    const session = await sessionManager.loadSession(projectId, tools, customTools, maxSteps);
     // Initialize individual state variables from existing session
     setMessages([...session.messages]);
     setStreamingMessage(session.streamingMessage ? { ...session.streamingMessage } : undefined);
     setIsLoading(session.isLoading);
     setTotalCost(session.totalCost || 0);
     setLastInputTokens(session.lastInputTokens || 0);
-  }, [sessionManager, projectId, tools, customTools, maxSteps, workingDir, isChat]);
+  }, [sessionManager, projectId, tools, customTools, maxSteps]);
 
   // Initialize session
   useEffect(() => {

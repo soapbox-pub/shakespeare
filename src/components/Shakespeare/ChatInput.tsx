@@ -117,7 +117,7 @@ export const ChatInput = memo(function ChatInput({
   }, []);
 
   return (
-    <div className="p-4">
+    <div className="border-t p-4">
       {/* Chat Input Container */}
       <div
         className={`flex flex-col rounded-2xl border border-input bg-background shadow-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 transition-all ${

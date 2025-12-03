@@ -51,8 +51,6 @@ export interface AppConfig {
   fsPathPlugins: string;
   /** VFS path for templates directory */
   fsPathTemplates: string;
-  /** VFS path for chats directory */
-  fsPathChats: string;
   /** Sentry DSN for error reporting (empty string = disabled) */
   sentryDsn: string;
   /** Whether the user has enabled Sentry error reporting */

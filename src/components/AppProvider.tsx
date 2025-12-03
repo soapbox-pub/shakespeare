@@ -47,7 +47,6 @@ const AppConfigSchema = z.object({
   fsPathTmp: z.string().min(1),
   fsPathPlugins: z.string().min(1),
   fsPathTemplates: z.string().min(1),
-  fsPathChats: z.string().min(1),
   sentryDsn: z.string(),
   sentryEnabled: z.boolean(),
 }) satisfies z.ZodType<AppConfig>;
@@ -86,7 +85,6 @@ export function AppProvider(props: AppProviderProps) {
   config.fsPathTmp = expandPath(config.fsPathTmp);
   config.fsPathPlugins = expandPath(config.fsPathPlugins);
   config.fsPathTemplates = expandPath(config.fsPathTemplates);
-  config.fsPathChats = expandPath(config.fsPathChats);
 
   const appContextValue: AppContextType = {
     config,

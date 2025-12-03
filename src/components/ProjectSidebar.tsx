@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Plus, Folder, GitBranch, Loader2, ChevronDown, Star, Columns2, X, Settings, HelpCircle, Search, MessageSquare } from 'lucide-react';
+import { Plus, Folder, GitBranch, Loader2, ChevronDown, Star, Columns2, X, Settings, HelpCircle, Search, MessageSquareText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
@@ -105,7 +105,7 @@ const ChatItem: React.FC<ChatItemProps> = ({ chat, isSelected, onSelect }) => {
         />
         <div className="flex items-center gap-3">
           <div className="flex-shrink-0">
-            <MessageSquare className="h-4 w-4 text-primary" />
+            <MessageSquareText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
           </div>
           <div className="flex justify-between gap-2 flex-1 min-w-0">
             <div className="min-w-0 flex-1 flex items-center">

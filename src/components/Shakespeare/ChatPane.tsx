@@ -273,6 +273,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     customTools,
     onUpdateMetadata,
     onAIError,
+    workingDir: isChat ? cwd : undefined, // Pass working dir for chats
   });
 
   // Check if we should show the template info banner

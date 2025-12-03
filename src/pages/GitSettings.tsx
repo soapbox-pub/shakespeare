@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Check, GitBranch, ArrowLeft, Trash2, ChevronDown, Plus } from 'lucide-react';
+import { Check, GitBranch, ArrowLeft, Trash2, ChevronDown, Plus, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -439,7 +439,10 @@ export function GitSettings() {
           <Accordion type="single" collapsible className="w-full">
             <AccordionItem value="git-identity">
               <AccordionTrigger className="px-4 py-3 hover:no-underline">
-                <h4 className="text-sm font-medium">{t('gitIdentity')}</h4>
+                <div className="flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  <h4 className="text-sm font-medium">{t('gitIdentity')}</h4>
+                </div>
               </AccordionTrigger>
               <AccordionContent className="px-4 pb-4">
                 <div className="space-y-4">

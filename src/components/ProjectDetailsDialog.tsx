@@ -36,10 +36,12 @@ import {
   DollarSign,
   ExternalLink,
   FileCode,
+  Tag,
 } from 'lucide-react';
 import JSZip from 'jszip';
 import { Separator } from './ui/separator';
 import { DotAI } from '@/lib/DotAI';
+import { LabelSelector } from '@/components/labels/LabelSelector';
 
 interface ProjectDetailsDialogProps {
   project: Project;
@@ -282,6 +284,15 @@ export function ProjectDetailsDialog({ project, open, onOpenChange, onProjectDel
               </a>
             </div>
           )}
+
+          {/* Labels */}
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2">
+              <Tag className="h-4 w-4 text-muted-foreground" />
+              Labels
+            </Label>
+            <LabelSelector projectId={project.id} />
+          </div>
 
           {/* Project Name */}
           <div className="space-y-2">

@@ -1,15 +1,18 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Plus, Folder, GitBranch, Loader2, ChevronDown, Star, Columns2, X, Settings, HelpCircle, Search } from 'lucide-react';
+import { Plus, Folder, GitBranch, Loader2, ChevronDown, ChevronRight, Star, Columns2, X, Settings, HelpCircle, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useProjects } from '@/hooks/useProjects';
 import { useProjectSessionStatus } from '@/hooks/useProjectSessionStatus';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useIsMobile } from '@/hooks/useIsMobile';
+import { useLabels, getLabelColor } from '@/hooks/useLabels';
+import { useProjectLabels } from '@/hooks/useProjectLabels';
 import type { Project } from '@/lib/ProjectsManager';
 import { cn } from '@/lib/utils';
 import { useQueryClient } from '@tanstack/react-query';
@@ -20,15 +23,33 @@ interface ProjectItemProps {
   isSelected: boolean;
   onSelect: (project: Project) => void;
   isFavorite?: boolean;
+  labelColor?: string;
+  showColoredIcon?: boolean;
 }
 
-const ProjectItem: React.FC<ProjectItemProps> = ({ project, isSelected, onSelect, isFavorite }) => {
+const ProjectItem: React.FC<ProjectItemProps> = ({
+  project,
+  isSelected,
+  onSelect,
+  isFavorite,
+  labelColor,
+  showColoredIcon = false,
+}) => {
   const navigate = useNavigate();
   const { hasRunningSessions } = useProjectSessionStatus(project.id);
 
   const handleClick = () => {
     onSelect(project);
     navigate(`/project/${project.id}`);
+  };
+
+  // Determine folder icon color
+  const getFolderColorClass = () => {
+    if (showColoredIcon && labelColor) {
+      const colorConfig = getLabelColor(labelColor as Parameters<typeof getLabelColor>[0]);
+      return colorConfig.text;
+    }
+    return 'text-primary';
   };
 
   return (
@@ -48,7 +69,7 @@ const ProjectItem: React.FC<ProjectItemProps> = ({ project, isSelected, onSelect
             {hasRunningSessions ? (
               <Loader2 className="h-4 w-4 animate-spin text-blue-600 dark:text-blue-400" />
             ) : (
-              <Folder className="h-4 w-4 text-primary" />
+              <Folder className={cn("h-4 w-4", getFolderColorClass())} />
             )}
           </div>
           <div className="flex justify-between gap-2 flex-1 min-w-0">
@@ -75,6 +96,41 @@ const ProjectItem: React.FC<ProjectItemProps> = ({ project, isSelected, onSelect
 
 ProjectItem.displayName = 'ProjectItem';
 
+/** Label group header component */
+interface LabelGroupHeaderProps {
+  labelName: string;
+  labelColor: string;
+  isCollapsed: boolean;
+  onToggle: () => void;
+  projectCount: number;
+}
+
+const LabelGroupHeader: React.FC<LabelGroupHeaderProps> = ({
+  labelName,
+  labelColor,
+  isCollapsed,
+  onToggle,
+  projectCount,
+}) => {
+  const colorConfig = getLabelColor(labelColor as Parameters<typeof getLabelColor>[0]);
+
+  return (
+    <button
+      onClick={onToggle}
+      className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+    >
+      {isCollapsed ? (
+        <ChevronRight className="h-3 w-3" />
+      ) : (
+        <ChevronDown className="h-3 w-3" />
+      )}
+      <div className={cn('w-2 h-2 rounded-full', colorConfig.bg)} />
+      <span className="flex-1 text-left truncate">{labelName}</span>
+      <span className="text-[10px] opacity-60">{projectCount}</span>
+    </button>
+  );
+};
+
 interface ProjectSidebarProps {
   selectedProject: Project | null;
   onSelectProject: (project: Project | null) => void;
@@ -95,9 +151,14 @@ export function ProjectSidebar({
   const { data: projects = [], isLoading, error } = useProjects();
   const [favorites] = useLocalStorage<string[]>('project-favorites', []);
   const [searchQuery, setSearchQuery] = useState('');
+  const { labels, displaySettings, toggleLabelCollapsed } = useLabels();
+  const { getProjectLabels, hasAnyLabels } = useProjectLabels();
 
   const isMobile = useIsMobile();
   const navigate = useNavigate();
+
+  // Determine if we should show grouped view
+  const showGroupedView = displaySettings.groupByLabel && labels.length > 0 && hasAnyLabels();
 
   // Fast in-memory search filtering
   const filteredProjects = useMemo(() => {
@@ -111,6 +172,65 @@ export function ProjectSidebar({
       project.name.toLowerCase().includes(query)
     );
   }, [projects, searchQuery]);
+
+  // Group projects by label for grouped view
+  const groupedProjects = useMemo(() => {
+    if (!showGroupedView) return null;
+
+    const groups: Map<string, Project[]> = new Map();
+    const unlabeled: Project[] = [];
+
+    // Initialize groups for each label in order
+    for (const label of labels) {
+      groups.set(label.id, []);
+    }
+
+    // Sort projects into groups
+    for (const project of filteredProjects) {
+      const projectLabelIds = getProjectLabels(project.id);
+      if (projectLabelIds.length === 0) {
+        unlabeled.push(project);
+      } else {
+        // Add project to the first label group (primary label)
+        const primaryLabelId = projectLabelIds[0];
+        const group = groups.get(primaryLabelId);
+        if (group) {
+          group.push(project);
+        } else {
+          // Label might have been deleted
+          unlabeled.push(project);
+        }
+      }
+    }
+
+    // Sort each group: favorites first, then by lastModified
+    const sortGroup = (projectList: Project[]) => {
+      return projectList.sort((a, b) => {
+        const aIsFavorite = favorites.includes(a.id);
+        const bIsFavorite = favorites.includes(b.id);
+        if (aIsFavorite && !bIsFavorite) return -1;
+        if (!aIsFavorite && bIsFavorite) return 1;
+        return b.lastModified.getTime() - a.lastModified.getTime();
+      });
+    };
+
+    for (const [labelId, projectList] of groups) {
+      groups.set(labelId, sortGroup(projectList));
+    }
+
+    return {
+      groups,
+      unlabeled: sortGroup(unlabeled),
+    };
+  }, [showGroupedView, labels, filteredProjects, getProjectLabels, favorites]);
+
+  // Get the first label color for a project (for colored icon display)
+  const getProjectLabelColor = (projectId: string): string | undefined => {
+    const projectLabelIds = getProjectLabels(projectId);
+    if (projectLabelIds.length === 0) return undefined;
+    const label = labels.find(l => l.id === projectLabelIds[0]);
+    return label?.color;
+  };
 
   // Custom navigate function that closes sidebar on mobile
   const navigateAndClose = (path: string) => {
@@ -249,7 +369,72 @@ export function ProjectSidebar({
               <p className="text-sm">{t('noProjectsFound')}</p>
               <p className="text-xs">{t('tryDifferentSearch')}</p>
             </div>
+          ) : showGroupedView && groupedProjects ? (
+            // Grouped view by labels
+            <div className="space-y-1">
+              {/* Render each label group */}
+              {labels.map((label) => {
+                const groupProjects = groupedProjects.groups.get(label.id) || [];
+                if (groupProjects.length === 0) return null;
+
+                return (
+                  <Collapsible
+                    key={label.id}
+                    open={!label.collapsed}
+                    onOpenChange={() => toggleLabelCollapsed(label.id)}
+                  >
+                    <CollapsibleTrigger asChild>
+                      <div>
+                        <LabelGroupHeader
+                          labelName={label.name}
+                          labelColor={label.color}
+                          isCollapsed={!!label.collapsed}
+                          onToggle={() => toggleLabelCollapsed(label.id)}
+                          projectCount={groupProjects.length}
+                        />
+                      </div>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div className="space-y-0.5 ml-2">
+                        {groupProjects.map((project) => (
+                          <ProjectItem
+                            key={project.id}
+                            project={project}
+                            isSelected={selectedProject?.id === project.id}
+                            onSelect={onSelectProject}
+                            isFavorite={favorites.includes(project.id)}
+                            labelColor={label.color}
+                            showColoredIcon={displaySettings.showColoredIcons}
+                          />
+                        ))}
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                );
+              })}
+
+              {/* Unlabeled projects */}
+              {groupedProjects.unlabeled.length > 0 && (
+                <div className="space-y-0.5 mt-2">
+                  {labels.some(l => (groupedProjects.groups.get(l.id)?.length || 0) > 0) && (
+                    <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground">
+                      {t('unlabeled')}
+                    </div>
+                  )}
+                  {groupedProjects.unlabeled.map((project) => (
+                    <ProjectItem
+                      key={project.id}
+                      project={project}
+                      isSelected={selectedProject?.id === project.id}
+                      onSelect={onSelectProject}
+                      isFavorite={favorites.includes(project.id)}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
           ) : (
+            // Flat view (default)
             <div className="space-y-1">
               {filteredProjects.map((project) => (
                 <ProjectItem
@@ -258,6 +443,8 @@ export function ProjectSidebar({
                   isSelected={selectedProject?.id === project.id}
                   onSelect={onSelectProject}
                   isFavorite={favorites.includes(project.id)}
+                  labelColor={getProjectLabelColor(project.id)}
+                  showColoredIcon={displaySettings.showColoredIcons}
                 />
               ))}
             </div>

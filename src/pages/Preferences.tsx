@@ -1,7 +1,8 @@
-import { Settings2, ArrowLeft } from "lucide-react";
+import { useState } from "react";
+import { Settings2, ArrowLeft, Tag } from "lucide-react";
 import { useTranslation } from 'react-i18next';
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ThemePicker } from "@/components/ThemePicker";
 import { LanguagePicker } from "@/components/LanguagePicker";
 import { Switch } from "@/components/ui/switch";
@@ -9,12 +10,21 @@ import { Label } from "@/components/ui/label";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useNavigate } from "react-router-dom";
 import { useAppContext } from "@/hooks/useAppContext";
+import { useLabels } from "@/hooks/useLabels";
+import { useProjectLabels } from "@/hooks/useProjectLabels";
+import { LabelsManageDialog } from "@/components/labels/LabelsManageDialog";
 
 export function Preferences() {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const { config, updateConfig } = useAppContext();
+  const { labels, displaySettings, updateDisplaySettings } = useLabels();
+  const { hasAnyLabels } = useProjectLabels();
+  const [labelsDialogOpen, setLabelsDialogOpen] = useState(false);
+
+  // Only show label settings if user has created labels or assigned labels to projects
+  const showLabelSettings = labels.length > 0 || hasAnyLabels();
 
   return (
     <div className="p-6 space-y-6">
@@ -101,6 +111,76 @@ export function Preferences() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Labels Settings - Only shown when user has labels */}
+      {showLabelSettings && (
+        <Card className="max-w-md">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Tag className="h-5 w-5 text-primary" />
+              {t('projectLabels')}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="colored-icons" className="text-sm font-medium">
+                      {t('showColoredIcons')}
+                    </Label>
+                  </div>
+                  <Switch
+                    id="colored-icons"
+                    checked={displaySettings.showColoredIcons}
+                    onCheckedChange={(checked) => {
+                      updateDisplaySettings({ showColoredIcons: checked });
+                    }}
+                  />
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {t('showColoredIconsDescription')}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="group-by-label" className="text-sm font-medium">
+                      {t('groupByLabel')}
+                    </Label>
+                  </div>
+                  <Switch
+                    id="group-by-label"
+                    checked={displaySettings.groupByLabel}
+                    onCheckedChange={(checked) => {
+                      updateDisplaySettings({ groupByLabel: checked });
+                    }}
+                  />
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {t('groupByLabelDescription')}
+                </p>
+              </div>
+
+              <div className="pt-2">
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => setLabelsDialogOpen(true)}
+                >
+                  {t('manageLabels')}
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <LabelsManageDialog
+        open={labelsDialogOpen}
+        onOpenChange={setLabelsDialogOpen}
+      />
     </div>
   );
 }

@@ -543,5 +543,6 @@
   "showColoredIconsDescription": "Show the folder icon in the label's color for labeled projects.",
   "groupByLabel": "Group by label",
   "groupByLabelDescription": "Organize projects into collapsible groups based on their labels.",
-  "unlabeled": "Unlabeled"
+  "unlabeled": "Unlabeled",
+  "createLabelToEnableSettings": "Create a label to enable these settings"
 }

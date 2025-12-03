@@ -459,5 +459,6 @@
   "showColoredIconsDescription": "Mostrar o ícone da pasta na cor da etiqueta para projetos etiquetados.",
   "groupByLabel": "Agrupar por etiqueta",
   "groupByLabelDescription": "Organizar projetos em grupos recolhíveis com base em suas etiquetas.",
-  "unlabeled": "Sem etiqueta"
+  "unlabeled": "Sem etiqueta",
+  "createLabelToEnableSettings": "Crie uma etiqueta para ativar estas configurações"
 }

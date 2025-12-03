@@ -450,5 +450,6 @@
   "showColoredIconsDescription": "Nuna alamar fayil a launin lakabi don ayyukan da aka yi musu lakabi.",
   "groupByLabel": "Haɗa da lakabi",
   "groupByLabelDescription": "Tsara ayyuka cikin ƙungiyoyi masu rufewa dangane da lakabin su.",
-  "unlabeled": "Babu lakabi"
+  "unlabeled": "Babu lakabi",
+  "createLabelToEnableSettings": "Ƙirƙiri lakabi don kunna waɗannan saituna"
 }

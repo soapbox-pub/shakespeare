@@ -11,7 +11,6 @@ import { useIsMobile } from "@/hooks/useIsMobile";
 import { useNavigate } from "react-router-dom";
 import { useAppContext } from "@/hooks/useAppContext";
 import { useLabels } from "@/hooks/useLabels";
-import { useProjectLabels } from "@/hooks/useProjectLabels";
 import { LabelsManageDialog } from "@/components/labels/LabelsManageDialog";
 
 export function Preferences() {
@@ -20,11 +19,10 @@ export function Preferences() {
   const navigate = useNavigate();
   const { config, updateConfig } = useAppContext();
   const { labels, displaySettings, updateDisplaySettings } = useLabels();
-  const { hasAnyLabels } = useProjectLabels();
   const [labelsDialogOpen, setLabelsDialogOpen] = useState(false);
 
-  // Only show label settings if user has created labels or assigned labels to projects
-  const showLabelSettings = labels.length > 0 || hasAnyLabels();
+  // Settings are disabled until user creates at least one label
+  const hasLabels = labels.length > 0;
 
   return (
     <div className="p-6 space-y-6">
@@ -112,17 +110,17 @@ export function Preferences() {
         </CardContent>
       </Card>
 
-      {/* Labels Settings - Only shown when user has labels */}
-      {showLabelSettings && (
-        <Card className="max-w-md">
-          <CardHeader className="pb-4">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Tag className="h-5 w-5 text-primary" />
-              {t('projectLabels')}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-6">
+      {/* Labels Settings */}
+      <Card className="max-w-md">
+        <CardHeader className="pb-4">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Tag className="h-5 w-5 text-primary" />
+            {t('projectLabels')}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-6">
+            <div className={!hasLabels ? "opacity-50" : undefined}>
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
@@ -136,13 +134,16 @@ export function Preferences() {
                     onCheckedChange={(checked) => {
                       updateDisplaySettings({ showColoredIcons: checked });
                     }}
+                    disabled={!hasLabels}
                   />
                 </div>
                 <p className="text-sm text-muted-foreground">
                   {t('showColoredIconsDescription')}
                 </p>
               </div>
+            </div>
 
+            <div className={!hasLabels ? "opacity-50" : undefined}>
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
@@ -156,26 +157,32 @@ export function Preferences() {
                     onCheckedChange={(checked) => {
                       updateDisplaySettings({ groupByLabel: checked });
                     }}
+                    disabled={!hasLabels}
                   />
                 </div>
                 <p className="text-sm text-muted-foreground">
                   {t('groupByLabelDescription')}
                 </p>
               </div>
-
-              <div className="pt-2">
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => setLabelsDialogOpen(true)}
-                >
-                  {t('manageLabels')}
-                </Button>
-              </div>
             </div>
-          </CardContent>
-        </Card>
-      )}
+
+            <div className="pt-2">
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => setLabelsDialogOpen(true)}
+              >
+                {t('manageLabels')}
+              </Button>
+              {!hasLabels && (
+                <p className="text-xs text-muted-foreground text-center mt-2">
+                  {t('createLabelToEnableSettings')}
+                </p>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <LabelsManageDialog
         open={labelsDialogOpen}

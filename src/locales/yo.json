@@ -447,5 +447,6 @@
   "showColoredIconsDescription": "Fi ìkọ́ fáìlì hàn ní àwọ̀ àmì fún àwọn iṣẹ́ tí wọ́n ní àmì.",
   "groupByLabel": "Ṣàkójọ nípa àmì",
   "groupByLabelDescription": "Ṣètò àwọn iṣẹ́ sí ẹgbẹ́ tí wọ́n lè pa mọ́ dà lórí àmì wọn.",
-  "unlabeled": "Kò ní àmì"
+  "unlabeled": "Kò ní àmì",
+  "createLabelToEnableSettings": "Ṣẹ̀dá àmì láti mú àwọn ètò wọ̀nyí ṣiṣẹ́"
 }

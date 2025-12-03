@@ -141,7 +141,6 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     const newSearchParams = new URLSearchParams(searchParams);
     newSearchParams.delete('autostart');
     newSearchParams.delete('model');
-    newSearchParams.delete('message');
     setSearchParams(newSearchParams, { replace: true });
   }, [providerModel, searchParams, setSearchParams])
 
@@ -163,13 +162,34 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   }, [sessionManager, projectId]);
 
   // Callback for when a project is created via start_project tool
-  const handleProjectCreated = useCallback((result: StartProjectResult) => {
+  const handleProjectCreated = useCallback(async (result: StartProjectResult) => {
     // Stop current chat generation
     sessionManager.stopGeneration(projectId);
 
-    // Navigate to the new project with the initial message and autostart
-    navigate(`/project/${result.projectId}?message=${encodeURIComponent(result.initialMessage)}&autostart=true`);
-  }, [sessionManager, projectId, navigate]);
+    // Create a minimal set of tools for the new project session
+    // We don't need the full tools here, just enough to create the session
+    const projectTools: Record<string, OpenAI.Chat.Completions.ChatCompletionTool> = {};
+    const projectCustomTools: Record<string, Tool<unknown>> = {};
+
+    // Load the new project's session
+    await sessionManager.loadSession(
+      result.projectId,
+      projectTools,
+      projectCustomTools,
+      50, // maxSteps
+      undefined, // workingDir (will use default projectsPath)
+      false // isChat (this is a project, not a chat)
+    );
+
+    // Add the initial message to the new project's session
+    await sessionManager.addMessage(result.projectId, {
+      role: 'user',
+      content: result.initialMessage,
+    });
+
+    // Navigate to the new project with autostart
+    navigate(`/project/${result.projectId}?autostart=true&model=${encodeURIComponent(providerModel)}`);
+  }, [sessionManager, projectId, navigate, providerModel]);
 
   // Fetch MCP tools
   const { tools: mcpOpenAITools, clients: mcpClients } = useMCPTools();
@@ -292,15 +312,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     isChat, // Pass isChat flag
   });
 
-  // Handle initial message from URL parameter
-  useEffect(() => {
-    const initialMessage = searchParams.get('message');
 
-    // Only add the initial message if there are no existing messages
-    if (initialMessage && messages.length === 0) {
-      addMessage({ role: 'user', content: initialMessage });
-    }
-  }, [searchParams, messages.length, addMessage]);
 
   // Check if we should show the template info banner
   useEffect(() => {
@@ -443,13 +455,14 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   useEffect(() => {
     if (autostartedRef.current) return;
 
-    if (shouldAutostart && providerModel && isConfigured) {
+    // Only autostart if we have messages (initial message has been added)
+    if (shouldAutostart && providerModel && isConfigured && messages.length > 0) {
       // Start AI generation
       addRecentlyUsedModel(providerModel);
       startGeneration(providerModel);
       autostartedRef.current = true;
     }
-  }, [addRecentlyUsedModel, isConfigured, providerModel, shouldAutostart, startGeneration]);
+  }, [addRecentlyUsedModel, isConfigured, providerModel, shouldAutostart, startGeneration, messages.length]);
 
   // Simple scroll event listener
   useEffect(() => {

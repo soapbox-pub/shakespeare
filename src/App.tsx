@@ -48,7 +48,7 @@ const queryClient = new QueryClient({
 });
 
 // Get OS-specific default paths for Electron
-function getElectronDefaultPaths(): { fsPathProjects: string; fsPathConfig: string; fsPathTmp: string; fsPathPlugins: string; fsPathTemplates: string } {
+function getElectronDefaultPaths(): { fsPathProjects: string; fsPathConfig: string; fsPathTmp: string; fsPathPlugins: string; fsPathTemplates: string; fsPathChats: string } {
   if (!globalThis.electron) {
     // Browser defaults - use virtual filesystem paths
     return {
@@ -57,6 +57,7 @@ function getElectronDefaultPaths(): { fsPathProjects: string; fsPathConfig: stri
       fsPathTmp: "/tmp",
       fsPathPlugins: "/plugins",
       fsPathTemplates: "/templates",
+      fsPathChats: "/chats",
     };
   }
 
@@ -72,6 +73,7 @@ function getElectronDefaultPaths(): { fsPathProjects: string; fsPathConfig: stri
       fsPathTmp: "~/AppData/Local/Temp/shakespeare",
       fsPathPlugins: "~/AppData/Local/shakespeare/plugins",
       fsPathTemplates: "~/AppData/Local/shakespeare/templates",
+      fsPathChats: "~/Documents/Chats",
     };
   } else if (platform.includes('mac')) {
     // macOS
@@ -81,6 +83,7 @@ function getElectronDefaultPaths(): { fsPathProjects: string; fsPathConfig: stri
       fsPathTmp: "/tmp/shakespeare",
       fsPathPlugins: "~/Library/Application Support/shakespeare/plugins",
       fsPathTemplates: "~/Library/Application Support/shakespeare/templates",
+      fsPathChats: "~/Chats",
     };
   } else {
     // Linux and other Unix-like systems
@@ -90,6 +93,7 @@ function getElectronDefaultPaths(): { fsPathProjects: string; fsPathConfig: stri
       fsPathTmp: "/tmp/shakespeare",
       fsPathPlugins: "~/.config/shakespeare/plugins",
       fsPathTemplates: "~/.config/shakespeare/templates",
+      fsPathChats: "~/Chats",
     };
   }
 }
@@ -135,6 +139,7 @@ const defaultConfig: AppConfig = {
   fsPathTmp: electronPaths.fsPathTmp,
   fsPathPlugins: electronPaths.fsPathPlugins,
   fsPathTemplates: electronPaths.fsPathTemplates,
+  fsPathChats: electronPaths.fsPathChats,
   sentryDsn: import.meta.env.VITE_SENTRY_DSN || "",
   sentryEnabled: true,
 };

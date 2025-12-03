@@ -55,6 +55,7 @@ export function TestApp({ children }: TestAppProps) {
     fsPathTmp: '/tmp',
     fsPathPlugins: '/plugins',
     fsPathTemplates: '/templates',
+    fsPathChats: '/chats',
     sentryDsn: '',
     sentryEnabled: false,
   };

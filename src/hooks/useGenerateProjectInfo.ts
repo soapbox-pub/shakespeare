@@ -20,6 +20,14 @@ interface ProjectInfo {
   };
 }
 
+interface ChatInfo {
+  chatId: string;
+}
+
+type GeneratedInfo =
+  | { type: 'project'; info: ProjectInfo }
+  | { type: 'chat'; info: ChatInfo };
+
 export function useGenerateProjectInfo({ onError }: UseGenerateProjectInfoOptions = {}) {
   const [isLoading, setIsLoading] = useState(false);
   const { settings, isConfigured } = useAISettings();
@@ -59,7 +67,7 @@ export function useGenerateProjectInfo({ onError }: UseGenerateProjectInfoOption
     };
   }, [projectsManager]);
 
-  const generateProjectInfo = useCallback(async (providerModel: string, prompt: string): Promise<ProjectInfo> => {
+  const generateProjectInfo = useCallback(async (providerModel: string, prompt: string): Promise<GeneratedInfo> => {
     if (!isConfigured) {
       throw new Error('AI settings not configured');
     }
@@ -80,11 +88,11 @@ export function useGenerateProjectInfo({ onError }: UseGenerateProjectInfoOption
       const openai = createAIClient(provider, user, config.corsProxy);
 
       // Create project creation tool
-      const createProjectTool: ChatCompletionTool = {
+      const startProjectTool: ChatCompletionTool = {
         type: 'function',
         function: {
-          name: 'create_project',
-          description: 'Create a new project by choosing a name and selecting the most appropriate template. You must call this tool to create the project.',
+          name: 'start_project',
+          description: 'Start a new project by choosing a name and selecting the most appropriate template. Call this when the user wants to build an app or website.',
           parameters: {
             type: 'object',
             properties: {
@@ -103,66 +111,140 @@ export function useGenerateProjectInfo({ onError }: UseGenerateProjectInfoOption
         },
       };
 
-      const systemPrompt = `You are a product expert helping users create new projects. Given the user's project description, you must:
+      // Create chat start tool
+      const startChatTool: ChatCompletionTool = {
+        type: 'function',
+        function: {
+          name: 'start_chat',
+          description: 'Start a general conversation or chat session. Call this when the user wants to have a conversation, ask questions, or discuss ideas without building a specific app.',
+          parameters: {
+            type: 'object',
+            properties: {
+              chat_name: {
+                type: 'string',
+                description: 'A short, descriptive name for the chat (2-50 characters). Use natural language with spaces, capitalization, and common punctuation. Avoid special characters that are invalid in filenames (/, \\, :, *, ?, ", <, >, |).',
+              },
+            },
+            required: ['chat_name'],
+          },
+        },
+      };
 
-1. Generate a short, unique, and memorable name for their product or brand. The name should be lowercase, use hyphens instead of spaces, and contain only alphanumeric characters and hyphens. Avoid using special characters or underscores.
+      const systemPrompt = `You are an AI assistant helping users either create projects or start conversations.
 
-2. Select the most appropriate template from the available options:
-${config.templates.map(t => `   - ${t.name}: ${t.description} (${t.url})`).join('\n')}
+**First and foremost, you must decide whether to create a project or start a chat:**
+- If the user expresses a desire to build, create, develop, or launch an app, website, or software product, they want to start a project.
+- If the user wants to have a discussion, ask questions, brainstorm ideas, or seek advice without building a specific app, they want to start a chat.
 
-You MUST call the create_project tool with your choices.`;
+1. If the user wants to **create a project** (build an app or website) - use start_project tool
+   - Generate a short, unique, and memorable name for their product or brand
+   - Name should be lowercase, use hyphens instead of spaces, and contain only alphanumeric characters and hyphens
+   - Select the most appropriate template from:
+${config.templates.map(t => `     - ${t.name}: ${t.description} (${t.url})`).join('\n')}
+
+2. If the user wants to **start a chat** (general conversation, questions, brainstorming) - use start_chat tool
+   - Generate a short, descriptive name for the chat (2-50 characters)
+   - Use natural, readable language with proper capitalization and spaces
+   - Examples: "Answer to your question", "JavaScript help", "Recipe ideas"
+   - Avoid special characters that are invalid in filenames: / \\ : * ? " < > |
+
+You MUST call either start_project or start_chat based on the user's intent.`;
 
       const messages: ChatCompletionMessageParam[] = [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: prompt }
       ];
 
-      // Call AI with tool
+      // Call AI with both tools
       const completion = await openai.chat.completions.create({
         model,
         messages,
-        tools: [createProjectTool],
-        tool_choice: { type: 'function', function: { name: 'create_project' } },
+        tools: [startProjectTool, startChatTool],
+        tool_choice: "required",
         temperature: 1,
       });
 
       const toolCall = completion.choices[0]?.message?.tool_calls?.[0];
 
-      if (!toolCall || toolCall.type !== 'function' || toolCall.function.name !== 'create_project') {
-        throw new Error('AI failed to create the project');
+      if (!toolCall || toolCall.type !== 'function') {
+        throw new Error('AI failed to determine action');
       }
 
       const args = JSON.parse(toolCall.function.arguments);
-      const templateUrl = args.template_url as string;
-      const projectId = args.project_name as string;
 
-      // Validate template URL
-      const selectedTemplate = config.templates.find(t => t.url === templateUrl);
-      if (!selectedTemplate) {
-        // Fallback to first template if invalid URL selected
-        console.warn(`Invalid template URL selected: ${templateUrl}, falling back to first template`);
-        return await generateIncrementedId('untitled', config.templates[0], false);
-      }
+      // Handle start_chat tool call
+      if (toolCall.function.name === 'start_chat') {
+        const chatName = args.chat_name as string;
 
-      // Validate the generated project ID
-      const validIdRegex = /^[a-z0-9]+(-[a-z0-9]+)*$/;
-      if (projectId && projectId.length <= 50 && validIdRegex.test(projectId)) {
-        // Check if project exists
-        const existingProject = await projectsManager.getProject(projectId);
-        if (existingProject === null) {
-          // Valid and unique project ID
+        // Validate the chat name - allow most characters except filesystem-invalid ones
+        // Invalid characters: / \ : * ? " < > |
+        const invalidCharsRegex = /[/\\:*?"<>|]/;
+
+        if (chatName && chatName.length >= 2 && chatName.length <= 50 && !invalidCharsRegex.test(chatName)) {
           return {
-            projectId,
-            template: selectedTemplate,
+            type: 'chat',
+            info: { chatId: chatName.trim() },
           };
         }
 
-        // Project already exists - increment the AI-generated ID (baseExists = true)
-        return await generateIncrementedId(projectId, selectedTemplate, true);
+        // Fallback to descriptive name if validation fails
+        return {
+          type: 'chat',
+          info: { chatId: 'New chat' },
+        };
       }
 
-      // If we reach here, the regex failed - fall back to "untitled" with number suffixes
-      return await generateIncrementedId('untitled', selectedTemplate, false);
+      // Handle start_project tool call
+      if (toolCall.function.name === 'start_project') {
+        const templateUrl = args.template_url as string;
+        const projectId = args.project_name as string;
+
+        // Validate template URL
+        const selectedTemplate = config.templates.find(t => t.url === templateUrl);
+        if (!selectedTemplate) {
+          // Fallback to first template if invalid URL selected
+          console.warn(`Invalid template URL selected: ${templateUrl}, falling back to first template`);
+          const fallbackInfo = await generateIncrementedId('untitled', config.templates[0], false);
+          return {
+            type: 'project',
+            info: fallbackInfo,
+          };
+        }
+
+        // Validate the generated project ID
+        const validIdRegex = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+        if (projectId && projectId.length <= 50 && validIdRegex.test(projectId)) {
+          // Check if project exists
+          const existingProject = await projectsManager.getProject(projectId);
+          if (existingProject === null) {
+            // Valid and unique project ID
+            return {
+              type: 'project',
+              info: {
+                projectId,
+                template: selectedTemplate,
+              },
+            };
+          }
+
+          // Project already exists - increment the AI-generated ID (baseExists = true)
+          const fallbackInfo = await generateIncrementedId(projectId, selectedTemplate, true);
+          return {
+            type: 'project',
+            info: fallbackInfo,
+          };
+        }
+
+        // If we reach here, the regex failed - fall back to "untitled" with number suffixes
+        const fallbackInfo = await generateIncrementedId('untitled', selectedTemplate, false);
+        return {
+          type: 'project',
+          info: fallbackInfo,
+        };
+      }
+
+      // Unknown tool call
+      throw new Error(`Unknown tool call: ${toolCall.function.name}`);
     } catch (error) {
       // On any error, fall back to first template with untitled name
       console.error('Error generating project info:', error);
@@ -173,7 +255,11 @@ You MUST call the create_project tool with your choices.`;
         throw new Error(errorMessage);
       }
 
-      return await generateIncrementedId('untitled', config.templates[0], false);
+      const fallbackInfo = await generateIncrementedId('untitled', config.templates[0], false);
+      return {
+        type: 'project',
+        info: fallbackInfo,
+      };
     } finally {
       setIsLoading(false);
     }

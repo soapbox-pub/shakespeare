@@ -2,12 +2,15 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
+import { useChatsManager } from '@/hooks/useChatsManager';
 import { useGenerateProjectInfo } from '@/hooks/useGenerateProjectInfo';
 import { useFS } from '@/hooks/useFS';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { useAISettings } from '@/hooks/useAISettings';
 import { useAppContext } from '@/hooks/useAppContext';
+import { ChatsManager } from '@/lib/ChatsManager';
+import { useQueryClient } from '@tanstack/react-query';
 import { AppLayout } from '@/components/AppLayout';
 import { OnboardingDialog } from '@/components/OnboardingDialog';
 import { Act1Dialog } from '@/components/Act1Dialog';
@@ -39,7 +42,9 @@ export default function Index() {
   const [giftCardCode, setGiftCardCode] = useState('');
   const navigate = useNavigate();
   const location = useLocation();
+  const queryClient = useQueryClient();
   const projectsManager = useProjectsManager();
+  const chatsManager = useChatsManager();
   const { fs } = useFS();
   const { generateProjectInfo, isLoading: isGeneratingInfo } = useGenerateProjectInfo();
   const { settings, addRecentlyUsedModel } = useAISettings();
@@ -218,64 +223,96 @@ export default function Index() {
   const handleCreateProject = async () => {
     if (!prompt.trim() || !providerModel.trim()) return;
 
-    // Clear stored prompt when creating project
+    // Clear stored prompt when creating project/chat
     setStoredPrompt('');
 
     setIsCreating(true);
     try {
-      // Use AI to generate project ID and select template
-      const { projectId, template } = await generateProjectInfo(providerModel, prompt.trim());
+      // Use AI to determine whether to create a project or start a chat
+      const result = await generateProjectInfo(providerModel, prompt.trim());
 
-      // Add model to recently used when creating project with AI
+      // Add model to recently used
       addRecentlyUsedModel(providerModel.trim());
 
-      // Create project with AI-generated ID and selected template
-      const project = await projectsManager.createProject(
-        prompt.trim(),
-        template.url,
-        projectId,
-        () => {
-          // Show a toast if template update fails (non-critical)
-          toast({
-            title: t('templateUpdateFailed'),
-            description: t('templateUpdateFailedDescription'),
-            variant: 'default',
-          });
-        },
-        { name: template.name, description: template.description }
-      );
+      if (result.type === 'chat') {
+        // Create a chat
+        const { chatId } = result.info;
 
-      // Build message content from input and attached files
-      // Images are converted to base64-encoded data URLs
-      const messageContent = await buildMessageContent(
-        prompt.trim(),
-        attachedFiles,
-        fs,
-        undefined
-      );
+        // Generate unique chat ID with timestamp if needed
+        let finalChatId = chatId;
+        const existingChat = await chatsManager.getChat(chatId);
+        if (existingChat !== null) {
+          // Chat exists, generate unique ID with timestamp
+          finalChatId = ChatsManager.generateChatId();
+        }
 
-      // Store the initial message in chat history using DotAI
-      const dotAI = new DotAI(fs, `${config.fsPathProjects}/${project.id}`);
-      const sessionName = DotAI.generateSessionName();
+        // Create chat with initial message
+        await chatsManager.createChat(finalChatId, prompt.trim());
 
-      const initialMessage: AIMessage = {
-        role: 'user',
-        content: messageContent
-      };
-      await dotAI.setHistory(sessionName, [initialMessage]);
+        // Invalidate chats query to update sidebar
+        queryClient.invalidateQueries({ queryKey: ['chats'] });
 
-      // Clear attached files after successful creation
-      setAttachedFiles([]);
+        // Clear attached files after successful creation
+        setAttachedFiles([]);
 
-      // Navigate to the project with autostart parameter and model
-      const searchParams = new URLSearchParams({
-        autostart: 'true',
-        build: 'true',
-        ...(providerModel.trim() && { model: providerModel.trim() })
-      });
-      navigate(`/project/${project.id}?${searchParams.toString()}`);
+        // Navigate to the chat with autostart parameter and model
+        const searchParams = new URLSearchParams({
+          autostart: 'true',
+          ...(providerModel.trim() && { model: providerModel.trim() })
+        });
+        navigate(`/chat/${finalChatId}?${searchParams.toString()}`);
+      } else {
+        // Create a project
+        const { projectId, template } = result.info;
+
+        // Create project with AI-generated ID and selected template
+        const project = await projectsManager.createProject(
+          prompt.trim(),
+          template.url,
+          projectId,
+          () => {
+            // Show a toast if template update fails (non-critical)
+            toast({
+              title: t('templateUpdateFailed'),
+              description: t('templateUpdateFailedDescription'),
+              variant: 'default',
+            });
+          },
+          { name: template.name, description: template.description }
+        );
+
+        // Build message content from input and attached files
+        // Images are converted to base64-encoded data URLs
+        const messageContent = await buildMessageContent(
+          prompt.trim(),
+          attachedFiles,
+          fs,
+          undefined
+        );
+
+        // Store the initial message in chat history using DotAI
+        const dotAI = new DotAI(fs, `${config.fsPathProjects}/${project.id}`);
+        const sessionName = DotAI.generateSessionName();
+
+        const initialMessage: AIMessage = {
+          role: 'user',
+          content: messageContent
+        };
+        await dotAI.setHistory(sessionName, [initialMessage]);
+
+        // Clear attached files after successful creation
+        setAttachedFiles([]);
+
+        // Navigate to the project with autostart parameter and model
+        const searchParams = new URLSearchParams({
+          autostart: 'true',
+          build: 'true',
+          ...(providerModel.trim() && { model: providerModel.trim() })
+        });
+        navigate(`/project/${project.id}?${searchParams.toString()}`);
+      }
     } catch (error) {
-      console.error('Failed to create project:', error);
+      console.error('Failed to create project/chat:', error);
       setQuillyError(error instanceof Error ? error : new Error("An unexpected error occurred"));
     } finally {
       setIsCreating(false);

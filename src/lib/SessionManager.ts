@@ -41,6 +41,8 @@ export interface SessionState {
   totalCost?: number; // Total cost in USD for this session
   lastInputTokens?: number; // Input tokens from the last AI request
   imagesNotSupported?: boolean; // Track if this session's model doesn't support images
+  workingDir?: string; // Working directory (for chats, different from projects)
+  isChat?: boolean; // Whether this is a chat session (vs a project session)
 }
 
 export interface SessionManagerEvents {
@@ -93,13 +95,15 @@ export class SessionManager {
   }
 
   /**
-   * Create a new session for a project
+   * Create a new session for a project or chat
    */
   async loadSession(
     projectId: string,
     tools: Record<string, OpenAI.Chat.Completions.ChatCompletionTool>,
     customTools: Record<string, Tool<unknown>>,
-    maxSteps?: number
+    maxSteps?: number,
+    workingDir?: string, // Optional working directory (for chats, use chatsPath instead of projectsPath)
+    isChat?: boolean // Whether this is a chat session (vs a project session)
   ): Promise<SessionState> {
     let messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [];
     let sessionName = DotAI.generateSessionName();
@@ -107,11 +111,36 @@ export class SessionManager {
     // Try to load existing history
     try {
       const config = this.getConfig();
-      const dotAI = new DotAI(this.fs, `${config.fsPathProjects}/${projectId}`);
-      const lastSession = await dotAI.readLastSessionHistory();
-      if (lastSession) {
-        messages = lastSession.messages;
-        sessionName = lastSession.sessionName;
+      const dir = workingDir || `${config.fsPathProjects}/${projectId}`;
+
+      // For chats, load messages from messages.jsonl directly
+      if (isChat) {
+        const messagesPath = `${dir}/messages.jsonl`;
+        try {
+          const content = await this.fs.readFile(messagesPath, 'utf8');
+          const lines = content.trim().split('\n').filter(line => line.trim());
+
+          for (const line of lines) {
+            try {
+              const message = JSON.parse(line) as OpenAI.Chat.Completions.ChatCompletionMessageParam;
+              messages.push(message);
+            } catch (parseError) {
+              console.warn('Failed to parse message from chat:', parseError);
+            }
+          }
+
+          sessionName = 'messages'; // Use a fixed session name for chats
+        } catch (readError) {
+          console.warn('Failed to read chat messages:', readError);
+        }
+      } else {
+        // For projects, use DotAI to load from .git/ai/history
+        const dotAI = new DotAI(this.fs, dir);
+        const lastSession = await dotAI.readLastSessionHistory();
+        if (lastSession) {
+          messages = lastSession.messages;
+          sessionName = lastSession.sessionName;
+        }
       }
     } catch (error) {
       console.warn('Failed to load session history:', error);
@@ -129,14 +158,17 @@ export class SessionManager {
       ...this.sessions.get(projectId),
       messages,
       sessionName,
+      workingDir,
+      isChat,
     };
 
     // Update session configuration
     session.projectId = projectId;
     session.tools = tools;
-
     session.customTools = customTools;
     session.maxSteps = maxSteps;
+    session.workingDir = workingDir;
+    session.isChat = isChat;
 
     this.sessions.set(projectId, session);
 
@@ -257,27 +289,33 @@ export class SessionManager {
           tool_calls: undefined
         };
 
-        // Get repository URL if available
+        const workingDir = session.workingDir || `${config.fsPathProjects}/${projectId}`;
+
+        // Get repository URL if available (skip for chats)
         let repositoryUrl: string | undefined;
-        try {
-          const remoteUrl = await this.git.getRemoteURL(`${config.fsPathProjects}/${projectId}`, 'origin');
-          repositoryUrl = remoteUrl || undefined;
-        } catch {
-          // No repository URL available
+        if (!session.isChat) {
+          try {
+            const remoteUrl = await this.git.getRemoteURL(workingDir, 'origin');
+            repositoryUrl = remoteUrl || undefined;
+          } catch {
+            // No repository URL available
+          }
         }
 
-        // Get project template metadata if available
+        // Get project template metadata if available (skip for chats)
         let projectTemplate: { name: string; description: string; url: string } | undefined;
-        try {
-          const dotai = new DotAI(this.fs, `${config.fsPathProjects}/${projectId}`);
-          const template = await dotai.readTemplate();
-          projectTemplate = template || undefined;
-        } catch {
-          // Template metadata not available
+        if (!session.isChat) {
+          try {
+            const dotai = new DotAI(this.fs, workingDir);
+            const template = await dotai.readTemplate();
+            projectTemplate = template || undefined;
+          } catch {
+            // Template metadata not available
+          }
         }
 
         const systemPrompt = await makeSystemPrompt({
-          cwd: `${config.fsPathProjects}/${projectId}`,
+          cwd: workingDir,
           fs: this.fs,
           mode: "agent",
           tools: Object.values(session.tools),
@@ -732,9 +770,23 @@ export class SessionManager {
 
     try {
       const config = this.getConfig();
-      const dotAI = new DotAI(this.fs, `${config.fsPathProjects}/${session.projectId}`);
-      // Cast to ChatCompletionMessageParam[] - user messages with image arrays are valid
-      await dotAI.setHistory(session.sessionName, session.messages as OpenAI.Chat.Completions.ChatCompletionMessageParam[]);
+
+      // For chats, save directly to messages.jsonl
+      if (session.isChat) {
+        const messagesPath = `${session.workingDir}/messages.jsonl`;
+
+        // Convert messages to JSONL format
+        const jsonlContent = session.messages.map(message => JSON.stringify(message)).join('\n');
+        const finalContent = jsonlContent + (session.messages.length > 0 ? '\n' : '');
+
+        // Write the entire file
+        await this.fs.writeFile(messagesPath, finalContent);
+      } else {
+        // For projects, use DotAI to save to .git/ai/history
+        const dotAI = new DotAI(this.fs, session.workingDir || `${config.fsPathProjects}/${session.projectId}`);
+        // Cast to ChatCompletionMessageParam[] - user messages with image arrays are valid
+        await dotAI.setHistory(session.sessionName, session.messages as OpenAI.Chat.Completions.ChatCompletionMessageParam[]);
+      }
     } catch (error) {
       console.warn('Failed to save session history:', error);
     }
@@ -744,9 +796,18 @@ export class SessionManager {
    * Accumulate request cost to the project's total cost file
    */
   private async accumulateProjectCost(projectId: string, requestCost: number): Promise<void> {
+    const session = this.sessions.get(projectId);
+    if (!session) return;
+
     try {
       const config = this.getConfig();
-      const dotAI = new DotAI(this.fs, `${config.fsPathProjects}/${projectId}`);
+
+      // Skip cost accumulation for chats (they don't have .git/shakespeare/COST files)
+      if (session.isChat) {
+        return;
+      }
+
+      const dotAI = new DotAI(this.fs, session.workingDir || `${config.fsPathProjects}/${projectId}`);
 
       // Read current project total
       const currentTotal = await dotAI.readCost();

@@ -2,6 +2,23 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Plus, Trash2, GripVertical, Pencil, Check, X } from 'lucide-react';
 import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -30,28 +47,56 @@ interface LabelsManageDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-interface LabelItemProps {
+interface SortableLabelItemProps {
   label: LabelType;
   onEdit: (label: LabelType) => void;
   onDelete: (label: LabelType) => void;
   projectCount: number;
 }
 
-function LabelItem({ label, onEdit, onDelete, projectCount }: LabelItemProps) {
+function SortableLabelItem({ label, onEdit, onDelete, projectCount }: SortableLabelItemProps) {
   const colorConfig = getLabelColor(label.color);
   
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: label.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+  
   return (
-    <div className="flex items-center gap-2 p-2 rounded-lg hover:bg-muted/50 group">
-      <GripVertical className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 cursor-grab" />
-      <div className={cn('w-3 h-3 rounded-full', colorConfig.bg)} />
-      <span className="flex-1 text-sm font-medium">{label.name}</span>
-      <span className="text-xs text-muted-foreground">
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        "flex items-center gap-2 p-2 rounded-lg hover:bg-muted/50 group bg-background",
+        isDragging && "opacity-50 shadow-lg z-50"
+      )}
+    >
+      <button
+        type="button"
+        className="h-4 w-4 text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing touch-none"
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical className="h-4 w-4" />
+      </button>
+      <div className={cn('w-3 h-3 rounded-full flex-shrink-0', colorConfig.bg)} />
+      <span className="flex-1 text-sm font-medium truncate">{label.name}</span>
+      <span className="text-xs text-muted-foreground flex-shrink-0">
         {projectCount} {projectCount === 1 ? 'project' : 'projects'}
       </span>
       <Button
         variant="ghost"
         size="sm"
-        className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100"
+        className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 flex-shrink-0"
         onClick={() => onEdit(label)}
       >
         <Pencil className="h-3.5 w-3.5" />
@@ -59,7 +104,7 @@ function LabelItem({ label, onEdit, onDelete, projectCount }: LabelItemProps) {
       <Button
         variant="ghost"
         size="sm"
-        className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 hover:text-destructive"
+        className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 hover:text-destructive flex-shrink-0"
         onClick={() => onDelete(label)}
       >
         <Trash2 className="h-3.5 w-3.5" />
@@ -136,12 +181,35 @@ function LabelForm({ initialName = '', initialColor = 'blue', onSave, onCancel, 
 
 export function LabelsManageDialog({ open, onOpenChange }: LabelsManageDialogProps) {
   const { t } = useTranslation();
-  const { labels, createLabel, updateLabel, deleteLabel } = useLabels();
+  const { labels, createLabel, updateLabel, deleteLabel, reorderLabels } = useLabels();
   const { getProjectsByLabel, removeLabel: removeLabelFromProjects } = useProjectLabels();
   
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingLabel, setEditingLabel] = useState<LabelType | null>(null);
   const [deletingLabel, setDeletingLabel] = useState<LabelType | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = labels.findIndex((label) => label.id === active.id);
+      const newIndex = labels.findIndex((label) => label.id === over.id);
+      
+      const newOrder = arrayMove(labels, oldIndex, newIndex);
+      reorderLabels(newOrder.map((label) => label.id));
+    }
+  };
 
   const handleCreateLabel = (name: string, color: LabelColorName) => {
     createLabel(name, color);
@@ -201,20 +269,31 @@ export function LabelsManageDialog({ open, onOpenChange }: LabelsManageDialogPro
               </Button>
             )}
 
-            {/* Labels list */}
+            {/* Labels list with drag and drop */}
             {labels.length > 0 ? (
               <ScrollArea className="h-[300px]">
-                <div className="space-y-1">
-                  {labels.map((label) => (
-                    <LabelItem
-                      key={label.id}
-                      label={label}
-                      onEdit={setEditingLabel}
-                      onDelete={setDeletingLabel}
-                      projectCount={getProjectsByLabel(label.id).length}
-                    />
-                  ))}
-                </div>
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEnd}
+                >
+                  <SortableContext
+                    items={labels.map((l) => l.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <div className="space-y-1">
+                      {labels.map((label) => (
+                        <SortableLabelItem
+                          key={label.id}
+                          label={label}
+                          onEdit={setEditingLabel}
+                          onDelete={setDeletingLabel}
+                          projectCount={getProjectsByLabel(label.id).length}
+                        />
+                      ))}
+                    </div>
+                  </SortableContext>
+                </DndContext>
               </ScrollArea>
             ) : !showCreateForm && (
               <div className="text-center py-8 text-muted-foreground">

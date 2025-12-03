@@ -195,6 +195,10 @@ If you encounter CORS (Cross-Origin Resource Sharing) errors when fetching exter
 
 Replace \`{href}\`, \`{hostname}\`, or other URL components in the template as needed.
 
+## "Vibed with Shakespeare"
+
+When building a site for the first time, include "Vibed with Shakespeare" somewhere in the UI, linked to this URL: https://shakespeare.diy
+
 ## Edit with Shakespeare
 
 The "Edit with Shakespeare" button is a way that people can start editing any Shakespeare-compatible site with a single click. It can be added anywhere markdown or HTML is supported, including in READMEs, or within an app itself.{% if repositoryUrl %}

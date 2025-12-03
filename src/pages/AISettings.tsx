@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Check, Bot, ArrowLeft, Trash2, GripVertical, ChevronDown, RotateCcw, FileText } from 'lucide-react';
+import { Check, Bot, ArrowLeft, Trash2, GripVertical, ChevronDown, RotateCcw, FileText, Plus, Edit } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -529,7 +529,10 @@ export function AISettings() {
           <Accordion type="single" collapsible className="w-full">
             <AccordionItem value="custom-provider">
               <AccordionTrigger className="px-4 py-3 hover:no-underline">
-                <h4 className="text-sm font-medium">{t('addCustomProvider')}</h4>
+                <div className="flex items-center gap-2">
+                  <Plus className="h-4 w-4" />
+                  <h4 className="text-sm font-medium">{t('addCustomProvider')}</h4>
+                </div>
               </AccordionTrigger>
               <AccordionContent className="px-4 pb-4">
                 <div className="space-y-3">
@@ -689,7 +692,10 @@ export function AISettings() {
                 <Accordion type="single" collapsible className="w-full">
                   <AccordionItem value="system-prompt" className="border rounded-lg">
                     <AccordionTrigger className="px-4 py-3 hover:no-underline">
-                      <span className="font-medium">{t('systemPrompt')}</span>
+                      <div className="flex items-center gap-2">
+                        <Edit className="h-4 w-4" />
+                        <span className="font-medium">{t('systemPrompt')}</span>
+                      </div>
                     </AccordionTrigger>
                     <AccordionContent className="px-4 pb-4">
                       <div className="space-y-2">

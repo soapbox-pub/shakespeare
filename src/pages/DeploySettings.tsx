@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Rocket, ArrowLeft, Trash2, Check, GripVertical, ChevronDown } from 'lucide-react';
+import { Rocket, ArrowLeft, Trash2, Check, GripVertical, ChevronDown, Plus } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   DropdownMenu,
@@ -738,7 +738,10 @@ export function DeploySettings() {
           <Accordion type="single" collapsible className="w-full">
             <AccordionItem value="custom-provider">
               <AccordionTrigger className="px-4 py-3 hover:no-underline">
-                <h4 className="text-sm font-medium">{t('addCustomProvider')}</h4>
+                <div className="flex items-center gap-2">
+                  <Plus className="h-4 w-4" />
+                  <h4 className="text-sm font-medium">{t('addCustomProvider')}</h4>
+                </div>
               </AccordionTrigger>
               <AccordionContent className="px-4 pb-4">
                 <div className="space-y-3">

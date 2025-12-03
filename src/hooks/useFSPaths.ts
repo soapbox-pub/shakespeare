@@ -19,5 +19,7 @@ export function useFSPaths() {
     pluginsPath: config.fsPathPlugins,
     /** Templates directory path (default: /templates) */
     templatesPath: config.fsPathTemplates,
+    /** Chats directory path (default: /chats) */
+    chatsPath: config.fsPathChats,
   };
 }

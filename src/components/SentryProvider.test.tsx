@@ -40,6 +40,7 @@ describe('SentryProvider', () => {
       fsPathTmp: '/tmp',
       fsPathPlugins: '/plugins',
       fsPathTemplates: '/templates',
+      fsPathChats: '/chats',
     };
 
     render(
@@ -77,6 +78,7 @@ describe('SentryProvider', () => {
       fsPathTmp: '/tmp',
       fsPathPlugins: '/plugins',
       fsPathTemplates: '/templates',
+      fsPathChats: '/chats',
     };
 
     render(
@@ -115,6 +117,7 @@ describe('SentryProvider', () => {
       fsPathTmp: '/tmp',
       fsPathPlugins: '/plugins',
       fsPathTemplates: '/templates',
+      fsPathChats: '/chats',
     };
 
     render(
@@ -156,6 +159,7 @@ describe('SentryProvider', () => {
       fsPathTmp: '/tmp',
       fsPathPlugins: '/plugins',
       fsPathTemplates: '/templates',
+      fsPathChats: '/chats',
     };
 
     render(

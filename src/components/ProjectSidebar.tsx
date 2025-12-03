@@ -1,16 +1,18 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Plus, Folder, GitBranch, Loader2, ChevronDown, Star, Columns2, X, Settings, HelpCircle, Search } from 'lucide-react';
+import { Plus, Folder, GitBranch, Loader2, ChevronDown, Star, Columns2, X, Settings, HelpCircle, Search, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useProjects } from '@/hooks/useProjects';
+import { useChats } from '@/hooks/useChats';
 import { useProjectSessionStatus } from '@/hooks/useProjectSessionStatus';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import type { Project } from '@/lib/ProjectsManager';
+import type { Chat } from '@/lib/ChatsManager';
 import { cn } from '@/lib/utils';
 import { useQueryClient } from '@tanstack/react-query';
 import { ShakespeareLogo } from '@/components/ShakespeareLogo';
@@ -75,6 +77,51 @@ const ProjectItem: React.FC<ProjectItemProps> = ({ project, isSelected, onSelect
 
 ProjectItem.displayName = 'ProjectItem';
 
+interface ChatItemProps {
+  chat: Chat;
+  isSelected: boolean;
+  onSelect: (chat: Chat) => void;
+}
+
+const ChatItem: React.FC<ChatItemProps> = ({ chat, isSelected, onSelect }) => {
+  const navigate = useNavigate();
+
+  const handleClick = () => {
+    onSelect(chat);
+    navigate(`/chat/${chat.id}`);
+  };
+
+  return (
+    <div
+      className={cn(
+        "group relative rounded-lg transition-all duration-200 hover:bg-gradient-to-r hover:from-primary/10 hover:to-accent/10",
+        isSelected && "bg-gradient-to-r from-primary/15 to-accent/15 shadow-sm"
+      )}
+    >
+      <div className="w-full px-3 py-2 text-left text-sidebar-foreground">
+        <button
+          onClick={handleClick}
+          className="absolute inset-0"
+        />
+        <div className="flex items-center gap-3">
+          <div className="flex-shrink-0">
+            <MessageSquare className="h-4 w-4 text-primary" />
+          </div>
+          <div className="flex justify-between gap-2 flex-1 min-w-0">
+            <div className="min-w-0 flex-1 flex items-center">
+              <h3 className="font-medium text-sm truncate">
+                {chat.name}
+              </h3>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+ChatItem.displayName = 'ChatItem';
+
 interface ProjectSidebarProps {
   selectedProject: Project | null;
   onSelectProject: (project: Project | null) => void;
@@ -92,14 +139,18 @@ export function ProjectSidebar({
 }: ProjectSidebarProps) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const { data: projects = [], isLoading, error } = useProjects();
+  const { data: projects = [], isLoading: isLoadingProjects, error: projectsError } = useProjects();
+  const { data: chats = [], isLoading: isLoadingChats, error: chatsError } = useChats();
   const [favorites] = useLocalStorage<string[]>('project-favorites', []);
   const [searchQuery, setSearchQuery] = useState('');
 
   const isMobile = useIsMobile();
   const navigate = useNavigate();
 
-  // Fast in-memory search filtering
+  const isLoading = isLoadingProjects || isLoadingChats;
+  const error = projectsError || chatsError;
+
+  // Fast in-memory search filtering for projects
   const filteredProjects = useMemo(() => {
     if (!searchQuery.trim()) {
       return projects;
@@ -111,6 +162,30 @@ export function ProjectSidebar({
       project.name.toLowerCase().includes(query)
     );
   }, [projects, searchQuery]);
+
+  // Fast in-memory search filtering for chats
+  const filteredChats = useMemo(() => {
+    if (!searchQuery.trim()) {
+      return chats;
+    }
+
+    const query = searchQuery.toLowerCase();
+    return chats.filter(chat =>
+      chat.id.toLowerCase().includes(query) ||
+      chat.name.toLowerCase().includes(query)
+    );
+  }, [chats, searchQuery]);
+
+  // Combine projects and chats, sorted by lastModified
+  const combinedItems = useMemo(() => {
+    const items: Array<{ type: 'project' | 'chat'; item: Project | Chat; lastModified: Date }> = [
+      ...filteredProjects.map(p => ({ type: 'project' as const, item: p, lastModified: p.lastModified })),
+      ...filteredChats.map(c => ({ type: 'chat' as const, item: c, lastModified: c.lastModified })),
+    ];
+
+    // Sort by lastModified (newest first)
+    return items.sort((a, b) => b.lastModified.getTime() - a.lastModified.getTime());
+  }, [filteredProjects, filteredChats]);
 
   // Custom navigate function that closes sidebar on mobile
   const navigateAndClose = (path: string) => {
@@ -212,7 +287,7 @@ export function ProjectSidebar({
             </div>
 
             {/* Search Input */}
-            {projects.length > 0 && (
+            {(projects.length > 0 || chats.length > 0) && (
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                 <Input
@@ -237,13 +312,13 @@ export function ProjectSidebar({
                 </div>
               ))}
             </div>
-          ) : projects.length === 0 ? (
+          ) : combinedItems.length === 0 && projects.length === 0 && chats.length === 0 ? (
             <div className="text-center p-6 text-muted-foreground">
               <Folder className="h-8 w-8 mx-auto mb-2 opacity-50" />
               <p className="text-sm">{t('noProjectsYet')}</p>
               <p className="text-xs">{t('createFirstProject')}</p>
             </div>
-          ) : filteredProjects.length === 0 ? (
+          ) : combinedItems.length === 0 ? (
             <div className="text-center p-6 text-muted-foreground">
               <Search className="h-8 w-8 mx-auto mb-2 opacity-50" />
               <p className="text-sm">{t('noProjectsFound')}</p>
@@ -251,15 +326,24 @@ export function ProjectSidebar({
             </div>
           ) : (
             <div className="space-y-1">
-              {filteredProjects.map((project) => (
-                <ProjectItem
-                  key={project.id}
-                  project={project}
-                  isSelected={selectedProject?.id === project.id}
-                  onSelect={onSelectProject}
-                  isFavorite={favorites.includes(project.id)}
-                />
-              ))}
+              {combinedItems.map(({ type, item }) =>
+                type === 'project' ? (
+                  <ProjectItem
+                    key={`project-${item.id}`}
+                    project={item as Project}
+                    isSelected={selectedProject?.id === item.id}
+                    onSelect={onSelectProject}
+                    isFavorite={favorites.includes(item.id)}
+                  />
+                ) : (
+                  <ChatItem
+                    key={`chat-${item.id}`}
+                    chat={item as Chat}
+                    isSelected={false}
+                    onSelect={() => {}}
+                  />
+                )
+              )}
             </div>
           )}
         </div>

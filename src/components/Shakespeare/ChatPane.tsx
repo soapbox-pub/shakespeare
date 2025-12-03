@@ -59,6 +59,7 @@ interface ChatPaneProps {
   isBuildLoading?: boolean;
   consoleError?: ProjectPreviewConsoleError | null;
   onDismissConsoleError?: () => void;
+  isChat?: boolean; // Flag to indicate this is a chat session, not a project
 }
 
 export interface ChatPaneRef {
@@ -72,6 +73,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   onLoadingChange,
   isLoading: externalIsLoading,
   isBuildLoading: externalIsBuildLoading,
+  isChat = false,
   consoleError,
   onDismissConsoleError,
 }, ref) => {
@@ -143,7 +145,8 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   }, [projectId, providerModel]);
 
   // Initialize AI chat with tools
-  const cwd = `${projectsPath}/${projectId}`;
+  const { chatsPath } = useFSPaths();
+  const cwd = isChat ? `${chatsPath}/${projectId}` : `${projectsPath}/${projectId}`;
   const esmUrlRef = useRef(config.esmUrl);
   const sessionManager = useSessionManager();
 
@@ -158,6 +161,23 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
 
   // Separate built-in tools from MCP tools for clarity
   const builtInTools = useMemo(() => {
+    // For chat mode, provide minimal tools (no project-specific tools)
+    if (isChat) {
+      const tools: Record<string, Tool<unknown>> = {
+        nostr_read_nip: new NostrReadNipTool(),
+        nostr_fetch_event: new NostrFetchEventTool(),
+        nostr_read_kind: new NostrReadKindTool(),
+        nostr_read_tag: new NostrReadTagTool(),
+        nostr_read_protocol: new NostrReadProtocolTool(),
+        nostr_read_nips_index: new NostrReadNipsIndexTool(),
+        nostr_generate_kind: new NostrGenerateKindTool(),
+        nostr_publish_events: new NostrPublishEventsTool(),
+        // TODO: Add start_project tool here
+      };
+      return tools;
+    }
+
+    // For project mode, provide full set of tools
     const tools: Record<string, Tool<unknown>> = {
       git_commit: new GitCommitTool(fs, cwd, git),
       text_editor_view: new TextEditorViewTool(fs, cwd, { projectsPath }),
@@ -186,7 +206,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     }
 
     return tools;
-  }, [fs, git, cwd, user, projectId, projectsPath, tmpPath, pluginsPath, config.corsProxy, handleFileChanged]);
+  }, [isChat, fs, git, cwd, user, projectId, projectsPath, tmpPath, pluginsPath, config.corsProxy, handleFileChanged]);
 
   // MCP tools wrapped for execution
   const mcpToolWrappers = useMemo(() => createMCPTools(mcpClients), [mcpClients]);

@@ -73,6 +73,7 @@ describe('useGenerateProjectInfo', () => {
       fsPathTmp: '/tmp',
       fsPathPlugins: '/plugins',
       fsPathTemplates: '/templates',
+      fsPathChats: '/chats',
       sentryDsn: '',
       sentryEnabled: false,
     };
@@ -226,6 +227,7 @@ describe('useGenerateProjectInfo', () => {
       fsPathTmp: '/tmp',
       fsPathPlugins: '/plugins',
       fsPathTemplates: '/templates',
+      fsPathChats: '/chats',
       sentryDsn: '',
       sentryEnabled: false,
     };
@@ -330,10 +332,13 @@ describe('useGenerateProjectInfo', () => {
 
     const { result } = renderHook(() => useGenerateProjectInfo());
 
-    const projectInfo = await result.current.generateProjectInfo('openai/gpt-4', 'test prompt');
+    const generatedInfo = await result.current.generateProjectInfo('openai/gpt-4', 'test prompt');
 
-    expect(projectInfo.template.url).toBe('https://gitlab.com/soapbox-pub/mkstack.git');
-    expect(projectInfo.projectId).toBe('untitled');
+    expect(generatedInfo.type).toBe('project');
+    if (generatedInfo.type === 'project') {
+      expect(generatedInfo.info.template.url).toBe('https://gitlab.com/soapbox-pub/mkstack.git');
+      expect(generatedInfo.info.projectId).toBe('untitled');
+    }
   });
 
   it('should increment AI-generated ID when project already exists', async () => {
@@ -363,10 +368,13 @@ describe('useGenerateProjectInfo', () => {
 
     const { result } = renderHook(() => useGenerateProjectInfo());
 
-    const projectInfo = await result.current.generateProjectInfo('openai/gpt-4', 'test prompt');
+    const generatedInfo = await result.current.generateProjectInfo('openai/gpt-4', 'test prompt');
 
-    expect(projectInfo.projectId).toBe('test-project-name-1');
-    expect(projectInfo.template.url).toBe('https://gitlab.com/soapbox-pub/mkstack.git');
+    expect(generatedInfo.type).toBe('project');
+    if (generatedInfo.type === 'project') {
+      expect(generatedInfo.info.projectId).toBe('test-project-name-1');
+      expect(generatedInfo.info.template.url).toBe('https://gitlab.com/soapbox-pub/mkstack.git');
+    }
     expect(mockGetProject).toHaveBeenCalledTimes(2);
     expect(mockGetProject).toHaveBeenNthCalledWith(1, 'test-project-name');
     expect(mockGetProject).toHaveBeenNthCalledWith(2, 'test-project-name-1');
@@ -400,10 +408,13 @@ describe('useGenerateProjectInfo', () => {
 
     const { result } = renderHook(() => useGenerateProjectInfo());
 
-    const projectInfo = await result.current.generateProjectInfo('openai/gpt-4', 'test prompt');
+    const generatedInfo = await result.current.generateProjectInfo('openai/gpt-4', 'test prompt');
 
-    expect(projectInfo.projectId).toBe('test-project-name-2');
-    expect(projectInfo.template.url).toBe('https://gitlab.com/soapbox-pub/mkstack.git');
+    expect(generatedInfo.type).toBe('project');
+    if (generatedInfo.type === 'project') {
+      expect(generatedInfo.info.projectId).toBe('test-project-name-2');
+      expect(generatedInfo.info.template.url).toBe('https://gitlab.com/soapbox-pub/mkstack.git');
+    }
     expect(mockGetProject).toHaveBeenCalledTimes(3);
     expect(mockGetProject).toHaveBeenNthCalledWith(1, 'test-project-name');
     expect(mockGetProject).toHaveBeenNthCalledWith(2, 'test-project-name-1');

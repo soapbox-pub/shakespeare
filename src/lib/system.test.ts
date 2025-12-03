@@ -41,6 +41,7 @@ const testConfig: AppConfig = {
   fsPathTmp: '/tmp',
   fsPathPlugins: '/plugins',
   fsPathTemplates: '/templates',
+  fsPathChats: '/chats',
   sentryDsn: '',
   sentryEnabled: false,
 };

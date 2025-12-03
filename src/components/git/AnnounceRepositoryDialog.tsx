@@ -151,59 +151,57 @@ export function AnnounceRepositoryDialog({
       .join(' ');
     setName(defaultName);
 
-    // Only prepopulate if the arrays are empty (user hasn't made changes yet)
-    if (cloneUrls.length === 0 && relays.length === 0) {
-      // Prepopulate clone URLs and relays from ngitServers (matching original handlePushToNostr)
-      if (user?.pubkey && config.ngitServers && config.ngitServers.length > 0) {
-        // Clone URLs: https://{server}/{npub}/{repo-id}.git
-        const npub = nip19.npubEncode(user.pubkey);
-        const cloneUrls = config.ngitServers.map(server =>
-          `https://${server}/${npub}/${defaultRepoId}.git`
-        );
-        setCloneUrls(cloneUrls);
+    // Prepopulate clone URLs and relays from ngitServers (matching original handlePushToNostr)
+    if (user?.pubkey && config.ngitServers && config.ngitServers.length > 0) {
+      // Clone URLs: https://{server}/{npub}/{repo-id}.git
+      const npub = nip19.npubEncode(user.pubkey);
+      const cloneUrls = config.ngitServers.map(server =>
+        `https://${server}/${npub}/${defaultRepoId}.git`
+      );
+      setCloneUrls(cloneUrls);
 
-        // Relay URLs: wss://{server}
-        const relayUrls = config.ngitServers.map(server => `wss://${server}`);
-        setRelays(relayUrls);
-      } else {
-        // Fallback to write relays if no ngitServers configured
-        const writeRelays = config.relayMetadata.relays
-          .filter(r => r.write)
-          .map(r => r.url);
-        setRelays(writeRelays.length > 0 ? writeRelays : ['wss://relay.nostr.band']);
-      }
+      // Relay URLs: wss://{server}
+      const relayUrls = config.ngitServers.map(server => `wss://${server}`);
+      setRelays(relayUrls);
+    } else {
+      // Fallback to write relays if no ngitServers configured
+      const writeRelays = config.relayMetadata.relays
+        .filter(r => r.write)
+        .map(r => r.url);
+      setRelays(writeRelays.length > 0 ? writeRelays : ['wss://relay.nostr.band']);
     }
 
-    // Prepopulate t-tags if empty
-    if (tTags.length === 0) {
-      const defaultTTags: string[] = ['shakespeare'];
+    // Prepopulate t-tags
+    const defaultTTags: string[] = ['shakespeare'];
 
-      // Try to read template.json to get template name
-      try {
-        const dotAI = new DotAI(fs, projectPath);
-        const template = await dotAI.readTemplate();
-        if (template?.name) {
-          // Convert template name to lowercase and add as t-tag
-          const templateTag = template.name.toLowerCase();
-          if (!defaultTTags.includes(templateTag)) {
-            defaultTTags.push(templateTag);
-          }
+    // Try to read template.json to get template name
+    try {
+      const dotAI = new DotAI(fs, projectPath);
+      const template = await dotAI.readTemplate();
+      if (template?.name) {
+        // Convert template name to lowercase and add as t-tag
+        const templateTag = template.name.toLowerCase();
+        if (!defaultTTags.includes(templateTag)) {
+          defaultTTags.push(templateTag);
         }
-      } catch (error) {
-        console.warn('Failed to read template for t-tags:', error);
       }
-
-      setTTags(defaultTTags);
+    } catch (error) {
+      console.warn('Failed to read template for t-tags:', error);
     }
+
+    setTTags(defaultTTags);
 
     // Get earliest commit
     await getEarliestCommit();
-  }, [projectId, projectPath, fs, config.relayMetadata, config.ngitServers, user?.pubkey, getEarliestCommit, cloneUrls.length, relays.length, tTags.length]);
+  }, [projectId, projectPath, fs, config.relayMetadata, config.ngitServers, user?.pubkey, getEarliestCommit]);
 
-  // Load existing repository data if editing
+  // Load existing repository data if editing, or prepopulate fields for new repos
   useEffect(() => {
+    // Only run when dialog opens
+    if (!isOpen || isPrepopulated) return;
+
     const loadExistingRepo = async () => {
-      if (!editNaddr || !isOpen) return;
+      if (!editNaddr) return;
 
       try {
         // Decode the naddr to get repository coordinates
@@ -266,13 +264,13 @@ export function AnnounceRepositoryDialog({
       }
     };
 
-    if (isOpen && editNaddr) {
+    if (editNaddr) {
       loadExistingRepo();
-    } else if (isOpen && !isPrepopulated) {
+    } else {
       prepopulateFields();
       setIsPrepopulated(true);
     }
-  }, [isOpen, isPrepopulated, prepopulateFields, editNaddr, nostr, config.relayMetadata, toast]);
+  }, [isOpen, isPrepopulated, editNaddr, nostr, config.relayMetadata, toast, prepopulateFields]);
 
   const addWebUrl = () => {
     if (newWebUrl.trim() && !webUrls.includes(newWebUrl.trim())) {

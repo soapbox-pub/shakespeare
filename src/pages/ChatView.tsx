@@ -72,16 +72,13 @@ export function ChatView() {
         <div className="h-dvh flex flex-col bg-background">
           <header className="pt-safe bg-gradient-to-r from-primary/10 via-accent/5 to-primary/10 backdrop-blur">
             <div className="h-12 border-b px-4 py-3 flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setIsSidebarVisible(!isSidebarVisible)}
-                >
-                  <Menu className="h-4 w-4" />
-                </Button>
-                <div className="text-sm font-semibold">Chat Not Found</div>
-              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsSidebarVisible(!isSidebarVisible)}
+              >
+                <Menu className="h-4 w-4" />
+              </Button>
             </div>
           </header>
 
@@ -137,24 +134,20 @@ export function ChatView() {
 
           <ResizablePanel defaultSize={isSidebarVisible ? 80 : 100}>
             <div className="h-screen flex flex-col">
-              <header className="pt-safe bg-gradient-to-r from-primary/10 via-accent/5 to-primary/10 backdrop-blur">
-                <div className="h-12 border-b px-4 py-3 flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    {!isSidebarVisible && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setIsSidebarVisible(true)}
-                      >
-                        <Menu className="h-4 w-4" />
-                      </Button>
-                    )}
-                    <div className="text-sm font-semibold">Chat Not Found</div>
-                  </div>
-                </div>
-              </header>
-
               <div className="flex-1 flex items-center justify-center p-4">
+                {/* Menu button when sidebar is collapsed */}
+                {!isSidebarVisible && (
+                  <div className="absolute top-4 left-4">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setIsSidebarVisible(true)}
+                    >
+                      <Menu className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+
                 <div className="text-center">
                   <h1 className="text-2xl font-bold mb-2">Chat Not Found</h1>
                   <p className="text-muted-foreground mb-4">

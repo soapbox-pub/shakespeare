@@ -13,10 +13,12 @@ import {
   History,
   Folder,
   Rocket,
+  Trash2,
 } from 'lucide-react';
 import { GitHistoryDialog } from '@/components/ai/GitHistoryDialog';
 import { GitDialog } from '@/components/GitDialog';
 import { DeployDialog } from '@/components/DeployDialog';
+import { DeleteChatDialog } from '@/components/DeleteChatDialog';
 
 interface ActionsMenuProps {
   projectId: string;
@@ -28,6 +30,7 @@ interface ActionsMenuProps {
   disabled?: boolean;
   onFirstInteraction?: () => void;
   isChat?: boolean; // Flag to indicate this is a chat, not a project
+  onChatDeleted?: () => void; // Callback when a chat is deleted
 }
 
 export function ActionsMenu({
@@ -40,10 +43,12 @@ export function ActionsMenu({
   disabled = false,
   onFirstInteraction: _onFirstInteraction,
   isChat = false,
+  onChatDeleted,
 }: ActionsMenuProps) {
   const [gitHistoryOpen, setGitHistoryOpen] = useState(false);
   const [gitDialogOpen, setGitDialogOpen] = useState(false);
   const [deployDialogOpen, setDeployDialogOpen] = useState(false);
+  const [deleteChatOpen, setDeleteChatOpen] = useState(false);
 
   const isAnyLoading = isLoading || isBuildLoading;
 
@@ -64,17 +69,26 @@ export function ActionsMenu({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48">
-          <DropdownMenuItem
-            onClick={onNewChat}
-            disabled={isLoading}
-            className="gap-2"
-          >
-            <MessageSquarePlus className="h-4 w-4" />
-            New Chat
-          </DropdownMenuItem>
-
-          {!isChat && (
+          {isChat ? (
+            <DropdownMenuItem
+              onClick={() => setDeleteChatOpen(true)}
+              disabled={isLoading}
+              className="gap-2 text-destructive focus:text-destructive"
+            >
+              <Trash2 className="h-4 w-4" />
+              Delete Chat
+            </DropdownMenuItem>
+          ) : (
             <>
+              <DropdownMenuItem
+                onClick={onNewChat}
+                disabled={isLoading}
+                className="gap-2"
+              >
+                <MessageSquarePlus className="h-4 w-4" />
+                New Chat
+              </DropdownMenuItem>
+
               <DropdownMenuItem
                 onClick={() => setGitHistoryOpen(true)}
                 disabled={isAnyLoading}
@@ -112,8 +126,6 @@ export function ActionsMenu({
               </DropdownMenuItem>
             </>
           )}
-
-
         </DropdownMenuContent>
       </DropdownMenu>
 
@@ -141,6 +153,16 @@ export function ActionsMenu({
         </>
       )}
 
+      {/* Delete Chat Dialog - only show for chats */}
+      {isChat && (
+        <DeleteChatDialog
+          chatId={projectId}
+          chatName={projectName}
+          open={deleteChatOpen}
+          onOpenChange={setDeleteChatOpen}
+          onDeleted={onChatDeleted}
+        />
+      )}
     </>
   );
 }

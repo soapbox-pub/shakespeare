@@ -60,21 +60,115 @@ export function ChatView() {
     // when isAILoading becomes true after user interaction
   };
 
-  const handleChatDeleted = async () => {
-    setChat(null);
+  const handleChatDeleted = () => {
+    // Navigate to home page after chat is deleted
     navigate('/');
   };
 
+  // Chat not found - show in app layout with sidebar
   if (!chat && !isLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-2">Chat Not Found</h1>
-          <Button onClick={() => navigate('/')} variant="outline">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Home
-          </Button>
+    if (isMobile) {
+      return (
+        <div className="h-dvh flex flex-col bg-background">
+          <header className="pt-safe bg-gradient-to-r from-primary/10 via-accent/5 to-primary/10 backdrop-blur">
+            <div className="h-12 border-b px-4 py-3 flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsSidebarVisible(!isSidebarVisible)}
+                >
+                  <Menu className="h-4 w-4" />
+                </Button>
+                <div className="text-sm font-semibold">Chat Not Found</div>
+              </div>
+            </div>
+          </header>
+
+          {/* Mobile Sidebar Overlay */}
+          {isSidebarVisible && (
+            <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm">
+              <div
+                className="absolute inset-0"
+                onClick={() => setIsSidebarVisible(false)}
+              />
+              <div className="absolute left-0 top-0 bottom-0 w-64 bg-sidebar">
+                <ProjectSidebar
+                  selectedProject={null}
+                  onSelectProject={() => {}}
+                  onClose={() => setIsSidebarVisible(false)}
+                />
+              </div>
+            </div>
+          )}
+
+          <div className="flex-1 flex items-center justify-center p-4">
+            <div className="text-center">
+              <h1 className="text-2xl font-bold mb-2">Chat Not Found</h1>
+              <p className="text-muted-foreground mb-4">
+                This chat may have been deleted or doesn't exist.
+              </p>
+              <Button onClick={() => navigate('/')} variant="outline">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to Home
+              </Button>
+            </div>
+          </div>
         </div>
+      );
+    }
+
+    // Desktop layout for not found
+    return (
+      <div className="h-screen flex flex-col bg-background">
+        <ResizablePanelGroup direction="horizontal">
+          {isSidebarVisible && (
+            <>
+              <ResizablePanel defaultSize={20} minSize={15} maxSize={30}>
+                <ProjectSidebar
+                  selectedProject={null}
+                  onSelectProject={() => {}}
+                  onToggleSidebar={() => setIsSidebarVisible(false)}
+                />
+              </ResizablePanel>
+              <ResizableHandle withHandle />
+            </>
+          )}
+
+          <ResizablePanel defaultSize={isSidebarVisible ? 80 : 100}>
+            <div className="h-screen flex flex-col">
+              <header className="pt-safe bg-gradient-to-r from-primary/10 via-accent/5 to-primary/10 backdrop-blur">
+                <div className="h-12 border-b px-4 py-3 flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    {!isSidebarVisible && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setIsSidebarVisible(true)}
+                      >
+                        <Menu className="h-4 w-4" />
+                      </Button>
+                    )}
+                    <div className="text-sm font-semibold">Chat Not Found</div>
+                  </div>
+                </div>
+              </header>
+
+              <div className="flex-1 flex items-center justify-center p-4">
+                <div className="text-center">
+                  <h1 className="text-2xl font-bold mb-2">Chat Not Found</h1>
+                  <p className="text-muted-foreground mb-4">
+                    This chat may have been deleted or doesn't exist.
+                  </p>
+                  <Button onClick={() => navigate('/')} variant="outline">
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Back to Home
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </ResizablePanel>
+        </ResizablePanelGroup>
       </div>
     );
   }
@@ -113,6 +207,7 @@ export function ChatView() {
                   isBuildLoading={false}
                   onFirstInteraction={handleFirstInteraction}
                   isChat={true}
+                  onChatDeleted={handleChatDeleted}
                 />
               ) : (
                 <Skeleton className="h-8 w-8 rounded" />
@@ -129,7 +224,7 @@ export function ChatView() {
               className="absolute inset-0"
               onClick={() => setIsSidebarVisible(false)}
             />
-            
+
             {/* Sidebar */}
             <div className="absolute left-0 top-0 bottom-0 w-64 bg-sidebar">
               <ProjectSidebar
@@ -210,6 +305,7 @@ export function ChatView() {
                       isBuildLoading={false}
                       onFirstInteraction={handleFirstInteraction}
                       isChat={true}
+                      onChatDeleted={handleChatDeleted}
                     />
                   ) : (
                     <Skeleton className="h-8 w-8 rounded" />

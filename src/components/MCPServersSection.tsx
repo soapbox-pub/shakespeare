@@ -217,7 +217,9 @@ export function MCPServersSection() {
                 <AccordionContent className="px-4 pb-4">
                   <div className="space-y-3">
                     <div className="grid gap-2">
-                      <Label htmlFor={`${name}-type`}>{t('mcpServerType')}</Label>
+                      <Label htmlFor={`${name}-type`}>
+                        {t('mcpServerType')} <span className="text-destructive">*</span>
+                      </Label>
                       <Select value={server.type} disabled>
                         <SelectTrigger>
                           <SelectValue />
@@ -228,7 +230,9 @@ export function MCPServersSection() {
                       </Select>
                     </div>
                     <div className="grid gap-2">
-                      <Label htmlFor={`${name}-url`}>{t('mcpServerUrl')}</Label>
+                      <Label htmlFor={`${name}-url`}>
+                        {t('mcpServerUrl')} <span className="text-destructive">*</span>
+                      </Label>
                       <Input
                         id={`${name}-url`}
                         value={server.url}
@@ -271,7 +275,9 @@ export function MCPServersSection() {
                 {t('mcpServerDescription')}
               </p>
               <div className="grid gap-2">
-                <Label htmlFor="new-server-name">{t('mcpServerName')}</Label>
+                <Label htmlFor="new-server-name">
+                  {t('mcpServerName')} <span className="text-destructive">*</span>
+                </Label>
                 <Input
                   id="new-server-name"
                   placeholder="e.g., my-mcp-server"
@@ -280,7 +286,9 @@ export function MCPServersSection() {
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="new-server-type">{t('mcpServerType')}</Label>
+                <Label htmlFor="new-server-type">
+                  {t('mcpServerType')} <span className="text-destructive">*</span>
+                </Label>
                 <Select value={serverType} disabled>
                   <SelectTrigger>
                     <SelectValue />
@@ -294,7 +302,9 @@ export function MCPServersSection() {
                 </p>
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="new-server-url">{t('mcpServerUrl')}</Label>
+                <Label htmlFor="new-server-url">
+                  {t('mcpServerUrl')} <span className="text-destructive">*</span>
+                </Label>
                 <Input
                   id="new-server-url"
                   placeholder="https://example.com/mcp"

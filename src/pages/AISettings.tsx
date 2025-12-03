@@ -112,7 +112,9 @@ function SortableProviderItem({ provider, preset, onRemove, onSetProvider, onOpe
       <AccordionContent className="px-4 pb-4">
         <div className="space-y-3">
           <div className="grid gap-2">
-            <Label htmlFor={`${provider.id}-name`}>{t('name')}</Label>
+            <Label htmlFor={`${provider.id}-name`}>
+              {t('name')} <span className="text-destructive">*</span>
+            </Label>
             <Input
               id={`${provider.id}-name`}
               placeholder={preset?.name || provider.id}
@@ -121,7 +123,9 @@ function SortableProviderItem({ provider, preset, onRemove, onSetProvider, onOpe
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor={`${provider.id}-baseURL`}>{t('baseUrl')}</Label>
+            <Label htmlFor={`${provider.id}-baseURL`}>
+              {t('baseUrl')} <span className="text-destructive">*</span>
+            </Label>
             <Input
               id={`${provider.id}-baseURL`}
               placeholder="https://api.example.com/v1"

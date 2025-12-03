@@ -121,7 +121,9 @@ export function PluginsSection() {
           <AccordionContent className="px-4 pb-4">
             <div className="space-y-3">
               <div className="grid gap-2">
-                <Label htmlFor="plugin-git-url">{t('gitRepositoryUrl')}</Label>
+                <Label htmlFor="plugin-git-url">
+                  {t('gitRepositoryUrl')} <span className="text-destructive">*</span>
+                </Label>
                 <Input
                   id="plugin-git-url"
                   placeholder="https://github.com/user/plugin.git"

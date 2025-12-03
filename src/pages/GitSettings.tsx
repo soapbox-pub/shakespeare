@@ -174,7 +174,9 @@ export function GitSettings() {
                     <AccordionContent className="px-4 pb-4">
                       <div className="space-y-3">
                         <div className="grid gap-2">
-                          <Label htmlFor={`${origin}-origin`}>{t('origin')}</Label>
+                          <Label htmlFor={`${origin}-origin`}>
+                            {t('origin')} <span className="text-destructive">*</span>
+                          </Label>
                           <Input
                             id={`${origin}-origin`}
                             placeholder="https://github.com"
@@ -184,7 +186,9 @@ export function GitSettings() {
                           />
                         </div>
                         <div className="grid gap-2">
-                          <Label htmlFor={`${origin}-username`}>{t('username')}</Label>
+                          <Label htmlFor={`${origin}-username`}>
+                            {t('username')} <span className="text-destructive">*</span>
+                          </Label>
                           <Input
                             id={`${origin}-username`}
                             placeholder="git"
@@ -193,7 +197,9 @@ export function GitSettings() {
                           />
                         </div>
                         <div className="grid gap-2">
-                          <Label htmlFor={`${origin}-password`}>{t('password')}</Label>
+                          <Label htmlFor={`${origin}-password`}>
+                            {t('password')} <span className="text-destructive">*</span>
+                          </Label>
                           <PasswordInput
                             id={`${origin}-password`}
                             placeholder={t('enterPassword')}
@@ -371,7 +377,9 @@ export function GitSettings() {
               <AccordionContent className="px-4 pb-4">
                 <div className="space-y-3">
                   <div className="grid gap-2">
-                    <Label htmlFor="custom-origin">{t('origin')}</Label>
+                    <Label htmlFor="custom-origin">
+                      {t('origin')} <span className="text-destructive">*</span>
+                    </Label>
                     <Input
                       id="custom-origin"
                       placeholder="https://git.example.com"
@@ -380,7 +388,9 @@ export function GitSettings() {
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="custom-username">{t('username')}</Label>
+                    <Label htmlFor="custom-username">
+                      {t('username')} <span className="text-destructive">*</span>
+                    </Label>
                     <Input
                       id="custom-username"
                       placeholder="git"
@@ -389,7 +399,9 @@ export function GitSettings() {
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="custom-password">{t('password')}</Label>
+                    <Label htmlFor="custom-password">
+                      {t('password')} <span className="text-destructive">*</span>
+                    </Label>
                     <PasswordInput
                       id="custom-password"
                       placeholder={t('enterPassword')}

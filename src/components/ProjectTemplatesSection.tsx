@@ -92,7 +92,9 @@ function SortableTemplateItem({
       <AccordionContent className="px-4 pb-4">
         <div className="space-y-3">
           <div className="grid gap-2">
-            <Label htmlFor={`template-name-${index}`}>{t('templateName')}</Label>
+            <Label htmlFor={`template-name-${index}`}>
+              {t('templateName')} <span className="text-destructive">*</span>
+            </Label>
             <Input
               id={`template-name-${index}`}
               placeholder="MKStack"
@@ -101,7 +103,9 @@ function SortableTemplateItem({
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor={`template-description-${index}`}>{t('templateDescription')}</Label>
+            <Label htmlFor={`template-description-${index}`}>
+              {t('templateDescription')} <span className="text-destructive">*</span>
+            </Label>
             <Textarea
               id={`template-description-${index}`}
               placeholder="Build Nostr clients with React."
@@ -111,7 +115,9 @@ function SortableTemplateItem({
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor={`template-url-${index}`}>{t('templateGitUrl')}</Label>
+            <Label htmlFor={`template-url-${index}`}>
+              {t('templateGitUrl')} <span className="text-destructive">*</span>
+            </Label>
             <Input
               id={`template-url-${index}`}
               type="url"
@@ -300,7 +306,9 @@ export function ProjectTemplatesSection() {
           <AccordionContent className="px-4 pb-4">
             <div className="space-y-3">
               <div className="grid gap-2">
-                <Label htmlFor="new-template-name">{t('templateName')}</Label>
+                <Label htmlFor="new-template-name">
+                  {t('templateName')} <span className="text-destructive">*</span>
+                </Label>
                 <Input
                   id="new-template-name"
                   placeholder="MKStack"
@@ -309,7 +317,9 @@ export function ProjectTemplatesSection() {
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="new-template-description">{t('templateDescription')}</Label>
+                <Label htmlFor="new-template-description">
+                  {t('templateDescription')} <span className="text-destructive">*</span>
+                </Label>
                 <Textarea
                   id="new-template-description"
                   placeholder="Build Nostr clients with React."
@@ -319,7 +329,9 @@ export function ProjectTemplatesSection() {
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="new-template-url">{t('templateGitUrl')}</Label>
+                <Label htmlFor="new-template-url">
+                  {t('templateGitUrl')} <span className="text-destructive">*</span>
+                </Label>
                 <Input
                   id="new-template-url"
                   type="url"

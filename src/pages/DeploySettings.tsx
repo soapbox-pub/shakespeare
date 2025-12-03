@@ -116,7 +116,9 @@ function SortableProviderItem({ provider, index, preset, onRemove, onUpdate, sho
       <AccordionContent className="px-4 pb-4">
         <div className="space-y-3">
           <div className="grid gap-2">
-            <Label htmlFor={`provider-${index}-name`}>Name</Label>
+            <Label htmlFor={`provider-${index}-name`}>
+              Name <span className="text-destructive">*</span>
+            </Label>
             <Input
               id={`provider-${index}-name`}
               placeholder="Provider name"
@@ -144,7 +146,9 @@ function SortableProviderItem({ provider, index, preset, onRemove, onUpdate, sho
           ) : provider.type === 'nsite' ? (
             <>
               <div className="grid gap-2">
-                <Label htmlFor={`provider-${index}-gateway`}>Gateway</Label>
+                <Label htmlFor={`provider-${index}-gateway`}>
+                  Gateway <span className="text-destructive">*</span>
+                </Label>
                 <Input
                   id={`provider-${index}-gateway`}
                   placeholder="nsite.lol"
@@ -153,7 +157,9 @@ function SortableProviderItem({ provider, index, preset, onRemove, onUpdate, sho
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor={`provider-${index}-relays`}>Relay URLs (comma-separated)</Label>
+                <Label htmlFor={`provider-${index}-relays`}>
+                  Relay URLs (comma-separated) <span className="text-destructive">*</span>
+                </Label>
                 <Input
                   id={`provider-${index}-relays`}
                   placeholder="wss://relay.nostr.band, wss://relay.damus.io"
@@ -165,7 +171,9 @@ function SortableProviderItem({ provider, index, preset, onRemove, onUpdate, sho
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor={`provider-${index}-blossom`}>Blossom Servers (comma-separated)</Label>
+                <Label htmlFor={`provider-${index}-blossom`}>
+                  Blossom Servers (comma-separated) <span className="text-destructive">*</span>
+                </Label>
                 <Input
                   id={`provider-${index}-blossom`}
                   placeholder="https://blossom.primal.net/"
@@ -181,7 +189,7 @@ function SortableProviderItem({ provider, index, preset, onRemove, onUpdate, sho
             <>
               <div className="grid gap-2">
                 <Label htmlFor={`provider-${index}-apiKey`}>
-                  {preset?.apiKeyLabel || t('apiKey')}
+                  {preset?.apiKeyLabel || t('apiKey')} <span className="text-destructive">*</span>
                 </Label>
                 <PasswordInput
                   id={`provider-${index}-apiKey`}
@@ -746,7 +754,9 @@ export function DeploySettings() {
               <AccordionContent className="px-4 pb-4">
                 <div className="space-y-3">
                   <div className="grid gap-2">
-                    <Label htmlFor="custom-provider-type">{t('providerType')}</Label>
+                    <Label htmlFor="custom-provider-type">
+                      {t('providerType')} <span className="text-destructive">*</span>
+                    </Label>
                     <Select
                       value={customProviderType}
                       onValueChange={(value: 'shakespeare' | 'netlify' | 'vercel' | 'nsite') => {
@@ -776,7 +786,9 @@ export function DeploySettings() {
                   {customProviderType && (
                     <>
                       <div className="grid gap-2">
-                        <Label htmlFor="custom-name">{t('providerName')}</Label>
+                        <Label htmlFor="custom-name">
+                          {t('providerName')} <span className="text-destructive">*</span>
+                        </Label>
                         <Input
                           id="custom-name"
                           placeholder="e.g., My Production Deploy"
@@ -837,7 +849,7 @@ export function DeploySettings() {
                         <>
                           <div className="grid gap-2">
                             <Label htmlFor="custom-apikey">
-                              {customProviderType === 'netlify' ? 'Personal Access Token' : 'Access Token'}
+                              {customProviderType === 'netlify' ? 'Personal Access Token' : 'Access Token'} <span className="text-destructive">*</span>
                             </Label>
                             <PasswordInput
                               id="custom-apikey"

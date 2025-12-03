@@ -572,7 +572,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     <div className="h-full flex flex-col relative">
 
       <div className="flex-1 overflow-y-scroll overflow-x-hidden" ref={scrollAreaRef}>
-        <div className="p-4 space-y-4">
+        <div className={`p-4 space-y-4 ${isChat ? 'max-w-3xl mx-auto w-full' : ''}`}>
           {/* Template info banner - shown when conditions are met */}
           {showTemplateInfo && templateInfo && (
             <div className="flex items-center gap-3 text-xs text-muted-foreground uppercase tracking-wide">
@@ -710,27 +710,29 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
         </div>
       )}
 
-      <ChatInput
-        isLoading={isLoading}
-        isConfigured={isConfigured}
-        providerModel={providerModel}
-        onProviderModelChange={handleModelChange}
-        onSend={handleSend}
-        onStop={stopGeneration}
-        onFocus={handleTextareaFocus}
-        onFirstInteraction={handleFirstInteraction}
-        isModelSelectorOpen={isModelSelectorOpen}
-        onModelSelectorOpenChange={setIsModelSelectorOpen}
-        contextUsagePercentage={contextUsagePercentage}
-        currentModelContextLength={currentModel?.contextLength}
-        lastInputTokens={lastInputTokens}
-        totalCost={totalCost}
-        isDragOver={isDragOver}
-        onDragEnter={handleDragEnter}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-      />
+      <div className={`border-t ${isChat ? 'max-w-3xl mx-auto w-full' : ''}`}>
+        <ChatInput
+          isLoading={isLoading}
+          isConfigured={isConfigured}
+          providerModel={providerModel}
+          onProviderModelChange={handleModelChange}
+          onSend={handleSend}
+          onStop={stopGeneration}
+          onFocus={handleTextareaFocus}
+          onFirstInteraction={handleFirstInteraction}
+          isModelSelectorOpen={isModelSelectorOpen}
+          onModelSelectorOpenChange={setIsModelSelectorOpen}
+          contextUsagePercentage={contextUsagePercentage}
+          currentModelContextLength={currentModel?.contextLength}
+          lastInputTokens={lastInputTokens}
+          totalCost={totalCost}
+          isDragOver={isDragOver}
+          onDragEnter={handleDragEnter}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        />
+      </div>
 
       {/* Onboarding Dialog */}
       <OnboardingDialog

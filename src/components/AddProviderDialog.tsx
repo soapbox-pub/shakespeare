@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useAISettings } from '@/hooks/useAISettings';
 import { AI_PROVIDER_PRESETS } from '@/lib/aiProviderPresets';
+import { ExternalFavicon } from '@/components/ExternalFavicon';
 import type { AIProvider } from '@/contexts/AISettingsContext';
 
 interface AddProviderDialogProps {
@@ -156,7 +157,11 @@ export function AddProviderDialog({ open, onOpenChange, provider }: AddProviderD
               // New provider
               <div className="space-y-6">
                 <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Sparkles className="h-8 w-8 text-primary" />
+                  <ExternalFavicon
+                    url={provider.baseURL}
+                    size={32}
+                    fallback={<Sparkles className="h-8 w-8 text-primary" />}
+                  />
                 </div>
                 <div className="text-center space-y-2">
                   <h2 className="text-2xl font-bold">{providerName}</h2>

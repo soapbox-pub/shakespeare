@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { TagInput } from '@/components/ui/tag-input';
 import {
   Dialog,
   DialogContent,
@@ -33,6 +34,8 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useNostr } from '@/hooks/useNostr';
 import { useToast } from '@/hooks/useToast';
 import { useAppContext } from '@/hooks/useAppContext';
+import { useFS } from '@/hooks/useFS';
+import { DotAI } from '@/lib/DotAI';
 import { nip19 } from 'nostr-tools';
 import {
   createRepositoryAnnouncementEvent,
@@ -75,6 +78,7 @@ export function AnnounceRepositoryDialog({
   const [webUrls, setWebUrls] = useState<string[]>([]);
   const [cloneUrls, setCloneUrls] = useState<string[]>([]);
   const [relays, setRelays] = useState<string[]>([]);
+  const [tTags, setTTags] = useState<string[]>([]);
   const [earliestCommit, setEarliestCommit] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -89,6 +93,7 @@ export function AnnounceRepositoryDialog({
   const { nostr } = useNostr();
   const { toast } = useToast();
   const { config } = useAppContext();
+  const { fs } = useFS();
 
   const projectPath = `${projectsPath}/${projectId}`;
 
@@ -169,9 +174,31 @@ export function AnnounceRepositoryDialog({
       }
     }
 
+    // Prepopulate t-tags if empty
+    if (tTags.length === 0) {
+      const defaultTTags: string[] = ['shakespeare'];
+
+      // Try to read template.json to get template name
+      try {
+        const dotAI = new DotAI(fs, projectPath);
+        const template = await dotAI.readTemplate();
+        if (template?.name) {
+          // Convert template name to lowercase and add as t-tag
+          const templateTag = template.name.toLowerCase();
+          if (!defaultTTags.includes(templateTag)) {
+            defaultTTags.push(templateTag);
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to read template for t-tags:', error);
+      }
+
+      setTTags(defaultTTags);
+    }
+
     // Get earliest commit
     await getEarliestCommit();
-  }, [projectId, config.relayMetadata, config.ngitServers, user?.pubkey, getEarliestCommit, cloneUrls.length, relays.length]);
+  }, [projectId, projectPath, fs, config.relayMetadata, config.ngitServers, user?.pubkey, getEarliestCommit, cloneUrls.length, relays.length, tTags.length]);
 
   // Load existing repository data if editing
   useEffect(() => {
@@ -220,6 +247,13 @@ export function AnnounceRepositoryDialog({
         setCloneUrls(parsed.httpsCloneUrls);
         setRelays(parsed.relays);
         setEarliestCommit(parsed.earliestCommit || '');
+
+        // Extract t-tags from the event
+        const extractedTTags = parsed.event.tags
+          .filter(([name]) => name === 't')
+          .map(([, value]) => value)
+          .filter((value): value is string => !!value);
+        setTTags(extractedTTags);
 
         setIsPrepopulated(true);
       } catch (error) {
@@ -313,6 +347,7 @@ export function AnnounceRepositoryDialog({
         webUrls,
         cloneUrls,
         relays,
+        tTags,
         earliestCommit,
       });
 
@@ -385,6 +420,7 @@ export function AnnounceRepositoryDialog({
       setWebUrls([]);
       setCloneUrls([]);
       setRelays(['wss://relay.nostr.band']);
+      setTTags([]);
       setEarliestCommit('');
       setError(null);
       setNewWebUrl('');
@@ -633,6 +669,23 @@ export function AnnounceRepositoryDialog({
                   </div>
                   <p className="text-xs text-muted-foreground">
                       Nostr relays where patches and issues will be published and monitored
+                  </p>
+                </div>
+
+                {/* Category Tags (t-tags) */}
+                <div className="space-y-2">
+                  <Label htmlFor="category-tags">Category Tags</Label>
+                  <TagInput
+                    id="category-tags"
+                    value={tTags}
+                    onChange={setTTags}
+                    placeholder="e.g., nostr, social, web"
+                    disabled={isCreating}
+                    transformTag={(tag) => tag.trim().toLowerCase()}
+                    allowDuplicates={false}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                      Tags for categorizing your repository. Press space or comma to add a tag.
                   </p>
                 </div>
 

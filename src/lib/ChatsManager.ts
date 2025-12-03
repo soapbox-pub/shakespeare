@@ -1,5 +1,4 @@
 import type { JSRuntimeFS } from '@/lib/JSRuntime';
-import { DotAI } from '@/lib/DotAI';
 import type OpenAI from 'openai';
 
 export interface Chat {
@@ -216,7 +215,7 @@ export class ChatsManager {
 
     try {
       const messageJson = JSON.stringify(message) + '\n';
-      
+
       // Append to the file
       try {
         const existingContent = await this.fs.readFile(messagesPath, 'utf8');

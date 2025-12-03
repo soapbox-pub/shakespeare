@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
 import { type Chat } from '@/lib/ChatsManager';
 import { useChatsManager } from '@/hooks/useChatsManager';
 import { ChatPane, type ChatPaneRef } from '@/components/Shakespeare/ChatPane';
@@ -14,7 +13,6 @@ import { useIsMobile } from '@/hooks/useIsMobile';
 
 export function ChatView() {
   const { chatId } = useParams<{ chatId: string }>();
-  const { t } = useTranslation();
   const [chat, setChat] = useState<Chat | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAILoading, setIsAILoading] = useState(false);

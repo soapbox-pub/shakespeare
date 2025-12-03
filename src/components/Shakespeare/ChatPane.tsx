@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, forwardRef, useImperativeHandle, useMemo, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -36,12 +36,15 @@ import { ShellTool } from '@/lib/tools/ShellTool';
 import { TypecheckTool } from '@/lib/tools/TypecheckTool';
 import { ReadConsoleMessagesTool } from '@/lib/tools/ReadConsoleMessagesTool';
 import { SkillTool } from '@/lib/tools/SkillTool';
+import { StartProjectTool } from '@/lib/tools/StartProjectTool';
 import { createMCPTools } from '@/lib/tools/MCPTool';
 import { ProjectPreviewConsoleError } from '@/lib/consoleMessages';
 import { toolToOpenAI } from '@/lib/tools/openai-adapter';
 import { Tool } from '@/lib/tools/Tool';
 import OpenAI from 'openai';
 import { useGit } from '@/hooks/useGit';
+import { useProjectsManager } from '@/hooks/useProjectsManager';
+import type { StartProjectResult } from '@/lib/tools/StartProjectTool';
 import { Quilly } from '@/components/Quilly';
 import { ShakespeareLogo } from '@/components/ShakespeareLogo';
 import { ChatInput } from '@/components/Shakespeare/ChatInput';
@@ -78,12 +81,14 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   onDismissConsoleError,
 }, ref) => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { fs } = useFS();
   const { git } = useGit();
   const { user } = useCurrentUser();
   const { models } = useProviderModels();
   const { config } = useAppContext();
+  const projectsManager = useProjectsManager();
   const { projectsPath, tmpPath, pluginsPath } = useFSPaths();
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -136,6 +141,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     const newSearchParams = new URLSearchParams(searchParams);
     newSearchParams.delete('autostart');
     newSearchParams.delete('model');
+    newSearchParams.delete('message');
     setSearchParams(newSearchParams, { replace: true });
   }, [providerModel, searchParams, setSearchParams])
 
@@ -156,6 +162,15 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     sessionManager.emit('fileChanged', projectId, filePath);
   }, [sessionManager, projectId]);
 
+  // Callback for when a project is created via start_project tool
+  const handleProjectCreated = useCallback((result: StartProjectResult) => {
+    // Stop current chat generation
+    sessionManager.stopGeneration(projectId);
+
+    // Navigate to the new project with the initial message and autostart
+    navigate(`/project/${result.projectId}?message=${encodeURIComponent(result.initialMessage)}&autostart=true`);
+  }, [sessionManager, projectId, navigate]);
+
   // Fetch MCP tools
   const { tools: mcpOpenAITools, clients: mcpClients } = useMCPTools();
 
@@ -172,7 +187,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
         nostr_read_nips_index: new NostrReadNipsIndexTool(),
         nostr_generate_kind: new NostrGenerateKindTool(),
         nostr_publish_events: new NostrPublishEventsTool(),
-        // TODO: Add start_project tool here
+        start_project: new StartProjectTool(projectsManager, config, handleProjectCreated),
       };
       return tools;
     }
@@ -206,7 +221,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     }
 
     return tools;
-  }, [isChat, fs, git, cwd, user, projectId, projectsPath, tmpPath, pluginsPath, config.corsProxy, handleFileChanged]);
+  }, [isChat, fs, git, cwd, user, projectId, projectsPath, tmpPath, pluginsPath, config, projectsManager, handleProjectCreated, handleFileChanged]);
 
   // MCP tools wrapped for execution
   const mcpToolWrappers = useMemo(() => createMCPTools(mcpClients), [mcpClients]);
@@ -276,6 +291,16 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     workingDir: isChat ? cwd : undefined, // Pass working dir for chats
     isChat, // Pass isChat flag
   });
+
+  // Handle initial message from URL parameter
+  useEffect(() => {
+    const initialMessage = searchParams.get('message');
+
+    // Only add the initial message if there are no existing messages
+    if (initialMessage && messages.length === 0) {
+      addMessage({ role: 'user', content: initialMessage });
+    }
+  }, [searchParams, messages.length, addMessage]);
 
   // Check if we should show the template info banner
   useEffect(() => {

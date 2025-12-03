@@ -122,7 +122,7 @@ export function useGenerateProjectInfo({ onError }: UseGenerateProjectInfoOption
             properties: {
               chat_name: {
                 type: 'string',
-                description: 'A short, descriptive name for the chat. Should be lowercase, use hyphens instead of spaces, and contain only alphanumeric characters and hyphens.',
+                description: 'A short, descriptive name for the chat (2-50 characters). Use natural language with spaces, capitalization, and common punctuation. Avoid special characters that are invalid in filenames (/, \\, :, *, ?, ", <, >, |).',
               },
             },
             required: ['chat_name'],
@@ -143,8 +143,10 @@ export function useGenerateProjectInfo({ onError }: UseGenerateProjectInfoOption
 ${config.templates.map(t => `     - ${t.name}: ${t.description} (${t.url})`).join('\n')}
 
 2. If the user wants to **start a chat** (general conversation, questions, brainstorming) - use start_chat tool
-   - Generate a short, descriptive name for the chat topic
-   - Name should be lowercase, use hyphens instead of spaces, and contain only alphanumeric characters and hyphens
+   - Generate a short, descriptive name for the chat (2-50 characters)
+   - Use natural, readable language with proper capitalization and spaces
+   - Examples: "Answer to your question", "JavaScript help", "Recipe ideas"
+   - Avoid special characters that are invalid in filenames: / \\ : * ? " < > |
 
 You MUST call either start_project or start_chat based on the user's intent.`;
 
@@ -172,21 +174,23 @@ You MUST call either start_project or start_chat based on the user's intent.`;
 
       // Handle start_chat tool call
       if (toolCall.function.name === 'start_chat') {
-        const chatId = args.chat_name as string;
+        const chatName = args.chat_name as string;
 
-        // Validate the generated chat ID
-        const validIdRegex = /^[a-z0-9]+(-[a-z0-9]+)*$/;
-        if (chatId && chatId.length <= 50 && validIdRegex.test(chatId)) {
+        // Validate the chat name - allow most characters except filesystem-invalid ones
+        // Invalid characters: / \ : * ? " < > |
+        const invalidCharsRegex = /[\/\\:*?"<>|]/;
+
+        if (chatName && chatName.length >= 2 && chatName.length <= 50 && !invalidCharsRegex.test(chatName)) {
           return {
             type: 'chat',
-            info: { chatId },
+            info: { chatId: chatName.trim() },
           };
         }
 
-        // Fallback to auto-generated chat ID if validation fails
+        // Fallback to descriptive name if validation fails
         return {
           type: 'chat',
-          info: { chatId: 'chat' },
+          info: { chatId: 'New chat' },
         };
       }
 

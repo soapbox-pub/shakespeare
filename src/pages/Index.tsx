@@ -10,6 +10,7 @@ import { useIsMobile } from '@/hooks/useIsMobile';
 import { useAISettings } from '@/hooks/useAISettings';
 import { useAppContext } from '@/hooks/useAppContext';
 import { ChatsManager } from '@/lib/ChatsManager';
+import { useQueryClient } from '@tanstack/react-query';
 import { AppLayout } from '@/components/AppLayout';
 import { OnboardingDialog } from '@/components/OnboardingDialog';
 import { Act1Dialog } from '@/components/Act1Dialog';
@@ -41,6 +42,7 @@ export default function Index() {
   const [giftCardCode, setGiftCardCode] = useState('');
   const navigate = useNavigate();
   const location = useLocation();
+  const queryClient = useQueryClient();
   const projectsManager = useProjectsManager();
   const chatsManager = useChatsManager();
   const { fs } = useFS();
@@ -246,6 +248,9 @@ export default function Index() {
 
         // Create chat with initial message
         await chatsManager.createChat(finalChatId, prompt.trim());
+
+        // Invalidate chats query to update sidebar
+        queryClient.invalidateQueries({ queryKey: ['chats'] });
 
         // Clear attached files after successful creation
         setAttachedFiles([]);

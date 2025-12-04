@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
-import { X, Trash2, Copy, Check, ChevronDown, ArrowUp, Square, Loader2, Hammer, MessageCircle } from 'lucide-react';
+import { X, Trash2, Copy, Check, ChevronDown, ArrowUp, Square, Loader2, Hammer } from 'lucide-react';
 import { Streamdown } from 'streamdown';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -275,7 +275,7 @@ export function GlobalChatPane({ embedded = false, mobileChatMode, onMobileChatM
         )}
 
         {/* Input */}
-        <div className="border-t p-4 pb-safe">
+        <div className="border-t p-4">
           <div className="flex flex-col rounded-2xl border border-input bg-background shadow-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
             <Textarea
               ref={textareaRef}
@@ -290,39 +290,35 @@ export function GlobalChatPane({ embedded = false, mobileChatMode, onMobileChatM
               onKeyDown={handleKeyDown}
               placeholder={hasProviders ? t('typeMessage') : t('configureAIFirst')}
               disabled={!hasProviders || isLoading}
-              className="flex-1 resize-none border-0 bg-transparent px-4 py-3 text-sm focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground min-h-[80px]"
+              className="flex-1 resize-none border-0 bg-transparent px-4 py-3 text-sm focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground"
               rows={1}
+              style={{
+                height: 'auto',
+                minHeight: '96px'
+              }}
+              onInput={(e) => {
+                const target = e.target as HTMLTextAreaElement;
+                target.style.height = 'auto';
+                target.style.height = Math.min(target.scrollHeight, 128) + 'px';
+              }}
             />
             {/* Bottom Controls Row */}
             <div className="flex items-center gap-4 px-2 py-2">
-              {/* Mobile Chat Mode Toggle */}
+              {/* Mobile Chat Mode Toggle - single button to switch back to building mode */}
               {mobileChatMode && onMobileChatModeChange && (
-                <div className="flex items-center rounded-full bg-muted p-0.5">
-                  <button
-                    onClick={() => onMobileChatModeChange('building')}
-                    className={cn(
-                      'flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium transition-all',
-                      mobileChatMode === 'building'
-                        ? 'bg-background text-foreground shadow-sm'
-                        : 'text-muted-foreground hover:text-foreground'
-                    )}
-                  >
-                    <Hammer className="h-3 w-3" />
-                    {t('building')}
-                  </button>
-                  <button
-                    onClick={() => onMobileChatModeChange('chatting')}
-                    className={cn(
-                      'flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium transition-all',
-                      mobileChatMode === 'chatting'
-                        ? 'bg-background text-foreground shadow-sm'
-                        : 'text-muted-foreground hover:text-foreground'
-                    )}
-                  >
-                    <MessageCircle className="h-3 w-3" />
-                    {t('chatting')}
-                  </button>
-                </div>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 shrink-0"
+                      onClick={() => onMobileChatModeChange('building')}
+                    >
+                      <Hammer className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{t('building')}</TooltipContent>
+                </Tooltip>
               )}
 
               {/* Model Selector */}

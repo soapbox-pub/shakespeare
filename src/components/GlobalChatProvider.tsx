@@ -95,7 +95,7 @@ export function GlobalChatProvider({ children }: GlobalChatProviderProps) {
 
     try {
       // Create AI client
-      const client = createAIClient(provider, config.corsProxy, user?.signer);
+      const client = createAIClient(provider, user, config.corsProxy);
 
       // Build messages for API using captured current messages
       const systemPrompt = config.globalChatSystemPrompt || defaultGlobalChatSystemPrompt;
@@ -189,7 +189,7 @@ export function GlobalChatProvider({ children }: GlobalChatProviderProps) {
       }
       abortControllerRef.current = null;
     }
-  }, [config.corsProxy, config.globalChatSystemPrompt, settings.providers, trimMessages, user?.signer]);
+  }, [config.corsProxy, config.globalChatSystemPrompt, settings.providers, trimMessages, user]);
 
   const stopGeneration = useCallback(() => {
     if (abortControllerRef.current) {

@@ -14,13 +14,13 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { proxyUrl } from '@/lib/proxyUrl';
 
-interface CloudflareProject {
+interface CloudflareWorkerScript {
   id: string;
-  name: string;
-  subdomain: string;
-  domains: string[];
-  production_branch: string;
+  etag: string;
+  handlers: string[];
+  modified_on: string;
   created_on: string;
+  has_assets: boolean;
 }
 
 interface CloudflareDeployFormProps {
@@ -44,48 +44,62 @@ export function CloudflareDeployForm({
   onProjectChange,
   corsProxy,
 }: CloudflareDeployFormProps) {
-  const [projects, setProjects] = useState<CloudflareProject[]>([]);
+  const [workers, setWorkers] = useState<CloudflareWorkerScript[]>([]);
+  const [workersSubdomain, setWorkersSubdomain] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedProjectName, setSelectedProjectName] = useState<string>('');
   const [newProjectName, setNewProjectName] = useState(projectName || projectId);
 
-  const fetchProjects = useCallback(async () => {
+  const fetchWorkersData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
     try {
-      const url = `${baseURL}/accounts/${accountId}/pages/projects`;
-      const targetUrl = corsProxy ? proxyUrl(corsProxy, url) : url;
+      // Fetch workers subdomain and workers list in parallel
+      const subdomainUrl = `${baseURL}/accounts/${accountId}/workers/subdomain`;
+      const workersUrl = `${baseURL}/accounts/${accountId}/workers/scripts`;
 
-      const response = await fetch(targetUrl, {
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-        },
-      });
+      const [subdomainResponse, workersResponse] = await Promise.all([
+        fetch(corsProxy ? proxyUrl(corsProxy, subdomainUrl) : subdomainUrl, {
+          headers: { 'Authorization': `Bearer ${apiKey}` },
+        }),
+        fetch(corsProxy ? proxyUrl(corsProxy, workersUrl) : workersUrl, {
+          headers: { 'Authorization': `Bearer ${apiKey}` },
+        }),
+      ]);
 
-      if (!response.ok) {
-        throw new Error(`Failed to fetch projects: ${response.status} ${response.statusText}`);
+      if (!subdomainResponse.ok) {
+        throw new Error(`Failed to fetch workers subdomain: ${subdomainResponse.status} ${subdomainResponse.statusText}`);
       }
 
-      const data = await response.json();
-      setProjects(data.result || []);
+      if (!workersResponse.ok) {
+        throw new Error(`Failed to fetch workers: ${workersResponse.status} ${workersResponse.statusText}`);
+      }
+
+      const [subdomainData, workersData] = await Promise.all([
+        subdomainResponse.json(),
+        workersResponse.json(),
+      ]);
+
+      setWorkersSubdomain(subdomainData.result?.subdomain || null);
+      setWorkers(workersData.result || []);
 
       // If there's a saved project name and it exists in the list, select it
       // Otherwise leave it empty (showing placeholder)
-      if (savedProjectName && data.result?.some((p: CloudflareProject) => p.name === savedProjectName)) {
+      if (savedProjectName && workersData.result?.some((w: CloudflareWorkerScript) => w.id === savedProjectName)) {
         setSelectedProjectName(savedProjectName);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch projects');
+      setError(err instanceof Error ? err.message : 'Failed to fetch workers data');
     } finally {
       setIsLoading(false);
     }
   }, [apiKey, accountId, baseURL, savedProjectName, corsProxy]);
 
   useEffect(() => {
-    fetchProjects();
-  }, [fetchProjects]);
+    fetchWorkersData();
+  }, [fetchWorkersData]);
 
   // Update newProjectName when switching to "new" if it's empty
   useEffect(() => {
@@ -117,7 +131,15 @@ export function CloudflareDeployForm({
     );
   }
 
-  const selectedProject = projects.find(p => p.name === selectedProjectName);
+  const selectedWorker = workers.find(w => w.id === selectedProjectName);
+
+  // Construct the URL preview
+  const getWorkerUrl = (scriptName: string) => {
+    if (workersSubdomain) {
+      return `https://${scriptName}.${workersSubdomain}.workers.dev`;
+    }
+    return `https://${scriptName}.<subdomain>.workers.dev`;
+  };
 
   return (
     <div className="space-y-4">
@@ -128,21 +150,21 @@ export function CloudflareDeployForm({
       )}
 
       <div className="space-y-2">
-        <Label htmlFor="cloudflare-project">Select Project</Label>
+        <Label htmlFor="cloudflare-project">Select Worker</Label>
         <Select value={selectedProjectName} onValueChange={setSelectedProjectName}>
           <SelectTrigger id="cloudflare-project">
-            <SelectValue placeholder="Select a project or create new..." />
+            <SelectValue placeholder="Select a worker or create new..." />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="new">
               <div className="flex items-center gap-2">
                 <Plus className="h-4 w-4" />
-                Create new project
+                Create new worker
               </div>
             </SelectItem>
-            {projects.map((project) => (
-              <SelectItem key={project.id} value={project.name}>
-                {project.name}
+            {workers.map((worker) => (
+              <SelectItem key={worker.id} value={worker.id}>
+                {worker.id}
               </SelectItem>
             ))}
           </SelectContent>
@@ -151,7 +173,7 @@ export function CloudflareDeployForm({
 
       {selectedProjectName === 'new' ? (
         <div className="space-y-2">
-          <Label htmlFor="new-project-name">New Project Name</Label>
+          <Label htmlFor="new-project-name">New Worker Name</Label>
           <Input
             id="new-project-name"
             value={newProjectName}
@@ -159,34 +181,34 @@ export function CloudflareDeployForm({
             placeholder={projectName || projectId}
           />
           <p className="text-xs text-muted-foreground">
-            Domain: <span className="font-mono">{newProjectName || projectId}.pages.dev</span>
+            URL: <span className="font-mono">{getWorkerUrl(newProjectName || projectId)}</span>
           </p>
           <p className="text-xs text-muted-foreground">
-            A new project will be created when you deploy
+            A new worker will be created when you deploy
           </p>
         </div>
-      ) : selectedProject ? (
+      ) : selectedWorker ? (
         <div className="space-y-2">
           <div className="rounded-lg border p-3 space-y-2">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium">{selectedProject.name}</p>
+                <p className="text-sm font-medium">{selectedWorker.id}</p>
                 <p className="text-xs text-muted-foreground font-mono">
-                  https://{selectedProject.subdomain}.pages.dev
+                  {getWorkerUrl(selectedWorker.id)}
                 </p>
               </div>
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
-                onClick={() => window.open(`https://dash.cloudflare.com/pages/${selectedProject.id}`, '_blank')}
+                onClick={() => window.open(`https://dash.cloudflare.com/${accountId}/workers/services/view/${selectedWorker.id}`, '_blank')}
               >
                 <ExternalLink className="h-4 w-4" />
               </Button>
             </div>
           </div>
           <p className="text-xs text-muted-foreground">
-            Deployment will update this existing project
+            Deployment will update this existing worker
           </p>
         </div>
       ) : null}

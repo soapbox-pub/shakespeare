@@ -309,8 +309,8 @@ const PRESET_PROVIDERS: PresetProvider[] = [
   {
     id: 'cloudflare',
     type: 'cloudflare',
-    name: 'Cloudflare Pages',
-    description: 'Deploy to Cloudflare Pages',
+    name: 'Cloudflare',
+    description: 'Deploy to Cloudflare Workers',
     apiKeyLabel: 'API Token',
     apiKeyURL: 'https://dash.cloudflare.com/profile/api-tokens',
     accountIdLabel: 'Account ID',
@@ -882,7 +882,7 @@ export function DeploySettings() {
                         <SelectItem value="nsite">nsite</SelectItem>
                         <SelectItem value="netlify">Netlify</SelectItem>
                         <SelectItem value="vercel">Vercel</SelectItem>
-                        <SelectItem value="cloudflare">Cloudflare Pages</SelectItem>
+                        <SelectItem value="cloudflare">Cloudflare</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

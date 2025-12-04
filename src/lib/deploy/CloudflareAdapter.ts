@@ -2,30 +2,44 @@ import type { JSRuntimeFS } from '../JSRuntime';
 import type { DeployAdapter, DeployOptions, DeployResult, CloudflareDeployConfig } from './types';
 import { proxyUrl } from '../proxyUrl';
 
-interface CloudflareProject {
-  id: string;
-  name: string;
-  subdomain: string;
-  domains: string[];
-  production_branch: string;
+interface AssetManifest {
+  [path: string]: { hash: string; size: number };
 }
 
-interface CloudflareDeployment {
+interface InitializeAssetsResponse {
+  buckets: string[][];
+  jwt: string;
+}
+
+interface UploadResponse {
+  jwt?: string;
+}
+
+interface WorkerScript {
   id: string;
-  url: string;
-  environment: string;
-  deployment_trigger: {
-    type: string;
-  };
-  latest_stage: {
-    name: string;
-    status: string;
-  };
+  etag: string;
+  handlers: string[];
+  modified_on: string;
+  created_on: string;
+  has_assets: boolean;
+}
+
+interface FileInfo {
+  hash: string;
+  content: Uint8Array;
+  size: number;
+  contentType: string;
 }
 
 /**
- * Cloudflare Pages Deploy Adapter
- * Uses Cloudflare API with API token
+ * Cloudflare Workers Deploy Adapter
+ * Uses Cloudflare Workers API with static assets support
+ *
+ * Implements the Workers Assets upload workflow:
+ * 1. Build asset manifest with file hashes
+ * 2. Initialize upload session to get buckets of files to upload
+ * 3. Upload files in buckets using FormData with base64 content
+ * 4. Deploy worker with assets JWT
  */
 export class CloudflareAdapter implements DeployAdapter {
   private fs: JSRuntimeFS;
@@ -55,47 +69,74 @@ export class CloudflareAdapter implements DeployAdapter {
       throw new Error('No index.html found in dist directory. Please build the project first.');
     }
 
-    const activeProjectName = this.projectName || projectId;
+    const scriptName = this.projectName || projectId;
 
-    // Get or create project
-    let project: CloudflareProject;
-    try {
-      project = await this.getProject(activeProjectName);
-    } catch {
-      // Project doesn't exist, create it
-      project = await this.createProject(activeProjectName);
+    // Step 1: Collect all files and build manifest
+    const files = new Map<string, FileInfo>();
+    await this.collectFiles(distPath, '', files);
+
+    const manifest: AssetManifest = {};
+    for (const [filePath, fileInfo] of files) {
+      // Normalize path with leading slash
+      const normalizedPath = '/' + filePath.replace(/\\/g, '/');
+      manifest[normalizedPath] = {
+        hash: fileInfo.hash,
+        size: fileInfo.size,
+      };
     }
 
-    // Collect all files and create manifest
-    const files: Record<string, string> = {};
-    const fileContents: Record<string, Uint8Array> = {};
-    await this.collectFiles(distPath, '', files, fileContents);
+    // Step 2: Initialize upload session
+    const initResponse = await this.initializeUploadSession(scriptName, manifest);
 
-    // Deploy to Cloudflare Pages using Direct Upload
-    const deployment = await this.createDeployment(project.name, files, fileContents);
+    // Step 3: Upload files in buckets
+    let completionJwt = initResponse.jwt;
 
-    // Construct the production URL
-    // The subdomain from the API response already includes the full domain
-    // e.g., "error-button.pages.dev" not just "error-button"
-    const productionUrl = project.subdomain.includes('.')
-      ? `https://${project.subdomain}`
-      : `https://${project.subdomain}.pages.dev`;
+    if (initResponse.buckets.flat().length > 0) {
+      // Create lookup from hash to file info
+      const hashToFile = new Map<string, { path: string; info: FileInfo }>();
+      for (const [filePath, fileInfo] of files) {
+        hashToFile.set(fileInfo.hash, { path: filePath, info: fileInfo });
+      }
+
+      // Upload each bucket
+      for (const bucket of initResponse.buckets) {
+        const uploadResult = await this.uploadBucket(
+          initResponse.jwt,
+          bucket,
+          hashToFile
+        );
+        if (uploadResult.jwt) {
+          completionJwt = uploadResult.jwt;
+        }
+      }
+    }
+
+    // Step 4: Deploy the worker with assets
+    const deployment = await this.deployWorker(scriptName, completionJwt);
+
+    // Step 5: Enable the workers.dev subdomain for this script
+    await this.enableWorkersDevSubdomain(scriptName);
+
+    // Step 6: Get the account's workers.dev subdomain
+    const subdomain = await this.getWorkersSubdomain();
+
+    // Construct the URL
+    const workerUrl = `https://${scriptName}.${subdomain}.workers.dev`;
 
     return {
-      url: deployment.url,
+      url: workerUrl,
       metadata: {
-        deploymentId: deployment.id,
-        projectId: project.id,
-        projectName: project.name,
-        productionUrl,
-        provider: 'cloudflare',
-        environment: deployment.environment,
+        scriptId: deployment.id,
+        scriptName: scriptName,
+        provider: 'cloudflare-workers',
+        hasAssets: deployment.has_assets,
+        modifiedOn: deployment.modified_on,
       },
     };
   }
 
-  private async getProject(projectName: string): Promise<CloudflareProject> {
-    const url = `${this.baseURL}/accounts/${this.accountId}/pages/projects/${projectName}`;
+  private async getWorkersSubdomain(): Promise<string> {
+    const url = `${this.baseURL}/accounts/${this.accountId}/workers/subdomain`;
     const targetUrl = this.corsProxy ? proxyUrl(this.corsProxy, url) : url;
 
     const response = await fetch(targetUrl, {
@@ -107,19 +148,15 @@ export class CloudflareAdapter implements DeployAdapter {
 
     if (!response.ok) {
       const errorText = await response.text().catch(() => 'Unknown error');
-      throw new Error(`Failed to get Cloudflare project: ${response.status} ${response.statusText}. ${errorText}`);
+      throw new Error(`Failed to get workers subdomain: ${response.status} ${response.statusText}. ${errorText}`);
     }
 
     const data = await response.json();
-
-    // Log the project response for debugging
-    console.log('Cloudflare project response:', data);
-
-    return data.result;
+    return data.result.subdomain;
   }
 
-  private async createProject(projectName: string): Promise<CloudflareProject> {
-    const url = `${this.baseURL}/accounts/${this.accountId}/pages/projects`;
+  private async enableWorkersDevSubdomain(scriptName: string): Promise<void> {
+    const url = `${this.baseURL}/accounts/${this.accountId}/workers/scripts/${scriptName}/subdomain`;
     const targetUrl = this.corsProxy ? proxyUrl(this.corsProxy, url) : url;
 
     const response = await fetch(targetUrl, {
@@ -129,40 +166,125 @@ export class CloudflareAdapter implements DeployAdapter {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        name: projectName,
-        production_branch: 'main',
+        enabled: true,
+        previews_enabled: true,
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text().catch(() => 'Unknown error');
-      throw new Error(`Failed to create Cloudflare project: ${response.status} ${response.statusText}. ${errorText}`);
+      throw new Error(`Failed to enable workers.dev subdomain: ${response.status} ${response.statusText}. ${errorText}`);
+    }
+  }
+
+  private async initializeUploadSession(
+    scriptName: string,
+    manifest: AssetManifest
+  ): Promise<InitializeAssetsResponse> {
+    const url = `${this.baseURL}/accounts/${this.accountId}/workers/scripts/${scriptName}/assets-upload-session`;
+    const targetUrl = this.corsProxy ? proxyUrl(this.corsProxy, url) : url;
+
+    const response = await fetch(targetUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${this.apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ manifest }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => 'Unknown error');
+      throw new Error(`Failed to initialize upload session: ${response.status} ${response.statusText}. ${errorText}`);
     }
 
     const data = await response.json();
     return data.result;
   }
 
-  private async createDeployment(
-    projectName: string,
-    manifest: Record<string, string>,
-    fileContents: Record<string, Uint8Array>
-  ): Promise<CloudflareDeployment> {
-    const url = `${this.baseURL}/accounts/${this.accountId}/pages/projects/${projectName}/deployments`;
+  private async uploadBucket(
+    jwt: string,
+    bucket: string[],
+    hashToFile: Map<string, { path: string; info: FileInfo }>
+  ): Promise<UploadResponse> {
+    const url = `${this.baseURL}/accounts/${this.accountId}/workers/assets/upload?base64=true`;
     const targetUrl = this.corsProxy ? proxyUrl(this.corsProxy, url) : url;
 
-    // Create FormData with manifest
     const formData = new FormData();
-    formData.append('manifest', JSON.stringify(manifest));
 
-    // Add all files to FormData
-    for (const [path, content] of Object.entries(fileContents)) {
-      const blob = new Blob([content]);
-      formData.append(path, blob, path);
+    for (const fileHash of bucket) {
+      const fileData = hashToFile.get(fileHash);
+      if (!fileData) {
+        throw new Error(`File with hash ${fileHash} not found in manifest`);
+      }
+
+      // Convert content to base64
+      const base64Content = this.uint8ArrayToBase64(fileData.info.content);
+
+      // Use content type or "application/null" to signal no content-type header
+      const contentType = fileData.info.contentType || 'application/null';
+
+      // Create a File/Blob with the base64 content
+      const blob = new Blob([base64Content], { type: contentType });
+      formData.append(fileHash, blob, fileHash);
     }
 
     const response = await fetch(targetUrl, {
       method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${jwt}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => 'Unknown error');
+      throw new Error(`Failed to upload assets: ${response.status} ${response.statusText}. ${errorText}`);
+    }
+
+    const data = await response.json();
+    return data.result || {};
+  }
+
+  private async deployWorker(scriptName: string, assetsJwt: string): Promise<WorkerScript> {
+    const url = `${this.baseURL}/accounts/${this.accountId}/workers/scripts/${scriptName}`;
+    const targetUrl = this.corsProxy ? proxyUrl(this.corsProxy, url) : url;
+
+    // Create a minimal worker script that serves static assets
+    // This is an assets-only worker - Cloudflare will automatically serve the uploaded assets
+    const workerScript = `
+export default {
+  async fetch(request, env) {
+    // This worker only serves static assets
+    // The assets are automatically served by Cloudflare's asset handler
+    return new Response('Not Found', { status: 404 });
+  }
+};
+`;
+
+    const formData = new FormData();
+
+    // Add the worker script as the main module
+    const scriptBlob = new Blob([workerScript], { type: 'application/javascript+module' });
+    formData.append('worker.js', scriptBlob, 'worker.js');
+
+    // Add metadata with assets configuration
+    const metadata = {
+      main_module: 'worker.js',
+      compatibility_date: new Date().toISOString().split('T')[0],
+      assets: {
+        jwt: assetsJwt,
+        config: {
+          html_handling: 'auto-trailing-slash',
+          not_found_handling: 'single-page-application',
+        },
+      },
+    };
+
+    formData.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+
+    const response = await fetch(targetUrl, {
+      method: 'PUT',
       headers: {
         'Authorization': `Bearer ${this.apiKey}`,
       },
@@ -171,22 +293,17 @@ export class CloudflareAdapter implements DeployAdapter {
 
     if (!response.ok) {
       const errorText = await response.text().catch(() => 'Unknown error');
-      throw new Error(`Failed to create Cloudflare deployment: ${response.status} ${response.statusText}. ${errorText}`);
+      throw new Error(`Failed to deploy worker: ${response.status} ${response.statusText}. ${errorText}`);
     }
 
     const data = await response.json();
-
-    // Log the response for debugging
-    console.log('Cloudflare deployment response:', data);
-
     return data.result;
   }
 
   private async collectFiles(
     dirPath: string,
     relativePath: string,
-    manifest: Record<string, string>,
-    fileContents: Record<string, Uint8Array>
+    files: Map<string, FileInfo>
   ): Promise<void> {
     try {
       const entries = await this.fs.readdir(dirPath, { withFileTypes: true });
@@ -196,11 +313,9 @@ export class CloudflareAdapter implements DeployAdapter {
         const entryRelativePath = relativePath ? `${relativePath}/${entry.name}` : entry.name;
 
         if (entry.isDirectory()) {
-          // Recursively collect files from subdirectories
-          await this.collectFiles(fullPath, entryRelativePath, manifest, fileContents);
+          await this.collectFiles(fullPath, entryRelativePath, files);
         } else if (entry.isFile()) {
           try {
-            // Read file content
             const fileContent = await this.fs.readFile(fullPath);
 
             // Convert to Uint8Array
@@ -211,15 +326,18 @@ export class CloudflareAdapter implements DeployAdapter {
               content = fileContent;
             }
 
-            // Calculate hash for manifest
+            // Calculate hash (same algorithm as Wrangler uses)
             const hash = await this.calculateHash(content);
 
-            // Add to manifest with leading slash
-            const manifestPath = `/${entryRelativePath}`;
-            manifest[manifestPath] = hash;
+            // Determine content type
+            const contentType = this.getContentType(entry.name);
 
-            // Store file content
-            fileContents[entryRelativePath] = content;
+            files.set(entryRelativePath, {
+              hash,
+              content,
+              size: content.length,
+              contentType,
+            });
           } catch (error) {
             console.warn(`Failed to read file ${fullPath}:`, error);
           }
@@ -231,10 +349,55 @@ export class CloudflareAdapter implements DeployAdapter {
   }
 
   private async calculateHash(content: Uint8Array): Promise<string> {
-    // Use SHA-256 to calculate hash
+    // Use xxHash algorithm like Wrangler does, but fall back to SHA-256 for browser compatibility
     const hashBuffer = await crypto.subtle.digest('SHA-256', content);
     const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    // Take first 16 bytes (32 hex chars) to match Wrangler's hash length
+    const hashHex = hashArray.slice(0, 16).map(b => b.toString(16).padStart(2, '0')).join('');
     return hashHex;
+  }
+
+  private uint8ArrayToBase64(bytes: Uint8Array): string {
+    let binary = '';
+    for (let i = 0; i < bytes.length; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
+  }
+
+  private getContentType(filename: string): string {
+    const ext = filename.split('.').pop()?.toLowerCase() || '';
+    const mimeTypes: Record<string, string> = {
+      'html': 'text/html',
+      'htm': 'text/html',
+      'css': 'text/css',
+      'js': 'application/javascript',
+      'mjs': 'application/javascript',
+      'json': 'application/json',
+      'png': 'image/png',
+      'jpg': 'image/jpeg',
+      'jpeg': 'image/jpeg',
+      'gif': 'image/gif',
+      'svg': 'image/svg+xml',
+      'ico': 'image/x-icon',
+      'webp': 'image/webp',
+      'avif': 'image/avif',
+      'woff': 'font/woff',
+      'woff2': 'font/woff2',
+      'ttf': 'font/ttf',
+      'eot': 'application/vnd.ms-fontobject',
+      'otf': 'font/otf',
+      'txt': 'text/plain',
+      'xml': 'application/xml',
+      'pdf': 'application/pdf',
+      'zip': 'application/zip',
+      'mp4': 'video/mp4',
+      'webm': 'video/webm',
+      'mp3': 'audio/mpeg',
+      'wav': 'audio/wav',
+      'ogg': 'audio/ogg',
+      'wasm': 'application/wasm',
+    };
+    return mimeTypes[ext] || 'application/octet-stream';
   }
 }

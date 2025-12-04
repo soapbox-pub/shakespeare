@@ -46,7 +46,7 @@ import { normalizeUrl } from '@/lib/faviconUrl';
 
 interface PresetProvider {
   id: string;
-  type: 'shakespeare' | 'netlify' | 'vercel' | 'nsite' | 'cloudflare';
+  type: 'shakespeare' | 'netlify' | 'vercel' | 'nsite' | 'cloudflare' | 'deno';
   name: string;
   description: string;
   requiresNostr?: boolean;
@@ -54,6 +54,8 @@ interface PresetProvider {
   apiKeyURL?: string;
   accountIdLabel?: string;
   accountIdURL?: string;
+  organizationIdLabel?: string;
+  organizationIdURL?: string;
   proxy?: boolean;
 }
 
@@ -202,6 +204,19 @@ function SortableProviderItem({ provider, index, preset, onRemove, onUpdate, sho
                   />
                 </div>
               )}
+              {provider.type === 'deno' && (
+                <div className="grid gap-2">
+                  <Label htmlFor={`provider-${index}-organizationId`}>
+                    {preset?.organizationIdLabel || 'Organization ID'} <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id={`provider-${index}-organizationId`}
+                    placeholder="Enter Organization ID"
+                    value={provider.organizationId}
+                    onChange={(e) => onUpdate(index, { ...provider, organizationId: e.target.value })}
+                  />
+                </div>
+              )}
               <div className="grid gap-2">
                 <Label htmlFor={`provider-${index}-apiKey`}>
                   {preset?.apiKeyLabel || t('apiKey')} <span className="text-destructive">*</span>
@@ -217,6 +232,8 @@ function SortableProviderItem({ provider, index, preset, onRemove, onUpdate, sho
                       onUpdate(index, { ...provider, apiKey: e.target.value });
                     } else if (provider.type === 'cloudflare') {
                       onUpdate(index, { ...provider, apiKey: e.target.value });
+                    } else if (provider.type === 'deno') {
+                      onUpdate(index, { ...provider, apiKey: e.target.value });
                     }
                   }}
                 />
@@ -231,7 +248,8 @@ function SortableProviderItem({ provider, index, preset, onRemove, onUpdate, sho
                     provider.type === 'netlify' ? 'https://api.netlify.com/api/v1' :
                       provider.type === 'vercel' ? 'https://api.vercel.com' :
                         provider.type === 'cloudflare' ? 'https://api.cloudflare.com/client/v4' :
-                          'Base URL'
+                          provider.type === 'deno' ? 'https://api.deno.com/v1' :
+                            'Base URL'
                   }
                   value={provider.baseURL || ''}
                   onChange={(e) => {
@@ -240,6 +258,8 @@ function SortableProviderItem({ provider, index, preset, onRemove, onUpdate, sho
                     } else if (provider.type === 'vercel') {
                       onUpdate(index, { ...provider, baseURL: e.target.value });
                     } else if (provider.type === 'cloudflare') {
+                      onUpdate(index, { ...provider, baseURL: e.target.value });
+                    } else if (provider.type === 'deno') {
                       onUpdate(index, { ...provider, baseURL: e.target.value });
                     }
                   }}
@@ -317,6 +337,17 @@ const PRESET_PROVIDERS: PresetProvider[] = [
     accountIdURL: 'https://developers.cloudflare.com/fundamentals/account/find-account-and-zone-ids/',
     proxy: true,
   },
+  {
+    id: 'deno',
+    type: 'deno',
+    name: 'Deno Deploy',
+    description: 'Deploy to Deno Deploy',
+    apiKeyLabel: 'Access Token',
+    apiKeyURL: 'https://dash.deno.com/account#access-tokens',
+    organizationIdLabel: 'Organization ID',
+    organizationIdURL: 'https://dash.deno.com/orgs',
+    proxy: true,
+  },
 ];
 
 // Helper function to generate custom provider ID
@@ -356,6 +387,13 @@ function getProviderUrl(provider: DeployProvider | PresetProvider): string | nul
       }
       return 'https://cloudflare.com';
 
+    case 'deno':
+      // For Deno Deploy providers, check for custom baseURL first, then use default
+      if ('baseURL' in provider && provider.baseURL) {
+        return provider.baseURL;
+      }
+      return 'https://deno.com';
+
     case 'nsite':
       // nsite uses Rocket icon fallback
       return null;
@@ -380,10 +418,11 @@ export function DeploySettings() {
   const [forceManualEntry, setForceManualEntry] = useState<Record<string, boolean>>({});
 
   // Custom provider form state
-  const [customProviderType, setCustomProviderType] = useState<'shakespeare' | 'netlify' | 'vercel' | 'nsite' | 'cloudflare' | ''>('');
+  const [customProviderType, setCustomProviderType] = useState<'shakespeare' | 'netlify' | 'vercel' | 'nsite' | 'cloudflare' | 'deno' | ''>('');
   const [customName, setCustomName] = useState('');
   const [customApiKey, setCustomApiKey] = useState('');
   const [customAccountId, setCustomAccountId] = useState('');
+  const [customOrganizationId, setCustomOrganizationId] = useState('');
   const [customBaseURL, setCustomBaseURL] = useState('');
   const [customHost, setCustomHost] = useState('');
   const [customProxy, setCustomProxy] = useState(false);
@@ -480,6 +519,19 @@ export function DeploySettings() {
         accountId: accountId.trim(),
         ...(preset.proxy && { proxy: true }),
       };
+    } else if (preset.type === 'deno') {
+      const organizationId = presetApiKeys[`${preset.id}-organizationId`];
+      if (!organizationId?.trim()) {
+        return;
+      }
+      newProvider = {
+        id: preset.id, // Use preset ID for presets
+        name: preset.name,
+        type: 'deno',
+        apiKey: apiKey.trim(),
+        organizationId: organizationId.trim(),
+        ...(preset.proxy && { proxy: true }),
+      };
     } else {
       return; // Unknown type
     }
@@ -551,6 +603,17 @@ export function DeploySettings() {
         ...(customBaseURL?.trim() && { baseURL: customBaseURL.trim() }),
         ...(customProxy && { proxy: true }),
       };
+    } else if (customProviderType === 'deno') {
+      if (!customApiKey.trim() || !customOrganizationId.trim()) return;
+      newProvider = {
+        id: generateCustomProviderId(customProviderType), // Generate custom ID
+        name: customName.trim(),
+        type: 'deno',
+        apiKey: customApiKey.trim(),
+        organizationId: customOrganizationId.trim(),
+        ...(customBaseURL?.trim() && { baseURL: customBaseURL.trim() }),
+        ...(customProxy && { proxy: true }),
+      };
     } else {
       return; // Unknown type
     }
@@ -562,6 +625,7 @@ export function DeploySettings() {
     setCustomName('');
     setCustomApiKey('');
     setCustomAccountId('');
+    setCustomOrganizationId('');
     setCustomBaseURL('');
     setCustomHost('');
     setCustomProxy(false);
@@ -794,6 +858,34 @@ export function DeploySettings() {
                                   )}
                                 </div>
                               )}
+                              {preset.type === 'deno' && (
+                                <div className="relative">
+                                  <Input
+                                    placeholder={preset.organizationIdLabel || 'Organization ID'}
+                                    value={presetApiKeys[`${preset.id}-organizationId`] || ''}
+                                    onChange={(e) => setPresetApiKeys(prev => ({
+                                      ...prev,
+                                      [`${preset.id}-organizationId`]: e.target.value,
+                                    }))}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter' && presetApiKeys[preset.id]?.trim() &&
+                                          presetApiKeys[`${preset.id}-organizationId`]?.trim()) {
+                                        handleAddPresetProvider(preset);
+                                      }
+                                    }}
+                                  />
+                                  {preset.organizationIdURL && !presetApiKeys[`${preset.id}-organizationId`] && (
+                                    <button
+                                      type="button"
+                                      className="absolute right-3 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-muted"
+                                      onClick={() => window.open(preset.organizationIdURL, '_blank')}
+                                    >
+                                      Find ID
+                                      <ExternalLink className="h-3 w-3" />
+                                    </button>
+                                  )}
+                                </div>
+                              )}
                               <div className="relative">
                                 <PasswordInput
                                   placeholder={preset.apiKeyLabel || t('enterApiKey')}
@@ -804,7 +896,8 @@ export function DeploySettings() {
                                   }))}
                                   onKeyDown={(e) => {
                                     if (e.key === 'Enter' && presetApiKeys[preset.id]?.trim() &&
-                                        (preset.type !== 'cloudflare' || presetApiKeys[`${preset.id}-accountId`]?.trim())) {
+                                        (preset.type !== 'cloudflare' || presetApiKeys[`${preset.id}-accountId`]?.trim()) &&
+                                        (preset.type !== 'deno' || presetApiKeys[`${preset.id}-organizationId`]?.trim())) {
                                       handleAddPresetProvider(preset);
                                     }
                                   }}
@@ -828,7 +921,8 @@ export function DeploySettings() {
                             disabled={
                               (preset.requiresNostr && !isLoggedIntoNostr) ||
                               (!preset.requiresNostr && preset.type !== 'nsite' && !presetApiKeys[preset.id]?.trim()) ||
-                              (preset.type === 'cloudflare' && !presetApiKeys[`${preset.id}-accountId`]?.trim())
+                              (preset.type === 'cloudflare' && !presetApiKeys[`${preset.id}-accountId`]?.trim()) ||
+                              (preset.type === 'deno' && !presetApiKeys[`${preset.id}-organizationId`]?.trim())
                             }
                             className="w-full"
                           >
@@ -862,11 +956,12 @@ export function DeploySettings() {
                     </Label>
                     <Select
                       value={customProviderType}
-                      onValueChange={(value: 'shakespeare' | 'netlify' | 'vercel' | 'nsite' | 'cloudflare') => {
+                      onValueChange={(value: 'shakespeare' | 'netlify' | 'vercel' | 'nsite' | 'cloudflare' | 'deno') => {
                         setCustomProviderType(value);
                         // Reset form when provider type changes
                         setCustomApiKey('');
                         setCustomAccountId('');
+                        setCustomOrganizationId('');
                         setCustomBaseURL('');
                         setCustomHost('');
                         setCustomProxy(false);
@@ -884,6 +979,7 @@ export function DeploySettings() {
                         <SelectItem value="netlify">Netlify</SelectItem>
                         <SelectItem value="vercel">Vercel</SelectItem>
                         <SelectItem value="cloudflare">Cloudflare</SelectItem>
+                        <SelectItem value="deno">Deno Deploy</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -965,11 +1061,25 @@ export function DeploySettings() {
                               />
                             </div>
                           )}
+                          {customProviderType === 'deno' && (
+                            <div className="grid gap-2">
+                              <Label htmlFor="custom-organizationid">
+                                Organization ID <span className="text-destructive">*</span>
+                              </Label>
+                              <Input
+                                id="custom-organizationid"
+                                placeholder="Enter Organization ID"
+                                value={customOrganizationId}
+                                onChange={(e) => setCustomOrganizationId(e.target.value)}
+                              />
+                            </div>
+                          )}
                           <div className="grid gap-2">
                             <Label htmlFor="custom-apikey">
                               {customProviderType === 'netlify' ? 'Personal Access Token' :
                                 customProviderType === 'cloudflare' ? 'API Token' :
-                                  'Access Token'} <span className="text-destructive">*</span>
+                                  customProviderType === 'deno' ? 'Access Token' :
+                                    'Access Token'} <span className="text-destructive">*</span>
                             </Label>
                             <PasswordInput
                               id="custom-apikey"
@@ -987,7 +1097,9 @@ export function DeploySettings() {
                                   ? 'https://api.netlify.com/api/v1'
                                   : customProviderType === 'vercel'
                                     ? 'https://api.vercel.com'
-                                    : 'https://api.cloudflare.com/client/v4'
+                                    : customProviderType === 'deno'
+                                      ? 'https://api.deno.com/v1'
+                                      : 'https://api.cloudflare.com/client/v4'
                               }
                               value={customBaseURL}
                               onChange={(e) => setCustomBaseURL(e.target.value)}
@@ -1013,7 +1125,8 @@ export function DeploySettings() {
                           !customProviderType ||
                           !customName.trim() ||
                           (customProviderType !== 'shakespeare' && customProviderType !== 'nsite' && !customApiKey.trim()) ||
-                          (customProviderType === 'cloudflare' && !customAccountId.trim())
+                          (customProviderType === 'cloudflare' && !customAccountId.trim()) ||
+                          (customProviderType === 'deno' && !customOrganizationId.trim())
                         }
                         className="gap-2 ml-auto"
                       >

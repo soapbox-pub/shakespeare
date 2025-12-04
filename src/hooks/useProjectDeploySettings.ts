@@ -38,7 +38,14 @@ export interface CloudflareProjectConfig {
   };
 }
 
-export type ProjectProviderConfig = ShakespeareProjectConfig | NsiteProjectConfig | NetlifyProjectConfig | VercelProjectConfig | CloudflareProjectConfig;
+export interface DenoDeployProjectConfig {
+  type: 'deno';
+  data: {
+    projectName?: string;
+  };
+}
+
+export type ProjectProviderConfig = ShakespeareProjectConfig | NsiteProjectConfig | NetlifyProjectConfig | VercelProjectConfig | CloudflareProjectConfig | DenoDeployProjectConfig;
 
 export interface ProjectDeploySettings {
   providers: Record<string, ProjectProviderConfig>;

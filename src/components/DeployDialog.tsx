@@ -27,14 +27,15 @@ import { useFS } from '@/hooks/useFS';
 import { useFSPaths } from '@/hooks/useFSPaths';
 import { useAppContext } from '@/hooks/useAppContext';
 import { useNostr } from '@nostrify/react';
-import { ShakespeareAdapter, NetlifyAdapter, VercelAdapter, NsiteAdapter, CloudflareAdapter, DeployAdapter } from '@/lib/deploy';
+import { ShakespeareAdapter, NetlifyAdapter, VercelAdapter, NsiteAdapter, CloudflareAdapter, DenoDeployAdapter, DeployAdapter } from '@/lib/deploy';
 import { Link } from 'react-router-dom';
-import type { DeployProvider, ShakespeareDeployProvider, NetlifyProvider, VercelProvider, CloudflareProvider } from '@/contexts/DeploySettingsContext';
+import type { DeployProvider, ShakespeareDeployProvider, NetlifyProvider, VercelProvider, CloudflareProvider, DenoDeployProvider } from '@/contexts/DeploySettingsContext';
 import { ShakespeareDeployForm } from '@/components/deploy/ShakespeareDeployForm';
 import { NetlifyDeployForm } from '@/components/deploy/NetlifyDeployForm';
 import { VercelDeployForm } from '@/components/deploy/VercelDeployForm';
 import { NsiteDeployForm } from '@/components/deploy/NsiteDeployForm';
 import { CloudflareDeployForm } from '@/components/deploy/CloudflareDeployForm';
+import { DenoDeployForm } from '@/components/deploy/DenoDeployForm';
 
 /**
  * Helper function to get provider URL for favicon
@@ -64,6 +65,12 @@ function getProviderUrl(provider: DeployProvider): string | null {
         return provider.baseURL;
       }
       return 'https://cloudflare.com';
+
+    case 'deno':
+      if (provider.baseURL) {
+        return provider.baseURL;
+      }
+      return 'https://deno.com';
 
     case 'nsite':
       return null;
@@ -121,6 +128,10 @@ interface CloudflareFormData {
   projectName: string;
 }
 
+interface DenoDeployFormData {
+  projectName: string;
+}
+
 export function DeployDialog({ projectId, projectName, open, onOpenChange }: DeployDialogProps) {
   const { t } = useTranslation();
   const { settings } = useDeploySettings();
@@ -153,6 +164,9 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
     teamId: '',
   });
   const [cloudflareForm, setCloudflareForm] = useState<CloudflareFormData>({
+    projectName: projectName || projectId,
+  });
+  const [denoDeployForm, setDenoDeployForm] = useState<DenoDeployFormData>({
     projectName: projectName || projectId,
   });
 
@@ -261,6 +275,23 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
           projectName: cloudflareForm.projectName || undefined,
           corsProxy: cloudflareProvider.proxy ? config.corsProxy : undefined,
         });
+      } else if (selectedProvider.type === 'deno') {
+        const denoProvider = selectedProvider as DenoDeployProvider;
+        if (!denoProvider.apiKey) {
+          throw new Error('Deno Deploy access token is required');
+        }
+        if (!denoProvider.organizationId) {
+          throw new Error('Deno Deploy organization ID is required');
+        }
+
+        adapter = new DenoDeployAdapter({
+          fs,
+          apiKey: denoProvider.apiKey,
+          organizationId: denoProvider.organizationId,
+          baseURL: denoProvider.baseURL,
+          projectName: denoDeployForm.projectName || undefined,
+          corsProxy: denoProvider.proxy ? config.corsProxy : undefined,
+        });
       } else {
         throw new Error('Unknown provider type');
       }
@@ -307,6 +338,13 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
             projectName: cloudflareForm.projectName || undefined,
           },
         });
+      } else if (selectedProvider.type === 'deno') {
+        await updateProjectSettings(selectedProviderId, {
+          type: 'deno',
+          data: {
+            projectName: denoDeployForm.projectName || undefined,
+          },
+        });
       }
 
       setDeployResult(result);
@@ -327,6 +365,7 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
     setNetlifyForm({ siteId: '', siteName: '' });
     setVercelForm({ projectName: projectName || projectId, teamId: '' });
     setCloudflareForm({ projectName: projectName || projectId });
+    setDenoDeployForm({ projectName: projectName || projectId });
     onOpenChange(false);
   };
 
@@ -352,6 +391,10 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
 
   const handleCloudflareProjectChange = useCallback((projectName: string) => {
     setCloudflareForm({ projectName });
+  }, []);
+
+  const handleDenoDeployProjectChange = useCallback((projectName: string) => {
+    setDenoDeployForm({ projectName });
   }, []);
 
   const renderProviderFields = () => {
@@ -431,6 +474,25 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
           savedProjectName={savedProjectName}
           onProjectChange={handleCloudflareProjectChange}
           corsProxy={cloudflareProvider.proxy ? config.corsProxy : undefined}
+        />
+      );
+    }
+
+    if (selectedProvider.type === 'deno') {
+      const denoProvider = selectedProvider as DenoDeployProvider;
+      const savedConfig = projectSettings.providers[selectedProviderId];
+      const savedProjectName = savedConfig?.type === 'deno' ? savedConfig.data.projectName : undefined;
+
+      return (
+        <DenoDeployForm
+          apiKey={denoProvider.apiKey}
+          organizationId={denoProvider.organizationId}
+          baseURL={denoProvider.baseURL}
+          projectId={projectId}
+          projectName={projectName}
+          savedProjectName={savedProjectName}
+          onProjectChange={handleDenoDeployProjectChange}
+          corsProxy={denoProvider.proxy ? config.corsProxy : undefined}
         />
       );
     }
@@ -566,7 +628,8 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
                       (selectedProvider.type === 'shakespeare' && !isShakespeareFormValid) ||
                       (selectedProvider.type === 'nsite' && !nsiteForm.nsec) ||
                       (selectedProvider.type === 'netlify' && !netlifyForm.siteId && !netlifyForm.siteName) ||
-                      (selectedProvider.type === 'cloudflare' && !cloudflareForm.projectName)
+                      (selectedProvider.type === 'cloudflare' && !cloudflareForm.projectName) ||
+                      (selectedProvider.type === 'deno' && !denoDeployForm.projectName)
                     }
                   >
                     {isDeploying ? (

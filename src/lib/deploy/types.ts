@@ -63,3 +63,12 @@ export interface CloudflareDeployConfig {
   projectName?: string;
   corsProxy?: string;
 }
+
+export interface DenoDeployConfig {
+  fs: JSRuntimeFS;
+  apiKey: string;
+  organizationId: string;
+  baseURL?: string;
+  projectName?: string;
+  corsProxy?: string;
+}

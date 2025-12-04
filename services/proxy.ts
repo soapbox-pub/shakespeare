@@ -13,7 +13,7 @@ export default {
         status: 200,
         headers: {
           "Access-Control-Allow-Origin": "*",
-          "Access-Control-Allow-Methods": "GET,HEAD,POST,OPTIONS",
+          "Access-Control-Allow-Methods": "GET,HEAD,POST,PUT,PATCH,DELETE,OPTIONS",
           "Access-Control-Allow-Headers": "*", // Or specify specific headers
           "Access-Control-Max-Age": "86400", // Cache preflight for 24 hours
         }

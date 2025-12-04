@@ -228,6 +228,13 @@ describe('configUtils', () => {
           name: 'Shakespeare',
           type: 'shakespeare',
         },
+        {
+          id: 'provider-4',
+          name: 'My Cloudflare',
+          type: 'cloudflare',
+          apiKey: 'cloudflare-token-789',
+          accountId: 'account-123',
+        },
       ],
     };
 

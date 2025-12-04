@@ -106,11 +106,29 @@ const nsiteProviderSchema = baseDeployProviderSchema.extend({
   blossomServers: z.array(z.string()),
 });
 
+const cloudflareProviderSchema = baseDeployProviderSchema.extend({
+  type: z.literal('cloudflare'),
+  apiKey: z.string(),
+  accountId: z.string(),
+  baseURL: z.string().optional(),
+  baseDomain: z.string().optional(),
+});
+
+const denoDeployProviderSchema = baseDeployProviderSchema.extend({
+  type: z.literal('deno'),
+  apiKey: z.string(),
+  organizationId: z.string(),
+  baseURL: z.string().optional(),
+  baseDomain: z.string().optional(),
+});
+
 const deployProviderSchema: z.ZodType<DeployProvider> = z.discriminatedUnion('type', [
   shakespeareDeployProviderSchema,
   netlifyProviderSchema,
   vercelProviderSchema,
   nsiteProviderSchema,
+  cloudflareProviderSchema,
+  denoDeployProviderSchema,
 ]);
 
 const deploySettingsSchema = z.object({

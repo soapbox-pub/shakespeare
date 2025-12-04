@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Check, Bot, ArrowLeft, Trash2, GripVertical, ChevronDown, RotateCcw, FileText, Plus, Edit, MessageCircle } from 'lucide-react';
+import { Check, Bot, ArrowLeft, Trash2, GripVertical, ChevronDown, RotateCcw, FileText, Plus, Edit, ExternalLink, MessageCircle } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -437,24 +437,13 @@ export function AISettings() {
                 return (
                   <Card key={preset.id}>
                     <CardContent className="p-4 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <ExternalFavicon
-                            url={preset.baseURL}
-                            size={16}
-                            fallback={<Bot size={16} />}
-                          />
-                          <h5 className="font-medium">{preset.name}</h5>
-                        </div>
-                        {(preset.apiKeysURL && preset.id !== "routstr") && (
-                          <button
-                            type="button"
-                            className="text-xs text-muted-foreground underline hover:text-foreground"
-                            onClick={() => window.open(preset.apiKeysURL, '_blank')}
-                          >
-                            {t('getApiKey')}
-                          </button>
-                        )}
+                      <div className="flex items-center gap-2">
+                        <ExternalFavicon
+                          url={preset.baseURL}
+                          size={16}
+                          fallback={<Bot size={16} />}
+                        />
+                        <h5 className="font-medium">{preset.name}</h5>
                       </div>
 
                       {showNostrLoginRequired ? (
@@ -475,22 +464,34 @@ export function AISettings() {
                         <div className="space-y-2">
                           <div className="flex gap-2">
                             {!preset.nostr && (
-                              <PasswordInput
-                                placeholder={preset.id === "routstr" ? t('enterCashuToken') : t('enterApiKey')}
-                                className="flex-1"
-                                value={presetApiKeys[preset.id] || ''}
-                                onChange={(e) => setPresetApiKeys(prev => ({
-                                  ...prev,
-                                  [preset.id]: e.target.value,
-                                }))}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter' &&
-                                      presetApiKeys[preset.id]?.trim() &&
-                                      presetTermsAgreements[preset.id]) {
-                                    handleAddPresetProvider(preset);
-                                  }
-                                }}
-                              />
+                              <div className="relative flex-1">
+                                <PasswordInput
+                                  placeholder={preset.id === "routstr" ? t('enterCashuToken') : t('enterApiKey')}
+                                  value={presetApiKeys[preset.id] || ''}
+                                  onChange={(e) => setPresetApiKeys(prev => ({
+                                    ...prev,
+                                    [preset.id]: e.target.value,
+                                  }))}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter' &&
+                                        presetApiKeys[preset.id]?.trim() &&
+                                        presetTermsAgreements[preset.id]) {
+                                      handleAddPresetProvider(preset);
+                                    }
+                                  }}
+                                  showToggle={!!presetApiKeys[preset.id]}
+                                />
+                                {preset.apiKeysURL && !presetApiKeys[preset.id] && (
+                                  <button
+                                    type="button"
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-muted"
+                                    onClick={() => window.open(preset.apiKeysURL, '_blank')}
+                                  >
+                                    Get Key
+                                    <ExternalLink className="h-3 w-3" />
+                                  </button>
+                                )}
+                              </div>
                             )}
                             <Button
                               onClick={() => handleAddPresetProvider(preset)}

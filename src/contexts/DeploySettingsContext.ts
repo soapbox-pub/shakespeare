@@ -32,7 +32,25 @@ export interface NsiteProvider extends BaseDeployProvider {
   blossomServers: string[];
 }
 
-export type DeployProvider = ShakespeareDeployProvider | NetlifyProvider | VercelProvider | NsiteProvider;
+export interface CloudflareProvider extends BaseDeployProvider {
+  type: 'cloudflare';
+  apiKey: string;
+  accountId: string;
+  baseURL?: string;
+  baseDomain?: string;
+  proxy?: boolean;
+}
+
+export interface DenoDeployProvider extends BaseDeployProvider {
+  type: 'deno';
+  apiKey: string;
+  organizationId: string;
+  baseURL?: string;
+  baseDomain?: string;
+  proxy?: boolean;
+}
+
+export type DeployProvider = ShakespeareDeployProvider | NetlifyProvider | VercelProvider | NsiteProvider | CloudflareProvider | DenoDeployProvider;
 
 export interface DeploySettings {
   providers: DeployProvider[];

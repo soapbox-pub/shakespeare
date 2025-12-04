@@ -287,20 +287,22 @@ export default function Index() {
   return (
     <>
       <AppLayout headerContent={headerContent}>
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-8 md:mb-12">
-            <div className="mb-4 md:mb-6">
-              <ShakespeareLogo className="w-20 h-20 md:w-24 md:h-24 mx-auto" />
+        {/* Main Chat Section - Takes up most of viewport with generous whitespace */}
+        <div className="min-h-[calc(100vh-12rem)] flex items-center justify-center pb-24 md:pb-32">
+          <div className="max-w-4xl mx-auto w-full">
+            <div className="text-center mb-12 md:mb-16">
+              <div className="mb-6 md:mb-8">
+                <ShakespeareLogo className="w-20 h-20 md:w-24 md:h-24 mx-auto" />
+              </div>
+              <h1 className="text-3xl md:text-4xl font-bold mb-3 md:mb-4 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                {t('buildNostrApps')}
+              </h1>
+              <p className="text-lg md:text-xl text-muted-foreground">
+                {t('whatToBuild')}
+              </p>
             </div>
-            <h1 className="text-3xl md:text-4xl font-bold mb-3 md:mb-4 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              {t('buildNostrApps')}
-            </h1>
-            <p className="text-lg md:text-xl text-muted-foreground">
-              {t('whatToBuild')}
-            </p>
-          </div>
 
-          <div className="mb-8 md:mb-12">
+            <div>
             {/* Quilly Helper - shows when there are errors */}
             {quillyError && (
               <div className="mb-4">
@@ -392,11 +394,14 @@ export default function Index() {
                 </Button>
               </div>
             </div>
+            </div>
           </div>
         </div>
 
-        {/* App Showcase */}
-        <AppShowcase />
+        {/* App Showcase - Positioned to peek from bottom */}
+        <div className="pb-8">
+          <AppShowcase />
+        </div>
 
         {/* Version Display */}
         {import.meta.env.VERSION && (

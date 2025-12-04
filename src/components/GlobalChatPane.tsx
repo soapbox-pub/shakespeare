@@ -101,6 +101,11 @@ export function GlobalChatPane() {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  // Track if user has manually scrolled up
+  const userScrolledUp = useRef(false);
+  // Track the last message content to detect streaming updates
+  const lastMessageContent = messages[messages.length - 1]?.content || '';
+
   // Initialize provider model from settings if not set
   useEffect(() => {
     if (!providerModel && settings.recentlyUsedModels?.length) {
@@ -108,23 +113,39 @@ export function GlobalChatPane() {
     }
   }, [providerModel, settings.recentlyUsedModels, setProviderModel]);
 
-  // Auto-scroll to bottom when new messages arrive
+  // Scroll to bottom when chat opens
   useEffect(() => {
-    if (scrollAreaRef.current) {
-      const container = scrollAreaRef.current;
-      const isNearBottom = container.scrollTop + container.clientHeight >= container.scrollHeight - 100;
-
-      if (isNearBottom || messages.length <= 1) {
-        container.scrollTop = container.scrollHeight;
-      }
+    if (isOpen && scrollAreaRef.current) {
+      // Small delay to ensure content is rendered
+      requestAnimationFrame(() => {
+        if (scrollAreaRef.current) {
+          scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+        }
+      });
+      // Reset scroll tracking when opening
+      userScrolledUp.current = false;
     }
-  }, [messages]);
+  }, [isOpen]);
 
-  // Handle scroll to show/hide scroll-to-bottom button
+  // Auto-scroll to bottom when messages change or streaming content updates
+  useEffect(() => {
+    if (!scrollAreaRef.current || !isOpen) return;
+
+    // Only auto-scroll if user hasn't manually scrolled up
+    if (!userScrolledUp.current) {
+      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+    }
+  }, [messages, lastMessageContent, isLoading, isOpen]);
+
+  // Handle scroll to detect user scrolling and show/hide scroll-to-bottom button
   const handleScroll = useCallback(() => {
     if (scrollAreaRef.current) {
       const container = scrollAreaRef.current;
-      const isNearBottom = container.scrollTop + container.clientHeight >= container.scrollHeight - 100;
+      const threshold = 100;
+      const isNearBottom = container.scrollTop + container.clientHeight >= container.scrollHeight - threshold;
+
+      // Track if user scrolled away from bottom
+      userScrolledUp.current = !isNearBottom;
       setShowScrollToBottom(!isNearBottom && messages.length > 0);
     }
   }, [messages.length]);
@@ -132,6 +153,8 @@ export function GlobalChatPane() {
   const scrollToBottom = useCallback(() => {
     if (scrollAreaRef.current) {
       scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+      // Reset the flag so auto-scroll resumes
+      userScrolledUp.current = false;
     }
   }, []);
 

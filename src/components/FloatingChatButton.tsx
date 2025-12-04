@@ -44,21 +44,6 @@ export function FloatingChatButton() {
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Close button - appears on hover */}
-      <Button
-        onClick={handleClose}
-        size="icon"
-        variant="secondary"
-        className={cn(
-          'absolute -top-2 -right-2 h-6 w-6 rounded-full shadow-md border',
-          'transition-all duration-200',
-          isHovered ? 'opacity-100 scale-100' : 'opacity-0 scale-75 pointer-events-none'
-        )}
-        aria-label="Hide chat button"
-      >
-        <X className="h-3 w-3" />
-      </Button>
-
       {/* Main chat button */}
       <Button
         onClick={() => setIsOpen(!isOpen)}
@@ -77,6 +62,21 @@ export function FloatingChatButton() {
         {!isOpen && hasUnread && (
           <span className="absolute top-0 right-0 h-3 w-3 rounded-full bg-destructive ring-2 ring-background" />
         )}
+      </Button>
+
+      {/* Close button - appears on hover, rendered last to be on top */}
+      <Button
+        onClick={handleClose}
+        size="icon"
+        variant="secondary"
+        className={cn(
+          'absolute -top-2 -right-2 h-6 w-6 rounded-full shadow-md border',
+          'transition-all duration-200',
+          isHovered ? 'opacity-100 scale-100' : 'opacity-0 scale-75 pointer-events-none'
+        )}
+        aria-label="Hide chat button"
+      >
+        <X className="h-3 w-3" />
       </Button>
     </div>
   );

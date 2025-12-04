@@ -65,15 +65,14 @@ export function GlobalChatProvider({ children }: GlobalChatProviderProps) {
     return trimmedMessages;
   }, []);
 
-  const sendMessage = useCallback(async (content: string, providerModel: string) => {
+  const sendMessage = useCallback(async (content: string, providerModelString: string) => {
     if (!content.trim() || isLoading) return;
 
     // Parse provider and model
-    const { providerId, modelId } = parseProviderModel(providerModel);
-    const provider = settings.providers.find(p => p.id === providerId);
+    const { model: modelId, provider } = parseProviderModel(providerModelString, settings.providers);
 
     if (!provider) {
-      console.error('Provider not found:', providerId);
+      console.error('Provider not found');
       return;
     }
 

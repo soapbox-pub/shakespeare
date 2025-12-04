@@ -315,7 +315,7 @@ export default function Index() {
 
             {/* Chat Input Container - matching the ChatPane style */}
             <div
-              className={`relative rounded-3xl border border-input bg-background shadow-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 transition-all ${isDragOver ? 'border-primary bg-primary/5 ring-2 ring-primary/20' : ''
+              className={`flex flex-col rounded-3xl border border-input bg-background shadow-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 transition-all ${isDragOver ? 'border-primary bg-primary/5 ring-2 ring-primary/20' : ''
               }`}
               onDragEnter={handleDragEnter}
               onDragOver={handleDragOver}
@@ -334,12 +334,13 @@ export default function Index() {
                 onChange={handlePromptChange}
                 onKeyDown={handleKeyDown}
                 onClick={handleTextareaClick}
-                className="min-h-[80px] max-h-64 resize-none border-0 bg-transparent px-4 py-3 pb-16 text-base focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground"
+                className="resize-none border-0 bg-transparent px-4 py-3 text-base focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground"
                 disabled={isCreating || isGeneratingInfo || (hasProvidersConfigured && !providerModel.trim())}
                 rows={2}
                 style={{
                   height: 'auto',
-                  minHeight: '80px'
+                  minHeight: '80px',
+                  maxHeight: '256px'
                 }}
                 onInput={(e) => {
                   const target = e.target as HTMLTextAreaElement;
@@ -349,10 +350,9 @@ export default function Index() {
               />
 
               {/* Bottom Controls Row */}
-              <div className="absolute bottom-3 left-3 right-3 flex items-center justify-end gap-4 overflow-hidden">
+              <div className="flex items-center gap-4 px-3 py-3">
                 {/* File Attachment */}
                 <FileAttachment
-                  className="mr-auto"
                   onFileSelect={handleFileSelect}
                   onFileRemove={handleFileRemove}
                   selectedFiles={attachedFiles}
@@ -361,7 +361,7 @@ export default function Index() {
                 />
 
                 {/* Model Selector - always show to allow configuration */}
-                <div className="overflow-hidden">
+                <div className="flex-1 max-w-72 ml-auto overflow-hidden">
                   <ModelSelector
                     value={providerModel}
                     onChange={setProviderModel}

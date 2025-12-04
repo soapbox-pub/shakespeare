@@ -12,6 +12,7 @@ export interface GlobalChatContextType {
   isOpen: boolean;
   isLoading: boolean;
   isPoppedOut: boolean;
+  hasUnread: boolean;
   sendMessage: (content: string, providerModel: string) => Promise<void>;
   stopGeneration: () => void;
   clearMessages: () => void;

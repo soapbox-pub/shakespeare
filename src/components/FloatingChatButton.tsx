@@ -5,7 +5,7 @@ import { useAppContext } from '@/hooks/useAppContext';
 import { cn } from '@/lib/utils';
 
 export function FloatingChatButton() {
-  const { isOpen, setIsOpen, isPoppedOut, messages } = useGlobalChat();
+  const { isOpen, setIsOpen, isPoppedOut, hasUnread } = useGlobalChat();
   const { config } = useAppContext();
 
   // Don't render if disabled in settings or if popped out
@@ -27,11 +27,9 @@ export function FloatingChatButton() {
       aria-label={isOpen ? 'Close chat' : 'Open chat'}
     >
       <MessageCircle className="h-6 w-6" />
-      {/* Unread indicator */}
-      {!isOpen && messages.length > 0 && (
-        <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-destructive text-[10px] font-medium text-destructive-foreground flex items-center justify-center">
-          {messages.length > 9 ? '9+' : messages.length}
-        </span>
+      {/* Unread indicator - small dot when there are unread messages */}
+      {!isOpen && hasUnread && (
+        <span className="absolute top-0 right-0 h-3 w-3 rounded-full bg-destructive ring-2 ring-background" />
       )}
     </Button>
   );

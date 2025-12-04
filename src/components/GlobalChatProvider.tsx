@@ -22,14 +22,25 @@ interface GlobalChatProviderProps {
 
 export function GlobalChatProvider({ children }: GlobalChatProviderProps) {
   const [messages, setMessages] = useState<GlobalChatMessage[]>([]);
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpenInternal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isPoppedOut, setIsPoppedOut] = useState(false);
+  const [hasUnread, setHasUnread] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const isOpenRef = useRef(false);
 
   const { settings } = useAISettings();
   const { config } = useAppContext();
   const { user } = useCurrentUser();
+
+  // When opening the chat, mark messages as read
+  const setIsOpen = useCallback((open: boolean) => {
+    isOpenRef.current = open;
+    setIsOpenInternal(open);
+    if (open) {
+      setHasUnread(false);
+    }
+  }, []);
 
   // Trim messages from the top when context gets too long
   const trimMessages = useCallback((msgs: GlobalChatMessage[]): GlobalChatMessage[] => {
@@ -133,6 +144,11 @@ export function GlobalChatProvider({ children }: GlobalChatProviderProps) {
       // Final trim after response is complete
       setMessages(prev => trimMessages(prev));
 
+      // Mark as unread if chat is closed
+      if (!isOpenRef.current) {
+        setHasUnread(true);
+      }
+
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
         // User stopped generation, keep partial response
@@ -179,6 +195,7 @@ export function GlobalChatProvider({ children }: GlobalChatProviderProps) {
         isOpen,
         isLoading,
         isPoppedOut,
+        hasUnread,
         sendMessage,
         stopGeneration,
         clearMessages,

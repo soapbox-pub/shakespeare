@@ -224,63 +224,39 @@ export function ProjectView() {
 
         <div className="flex-1 overflow-hidden flex flex-col">
           {mobileView === 'chat' && (
-            <>
-              {/* Building/Chatting toggle - only show if global chat is enabled */}
-              {config.globalChatEnabled !== false && (
-                <div className="flex-shrink-0 border-b bg-muted/30">
-                  <div className="flex">
-                    <button
-                      onClick={() => setMobileChatMode('building')}
-                      className={`flex-1 py-2 text-xs font-medium transition-colors ${
-                        mobileChatMode === 'building'
-                          ? 'text-primary border-b-2 border-primary bg-background'
-                          : 'text-muted-foreground hover:text-foreground'
-                      }`}
-                    >
-                      {t('building')}
-                    </button>
-                    <button
-                      onClick={() => setMobileChatMode('chatting')}
-                      className={`flex-1 py-2 text-xs font-medium transition-colors ${
-                        mobileChatMode === 'chatting'
-                          ? 'text-primary border-b-2 border-primary bg-background'
-                          : 'text-muted-foreground hover:text-foreground'
-                      }`}
-                    >
-                      {t('chatting')}
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Chat content based on mode */}
-              <div className="flex-1 overflow-hidden">
-                {mobileChatMode === 'building' ? (
-                  project ? (
-                    <ChatPane
-                      ref={chatPaneRef}
-                      projectId={project.id}
-                      onNewChat={handleNewChat}
-                      onFirstInteraction={handleFirstInteraction}
-                      onLoadingChange={handleAILoadingChange}
-                      isLoading={isAILoading}
-                      isBuildLoading={build.isPending}
-                      consoleError={consoleError}
-                      onDismissConsoleError={handleDismissConsoleError}
-                    />
-                  ) : (
-                    <div className="h-full p-4 space-y-4">
-                      <Skeleton className="h-12 w-full" />
-                      <Skeleton className="h-8 w-3/4" />
-                      <Skeleton className="h-8 w-1/2" />
-                      <Skeleton className="h-32 w-full" />
-                    </div>
-                  )
+            /* Chat content based on mode - toggle is inside the compose area */
+            <div className="flex-1 overflow-hidden">
+              {mobileChatMode === 'building' ? (
+                project ? (
+                  <ChatPane
+                    ref={chatPaneRef}
+                    projectId={project.id}
+                    onNewChat={handleNewChat}
+                    onFirstInteraction={handleFirstInteraction}
+                    onLoadingChange={handleAILoadingChange}
+                    isLoading={isAILoading}
+                    isBuildLoading={build.isPending}
+                    consoleError={consoleError}
+                    onDismissConsoleError={handleDismissConsoleError}
+                    mobileChatMode={config.globalChatEnabled !== false ? mobileChatMode : undefined}
+                    onMobileChatModeChange={config.globalChatEnabled !== false ? setMobileChatMode : undefined}
+                  />
                 ) : (
-                  <GlobalChatPane embedded />
-                )}
-              </div>
-            </>
+                  <div className="h-full p-4 space-y-4">
+                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-8 w-3/4" />
+                    <Skeleton className="h-8 w-1/2" />
+                    <Skeleton className="h-32 w-full" />
+                  </div>
+                )
+              ) : (
+                <GlobalChatPane
+                  embedded
+                  mobileChatMode={mobileChatMode}
+                  onMobileChatModeChange={setMobileChatMode}
+                />
+              )}
+            </div>
           )}
           {(mobileView === 'preview' || mobileView === 'code') && (
             project ? (

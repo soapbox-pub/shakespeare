@@ -59,6 +59,9 @@ interface ChatPaneProps {
   isBuildLoading?: boolean;
   consoleError?: ProjectPreviewConsoleError | null;
   onDismissConsoleError?: () => void;
+  /** Mobile chat mode toggle - only shown on mobile when global chat is enabled */
+  mobileChatMode?: 'building' | 'chatting';
+  onMobileChatModeChange?: (mode: 'building' | 'chatting') => void;
 }
 
 export interface ChatPaneRef {
@@ -74,6 +77,8 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   isBuildLoading: externalIsBuildLoading,
   consoleError,
   onDismissConsoleError,
+  mobileChatMode,
+  onMobileChatModeChange,
 }, ref) => {
   const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -729,6 +734,8 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
+        mobileChatMode={mobileChatMode}
+        onMobileChatModeChange={onMobileChatModeChange}
       />
 
       {/* Onboarding Dialog */}

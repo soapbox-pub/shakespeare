@@ -5,8 +5,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { CircularProgress } from '@/components/ui/circular-progress';
 import { FileAttachment } from '@/components/ui/file-attachment';
-import { Square, ArrowUp } from 'lucide-react';
+import { Square, ArrowUp, Hammer, MessageCircle } from 'lucide-react';
 import { ModelSelector } from '@/components/ModelSelector';
+import { cn } from '@/lib/utils';
 
 interface ChatInputProps {
   isLoading: boolean;
@@ -28,6 +29,9 @@ interface ChatInputProps {
   onDragOver: (e: React.DragEvent) => void;
   onDragLeave: (e: React.DragEvent) => void;
   onDrop: (e: React.DragEvent) => void;
+  /** Mobile chat mode toggle - only shown on mobile when global chat is enabled */
+  mobileChatMode?: 'building' | 'chatting';
+  onMobileChatModeChange?: (mode: 'building' | 'chatting') => void;
 }
 
 export const ChatInput = memo(function ChatInput({
@@ -50,6 +54,8 @@ export const ChatInput = memo(function ChatInput({
   onDragOver,
   onDragLeave,
   onDrop,
+  mobileChatMode,
+  onMobileChatModeChange,
 }: ChatInputProps) {
   const { t } = useTranslation();
   const [input, setInput] = useState('');
@@ -166,6 +172,36 @@ export const ChatInput = memo(function ChatInput({
             disabled={isLoading}
             multiple={true}
           />
+
+          {/* Mobile Chat Mode Toggle - shown on mobile when global chat is enabled */}
+          {mobileChatMode && onMobileChatModeChange && (
+            <div className="flex items-center rounded-full bg-muted p-0.5">
+              <button
+                onClick={() => onMobileChatModeChange('building')}
+                className={cn(
+                  'flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium transition-all',
+                  mobileChatMode === 'building'
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                <Hammer className="h-3 w-3" />
+                {t('building')}
+              </button>
+              <button
+                onClick={() => onMobileChatModeChange('chatting')}
+                className={cn(
+                  'flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium transition-all',
+                  mobileChatMode === 'chatting'
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                <MessageCircle className="h-3 w-3" />
+                {t('chatting')}
+              </button>
+            </div>
+          )}
 
           {/* Context Usage Wheel */}
           {contextUsagePercentage >= 10 && currentModelContextLength && lastInputTokens && lastInputTokens > 0 && (

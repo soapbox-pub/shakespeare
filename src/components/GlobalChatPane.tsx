@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
-import { X, Trash2, Copy, Check, ChevronDown, ArrowUp, Square, Loader2 } from 'lucide-react';
+import { X, Trash2, Copy, Check, ChevronDown, ArrowUp, Square, Loader2, Hammer, MessageCircle } from 'lucide-react';
 import { Streamdown } from 'streamdown';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -83,9 +83,12 @@ function ChatMessage({ message }: { message: GlobalChatMessage }) {
 interface GlobalChatPaneProps {
   /** When true, renders inline without fixed positioning (for embedding in ProjectView) */
   embedded?: boolean;
+  /** Mobile chat mode toggle - only used in embedded mode */
+  mobileChatMode?: 'building' | 'chatting';
+  onMobileChatModeChange?: (mode: 'building' | 'chatting') => void;
 }
 
-export function GlobalChatPane({ embedded = false }: GlobalChatPaneProps) {
+export function GlobalChatPane({ embedded = false, mobileChatMode, onMobileChatModeChange }: GlobalChatPaneProps) {
   const { t } = useTranslation();
   const {
     messages,
@@ -272,17 +275,8 @@ export function GlobalChatPane({ embedded = false }: GlobalChatPaneProps) {
         )}
 
         {/* Input */}
-        <div className="p-4 border-t bg-background space-y-3 pb-safe">
-          <div className="flex gap-2">
-            <ModelSelector
-              value={providerModel}
-              onChange={setProviderModel}
-              className="flex-1"
-              disabled={isLoading}
-              placeholder={t('chooseModel')}
-            />
-          </div>
-          <div className="flex gap-2 items-end">
+        <div className="border-t p-4 pb-safe">
+          <div className="flex flex-col rounded-2xl border border-input bg-background shadow-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
             <Textarea
               ref={textareaRef}
               value={input}
@@ -296,23 +290,72 @@ export function GlobalChatPane({ embedded = false }: GlobalChatPaneProps) {
               onKeyDown={handleKeyDown}
               placeholder={hasProviders ? t('typeMessage') : t('configureAIFirst')}
               disabled={!hasProviders || isLoading}
-              className="resize-none min-h-[44px] max-h-32"
+              className="flex-1 resize-none border-0 bg-transparent px-4 py-3 text-sm focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground min-h-[80px]"
               rows={1}
             />
-            {isLoading ? (
-              <Button onClick={stopGeneration} size="icon" variant="destructive" className="h-11 w-11 shrink-0">
-                <Square className="h-4 w-4" />
-              </Button>
-            ) : (
-              <Button
-                onClick={handleSend}
-                size="icon"
-                disabled={!input.trim() || !providerModel || !hasProviders}
-                className="h-11 w-11 shrink-0"
-              >
-                <ArrowUp className="h-4 w-4" />
-              </Button>
-            )}
+            {/* Bottom Controls Row */}
+            <div className="flex items-center gap-4 px-2 py-2">
+              {/* Mobile Chat Mode Toggle */}
+              {mobileChatMode && onMobileChatModeChange && (
+                <div className="flex items-center rounded-full bg-muted p-0.5">
+                  <button
+                    onClick={() => onMobileChatModeChange('building')}
+                    className={cn(
+                      'flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium transition-all',
+                      mobileChatMode === 'building'
+                        ? 'bg-background text-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground'
+                    )}
+                  >
+                    <Hammer className="h-3 w-3" />
+                    {t('building')}
+                  </button>
+                  <button
+                    onClick={() => onMobileChatModeChange('chatting')}
+                    className={cn(
+                      'flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium transition-all',
+                      mobileChatMode === 'chatting'
+                        ? 'bg-background text-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground'
+                    )}
+                  >
+                    <MessageCircle className="h-3 w-3" />
+                    {t('chatting')}
+                  </button>
+                </div>
+              )}
+
+              {/* Model Selector */}
+              <div className="flex-1 max-w-72 ml-auto overflow-hidden">
+                <ModelSelector
+                  value={providerModel}
+                  onChange={setProviderModel}
+                  disabled={isLoading}
+                  placeholder={t('chooseModel')}
+                />
+              </div>
+
+              {/* Send/Stop Button */}
+              {isLoading ? (
+                <Button
+                  onClick={stopGeneration}
+                  size="sm"
+                  variant="ghost"
+                  className="size-8 rounded-full p-0 bg-foreground/10 [&_svg]:size-3.5 [&_svg]:fill-foreground hover:bg-foreground/20"
+                >
+                  <Square />
+                </Button>
+              ) : (
+                <Button
+                  onClick={handleSend}
+                  size="sm"
+                  disabled={!input.trim() || !providerModel || !hasProviders}
+                  className="size-8 [&_svg]:size-5 rounded-full p-0"
+                >
+                  <ArrowUp />
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </div>

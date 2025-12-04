@@ -37,6 +37,7 @@ export interface CloudflareProvider extends BaseDeployProvider {
   apiKey: string;
   accountId: string;
   baseURL?: string;
+  baseDomain?: string;
   proxy?: boolean;
 }
 
@@ -45,6 +46,7 @@ export interface DenoDeployProvider extends BaseDeployProvider {
   apiKey: string;
   organizationId: string;
   baseURL?: string;
+  baseDomain?: string;
   proxy?: boolean;
 }
 

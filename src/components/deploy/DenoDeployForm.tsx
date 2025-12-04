@@ -25,6 +25,7 @@ interface DenoDeployFormProps {
   apiKey: string;
   organizationId: string;
   baseURL?: string;
+  baseDomain?: string;
   projectId: string;
   projectName?: string;
   savedProjectName?: string;
@@ -36,6 +37,7 @@ export function DenoDeployForm({
   apiKey,
   organizationId,
   baseURL = 'https://api.deno.com/v1',
+  baseDomain = 'deno.dev',
   projectId,
   projectName,
   savedProjectName,
@@ -117,7 +119,7 @@ export function DenoDeployForm({
 
   // Construct the URL preview
   const getProjectUrl = (name: string) => {
-    return `https://${name}.deno.dev`;
+    return `https://${name}.${baseDomain}`;
   };
 
   return (

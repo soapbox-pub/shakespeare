@@ -33,6 +33,7 @@ export class DenoDeployAdapter implements DeployAdapter {
   private apiKey: string;
   private organizationId: string;
   private baseURL: string;
+  private baseDomain: string;
   private projectName?: string;
   private corsProxy?: string;
 
@@ -41,6 +42,7 @@ export class DenoDeployAdapter implements DeployAdapter {
     this.apiKey = config.apiKey;
     this.organizationId = config.organizationId;
     this.baseURL = config.baseURL || 'https://api.deno.com/v1';
+    this.baseDomain = config.baseDomain || 'deno.dev';
     this.projectName = config.projectName;
     this.corsProxy = config.corsProxy;
   }
@@ -66,7 +68,7 @@ export class DenoDeployAdapter implements DeployAdapter {
     await this.collectFiles(distPath, '', assets);
 
     // Step 3: Create deployment with assets and domain
-    const domain = `${project.name}.deno.dev`;
+    const domain = `${project.name}.${this.baseDomain}`;
     const deployment = await this.createDeployment(project.id, assets, domain);
 
     return {

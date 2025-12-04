@@ -272,6 +272,7 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
           apiKey: cloudflareProvider.apiKey,
           accountId: cloudflareProvider.accountId,
           baseURL: cloudflareProvider.baseURL,
+          baseDomain: cloudflareProvider.baseDomain,
           projectName: cloudflareForm.projectName || undefined,
           corsProxy: cloudflareProvider.proxy ? config.corsProxy : undefined,
         });
@@ -288,6 +289,7 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
           fs,
           apiKey: denoProvider.apiKey,
           organizationId: denoProvider.organizationId,
+          baseDomain: denoProvider.baseDomain,
           baseURL: denoProvider.baseURL,
           projectName: denoDeployForm.projectName || undefined,
           corsProxy: denoProvider.proxy ? config.corsProxy : undefined,
@@ -469,6 +471,7 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
           apiKey={cloudflareProvider.apiKey}
           accountId={cloudflareProvider.accountId}
           baseURL={cloudflareProvider.baseURL}
+          baseDomain={cloudflareProvider.baseDomain}
           projectId={projectId}
           projectName={projectName}
           savedProjectName={savedProjectName}
@@ -488,6 +491,7 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
           apiKey={denoProvider.apiKey}
           organizationId={denoProvider.organizationId}
           baseURL={denoProvider.baseURL}
+          baseDomain={denoProvider.baseDomain}
           projectId={projectId}
           projectName={projectName}
           savedProjectName={savedProjectName}

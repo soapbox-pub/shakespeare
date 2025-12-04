@@ -111,6 +111,7 @@ const cloudflareProviderSchema = baseDeployProviderSchema.extend({
   apiKey: z.string(),
   accountId: z.string(),
   baseURL: z.string().optional(),
+  baseDomain: z.string().optional(),
 });
 
 const denoDeployProviderSchema = baseDeployProviderSchema.extend({
@@ -118,6 +119,7 @@ const denoDeployProviderSchema = baseDeployProviderSchema.extend({
   apiKey: z.string(),
   organizationId: z.string(),
   baseURL: z.string().optional(),
+  baseDomain: z.string().optional(),
 });
 
 const deployProviderSchema: z.ZodType<DeployProvider> = z.discriminatedUnion('type', [

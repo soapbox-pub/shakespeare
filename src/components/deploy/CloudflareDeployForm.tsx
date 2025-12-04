@@ -27,6 +27,7 @@ interface CloudflareDeployFormProps {
   apiKey: string;
   accountId: string;
   baseURL?: string;
+  baseDomain?: string;
   projectId: string;
   projectName?: string;
   savedProjectName?: string;
@@ -38,6 +39,7 @@ export function CloudflareDeployForm({
   apiKey,
   accountId,
   baseURL = 'https://api.cloudflare.com/client/v4',
+  baseDomain = 'workers.dev',
   projectId,
   projectName,
   savedProjectName,
@@ -136,9 +138,9 @@ export function CloudflareDeployForm({
   // Construct the URL preview
   const getWorkerUrl = (scriptName: string) => {
     if (workersSubdomain) {
-      return `https://${scriptName}.${workersSubdomain}.workers.dev`;
+      return `https://${scriptName}.${workersSubdomain}.${baseDomain}`;
     }
-    return `https://${scriptName}.<subdomain>.workers.dev`;
+    return `https://${scriptName}.<subdomain>.${baseDomain}`;
   };
 
   return (

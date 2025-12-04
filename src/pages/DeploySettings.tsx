@@ -265,6 +265,24 @@ function SortableProviderItem({ provider, index, preset, onRemove, onUpdate, sho
                   }}
                 />
               </div>
+              {(provider.type === 'cloudflare' || provider.type === 'deno') && (
+                <div className="grid gap-2">
+                  <Label htmlFor={`provider-${index}-baseDomain`}>
+                    Base Domain (Optional)
+                  </Label>
+                  <Input
+                    id={`provider-${index}-baseDomain`}
+                    placeholder={provider.type === 'cloudflare' ? 'workers.dev' : 'deno.dev'}
+                    value={provider.baseDomain || ''}
+                    onChange={(e) => onUpdate(index, { ...provider, baseDomain: e.target.value })}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {provider.type === 'cloudflare'
+                      ? 'The domain suffix for deployed workers (e.g., workers.dev)'
+                      : 'The domain suffix for deployed projects (e.g., deno.dev)'}
+                  </p>
+                </div>
+              )}
               <div className="flex items-center space-x-2">
                 <Checkbox
                   id={`provider-${index}-proxy`}
@@ -424,6 +442,7 @@ export function DeploySettings() {
   const [customAccountId, setCustomAccountId] = useState('');
   const [customOrganizationId, setCustomOrganizationId] = useState('');
   const [customBaseURL, setCustomBaseURL] = useState('');
+  const [customBaseDomain, setCustomBaseDomain] = useState('');
   const [customHost, setCustomHost] = useState('');
   const [customProxy, setCustomProxy] = useState(false);
   const [customGateway, setCustomGateway] = useState('');
@@ -601,6 +620,7 @@ export function DeploySettings() {
         apiKey: customApiKey.trim(),
         accountId: customAccountId.trim(),
         ...(customBaseURL?.trim() && { baseURL: customBaseURL.trim() }),
+        ...(customBaseDomain?.trim() && { baseDomain: customBaseDomain.trim() }),
         ...(customProxy && { proxy: true }),
       };
     } else if (customProviderType === 'deno') {
@@ -612,6 +632,7 @@ export function DeploySettings() {
         apiKey: customApiKey.trim(),
         organizationId: customOrganizationId.trim(),
         ...(customBaseURL?.trim() && { baseURL: customBaseURL.trim() }),
+        ...(customBaseDomain?.trim() && { baseDomain: customBaseDomain.trim() }),
         ...(customProxy && { proxy: true }),
       };
     } else {
@@ -627,6 +648,7 @@ export function DeploySettings() {
     setCustomAccountId('');
     setCustomOrganizationId('');
     setCustomBaseURL('');
+    setCustomBaseDomain('');
     setCustomHost('');
     setCustomProxy(false);
   };
@@ -963,6 +985,7 @@ export function DeploySettings() {
                         setCustomAccountId('');
                         setCustomOrganizationId('');
                         setCustomBaseURL('');
+                        setCustomBaseDomain('');
                         setCustomHost('');
                         setCustomProxy(false);
                         setCustomGateway('');
@@ -1105,6 +1128,22 @@ export function DeploySettings() {
                               onChange={(e) => setCustomBaseURL(e.target.value)}
                             />
                           </div>
+                          {(customProviderType === 'cloudflare' || customProviderType === 'deno') && (
+                            <div className="grid gap-2">
+                              <Label htmlFor="custom-basedomain">Base Domain (Optional)</Label>
+                              <Input
+                                id="custom-basedomain"
+                                placeholder={customProviderType === 'cloudflare' ? 'workers.dev' : 'deno.dev'}
+                                value={customBaseDomain}
+                                onChange={(e) => setCustomBaseDomain(e.target.value)}
+                              />
+                              <p className="text-xs text-muted-foreground">
+                                {customProviderType === 'cloudflare'
+                                  ? 'The domain suffix for deployed workers (e.g., workers.dev)'
+                                  : 'The domain suffix for deployed projects (e.g., deno.dev)'}
+                              </p>
+                            </div>
+                          )}
                         </>
                       )}
 

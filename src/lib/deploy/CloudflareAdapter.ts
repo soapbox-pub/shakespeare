@@ -46,6 +46,7 @@ export class CloudflareAdapter implements DeployAdapter {
   private apiKey: string;
   private accountId: string;
   private baseURL: string;
+  private baseDomain: string;
   private projectName?: string;
   private corsProxy?: string;
 
@@ -54,6 +55,7 @@ export class CloudflareAdapter implements DeployAdapter {
     this.apiKey = config.apiKey;
     this.accountId = config.accountId;
     this.baseURL = config.baseURL || 'https://api.cloudflare.com/client/v4';
+    this.baseDomain = config.baseDomain || 'workers.dev';
     this.projectName = config.projectName;
     this.corsProxy = config.corsProxy;
   }
@@ -118,11 +120,11 @@ export class CloudflareAdapter implements DeployAdapter {
     // Step 5: Enable the workers.dev subdomain for this script
     await this.enableWorkersDevSubdomain(scriptName);
 
-    // Step 6: Get the account's workers.dev subdomain
+    // Step 6: Get the account's workers subdomain
     const subdomain = await this.getWorkersSubdomain();
 
-    // Construct the URL
-    const workerUrl = `https://${scriptName}.${subdomain}.workers.dev`;
+    // Construct the URL using the configurable base domain
+    const workerUrl = `https://${scriptName}.${subdomain}.${this.baseDomain}`;
 
     return {
       url: workerUrl,

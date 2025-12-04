@@ -60,6 +60,7 @@ export interface CloudflareDeployConfig {
   apiKey: string;
   accountId: string;
   baseURL?: string;
+  baseDomain?: string;
   projectName?: string;
   corsProxy?: string;
 }
@@ -69,6 +70,7 @@ export interface DenoDeployConfig {
   apiKey: string;
   organizationId: string;
   baseURL?: string;
+  baseDomain?: string;
   projectName?: string;
   corsProxy?: string;
 }

@@ -2,6 +2,8 @@ import { BrowserRouter, HashRouter, Route, Routes } from "react-router-dom";
 import { ScrollToTop } from "./components/ScrollToTop";
 import { SessionMonitor } from "./components/SessionMonitor";
 import { URLFragmentHandler } from "./components/URLFragmentHandler";
+import { FloatingChatButton } from "./components/FloatingChatButton";
+import { GlobalChatPane } from "./components/GlobalChatPane";
 
 import Index from "./pages/Index";
 import Clone from "./pages/Clone";
@@ -56,6 +58,9 @@ export function AppRouter() {
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
       </Routes>
+      {/* Global floating chat - available on all pages */}
+      <FloatingChatButton />
+      <GlobalChatPane />
     </Router>
   );
 }

@@ -29,8 +29,6 @@ import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { PWAUpdatePrompt } from '@/components/PWAUpdatePrompt';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { GlobalChatProvider } from '@/components/GlobalChatProvider';
-import { FloatingChatButton } from '@/components/FloatingChatButton';
-import { GlobalChatPane } from '@/components/GlobalChatPane';
 
 import AppRouter from './AppRouter';
 
@@ -189,8 +187,6 @@ export function App() {
                                   <Suspense>
                                     <AppRouter />
                                   </Suspense>
-                                  <FloatingChatButton />
-                                  <GlobalChatPane />
                                 </TooltipProvider>
                               </GlobalChatProvider>
                             </SessionManagerProvider>

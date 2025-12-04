@@ -314,7 +314,7 @@ const PRESET_PROVIDERS: PresetProvider[] = [
     apiKeyLabel: 'API Token',
     apiKeyURL: 'https://dash.cloudflare.com/profile/api-tokens',
     accountIdLabel: 'Account ID',
-    accountIdURL: 'https://dash.cloudflare.com/',
+    accountIdURL: 'https://developers.cloudflare.com/fundamentals/account/find-account-and-zone-ids/',
     proxy: true,
   },
 ];

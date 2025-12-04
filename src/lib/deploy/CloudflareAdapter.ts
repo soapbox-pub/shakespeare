@@ -88,7 +88,7 @@ export class CloudflareAdapter implements DeployAdapter {
     // Step 2: Initialize upload session
     const initResponse = await this.initializeUploadSession(scriptName, manifest);
 
-    // Step 3: Upload files in buckets
+    // Step 3: Upload files in buckets (in parallel for speed)
     let completionJwt = initResponse.jwt;
 
     if (initResponse.buckets.flat().length > 0) {
@@ -98,16 +98,17 @@ export class CloudflareAdapter implements DeployAdapter {
         hashToFile.set(fileInfo.hash, { path: filePath, info: fileInfo });
       }
 
-      // Upload each bucket
-      for (const bucket of initResponse.buckets) {
-        const uploadResult = await this.uploadBucket(
-          initResponse.jwt,
-          bucket,
-          hashToFile
-        );
-        if (uploadResult.jwt) {
-          completionJwt = uploadResult.jwt;
-        }
+      // Upload all buckets in parallel
+      const uploadResults = await Promise.all(
+        initResponse.buckets.map((bucket) =>
+          this.uploadBucket(initResponse.jwt, bucket, hashToFile)
+        )
+      );
+
+      // Get the completion JWT from the last result that has one
+      const lastJwtResult = [...uploadResults].reverse().find((r) => r.jwt);
+      if (lastJwtResult?.jwt) {
+        completionJwt = lastJwtResult.jwt;
       }
     }
 

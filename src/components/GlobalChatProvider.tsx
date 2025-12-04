@@ -141,6 +141,13 @@ export function GlobalChatProvider({ children }: GlobalChatProviderProps) {
           }
           return updated;
         });
+
+        // Check if the stream is finished (finish_reason is set)
+        const finishReason = chunk.choices[0]?.finish_reason;
+        if (finishReason) {
+          // Response is complete, release the input immediately
+          setIsLoading(false);
+        }
       }
 
       // Final trim after response is complete

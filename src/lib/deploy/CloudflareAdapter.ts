@@ -77,14 +77,9 @@ export class CloudflareAdapter implements DeployAdapter {
     // Construct the production URL
     // The subdomain from the API response already includes the full domain
     // e.g., "error-button.pages.dev" not just "error-button"
-    let productionUrl: string;
-    if (project.subdomain.includes('.')) {
-      // Subdomain already includes the domain
-      productionUrl = `https://${project.subdomain}`;
-    } else {
-      // Subdomain is just the name, append .pages.dev
-      productionUrl = `https://${project.subdomain}.pages.dev`;
-    }
+    const productionUrl = project.subdomain.includes('.')
+      ? `https://${project.subdomain}`
+      : `https://${project.subdomain}.pages.dev`;
 
     return {
       url: deployment.url,
@@ -92,6 +87,7 @@ export class CloudflareAdapter implements DeployAdapter {
         deploymentId: deployment.id,
         projectId: project.id,
         projectName: project.name,
+        productionUrl,
         provider: 'cloudflare',
         environment: deployment.environment,
       },

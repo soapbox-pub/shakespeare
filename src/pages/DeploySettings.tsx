@@ -189,6 +189,19 @@ function SortableProviderItem({ provider, index, preset, onRemove, onUpdate, sho
             </>
           ) : (
             <>
+              {provider.type === 'cloudflare' && (
+                <div className="grid gap-2">
+                  <Label htmlFor={`provider-${index}-accountId`}>
+                    {preset?.accountIdLabel || 'Account ID'} <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id={`provider-${index}-accountId`}
+                    placeholder="Enter Account ID"
+                    value={provider.accountId}
+                    onChange={(e) => onUpdate(index, { ...provider, accountId: e.target.value })}
+                  />
+                </div>
+              )}
               <div className="grid gap-2">
                 <Label htmlFor={`provider-${index}-apiKey`}>
                   {preset?.apiKeyLabel || t('apiKey')} <span className="text-destructive">*</span>
@@ -208,19 +221,6 @@ function SortableProviderItem({ provider, index, preset, onRemove, onUpdate, sho
                   }}
                 />
               </div>
-              {provider.type === 'cloudflare' && (
-                <div className="grid gap-2">
-                  <Label htmlFor={`provider-${index}-accountId`}>
-                    {preset?.accountIdLabel || 'Account ID'} <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    id={`provider-${index}-accountId`}
-                    placeholder="Enter Account ID"
-                    value={provider.accountId}
-                    onChange={(e) => onUpdate(index, { ...provider, accountId: e.target.value })}
-                  />
-                </div>
-              )}
               <div className="grid gap-2">
                 <Label htmlFor={`provider-${index}-baseURL`}>
                   Base URL (Optional)
@@ -766,32 +766,6 @@ export function DeploySettings() {
                         <div className="space-y-2">
                           {!preset.requiresNostr && preset.type !== 'nsite' && (
                             <>
-                              <div className="relative">
-                                <PasswordInput
-                                  placeholder={preset.apiKeyLabel || t('enterApiKey')}
-                                  value={presetApiKeys[preset.id] || ''}
-                                  onChange={(e) => setPresetApiKeys(prev => ({
-                                    ...prev,
-                                    [preset.id]: e.target.value,
-                                  }))}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter' && presetApiKeys[preset.id]?.trim() &&
-                                        (preset.type !== 'cloudflare' || presetApiKeys[`${preset.id}-accountId`]?.trim())) {
-                                      handleAddPresetProvider(preset);
-                                    }
-                                  }}
-                                />
-                                {preset.apiKeyURL && !presetApiKeys[preset.id] && (
-                                  <button
-                                    type="button"
-                                    className="absolute right-11 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-muted"
-                                    onClick={() => window.open(preset.apiKeyURL, '_blank')}
-                                  >
-                                    Get Key
-                                    <ExternalLink className="h-3 w-3" />
-                                  </button>
-                                )}
-                              </div>
                               {preset.type === 'cloudflare' && (
                                 <div className="relative">
                                   <Input
@@ -820,6 +794,32 @@ export function DeploySettings() {
                                   )}
                                 </div>
                               )}
+                              <div className="relative">
+                                <PasswordInput
+                                  placeholder={preset.apiKeyLabel || t('enterApiKey')}
+                                  value={presetApiKeys[preset.id] || ''}
+                                  onChange={(e) => setPresetApiKeys(prev => ({
+                                    ...prev,
+                                    [preset.id]: e.target.value,
+                                  }))}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && presetApiKeys[preset.id]?.trim() &&
+                                        (preset.type !== 'cloudflare' || presetApiKeys[`${preset.id}-accountId`]?.trim())) {
+                                      handleAddPresetProvider(preset);
+                                    }
+                                  }}
+                                />
+                                {preset.apiKeyURL && !presetApiKeys[preset.id] && (
+                                  <button
+                                    type="button"
+                                    className="absolute right-11 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-muted"
+                                    onClick={() => window.open(preset.apiKeyURL, '_blank')}
+                                  >
+                                    Get Key
+                                    <ExternalLink className="h-3 w-3" />
+                                  </button>
+                                )}
+                              </div>
                             </>
                           )}
                           <Button
@@ -951,19 +951,6 @@ export function DeploySettings() {
                         </>
                       ) : (
                         <>
-                          <div className="grid gap-2">
-                            <Label htmlFor="custom-apikey">
-                              {customProviderType === 'netlify' ? 'Personal Access Token' :
-                                customProviderType === 'cloudflare' ? 'API Token' :
-                                  'Access Token'} <span className="text-destructive">*</span>
-                            </Label>
-                            <PasswordInput
-                              id="custom-apikey"
-                              placeholder={t('enterApiKey')}
-                              value={customApiKey}
-                              onChange={(e) => setCustomApiKey(e.target.value)}
-                            />
-                          </div>
                           {customProviderType === 'cloudflare' && (
                             <div className="grid gap-2">
                               <Label htmlFor="custom-accountid">
@@ -977,6 +964,19 @@ export function DeploySettings() {
                               />
                             </div>
                           )}
+                          <div className="grid gap-2">
+                            <Label htmlFor="custom-apikey">
+                              {customProviderType === 'netlify' ? 'Personal Access Token' :
+                                customProviderType === 'cloudflare' ? 'API Token' :
+                                  'Access Token'} <span className="text-destructive">*</span>
+                            </Label>
+                            <PasswordInput
+                              id="custom-apikey"
+                              placeholder={t('enterApiKey')}
+                              value={customApiKey}
+                              onChange={(e) => setCustomApiKey(e.target.value)}
+                            />
+                          </div>
                           <div className="grid gap-2">
                             <Label htmlFor="custom-baseurl">Base URL (Optional)</Label>
                             <Input

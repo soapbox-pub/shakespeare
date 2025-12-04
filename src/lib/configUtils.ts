@@ -106,11 +106,19 @@ const nsiteProviderSchema = baseDeployProviderSchema.extend({
   blossomServers: z.array(z.string()),
 });
 
+const cloudflareProviderSchema = baseDeployProviderSchema.extend({
+  type: z.literal('cloudflare'),
+  apiKey: z.string(),
+  accountId: z.string(),
+  baseURL: z.string().optional(),
+});
+
 const deployProviderSchema: z.ZodType<DeployProvider> = z.discriminatedUnion('type', [
   shakespeareDeployProviderSchema,
   netlifyProviderSchema,
   vercelProviderSchema,
   nsiteProviderSchema,
+  cloudflareProviderSchema,
 ]);
 
 const deploySettingsSchema = z.object({

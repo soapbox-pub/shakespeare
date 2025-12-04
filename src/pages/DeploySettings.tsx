@@ -808,11 +808,12 @@ export function DeploySettings() {
                                       handleAddPresetProvider(preset);
                                     }
                                   }}
+                                  showToggle={!!presetApiKeys[preset.id]}
                                 />
                                 {preset.apiKeyURL && !presetApiKeys[preset.id] && (
                                   <button
                                     type="button"
-                                    className="absolute right-11 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-muted"
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-muted"
                                     onClick={() => window.open(preset.apiKeyURL, '_blank')}
                                   >
                                     Get Key

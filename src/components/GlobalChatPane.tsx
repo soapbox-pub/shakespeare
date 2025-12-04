@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { X, Minimize2, ExternalLink, Trash2, Copy, Check, ChevronDown, ArrowUp, Square, Loader2 } from 'lucide-react';
+import { X, Minimize2, Trash2, Copy, Check, ChevronDown, ArrowUp, Square, Loader2 } from 'lucide-react';
 import { Streamdown } from 'streamdown';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -89,24 +89,24 @@ export function GlobalChatPane() {
     stopGeneration,
     clearMessages,
     setIsOpen,
-    setIsPoppedOut,
+    providerModel,
+    setProviderModel,
   } = useGlobalChat();
   const { config } = useAppContext();
-  const { settings, addRecentlyUsedModel } = useAISettings();
+  const { settings } = useAISettings();
   const isMobile = useIsMobile();
 
   const [input, setInput] = useState('');
-  const [providerModel, setProviderModel] = useState(() => settings.recentlyUsedModels?.[0] || '');
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Sync provider model with settings
+  // Initialize provider model from settings if not set
   useEffect(() => {
     if (!providerModel && settings.recentlyUsedModels?.length) {
       setProviderModel(settings.recentlyUsedModels[0]);
     }
-  }, [providerModel, settings.recentlyUsedModels]);
+  }, [providerModel, settings.recentlyUsedModels, setProviderModel]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -141,12 +141,11 @@ export function GlobalChatPane() {
     const messageContent = input.trim();
     setInput('');
 
-    addRecentlyUsedModel(providerModel);
     await sendMessage(messageContent, providerModel);
 
     // Focus back on textarea
     textareaRef.current?.focus();
-  }, [input, isLoading, providerModel, addRecentlyUsedModel, sendMessage]);
+  }, [input, isLoading, providerModel, sendMessage]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey && !isMobile) {
@@ -154,65 +153,6 @@ export function GlobalChatPane() {
       handleSend();
     }
   }, [handleSend, isMobile]);
-
-  const handlePopOut = useCallback(() => {
-    // Open in a new window
-    const width = 400;
-    const height = 600;
-    const left = window.screen.width - width - 50;
-    const top = 50;
-
-    const popoutWindow = window.open(
-      '',
-      'shakespeare-global-chat',
-      `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
-    );
-
-    if (popoutWindow) {
-      // Copy styles and render chat in new window
-      popoutWindow.document.write(`
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <title>Shakespeare Chat</title>
-            <style>
-              body {
-                margin: 0;
-                font-family: system-ui, sans-serif;
-                background: #1a1a1a;
-                color: #fff;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                height: 100vh;
-              }
-              .message {
-                padding: 20px;
-                text-align: center;
-              }
-            </style>
-          </head>
-          <body>
-            <div class="message">
-              <p>Chat window opened!</p>
-              <p>Return to the main Shakespeare window to continue chatting.</p>
-            </div>
-          </body>
-        </html>
-      `);
-
-      setIsPoppedOut(true);
-      setIsOpen(false);
-
-      // Handle window close
-      const checkClosed = setInterval(() => {
-        if (popoutWindow.closed) {
-          setIsPoppedOut(false);
-          clearInterval(checkClosed);
-        }
-      }, 500);
-    }
-  }, [setIsPoppedOut, setIsOpen]);
 
   // Don't render if disabled or not open
   if (config.globalChatEnabled === false || !isOpen) {
@@ -365,19 +305,6 @@ export function GlobalChatPane() {
               <TooltipContent>{t('clearChat')}</TooltipContent>
             </Tooltip>
           )}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                onClick={handlePopOut}
-              >
-                <ExternalLink className="h-3.5 w-3.5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>{t('popOutChat')}</TooltipContent>
-          </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
               <Button

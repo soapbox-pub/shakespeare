@@ -1,10 +1,11 @@
-import { Settings, ArrowLeft, RefreshCw, Trash2, XCircle, Loader2, RotateCcw, Cog, Globe, Image, Code, Monitor, Award, Bug, FolderTree, Terminal as TerminalIcon } from "lucide-react";
+import { Settings, ArrowLeft, RefreshCw, Trash2, XCircle, Loader2, RotateCcw, Cog, Globe, Image, Code, Monitor, Award, Bug, FolderTree, Terminal as TerminalIcon, MessageCircle } from "lucide-react";
 import { useTranslation } from 'react-i18next';
 import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useNavigate } from "react-router-dom";
@@ -12,6 +13,11 @@ import { useAppContext } from "@/hooks/useAppContext";
 import { useOffline } from "@/hooks/useOffline";
 import { useToast } from "@/hooks/useToast";
 import { Terminal } from "@/components/Terminal";
+
+// Default system prompt for global chat
+const DEFAULT_GLOBAL_CHAT_SYSTEM_PROMPT = `You are a helpful AI assistant. You're here to have a friendly conversation and help answer questions on any topic.
+
+Keep your responses concise but informative. Be friendly and conversational.`;
 
 export function SystemSettings() {
   const { t } = useTranslation();
@@ -32,6 +38,9 @@ export function SystemSettings() {
   const [fsPathPluginsInput, setFsPathPluginsInput] = useState(config.fsPathPlugins);
   const [fsPathTemplatesInput, setFsPathTemplatesInput] = useState(config.fsPathTemplates);
   const [sentryDsnInput, setSentryDsnInput] = useState(config.sentryDsn);
+  const [chatSystemPromptInput, setChatSystemPromptInput] = useState(
+    config.globalChatSystemPrompt || DEFAULT_GLOBAL_CHAT_SYSTEM_PROMPT
+  );
 
   // Check which settings differ from defaults
   const isModified = useMemo(() => ({
@@ -47,6 +56,7 @@ export function SystemSettings() {
     fsPathPlugins: config.fsPathPlugins !== defaultConfig.fsPathPlugins,
     fsPathTemplates: config.fsPathTemplates !== defaultConfig.fsPathTemplates,
     sentryDsn: config.sentryDsn !== defaultConfig.sentryDsn,
+    globalChatSystemPrompt: (config.globalChatSystemPrompt || DEFAULT_GLOBAL_CHAT_SYSTEM_PROMPT) !== DEFAULT_GLOBAL_CHAT_SYSTEM_PROMPT,
   }), [config, defaultConfig]);
 
   // Restore functions - clear the value from config to use the default
@@ -152,6 +162,14 @@ export function SystemSettings() {
     setSentryDsnInput(defaultValue);
     updateConfig((current) => {
       const { sentryDsn, ...rest } = current;
+      return rest;
+    });
+  };
+
+  const restoreChatSystemPrompt = () => {
+    setChatSystemPromptInput(DEFAULT_GLOBAL_CHAT_SYSTEM_PROMPT);
+    updateConfig((current) => {
+      const { globalChatSystemPrompt, ...rest } = current;
       return rest;
     });
   };
@@ -947,6 +965,52 @@ export function SystemSettings() {
                     {t('templatesDirectoryDescription')}
                   </p>
                 </div>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+
+        {/* Chat System Prompt Configuration */}
+        <Accordion type="single" collapsible className="w-full">
+          <AccordionItem value="chat-system-prompt">
+            <AccordionTrigger className="px-4 py-3 hover:no-underline">
+              <div className="flex items-center gap-2">
+                <MessageCircle className="h-4 w-4 text-muted-foreground" />
+                <h4 className="text-sm font-medium">{t('globalChatSystemPrompt')}</h4>
+                {isModified.globalChatSystemPrompt && (
+                  <div className="h-2 w-2 rounded-full bg-yellow-500" title={t('modified')} />
+                )}
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="px-4 pb-4">
+              <div className="py-1 space-y-2">
+                <Textarea
+                  placeholder="Enter system prompt..."
+                  value={chatSystemPromptInput}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setChatSystemPromptInput(value);
+                    updateConfig((current) => ({
+                      ...current,
+                      globalChatSystemPrompt: value,
+                    }));
+                  }}
+                  className="font-mono text-xs min-h-[150px]"
+                />
+                {isModified.globalChatSystemPrompt && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={restoreChatSystemPrompt}
+                    className="w-full"
+                  >
+                    <RotateCcw className="h-4 w-4 mr-2" />
+                    {t('restoreToDefault')}
+                  </Button>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  {t('globalChatSystemPromptDescription')}
+                </p>
               </div>
             </AccordionContent>
           </AccordionItem>

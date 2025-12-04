@@ -5,11 +5,11 @@ import { useAppContext } from '@/hooks/useAppContext';
 import { cn } from '@/lib/utils';
 
 export function FloatingChatButton() {
-  const { isOpen, setIsOpen, isPoppedOut, hasUnread } = useGlobalChat();
+  const { isOpen, setIsOpen, hasUnread } = useGlobalChat();
   const { config } = useAppContext();
 
-  // Don't render if disabled in settings or if popped out
-  if (config.globalChatEnabled === false || isPoppedOut) {
+  // Don't render if disabled in settings
+  if (config.globalChatEnabled === false) {
     return null;
   }
 

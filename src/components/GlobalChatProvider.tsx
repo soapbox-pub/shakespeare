@@ -4,6 +4,7 @@ import { GlobalChatContext, type GlobalChatMessage } from '@/contexts/GlobalChat
 import { useAISettings } from '@/hooks/useAISettings';
 import { useAppContext } from '@/hooks/useAppContext';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { parseProviderModel } from '@/lib/parseProviderModel';
 import { createAIClient } from '@/lib/ai-client';
 
@@ -24,10 +25,12 @@ export function GlobalChatProvider({ children }: GlobalChatProviderProps) {
   const [messages, setMessages] = useState<GlobalChatMessage[]>([]);
   const [isOpen, setIsOpenInternal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isPoppedOut, setIsPoppedOut] = useState(false);
   const [hasUnread, setHasUnread] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
   const isOpenRef = useRef(false);
+
+  // Separate model storage for global chat (independent from project chat)
+  const [globalChatModel, setGlobalChatModel] = useLocalStorage<string>('shakespeare-global-chat-model', '');
 
   const { settings } = useAISettings();
   const { config } = useAppContext();
@@ -194,13 +197,13 @@ export function GlobalChatProvider({ children }: GlobalChatProviderProps) {
         messages,
         isOpen,
         isLoading,
-        isPoppedOut,
         hasUnread,
+        providerModel: globalChatModel,
+        setProviderModel: setGlobalChatModel,
         sendMessage,
         stopGeneration,
         clearMessages,
         setIsOpen,
-        setIsPoppedOut,
       }}
     >
       {children}

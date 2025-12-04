@@ -27,13 +27,14 @@ import { useFS } from '@/hooks/useFS';
 import { useFSPaths } from '@/hooks/useFSPaths';
 import { useAppContext } from '@/hooks/useAppContext';
 import { useNostr } from '@nostrify/react';
-import { ShakespeareAdapter, NetlifyAdapter, VercelAdapter, NsiteAdapter, DeployAdapter } from '@/lib/deploy';
+import { ShakespeareAdapter, NetlifyAdapter, VercelAdapter, NsiteAdapter, CloudflareAdapter, DeployAdapter } from '@/lib/deploy';
 import { Link } from 'react-router-dom';
-import type { DeployProvider, ShakespeareDeployProvider, NetlifyProvider, VercelProvider } from '@/contexts/DeploySettingsContext';
+import type { DeployProvider, ShakespeareDeployProvider, NetlifyProvider, VercelProvider, CloudflareProvider } from '@/contexts/DeploySettingsContext';
 import { ShakespeareDeployForm } from '@/components/deploy/ShakespeareDeployForm';
 import { NetlifyDeployForm } from '@/components/deploy/NetlifyDeployForm';
 import { VercelDeployForm } from '@/components/deploy/VercelDeployForm';
 import { NsiteDeployForm } from '@/components/deploy/NsiteDeployForm';
+import { CloudflareDeployForm } from '@/components/deploy/CloudflareDeployForm';
 
 /**
  * Helper function to get provider URL for favicon
@@ -57,6 +58,12 @@ function getProviderUrl(provider: DeployProvider): string | null {
         return provider.baseURL;
       }
       return 'https://vercel.com';
+
+    case 'cloudflare':
+      if (provider.baseURL) {
+        return provider.baseURL;
+      }
+      return 'https://cloudflare.com';
 
     case 'nsite':
       return null;
@@ -110,6 +117,10 @@ interface VercelFormData {
   teamId: string;
 }
 
+interface CloudflareFormData {
+  projectName: string;
+}
+
 export function DeployDialog({ projectId, projectName, open, onOpenChange }: DeployDialogProps) {
   const { t } = useTranslation();
   const { settings } = useDeploySettings();
@@ -140,6 +151,9 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
   const [vercelForm, setVercelForm] = useState<VercelFormData>({
     projectName: projectName || projectId,
     teamId: '',
+  });
+  const [cloudflareForm, setCloudflareForm] = useState<CloudflareFormData>({
+    projectName: projectName || projectId,
   });
 
   // Load project settings when dialog opens
@@ -230,6 +244,23 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
           projectName: vercelForm.projectName || undefined,
           corsProxy: vercelProvider.proxy ? config.corsProxy : undefined,
         });
+      } else if (selectedProvider.type === 'cloudflare') {
+        const cloudflareProvider = selectedProvider as CloudflareProvider;
+        if (!cloudflareProvider.apiKey) {
+          throw new Error('Cloudflare API key is required');
+        }
+        if (!cloudflareProvider.accountId) {
+          throw new Error('Cloudflare account ID is required');
+        }
+
+        adapter = new CloudflareAdapter({
+          fs,
+          apiKey: cloudflareProvider.apiKey,
+          accountId: cloudflareProvider.accountId,
+          baseURL: cloudflareProvider.baseURL,
+          projectName: cloudflareForm.projectName || undefined,
+          corsProxy: cloudflareProvider.proxy ? config.corsProxy : undefined,
+        });
       } else {
         throw new Error('Unknown provider type');
       }
@@ -269,6 +300,13 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
             projectId: vercelForm.projectName || undefined,
           },
         });
+      } else if (selectedProvider.type === 'cloudflare') {
+        await updateProjectSettings(selectedProviderId, {
+          type: 'cloudflare',
+          data: {
+            projectName: cloudflareForm.projectName || undefined,
+          },
+        });
       }
 
       setDeployResult(result);
@@ -288,6 +326,7 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
     setNsiteForm({ nsec: '' });
     setNetlifyForm({ siteId: '', siteName: '' });
     setVercelForm({ projectName: projectName || projectId, teamId: '' });
+    setCloudflareForm({ projectName: projectName || projectId });
     onOpenChange(false);
   };
 
@@ -309,6 +348,10 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
 
   const handleVercelConfigChange = useCallback((projectName: string, teamId: string) => {
     setVercelForm({ projectName, teamId });
+  }, []);
+
+  const handleCloudflareProjectChange = useCallback((projectName: string) => {
+    setCloudflareForm({ projectName });
   }, []);
 
   const renderProviderFields = () => {
@@ -369,6 +412,25 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
           savedTeamId={savedTeamId}
           savedProjectName={savedProjectName}
           onConfigChange={handleVercelConfigChange}
+        />
+      );
+    }
+
+    if (selectedProvider.type === 'cloudflare') {
+      const cloudflareProvider = selectedProvider as CloudflareProvider;
+      const savedConfig = projectSettings.providers[selectedProviderId];
+      const savedProjectName = savedConfig?.type === 'cloudflare' ? savedConfig.data.projectName : undefined;
+
+      return (
+        <CloudflareDeployForm
+          apiKey={cloudflareProvider.apiKey}
+          accountId={cloudflareProvider.accountId}
+          baseURL={cloudflareProvider.baseURL}
+          projectId={projectId}
+          projectName={projectName}
+          savedProjectName={savedProjectName}
+          onProjectChange={handleCloudflareProjectChange}
+          corsProxy={cloudflareProvider.proxy ? config.corsProxy : undefined}
         />
       );
     }
@@ -503,7 +565,8 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
                       (selectedProvider.type === 'shakespeare' && !user) ||
                       (selectedProvider.type === 'shakespeare' && !isShakespeareFormValid) ||
                       (selectedProvider.type === 'nsite' && !nsiteForm.nsec) ||
-                      (selectedProvider.type === 'netlify' && !netlifyForm.siteId && !netlifyForm.siteName)
+                      (selectedProvider.type === 'netlify' && !netlifyForm.siteId && !netlifyForm.siteName) ||
+                      (selectedProvider.type === 'cloudflare' && !cloudflareForm.projectName)
                     }
                   >
                     {isDeploying ? (

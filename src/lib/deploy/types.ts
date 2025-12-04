@@ -54,3 +54,12 @@ export interface NsiteDeployConfig {
   relayUrls: string[];
   blossomServers: string[];
 }
+
+export interface CloudflareDeployConfig {
+  fs: JSRuntimeFS;
+  apiKey: string;
+  accountId: string;
+  baseURL?: string;
+  projectName?: string;
+  corsProxy?: string;
+}

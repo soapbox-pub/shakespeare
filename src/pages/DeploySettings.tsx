@@ -46,12 +46,14 @@ import { normalizeUrl } from '@/lib/faviconUrl';
 
 interface PresetProvider {
   id: string;
-  type: 'shakespeare' | 'netlify' | 'vercel' | 'nsite';
+  type: 'shakespeare' | 'netlify' | 'vercel' | 'nsite' | 'cloudflare';
   name: string;
   description: string;
   requiresNostr?: boolean;
   apiKeyLabel?: string;
   apiKeyURL?: string;
+  accountIdLabel?: string;
+  accountIdURL?: string;
   proxy?: boolean;
 }
 
@@ -200,22 +202,44 @@ function SortableProviderItem({ provider, index, preset, onRemove, onUpdate, sho
                       onUpdate(index, { ...provider, apiKey: e.target.value });
                     } else if (provider.type === 'vercel') {
                       onUpdate(index, { ...provider, apiKey: e.target.value });
+                    } else if (provider.type === 'cloudflare') {
+                      onUpdate(index, { ...provider, apiKey: e.target.value });
                     }
                   }}
                 />
               </div>
+              {provider.type === 'cloudflare' && (
+                <div className="grid gap-2">
+                  <Label htmlFor={`provider-${index}-accountId`}>
+                    {preset?.accountIdLabel || 'Account ID'} <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id={`provider-${index}-accountId`}
+                    placeholder="Enter Account ID"
+                    value={provider.accountId}
+                    onChange={(e) => onUpdate(index, { ...provider, accountId: e.target.value })}
+                  />
+                </div>
+              )}
               <div className="grid gap-2">
                 <Label htmlFor={`provider-${index}-baseURL`}>
                   Base URL (Optional)
                 </Label>
                 <Input
                   id={`provider-${index}-baseURL`}
-                  placeholder={provider.type === 'netlify' ? 'https://api.netlify.com/api/v1' : 'https://api.vercel.com'}
+                  placeholder={
+                    provider.type === 'netlify' ? 'https://api.netlify.com/api/v1' :
+                      provider.type === 'vercel' ? 'https://api.vercel.com' :
+                        provider.type === 'cloudflare' ? 'https://api.cloudflare.com/client/v4' :
+                          'Base URL'
+                  }
                   value={provider.baseURL || ''}
                   onChange={(e) => {
                     if (provider.type === 'netlify') {
                       onUpdate(index, { ...provider, baseURL: e.target.value });
                     } else if (provider.type === 'vercel') {
+                      onUpdate(index, { ...provider, baseURL: e.target.value });
+                    } else if (provider.type === 'cloudflare') {
                       onUpdate(index, { ...provider, baseURL: e.target.value });
                     }
                   }}
@@ -282,6 +306,17 @@ const PRESET_PROVIDERS: PresetProvider[] = [
     apiKeyURL: 'https://vercel.com/account/tokens',
     proxy: true,
   },
+  {
+    id: 'cloudflare',
+    type: 'cloudflare',
+    name: 'Cloudflare Pages',
+    description: 'Deploy to Cloudflare Pages',
+    apiKeyLabel: 'API Token',
+    apiKeyURL: 'https://dash.cloudflare.com/profile/api-tokens',
+    accountIdLabel: 'Account ID',
+    accountIdURL: 'https://dash.cloudflare.com/',
+    proxy: true,
+  },
 ];
 
 // Helper function to generate custom provider ID
@@ -314,6 +349,13 @@ function getProviderUrl(provider: DeployProvider | PresetProvider): string | nul
       }
       return 'https://vercel.com';
 
+    case 'cloudflare':
+      // For Cloudflare providers, check for custom baseURL first, then use default
+      if ('baseURL' in provider && provider.baseURL) {
+        return provider.baseURL;
+      }
+      return 'https://cloudflare.com';
+
     case 'nsite':
       // nsite uses Rocket icon fallback
       return null;
@@ -338,9 +380,10 @@ export function DeploySettings() {
   const [forceManualEntry, setForceManualEntry] = useState<Record<string, boolean>>({});
 
   // Custom provider form state
-  const [customProviderType, setCustomProviderType] = useState<'shakespeare' | 'netlify' | 'vercel' | 'nsite' | ''>('');
+  const [customProviderType, setCustomProviderType] = useState<'shakespeare' | 'netlify' | 'vercel' | 'nsite' | 'cloudflare' | ''>('');
   const [customName, setCustomName] = useState('');
   const [customApiKey, setCustomApiKey] = useState('');
+  const [customAccountId, setCustomAccountId] = useState('');
   const [customBaseURL, setCustomBaseURL] = useState('');
   const [customHost, setCustomHost] = useState('');
   const [customProxy, setCustomProxy] = useState(false);
@@ -416,7 +459,7 @@ export function DeploySettings() {
         apiKey: apiKey.trim(),
         ...(preset.proxy && { proxy: true }),
       };
-    } else {
+    } else if (preset.type === 'vercel') {
       newProvider = {
         id: preset.id, // Use preset ID for presets
         name: preset.name,
@@ -424,6 +467,21 @@ export function DeploySettings() {
         apiKey: apiKey.trim(),
         ...(preset.proxy && { proxy: true }),
       };
+    } else if (preset.type === 'cloudflare') {
+      const accountId = presetApiKeys[`${preset.id}-accountId`];
+      if (!accountId?.trim()) {
+        return;
+      }
+      newProvider = {
+        id: preset.id, // Use preset ID for presets
+        name: preset.name,
+        type: 'cloudflare',
+        apiKey: apiKey.trim(),
+        accountId: accountId.trim(),
+        ...(preset.proxy && { proxy: true }),
+      };
+    } else {
+      return; // Unknown type
     }
 
     setProviders([...settings.providers, newProvider]);
@@ -472,7 +530,7 @@ export function DeploySettings() {
         ...(customBaseURL?.trim() && { baseURL: customBaseURL.trim() }),
         ...(customProxy && { proxy: true }),
       };
-    } else {
+    } else if (customProviderType === 'vercel') {
       if (!customApiKey.trim()) return;
       newProvider = {
         id: generateCustomProviderId(customProviderType), // Generate custom ID
@@ -482,6 +540,19 @@ export function DeploySettings() {
         ...(customBaseURL?.trim() && { baseURL: customBaseURL.trim() }),
         ...(customProxy && { proxy: true }),
       };
+    } else if (customProviderType === 'cloudflare') {
+      if (!customApiKey.trim() || !customAccountId.trim()) return;
+      newProvider = {
+        id: generateCustomProviderId(customProviderType), // Generate custom ID
+        name: customName.trim(),
+        type: 'cloudflare',
+        apiKey: customApiKey.trim(),
+        accountId: customAccountId.trim(),
+        ...(customBaseURL?.trim() && { baseURL: customBaseURL.trim() }),
+        ...(customProxy && { proxy: true }),
+      };
+    } else {
+      return; // Unknown type
     }
 
     setProviders([...settings.providers, newProvider]);
@@ -490,6 +561,7 @@ export function DeploySettings() {
     setCustomProviderType('');
     setCustomName('');
     setCustomApiKey('');
+    setCustomAccountId('');
     setCustomBaseURL('');
     setCustomHost('');
     setCustomProxy(false);
@@ -703,34 +775,51 @@ export function DeploySettings() {
                       ) : (
                         // Show manual token input
                         <div className="space-y-2">
-                          <div className="flex gap-2">
-                            {!preset.requiresNostr && preset.type !== 'nsite' && (
+                          {!preset.requiresNostr && preset.type !== 'nsite' && (
+                            <>
                               <PasswordInput
                                 placeholder={preset.apiKeyLabel || t('enterApiKey')}
-                                className="flex-1"
                                 value={presetApiKeys[preset.id] || ''}
                                 onChange={(e) => setPresetApiKeys(prev => ({
                                   ...prev,
                                   [preset.id]: e.target.value,
                                 }))}
                                 onKeyDown={(e) => {
-                                  if (e.key === 'Enter' && presetApiKeys[preset.id]?.trim()) {
+                                  if (e.key === 'Enter' && presetApiKeys[preset.id]?.trim() &&
+                                      (preset.type !== 'cloudflare' || presetApiKeys[`${preset.id}-accountId`]?.trim())) {
                                     handleAddPresetProvider(preset);
                                   }
                                 }}
                               />
-                            )}
-                            <Button
-                              onClick={() => handleAddPresetProvider(preset)}
-                              disabled={
-                                (preset.requiresNostr && !isLoggedIntoNostr) ||
-                                (!preset.requiresNostr && preset.type !== 'nsite' && !presetApiKeys[preset.id]?.trim())
-                              }
-                              className={(preset.requiresNostr || preset.type === 'nsite') ? "w-full" : "h-10 px-4 ml-auto"}
-                            >
-                              {t('add')}
-                            </Button>
-                          </div>
+                              {preset.type === 'cloudflare' && (
+                                <Input
+                                  placeholder={preset.accountIdLabel || 'Account ID'}
+                                  value={presetApiKeys[`${preset.id}-accountId`] || ''}
+                                  onChange={(e) => setPresetApiKeys(prev => ({
+                                    ...prev,
+                                    [`${preset.id}-accountId`]: e.target.value,
+                                  }))}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && presetApiKeys[preset.id]?.trim() &&
+                                        presetApiKeys[`${preset.id}-accountId`]?.trim()) {
+                                      handleAddPresetProvider(preset);
+                                    }
+                                  }}
+                                />
+                              )}
+                            </>
+                          )}
+                          <Button
+                            onClick={() => handleAddPresetProvider(preset)}
+                            disabled={
+                              (preset.requiresNostr && !isLoggedIntoNostr) ||
+                              (!preset.requiresNostr && preset.type !== 'nsite' && !presetApiKeys[preset.id]?.trim()) ||
+                              (preset.type === 'cloudflare' && !presetApiKeys[`${preset.id}-accountId`]?.trim())
+                            }
+                            className="w-full"
+                          >
+                            {t('add')}
+                          </Button>
                         </div>
                       )}
                     </CardContent>
@@ -759,10 +848,11 @@ export function DeploySettings() {
                     </Label>
                     <Select
                       value={customProviderType}
-                      onValueChange={(value: 'shakespeare' | 'netlify' | 'vercel' | 'nsite') => {
+                      onValueChange={(value: 'shakespeare' | 'netlify' | 'vercel' | 'nsite' | 'cloudflare') => {
                         setCustomProviderType(value);
                         // Reset form when provider type changes
                         setCustomApiKey('');
+                        setCustomAccountId('');
                         setCustomBaseURL('');
                         setCustomHost('');
                         setCustomProxy(false);
@@ -779,6 +869,7 @@ export function DeploySettings() {
                         <SelectItem value="nsite">nsite</SelectItem>
                         <SelectItem value="netlify">Netlify</SelectItem>
                         <SelectItem value="vercel">Vercel</SelectItem>
+                        <SelectItem value="cloudflare">Cloudflare Pages</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -849,7 +940,9 @@ export function DeploySettings() {
                         <>
                           <div className="grid gap-2">
                             <Label htmlFor="custom-apikey">
-                              {customProviderType === 'netlify' ? 'Personal Access Token' : 'Access Token'} <span className="text-destructive">*</span>
+                              {customProviderType === 'netlify' ? 'Personal Access Token' :
+                                customProviderType === 'cloudflare' ? 'API Token' :
+                                  'Access Token'} <span className="text-destructive">*</span>
                             </Label>
                             <PasswordInput
                               id="custom-apikey"
@@ -858,6 +951,19 @@ export function DeploySettings() {
                               onChange={(e) => setCustomApiKey(e.target.value)}
                             />
                           </div>
+                          {customProviderType === 'cloudflare' && (
+                            <div className="grid gap-2">
+                              <Label htmlFor="custom-accountid">
+                                Account ID <span className="text-destructive">*</span>
+                              </Label>
+                              <Input
+                                id="custom-accountid"
+                                placeholder="Enter Account ID"
+                                value={customAccountId}
+                                onChange={(e) => setCustomAccountId(e.target.value)}
+                              />
+                            </div>
+                          )}
                           <div className="grid gap-2">
                             <Label htmlFor="custom-baseurl">Base URL (Optional)</Label>
                             <Input
@@ -865,7 +971,9 @@ export function DeploySettings() {
                               placeholder={
                                 customProviderType === 'netlify'
                                   ? 'https://api.netlify.com/api/v1'
-                                  : 'https://api.vercel.com'
+                                  : customProviderType === 'vercel'
+                                    ? 'https://api.vercel.com'
+                                    : 'https://api.cloudflare.com/client/v4'
                               }
                               value={customBaseURL}
                               onChange={(e) => setCustomBaseURL(e.target.value)}
@@ -890,7 +998,8 @@ export function DeploySettings() {
                         disabled={
                           !customProviderType ||
                           !customName.trim() ||
-                          (customProviderType !== 'shakespeare' && customProviderType !== 'nsite' && !customApiKey.trim())
+                          (customProviderType !== 'shakespeare' && customProviderType !== 'nsite' && !customApiKey.trim()) ||
+                          (customProviderType === 'cloudflare' && !customAccountId.trim())
                         }
                         className="gap-2 ml-auto"
                       >

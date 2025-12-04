@@ -28,6 +28,9 @@ import { DynamicFavicon } from '@/components/DynamicFavicon';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { PWAUpdatePrompt } from '@/components/PWAUpdatePrompt';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { GlobalChatProvider } from '@/components/GlobalChatProvider';
+import { FloatingChatButton } from '@/components/FloatingChatButton';
+import { GlobalChatPane } from '@/components/GlobalChatPane';
 
 import AppRouter from './AppRouter';
 
@@ -177,15 +180,19 @@ export function App() {
                         <GitSettingsProvider>
                           <DeploySettingsProvider>
                             <SessionManagerProvider>
-                              <TooltipProvider>
-                                <Toaster />
-                                <DynamicFavicon />
-                                <OfflineIndicator />
-                                <PWAUpdatePrompt />
-                                <Suspense>
-                                  <AppRouter />
-                                </Suspense>
-                              </TooltipProvider>
+                              <GlobalChatProvider>
+                                <TooltipProvider>
+                                  <Toaster />
+                                  <DynamicFavicon />
+                                  <OfflineIndicator />
+                                  <PWAUpdatePrompt />
+                                  <Suspense>
+                                    <AppRouter />
+                                  </Suspense>
+                                  <FloatingChatButton />
+                                  <GlobalChatPane />
+                                </TooltipProvider>
+                              </GlobalChatProvider>
                             </SessionManagerProvider>
                           </DeploySettingsProvider>
                         </GitSettingsProvider>

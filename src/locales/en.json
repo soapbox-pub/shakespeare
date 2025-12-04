@@ -524,5 +524,17 @@
   "templateDeleted": "Template Deleted",
   "templateDeletedDescription": "Project template '{{name}}' has been deleted.",
   "noTemplatesConfigured": "No project templates configured yet. Add a template to get started.",
-  "atLeastOneTemplateRequired": "At least one template is required"
+  "atLeastOneTemplateRequired": "At least one template is required",
+  "globalChat": "Chat",
+  "globalChatWelcome": "Hi there! 👋",
+  "globalChatDescription": "Ask me anything. I'm here to help with questions, ideas, and conversation.",
+  "clearChat": "Clear chat",
+  "popOutChat": "Pop out",
+  "minimizeChat": "Minimize",
+  "typeMessage": "Type a message...",
+  "configureAIFirst": "Configure AI provider first",
+  "globalChatEnabled": "Floating Chat Button",
+  "globalChatEnabledDescription": "Show a floating chat button for quick AI conversations",
+  "globalChatSystemPrompt": "Chat System Prompt",
+  "globalChatSystemPromptDescription": "Custom system prompt for the floating chat assistant"
 }

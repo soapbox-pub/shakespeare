@@ -57,6 +57,10 @@ export interface AppConfig {
   sentryEnabled: boolean;
   /** System prompt EJS template */
   systemPrompt?: string;
+  /** Whether the global floating chat is enabled */
+  globalChatEnabled?: boolean;
+  /** Custom system prompt for global chat */
+  globalChatSystemPrompt?: string;
 }
 
 export interface AppContextType {

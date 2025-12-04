@@ -440,5 +440,17 @@
   "modified": "已修改",
   "restoreToDefault": "恢复默认值",
   "restoredToDefault": "已恢复默认值",
-  "terminal": "终端"
+  "terminal": "终端",
+  "globalChat": "聊天",
+  "globalChatWelcome": "你好! 👋",
+  "globalChatDescription": "随便问我什么。我在这里帮助回答问题、提供想法和进行对话。",
+  "clearChat": "清除聊天",
+  "popOutChat": "弹出窗口",
+  "minimizeChat": "最小化",
+  "typeMessage": "输入消息...",
+  "configureAIFirst": "请先配置AI提供商",
+  "globalChatEnabled": "浮动聊天按钮",
+  "globalChatEnabledDescription": "显示浮动聊天按钮以便快速AI对话",
+  "globalChatSystemPrompt": "聊天系统提示",
+  "globalChatSystemPromptDescription": "浮动聊天助手的自定义系统提示"
 }

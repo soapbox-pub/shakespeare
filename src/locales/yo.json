@@ -428,5 +428,17 @@
   "modified": "Ti Yipada",
   "restoreToDefault": "Pada si atilẹwa",
   "restoredToDefault": "Ti Pada si Atilẹwa",
-  "terminal": "Terminal"
+  "terminal": "Terminal",
+  "globalChat": "Ibanisọrọ",
+  "globalChatWelcome": "Pẹlẹ o! 👋",
+  "globalChatDescription": "Beere ohunkohun. Mo wa nibi lati ran ọ lọwọ pẹlu awọn ibeere, awọn ero, ati ibaraẹnisọrọ.",
+  "clearChat": "Pa ibanisọrọ rẹ",
+  "popOutChat": "Ya jade",
+  "minimizeChat": "Din ku",
+  "typeMessage": "Tẹ ifiranṣẹ...",
+  "configureAIFirst": "Ṣeto olupese AI ni akọkọ",
+  "globalChatEnabled": "Bọtini Ibanisọrọ Ti O N Lọ",
+  "globalChatEnabledDescription": "Fi bọtini ibanisọrọ ti o n lọ han fun ibaraẹnisọrọ AI ni iyara",
+  "globalChatSystemPrompt": "Itọsọna Eto Ibanisọrọ",
+  "globalChatSystemPromptDescription": "Itọsọna eto aṣa fun oluranlọwọ ibanisọrọ ti o n lọ"
 }

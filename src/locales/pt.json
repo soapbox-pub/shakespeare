@@ -440,5 +440,17 @@
   "modified": "Modificado",
   "restoreToDefault": "Restaurar para padrão",
   "restoredToDefault": "Restaurado para Padrão",
-  "terminal": "Terminal"
+  "terminal": "Terminal",
+  "globalChat": "Chat",
+  "globalChatWelcome": "Olá! 👋",
+  "globalChatDescription": "Pergunte-me qualquer coisa. Estou aqui para ajudar com perguntas, ideias e conversas.",
+  "clearChat": "Limpar chat",
+  "popOutChat": "Destacar",
+  "minimizeChat": "Minimizar",
+  "typeMessage": "Digite uma mensagem...",
+  "configureAIFirst": "Configure o provedor de IA primeiro",
+  "globalChatEnabled": "Botão de Chat Flutuante",
+  "globalChatEnabledDescription": "Mostrar um botão de chat flutuante para conversas rápidas com IA",
+  "globalChatSystemPrompt": "Prompt do Sistema do Chat",
+  "globalChatSystemPromptDescription": "Prompt do sistema personalizado para o assistente de chat flutuante"
 }

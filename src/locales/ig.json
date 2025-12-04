@@ -428,5 +428,17 @@
   "modified": "Gbanwere",
   "restoreToDefault": "Weghachi na nke mbụ",
   "restoredToDefault": "Weghachiri na Nke Mbụ",
-  "terminal": "Terminal"
+  "terminal": "Terminal",
+  "globalChat": "Nkata",
+  "globalChatWelcome": "Ndewo! 👋",
+  "globalChatDescription": "Jụọ ihe ọ bụla. Anọ m ebe a inyere gị aka na ajụjụ, echiche, na nkata.",
+  "clearChat": "Kpochapụ nkata",
+  "popOutChat": "Wepụta",
+  "minimizeChat": "Belata",
+  "typeMessage": "Dee ozi...",
+  "configureAIFirst": "Bụrụ ụzọ hazie onye na-enye AI",
+  "globalChatEnabled": "Bọtịnụ Nkata Na-epupụta",
+  "globalChatEnabledDescription": "Gosi bọtịnụ nkata na-epupụta maka nkata AI ngwa ngwa",
+  "globalChatSystemPrompt": "Usoro Nkata",
+  "globalChatSystemPromptDescription": "Usoro nke gị maka onye enyemaka nkata na-epupụta"
 }

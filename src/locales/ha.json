@@ -443,5 +443,7 @@
   "globalChatEnabled": "Maballin Tattaunawa Mai Yawo",
   "globalChatEnabledDescription": "Nuna maballin tattaunawa mai yawo don saurin tattaunawa da AI",
   "globalChatSystemPrompt": "Jagorar Tsarin Tattaunawa",
-  "globalChatSystemPromptDescription": "Jagorar tsarin da aka keɓe don mataimakin tattaunawa mai yawo"
+  "globalChatSystemPromptDescription": "Jagorar tsarin da aka keɓe don mataimakin tattaunawa mai yawo",
+  "building": "Ginawa",
+  "chatting": "Tattaunawa"
 }

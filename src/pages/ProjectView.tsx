@@ -20,6 +20,8 @@ import { useBuildProject } from '@/hooks/useBuildProject';
 import { useIsProjectPreviewable } from '@/hooks/useIsProjectPreviewable';
 import { useConsoleError } from '@/hooks/useConsoleError';
 import { useAutoBuild } from '@/hooks/useAutoBuild';
+import { GlobalChatPane } from '@/components/GlobalChatPane';
+import { useAppContext } from '@/hooks/useAppContext';
 
 export function ProjectView() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -28,6 +30,7 @@ export function ProjectView() {
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'preview' | 'code'>('preview');
   const [mobileView, setMobileView] = useState<'chat' | 'preview' | 'code'>('chat');
+  const [mobileChatMode, setMobileChatMode] = useState<'building' | 'chatting'>('building');
   const [isAILoading, setIsAILoading] = useState(false);
   const [isProjectDetailsOpen, setIsProjectDetailsOpen] = useState(false);
 
@@ -38,6 +41,7 @@ export function ProjectView() {
   const chatPaneRef = useRef<ChatPaneRef>(null);
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { config } = useAppContext();
 
   const [isSidebarVisible, setIsSidebarVisible] = useState(!isMobile);
 
@@ -218,28 +222,65 @@ export function ProjectView() {
           </div>
         )}
 
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-hidden flex flex-col">
           {mobileView === 'chat' && (
-            project ? (
-              <ChatPane
-                ref={chatPaneRef}
-                projectId={project.id}
-                onNewChat={handleNewChat}
-                onFirstInteraction={handleFirstInteraction}
-                onLoadingChange={handleAILoadingChange}
-                isLoading={isAILoading}
-                isBuildLoading={build.isPending}
-                consoleError={consoleError}
-                onDismissConsoleError={handleDismissConsoleError}
-              />
-            ) : (
-              <div className="h-full p-4 space-y-4">
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-8 w-3/4" />
-                <Skeleton className="h-8 w-1/2" />
-                <Skeleton className="h-32 w-full" />
+            <>
+              {/* Building/Chatting toggle - only show if global chat is enabled */}
+              {config.globalChatEnabled !== false && (
+                <div className="flex-shrink-0 border-b bg-muted/30">
+                  <div className="flex">
+                    <button
+                      onClick={() => setMobileChatMode('building')}
+                      className={`flex-1 py-2 text-xs font-medium transition-colors ${
+                        mobileChatMode === 'building'
+                          ? 'text-primary border-b-2 border-primary bg-background'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      {t('building')}
+                    </button>
+                    <button
+                      onClick={() => setMobileChatMode('chatting')}
+                      className={`flex-1 py-2 text-xs font-medium transition-colors ${
+                        mobileChatMode === 'chatting'
+                          ? 'text-primary border-b-2 border-primary bg-background'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      {t('chatting')}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Chat content based on mode */}
+              <div className="flex-1 overflow-hidden">
+                {mobileChatMode === 'building' ? (
+                  project ? (
+                    <ChatPane
+                      ref={chatPaneRef}
+                      projectId={project.id}
+                      onNewChat={handleNewChat}
+                      onFirstInteraction={handleFirstInteraction}
+                      onLoadingChange={handleAILoadingChange}
+                      isLoading={isAILoading}
+                      isBuildLoading={build.isPending}
+                      consoleError={consoleError}
+                      onDismissConsoleError={handleDismissConsoleError}
+                    />
+                  ) : (
+                    <div className="h-full p-4 space-y-4">
+                      <Skeleton className="h-12 w-full" />
+                      <Skeleton className="h-8 w-3/4" />
+                      <Skeleton className="h-8 w-1/2" />
+                      <Skeleton className="h-32 w-full" />
+                    </div>
+                  )
+                ) : (
+                  <GlobalChatPane embedded />
+                )}
               </div>
-            )
+            </>
           )}
           {(mobileView === 'preview' || mobileView === 'code') && (
             project ? (

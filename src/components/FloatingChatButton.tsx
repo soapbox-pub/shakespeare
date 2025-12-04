@@ -4,12 +4,14 @@ import { MessageCircle, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useGlobalChat } from '@/hooks/useGlobalChat';
 import { useAppContext } from '@/hooks/useAppContext';
+import { useIsMobile } from '@/hooks/useIsMobile';
 import { cn } from '@/lib/utils';
 
 export function FloatingChatButton() {
   const { isOpen, setIsOpen, hasUnread } = useGlobalChat();
   const { config } = useAppContext();
   const location = useLocation();
+  const isMobile = useIsMobile();
   const [isHovered, setIsHovered] = useState(false);
   const [isHiddenTemporarily, setIsHiddenTemporarily] = useState(false);
 
@@ -25,6 +27,12 @@ export function FloatingChatButton() {
 
   // Don't render on settings pages
   if (location.pathname.startsWith('/settings')) {
+    return null;
+  }
+
+  // On mobile, only show on home screen (/ or /giftcard)
+  const isHomePage = location.pathname === '/' || location.pathname === '/giftcard';
+  if (isMobile && !isHomePage) {
     return null;
   }
 

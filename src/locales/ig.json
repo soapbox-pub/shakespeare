@@ -440,5 +440,7 @@
   "globalChatEnabled": "Bọtịnụ Nkata Na-epupụta",
   "globalChatEnabledDescription": "Gosi bọtịnụ nkata na-epupụta maka nkata AI ngwa ngwa",
   "globalChatSystemPrompt": "Usoro Nkata",
-  "globalChatSystemPromptDescription": "Usoro nke gị maka onye enyemaka nkata na-epupụta"
+  "globalChatSystemPromptDescription": "Usoro nke gị maka onye enyemaka nkata na-epupụta",
+  "building": "Nrụpụta",
+  "chatting": "Nkwurịta"
 }

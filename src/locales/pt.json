@@ -452,5 +452,7 @@
   "globalChatEnabled": "Botão de Chat Flutuante",
   "globalChatEnabledDescription": "Mostrar um botão de chat flutuante para conversas rápidas com IA",
   "globalChatSystemPrompt": "Prompt do Sistema do Chat",
-  "globalChatSystemPromptDescription": "Prompt do sistema personalizado para o assistente de chat flutuante"
+  "globalChatSystemPromptDescription": "Prompt do sistema personalizado para o assistente de chat flutuante",
+  "building": "Construindo",
+  "chatting": "Conversando"
 }

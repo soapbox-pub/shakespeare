@@ -440,5 +440,7 @@
   "globalChatEnabled": "Bọtini Ibanisọrọ Ti O N Lọ",
   "globalChatEnabledDescription": "Fi bọtini ibanisọrọ ti o n lọ han fun ibaraẹnisọrọ AI ni iyara",
   "globalChatSystemPrompt": "Itọsọna Eto Ibanisọrọ",
-  "globalChatSystemPromptDescription": "Itọsọna eto aṣa fun oluranlọwọ ibanisọrọ ti o n lọ"
+  "globalChatSystemPromptDescription": "Itọsọna eto aṣa fun oluranlọwọ ibanisọrọ ti o n lọ",
+  "building": "Kíkọ́",
+  "chatting": "Sísọ̀rọ̀"
 }

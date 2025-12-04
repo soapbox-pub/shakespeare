@@ -80,7 +80,12 @@ function ChatMessage({ message }: { message: GlobalChatMessage }) {
   );
 }
 
-export function GlobalChatPane() {
+interface GlobalChatPaneProps {
+  /** When true, renders inline without fixed positioning (for embedding in ProjectView) */
+  embedded?: boolean;
+}
+
+export function GlobalChatPane({ embedded = false }: GlobalChatPaneProps) {
   const { t } = useTranslation();
   const {
     messages,
@@ -188,17 +193,131 @@ export function GlobalChatPane() {
     }
   }, [handleSend, isMobile]);
 
-  // Don't render if disabled or not open
-  if (config.globalChatEnabled === false || !isOpen) {
+  // For non-embedded mode: Don't render if disabled or not open
+  if (!embedded && (config.globalChatEnabled === false || !isOpen)) {
     return null;
   }
 
-  // Don't render on settings pages
-  if (location.pathname.startsWith('/settings')) {
+  // For non-embedded mode: Don't render on settings pages
+  if (!embedded && location.pathname.startsWith('/settings')) {
     return null;
   }
 
   const hasProviders = settings.providers.length > 0;
+
+  // Embedded mode: Render inline without fixed positioning
+  if (embedded) {
+    return (
+      <div className="h-full flex flex-col bg-background">
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-3 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <h2 className="font-semibold text-lg">{t('globalChat')}</h2>
+          <div className="flex items-center gap-1">
+            {messages.length > 0 && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={clearMessages}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{t('clearChat')}</TooltipContent>
+              </Tooltip>
+            )}
+          </div>
+        </div>
+
+        {/* Messages */}
+        <div
+          ref={scrollAreaRef}
+          className="flex-1 overflow-y-auto p-4 space-y-4"
+          onScroll={handleScroll}
+        >
+          {messages.length === 0 ? (
+            <div className="flex-1 flex items-center justify-center text-center text-muted-foreground px-8 py-12">
+              <div>
+                <p className="text-lg font-medium mb-2">{t('globalChatWelcome')}</p>
+                <p className="text-sm">{t('globalChatDescription')}</p>
+              </div>
+            </div>
+          ) : (
+            messages.map((message) => (
+              <ChatMessage key={message.id} message={message} />
+            ))
+          )}
+
+          {isLoading && messages[messages.length - 1]?.role !== 'assistant' && (
+            <div className="flex justify-start">
+              <div className="bg-muted rounded-2xl rounded-bl-md px-4 py-3">
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Scroll to bottom button */}
+        {showScrollToBottom && (
+          <Button
+            onClick={scrollToBottom}
+            size="sm"
+            variant="secondary"
+            className="absolute bottom-32 left-1/2 -translate-x-1/2 rounded-full shadow-lg"
+          >
+            <ChevronDown className="h-4 w-4" />
+          </Button>
+        )}
+
+        {/* Input */}
+        <div className="p-4 border-t bg-background space-y-3 pb-safe">
+          <div className="flex gap-2">
+            <ModelSelector
+              value={providerModel}
+              onChange={setProviderModel}
+              className="flex-1"
+              disabled={isLoading}
+              placeholder={t('chooseModel')}
+            />
+          </div>
+          <div className="flex gap-2 items-end">
+            <Textarea
+              ref={textareaRef}
+              value={input}
+              onChange={(e) => {
+                setInput(e.target.value);
+                // Auto-resize
+                const target = e.target as HTMLTextAreaElement;
+                target.style.height = 'auto';
+                target.style.height = Math.min(target.scrollHeight, 128) + 'px';
+              }}
+              onKeyDown={handleKeyDown}
+              placeholder={hasProviders ? t('typeMessage') : t('configureAIFirst')}
+              disabled={!hasProviders || isLoading}
+              className="resize-none min-h-[44px] max-h-32"
+              rows={1}
+            />
+            {isLoading ? (
+              <Button onClick={stopGeneration} size="icon" variant="destructive" className="h-11 w-11 shrink-0">
+                <Square className="h-4 w-4" />
+              </Button>
+            ) : (
+              <Button
+                onClick={handleSend}
+                size="icon"
+                disabled={!input.trim() || !providerModel || !hasProviders}
+                className="h-11 w-11 shrink-0"
+              >
+                <ArrowUp className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Mobile: Full screen drawer from bottom
   if (isMobile) {

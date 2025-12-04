@@ -542,5 +542,7 @@
   "globalChatEnabled": "Floating Chat Button",
   "globalChatEnabledDescription": "Show a floating chat button for quick AI conversations",
   "globalChatSystemPrompt": "Chat System Prompt",
-  "globalChatSystemPromptDescription": "Custom system prompt for the floating chat assistant"
+  "globalChatSystemPromptDescription": "Custom system prompt for the floating chat assistant",
+  "building": "Building",
+  "chatting": "Chatting"
 }

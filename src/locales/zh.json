@@ -452,5 +452,7 @@
   "globalChatEnabled": "浮动聊天按钮",
   "globalChatEnabledDescription": "显示浮动聊天按钮以便快速AI对话",
   "globalChatSystemPrompt": "聊天系统提示",
-  "globalChatSystemPromptDescription": "浮动聊天助手的自定义系统提示"
+  "globalChatSystemPromptDescription": "浮动聊天助手的自定义系统提示",
+  "building": "构建",
+  "chatting": "聊天"
 }

@@ -28,6 +28,7 @@ export function GlobalChatProvider({ children }: GlobalChatProviderProps) {
   const [hasUnread, setHasUnread] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
   const isOpenRef = useRef(false);
+  const loadingReleasedRef = useRef(false);
 
   // Separate model storage for global chat (independent from project chat)
   const [globalChatModel, setGlobalChatModel] = useLocalStorage<string>('shakespeare-global-chat-model', '');
@@ -91,6 +92,9 @@ export function GlobalChatProvider({ children }: GlobalChatProviderProps) {
     // Create abort controller for this request
     abortControllerRef.current = new AbortController();
 
+    // Reset the loading released flag for this new request
+    loadingReleasedRef.current = false;
+
     try {
       // Create AI client
       const client = createAIClient(provider, config.corsProxy, user?.signer);
@@ -127,7 +131,6 @@ export function GlobalChatProvider({ children }: GlobalChatProviderProps) {
       });
 
       let fullContent = '';
-      let loadingReleased = false;
 
       for await (const chunk of stream) {
         const delta = chunk.choices[0]?.delta?.content || '';
@@ -146,8 +149,8 @@ export function GlobalChatProvider({ children }: GlobalChatProviderProps) {
         // Release loading as soon as finish_reason is received
         // Don't break - let the stream drain naturally to avoid async iterator cleanup delays
         const finishReason = chunk.choices[0]?.finish_reason;
-        if (finishReason && !loadingReleased) {
-          loadingReleased = true;
+        if (finishReason && !loadingReleasedRef.current) {
+          loadingReleasedRef.current = true;
           setIsLoading(false);
         }
       }
@@ -182,7 +185,10 @@ export function GlobalChatProvider({ children }: GlobalChatProviderProps) {
         return [...filtered, errorMessage];
       });
     } finally {
-      setIsLoading(false);
+      // Only set loading to false if we haven't already released it
+      if (!loadingReleasedRef.current) {
+        setIsLoading(false);
+      }
       abortControllerRef.current = null;
     }
   }, [config.corsProxy, config.globalChatSystemPrompt, isLoading, messages, settings.providers, trimMessages, user?.signer]);

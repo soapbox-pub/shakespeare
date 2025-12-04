@@ -210,29 +210,34 @@ export function GlobalChatPane({ embedded = false, mobileChatMode, onMobileChatM
 
   // Embedded mode: Render inline without fixed positioning
   if (embedded) {
+    // Hide header when there's a mode toggle (mobile view with switching)
+    const showHeader = !mobileChatMode;
+
     return (
       <div className="h-full flex flex-col bg-background">
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-          <h2 className="font-semibold text-lg">{t('globalChat')}</h2>
-          <div className="flex items-center gap-1">
-            {messages.length > 0 && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={clearMessages}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>{t('clearChat')}</TooltipContent>
-              </Tooltip>
-            )}
+        {/* Header - hidden when mobile toggle is present */}
+        {showHeader && (
+          <div className="flex items-center justify-between px-4 py-3 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+            <h2 className="font-semibold text-lg">{t('globalChat')}</h2>
+            <div className="flex items-center gap-1">
+              {messages.length > 0 && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={clearMessages}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{t('clearChat')}</TooltipContent>
+                </Tooltip>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Messages */}
         <div

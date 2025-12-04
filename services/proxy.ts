@@ -32,7 +32,7 @@ export default {
     const response = new Response(targetResponse.body, targetResponse);
 
     response.headers.set("Access-Control-Allow-Origin", "*");
-    response.headers.set("Access-Control-Allow-Methods", "GET,HEAD,POST,OPTIONS");
+    response.headers.set("Access-Control-Allow-Methods", "GET,HEAD,POST,PUT,PATCH,DELETE,OPTIONS");
     response.headers.set("Access-Control-Allow-Headers", "*");
 
     return response;

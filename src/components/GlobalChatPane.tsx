@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useLocation } from 'react-router-dom';
 import { X, Trash2, Copy, Check, ChevronDown, ArrowUp, Square, Loader2 } from 'lucide-react';
 import { Streamdown } from 'streamdown';
 import { Button } from '@/components/ui/button';
@@ -95,6 +96,7 @@ export function GlobalChatPane() {
   const { config } = useAppContext();
   const { settings } = useAISettings();
   const isMobile = useIsMobile();
+  const location = useLocation();
 
   const [input, setInput] = useState('');
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
@@ -188,6 +190,11 @@ export function GlobalChatPane() {
 
   // Don't render if disabled or not open
   if (config.globalChatEnabled === false || !isOpen) {
+    return null;
+  }
+
+  // Don't render on settings pages
+  if (location.pathname.startsWith('/settings')) {
     return null;
   }
 

@@ -67,8 +67,6 @@ export function GlobalChatProvider({ children }: GlobalChatProviderProps) {
   }, []);
 
   const sendMessage = useCallback(async (content: string, providerModelString: string) => {
-    if (!content.trim() || isLoading) return;
-
     // Parse provider and model
     const { model: modelId, provider } = parseProviderModel(providerModelString, settings.providers);
 
@@ -85,8 +83,12 @@ export function GlobalChatProvider({ children }: GlobalChatProviderProps) {
       timestamp: Date.now(),
     };
 
-    // Add user message and trim if necessary
-    setMessages(prev => trimMessages([...prev, userMessage]));
+    // Add user message and capture current messages for API call
+    let currentMessages: GlobalChatMessage[] = [];
+    setMessages(prev => {
+      currentMessages = prev;
+      return trimMessages([...prev, userMessage]);
+    });
     setIsLoading(true);
 
     // Create abort controller for this request
@@ -99,12 +101,12 @@ export function GlobalChatProvider({ children }: GlobalChatProviderProps) {
       // Create AI client
       const client = createAIClient(provider, config.corsProxy, user?.signer);
 
-      // Build messages for API
+      // Build messages for API using captured current messages
       const systemPrompt = config.globalChatSystemPrompt || DEFAULT_GLOBAL_CHAT_SYSTEM_PROMPT;
 
       const apiMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
         { role: 'system', content: systemPrompt },
-        ...messages.map(msg => ({
+        ...currentMessages.map(msg => ({
           role: msg.role as 'user' | 'assistant',
           content: msg.content,
         })),
@@ -191,7 +193,7 @@ export function GlobalChatProvider({ children }: GlobalChatProviderProps) {
       }
       abortControllerRef.current = null;
     }
-  }, [config.corsProxy, config.globalChatSystemPrompt, isLoading, messages, settings.providers, trimMessages, user?.signer]);
+  }, [config.corsProxy, config.globalChatSystemPrompt, settings.providers, trimMessages, user?.signer]);
 
   const stopGeneration = useCallback(() => {
     if (abortControllerRef.current) {

@@ -164,11 +164,18 @@ export function GlobalChatPane() {
     const messageContent = input.trim();
     setInput('');
 
-    await sendMessage(messageContent, providerModel);
-
-    // Focus back on textarea
+    // Focus immediately so user can keep typing
     textareaRef.current?.focus();
+
+    await sendMessage(messageContent, providerModel);
   }, [input, isLoading, providerModel, sendMessage]);
+
+  // Refocus textarea when AI finishes responding
+  useEffect(() => {
+    if (!isLoading && isOpen && messages.length > 0) {
+      textareaRef.current?.focus();
+    }
+  }, [isLoading, isOpen, messages.length]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey && !isMobile) {

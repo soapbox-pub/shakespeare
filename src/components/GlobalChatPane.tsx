@@ -123,9 +123,10 @@ export function GlobalChatPane({ embedded = false, mobileChatMode, onMobileChatM
     }
   }, [providerModel, settings.recentlyUsedModels, setProviderModel]);
 
-  // Scroll to bottom and focus textarea when chat opens
+  // Scroll to bottom and focus textarea when chat opens (or when embedded mode becomes active)
   useEffect(() => {
-    if (isOpen && scrollAreaRef.current) {
+    const shouldScroll = isOpen || embedded;
+    if (shouldScroll && scrollAreaRef.current) {
       // Small delay to ensure content is rendered
       requestAnimationFrame(() => {
         if (scrollAreaRef.current) {
@@ -137,17 +138,18 @@ export function GlobalChatPane({ embedded = false, mobileChatMode, onMobileChatM
       // Reset scroll tracking when opening
       userScrolledUp.current = false;
     }
-  }, [isOpen]);
+  }, [isOpen, embedded]);
 
   // Auto-scroll to bottom when messages change or streaming content updates
   useEffect(() => {
-    if (!scrollAreaRef.current || !isOpen) return;
+    const isActive = isOpen || embedded;
+    if (!scrollAreaRef.current || !isActive) return;
 
     // Only auto-scroll if user hasn't manually scrolled up
     if (!userScrolledUp.current) {
       scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
     }
-  }, [messages, lastMessageContent, isLoading, isOpen]);
+  }, [messages, lastMessageContent, isLoading, isOpen, embedded]);
 
   // Handle scroll to detect user scrolling and show/hide scroll-to-bottom button
   const handleScroll = useCallback(() => {

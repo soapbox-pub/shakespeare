@@ -427,5 +427,20 @@
   "modified": "Ti Yipada",
   "restoreToDefault": "Pada si atilẹwa",
   "restoredToDefault": "Ti Pada si Atilẹwa",
-  "terminal": "Terminal"
+  "terminal": "Terminal",
+  "discoverPlugins": "Ṣawari Awọn Plugins",
+  "discoverPluginsDescription": "Ṣayẹwo ati fi sori ẹrọ awọn plugins Shakespeare ti a pin lori nẹtiwọọki Nostr.",
+  "searchPlugins": "Wa awọn plugins...",
+  "noPluginsFound": "Ko si awọn plugins ti o baamu wiwa rẹ.",
+  "noPluginsAvailable": "Ko si awọn plugins ti o wa ni akoko yii.",
+  "pluginInstalled": "Plugin Ti Fi Sori Ẹrọ",
+  "pluginInstalledDescription": "A ti fi plugin \"{{name}}\" sori ẹrọ ni aṣeyọri.",
+  "pluginInstallFailed": "O Kuna Lati Fi Plugin Sori Ẹrọ",
+  "noCloneUrl": "Ko Si Clone URL",
+  "noCloneUrlDescription": "Plugin yii ko ni clone URL ti a ṣeto.",
+  "installed": "Ti Fi Sori Ẹrọ",
+  "install": "Fi Sori Ẹrọ",
+  "installing": "N Fi Sori Ẹrọ...",
+  "by": "nipasẹ",
+  "website": "Oju opo wẹẹbu"
 }

@@ -439,5 +439,20 @@
   "modified": "已修改",
   "restoreToDefault": "恢复默认值",
   "restoredToDefault": "已恢复默认值",
-  "terminal": "终端"
+  "terminal": "终端",
+  "discoverPlugins": "发现插件",
+  "discoverPluginsDescription": "浏览并安装在 Nostr 网络上共享的 Shakespeare 插件。",
+  "searchPlugins": "搜索插件...",
+  "noPluginsFound": "未找到与您搜索匹配的插件。",
+  "noPluginsAvailable": "目前没有可用的插件。",
+  "pluginInstalled": "插件已安装",
+  "pluginInstalledDescription": "插件 \"{{name}}\" 已成功安装。",
+  "pluginInstallFailed": "安装插件失败",
+  "noCloneUrl": "无克隆 URL",
+  "noCloneUrlDescription": "此插件未配置克隆 URL。",
+  "installed": "已安装",
+  "install": "安装",
+  "installing": "安装中...",
+  "by": "作者",
+  "website": "网站"
 }

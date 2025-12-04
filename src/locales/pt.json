@@ -439,5 +439,20 @@
   "modified": "Modificado",
   "restoreToDefault": "Restaurar para padrão",
   "restoredToDefault": "Restaurado para Padrão",
-  "terminal": "Terminal"
+  "terminal": "Terminal",
+  "discoverPlugins": "Descobrir Plugins",
+  "discoverPluginsDescription": "Navegue e instale plugins do Shakespeare compartilhados na rede Nostr.",
+  "searchPlugins": "Buscar plugins...",
+  "noPluginsFound": "Nenhum plugin encontrado correspondente à sua busca.",
+  "noPluginsAvailable": "Nenhum plugin disponível no momento.",
+  "pluginInstalled": "Plugin Instalado",
+  "pluginInstalledDescription": "Plugin \"{{name}}\" foi instalado com sucesso.",
+  "pluginInstallFailed": "Falha ao Instalar Plugin",
+  "noCloneUrl": "Sem URL de Clone",
+  "noCloneUrlDescription": "Este plugin não tem uma URL de clone configurada.",
+  "installed": "Instalado",
+  "install": "Instalar",
+  "installing": "Instalando...",
+  "by": "por",
+  "website": "Site"
 }

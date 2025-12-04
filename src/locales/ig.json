@@ -427,5 +427,20 @@
   "modified": "Gbanwere",
   "restoreToDefault": "Weghachi na nke mbụ",
   "restoredToDefault": "Weghachiri na Nke Mbụ",
-  "terminal": "Terminal"
+  "terminal": "Terminal",
+  "discoverPlugins": "Chọpụta Plugins",
+  "discoverPluginsDescription": "Chọgharịa ma wụnye plugins Shakespeare nke ekekọrịtara na netwọk Nostr.",
+  "searchPlugins": "Chọọ plugins...",
+  "noPluginsFound": "Achọtaghị plugins dabara na nchọgharị gị.",
+  "noPluginsAvailable": "Enweghị plugins dị ugbu a.",
+  "pluginInstalled": "Ewubatara Plugin",
+  "pluginInstalledDescription": "Ewubatara plugin \"{{name}}\" nke ọma.",
+  "pluginInstallFailed": "Ọ Dara Ada Ịwụnye Plugin",
+  "noCloneUrl": "Enweghị Clone URL",
+  "noCloneUrlDescription": "Plugin a enweghị clone URL edoziri.",
+  "installed": "Ewubatara",
+  "install": "Wụnye",
+  "installing": "Na-ewunye...",
+  "by": "site na",
+  "website": "Webụsaịtị"
 }

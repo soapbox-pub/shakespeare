@@ -430,5 +430,20 @@
   "modified": "An Canza",
   "restoreToDefault": "Mayar da asali",
   "restoredToDefault": "An Mayar da Asali",
-  "terminal": "Terminal"
+  "terminal": "Terminal",
+  "discoverPlugins": "Gano Plugins",
+  "discoverPluginsDescription": "Bincika kuma shigar da plugins na Shakespeare da aka raba akan hanyar sadarwa ta Nostr.",
+  "searchPlugins": "Bincika plugins...",
+  "noPluginsFound": "Ba a sami plugins da suka dace da bincikenka ba.",
+  "noPluginsAvailable": "Babu plugins a wannan lokaci.",
+  "pluginInstalled": "An Shigar da Plugin",
+  "pluginInstalledDescription": "An shigar da plugin \"{{name}}\" cikin nasara.",
+  "pluginInstallFailed": "An Kasa Shigar da Plugin",
+  "noCloneUrl": "Babu Clone URL",
+  "noCloneUrlDescription": "Wannan plugin ba shi da clone URL da aka saita.",
+  "installed": "An Shigar",
+  "install": "Shigar",
+  "installing": "Ana Shigarwa...",
+  "by": "ta",
+  "website": "Gidan Yanar Gizo"
 }

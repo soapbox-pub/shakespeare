@@ -65,12 +65,9 @@ export class DenoDeployAdapter implements DeployAdapter {
     const assets: Record<string, { kind: string; content: string; encoding: string }> = {};
     await this.collectFiles(distPath, '', assets);
 
-    // Step 3: Create deployment with assets
-    const deployment = await this.createDeployment(project.id, assets);
-
-    // Step 4: Attach the deno.dev domain to the deployment
+    // Step 3: Create deployment with assets and domain
     const domain = `${project.name}.deno.dev`;
-    await this.attachDomain(deployment.id, `{project.name}.deno.dev`);
+    const deployment = await this.createDeployment(project.id, assets, domain);
 
     return {
       url: `https://${domain}`,
@@ -140,18 +137,19 @@ export class DenoDeployAdapter implements DeployAdapter {
 
   private async createDeployment(
     projectId: string,
-    assets: Record<string, { kind: string; content: string; encoding: string }>
+    assets: Record<string, { kind: string; content: string; encoding: string }>,
+    domain: string
   ): Promise<Deployment> {
     const url = `${this.baseURL}/projects/${projectId}/deployments`;
     const targetUrl = this.corsProxy ? proxyUrl(this.corsProxy, url) : url;
 
     // Create a minimal server script that serves static files
     // For static sites, we use a simple file server entry point
-    const entryPointUrl = 'file:///src/main.ts';
+    const entryPointUrl = 'main.ts';
 
     // Add the entry point script that serves static files
     const serverScript = `
-import { serveDir } from "https://deno.land/std@0.208.0/http/file_server.ts";
+import { serveDir } from "jsr:@std/http/file-server";
 
 Deno.serve((req) => {
   return serveDir(req, {
@@ -163,7 +161,7 @@ Deno.serve((req) => {
 `;
 
     // Add the server script to assets
-    assets['src/main.ts'] = {
+    assets['main.ts'] = {
       kind: 'file',
       content: serverScript,
       encoding: 'utf-8',
@@ -182,6 +180,8 @@ Deno.serve((req) => {
         lockFileUrl: null,
         compilerOptions: null,
         envVars: {},
+        // Attach domain during deployment creation instead of separately
+        domains: [domain],
       }),
     });
 
@@ -191,25 +191,6 @@ Deno.serve((req) => {
     }
 
     return response.json();
-  }
-
-  private async attachDomain(deploymentId: string, domain: string): Promise<void> {
-    const url = `${this.baseURL}/deployments/${deploymentId}/domains/${encodeURIComponent(domain)}`;
-    const targetUrl = this.corsProxy ? proxyUrl(this.corsProxy, url) : url;
-
-    const response = await fetch(targetUrl, {
-      method: 'PUT',
-      headers: {
-        'Authorization': `Bearer ${this.apiKey}`,
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => 'Unknown error');
-      // Don't throw on domain attachment failure - deployment still succeeded
-      console.warn(`Failed to attach domain: ${response.status} ${response.statusText}. ${errorText}`);
-    }
   }
 
   private async collectFiles(

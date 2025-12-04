@@ -113,12 +113,20 @@ const cloudflareProviderSchema = baseDeployProviderSchema.extend({
   baseURL: z.string().optional(),
 });
 
+const denoDeployProviderSchema = baseDeployProviderSchema.extend({
+  type: z.literal('deno'),
+  apiKey: z.string(),
+  organizationId: z.string(),
+  baseURL: z.string().optional(),
+});
+
 const deployProviderSchema: z.ZodType<DeployProvider> = z.discriminatedUnion('type', [
   shakespeareDeployProviderSchema,
   netlifyProviderSchema,
   vercelProviderSchema,
   nsiteProviderSchema,
   cloudflareProviderSchema,
+  denoDeployProviderSchema,
 ]);
 
 const deploySettingsSchema = z.object({

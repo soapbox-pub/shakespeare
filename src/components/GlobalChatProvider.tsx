@@ -127,6 +127,7 @@ export function GlobalChatProvider({ children }: GlobalChatProviderProps) {
       });
 
       let fullContent = '';
+      let loadingReleased = false;
 
       for await (const chunk of stream) {
         const delta = chunk.choices[0]?.delta?.content || '';
@@ -143,10 +144,14 @@ export function GlobalChatProvider({ children }: GlobalChatProviderProps) {
         });
 
         // Check if the stream is finished (finish_reason is set)
+        // Only release once to avoid multiple state updates
         const finishReason = chunk.choices[0]?.finish_reason;
-        if (finishReason) {
+        if (finishReason && !loadingReleased) {
+          loadingReleased = true;
           // Response is complete, release the input immediately
           setIsLoading(false);
+          // Break out of the loop - we don't need any more chunks
+          break;
         }
       }
 

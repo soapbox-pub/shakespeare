@@ -113,7 +113,7 @@ export function GlobalChatPane() {
     }
   }, [providerModel, settings.recentlyUsedModels, setProviderModel]);
 
-  // Scroll to bottom when chat opens
+  // Scroll to bottom and focus textarea when chat opens
   useEffect(() => {
     if (isOpen && scrollAreaRef.current) {
       // Small delay to ensure content is rendered
@@ -121,6 +121,8 @@ export function GlobalChatPane() {
         if (scrollAreaRef.current) {
           scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
         }
+        // Focus the textarea so user can start typing immediately
+        textareaRef.current?.focus();
       });
       // Reset scroll tracking when opening
       userScrolledUp.current = false;

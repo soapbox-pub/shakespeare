@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { X, Minimize2, Trash2, Copy, Check, ChevronDown, ArrowUp, Square, Loader2 } from 'lucide-react';
+import { X, Minus, Trash2, Copy, Check, ChevronDown, ArrowUp, Square, Loader2 } from 'lucide-react';
 import { Streamdown } from 'streamdown';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -343,7 +343,7 @@ export function GlobalChatPane() {
                 className="h-7 w-7"
                 onClick={() => setIsOpen(false)}
               >
-                <Minimize2 className="h-3.5 w-3.5" />
+                <Minus className="h-3.5 w-3.5" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>{t('minimizeChat')}</TooltipContent>

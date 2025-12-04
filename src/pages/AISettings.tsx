@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Check, Bot, ArrowLeft, Trash2, GripVertical, ChevronDown, RotateCcw, FileText, Plus, Edit } from 'lucide-react';
+import { Check, Bot, ArrowLeft, Trash2, GripVertical, ChevronDown, RotateCcw, FileText, Plus, Edit, MessageCircle } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -44,6 +44,7 @@ import { MCPServersSection } from '@/components/MCPServersSection';
 import { PluginsSection } from '@/components/PluginsSection';
 import { ProjectTemplatesSection } from '@/components/ProjectTemplatesSection';
 import { defaultSystemPrompt } from '@/lib/system';
+import { defaultGlobalChatSystemPrompt } from '@/lib/globalChatSystem';
 
 interface SortableProviderItemProps {
   provider: AIProvider;
@@ -217,17 +218,33 @@ export function AISettings() {
   const [activeCreditsDialog, setActiveCreditsDialog] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [systemPromptInput, setSystemPromptInput] = useState(config.systemPrompt || defaultSystemPrompt);
+  const [chatSystemPromptInput, setChatSystemPromptInput] = useState(
+    config.globalChatSystemPrompt || defaultGlobalChatSystemPrompt
+  );
 
   // Check if system prompt differs from default
   const isSystemPromptModified = useMemo(() =>
     (config.systemPrompt || defaultSystemPrompt) !== (defaultConfig.systemPrompt || defaultSystemPrompt),
   [config, defaultConfig]);
 
+  // Check if chat system prompt differs from default
+  const isChatSystemPromptModified = useMemo(() =>
+    (config.globalChatSystemPrompt || defaultGlobalChatSystemPrompt) !== defaultGlobalChatSystemPrompt,
+  [config]);
+
   const restoreSystemPrompt = () => {
     const defaultValue = defaultSystemPrompt;
     setSystemPromptInput(defaultValue);
     updateConfig((current) => {
       const { systemPrompt, ...rest } = current;
+      return rest;
+    });
+  };
+
+  const restoreChatSystemPrompt = () => {
+    setChatSystemPromptInput(defaultGlobalChatSystemPrompt);
+    updateConfig((current) => {
+      const { globalChatSystemPrompt, ...rest } = current;
       return rest;
     });
   };
@@ -684,28 +701,34 @@ export function AISettings() {
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <FileText className="h-5 w-5 text-primary" />
-                    <h3 className="text-lg font-semibold">{t('systemPrompt')}</h3>
-                    {isSystemPromptModified && (
+                    <h3 className="text-lg font-semibold">{t('systemPrompts')}</h3>
+                    {(isSystemPromptModified || isChatSystemPromptModified) && (
                       <div className="h-2 w-2 rounded-full bg-yellow-500" title={t('modified')} />
                     )}
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    {t('systemPromptDescription')}
+                    {t('systemPromptsDescription')}
                   </p>
                 </div>
-                <Accordion type="single" collapsible className="w-full">
+                <Accordion type="single" collapsible className="w-full space-y-2">
                   <AccordionItem value="system-prompt" className="border rounded-lg">
                     <AccordionTrigger className="px-4 py-3 hover:no-underline">
                       <div className="flex items-center gap-2">
                         <Edit className="h-4 w-4" />
-                        <span className="font-medium">{t('systemPrompt')}</span>
+                        <span className="font-medium">{t('projectSystemPrompt')}</span>
+                        {isSystemPromptModified && (
+                          <div className="h-2 w-2 rounded-full bg-yellow-500" title={t('modified')} />
+                        )}
                       </div>
                     </AccordionTrigger>
                     <AccordionContent className="px-4 pb-4">
                       <div className="space-y-2">
+                        <p className="text-xs text-muted-foreground mb-2">
+                          {t('projectSystemPromptDescription')}
+                        </p>
                         <Textarea
                           id="system-prompt"
-                          placeholder="Enter EJS template..."
+                          placeholder="Enter Nunjucks template..."
                           value={systemPromptInput}
                           onChange={(e) => {
                             const value = e.target.value;
@@ -721,6 +744,48 @@ export function AISettings() {
                           <Button
                             variant="outline"
                             onClick={restoreSystemPrompt}
+                            className="w-full"
+                          >
+                            <RotateCcw className="h-4 w-4 mr-2" />
+                            {t('restoreToDefault')}
+                          </Button>
+                        )}
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                  <AccordionItem value="chat-system-prompt" className="border rounded-lg">
+                    <AccordionTrigger className="px-4 py-3 hover:no-underline">
+                      <div className="flex items-center gap-2">
+                        <MessageCircle className="h-4 w-4" />
+                        <span className="font-medium">{t('globalChatSystemPrompt')}</span>
+                        {isChatSystemPromptModified && (
+                          <div className="h-2 w-2 rounded-full bg-yellow-500" title={t('modified')} />
+                        )}
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="px-4 pb-4">
+                      <div className="space-y-2">
+                        <p className="text-xs text-muted-foreground mb-2">
+                          {t('globalChatSystemPromptDescription')}
+                        </p>
+                        <Textarea
+                          id="chat-system-prompt"
+                          placeholder="Enter system prompt..."
+                          value={chatSystemPromptInput}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            setChatSystemPromptInput(value);
+                            updateConfig((current) => ({
+                              ...current,
+                              globalChatSystemPrompt: value,
+                            }));
+                          }}
+                          className="flex-1 font-mono text-xs min-h-[300px]"
+                        />
+                        {isChatSystemPromptModified && (
+                          <Button
+                            variant="outline"
+                            onClick={restoreChatSystemPrompt}
                             className="w-full"
                           >
                             <RotateCcw className="h-4 w-4 mr-2" />

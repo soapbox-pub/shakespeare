@@ -7,15 +7,11 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { parseProviderModel } from '@/lib/parseProviderModel';
 import { createAIClient } from '@/lib/ai-client';
+import { defaultGlobalChatSystemPrompt } from '@/lib/globalChatSystem';
 
 // Maximum context size in characters (approximately 50k tokens worth)
 // This leaves room for the system prompt and response
 const MAX_CONTEXT_CHARS = 150000;
-
-// Default system prompt for global chat
-const DEFAULT_GLOBAL_CHAT_SYSTEM_PROMPT = `You are a helpful AI assistant. You're here to have a friendly conversation and help answer questions on any topic.
-
-Keep your responses concise but informative. Be friendly and conversational.`;
 
 interface GlobalChatProviderProps {
   children: ReactNode;
@@ -102,7 +98,7 @@ export function GlobalChatProvider({ children }: GlobalChatProviderProps) {
       const client = createAIClient(provider, config.corsProxy, user?.signer);
 
       // Build messages for API using captured current messages
-      const systemPrompt = config.globalChatSystemPrompt || DEFAULT_GLOBAL_CHAT_SYSTEM_PROMPT;
+      const systemPrompt = config.globalChatSystemPrompt || defaultGlobalChatSystemPrompt;
 
       const apiMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
         { role: 'system', content: systemPrompt },

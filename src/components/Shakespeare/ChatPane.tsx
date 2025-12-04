@@ -377,6 +377,8 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   const scrollToBottom = useCallback(() => {
     if (scrollAreaRef.current) {
       scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+      // Reset the flag so auto-scroll resumes
+      userScrolledUp.current = false;
     }
   }, []);
 
@@ -427,17 +429,34 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     };
   }, [messages]); // Re-run when messages change to ensure proper setup
 
+  // Track whether user has manually scrolled up
+  const userScrolledUp = useRef(false);
+
+  // Detect when user manually scrolls
   useEffect(() => {
-    if (scrollAreaRef.current && (messages || streamingMessage)) {
-      // Check if user was already at or near the bottom (within 100px threshold)
+    const container = scrollAreaRef.current;
+    if (!container) return;
+
+    const handleUserScroll = () => {
       const threshold = 100;
-      const container = scrollAreaRef.current;
       const isNearBottom = container.scrollTop + container.clientHeight >= container.scrollHeight - threshold;
 
-      // Only auto-scroll if user was already near the bottom
-      if (isNearBottom) {
-        container.scrollTop = container.scrollHeight;
-      }
+      // If user scrolled away from bottom, mark it
+      // If user scrolled back to bottom, reset the flag
+      userScrolledUp.current = !isNearBottom;
+    };
+
+    container.addEventListener('scroll', handleUserScroll);
+    return () => container.removeEventListener('scroll', handleUserScroll);
+  }, []);
+
+  // Auto-scroll when messages change or streaming content updates
+  useEffect(() => {
+    if (!scrollAreaRef.current) return;
+
+    // Only auto-scroll if user hasn't manually scrolled up
+    if (!userScrolledUp.current) {
+      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
     }
   }, [messages, streamingMessage, isLoading]);
 
@@ -448,6 +467,8 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
       const timer = setTimeout(() => {
         scrollToBottom();
         scrolledProjects.add(projectId);
+        // Reset the userScrolledUp flag when switching projects
+        userScrolledUp.current = false;
       }, 100);
 
       return () => clearTimeout(timer);

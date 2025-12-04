@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Rocket, ArrowLeft, Trash2, Check, GripVertical, ChevronDown, Plus } from 'lucide-react';
+import { Rocket, ArrowLeft, Trash2, Check, GripVertical, ChevronDown, Plus, ExternalLink } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   DropdownMenu,
@@ -673,31 +673,20 @@ export function DeploySettings() {
                 return (
                   <Card key={preset.id}>
                     <CardContent className="p-4 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          {(() => {
-                            const url = getProviderUrl(preset);
-                            return url ? (
-                              <ExternalFavicon
-                                url={url}
-                                size={16}
-                                fallback={<Rocket size={16} />}
-                              />
-                            ) : (
-                              <Rocket size={16} />
-                            );
-                          })()}
-                          <h5 className="font-medium">{preset.name}</h5>
-                        </div>
-                        {preset.apiKeyURL && !isOAuthConfigured && (
-                          <button
-                            type="button"
-                            className="text-xs text-muted-foreground underline hover:text-foreground"
-                            onClick={() => window.open(preset.apiKeyURL, '_blank')}
-                          >
-                            {t('getApiKey')}
-                          </button>
-                        )}
+                      <div className="flex items-center gap-2">
+                        {(() => {
+                          const url = getProviderUrl(preset);
+                          return url ? (
+                            <ExternalFavicon
+                              url={url}
+                              size={16}
+                              fallback={<Rocket size={16} />}
+                            />
+                          ) : (
+                            <Rocket size={16} />
+                          );
+                        })()}
+                        <h5 className="font-medium">{preset.name}</h5>
                       </div>
                       <p className="text-sm text-muted-foreground">{preset.description}</p>
 
@@ -777,35 +766,59 @@ export function DeploySettings() {
                         <div className="space-y-2">
                           {!preset.requiresNostr && preset.type !== 'nsite' && (
                             <>
-                              <PasswordInput
-                                placeholder={preset.apiKeyLabel || t('enterApiKey')}
-                                value={presetApiKeys[preset.id] || ''}
-                                onChange={(e) => setPresetApiKeys(prev => ({
-                                  ...prev,
-                                  [preset.id]: e.target.value,
-                                }))}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter' && presetApiKeys[preset.id]?.trim() &&
-                                      (preset.type !== 'cloudflare' || presetApiKeys[`${preset.id}-accountId`]?.trim())) {
-                                    handleAddPresetProvider(preset);
-                                  }
-                                }}
-                              />
-                              {preset.type === 'cloudflare' && (
-                                <Input
-                                  placeholder={preset.accountIdLabel || 'Account ID'}
-                                  value={presetApiKeys[`${preset.id}-accountId`] || ''}
+                              <div className="relative">
+                                <PasswordInput
+                                  placeholder={preset.apiKeyLabel || t('enterApiKey')}
+                                  value={presetApiKeys[preset.id] || ''}
                                   onChange={(e) => setPresetApiKeys(prev => ({
                                     ...prev,
-                                    [`${preset.id}-accountId`]: e.target.value,
+                                    [preset.id]: e.target.value,
                                   }))}
                                   onKeyDown={(e) => {
                                     if (e.key === 'Enter' && presetApiKeys[preset.id]?.trim() &&
-                                        presetApiKeys[`${preset.id}-accountId`]?.trim()) {
+                                        (preset.type !== 'cloudflare' || presetApiKeys[`${preset.id}-accountId`]?.trim())) {
                                       handleAddPresetProvider(preset);
                                     }
                                   }}
                                 />
+                                {preset.apiKeyURL && !presetApiKeys[preset.id] && (
+                                  <button
+                                    type="button"
+                                    className="absolute right-11 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-accent"
+                                    onClick={() => window.open(preset.apiKeyURL, '_blank')}
+                                  >
+                                    Get Key
+                                    <ExternalLink className="h-3 w-3" />
+                                  </button>
+                                )}
+                              </div>
+                              {preset.type === 'cloudflare' && (
+                                <div className="relative">
+                                  <Input
+                                    placeholder={preset.accountIdLabel || 'Account ID'}
+                                    value={presetApiKeys[`${preset.id}-accountId`] || ''}
+                                    onChange={(e) => setPresetApiKeys(prev => ({
+                                      ...prev,
+                                      [`${preset.id}-accountId`]: e.target.value,
+                                    }))}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter' && presetApiKeys[preset.id]?.trim() &&
+                                          presetApiKeys[`${preset.id}-accountId`]?.trim()) {
+                                        handleAddPresetProvider(preset);
+                                      }
+                                    }}
+                                  />
+                                  {preset.accountIdURL && !presetApiKeys[`${preset.id}-accountId`] && (
+                                    <button
+                                      type="button"
+                                      className="absolute right-3 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-accent"
+                                      onClick={() => window.open(preset.accountIdURL, '_blank')}
+                                    >
+                                      Find ID
+                                      <ExternalLink className="h-3 w-3" />
+                                    </button>
+                                  )}
+                                </div>
                               )}
                             </>
                           )}

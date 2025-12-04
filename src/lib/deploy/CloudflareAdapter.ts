@@ -66,20 +66,28 @@ export class CloudflareAdapter implements DeployAdapter {
       project = await this.createProject(activeProjectName);
     }
 
-    // Create FormData for deployment
-    const formData = new FormData();
+    // Collect all files and create manifest
+    const files: Record<string, string> = {};
+    const fileContents: Record<string, Uint8Array> = {};
+    await this.collectFiles(distPath, '', files, fileContents);
 
-    // Collect all files from dist directory
-    await this.addFilesToFormData(distPath, '', formData);
-
-    // Deploy to Cloudflare Pages
-    const deployment = await this.createDeployment(project.name, formData);
+    // Deploy to Cloudflare Pages using Direct Upload
+    const deployment = await this.createDeployment(project.name, files, fileContents);
 
     // Construct the production URL
-    const productionUrl = `https://${project.subdomain}.pages.dev`;
+    // The subdomain from the API response already includes the full domain
+    // e.g., "error-button.pages.dev" not just "error-button"
+    let productionUrl: string;
+    if (project.subdomain.includes('.')) {
+      // Subdomain already includes the domain
+      productionUrl = `https://${project.subdomain}`;
+    } else {
+      // Subdomain is just the name, append .pages.dev
+      productionUrl = `https://${project.subdomain}.pages.dev`;
+    }
 
     return {
-      url: productionUrl,
+      url: deployment.url,
       metadata: {
         deploymentId: deployment.id,
         projectId: project.id,
@@ -107,6 +115,10 @@ export class CloudflareAdapter implements DeployAdapter {
     }
 
     const data = await response.json();
+
+    // Log the project response for debugging
+    console.log('Cloudflare project response:', data);
+
     return data.result;
   }
 
@@ -135,9 +147,23 @@ export class CloudflareAdapter implements DeployAdapter {
     return data.result;
   }
 
-  private async createDeployment(projectName: string, formData: FormData): Promise<CloudflareDeployment> {
+  private async createDeployment(
+    projectName: string,
+    manifest: Record<string, string>,
+    fileContents: Record<string, Uint8Array>
+  ): Promise<CloudflareDeployment> {
     const url = `${this.baseURL}/accounts/${this.accountId}/pages/projects/${projectName}/deployments`;
     const targetUrl = this.corsProxy ? proxyUrl(this.corsProxy, url) : url;
+
+    // Create FormData with manifest
+    const formData = new FormData();
+    formData.append('manifest', JSON.stringify(manifest));
+
+    // Add all files to FormData
+    for (const [path, content] of Object.entries(fileContents)) {
+      const blob = new Blob([content]);
+      formData.append(path, blob, path);
+    }
 
     const response = await fetch(targetUrl, {
       method: 'POST',
@@ -153,13 +179,18 @@ export class CloudflareAdapter implements DeployAdapter {
     }
 
     const data = await response.json();
+
+    // Log the response for debugging
+    console.log('Cloudflare deployment response:', data);
+
     return data.result;
   }
 
-  private async addFilesToFormData(
+  private async collectFiles(
     dirPath: string,
     relativePath: string,
-    formData: FormData
+    manifest: Record<string, string>,
+    fileContents: Record<string, Uint8Array>
   ): Promise<void> {
     try {
       const entries = await this.fs.readdir(dirPath, { withFileTypes: true });
@@ -169,24 +200,30 @@ export class CloudflareAdapter implements DeployAdapter {
         const entryRelativePath = relativePath ? `${relativePath}/${entry.name}` : entry.name;
 
         if (entry.isDirectory()) {
-          // Recursively add files from subdirectories
-          await this.addFilesToFormData(fullPath, entryRelativePath, formData);
+          // Recursively collect files from subdirectories
+          await this.collectFiles(fullPath, entryRelativePath, manifest, fileContents);
         } else if (entry.isFile()) {
           try {
             // Read file content
             const fileContent = await this.fs.readFile(fullPath);
 
-            // Convert to Blob for FormData
-            let blob: Blob;
+            // Convert to Uint8Array
+            let content: Uint8Array;
             if (typeof fileContent === 'string') {
-              blob = new Blob([fileContent], { type: this.getMimeType(entry.name) });
+              content = new TextEncoder().encode(fileContent);
             } else {
-              // Handle Uint8Array
-              blob = new Blob([fileContent], { type: this.getMimeType(entry.name) });
+              content = fileContent;
             }
 
-            // Add to FormData with the relative path as the field name
-            formData.append(entryRelativePath, blob, entry.name);
+            // Calculate hash for manifest
+            const hash = await this.calculateHash(content);
+
+            // Add to manifest with leading slash
+            const manifestPath = `/${entryRelativePath}`;
+            manifest[manifestPath] = hash;
+
+            // Store file content
+            fileContents[entryRelativePath] = content;
           } catch (error) {
             console.warn(`Failed to read file ${fullPath}:`, error);
           }
@@ -197,24 +234,11 @@ export class CloudflareAdapter implements DeployAdapter {
     }
   }
 
-  private getMimeType(filename: string): string {
-    const ext = filename.split('.').pop()?.toLowerCase();
-    const mimeTypes: Record<string, string> = {
-      'html': 'text/html',
-      'css': 'text/css',
-      'js': 'application/javascript',
-      'json': 'application/json',
-      'png': 'image/png',
-      'jpg': 'image/jpeg',
-      'jpeg': 'image/jpeg',
-      'gif': 'image/gif',
-      'svg': 'image/svg+xml',
-      'ico': 'image/x-icon',
-      'woff': 'font/woff',
-      'woff2': 'font/woff2',
-      'ttf': 'font/ttf',
-      'eot': 'application/vnd.ms-fontobject',
-    };
-    return mimeTypes[ext || ''] || 'application/octet-stream';
+  private async calculateHash(content: Uint8Array): Promise<string> {
+    // Use SHA-256 to calculate hash
+    const hashBuffer = await crypto.subtle.digest('SHA-256', content);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    return hashHex;
   }
 }

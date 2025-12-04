@@ -784,7 +784,7 @@ export function DeploySettings() {
                                 {preset.apiKeyURL && !presetApiKeys[preset.id] && (
                                   <button
                                     type="button"
-                                    className="absolute right-11 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-accent"
+                                    className="absolute right-11 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-muted"
                                     onClick={() => window.open(preset.apiKeyURL, '_blank')}
                                   >
                                     Get Key
@@ -811,7 +811,7 @@ export function DeploySettings() {
                                   {preset.accountIdURL && !presetApiKeys[`${preset.id}-accountId`] && (
                                     <button
                                       type="button"
-                                      className="absolute right-3 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-accent"
+                                      className="absolute right-3 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-muted"
                                       onClick={() => window.open(preset.accountIdURL, '_blank')}
                                     >
                                       Find ID

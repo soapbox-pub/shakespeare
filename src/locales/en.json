@@ -543,5 +543,12 @@
   "templateDeleted": "Template Deleted",
   "templateDeletedDescription": "Project template '{{name}}' has been deleted.",
   "noTemplatesConfigured": "No project templates configured yet. Add a template to get started.",
-  "atLeastOneTemplateRequired": "At least one template is required"
+  "atLeastOneTemplateRequired": "At least one template is required",
+  "duplicateProject": "Duplicate Project",
+  "duplicatingProject": "Duplicating project...",
+  "projectDuplicated": "Project duplicated",
+  "projectDuplicatedDescription": "Project has been duplicated successfully.",
+  "failedToDuplicateProject": "Failed to duplicate project",
+  "newProjectName": "New Project Name",
+  "duplicateProjectDescription": "Create a copy of this project with a new name"
 }

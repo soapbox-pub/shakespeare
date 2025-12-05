@@ -459,5 +459,12 @@
   "loginToDiscoverPlugins": "使用 Nostr 登录以发现您关注的人的插件。",
   "noPluginsFromNetwork": "未找到插件",
   "noPluginsFromNetworkDescription": "未找到您关注的人的插件。在 Nostr 上关注插件开发者以在此处查看他们的插件。",
-  "tryDifferentSearch": "尝试不同的搜索词。"
+  "tryDifferentSearch": "尝试不同的搜索词。",
+  "duplicateProject": "复制项目",
+  "duplicatingProject": "正在复制项目...",
+  "projectDuplicated": "项目已复制",
+  "projectDuplicatedDescription": "项目已成功复制。",
+  "failedToDuplicateProject": "复制项目失败",
+  "newProjectName": "新项目名称",
+  "duplicateProjectDescription": "使用新名称创建此项目的副本"
 }

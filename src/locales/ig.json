@@ -447,5 +447,12 @@
   "loginToDiscoverPlugins": "Banye na Nostr iji chọpụta plugins sitere na ndị ị na-eso.",
   "noPluginsFromNetwork": "Achọtaghị Plugins",
   "noPluginsFromNetworkDescription": "Achọtaghị plugins sitere na ndị ị na-eso. Soro ndị mmepe plugin na Nostr iji hụ plugins ha ebe a.",
-  "tryDifferentSearch": "Gbalịa okwu nchọgharị dị iche."
+  "tryDifferentSearch": "Gbalịa okwu nchọgharị dị iche.",
+  "duplicateProject": "Mepụta Ọrụ",
+  "duplicatingProject": "Na-emepụta ọrụ...",
+  "projectDuplicated": "Emepụtara ọrụ",
+  "projectDuplicatedDescription": "Emepụtara ọrụ nke ọma.",
+  "failedToDuplicateProject": "Ọ dara ada imepụta ọrụ",
+  "newProjectName": "Aha Ọrụ Ọhụrụ",
+  "duplicateProjectDescription": "Mepụta oyiri nke ọrụ a na aha ọhụrụ"
 }

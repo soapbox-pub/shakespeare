@@ -447,5 +447,12 @@
   "loginToDiscoverPlugins": "Wọle pẹlu Nostr lati ṣawari awọn plugins lati ọdọ awọn eniyan ti o ntẹle.",
   "noPluginsFromNetwork": "Ko Ri Plugins",
   "noPluginsFromNetworkDescription": "Ko ri awọn plugins lati ọdọ awọn eniyan ti o ntẹle. Tẹle awọn olupilẹṣẹ plugin lori Nostr lati rii awọn plugins wọn nibi.",
-  "tryDifferentSearch": "Gbiyanju ọrọ wiwa miiran."
+  "tryDifferentSearch": "Gbiyanju ọrọ wiwa miiran.",
+  "duplicateProject": "Ṣe Ẹda Iṣẹ Akanṣe",
+  "duplicatingProject": "N ṣe ẹda iṣẹ akanṣe...",
+  "projectDuplicated": "Iṣẹ akanṣe ti ṣe ẹda",
+  "projectDuplicatedDescription": "Iṣẹ akanṣe ti ṣe ẹda ni aṣeyọri.",
+  "failedToDuplicateProject": "O kuna lati ṣe ẹda iṣẹ akanṣe",
+  "newProjectName": "Orukọ Iṣẹ Akanṣe Tuntun",
+  "duplicateProjectDescription": "Ṣẹda ẹda ti iṣẹ akanṣe yii pẹlu orukọ tuntun"
 }

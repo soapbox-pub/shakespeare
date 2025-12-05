@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -13,10 +14,12 @@ import {
   History,
   Folder,
   Rocket,
+  Copy,
 } from 'lucide-react';
 import { GitHistoryDialog } from '@/components/ai/GitHistoryDialog';
 import { GitDialog } from '@/components/GitDialog';
 import { DeployDialog } from '@/components/DeployDialog';
+import { DuplicateProjectDialog } from '@/components/DuplicateProjectDialog';
 
 interface ActionsMenuProps {
   projectId: string;
@@ -39,9 +42,11 @@ export function ActionsMenu({
   disabled = false,
   onFirstInteraction: _onFirstInteraction,
 }: ActionsMenuProps) {
+  const { t } = useTranslation();
   const [gitHistoryOpen, setGitHistoryOpen] = useState(false);
   const [gitDialogOpen, setGitDialogOpen] = useState(false);
   const [deployDialogOpen, setDeployDialogOpen] = useState(false);
+  const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
 
   const isAnyLoading = isLoading || isBuildLoading;
 
@@ -99,6 +104,15 @@ export function ActionsMenu({
           </DropdownMenuItem>
 
           <DropdownMenuItem
+            onClick={() => setDuplicateDialogOpen(true)}
+            disabled={isAnyLoading}
+            className="gap-2"
+          >
+            <Copy className="h-4 w-4" />
+            {t('duplicateProject')}
+          </DropdownMenuItem>
+
+          <DropdownMenuItem
             onClick={onProjectDetails}
             disabled={isAnyLoading}
             className="gap-2"
@@ -129,6 +143,13 @@ export function ActionsMenu({
         projectName={projectName}
         open={deployDialogOpen}
         onOpenChange={setDeployDialogOpen}
+      />
+
+      <DuplicateProjectDialog
+        projectId={projectId}
+        projectName={projectName}
+        open={duplicateDialogOpen}
+        onOpenChange={setDuplicateDialogOpen}
       />
 
     </>

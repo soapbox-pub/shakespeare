@@ -708,6 +708,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
               <div className="flex-1">
                 {hasBuiltProject ? (
                   <iframe
+                    key={projectId}
                     ref={iframeRef}
                     src={`https://${projectId}.${previewDomain}/`}
                     className="w-full h-full border-0"

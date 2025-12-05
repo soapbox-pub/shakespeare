@@ -450,5 +450,12 @@
   "loginToDiscoverPlugins": "Shiga tare da Nostr don gano plugins daga mutanen da kuke bi.",
   "noPluginsFromNetwork": "Ba a Sami Plugin ba",
   "noPluginsFromNetworkDescription": "Ba a sami plugins daga mutanen da kuke bi ba. Bi masu haɓaka plugins akan Nostr don ganin plugins nasu a nan.",
-  "tryDifferentSearch": "Gwada kalmar bincike daban."
+  "tryDifferentSearch": "Gwada kalmar bincike daban.",
+  "duplicateProject": "Kwafin Aikin",
+  "duplicatingProject": "Ana kwafin aikin...",
+  "projectDuplicated": "An kwafi aikin",
+  "projectDuplicatedDescription": "An kwafi aikin cikin nasara.",
+  "failedToDuplicateProject": "An kasa kwafin aikin",
+  "newProjectName": "Sunan Sabon Aikin",
+  "duplicateProjectDescription": "Ƙirƙiri kwafin wannan aikin da sabon suna"
 }

@@ -191,13 +191,17 @@ export function ProjectSidebar({
       if (projectLabelIds.length === 0) {
         unlabeled.push(project);
       } else {
-        // Add project to the first label group (primary label)
-        const primaryLabelId = projectLabelIds[0];
-        const group = groups.get(primaryLabelId);
-        if (group) {
-          group.push(project);
-        } else {
-          // Label might have been deleted
+        // Add project to each label group it belongs to
+        let addedToAnyGroup = false;
+        for (const labelId of projectLabelIds) {
+          const group = groups.get(labelId);
+          if (group) {
+            group.push(project);
+            addedToAnyGroup = true;
+          }
+        }
+        // If all labels were deleted, add to unlabeled
+        if (!addedToAnyGroup) {
           unlabeled.push(project);
         }
       }

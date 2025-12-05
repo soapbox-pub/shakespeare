@@ -10,7 +10,8 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
-import { useLabels, getLabelColor, LABEL_COLORS, type Label, type LabelColorName } from '@/hooks/useLabels';
+import { useLabels } from '@/hooks/useLabels';
+import { getLabelColor, LABEL_COLORS, type Label, type LabelColorName } from '@/lib/labels';
 import { useProjectLabels } from '@/hooks/useProjectLabels';
 import { LabelsManageDialog } from './LabelsManageDialog';
 import { cn } from '@/lib/utils';

@@ -44,7 +44,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { useLabels, LABEL_COLORS, getLabelColor, type LabelColorName, type Label as LabelType } from '@/hooks/useLabels';
+import { useLabels } from '@/hooks/useLabels';
+import { LABEL_COLORS, getLabelColor, type LabelColorName, type Label as LabelType } from '@/lib/labels';
 import { useProjectLabels } from '@/hooks/useProjectLabels';
 import { cn } from '@/lib/utils';
 

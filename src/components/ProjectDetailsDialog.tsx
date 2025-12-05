@@ -40,6 +40,7 @@ import {
 import JSZip from 'jszip';
 import { Separator } from './ui/separator';
 import { DotAI } from '@/lib/DotAI';
+import { LabelSelector } from '@/components/labels/LabelSelector';
 
 interface ProjectDetailsDialogProps {
   project: Project;
@@ -244,7 +245,7 @@ export function ProjectDetailsDialog({ project, open, onOpenChange, onProjectDel
       <DialogContent className="max-w-md" onOpenAutoFocus={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Folder className="h-5 w-5" />
+            <Folder className="h-5 w-5 text-primary" />
             {project.name}
           </DialogTitle>
         </DialogHeader>
@@ -262,7 +263,7 @@ export function ProjectDetailsDialog({ project, open, onOpenChange, onProjectDel
             <div className="flex items-center gap-2 text-sm">
               <DollarSign className="h-4 w-4 text-muted-foreground" />
               <span className="text-muted-foreground">Total Cost:</span>
-              <span className="font-mono">${totalCost.toFixed(6)}</span>
+              <span className="font-mono">${totalCost.toFixed(2)}</span>
             </div>
           )}
 
@@ -316,6 +317,9 @@ export function ProjectDetailsDialog({ project, open, onOpenChange, onProjectDel
               </Button>
             </div>
           </div>
+
+          {/* Labels */}
+          <LabelSelector projectId={project.id} />
 
           <Separator />
 

@@ -1,34 +1,55 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Plus, Folder, GitBranch, Loader2, ChevronDown, Star, Columns2, X, Settings, HelpCircle, Search } from 'lucide-react';
+import { Plus, Folder, GitBranch, Loader2, ChevronDown, ChevronRight, Star, Columns2, X, Settings, HelpCircle, Search, Tag, Folders } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useProjects } from '@/hooks/useProjects';
 import { useProjectSessionStatus } from '@/hooks/useProjectSessionStatus';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useIsMobile } from '@/hooks/useIsMobile';
+import { useLabels } from '@/hooks/useLabels';
+import { getLabelColor } from '@/lib/labels';
+import { useProjectLabels } from '@/hooks/useProjectLabels';
 import type { Project } from '@/lib/ProjectsManager';
 import { cn } from '@/lib/utils';
 import { useQueryClient } from '@tanstack/react-query';
 import { ShakespeareLogo } from '@/components/ShakespeareLogo';
+import { LabelsManageDialog } from '@/components/labels/LabelsManageDialog';
 
 interface ProjectItemProps {
   project: Project;
   isSelected: boolean;
   onSelect: (project: Project) => void;
   isFavorite?: boolean;
+  labelColor?: string;
 }
 
-const ProjectItem: React.FC<ProjectItemProps> = ({ project, isSelected, onSelect, isFavorite }) => {
+const ProjectItem: React.FC<ProjectItemProps> = ({
+  project,
+  isSelected,
+  onSelect,
+  isFavorite,
+  labelColor,
+}) => {
   const navigate = useNavigate();
   const { hasRunningSessions } = useProjectSessionStatus(project.id);
 
   const handleClick = () => {
     onSelect(project);
     navigate(`/project/${project.id}`);
+  };
+
+  // Determine folder icon color - always show colored icons when label exists
+  const getFolderColorClass = () => {
+    if (labelColor) {
+      const colorConfig = getLabelColor(labelColor as Parameters<typeof getLabelColor>[0]);
+      return colorConfig.text;
+    }
+    return 'text-primary';
   };
 
   return (
@@ -48,7 +69,7 @@ const ProjectItem: React.FC<ProjectItemProps> = ({ project, isSelected, onSelect
             {hasRunningSessions ? (
               <Loader2 className="h-4 w-4 animate-spin text-blue-600 dark:text-blue-400" />
             ) : (
-              <Folder className="h-4 w-4 text-primary" />
+              <Folder className={cn("h-4 w-4", getFolderColorClass())} />
             )}
           </div>
           <div className="flex justify-between gap-2 flex-1 min-w-0">
@@ -60,10 +81,8 @@ const ProjectItem: React.FC<ProjectItemProps> = ({ project, isSelected, onSelect
 
             {/* Star indicator - only shown when favorited */}
             {isFavorite && (
-              <div className="flex-shrink-0 relative -mr-1 pointer-events-none">
-                <div className="flex items-center justify-center">
-                  <Star className="h-4 w-4 text-yellow-500 fill-current" />
-                </div>
+              <div className="flex-shrink-0 relative -mr-1 pointer-events-none flex items-center justify-center">
+                <Star className="h-4 w-4 text-yellow-500 fill-current" />
               </div>
             )}
           </div>
@@ -74,6 +93,78 @@ const ProjectItem: React.FC<ProjectItemProps> = ({ project, isSelected, onSelect
 };
 
 ProjectItem.displayName = 'ProjectItem';
+
+/** Label group header component */
+interface LabelGroupHeaderProps {
+  labelName: string;
+  labelColor: string;
+  isCollapsed: boolean;
+  onToggle: () => void;
+  projectCount?: number;
+}
+
+const LabelGroupHeader: React.FC<LabelGroupHeaderProps> = ({
+  labelName,
+  labelColor,
+  isCollapsed,
+  onToggle,
+  projectCount = 0,
+}) => {
+  const colorConfig = getLabelColor(labelColor as Parameters<typeof getLabelColor>[0]);
+
+  return (
+    <button
+      onClick={onToggle}
+      className="w-full flex items-center gap-2 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+    >
+      <Tag className={cn("h-3.5 w-3.5", colorConfig.text)} />
+      <span className="flex-1 text-left truncate">{labelName}</span>
+      {isCollapsed && projectCount > 0 && (
+        <span className="text-xs text-muted-foreground/70">
+          {projectCount}
+        </span>
+      )}
+      <ChevronRight className={cn(
+        "h-3.5 w-3.5 transition-transform duration-200",
+        !isCollapsed && "rotate-90"
+      )} />
+    </button>
+  );
+};
+
+/** Other projects group header component */
+interface OtherProjectsGroupHeaderProps {
+  isCollapsed: boolean;
+  onToggle: () => void;
+  projectCount?: number;
+}
+
+const OtherProjectsGroupHeader: React.FC<OtherProjectsGroupHeaderProps> = ({
+  isCollapsed,
+  onToggle,
+  projectCount = 0,
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <button
+      onClick={onToggle}
+      className="w-full flex items-center gap-2 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+    >
+      <Folders className="h-3.5 w-3.5 text-primary" />
+      <span className="flex-1 text-left truncate">{t('otherProjects')}</span>
+      {isCollapsed && projectCount > 0 && (
+        <span className="text-xs text-muted-foreground/70">
+          {projectCount}
+        </span>
+      )}
+      <ChevronRight className={cn(
+        "h-3.5 w-3.5 transition-transform duration-200",
+        !isCollapsed && "rotate-90"
+      )} />
+    </button>
+  );
+};
 
 interface ProjectSidebarProps {
   selectedProject: Project | null;
@@ -95,9 +186,16 @@ export function ProjectSidebar({
   const { data: projects = [], isLoading, error } = useProjects();
   const [favorites] = useLocalStorage<string[]>('project-favorites', []);
   const [searchQuery, setSearchQuery] = useState('');
+  const [otherProjectsCollapsed, setOtherProjectsCollapsed] = useLocalStorage<boolean>('other-projects-collapsed', false);
+  const [labelsDialogOpen, setLabelsDialogOpen] = useState(false);
+  const { labels, toggleLabelCollapsed } = useLabels();
+  const { getProjectLabels, hasAnyLabels } = useProjectLabels();
 
   const isMobile = useIsMobile();
   const navigate = useNavigate();
+
+  // Always show grouped view when labels exist and projects have labels
+  const showGroupedView = labels.length > 0 && hasAnyLabels();
 
   // Fast in-memory search filtering
   const filteredProjects = useMemo(() => {
@@ -111,6 +209,69 @@ export function ProjectSidebar({
       project.name.toLowerCase().includes(query)
     );
   }, [projects, searchQuery]);
+
+  // Group projects by label for grouped view
+  const groupedProjects = useMemo(() => {
+    if (!showGroupedView) return null;
+
+    const groups: Map<string, Project[]> = new Map();
+    const unlabeled: Project[] = [];
+
+    // Initialize groups for each label in order
+    for (const label of labels) {
+      groups.set(label.id, []);
+    }
+
+    // Sort projects into groups
+    for (const project of filteredProjects) {
+      const projectLabelIds = getProjectLabels(project.id);
+      if (projectLabelIds.length === 0) {
+        unlabeled.push(project);
+      } else {
+        // Add project to each label group it belongs to
+        let addedToAnyGroup = false;
+        for (const labelId of projectLabelIds) {
+          const group = groups.get(labelId);
+          if (group) {
+            group.push(project);
+            addedToAnyGroup = true;
+          }
+        }
+        // If all labels were deleted, add to unlabeled
+        if (!addedToAnyGroup) {
+          unlabeled.push(project);
+        }
+      }
+    }
+
+    // Sort each group: favorites first, then by lastModified
+    const sortGroup = (projectList: Project[]) => {
+      return projectList.sort((a, b) => {
+        const aIsFavorite = favorites.includes(a.id);
+        const bIsFavorite = favorites.includes(b.id);
+        if (aIsFavorite && !bIsFavorite) return -1;
+        if (!aIsFavorite && bIsFavorite) return 1;
+        return b.lastModified.getTime() - a.lastModified.getTime();
+      });
+    };
+
+    for (const [labelId, projectList] of groups) {
+      groups.set(labelId, sortGroup(projectList));
+    }
+
+    return {
+      groups,
+      unlabeled: sortGroup(unlabeled),
+    };
+  }, [showGroupedView, labels, filteredProjects, getProjectLabels, favorites]);
+
+  // Get the first label color for a project (for colored icon display)
+  const getProjectLabelColor = (projectId: string): string | undefined => {
+    const projectLabelIds = getProjectLabels(projectId);
+    if (projectLabelIds.length === 0) return undefined;
+    const label = labels.find(l => l.id === projectLabelIds[0]);
+    return label?.color;
+  };
 
   // Custom navigate function that closes sidebar on mobile
   const navigateAndClose = (path: string) => {
@@ -206,6 +367,13 @@ export function ProjectSidebar({
                       <GitBranch className="h-4 w-4" />
                       {t('importRepository')}
                     </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => setLabelsDialogOpen(true)}
+                      className="flex items-center gap-2 w-full"
+                    >
+                      <Tag className="h-4 w-4" />
+                      {t('manageLabels')}
+                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
@@ -249,7 +417,84 @@ export function ProjectSidebar({
               <p className="text-sm">{t('noProjectsFound')}</p>
               <p className="text-xs">{t('tryDifferentSearch')}</p>
             </div>
+          ) : showGroupedView && groupedProjects ? (
+            // Grouped view by labels
+            <div className="space-y-1">
+              {/* Render each label group */}
+              {labels.map((label) => {
+                const groupProjects = groupedProjects.groups.get(label.id) || [];
+                if (groupProjects.length === 0) return null;
+
+                return (
+                  <Collapsible
+                    key={label.id}
+                    open={!label.collapsed}
+                    onOpenChange={() => toggleLabelCollapsed(label.id)}
+                  >
+                    <CollapsibleTrigger asChild>
+                      <div>
+                        <LabelGroupHeader
+                          labelName={label.name}
+                          labelColor={label.color}
+                          isCollapsed={!!label.collapsed}
+                          onToggle={() => toggleLabelCollapsed(label.id)}
+                          projectCount={groupProjects.length}
+                        />
+                      </div>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div className="space-y-0.5">
+                        {groupProjects.map((project) => (
+                          <ProjectItem
+                            key={project.id}
+                            project={project}
+                            isSelected={selectedProject?.id === project.id}
+                            onSelect={onSelectProject}
+                            isFavorite={favorites.includes(project.id)}
+                            labelColor={label.color}
+                          />
+                        ))}
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                );
+              })}
+
+              {/* Other projects (unlabeled) */}
+              {groupedProjects.unlabeled.length > 0 && (
+                <div className="mt-2">
+                  <Collapsible
+                    open={!otherProjectsCollapsed}
+                    onOpenChange={() => setOtherProjectsCollapsed(!otherProjectsCollapsed)}
+                  >
+                    <CollapsibleTrigger asChild>
+                      <div>
+                        <OtherProjectsGroupHeader
+                          isCollapsed={otherProjectsCollapsed}
+                          onToggle={() => setOtherProjectsCollapsed(!otherProjectsCollapsed)}
+                          projectCount={groupedProjects.unlabeled.length}
+                        />
+                      </div>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div className="space-y-0.5">
+                        {groupedProjects.unlabeled.map((project) => (
+                          <ProjectItem
+                            key={project.id}
+                            project={project}
+                            isSelected={selectedProject?.id === project.id}
+                            onSelect={onSelectProject}
+                            isFavorite={favorites.includes(project.id)}
+                          />
+                        ))}
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                </div>
+              )}
+            </div>
           ) : (
+            // Flat view (default)
             <div className="space-y-1">
               {filteredProjects.map((project) => (
                 <ProjectItem
@@ -258,6 +503,7 @@ export function ProjectSidebar({
                   isSelected={selectedProject?.id === project.id}
                   onSelect={onSelectProject}
                   isFavorite={favorites.includes(project.id)}
+                  labelColor={getProjectLabelColor(project.id)}
                 />
               ))}
             </div>
@@ -288,6 +534,12 @@ export function ProjectSidebar({
           </Button>
         </div>
       </div>
+
+      {/* Labels Management Dialog */}
+      <LabelsManageDialog
+        open={labelsDialogOpen}
+        onOpenChange={setLabelsDialogOpen}
+      />
     </div>
   );
 }

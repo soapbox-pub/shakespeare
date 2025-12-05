@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Plus, Folder, GitBranch, Loader2, ChevronDown, ChevronRight, Star, Columns2, X, Settings, HelpCircle, Search, Tag } from 'lucide-react';
+import { Plus, Folder, GitBranch, Loader2, ChevronDown, ChevronRight, Star, Columns2, X, Settings, HelpCircle, Search, Tag, Folders } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
@@ -131,6 +131,40 @@ const LabelGroupHeader: React.FC<LabelGroupHeaderProps> = ({
   );
 };
 
+/** Other projects group header component */
+interface OtherProjectsGroupHeaderProps {
+  isCollapsed: boolean;
+  onToggle: () => void;
+  projectCount?: number;
+}
+
+const OtherProjectsGroupHeader: React.FC<OtherProjectsGroupHeaderProps> = ({
+  isCollapsed,
+  onToggle,
+  projectCount = 0,
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <button
+      onClick={onToggle}
+      className="w-full flex items-center gap-2 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+    >
+      <Folders className="h-3.5 w-3.5 text-primary" />
+      <span className="flex-1 text-left truncate">{t('otherProjects')}</span>
+      {isCollapsed && projectCount > 0 && (
+        <span className="text-xs text-muted-foreground/70">
+          {projectCount}
+        </span>
+      )}
+      <ChevronRight className={cn(
+        "h-3.5 w-3.5 transition-transform duration-200",
+        !isCollapsed && "rotate-90"
+      )} />
+    </button>
+  );
+};
+
 interface ProjectSidebarProps {
   selectedProject: Project | null;
   onSelectProject: (project: Project | null) => void;
@@ -151,6 +185,7 @@ export function ProjectSidebar({
   const { data: projects = [], isLoading, error } = useProjects();
   const [favorites] = useLocalStorage<string[]>('project-favorites', []);
   const [searchQuery, setSearchQuery] = useState('');
+  const [otherProjectsCollapsed, setOtherProjectsCollapsed] = useLocalStorage<boolean>('other-projects-collapsed', false);
   const { labels, toggleLabelCollapsed } = useLabels();
   const { getProjectLabels, hasAnyLabels } = useProjectLabels();
 
@@ -416,23 +451,36 @@ export function ProjectSidebar({
                 );
               })}
 
-              {/* Unlabeled projects */}
+              {/* Other projects (unlabeled) */}
               {groupedProjects.unlabeled.length > 0 && (
-                <div className="space-y-0.5 mt-2">
-                  {labels.some(l => (groupedProjects.groups.get(l.id)?.length || 0) > 0) && (
-                    <div className="px-3 py-1.5">
-                      <Separator />
-                    </div>
-                  )}
-                  {groupedProjects.unlabeled.map((project) => (
-                    <ProjectItem
-                      key={project.id}
-                      project={project}
-                      isSelected={selectedProject?.id === project.id}
-                      onSelect={onSelectProject}
-                      isFavorite={favorites.includes(project.id)}
-                    />
-                  ))}
+                <div className="mt-2">
+                  <Collapsible
+                    open={!otherProjectsCollapsed}
+                    onOpenChange={() => setOtherProjectsCollapsed(!otherProjectsCollapsed)}
+                  >
+                    <CollapsibleTrigger asChild>
+                      <div>
+                        <OtherProjectsGroupHeader
+                          isCollapsed={otherProjectsCollapsed}
+                          onToggle={() => setOtherProjectsCollapsed(!otherProjectsCollapsed)}
+                          projectCount={groupedProjects.unlabeled.length}
+                        />
+                      </div>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div className="space-y-0.5">
+                        {groupedProjects.unlabeled.map((project) => (
+                          <ProjectItem
+                            key={project.id}
+                            project={project}
+                            isSelected={selectedProject?.id === project.id}
+                            onSelect={onSelectProject}
+                            isFavorite={favorites.includes(project.id)}
+                          />
+                        ))}
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
                 </div>
               )}
             </div>

@@ -454,5 +454,6 @@
   "addLabel": "Adicionar etiqueta",
   "selectLabels": "Selecionar etiquetas",
   "noLabelsCreated": "Nenhuma etiqueta criada ainda",
-  "createNewLabel": "Criar nova etiqueta"
+  "createNewLabel": "Criar nova etiqueta",
+  "otherProjects": "Outros projetos"
 }

@@ -1,8 +1,7 @@
-import { useState } from "react";
-import { Settings2, ArrowLeft, Tag } from "lucide-react";
+import { Settings2, ArrowLeft } from "lucide-react";
 import { useTranslation } from 'react-i18next';
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { ThemePicker } from "@/components/ThemePicker";
 import { LanguagePicker } from "@/components/LanguagePicker";
 import { Switch } from "@/components/ui/switch";
@@ -10,14 +9,12 @@ import { Label } from "@/components/ui/label";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useNavigate } from "react-router-dom";
 import { useAppContext } from "@/hooks/useAppContext";
-import { LabelsManageDialog } from "@/components/labels/LabelsManageDialog";
 
 export function Preferences() {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const { config, updateConfig } = useAppContext();
-  const [labelsDialogOpen, setLabelsDialogOpen] = useState(false);
 
   return (
     <div className="p-6 space-y-6">
@@ -104,34 +101,6 @@ export function Preferences() {
           </div>
         </CardContent>
       </Card>
-
-      {/* Labels Settings */}
-      <Card className="max-w-md">
-        <CardHeader className="pb-4">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Tag className="h-5 w-5 text-primary" />
-            {t('projectLabels')}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-6">
-            <div className="pt-2">
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={() => setLabelsDialogOpen(true)}
-              >
-                {t('manageLabels')}
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <LabelsManageDialog
-        open={labelsDialogOpen}
-        onOpenChange={setLabelsDialogOpen}
-      />
     </div>
   );
 }

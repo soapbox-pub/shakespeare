@@ -21,6 +21,11 @@ interface LabelSelectorProps {
   compact?: boolean;
 }
 
+const getRandomColor = (): LabelColorName => {
+  const randomIndex = Math.floor(Math.random() * LABEL_COLORS.length);
+  return LABEL_COLORS[randomIndex].name;
+};
+
 export function LabelSelector({ projectId, compact }: LabelSelectorProps) {
   const { t } = useTranslation();
   const { labels, createLabel } = useLabels();
@@ -29,7 +34,7 @@ export function LabelSelector({ projectId, compact }: LabelSelectorProps) {
   const [manageDialogOpen, setManageDialogOpen] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newLabelName, setNewLabelName] = useState('');
-  const [selectedColor, setSelectedColor] = useState<LabelColorName>('blue');
+  const [selectedColor, setSelectedColor] = useState<LabelColorName>(getRandomColor());
 
   const projectLabelIds = getProjectLabels(projectId);
   const projectLabels = labels.filter(label => projectLabelIds.includes(label.id));
@@ -50,13 +55,13 @@ export function LabelSelector({ projectId, compact }: LabelSelectorProps) {
 
     // Reset form
     setNewLabelName('');
-    setSelectedColor('blue');
+    setSelectedColor(getRandomColor());
     setShowCreateForm(false);
   };
 
   const handleCancelCreate = () => {
     setNewLabelName('');
-    setSelectedColor('blue');
+    setSelectedColor(getRandomColor());
     setShowCreateForm(false);
   };
 

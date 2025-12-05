@@ -7,7 +7,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
 import { useLabels } from '@/hooks/useLabels';
@@ -125,29 +124,33 @@ export function LabelSelector({ projectId, compact }: LabelSelectorProps) {
           </div>
 
           {labels.length > 0 ? (
-            <ScrollArea className="max-h-[200px]">
-              <div className="p-1">
-                {labels.map((label) => {
-                  const colorConfig = getLabelColor(label.color);
-                  const isSelected = projectLabelIds.includes(label.id);
-                  return (
-                    <button
-                      key={label.id}
-                      onClick={() => handleToggleLabel(label)}
-                      className={cn(
-                        'w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm',
-                        'hover:bg-muted transition-colors',
-                        isSelected && 'bg-muted'
-                      )}
-                    >
-                      <div className={cn('w-3 h-3 rounded-full', colorConfig.bg)} />
-                      <span className="flex-1 text-left">{label.name}</span>
-                      {isSelected && <Check className="h-4 w-4 text-primary" />}
-                    </button>
-                  );
-                })}
-              </div>
-            </ScrollArea>
+            <div
+              className="max-h-[200px] overflow-y-auto p-1"
+              onWheel={(e) => {
+                // Allow wheel scrolling within this container
+                e.stopPropagation();
+              }}
+            >
+              {labels.map((label) => {
+                const colorConfig = getLabelColor(label.color);
+                const isSelected = projectLabelIds.includes(label.id);
+                return (
+                  <button
+                    key={label.id}
+                    onClick={() => handleToggleLabel(label)}
+                    className={cn(
+                      'w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm',
+                      'hover:bg-muted transition-colors',
+                      isSelected && 'bg-muted'
+                    )}
+                  >
+                    <div className={cn('w-3 h-3 rounded-full', colorConfig.bg)} />
+                    <span className="flex-1 text-left">{label.name}</span>
+                    {isSelected && <Check className="h-4 w-4 text-primary" />}
+                  </button>
+                );
+              })}
+            </div>
           ) : (
             <div className="p-4 text-center text-sm text-muted-foreground">
               {t('noLabelsCreated')}

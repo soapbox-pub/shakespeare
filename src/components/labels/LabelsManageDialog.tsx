@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, Trash2, GripVertical, Pencil, Check, X } from 'lucide-react';
+import { Plus, Trash2, GripVertical, Check } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -29,6 +29,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -49,14 +55,17 @@ interface LabelsManageDialogProps {
 
 interface SortableLabelItemProps {
   label: LabelType;
-  onEdit: (label: LabelType) => void;
-  onDelete: (label: LabelType) => void;
+  onUpdate: (name: string, color: LabelColorName) => void;
+  onDelete: () => void;
   projectCount: number;
 }
 
-function SortableLabelItem({ label, onEdit, onDelete, projectCount }: SortableLabelItemProps) {
+function SortableLabelItem({ label, onUpdate, onDelete, projectCount }: SortableLabelItemProps) {
+  const { t } = useTranslation();
   const colorConfig = getLabelColor(label.color);
-  
+  const [name, setName] = useState(label.name);
+  const [color, setColor] = useState<LabelColorName>(label.color);
+
   const {
     attributes,
     listeners,
@@ -70,112 +79,165 @@ function SortableLabelItem({ label, onEdit, onDelete, projectCount }: SortableLa
     transform: CSS.Transform.toString(transform),
     transition,
   };
-  
+
+  const handleSave = () => {
+    if (name.trim() && (name !== label.name || color !== label.color)) {
+      onUpdate(name.trim(), color);
+    }
+  };
+
+  const hasChanges = name.trim() !== label.name || color !== label.color;
+
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className={cn(
-        "flex items-center gap-2 p-2 rounded-lg hover:bg-muted/50 group bg-background",
-        isDragging && "opacity-50 shadow-lg z-50"
-      )}
+      className={cn(isDragging && "opacity-50")}
     >
-      <button
-        type="button"
-        className="h-4 w-4 text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing touch-none"
-        {...attributes}
-        {...listeners}
-      >
-        <GripVertical className="h-4 w-4" />
-      </button>
-      <div className={cn('w-3 h-3 rounded-full flex-shrink-0', colorConfig.bg)} />
-      <span className="flex-1 text-sm font-medium truncate">{label.name}</span>
-      <span className="text-xs text-muted-foreground flex-shrink-0">
-        {projectCount} {projectCount === 1 ? 'project' : 'projects'}
-      </span>
-      <Button
-        variant="ghost"
-        size="sm"
-        className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 flex-shrink-0"
-        onClick={() => onEdit(label)}
-      >
-        <Pencil className="h-3.5 w-3.5" />
-      </Button>
-      <Button
-        variant="ghost"
-        size="sm"
-        className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 hover:text-destructive flex-shrink-0"
-        onClick={() => onDelete(label)}
-      >
-        <Trash2 className="h-3.5 w-3.5" />
-      </Button>
+      <AccordionItem value={label.id} className="border rounded-lg">
+        <AccordionTrigger className="hover:no-underline py-3 pl-3 pr-4 [&[data-state=open]>svg]:rotate-180">
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <button
+              type="button"
+              className="h-4 w-4 text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing touch-none flex-shrink-0"
+              onClick={(e) => e.stopPropagation()}
+              {...attributes}
+              {...listeners}
+            >
+              <GripVertical className="h-4 w-4" />
+            </button>
+            <div className={cn('w-3 h-3 rounded-full flex-shrink-0', colorConfig.bg)} />
+            <span className="text-sm font-medium truncate text-left flex-1">{label.name}</span>
+            <span className="text-xs text-muted-foreground flex-shrink-0 mx-2">
+              {projectCount} {projectCount === 1 ? 'project' : 'projects'}
+            </span>
+          </div>
+        </AccordionTrigger>
+        <AccordionContent className="pb-4 pt-2 px-3">
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor={`label-name-${label.id}`}>{t('labelName')}</Label>
+              <Input
+                id={`label-name-${label.id}`}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder={t('enterLabelName')}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>{t('labelColor')}</Label>
+              <div className="flex flex-wrap gap-2">
+                {LABEL_COLORS.map((colorOption) => (
+                  <button
+                    key={colorOption.name}
+                    type="button"
+                    onClick={() => setColor(colorOption.name)}
+                    className={cn(
+                      'w-6 h-6 rounded-full transition-all',
+                      colorOption.bg,
+                      color === colorOption.name && 'ring-2 ring-offset-2 ring-primary'
+                    )}
+                    title={colorOption.name}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <div className="flex justify-between gap-2 pt-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={onDelete}
+                className="text-destructive hover:text-destructive"
+              >
+                <Trash2 className="h-4 w-4 mr-1" />
+                {t('delete')}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleSave}
+                disabled={!name.trim() || !hasChanges}
+              >
+                <Check className="h-4 w-4 mr-1" />
+                {t('save')}
+              </Button>
+            </div>
+          </div>
+        </AccordionContent>
+      </AccordionItem>
     </div>
   );
 }
 
-interface LabelFormProps {
-  initialName?: string;
-  initialColor?: LabelColorName;
-  onSave: (name: string, color: LabelColorName) => void;
-  onCancel: () => void;
-  isEditing?: boolean;
-}
-
-function LabelForm({ initialName = '', initialColor = 'blue', onSave, onCancel, isEditing }: LabelFormProps) {
+function AddLabelItem({ onCreate }: { onCreate: (name: string, color: LabelColorName) => void }) {
   const { t } = useTranslation();
-  const [name, setName] = useState(initialName);
-  const [color, setColor] = useState<LabelColorName>(initialColor);
+  const [name, setName] = useState('');
+  const [color, setColor] = useState<LabelColorName>('blue');
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleCreate = () => {
     if (name.trim()) {
-      onSave(name.trim(), color);
+      onCreate(name.trim(), color);
+      setName('');
+      setColor('blue');
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 p-4 border rounded-lg bg-muted/30">
-      <div className="space-y-2">
-        <Label htmlFor="label-name">{t('labelName')}</Label>
-        <Input
-          id="label-name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder={t('enterLabelName')}
-          autoFocus
-        />
-      </div>
-      
-      <div className="space-y-2">
-        <Label>{t('labelColor')}</Label>
-        <div className="flex flex-wrap gap-2">
-          {LABEL_COLORS.map((colorOption) => (
-            <button
-              key={colorOption.name}
-              type="button"
-              onClick={() => setColor(colorOption.name)}
-              className={cn(
-                'w-6 h-6 rounded-full transition-all',
-                colorOption.bg,
-                color === colorOption.name && 'ring-2 ring-offset-2 ring-primary'
-              )}
-              title={colorOption.name}
-            />
-          ))}
+    <AccordionItem value="add-new" className="border rounded-lg">
+      <AccordionTrigger className="hover:no-underline py-3 pl-3 pr-4 [&[data-state=open]>svg]:rotate-180">
+        <div className="flex items-center gap-2 flex-1">
+          <Plus className="h-4 w-4" />
+          <span className="text-sm font-medium">{t('createLabel')}</span>
         </div>
-      </div>
+      </AccordionTrigger>
+      <AccordionContent className="pb-4 pt-2 px-3">
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="new-label-name">{t('labelName')}</Label>
+            <Input
+              id="new-label-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder={t('enterLabelName')}
+            />
+          </div>
 
-      <div className="flex justify-end gap-2">
-        <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
-          <X className="h-4 w-4 mr-1" />
-          {t('cancel')}
-        </Button>
-        <Button type="submit" size="sm" disabled={!name.trim()}>
-          <Check className="h-4 w-4 mr-1" />
-          {isEditing ? t('save') : t('create')}
-        </Button>
-      </div>
-    </form>
+          <div className="space-y-2">
+            <Label>{t('labelColor')}</Label>
+            <div className="flex flex-wrap gap-2">
+              {LABEL_COLORS.map((colorOption) => (
+                <button
+                  key={colorOption.name}
+                  type="button"
+                  onClick={() => setColor(colorOption.name)}
+                  className={cn(
+                    'w-6 h-6 rounded-full transition-all',
+                    colorOption.bg,
+                    color === colorOption.name && 'ring-2 ring-offset-2 ring-primary'
+                  )}
+                  title={colorOption.name}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button
+              type="button"
+              size="sm"
+              onClick={handleCreate}
+              disabled={!name.trim()}
+            >
+              <Check className="h-4 w-4 mr-1" />
+              {t('create')}
+            </Button>
+          </div>
+        </div>
+      </AccordionContent>
+    </AccordionItem>
   );
 }
 
@@ -183,9 +245,7 @@ export function LabelsManageDialog({ open, onOpenChange }: LabelsManageDialogPro
   const { t } = useTranslation();
   const { labels, createLabel, updateLabel, deleteLabel, reorderLabels } = useLabels();
   const { getProjectsByLabel, removeLabel: removeLabelFromProjects } = useProjectLabels();
-  
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  const [editingLabel, setEditingLabel] = useState<LabelType | null>(null);
+
   const [deletingLabel, setDeletingLabel] = useState<LabelType | null>(null);
 
   const sensors = useSensors(
@@ -205,7 +265,7 @@ export function LabelsManageDialog({ open, onOpenChange }: LabelsManageDialogPro
     if (over && active.id !== over.id) {
       const oldIndex = labels.findIndex((label) => label.id === active.id);
       const newIndex = labels.findIndex((label) => label.id === over.id);
-      
+
       const newOrder = arrayMove(labels, oldIndex, newIndex);
       reorderLabels(newOrder.map((label) => label.id));
     }
@@ -213,14 +273,10 @@ export function LabelsManageDialog({ open, onOpenChange }: LabelsManageDialogPro
 
   const handleCreateLabel = (name: string, color: LabelColorName) => {
     createLabel(name, color);
-    setShowCreateForm(false);
   };
 
-  const handleUpdateLabel = (name: string, color: LabelColorName) => {
-    if (editingLabel) {
-      updateLabel(editingLabel.id, { name, color });
-      setEditingLabel(null);
-    }
+  const handleUpdateLabel = (labelId: string) => (name: string, color: LabelColorName) => {
+    updateLabel(labelId, { name, color });
   };
 
   const handleConfirmDelete = () => {
@@ -243,65 +299,32 @@ export function LabelsManageDialog({ open, onOpenChange }: LabelsManageDialogPro
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4">
-            {/* Create new label button/form */}
-            {showCreateForm ? (
-              <LabelForm
-                onSave={handleCreateLabel}
-                onCancel={() => setShowCreateForm(false)}
-              />
-            ) : editingLabel ? (
-              <LabelForm
-                initialName={editingLabel.name}
-                initialColor={editingLabel.color}
-                onSave={handleUpdateLabel}
-                onCancel={() => setEditingLabel(null)}
-                isEditing
-              />
-            ) : (
-              <Button
-                variant="outline"
-                className="w-full justify-start gap-2"
-                onClick={() => setShowCreateForm(true)}
+          <ScrollArea className="h-[400px] pr-4">
+            <Accordion type="single" collapsible className="space-y-2">
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
               >
-                <Plus className="h-4 w-4" />
-                {t('createLabel')}
-              </Button>
-            )}
-
-            {/* Labels list with drag and drop */}
-            {labels.length > 0 ? (
-              <ScrollArea className="h-[300px]">
-                <DndContext
-                  sensors={sensors}
-                  collisionDetection={closestCenter}
-                  onDragEnd={handleDragEnd}
+                <SortableContext
+                  items={labels.map((l) => l.id)}
+                  strategy={verticalListSortingStrategy}
                 >
-                  <SortableContext
-                    items={labels.map((l) => l.id)}
-                    strategy={verticalListSortingStrategy}
-                  >
-                    <div className="space-y-1">
-                      {labels.map((label) => (
-                        <SortableLabelItem
-                          key={label.id}
-                          label={label}
-                          onEdit={setEditingLabel}
-                          onDelete={setDeletingLabel}
-                          projectCount={getProjectsByLabel(label.id).length}
-                        />
-                      ))}
-                    </div>
-                  </SortableContext>
-                </DndContext>
-              </ScrollArea>
-            ) : !showCreateForm && (
-              <div className="text-center py-8 text-muted-foreground">
-                <p className="text-sm">{t('noLabelsYet')}</p>
-                <p className="text-xs mt-1">{t('createLabelToOrganize')}</p>
-              </div>
-            )}
-          </div>
+                  {labels.map((label) => (
+                    <SortableLabelItem
+                      key={label.id}
+                      label={label}
+                      onUpdate={handleUpdateLabel(label.id)}
+                      onDelete={() => setDeletingLabel(label)}
+                      projectCount={getProjectsByLabel(label.id).length}
+                    />
+                  ))}
+                </SortableContext>
+              </DndContext>
+
+              <AddLabelItem onCreate={handleCreateLabel} />
+            </Accordion>
+          </ScrollArea>
         </DialogContent>
       </Dialog>
 

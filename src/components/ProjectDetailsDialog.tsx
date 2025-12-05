@@ -263,7 +263,7 @@ export function ProjectDetailsDialog({ project, open, onOpenChange, onProjectDel
             <div className="flex items-center gap-2 text-sm">
               <DollarSign className="h-4 w-4 text-muted-foreground" />
               <span className="text-muted-foreground">Total Cost:</span>
-              <span className="font-mono">${totalCost.toFixed(6)}</span>
+              <span className="font-mono">${totalCost.toFixed(2)}</span>
             </div>
           )}
 

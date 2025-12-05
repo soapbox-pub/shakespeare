@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Check, Plus, Tag, X } from 'lucide-react';
+import { Check, Plus, Tag, X, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Popover,
@@ -215,6 +215,16 @@ export function LabelSelector({ projectId, compact }: LabelSelectorProps) {
                 {t('createNewLabel')}
               </button>
             )}
+            <button
+              onClick={() => {
+                setManageDialogOpen(true);
+                setOpen(false);
+              }}
+              className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm hover:bg-muted transition-colors"
+            >
+              <Settings className="h-4 w-4" />
+              {t('manageLabels')}
+            </button>
           </div>
         </PopoverContent>
       </Popover>

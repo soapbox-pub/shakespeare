@@ -80,10 +80,8 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 
             {/* Star indicator - only shown when favorited */}
             {isFavorite && (
-              <div className="flex-shrink-0 relative -mr-1 pointer-events-none">
-                <div className="flex items-center justify-center">
-                  <Star className="h-4 w-4 text-yellow-500 fill-current" />
-                </div>
+              <div className="flex-shrink-0 relative -mr-1 pointer-events-none flex items-center justify-center">
+                <Star className="h-4 w-4 text-yellow-500 fill-current" />
               </div>
             )}
           </div>

@@ -26,9 +26,7 @@ export function useDiscoverPlugins() {
 
   return useQuery({
     queryKey: ['discover-plugins', user?.pubkey, contacts],
-    queryFn: async (c) => {
-      const signal = AbortSignal.any([c.signal, AbortSignal.timeout(5000)]);
-
+    queryFn: async () => {
       // Build authors list: current user + people they follow
       const authors: string[] = [];
       if (user?.pubkey) {
@@ -54,7 +52,7 @@ export function useDiscoverPlugins() {
             limit: 100,
           },
         ],
-        { signal }
+        { signal: AbortSignal.timeout(3000) }
       );
 
       // Transform events into DiscoveredPlugin objects

@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useNostr } from '@nostrify/react';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useAppContext } from '@/hooks/useAppContext';
+import { useContacts } from '@/hooks/useContacts';
 
 /**
  * NostrSync - Syncs user's Nostr data
@@ -14,6 +15,9 @@ export function NostrSync() {
   const { nostr } = useNostr();
   const { user } = useCurrentUser();
   const { config, updateConfig } = useAppContext();
+
+  // Prewarm user's follow list
+  useContacts(user?.pubkey);
 
   useEffect(() => {
     if (!user) return;

@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Plus, Folder, GitBranch, Loader2, ChevronDown, ChevronRight, Star, Columns2, X, Settings, HelpCircle, Search } from 'lucide-react';
+import { Plus, Folder, GitBranch, Loader2, ChevronDown, ChevronRight, Star, Columns2, X, Settings, HelpCircle, Search, Tag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
@@ -114,12 +114,7 @@ const LabelGroupHeader: React.FC<LabelGroupHeaderProps> = ({
       onClick={onToggle}
       className="w-full flex items-center gap-2 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
     >
-      {isCollapsed ? (
-        <ChevronRight className="h-3 w-3" />
-      ) : (
-        <ChevronDown className="h-3 w-3" />
-      )}
-      <div className={cn('w-2 h-2 rounded-full', colorConfig.bg)} />
+      <Tag className={cn("h-3.5 w-3.5", colorConfig.text)} />
       <span className="flex-1 text-left truncate">{labelName}</span>
     </button>
   );

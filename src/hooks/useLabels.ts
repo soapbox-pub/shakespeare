@@ -28,7 +28,6 @@ export interface Label {
   id: string;
   name: string;
   color: LabelColorName;
-  order: number;
   collapsed?: boolean;
 }
 
@@ -65,19 +64,17 @@ export function useLabels() {
   );
 
   const createLabel = (name: string, color: LabelColorName): Label => {
-    const maxOrder = labels.length > 0 ? Math.max(...labels.map(l => l.order)) : -1;
     const newLabel: Label = {
       id: generateLabelId(),
       name,
       color,
-      order: maxOrder + 1,
     };
     setLabels([...labels, newLabel]);
     return newLabel;
   };
 
   const updateLabel = (labelId: string, updates: Partial<Omit<Label, 'id'>>) => {
-    setLabels(labels.map(label => 
+    setLabels(labels.map(label =>
       label.id === labelId ? { ...label, ...updates } : label
     ));
   };
@@ -87,14 +84,14 @@ export function useLabels() {
   };
 
   const reorderLabels = (orderedIds: string[]) => {
-    setLabels(labels.map(label => ({
-      ...label,
-      order: orderedIds.indexOf(label.id),
-    })).sort((a, b) => a.order - b.order));
+    const reordered = orderedIds
+      .map(id => labels.find(label => label.id === id))
+      .filter((label): label is Label => label !== undefined);
+    setLabels(reordered);
   };
 
   const toggleLabelCollapsed = (labelId: string) => {
-    setLabels(labels.map(label => 
+    setLabels(labels.map(label =>
       label.id === labelId ? { ...label, collapsed: !label.collapsed } : label
     ));
   };
@@ -103,10 +100,8 @@ export function useLabels() {
     setDisplaySettings({ ...displaySettings, ...updates });
   };
 
-  const sortedLabels = [...labels].sort((a, b) => a.order - b.order);
-
   return {
-    labels: sortedLabels,
+    labels,
     displaySettings,
     createLabel,
     updateLabel,

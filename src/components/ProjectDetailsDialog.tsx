@@ -245,7 +245,7 @@ export function ProjectDetailsDialog({ project, open, onOpenChange, onProjectDel
       <DialogContent className="max-w-md" onOpenAutoFocus={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Folder className="h-5 w-5" />
+            <Folder className="h-5 w-5 text-primary" />
             {project.name}
           </DialogTitle>
         </DialogHeader>

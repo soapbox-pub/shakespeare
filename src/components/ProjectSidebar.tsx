@@ -18,6 +18,7 @@ import type { Project } from '@/lib/ProjectsManager';
 import { cn } from '@/lib/utils';
 import { useQueryClient } from '@tanstack/react-query';
 import { ShakespeareLogo } from '@/components/ShakespeareLogo';
+import { LabelsManageDialog } from '@/components/labels/LabelsManageDialog';
 
 interface ProjectItemProps {
   project: Project;
@@ -186,6 +187,7 @@ export function ProjectSidebar({
   const [favorites] = useLocalStorage<string[]>('project-favorites', []);
   const [searchQuery, setSearchQuery] = useState('');
   const [otherProjectsCollapsed, setOtherProjectsCollapsed] = useLocalStorage<boolean>('other-projects-collapsed', false);
+  const [labelsDialogOpen, setLabelsDialogOpen] = useState(false);
   const { labels, toggleLabelCollapsed } = useLabels();
   const { getProjectLabels, hasAnyLabels } = useProjectLabels();
 
@@ -365,6 +367,13 @@ export function ProjectSidebar({
                       <GitBranch className="h-4 w-4" />
                       {t('importRepository')}
                     </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => setLabelsDialogOpen(true)}
+                      className="flex items-center gap-2 w-full"
+                    >
+                      <Tag className="h-4 w-4" />
+                      {t('manageLabels')}
+                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
@@ -525,6 +534,12 @@ export function ProjectSidebar({
           </Button>
         </div>
       </div>
+
+      {/* Labels Management Dialog */}
+      <LabelsManageDialog
+        open={labelsDialogOpen}
+        onOpenChange={setLabelsDialogOpen}
+      />
     </div>
   );
 }

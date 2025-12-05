@@ -174,14 +174,21 @@ function SortableLabelItem({ label, onUpdate, onDelete, projectCount }: Sortable
 
 function AddLabelItem({ onCreate }: { onCreate: (name: string, color: LabelColorName) => void }) {
   const { t } = useTranslation();
+
+  // Function to get a random color from LABEL_COLORS
+  const getRandomColor = (): LabelColorName => {
+    const randomIndex = Math.floor(Math.random() * LABEL_COLORS.length);
+    return LABEL_COLORS[randomIndex].name;
+  };
+
   const [name, setName] = useState('');
-  const [color, setColor] = useState<LabelColorName>('blue');
+  const [color, setColor] = useState<LabelColorName>(getRandomColor());
 
   const handleCreate = () => {
     if (name.trim()) {
       onCreate(name.trim(), color);
       setName('');
-      setColor('blue');
+      setColor(getRandomColor());
     }
   };
 
@@ -299,8 +306,13 @@ export function LabelsManageDialog({ open, onOpenChange }: LabelsManageDialogPro
             </DialogTitle>
           </DialogHeader>
 
-          <ScrollArea className="h-[400px] pr-4">
-            <Accordion type="single" collapsible className="space-y-2">
+          <ScrollArea className="h-[400px]">
+            <Accordion
+              type="single"
+              collapsible
+              className="space-y-2"
+              defaultValue={labels.length === 0 ? "add-new" : undefined}
+            >
               <DndContext
                 sensors={sensors}
                 collisionDetection={closestCenter}

@@ -56,12 +56,36 @@ export const ModelSelector = memo(function ModelSelector({
   // Create a Set of recently used model IDs for efficient lookup
   const recentlyUsedSet = useMemo(() => new Set(recentlyUsedModels), [recentlyUsedModels]);
 
+  // Determine if we should show the "Recently Used" section
+  const shouldShowRecentlyUsed = useMemo(() => {
+    // If no recently used models, don't show the section
+    if (recentlyUsedModels.length === 0) {
+      return false;
+    }
+
+    // If there are 5 or more total provider models, always show recently used
+    if (models.length >= 5) {
+      return true;
+    }
+
+    // If less than 5 total provider models, check if all recently used models
+    // are contained within the available provider models
+    const availableModelIds = new Set(models.map(model => model.fullId));
+    const allRecentlyUsedAreAvailable = recentlyUsedModels.every(model =>
+      availableModelIds.has(model)
+    );
+
+    // Hide recently used section if all recently used models are already available
+    return !allRecentlyUsedAreAvailable;
+  }, [recentlyUsedModels, models]);
+
   // Group models by provider, excluding models that are in the recently used section
+  // (only exclude them if the recently used section is actually being shown)
   const modelsByProvider = useMemo(() => {
     const groups: Record<string, typeof models> = {};
     for (const model of models) {
-      // Skip models that are already shown in recently used
-      if (recentlyUsedSet.has(model.fullId)) {
+      // Only skip models that are in recently used if we're showing the recently used section
+      if (shouldShowRecentlyUsed && recentlyUsedSet.has(model.fullId)) {
         continue;
       }
 
@@ -71,7 +95,7 @@ export const ModelSelector = memo(function ModelSelector({
       groups[model.provider].push(model);
     }
     return groups;
-  }, [models, recentlyUsedSet]);
+  }, [models, recentlyUsedSet, shouldShowRecentlyUsed]);
 
   // Get provider display name and baseURL for a given provider ID
   const getProviderInfo = useMemo(() => {
@@ -99,29 +123,6 @@ export const ModelSelector = memo(function ModelSelector({
       baseURL: providerInfo.baseURL,
     };
   }, [value, getProviderInfo, models]);
-
-  // Determine if we should show the "Recently Used" section
-  const shouldShowRecentlyUsed = useMemo(() => {
-    // If no recently used models, don't show the section
-    if (recentlyUsedModels.length === 0) {
-      return false;
-    }
-
-    // If there are 5 or more total provider models, always show recently used
-    if (models.length >= 5) {
-      return true;
-    }
-
-    // If less than 5 total provider models, check if all recently used models
-    // are contained within the available provider models
-    const availableModelIds = new Set(models.map(model => model.fullId));
-    const allRecentlyUsedAreAvailable = recentlyUsedModels.every(model =>
-      availableModelIds.has(model)
-    );
-
-    // Hide recently used section if all recently used models are already available
-    return !allRecentlyUsedAreAvailable;
-  }, [recentlyUsedModels, models]);
 
   // Check if the current model is free
   const isCurrentModelFree = useMemo(() => {

@@ -287,20 +287,19 @@ export default function Index() {
   return (
     <>
       <AppLayout headerContent={headerContent}>
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-8 md:mb-12">
-            <div className="mb-4 md:mb-6">
-              <ShakespeareLogo className="w-20 h-20 md:w-24 md:h-24 mx-auto" />
+        {/* Main Chat Section - Takes up most of viewport with generous whitespace */}
+        <div className="min-h-[calc(100vh-12rem)] flex items-center justify-center pb-24 md:pb-32">
+          <div className="max-w-2xl mx-auto w-full">
+            <div className="text-center mb-12 md:mb-16">
+              <div className="mb-6 md:mb-8">
+                <ShakespeareLogo className="w-20 h-20 md:w-24 md:h-24 mx-auto" />
+              </div>
+              <h1 className="text-3xl md:text-4xl font-bold mb-3 md:mb-4 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                {t('buildApps')}
+              </h1>
             </div>
-            <h1 className="text-3xl md:text-4xl font-bold mb-3 md:mb-4 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              {t('buildNostrApps')}
-            </h1>
-            <p className="text-lg md:text-xl text-muted-foreground">
-              {t('whatToBuild')}
-            </p>
-          </div>
 
-          <div className="mb-8 md:mb-12">
+            <div>
             {/* Quilly Helper - shows when there are errors */}
             {quillyError && (
               <div className="mb-4">
@@ -316,7 +315,7 @@ export default function Index() {
 
             {/* Chat Input Container - matching the ChatPane style */}
             <div
-              className={`relative rounded-2xl border border-input bg-background shadow-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 transition-all ${isDragOver ? 'border-primary bg-primary/5 ring-2 ring-primary/20' : ''
+              className={`flex flex-col rounded-3xl border border-input bg-background shadow-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 transition-all ${isDragOver ? 'border-primary bg-primary/5 ring-2 ring-primary/20' : ''
               }`}
               onDragEnter={handleDragEnter}
               onDragOver={handleDragOver}
@@ -335,12 +334,13 @@ export default function Index() {
                 onChange={handlePromptChange}
                 onKeyDown={handleKeyDown}
                 onClick={handleTextareaClick}
-                className="min-h-[120px] max-h-64 resize-none border-0 bg-transparent px-4 py-3 pb-16 text-sm focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground"
+                className="resize-none border-0 bg-transparent px-4 py-3 text-base focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground"
                 disabled={isCreating || isGeneratingInfo || (hasProvidersConfigured && !providerModel.trim())}
-                rows={4}
+                rows={2}
                 style={{
                   height: 'auto',
-                  minHeight: '120px'
+                  minHeight: '80px',
+                  maxHeight: '256px'
                 }}
                 onInput={(e) => {
                   const target = e.target as HTMLTextAreaElement;
@@ -350,10 +350,9 @@ export default function Index() {
               />
 
               {/* Bottom Controls Row */}
-              <div className="absolute bottom-3 left-3 right-3 flex items-center justify-end gap-4 overflow-hidden">
+              <div className="flex items-center gap-4 px-3 py-3">
                 {/* File Attachment */}
                 <FileAttachment
-                  className="mr-auto"
                   onFileSelect={handleFileSelect}
                   onFileRemove={handleFileRemove}
                   selectedFiles={attachedFiles}
@@ -362,7 +361,7 @@ export default function Index() {
                 />
 
                 {/* Model Selector - always show to allow configuration */}
-                <div className="overflow-hidden">
+                <div className="flex-1 max-w-72 ml-auto overflow-hidden">
                   <ModelSelector
                     value={providerModel}
                     onChange={setProviderModel}
@@ -392,11 +391,14 @@ export default function Index() {
                 </Button>
               </div>
             </div>
+            </div>
           </div>
         </div>
 
-        {/* App Showcase */}
-        <AppShowcase />
+        {/* App Showcase - Positioned to peek from bottom */}
+        <div className="pb-8">
+          <AppShowcase />
+        </div>
 
         {/* Version Display */}
         {import.meta.env.VERSION && (

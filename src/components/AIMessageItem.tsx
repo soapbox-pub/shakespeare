@@ -219,19 +219,19 @@ export const AIMessageItem = memo(({
 
     // Special rendering for tools
     const renderSpecialContent = () => {
-      if (toolName === 'text_editor_write' && toolArgs.file_text) {
+      if (toolName === 'text_editor_write' && typeof toolArgs.file_text === 'string') {
         return (
           <div className="mt-1 p-3 bg-muted/30 rounded border text-xs">
             <div className="whitespace-pre-wrap break-words font-mono">
-              {toolArgs.file_text as string}
+              {toolArgs.file_text}
             </div>
           </div>
         );
       }
 
-      if (toolName === 'text_editor_str_replace' && toolArgs.old_str && toolArgs.new_str) {
-        const oldLines = (toolArgs.old_str as string).split('\n');
-        const newLines = (toolArgs.new_str as string).split('\n');
+      if (toolName === 'text_editor_str_replace' && typeof toolArgs.old_str === 'string' && typeof toolArgs.new_str === 'string') {
+        const oldLines = toolArgs.old_str.split('\n');
+        const newLines = toolArgs.new_str.split('\n');
 
         return (
           <div className="mt-1 p-3 bg-muted/30 rounded border text-xs font-mono">

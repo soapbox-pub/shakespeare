@@ -15,6 +15,8 @@ export interface RepositoryAnnouncementData {
   cloneUrls: string[];
   /** Relays for patch submissions */
   relays?: string[];
+  /** Category tags for the repository */
+  tTags?: string[];
   /** Earliest unique commit (root commit) */
   earliestCommit?: string;
 }
@@ -92,6 +94,14 @@ export function createRepositoryAnnouncementEvent(
     const trimmedRelays = data.relays.map(relay => relay.trim()).filter(relay => relay);
     if (trimmedRelays.length > 0) {
       tags.push(['relays', ...trimmedRelays]);
+    }
+  }
+
+  // Add t-tags for categorization (each as a separate tag for relay-level filtering)
+  if (data.tTags && data.tTags.length > 0) {
+    const trimmedTags = data.tTags.map(tag => tag.trim().toLowerCase()).filter(tag => tag);
+    for (const tag of trimmedTags) {
+      tags.push(['t', tag]);
     }
   }
 

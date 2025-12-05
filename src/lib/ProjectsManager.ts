@@ -193,16 +193,17 @@ export class ProjectsManager {
 
   /**
    * Copy a directory recursively from source to destination
+   * @param skipGit - Whether to skip the .git directory (default: true)
    */
-  private async copyDirectory(sourcePath: string, destPath: string): Promise<void> {
+  private async copyDirectory(sourcePath: string, destPath: string, skipGit = true): Promise<void> {
     // Ensure destination directory exists
     await this.fs.mkdir(destPath, { recursive: true });
 
     const entries = await this.fs.readdir(sourcePath);
 
     for (const entry of entries) {
-      // Skip .git directory
-      if (entry === '.git') continue;
+      // Skip .git directory if skipGit is true
+      if (skipGit && entry === '.git') continue;
 
       const sourceFullPath = `${sourcePath}/${entry}`;
       const destFullPath = `${destPath}/${entry}`;
@@ -212,7 +213,7 @@ export class ProjectsManager {
 
         if (stat.isDirectory()) {
           // Recursively copy subdirectories
-          await this.copyDirectory(sourceFullPath, destFullPath);
+          await this.copyDirectory(sourceFullPath, destFullPath, skipGit);
         } else if (stat.isFile()) {
           // Copy file
           const content = await this.fs.readFile(sourceFullPath);
@@ -724,6 +725,56 @@ export class ProjectsManager {
       path: newPath,
       lastModified: timestamp,
     };
+  }
+
+  async duplicateProject(sourceId: string, newName?: string): Promise<Project> {
+    // Validate that the source project exists
+    const sourceProject = await this.getProject(sourceId);
+    if (!sourceProject) {
+      throw new Error(`Project with ID "${sourceId}" does not exist`);
+    }
+
+    // Generate a unique ID for the new project
+    const baseName = newName || `${sourceId}-copy`;
+    const newId = await this.generateUniqueProjectId(baseName);
+
+    const sourcePath = `${this.dir}/${sourceId}`;
+    const destPath = `${this.dir}/${newId}`;
+
+    try {
+      // Create the destination directory
+      await this.fs.mkdir(destPath, { recursive: true });
+
+      // Copy all files from source to destination (including .git)
+      await this.copyDirectory(sourcePath, destPath, false);
+
+      // Get filesystem stats for timestamps
+      const stats = await this.fs.stat(destPath);
+      const timestamp = stats.mtimeMs ? new Date(stats.mtimeMs) : new Date();
+
+      // Automatically request persistent storage after project duplication
+      try {
+        await ensurePersistentStorage();
+      } catch (error) {
+        // Don't fail project duplication if persistent storage request fails
+        console.warn('Failed to request persistent storage after project duplication:', error);
+      }
+
+      return {
+        id: newId,
+        name: this.formatProjectName(newId),
+        path: destPath,
+        lastModified: timestamp,
+      };
+    } catch (error) {
+      // Clean up on error
+      try {
+        await this.deleteDirectory(destPath);
+      } catch (cleanupError) {
+        console.warn('Failed to clean up directory after duplication failure:', cleanupError);
+      }
+      throw error;
+    }
   }
 
   private async deleteDirectory(dirPath: string): Promise<void> {

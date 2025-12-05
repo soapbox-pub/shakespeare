@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Puzzle, Plus, Trash2, RefreshCw, Loader2, Check } from 'lucide-react';
+import { Puzzle, Plus, Trash2, RefreshCw, Loader2, Check, Compass } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,12 +8,14 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { usePlugins } from '@/hooks/usePlugins';
 import { usePluginGitInfo } from '@/hooks/usePluginGitInfo';
 import { useToast } from '@/hooks/useToast';
+import { DiscoverPluginsDialog } from '@/components/DiscoverPluginsDialog';
 
 export function PluginsSection() {
   const { t } = useTranslation();
   const { toast } = useToast();
   const { plugins, skills, clonePlugin, syncPlugin, deletePlugin } = usePlugins();
   const [gitUrl, setGitUrl] = useState('');
+  const [showDiscoverDialog, setShowDiscoverDialog] = useState(false);
 
   const handleAddPlugin = async () => {
     if (!gitUrl.trim()) return;
@@ -79,9 +81,20 @@ export function PluginsSection() {
     <div className="space-y-4">
       {/* Plugins Header */}
       <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <Puzzle className="h-5 w-5 text-primary" />
-          <h3 className="text-lg font-semibold">{t('plugins')}</h3>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Puzzle className="h-5 w-5 text-primary" />
+            <h3 className="text-lg font-semibold">{t('plugins')}</h3>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowDiscoverDialog(true)}
+            className="gap-2"
+          >
+            <Compass className="h-4 w-4" />
+            {t('discoverPlugins')}
+          </Button>
         </div>
         <p className="text-sm text-muted-foreground">
           {t('pluginsDescription')}
@@ -160,6 +173,12 @@ export function PluginsSection() {
           </AccordionContent>
         </AccordionItem>
       </Accordion>
+
+      {/* Discover Plugins Dialog */}
+      <DiscoverPluginsDialog
+        open={showDiscoverDialog}
+        onOpenChange={setShowDiscoverDialog}
+      />
     </div>
   );
 }

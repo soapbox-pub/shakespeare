@@ -7,6 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Separator } from '@/components/ui/separator';
 import { useProjects } from '@/hooks/useProjects';
 import { useProjectSessionStatus } from '@/hooks/useProjectSessionStatus';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
@@ -414,8 +415,8 @@ export function ProjectSidebar({
               {groupedProjects.unlabeled.length > 0 && (
                 <div className="space-y-0.5 mt-2">
                   {labels.some(l => (groupedProjects.groups.get(l.id)?.length || 0) > 0) && (
-                    <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground">
-                      {t('unlabeled')}
+                    <div className="px-3 py-1.5">
+                      <Separator />
                     </div>
                   )}
                   {groupedProjects.unlabeled.map((project) => (

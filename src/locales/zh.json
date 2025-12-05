@@ -454,6 +454,5 @@
   "addLabel": "添加标签",
   "selectLabels": "选择标签",
   "noLabelsCreated": "尚未创建标签",
-  "createNewLabel": "创建新标签",
-  "unlabeled": "无标签"
+  "createNewLabel": "创建新标签"
 }

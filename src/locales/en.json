@@ -538,6 +538,5 @@
   "addLabel": "Add label",
   "selectLabels": "Select labels",
   "noLabelsCreated": "No labels created yet",
-  "createNewLabel": "Create new label",
-  "unlabeled": "Unlabeled"
+  "createNewLabel": "Create new label"
 }

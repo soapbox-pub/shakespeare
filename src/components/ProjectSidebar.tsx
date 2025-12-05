@@ -99,6 +99,7 @@ interface LabelGroupHeaderProps {
   labelColor: string;
   isCollapsed: boolean;
   onToggle: () => void;
+  projectCount?: number;
 }
 
 const LabelGroupHeader: React.FC<LabelGroupHeaderProps> = ({
@@ -106,6 +107,7 @@ const LabelGroupHeader: React.FC<LabelGroupHeaderProps> = ({
   labelColor,
   isCollapsed,
   onToggle,
+  projectCount = 0,
 }) => {
   const colorConfig = getLabelColor(labelColor as Parameters<typeof getLabelColor>[0]);
 
@@ -116,6 +118,15 @@ const LabelGroupHeader: React.FC<LabelGroupHeaderProps> = ({
     >
       <Tag className={cn("h-3.5 w-3.5", colorConfig.text)} />
       <span className="flex-1 text-left truncate">{labelName}</span>
+      {isCollapsed && projectCount > 0 && (
+        <span className="text-xs text-muted-foreground/70">
+          {projectCount}
+        </span>
+      )}
+      <ChevronRight className={cn(
+        "h-3.5 w-3.5 transition-transform duration-200",
+        !isCollapsed && "rotate-90"
+      )} />
     </button>
   );
 };
@@ -379,6 +390,7 @@ export function ProjectSidebar({
                           labelColor={label.color}
                           isCollapsed={!!label.collapsed}
                           onToggle={() => toggleLabelCollapsed(label.id)}
+                          projectCount={groupProjects.length}
                         />
                       </div>
                     </CollapsibleTrigger>

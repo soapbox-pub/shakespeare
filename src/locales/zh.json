@@ -454,5 +454,10 @@
   "install": "安装",
   "installing": "安装中...",
   "by": "作者",
-  "website": "网站"
+  "website": "网站",
+  "loginRequired": "需要登录",
+  "loginToDiscoverPlugins": "使用 Nostr 登录以发现您关注的人的插件。",
+  "noPluginsFromNetwork": "未找到插件",
+  "noPluginsFromNetworkDescription": "未找到您关注的人的插件。在 Nostr 上关注插件开发者以在此处查看他们的插件。",
+  "tryDifferentSearch": "尝试不同的搜索词。"
 }

@@ -442,5 +442,10 @@
   "install": "Wụnye",
   "installing": "Na-ewunye...",
   "by": "site na",
-  "website": "Webụsaịtị"
+  "website": "Webụsaịtị",
+  "loginRequired": "Achọrọ Nbanye",
+  "loginToDiscoverPlugins": "Banye na Nostr iji chọpụta plugins sitere na ndị ị na-eso.",
+  "noPluginsFromNetwork": "Achọtaghị Plugins",
+  "noPluginsFromNetworkDescription": "Achọtaghị plugins sitere na ndị ị na-eso. Soro ndị mmepe plugin na Nostr iji hụ plugins ha ebe a.",
+  "tryDifferentSearch": "Gbalịa okwu nchọgharị dị iche."
 }

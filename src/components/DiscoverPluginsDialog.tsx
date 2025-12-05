@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Search, Download, ExternalLink, Loader2, Check, Globe, Package } from 'lucide-react';
+import { Search, Download, ExternalLink, Loader2, Check, Globe, Package, LogIn } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,8 +10,10 @@ import { useDiscoverPlugins } from '@/hooks/useDiscoverPlugins';
 import { usePlugins } from '@/hooks/usePlugins';
 import { useAuthor } from '@/hooks/useAuthor';
 import { useToast } from '@/hooks/useToast';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { genUserName } from '@/lib/genUserName';
+import { Link } from 'react-router-dom';
 import type { NostrMetadata } from '@nostrify/nostrify';
 
 interface DiscoverPluginsDialogProps {
@@ -21,6 +23,7 @@ interface DiscoverPluginsDialogProps {
 
 export function DiscoverPluginsDialog({ open, onOpenChange }: DiscoverPluginsDialogProps) {
   const { t } = useTranslation();
+  const { user } = useCurrentUser();
   const { data: plugins, isLoading } = useDiscoverPlugins();
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -61,7 +64,28 @@ export function DiscoverPluginsDialog({ open, onOpenChange }: DiscoverPluginsDia
 
           {/* Plugins List */}
           <div className="flex-1 overflow-y-auto space-y-3 pr-2">
-            {isLoading && (
+            {!user && (
+              <Card className="border-dashed">
+                <CardContent className="py-12 px-8 text-center">
+                  <div className="max-w-sm mx-auto space-y-4">
+                    <LogIn className="h-12 w-12 mx-auto text-muted-foreground" />
+                    <div className="space-y-2">
+                      <h3 className="font-semibold">{t('loginRequired')}</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {t('loginToDiscoverPlugins')}
+                      </p>
+                    </div>
+                    <Button asChild className="w-full">
+                      <Link to="/settings/nostr">
+                        {t('goToNostrSettings')}
+                      </Link>
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {user && isLoading && (
               <>
                 {[...Array(3)].map((_, i) => (
                   <Card key={i}>
@@ -80,13 +104,28 @@ export function DiscoverPluginsDialog({ open, onOpenChange }: DiscoverPluginsDia
               </>
             )}
 
-            {!isLoading && filteredPlugins?.length === 0 && (
-              <div className="text-center py-12 text-muted-foreground">
-                {searchQuery ? t('noPluginsFound') : t('noPluginsAvailable')}
-              </div>
+            {user && !isLoading && filteredPlugins?.length === 0 && (
+              <Card className="border-dashed">
+                <CardContent className="py-12 px-8 text-center">
+                  <div className="max-w-sm mx-auto space-y-4">
+                    <Package className="h-12 w-12 mx-auto text-muted-foreground" />
+                    <div className="space-y-2">
+                      <h3 className="font-semibold">
+                        {searchQuery ? t('noPluginsFound') : t('noPluginsFromNetwork')}
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        {searchQuery
+                          ? t('tryDifferentSearch')
+                          : t('noPluginsFromNetworkDescription')
+                        }
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             )}
 
-            {!isLoading && filteredPlugins?.map((plugin) => (
+            {user && !isLoading && filteredPlugins?.map((plugin) => (
               <PluginCard key={`${plugin.author}-${plugin.id}`} plugin={plugin} />
             ))}
           </div>

@@ -445,5 +445,10 @@
   "install": "Shigar",
   "installing": "Ana Shigarwa...",
   "by": "ta",
-  "website": "Gidan Yanar Gizo"
+  "website": "Gidan Yanar Gizo",
+  "loginRequired": "Ana Buƙatar Shiga",
+  "loginToDiscoverPlugins": "Shiga tare da Nostr don gano plugins daga mutanen da kuke bi.",
+  "noPluginsFromNetwork": "Ba a Sami Plugin ba",
+  "noPluginsFromNetworkDescription": "Ba a sami plugins daga mutanen da kuke bi ba. Bi masu haɓaka plugins akan Nostr don ganin plugins nasu a nan.",
+  "tryDifferentSearch": "Gwada kalmar bincike daban."
 }

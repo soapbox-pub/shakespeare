@@ -442,5 +442,10 @@
   "install": "Fi Sori Ẹrọ",
   "installing": "N Fi Sori Ẹrọ...",
   "by": "nipasẹ",
-  "website": "Oju opo wẹẹbu"
+  "website": "Oju opo wẹẹbu",
+  "loginRequired": "Wiwọle Nilo",
+  "loginToDiscoverPlugins": "Wọle pẹlu Nostr lati ṣawari awọn plugins lati ọdọ awọn eniyan ti o ntẹle.",
+  "noPluginsFromNetwork": "Ko Ri Plugins",
+  "noPluginsFromNetworkDescription": "Ko ri awọn plugins lati ọdọ awọn eniyan ti o ntẹle. Tẹle awọn olupilẹṣẹ plugin lori Nostr lati rii awọn plugins wọn nibi.",
+  "tryDifferentSearch": "Gbiyanju ọrọ wiwa miiran."
 }

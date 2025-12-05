@@ -36,7 +36,6 @@ import {
   DollarSign,
   ExternalLink,
   FileCode,
-  Tag,
 } from 'lucide-react';
 import JSZip from 'jszip';
 import { Separator } from './ui/separator';
@@ -285,15 +284,6 @@ export function ProjectDetailsDialog({ project, open, onOpenChange, onProjectDel
             </div>
           )}
 
-          {/* Labels */}
-          <div className="space-y-2">
-            <Label className="flex items-center gap-2">
-              <Tag className="h-4 w-4 text-muted-foreground" />
-              Labels
-            </Label>
-            <LabelSelector projectId={project.id} />
-          </div>
-
           {/* Project Name */}
           <div className="space-y-2">
             <Label htmlFor="project-name">Project Name</Label>
@@ -327,6 +317,9 @@ export function ProjectDetailsDialog({ project, open, onOpenChange, onProjectDel
               </Button>
             </div>
           </div>
+
+          {/* Labels */}
+          <LabelSelector projectId={project.id} />
 
           <Separator />
 

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Search, Download, ExternalLink, Loader2, Check, Globe, Package, LogIn } from 'lucide-react';
+import { Search, Download, Loader2, Check, Package, LogIn } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -39,7 +39,7 @@ export function DiscoverPluginsDialog({ open, onOpenChange }: DiscoverPluginsDia
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-3xl max-h-[80vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Package className="h-5 w-5 text-primary" />
@@ -50,9 +50,9 @@ export function DiscoverPluginsDialog({ open, onOpenChange }: DiscoverPluginsDia
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 flex-1 overflow-hidden flex flex-col">
+        <div className="space-y-4 flex-1 min-h-0 flex flex-col">
           {/* Search Input */}
-          <div className="relative">
+          <div className="relative flex-shrink-0">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder={t('searchPlugins')}
@@ -63,7 +63,7 @@ export function DiscoverPluginsDialog({ open, onOpenChange }: DiscoverPluginsDia
           </div>
 
           {/* Plugins List */}
-          <div className="flex-1 overflow-y-auto space-y-3 pr-2">
+          <div className="flex-1 overflow-y-auto space-y-3">
             {!user && (
               <Card className="border-dashed">
                 <CardContent className="py-12 px-8 text-center">
@@ -219,49 +219,30 @@ function PluginCard({ plugin }: PluginCardProps) {
           </p>
         )}
 
-        {/* Action Buttons */}
-        <div className="flex gap-2">
-          <Button
-            onClick={handleInstall}
-            disabled={isInstalled || isInstalling || !plugin.cloneUrl}
-            className="flex-1"
-            size="sm"
-          >
-            {isInstalling ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                {t('installing')}
-              </>
-            ) : isInstalled ? (
-              <>
-                <Check className="h-4 w-4 mr-2" />
-                {t('installed')}
-              </>
-            ) : (
-              <>
-                <Download className="h-4 w-4 mr-2" />
-                {t('install')}
-              </>
-            )}
-          </Button>
-          {plugin.webUrl && (
-            <Button
-              variant="outline"
-              size="sm"
-              asChild
-            >
-              <a
-                href={plugin.webUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Globe className="h-4 w-4 mr-2" />
-                {t('website')}
-                <ExternalLink className="h-3 w-3 ml-1" />
-              </a>
-            </Button>
+        {/* Action Button */}
+        <Button
+          onClick={handleInstall}
+          disabled={isInstalled || isInstalling || !plugin.cloneUrl}
+          className="w-full"
+          size="sm"
+        >
+          {isInstalling ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              {t('installing')}
+            </>
+          ) : isInstalled ? (
+            <>
+              <Check className="h-4 w-4 mr-2" />
+              {t('installed')}
+            </>
+          ) : (
+            <>
+              <Download className="h-4 w-4 mr-2" />
+              {t('install')}
+            </>
           )}
-        </div>
+        </Button>
       </CardContent>
     </Card>
   );

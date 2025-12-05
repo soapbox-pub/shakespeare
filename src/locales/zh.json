@@ -455,10 +455,5 @@
   "selectLabels": "选择标签",
   "noLabelsCreated": "尚未创建标签",
   "createNewLabel": "创建新标签",
-  "showColoredIcons": "彩色文件夹图标",
-  "showColoredIconsDescription": "为有标签的项目显示标签颜色的文件夹图标。",
-  "groupByLabel": "按标签分组",
-  "groupByLabelDescription": "根据标签将项目组织成可折叠的分组。",
-  "unlabeled": "无标签",
-  "createLabelToEnableSettings": "创建标签以启用这些设置"
+  "unlabeled": "无标签"
 }

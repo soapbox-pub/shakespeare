@@ -443,10 +443,5 @@
   "selectLabels": "Họrọ akara",
   "noLabelsCreated": "Emepụtaghị akara ọ bụla",
   "createNewLabel": "Mepụta akara ọhụrụ",
-  "showColoredIcons": "Akara nchekwa nwere agba",
-  "showColoredIconsDescription": "Gosi akara nchekwa n'agba akara maka ọrụ nwere akara.",
-  "groupByLabel": "Kekọta site n'akara",
-  "groupByLabelDescription": "Hazie ọrụ n'ime otu ndị a pụrụ imechi dabere n'akara ha.",
-  "unlabeled": "Enweghị akara",
-  "createLabelToEnableSettings": "Mepụta akara iji mee ka ntọala ndị a rụọ ọrụ"
+  "unlabeled": "Enweghị akara"
 }

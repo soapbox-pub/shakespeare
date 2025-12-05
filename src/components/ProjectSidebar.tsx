@@ -24,7 +24,6 @@ interface ProjectItemProps {
   onSelect: (project: Project) => void;
   isFavorite?: boolean;
   labelColor?: string;
-  showColoredIcon?: boolean;
 }
 
 const ProjectItem: React.FC<ProjectItemProps> = ({
@@ -33,7 +32,6 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
   onSelect,
   isFavorite,
   labelColor,
-  showColoredIcon = false,
 }) => {
   const navigate = useNavigate();
   const { hasRunningSessions } = useProjectSessionStatus(project.id);
@@ -43,9 +41,9 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
     navigate(`/project/${project.id}`);
   };
 
-  // Determine folder icon color
+  // Determine folder icon color - always show colored icons when label exists
   const getFolderColorClass = () => {
-    if (showColoredIcon && labelColor) {
+    if (labelColor) {
       const colorConfig = getLabelColor(labelColor as Parameters<typeof getLabelColor>[0]);
       return colorConfig.text;
     }
@@ -151,14 +149,14 @@ export function ProjectSidebar({
   const { data: projects = [], isLoading, error } = useProjects();
   const [favorites] = useLocalStorage<string[]>('project-favorites', []);
   const [searchQuery, setSearchQuery] = useState('');
-  const { labels, displaySettings, toggleLabelCollapsed } = useLabels();
+  const { labels, toggleLabelCollapsed } = useLabels();
   const { getProjectLabels, hasAnyLabels } = useProjectLabels();
 
   const isMobile = useIsMobile();
   const navigate = useNavigate();
 
-  // Determine if we should show grouped view
-  const showGroupedView = displaySettings.groupByLabel && labels.length > 0 && hasAnyLabels();
+  // Always show grouped view when labels exist and projects have labels
+  const showGroupedView = labels.length > 0 && hasAnyLabels();
 
   // Fast in-memory search filtering
   const filteredProjects = useMemo(() => {
@@ -404,7 +402,6 @@ export function ProjectSidebar({
                             onSelect={onSelectProject}
                             isFavorite={favorites.includes(project.id)}
                             labelColor={label.color}
-                            showColoredIcon={displaySettings.showColoredIcons}
                           />
                         ))}
                       </div>
@@ -444,7 +441,6 @@ export function ProjectSidebar({
                   onSelect={onSelectProject}
                   isFavorite={favorites.includes(project.id)}
                   labelColor={getProjectLabelColor(project.id)}
-                  showColoredIcon={displaySettings.showColoredIcons}
                 />
               ))}
             </div>

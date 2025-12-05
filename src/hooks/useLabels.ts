@@ -31,18 +31,6 @@ export interface Label {
   collapsed?: boolean;
 }
 
-export interface LabelDisplaySettings {
-  /** Show colored folder icons for labeled projects */
-  showColoredIcons: boolean;
-  /** Group projects by label in sidebar */
-  groupByLabel: boolean;
-}
-
-const DEFAULT_DISPLAY_SETTINGS: LabelDisplaySettings = {
-  showColoredIcons: false,
-  groupByLabel: false,
-};
-
 /** Get the color config for a label color name */
 export function getLabelColor(colorName: LabelColorName) {
   return LABEL_COLORS.find(c => c.name === colorName) || LABEL_COLORS[0];
@@ -58,10 +46,6 @@ function generateLabelId(): string {
  */
 export function useLabels() {
   const [labels, setLabels] = useLocalStorage<Label[]>('project-labels', []);
-  const [displaySettings, setDisplaySettings] = useLocalStorage<LabelDisplaySettings>(
-    'project-labels-display',
-    DEFAULT_DISPLAY_SETTINGS
-  );
 
   const createLabel = (name: string, color: LabelColorName): Label => {
     const newLabel: Label = {
@@ -96,18 +80,12 @@ export function useLabels() {
     ));
   };
 
-  const updateDisplaySettings = (updates: Partial<LabelDisplaySettings>) => {
-    setDisplaySettings({ ...displaySettings, ...updates });
-  };
-
   return {
     labels,
-    displaySettings,
     createLabel,
     updateLabel,
     deleteLabel,
     reorderLabels,
     toggleLabelCollapsed,
-    updateDisplaySettings,
   };
 }

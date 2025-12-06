@@ -100,10 +100,14 @@ export function ErrorBoundary({
       const Sentry = getSentryInstance();
       if (Sentry) {
         Sentry.captureException(error, {
+          level: 'fatal', // Mark as fatal/unhandled error (skull icon in Sentry UI)
           contexts: {
             react: {
               componentStack: info.componentStack,
             },
+          },
+          tags: {
+            errorBoundary: 'true', // Tag to easily filter these errors
           },
         });
       }

@@ -201,7 +201,7 @@ function generateIdFromName(name: string): string {
 
 export function AISettings() {
   const { t } = useTranslation();
-  const { settings, setProvider, removeProvider, setProviders } = useAISettings();
+  const { settings, updateSettings, setProvider, removeProvider, setProviders } = useAISettings();
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const { user } = useCurrentUser();
@@ -682,25 +682,15 @@ export function AISettings() {
                 </div>
                 <div className="flex items-center gap-2">
                   <ModelInput
-                    value={config.imageModel || ''}
-                    onChange={(value) => {
-                      updateConfig((current) => ({
-                        ...current,
-                        imageModel: value || undefined,
-                      }));
-                    }}
+                    value={settings.imageModel || ''}
+                    onChange={(value) => updateSettings({ imageModel: value || undefined })}
                     className="flex-1"
                   />
-                  {config.imageModel && (
+                  {settings.imageModel && (
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => {
-                        updateConfig((current) => {
-                          const { imageModel, ...rest } = current;
-                          return rest;
-                        });
-                      }}
+                      onClick={() => updateSettings({ imageModel: undefined })}
                       className="h-10 px-3"
                     >
                       <X className="h-4 w-4" />

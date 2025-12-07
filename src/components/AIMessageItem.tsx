@@ -172,7 +172,7 @@ export const AIMessageItem = memo(({
           case 'generate_image':
             return {
               icon: Image,
-              title: args.prompt ? `Generated: ${args.prompt.slice(0, 40)}${args.prompt.length > 40 ? '...' : ''}` : 'Generated Image'
+              title: args.prompt ? `Generated: ${args.prompt}` : 'Generated Image'
             };
           default:
             return {

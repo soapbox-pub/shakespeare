@@ -186,9 +186,9 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     }
 
     // Add generate_image tool if imageModel is configured
-    if (config.imageModel) {
+    if (settings.imageModel) {
       try {
-        const { provider, model } = parseProviderModel(config.imageModel, settings.providers);
+        const { provider, model } = parseProviderModel(settings.imageModel, settings.providers);
         tools.generate_image = new GenerateImageTool(
           fs,
           tmpPath,
@@ -203,7 +203,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     }
 
     return tools;
-  }, [fs, git, cwd, user, projectId, projectsPath, tmpPath, pluginsPath, config.corsProxy, config.imageModel, settings.providers, handleFileChanged]);
+  }, [fs, git, cwd, user, projectId, projectsPath, tmpPath, pluginsPath, config.corsProxy, settings.imageModel, settings.providers, handleFileChanged]);
 
   // MCP tools wrapped for execution
   const mcpToolWrappers = useMemo(() => createMCPTools(mcpClients), [mcpClients]);

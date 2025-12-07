@@ -53,6 +53,7 @@ const mcpServerSchema: z.ZodType<MCPServer> = z.object({
 const aiSettingsSchema = z.object({
   providers: filteredArray(aiProviderSchema),
   recentlyUsedModels: filteredArray(providerModelSchema),
+  imageModel: providerModelSchema.optional(),
   mcpServers: z.record(z.string(), mcpServerSchema).optional(),
 });
 

@@ -22,6 +22,7 @@ export interface MCPServers {
 export interface AISettings {
   providers: AIProvider[];
   recentlyUsedModels: string[];
+  imageModel?: string;
   mcpServers?: MCPServers;
 }
 

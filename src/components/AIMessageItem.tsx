@@ -1,6 +1,6 @@
 import { memo, useState } from 'react';
 import { Streamdown } from 'streamdown';
-import { Wrench, Eye, FileText, Edit, Package, PackageMinus, GitCommit, BookOpen, Download, Hash, Tag, Network, List, Plus, Terminal, Globe, Lightbulb, Loader2, Logs, Send, Puzzle } from 'lucide-react';
+import { Wrench, Eye, FileText, Edit, Package, PackageMinus, GitCommit, BookOpen, Download, Hash, Tag, Network, List, Plus, Terminal, Globe, Lightbulb, Loader2, Logs, Send, Puzzle, Image } from 'lucide-react';
 import type { AIMessage } from '@/lib/SessionManager';
 import { cn } from '@/lib/utils';
 import { UserMessage } from '@/components/UserMessage';
@@ -26,7 +26,9 @@ export const AIMessageItem = memo(({
   isCurrentlyLoading = false,
   toolCall,
 }: AIMessageItemProps) => {
-  const [isToolExpanded, setIsToolExpanded] = useState(false);
+  // Check if this is a generate_image tool to expand by default
+  const isGenerateImageTool = message.role === 'tool' && toolCall?.type === 'function' && toolCall.function.name === 'generate_image';
+  const [isToolExpanded, setIsToolExpanded] = useState(isGenerateImageTool);
   const [isReasoningExpanded, setIsReasoningExpanded] = useState(false);
   const [expandedImageUrl, setExpandedImageUrl] = useState<string | null>(null);
   const { displayTheme } = useTheme();
@@ -166,6 +168,11 @@ export const AIMessageItem = memo(({
               icon: Puzzle,
               title: args.name ? `Skill: ${args.name}` : 'Skill'
             };
+          case 'generate_image':
+            return {
+              icon: Image,
+              title: args.prompt ? `Generated: ${args.prompt.slice(0, 40)}${args.prompt.length > 40 ? '...' : ''}` : 'Generated Image'
+            };
           default:
             return {
               icon: Wrench,
@@ -257,6 +264,31 @@ export const AIMessageItem = memo(({
             </div>
           </div>
         );
+      }
+
+      if (toolName === 'generate_image') {
+        // Parse "Generated image: /tmp/filename.png" from content
+        const match = content.match(/Generated image:\s*(\/tmp\/[^\s\n]+)/);
+        if (match) {
+          const imagePath = match[1];
+          const filename = imagePath.split('/').pop() || imagePath;
+
+          return (
+            <div className="mt-1 p-3 bg-muted/30 rounded border">
+              <div className="space-y-2">
+                <div className="text-xs text-muted-foreground font-mono">
+                  {imagePath}
+                </div>
+                <img
+                  src={imagePath}
+                  alt={filename}
+                  className="max-w-full h-auto rounded cursor-pointer hover:opacity-90 transition-opacity"
+                  onClick={() => setExpandedImageUrl(imagePath)}
+                />
+              </div>
+            </div>
+          );
+        }
       }
 
       // Default rendering for other tools

@@ -44,6 +44,7 @@ import { MCPServersSection } from '@/components/MCPServersSection';
 import { PluginsSection } from '@/components/PluginsSection';
 import { ProjectTemplatesSection } from '@/components/ProjectTemplatesSection';
 import { defaultSystemPrompt } from '@/lib/system';
+import { ModelInput } from '@/components/ModelInput';
 
 interface SortableProviderItemProps {
   provider: AIProvider;
@@ -668,6 +669,47 @@ export function AISettings() {
 
           {showAdvanced && (
             <div className="space-y-6">
+              {/* Image Model Configuration */}
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Bot className="h-5 w-5 text-primary" />
+                    <h3 className="text-lg font-semibold">{t('imageModel')}</h3>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {t('imageModelDescription')}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <ModelInput
+                    value={config.imageModel || ''}
+                    onChange={(value) => {
+                      updateConfig((current) => ({
+                        ...current,
+                        imageModel: value || undefined,
+                      }));
+                    }}
+                    className="flex-1"
+                  />
+                  {config.imageModel && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        updateConfig((current) => {
+                          const { imageModel, ...rest } = current;
+                          return rest;
+                        });
+                      }}
+                      className="h-10 px-3"
+                    >
+                      <RotateCcw className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+              <Separator />
+
               {/* Project Templates Section */}
               <ProjectTemplatesSection />
               <Separator />

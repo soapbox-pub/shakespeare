@@ -35,6 +35,7 @@ import { NostrPublishEventsTool } from '@/lib/tools/NostrPublishEventsTool';
 import { ShellTool } from '@/lib/tools/ShellTool';
 import { ReadConsoleMessagesTool } from '@/lib/tools/ReadConsoleMessagesTool';
 import { SkillTool } from '@/lib/tools/SkillTool';
+import { GenerateImageTool } from '@/lib/tools/GenerateImageTool';
 import { createMCPTools } from '@/lib/tools/MCPTool';
 import { ProjectPreviewConsoleError } from '@/lib/consoleMessages';
 import { toolToOpenAI } from '@/lib/tools/openai-adapter';
@@ -183,8 +184,26 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
       tools.deploy_project = new DeployProjectTool(fs, cwd, user.signer, projectId);
     }
 
+    // Add generate_image tool if imageModel is configured
+    if (config.imageModel) {
+      // Extract provider ID from imageModel (format: "provider/model")
+      const providerId = config.imageModel.split('/')[0];
+      const provider = settings.providers.find(p => p.id === providerId);
+
+      if (provider) {
+        tools.generate_image = new GenerateImageTool(
+          fs,
+          tmpPath,
+          provider,
+          config.imageModel,
+          user,
+          config.corsProxy
+        );
+      }
+    }
+
     return tools;
-  }, [fs, git, cwd, user, projectId, projectsPath, tmpPath, pluginsPath, config.corsProxy, handleFileChanged]);
+  }, [fs, git, cwd, user, projectId, projectsPath, tmpPath, pluginsPath, config.corsProxy, config.imageModel, settings.providers, handleFileChanged]);
 
   // MCP tools wrapped for execution
   const mcpToolWrappers = useMemo(() => createMCPTools(mcpClients), [mcpClients]);

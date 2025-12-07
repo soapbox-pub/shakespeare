@@ -57,6 +57,8 @@ export interface AppConfig {
   sentryEnabled: boolean;
   /** System prompt EJS template */
   systemPrompt?: string;
+  /** Image generation model */
+  imageModel?: string;
 }
 
 export interface AppContextType {

@@ -20,7 +20,7 @@ export class GenerateImageTool implements Tool<GenerateImageParams> {
     private fs: JSRuntimeFS,
     private tmpPath: string,
     private provider: AIProvider,
-    private imageModel: string,
+    private model: string,
     private user?: NUser,
     private corsProxy?: string,
   ) {}
@@ -31,12 +31,13 @@ export class GenerateImageTool implements Tool<GenerateImageParams> {
     try {
       const client = createAIClient(this.provider, this.user, this.corsProxy);
 
-      let imageUrl: string | undefined;
+      let imageData: Uint8Array;
+      let extension = 'png';
 
       // OpenRouter uses chat completions with modalities
       if (this.provider.id === 'openrouter') {
         const response = await client.chat.completions.create({
-          model: this.imageModel,
+          model: this.model,
           messages: [
             {
               role: 'user',
@@ -46,44 +47,65 @@ export class GenerateImageTool implements Tool<GenerateImageParams> {
           modalities: ['image'] as never[], // Type assertion needed as OpenAI SDK doesn't have this typed
         });
 
-        // Extract image URL from response
+        // Extract image data URI from response
         const message = response.choices[0]?.message;
-        if (message?.content) {
-          const content = Array.isArray(message.content) ? message.content : [{ type: 'text', text: message.content }];
-          const imageContent = content.find((part: { type: string; image_url?: { url: string } }) => part.type === 'image_url');
-          if (imageContent && 'image_url' in imageContent) {
-            imageUrl = imageContent.image_url?.url;
-          }
+        if (!message) {
+          throw new Error('No message returned from the API');
+        }
+
+        const result = z.object({
+          images: z.object({
+            type: z.literal('image_url'),
+            image_url: z.object({
+              url: z.string(),
+            }),
+          }).array().min(1),
+        }).safeParse(message);
+
+        if (!result.success) {
+          throw new Error('Invalid response format from the API');
+        }
+
+        const dataUri = result.data.images[0].image_url.url;
+
+        // Parse data URI: data:image/png;base64,iVBORw0KGgoAAAANS...
+        const dataUriMatch = dataUri.match(/^data:image\/([^;]+);base64,(.+)$/);
+        if (!dataUriMatch) {
+          throw new Error('Invalid data URI format');
+        }
+
+        extension = dataUriMatch[1];
+        const base64Data = dataUriMatch[2];
+
+        // Decode base64 to bytes
+        const binaryString = atob(base64Data);
+        imageData = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          imageData[i] = binaryString.charCodeAt(i);
         }
       } else {
-        // Standard OpenAI image generation
+        // Standard OpenAI image generation - use b64_json format
         const response = await client.images.generate({
-          model: this.imageModel,
+          model: this.model,
           prompt,
-          n: 1,
-          response_format: 'url',
+          response_format: 'b64_json',
         });
 
-        imageUrl = response.data?.[0]?.url;
+        const b64Json = response.data?.[0]?.b64_json;
+        if (!b64Json) {
+          throw new Error('No base64 image data returned from the API');
+        }
+
+        // Decode base64 to bytes
+        const binaryString = atob(b64Json);
+        imageData = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          imageData[i] = binaryString.charCodeAt(i);
+        }
+
+        // Extension is PNG for standard OpenAI responses
+        extension = 'png';
       }
-
-      if (!imageUrl) {
-        throw new Error('No image URL returned from the API');
-      }
-
-      // Download the image
-      const imageResponse = await fetch(imageUrl);
-      if (!imageResponse.ok) {
-        throw new Error(`Failed to download image: ${imageResponse.statusText}`);
-      }
-
-      const imageBlob = await imageResponse.blob();
-      const imageBuffer = await imageBlob.arrayBuffer();
-      const imageData = new Uint8Array(imageBuffer);
-
-      // Determine file extension from content type
-      const contentType = imageResponse.headers.get('content-type') || 'image/png';
-      const extension = contentType.split('/')[1]?.split(';')[0] || 'png';
 
       // Generate unique filename
       const timestamp = Date.now();

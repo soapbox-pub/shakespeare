@@ -4,6 +4,7 @@ import { Wrench, Eye, FileText, Edit, Package, PackageMinus, GitCommit, BookOpen
 import type { AIMessage } from '@/lib/SessionManager';
 import { cn } from '@/lib/utils';
 import { UserMessage } from '@/components/UserMessage';
+import { VFSImage } from '@/components/VFSImage';
 import OpenAI from 'openai';
 import { useTheme } from '@/hooks/useTheme';
 import { isEmptyMessage } from '@/lib/isEmptyMessage';
@@ -274,18 +275,13 @@ export const AIMessageItem = memo(({
           const filename = imagePath.split('/').pop() || imagePath;
 
           return (
-            <div className="mt-1 p-3 bg-muted/30 rounded border">
-              <div className="space-y-2">
-                <div className="text-xs text-muted-foreground font-mono">
-                  {imagePath}
-                </div>
-                <img
-                  src={imagePath}
-                  alt={filename}
-                  className="max-w-full h-auto rounded cursor-pointer hover:opacity-90 transition-opacity"
-                  onClick={() => setExpandedImageUrl(imagePath)}
-                />
-              </div>
+            <div className="mt-1 p-3 bg-muted/30 rounded border max-w-xs">
+              <VFSImage
+                path={imagePath}
+                alt={filename}
+                className="max-w-full h-auto rounded cursor-pointer hover:opacity-90 transition-opacity"
+                onClick={() => setExpandedImageUrl(imagePath)}
+              />
             </div>
           );
         }
@@ -398,11 +394,19 @@ export const AIMessageItem = memo(({
             >
               {expandedImageUrl && (
                 <div className="relative flex items-center justify-center">
-                  <img
-                    src={expandedImageUrl}
-                    alt="Expanded image"
-                    className="max-w-full max-h-[95vh] w-auto h-auto object-contain rounded-lg"
-                  />
+                  {expandedImageUrl.startsWith('/') ? (
+                    <VFSImage
+                      path={expandedImageUrl}
+                      alt="Expanded image"
+                      className="max-w-full max-h-[95vh] w-auto h-auto object-contain rounded-lg"
+                    />
+                  ) : (
+                    <img
+                      src={expandedImageUrl}
+                      alt="Expanded image"
+                      className="max-w-full max-h-[95vh] w-auto h-auto object-contain rounded-lg"
+                    />
+                  )}
                 </div>
               )}
             </DialogPrimitive.Content>

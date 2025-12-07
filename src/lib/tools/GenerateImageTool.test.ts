@@ -44,9 +44,6 @@ describe('GenerateImageTool', () => {
 
     // Mock createAIClient to return our mock
     (createAIClient as ReturnType<typeof vi.fn>).mockReturnValue(mockOpenAI);
-
-    // Mock fetch globally
-    global.fetch = vi.fn();
   });
 
   it('should have correct description', () => {
@@ -54,7 +51,7 @@ describe('GenerateImageTool', () => {
       mockFS,
       '/tmp',
       mockProvider,
-      'openai/dall-e-3',
+      'dall-e-3',
       undefined,
       undefined
     );
@@ -69,7 +66,7 @@ describe('GenerateImageTool', () => {
       mockFS,
       '/tmp',
       mockProvider,
-      'openai/dall-e-3',
+      'dall-e-3',
       undefined,
       undefined
     );
@@ -83,7 +80,7 @@ describe('GenerateImageTool', () => {
       mockFS,
       '/tmp',
       mockProvider,
-      'openai/dall-e-3',
+      'dall-e-3',
       undefined,
       undefined
     );
@@ -97,31 +94,26 @@ describe('GenerateImageTool', () => {
       mockFS,
       '/tmp',
       mockProvider,
-      'openai/dall-e-3',
+      'dall-e-3',
       undefined,
       undefined
     );
 
-    // Mock the image generation API response
-    const mockImageUrl = 'https://example.com/image.png';
+    // Mock the image generation API response with b64_json
     const mockImageData = new Uint8Array([1, 2, 3, 4]);
+    const base64Data = btoa(String.fromCharCode(...mockImageData));
 
     mockOpenAI.images.generate.mockResolvedValue({
-      data: [{ url: mockImageUrl }],
+      data: [{ b64_json: base64Data }],
     });
-
-    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-      ok: true,
-      headers: new Headers({ 'content-type': 'image/png' }),
-      blob: async () => ({
-        arrayBuffer: async () => mockImageData.buffer,
-      }),
-    } as Response);
 
     const result = await tool.execute({ prompt: 'a beautiful sunset' });
 
     expect(result).toMatch(/^Generated image: \/tmp\/generated-\d+\.png$/);
-    expect(mockFS.writeFile).toHaveBeenCalled();
+    expect(mockFS.writeFile).toHaveBeenCalledWith(
+      expect.stringMatching(/^\/tmp\/generated-\d+\.png$/),
+      expect.any(Uint8Array)
+    );
   });
 
   it('should handle OpenRouter provider with modalities', async () => {
@@ -136,22 +128,24 @@ describe('GenerateImageTool', () => {
       mockFS,
       '/tmp',
       openRouterProvider,
-      'openrouter/flux-1.1-pro',
+      'flux-1.1-pro',
       undefined,
       undefined
     );
 
-    const mockImageUrl = 'https://example.com/image.png';
+    // Create a data URI with base64 encoded image data
     const mockImageData = new Uint8Array([1, 2, 3, 4]);
+    const base64Data = btoa(String.fromCharCode(...mockImageData));
+    const dataUri = `data:image/png;base64,${base64Data}`;
 
     mockOpenAI.chat.completions.create.mockResolvedValue({
       choices: [
         {
           message: {
-            content: [
+            images: [
               {
                 type: 'image_url',
-                image_url: { url: mockImageUrl },
+                image_url: { url: dataUri },
               },
             ],
           },
@@ -159,26 +153,21 @@ describe('GenerateImageTool', () => {
       ],
     });
 
-    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-      ok: true,
-      headers: new Headers({ 'content-type': 'image/png' }),
-      blob: async () => ({
-        arrayBuffer: async () => mockImageData.buffer,
-      }),
-    } as Response);
-
     const result = await tool.execute({ prompt: 'a beautiful sunset' });
 
     expect(result).toMatch(/^Generated image: \/tmp\/generated-\d+\.png$/);
-    expect(mockFS.writeFile).toHaveBeenCalled();
+    expect(mockFS.writeFile).toHaveBeenCalledWith(
+      expect.stringMatching(/^\/tmp\/generated-\d+\.png$/),
+      expect.any(Uint8Array)
+    );
   });
 
-  it('should throw error when no image URL is returned', async () => {
+  it('should throw error when no image data is returned', async () => {
     const tool = new GenerateImageTool(
       mockFS,
       '/tmp',
       mockProvider,
-      'openai/dall-e-3',
+      'dall-e-3',
       undefined,
       undefined
     );
@@ -188,63 +177,118 @@ describe('GenerateImageTool', () => {
     });
 
     await expect(tool.execute({ prompt: 'test' })).rejects.toThrow(
-      'No image URL returned from the API'
+      'No base64 image data returned from the API'
     );
   });
 
-  it('should throw error when image download fails', async () => {
+  it('should throw error when OpenRouter returns invalid response', async () => {
+    const openRouterProvider: AIProvider = {
+      id: 'openrouter',
+      name: 'OpenRouter',
+      baseURL: 'https://openrouter.ai/api/v1',
+      apiKey: 'test-key',
+    };
+
     const tool = new GenerateImageTool(
       mockFS,
       '/tmp',
-      mockProvider,
-      'openai/dall-e-3',
+      openRouterProvider,
+      'flux-1.1-pro',
       undefined,
       undefined
     );
 
-    const mockImageUrl = 'https://example.com/image.png';
-
-    mockOpenAI.images.generate.mockResolvedValue({
-      data: [{ url: mockImageUrl }],
+    mockOpenAI.chat.completions.create.mockResolvedValue({
+      choices: [
+        {
+          message: {
+            content: 'Invalid response',
+          },
+        },
+      ],
     });
-
-    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-      ok: false,
-      statusText: 'Not Found',
-    } as Response);
 
     await expect(tool.execute({ prompt: 'test' })).rejects.toThrow(
-      'Failed to download image: Not Found'
+      'Failed to generate image: Invalid response format from the API'
     );
   });
 
-  it('should determine file extension from content type', async () => {
+  it('should determine file extension from OpenRouter data URI', async () => {
+    const openRouterProvider: AIProvider = {
+      id: 'openrouter',
+      name: 'OpenRouter',
+      baseURL: 'https://openrouter.ai/api/v1',
+      apiKey: 'test-key',
+    };
+
     const tool = new GenerateImageTool(
       mockFS,
       '/tmp',
-      mockProvider,
-      'openai/dall-e-3',
+      openRouterProvider,
+      'flux-1.1-pro',
       undefined,
       undefined
     );
 
-    const mockImageUrl = 'https://example.com/image.jpg';
+    // Create a data URI with JPEG format
     const mockImageData = new Uint8Array([1, 2, 3, 4]);
+    const base64Data = btoa(String.fromCharCode(...mockImageData));
+    const dataUri = `data:image/jpeg;base64,${base64Data}`;
 
-    mockOpenAI.images.generate.mockResolvedValue({
-      data: [{ url: mockImageUrl }],
+    mockOpenAI.chat.completions.create.mockResolvedValue({
+      choices: [
+        {
+          message: {
+            images: [
+              {
+                type: 'image_url',
+                image_url: { url: dataUri },
+              },
+            ],
+          },
+        },
+      ],
     });
-
-    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-      ok: true,
-      headers: new Headers({ 'content-type': 'image/jpeg' }),
-      blob: async () => ({
-        arrayBuffer: async () => mockImageData.buffer,
-      }),
-    } as Response);
 
     const result = await tool.execute({ prompt: 'a beautiful sunset' });
 
     expect(result).toMatch(/^Generated image: \/tmp\/generated-\d+\.jpeg$/);
+  });
+
+  it('should throw error when OpenRouter returns invalid data URI', async () => {
+    const openRouterProvider: AIProvider = {
+      id: 'openrouter',
+      name: 'OpenRouter',
+      baseURL: 'https://openrouter.ai/api/v1',
+      apiKey: 'test-key',
+    };
+
+    const tool = new GenerateImageTool(
+      mockFS,
+      '/tmp',
+      openRouterProvider,
+      'flux-1.1-pro',
+      undefined,
+      undefined
+    );
+
+    mockOpenAI.chat.completions.create.mockResolvedValue({
+      choices: [
+        {
+          message: {
+            images: [
+              {
+                type: 'image_url',
+                image_url: { url: 'https://example.com/image.png' },
+              },
+            ],
+          },
+        },
+      ],
+    });
+
+    await expect(tool.execute({ prompt: 'test' })).rejects.toThrow(
+      'Invalid data URI format'
+    );
   });
 });

@@ -47,6 +47,7 @@ import { ShakespeareLogo } from '@/components/ShakespeareLogo';
 import { ChatInput } from '@/components/Shakespeare/ChatInput';
 import { buildMessageContent } from '@/lib/buildMessageContent';
 import { DotAI } from '@/lib/DotAI';
+import { parseProviderModel } from '@/lib/parseProviderModel';
 
 // Clean interfaces now handled by proper hooks
 
@@ -186,19 +187,18 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
 
     // Add generate_image tool if imageModel is configured
     if (config.imageModel) {
-      // Extract provider ID from imageModel (format: "provider/model")
-      const providerId = config.imageModel.split('/')[0];
-      const provider = settings.providers.find(p => p.id === providerId);
-
-      if (provider) {
+      try {
+        const { provider, model } = parseProviderModel(config.imageModel, settings.providers);
         tools.generate_image = new GenerateImageTool(
           fs,
           tmpPath,
           provider,
-          config.imageModel,
+          model,
           user,
           config.corsProxy
         );
+      } catch (error) {
+        console.warn('Failed to parse imageModel:', error);
       }
     }
 

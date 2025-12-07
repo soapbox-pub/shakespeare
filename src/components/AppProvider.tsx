@@ -49,6 +49,8 @@ const AppConfigSchema = z.object({
   fsPathTemplates: z.string().min(1),
   sentryDsn: z.string(),
   sentryEnabled: z.boolean(),
+  systemPrompt: z.string(),
+  imageModel: z.string(),
 }) satisfies z.ZodType<AppConfig>;
 
 export function AppProvider(props: AppProviderProps) {

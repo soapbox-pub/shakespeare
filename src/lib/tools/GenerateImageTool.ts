@@ -21,6 +21,7 @@ export class GenerateImageTool implements Tool<GenerateImageParams> {
     private tmpPath: string,
     private provider: AIProvider,
     private model: string,
+    private outputModalities: string[] | undefined,
     private user?: NUser,
     private corsProxy?: string,
   ) {}
@@ -34,8 +35,10 @@ export class GenerateImageTool implements Tool<GenerateImageParams> {
       let imageData: Uint8Array;
       let extension = 'png';
 
-      // OpenRouter uses chat completions with modalities
-      if (this.provider.id === 'openrouter') {
+      // Check if the model supports image output modality (chat completions path)
+      const supportsImageOutput = this.outputModalities?.includes('image');
+
+      if (supportsImageOutput) {
         const response = await client.chat.completions.create({
           model: this.model,
           messages: [

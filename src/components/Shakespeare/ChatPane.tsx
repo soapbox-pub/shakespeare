@@ -190,11 +190,16 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     if (settings.imageModel) {
       try {
         const { provider, model } = parseProviderModel(settings.imageModel, settings.providers);
+
+        // Find the model data to get outputModalities
+        const providerModel = models.find(m => m.fullId === settings.imageModel);
+
         tools.generate_image = new GenerateImageTool(
           fs,
           tmpPath,
           provider,
           model,
+          providerModel?.outputModalities,
           user,
           config.corsProxy
         );
@@ -204,7 +209,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     }
 
     return tools;
-  }, [fs, git, cwd, user, projectId, projectsPath, tmpPath, pluginsPath, config.corsProxy, settings.imageModel, settings.providers, handleFileChanged]);
+  }, [fs, git, cwd, user, projectId, projectsPath, tmpPath, pluginsPath, config.corsProxy, settings.imageModel, settings.providers, models, handleFileChanged]);
 
   // MCP tools wrapped for execution
   const mcpToolWrappers = useMemo(() => createMCPTools(mcpClients), [mcpClients]);

@@ -53,6 +53,7 @@ describe('GenerateImageTool', () => {
       mockProvider,
       'dall-e-3',
       undefined,
+      undefined,
       undefined
     );
 
@@ -68,6 +69,7 @@ describe('GenerateImageTool', () => {
       mockProvider,
       'dall-e-3',
       undefined,
+      undefined,
       undefined
     );
 
@@ -82,6 +84,7 @@ describe('GenerateImageTool', () => {
       mockProvider,
       'dall-e-3',
       undefined,
+      undefined,
       undefined
     );
 
@@ -95,6 +98,7 @@ describe('GenerateImageTool', () => {
       '/tmp',
       mockProvider,
       'dall-e-3',
+      undefined,
       undefined,
       undefined
     );
@@ -116,7 +120,7 @@ describe('GenerateImageTool', () => {
     );
   });
 
-  it('should handle OpenRouter provider with modalities', async () => {
+  it('should handle models with image output modality', async () => {
     const openRouterProvider: AIProvider = {
       id: 'openrouter',
       name: 'OpenRouter',
@@ -129,6 +133,7 @@ describe('GenerateImageTool', () => {
       '/tmp',
       openRouterProvider,
       'flux-1.1-pro',
+      ['image'], // Model supports image output modality
       undefined,
       undefined
     );
@@ -169,6 +174,7 @@ describe('GenerateImageTool', () => {
       mockProvider,
       'dall-e-3',
       undefined,
+      undefined,
       undefined
     );
 
@@ -181,7 +187,7 @@ describe('GenerateImageTool', () => {
     );
   });
 
-  it('should throw error when OpenRouter returns invalid response', async () => {
+  it('should throw error when model with image modality returns invalid response', async () => {
     const openRouterProvider: AIProvider = {
       id: 'openrouter',
       name: 'OpenRouter',
@@ -194,6 +200,7 @@ describe('GenerateImageTool', () => {
       '/tmp',
       openRouterProvider,
       'flux-1.1-pro',
+      ['image'], // Model supports image output modality
       undefined,
       undefined
     );
@@ -213,7 +220,7 @@ describe('GenerateImageTool', () => {
     );
   });
 
-  it('should determine file extension from OpenRouter data URI', async () => {
+  it('should determine file extension from data URI for models with image modality', async () => {
     const openRouterProvider: AIProvider = {
       id: 'openrouter',
       name: 'OpenRouter',
@@ -226,6 +233,7 @@ describe('GenerateImageTool', () => {
       '/tmp',
       openRouterProvider,
       'flux-1.1-pro',
+      ['image'], // Model supports image output modality
       undefined,
       undefined
     );
@@ -255,7 +263,7 @@ describe('GenerateImageTool', () => {
     expect(result).toMatch(/^Generated image: \/tmp\/generated-\d+\.jpeg$/);
   });
 
-  it('should throw error when OpenRouter returns invalid data URI', async () => {
+  it('should throw error when model with image modality returns invalid data URI', async () => {
     const openRouterProvider: AIProvider = {
       id: 'openrouter',
       name: 'OpenRouter',
@@ -268,6 +276,7 @@ describe('GenerateImageTool', () => {
       '/tmp',
       openRouterProvider,
       'flux-1.1-pro',
+      ['image'], // Model supports image output modality
       undefined,
       undefined
     );

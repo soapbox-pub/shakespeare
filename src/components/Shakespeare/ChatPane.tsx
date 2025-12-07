@@ -578,13 +578,13 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
               isCurrentlyLoading={isLoading}
             />
           )}
-          {/* "Calling <tool>..." if streaming tool call is in progress */}
+          {/* "Running <tool>..." if streaming tool call is in progress */}
           {(streamingToolCall?.type === 'function') ? (
             <div key="tool-calls-loading" className="-mt-2">
               <div className="flex items-center gap-2 px-2 py-1 text-xs text-muted-foreground">
                 <Loader2 className="h-3 w-3 animate-spin flex-shrink-0" />
                 <span className="font-medium">
-                  {t('calling')} {streamingToolCall.function?.name || 'tool'}...
+                  {t('runningTool', { tool: streamingToolCall.function.name })}
                 </span>
               </div>
             </div>
@@ -609,14 +609,14 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     const lastMessage = messages[messages.length - 1] as AIMessage | undefined;
     const lastToolCall = lastMessage?.role === 'assistant' ? lastMessage?.tool_calls?.[0] : undefined;
 
-    // "Running <tool>..." if last tool call is still executing
+    // "Waiting for <tool>..." if last tool call is still executing
     if (lastToolCall?.type === 'function') {
       return (
         <div key="tool-running-loading" className="-mt-2">
           <div className="flex items-center gap-2 px-2 py-1 text-xs text-muted-foreground">
             <Loader2 className="h-3 w-3 animate-spin flex-shrink-0" />
             <span className="font-medium">
-              {t('running')} {lastToolCall.function.name}...
+              {t('waitingForTool', { tool: lastToolCall.function.name })}
             </span>
           </div>
         </div>

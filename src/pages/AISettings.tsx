@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Check, Bot, ArrowLeft, Trash2, GripVertical, ChevronDown, RotateCcw, FileText, Plus, Edit, ExternalLink } from 'lucide-react';
+import { Check, Bot, ArrowLeft, Trash2, GripVertical, ChevronDown, RotateCcw, FileText, Plus, Edit, ExternalLink, X } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -703,7 +703,7 @@ export function AISettings() {
                       }}
                       className="h-10 px-3"
                     >
-                      <RotateCcw className="h-4 w-4" />
+                      <X className="h-4 w-4" />
                     </Button>
                   )}
                 </div>

@@ -65,7 +65,7 @@
   "systemPrompt": "System Prompt",
   "systemPromptDescription": "AI system prompt controlling the assistant's behavior and knowledge.",
   "imageModel": "Image Generation",
-  "imageModelDescription": "Configure the AI model used for generating images. The generate_image tool will be available when a model is selected.",
+  "imageModelDescription": "Configure the AI model used for generating images.",
   "english": "English",
   "portuguese": "Portuguese",
   "chinese": "Chinese",

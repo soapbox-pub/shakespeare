@@ -20,7 +20,9 @@ interface ProviderModel {
     prompt: Decimal;
     /** Output/completion pricing per token */
     completion: Decimal;
-  }
+  };
+  inputModalities?: string[];
+  outputModalities?: string[];
 }
 
 interface ModelFetchResult {
@@ -88,6 +90,18 @@ export function useProviderModels(): ModelFetchResult {
                   prompt: new Decimal(model.pricing.prompt),
                   completion: new Decimal(model.pricing.completion),
                 };
+              }
+
+              if ('architecture' in model && model.architecture && typeof model.architecture === 'object') {
+                const { architecture } = model;
+
+                if ('input_modalities' in architecture && Array.isArray(architecture.input_modalities)) {
+                  providerModel.inputModalities = architecture.input_modalities.filter((mod) => typeof mod === 'string');
+                }
+
+                if ('output_modalities' in architecture && Array.isArray(architecture.output_modalities)) {
+                  providerModel.outputModalities = architecture.output_modalities.filter((mod) => typeof mod === 'string');
+                }
               }
 
               return providerModel;

@@ -14,6 +14,8 @@ interface ModelInputProps {
   onChange: (value: string) => void;
   className?: string;
   placeholder?: string;
+  inputModalities?: string[];
+  outputModalities?: string[];
 }
 
 export function ModelInput({
@@ -21,6 +23,8 @@ export function ModelInput({
   onChange,
   className,
   placeholder,
+  inputModalities,
+  outputModalities,
 }: ModelInputProps) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
@@ -29,17 +33,34 @@ export function ModelInput({
 
   const defaultPlaceholder = 'Select a model...';
 
+  // Filter models by modalities
+  const filteredModels = useMemo(() => {
+    return models.filter((model) => {
+      // Filter by input modalities if specified
+      if (inputModalities && model.inputModalities) {
+        return inputModalities.every((modality) => model.inputModalities!.includes(modality));
+      }
+      // Filter by output modalities if specified
+      if (outputModalities && model.outputModalities) {
+        return outputModalities.every((modality) => model.outputModalities!.includes(modality));
+      }
+      return true;
+    });
+  }, [models, inputModalities, outputModalities]);
+
+  console.log({ models, filteredModels });
+
   // Group models by provider
   const modelsByProvider = useMemo(() => {
-    const groups: Record<string, typeof models> = {};
-    for (const model of models) {
+    const groups: Record<string, typeof filteredModels> = {};
+    for (const model of filteredModels) {
       if (!groups[model.provider]) {
         groups[model.provider] = [];
       }
       groups[model.provider].push(model);
     }
     return groups;
-  }, [models]);
+  }, [filteredModels]);
 
   // Get provider display name and baseURL for a given provider ID
   const getProviderInfo = useMemo(() => {
@@ -59,14 +80,14 @@ export function ModelInput({
     const providerId = value.split('/')[0];
     const modelId = value.split('/').slice(1).join('/') || value;
     const providerInfo = getProviderInfo(providerId);
-    const modelData = models.find(m => m.fullId === value);
+    const modelData = filteredModels.find(m => m.fullId === value);
     const displayName = modelData?.name || modelId;
 
     return {
       displayName,
       baseURL: providerInfo.baseURL,
     };
-  }, [value, getProviderInfo, models]);
+  }, [value, getProviderInfo, filteredModels]);
 
   const handleSelect = (selectedValue: string) => {
     onChange(selectedValue);

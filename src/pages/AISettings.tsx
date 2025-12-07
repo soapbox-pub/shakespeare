@@ -685,6 +685,7 @@ export function AISettings() {
                     value={settings.imageModel || ''}
                     onChange={(value) => updateSettings({ imageModel: value || undefined })}
                     className="flex-1"
+                    outputModalities={["image"]}
                   />
                   {settings.imageModel && (
                     <Button

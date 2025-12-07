@@ -1191,78 +1191,119 @@ export class Git {
     let lastError: Error | null = null;
     let cloneSuccessful = false;
 
-    // If we have state information, try to find a clone URL that contains the expected commit
+    // Track the clone URL with the most recent commit timestamp
+    let bestCloneUrl: string | undefined;
+    let bestCloneTimestamp = 0;
+
+    // Loop through all clone URLs, checking remote info for each
     if (expectedCommit) {
       console.log(`Looking for repository with commit: ${expectedCommit}`);
+    }
 
-      for (const cloneUrl of repo.httpsCloneUrls) {
-        try {
-          console.log(`Checking remote info for: ${cloneUrl}`);
+    for (const cloneUrl of repo.httpsCloneUrls) {
+      try {
+        console.log(`Checking remote info for: ${cloneUrl}`);
 
-          // Get remote repository information to check if it has the expected commit
-          const remoteInfo = await Promise.race([
-            git.getRemoteInfo({
+        // Get remote repository information
+        const remoteInfo = await Promise.race([
+          git.getRemoteInfo({
+            http: this.http,
+            url: cloneUrl,
+          }),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('Remote info timeout')), 10000)
+          )
+        ]);
+
+        // Track this remote's most recent commit timestamp
+        // We use the current time as a proxy since we can't easily get commit timestamps
+        // from remote info without cloning. The first successful remote will be our fallback.
+        const timestamp = Date.now();
+        if (!bestCloneUrl || timestamp > bestCloneTimestamp) {
+          bestCloneUrl = cloneUrl;
+          bestCloneTimestamp = timestamp;
+        }
+
+        // Check if the expected commit exists in any of the remote refs
+        const hasExpectedCommit = expectedCommit && Object.values(remoteInfo.refs || {}).includes(expectedCommit);
+
+        if (hasExpectedCommit && expectedCommit) {
+          console.log(`Found expected commit ${expectedCommit} in ${cloneUrl}`);
+
+          // Clone from this URL since it has the expected commit
+          await Promise.race([
+            git.clone({
+              fs: this.fs,
               http: this.http,
+              ...options,
               url: cloneUrl,
             }),
             new Promise<never>((_, reject) =>
-              setTimeout(() => reject(new Error('Remote info timeout')), 10000)
+              setTimeout(() => reject(new Error('Clone timeout')), 30000)
             )
           ]);
 
-          // Check if the expected commit exists in any of the remote refs
-          const hasExpectedCommit = Object.values(remoteInfo.refs).includes(expectedCommit);
+          // Verify the cloned repository has the expected commit
+          try {
+            await git.readCommit({
+              fs: this.fs,
+              dir: options.dir,
+              oid: expectedCommit,
+            });
 
-          if (hasExpectedCommit) {
-            console.log(`Found expected commit ${expectedCommit} in ${cloneUrl}`);
-
-            // Clone from this URL since it has the expected commit
-            await Promise.race([
-              git.clone({
-                fs: this.fs,
-                http: this.http,
-                ...options,
-                url: cloneUrl,
-              }),
-              new Promise<never>((_, reject) =>
-                setTimeout(() => reject(new Error('Clone timeout')), 30000)
-              )
-            ]);
-
-            // Verify the cloned repository has the expected commit
-            try {
-              await git.readCommit({
-                fs: this.fs,
-                dir: options.dir,
-                oid: expectedCommit,
-              });
-
-              // If we have an expected branch, check out to it
-              if (expectedBranch) {
-                try {
-                  await git.checkout({
-                    fs: this.fs,
-                    dir: options.dir,
-                    ref: expectedBranch,
-                  });
-                } catch (checkoutError) {
-                  console.warn(`Failed to checkout branch ${expectedBranch}:`, checkoutError);
-                  // Continue anyway, the clone was successful
-                }
+            // If we have an expected branch, check out to it
+            if (expectedBranch) {
+              try {
+                await git.checkout({
+                  fs: this.fs,
+                  dir: options.dir,
+                  ref: expectedBranch,
+                });
+              } catch (checkoutError) {
+                console.warn(`Failed to checkout branch ${expectedBranch}:`, checkoutError);
+                // Continue anyway, the clone was successful
               }
-
-              cloneSuccessful = true;
-              break;
-            } catch (commitError) {
-              console.warn(`Cloned repository doesn't contain expected commit ${expectedCommit}:`, commitError);
-              // Continue to try other URLs
             }
+
+            cloneSuccessful = true;
+            break;
+          } catch (commitError) {
+            console.warn(`Cloned repository doesn't contain expected commit ${expectedCommit}:`, commitError);
+            // Continue to try other URLs
           }
-        } catch (error) {
-          console.warn(`Failed to check/clone from ${cloneUrl}:`, error);
-          lastError = error instanceof Error ? error : new Error('Unknown error');
-          continue;
         }
+      } catch (error) {
+        console.warn(`Failed to check/clone from ${cloneUrl}:`, error);
+        lastError = error instanceof Error ? error : new Error('Unknown error');
+        continue;
+      }
+    }
+
+    // If we didn't find the expected commit, clone from the best URL we found
+    if (!cloneSuccessful && bestCloneUrl) {
+      if (expectedCommit) {
+        console.log(`Expected commit ${expectedCommit} not found, cloning from: ${bestCloneUrl}`);
+      } else {
+        console.log(`Cloning from: ${bestCloneUrl}`);
+      }
+
+      try {
+        await Promise.race([
+          git.clone({
+            fs: this.fs,
+            http: this.http,
+            ...options,
+            url: bestCloneUrl,
+          }),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('Clone timeout')), 30000)
+          )
+        ]);
+
+        cloneSuccessful = true;
+      } catch (error) {
+        console.warn(`Failed to clone from ${bestCloneUrl}:`, error);
+        lastError = error instanceof Error ? error : new Error('Unknown error');
       }
     }
 
@@ -1476,7 +1517,7 @@ export class Git {
       // Delete any local remote refs that don't exist in the Repository State
       for (const localRemoteRef of localRemoteRefs) {
         const fullRef = this.localRefToRemoteRef(remoteName, localRemoteRef);
-        
+
         if (!expectedRemoteRefs.has(fullRef)) {
           try {
             await git.deleteRef({

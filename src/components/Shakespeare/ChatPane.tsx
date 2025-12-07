@@ -33,7 +33,6 @@ import { NostrReadNipsIndexTool } from '@/lib/tools/NostrReadNipsIndexTool';
 import { NostrGenerateKindTool } from '@/lib/tools/NostrGenerateKindTool';
 import { NostrPublishEventsTool } from '@/lib/tools/NostrPublishEventsTool';
 import { ShellTool } from '@/lib/tools/ShellTool';
-import { TypecheckTool } from '@/lib/tools/TypecheckTool';
 import { ReadConsoleMessagesTool } from '@/lib/tools/ReadConsoleMessagesTool';
 import { SkillTool } from '@/lib/tools/SkillTool';
 import { createMCPTools } from '@/lib/tools/MCPTool';
@@ -166,7 +165,6 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
       npm_add_package: new NpmAddPackageTool(fs, cwd),
       npm_remove_package: new NpmRemovePackageTool(fs, cwd),
       build_project: new BuildProjectTool(fs, cwd, esmUrlRef.current),
-      typecheck: new TypecheckTool(fs, cwd),
       nostr_read_nip: new NostrReadNipTool(),
       nostr_fetch_event: new NostrFetchEventTool(),
       nostr_read_kind: new NostrReadKindTool(),

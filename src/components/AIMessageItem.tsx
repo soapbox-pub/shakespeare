@@ -1,6 +1,6 @@
 import { memo, useState } from 'react';
 import { Streamdown } from 'streamdown';
-import { Wrench, Eye, FileText, Edit, Package, PackageMinus, GitCommit, BookOpen, Download, Hash, Tag, Network, List, Plus, Terminal, Globe, CheckCircle, Lightbulb, Loader2, Logs, Send, Puzzle } from 'lucide-react';
+import { Wrench, Eye, FileText, Edit, Package, PackageMinus, GitCommit, BookOpen, Download, Hash, Tag, Network, List, Plus, Terminal, Globe, Lightbulb, Loader2, Logs, Send, Puzzle } from 'lucide-react';
 import type { AIMessage } from '@/lib/SessionManager';
 import { cn } from '@/lib/utils';
 import { UserMessage } from '@/components/UserMessage';
@@ -155,11 +155,6 @@ export const AIMessageItem = memo(({
             return {
               icon: Globe,
               title: args.deployServer ? `Deployed to ${args.deployServer}` : 'Deployed Project'
-            };
-          case 'typecheck':
-            return {
-              icon: CheckCircle,
-              title: 'TypeScript'
             };
           case 'read_console_messages':
             return {

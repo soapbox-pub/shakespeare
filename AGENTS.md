@@ -38,7 +38,6 @@ Shakespeare provides AI agents with specialized tools for project development (n
 - **TextEditorWriteTool**: Create or overwrite files with new content
 - **TextEditorStrReplaceTool**: Replace strings in files
 - **BuildProjectTool**: Build and compile projects
-- **TypecheckTool**: Run TypeScript type checking
 - **NpmAddPackageTool**: Add npm packages to projects
 - **NpmRemovePackageTool**: Remove npm packages from projects
 - **GitCommitTool**: Commit changes to Git repositories
@@ -241,7 +240,7 @@ This project is a Nostr client application built with React 18.x, TailwindCSS 3.
     - Unix-style commands: `cat`, `cd`, `cp`, `find`, `grep`, `ls`, `mkdir`, `mv`, `rm`, etc.
   - `/src/lib/tools/`: AI tool implementations for project development
     - File operations: `TextEditorViewTool`, `TextEditorWriteTool`, `TextEditorStrReplaceTool`
-    - Project tools: `BuildProjectTool`, `TypecheckTool`, `DeployProjectTool`
+    - Project tools: `BuildProjectTool`, `DeployProjectTool`
     - Package management: `NpmAddPackageTool`, `NpmRemovePackageTool`
     - Git integration: `GitCommitTool`
     - Shell access: `ShellTool`

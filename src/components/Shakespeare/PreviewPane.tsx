@@ -713,7 +713,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
                     src={`https://${projectId}.${previewDomain}/`}
                     className="w-full h-full border-0"
                     title="Project Preview"
-                    sandbox="allow-scripts allow-same-origin"
+                    sandbox="allow-scripts allow-same-origin allow-forms"
                   />
                 ) : (
                   <div className="h-full flex items-center justify-center bg-muted">

@@ -611,6 +611,8 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
 
     // "Waiting for <tool>..." if last tool call is still executing
     if (lastToolCall?.type === 'function') {
+      const isGenerateImageTool = lastToolCall.function.name === 'generate_image';
+
       return (
         <div key="tool-running-loading" className="-mt-2">
           <div className="flex items-center gap-2 px-2 py-1 text-xs text-muted-foreground">
@@ -619,6 +621,17 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
               {t('waitingForTool', { tool: lastToolCall.function.name })}
             </span>
           </div>
+          {/* Special placeholder for generate_image tool */}
+          {isGenerateImageTool && (
+            <div className="mt-1 p-3 bg-muted/30 rounded border max-w-xs">
+              <div className="relative w-full aspect-square">
+                <Skeleton className="w-full h-full rounded" />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Loader2 className="h-12 w-12 text-muted-foreground/30 animate-spin" />
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       );
     }

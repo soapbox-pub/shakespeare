@@ -21,7 +21,7 @@ export class GenerateImageTool implements Tool<GenerateImageParams> {
     private tmpPath: string,
     private provider: AIProvider,
     private model: string,
-    private outputModalities: string[] | undefined,
+    private modalities: string[] | undefined,
     private user?: NUser,
     private corsProxy?: string,
   ) {}
@@ -36,7 +36,7 @@ export class GenerateImageTool implements Tool<GenerateImageParams> {
       let extension = 'png';
 
       // Check if the model supports image output modality (chat completions path)
-      const supportsImageOutput = this.outputModalities?.includes('image');
+      const supportsImageOutput = this.modalities?.includes('image');
 
       if (supportsImageOutput) {
         const response = await client.chat.completions.create({

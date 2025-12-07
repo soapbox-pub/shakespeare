@@ -190,10 +190,10 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     // 1. The currently selected model supports image output modality, OR
     // 2. An imageModel is configured (as fallback)
     const currentModelData = models.find(m => m.fullId === providerModel.trim());
-    const currentModelSupportsImageOutput = currentModelData?.outputModalities?.includes('image');
+    const currentModelSupportsImageOutput = currentModelData?.modalities?.includes('image');
 
     let imageModelToUse: string | undefined;
-    let imageProviderData: { provider: ReturnType<typeof parseProviderModel>['provider']; model: string; outputModalities?: string[] } | undefined;
+    let imageProviderData: { provider: ReturnType<typeof parseProviderModel>['provider']; model: string; modalities?: string[] } | undefined;
 
     // Prefer currently selected model if it supports image output
     if (currentModelSupportsImageOutput && providerModel.trim()) {
@@ -203,7 +203,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
         imageProviderData = {
           provider,
           model,
-          outputModalities: currentModelData?.outputModalities,
+          modalities: currentModelData?.modalities,
         };
       } catch (error) {
         console.warn('Failed to parse current model for image generation:', error);
@@ -218,7 +218,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
         imageProviderData = {
           provider,
           model,
-          outputModalities: providerModel?.outputModalities,
+          modalities: providerModel?.modalities,
         };
       } catch (error) {
         console.warn('Failed to parse imageModel:', error);
@@ -232,7 +232,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
         tmpPath,
         imageProviderData.provider,
         imageProviderData.model,
-        imageProviderData.outputModalities,
+        imageProviderData.modalities,
         user,
         config.corsProxy
       );

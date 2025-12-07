@@ -14,8 +14,7 @@ interface ModelInputProps {
   onChange: (value: string) => void;
   className?: string;
   placeholder?: string;
-  inputModalities?: string[];
-  outputModalities?: string[];
+  modalities?: string[];
 }
 
 export function ModelInput({
@@ -23,8 +22,7 @@ export function ModelInput({
   onChange,
   className,
   placeholder,
-  inputModalities,
-  outputModalities,
+  modalities,
 }: ModelInputProps) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
@@ -36,19 +34,13 @@ export function ModelInput({
   // Filter models by modalities
   const filteredModels = useMemo(() => {
     return models.filter((model) => {
-      // Filter by input modalities if specified
-      if (inputModalities && model.inputModalities) {
-        return inputModalities.every((modality) => model.inputModalities!.includes(modality));
-      }
-      // Filter by output modalities if specified
-      if (outputModalities && model.outputModalities) {
-        return outputModalities.every((modality) => model.outputModalities!.includes(modality));
+      // Filter by modalities if specified
+      if (modalities && model.modalities) {
+        return modalities.every((modality) => model.modalities!.includes(modality));
       }
       return true;
     });
-  }, [models, inputModalities, outputModalities]);
-
-  console.log({ models, filteredModels });
+  }, [models, modalities]);
 
   // Group models by provider
   const modelsByProvider = useMemo(() => {

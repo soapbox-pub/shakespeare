@@ -66,11 +66,7 @@ export function useAIChat({
       setMessages(prev => [...prev, message]);
       // Whenever an assistant message is added, it means streaming is done (until we get another streamingUpdate)
       if (message.role === 'assistant') {
-        setStreamingMessage({
-          role: 'assistant',
-          content: '',
-          reasoning_content: '',
-        });
+        setStreamingMessage(undefined);
       }
     }
   }, [projectId]);

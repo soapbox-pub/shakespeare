@@ -131,6 +131,7 @@
   "selectModelFirst": "Please select a model to start chatting...",
   "sendMessage": "Send message",
   "stopGeneration": "Stop generation",
+  "calling": "Calling",
   "running": "Running",
   "chat": "Chat",
   "preview": "Preview",

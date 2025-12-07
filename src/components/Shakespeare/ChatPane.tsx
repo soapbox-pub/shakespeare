@@ -48,6 +48,7 @@ import { ChatInput } from '@/components/Shakespeare/ChatInput';
 import { buildMessageContent } from '@/lib/buildMessageContent';
 import { DotAI } from '@/lib/DotAI';
 import { parseProviderModel } from '@/lib/parseProviderModel';
+import { AIMessage } from '@/lib/SessionManager';
 
 // Clean interfaces now handled by proper hooks
 
@@ -563,6 +564,79 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     }
   }), [internalStartNewSession]);
 
+  /** Render streaming message, loading skeleton, or tool loading state */
+  const renderStreamingMessage = () => {
+    if (streamingMessage) {
+      const streamingToolCall = streamingMessage.tool_calls?.[0];
+      return (
+        <>
+          {/* Show streaming message if text is streaming */}
+          {(streamingMessage.content || streamingMessage.reasoning_content) && (
+            <AIMessageItem
+              key="streaming-message"
+              message={streamingMessage}
+              isCurrentlyLoading={isLoading}
+            />
+          )}
+          {/* "Calling <tool>..." if streaming tool call is in progress */}
+          {(streamingToolCall?.type === 'function') ? (
+            <div key="tool-calls-loading" className="-mt-2">
+              <div className="flex items-center gap-2 px-2 py-1 text-xs text-muted-foreground">
+                <Loader2 className="h-3 w-3 animate-spin flex-shrink-0" />
+                <span className="font-medium">
+                  {t('calling')} {streamingToolCall.function?.name || 'tool'}...
+                </span>
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Show loading skeleton if AI appears stuck generating tools */}
+              {isStuck && (
+                <div key="stuck-loading-skeleton" className="flex">
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm space-y-2">
+                      <Skeleton className="h-4 w-3/4" />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </>
+      )
+    }
+
+    const lastMessage = messages[messages.length - 1] as AIMessage | undefined;
+    const lastToolCall = lastMessage?.role === 'assistant' ? lastMessage?.tool_calls?.[0] : undefined;
+
+    // "Running <tool>..." if last tool call is still executing
+    if (lastToolCall?.type === 'function') {
+      return (
+        <div key="tool-running-loading" className="-mt-2">
+          <div className="flex items-center gap-2 px-2 py-1 text-xs text-muted-foreground">
+            <Loader2 className="h-3 w-3 animate-spin flex-shrink-0" />
+            <span className="font-medium">
+              {t('running')} {lastToolCall.function.name}...
+            </span>
+          </div>
+        </div>
+      );
+    }
+
+    // Fallback skeleton if AI is loading
+    if (isLoading) {
+      return (
+        <div key="streaming-loading" className="flex">
+          <div className="flex-1 min-w-0">
+            <div className="text-sm space-y-2">
+              <Skeleton className="h-4 w-3/4" />
+            </div>
+          </div>
+        </div>
+      );
+    }
+  };
+
   return (
     <div className="h-full flex flex-col relative">
 
@@ -634,47 +708,8 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
               />
             );
           })}
-          {streamingMessage && (
-            streamingMessage.content || streamingMessage.reasoning_content ? (
-              <>
-                <AIMessageItem
-                  key="streaming-message"
-                  message={streamingMessage}
-                  isCurrentlyLoading={isLoading}
-                />
-                {/* Show loading skeleton if AI appears stuck generating tools */}
-                {isStuck && (
-                  <div key="stuck-loading-skeleton" className="flex">
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm space-y-2">
-                        <Skeleton className="h-4 w-3/4" />
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </>
-            ) : (
-              !(streamingMessage?.tool_calls?.[0]?.type === 'function') && (
-                <div key="streaming-loading" className="flex">
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm space-y-2">
-                      <Skeleton className="h-4 w-3/4" />
-                    </div>
-                  </div>
-                </div>
-              )
-            )
-          )}
-          {streamingMessage?.tool_calls?.[0]?.type === 'function' && (
-            <div key="tool-calls-loading" className="-mt-2">
-              <div className="flex items-center gap-2 px-2 py-1 text-xs text-muted-foreground">
-                <Loader2 className="h-3 w-3 animate-spin flex-shrink-0" />
-                <span className="font-medium">
-                  {t('running')} {streamingMessage.tool_calls?.[0]?.function?.name || 'tool'}...
-                </span>
-              </div>
-            </div>
-          )}
+
+          {renderStreamingMessage()}
 
           {/* Error Alert (Console or AI) - Don't show while assistant is loading */}
           {displayError && !isLoading && (

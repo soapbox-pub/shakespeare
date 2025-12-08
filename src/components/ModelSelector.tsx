@@ -45,9 +45,14 @@ export const ModelSelector = memo(function ModelSelector({
   const [isCustomInput, setIsCustomInput] = useState(false);
   const [customValue, setCustomValue] = useState('');
   const { settings, addRecentlyUsedModel, isConfigured } = useAISettings();
-  const { models, isLoading, error, refetch } = useProviderModels();
+  const { models: allModels, isLoading, error, refetch } = useProviderModels();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+
+  // Filter models to only include chat models (type is undefined or "chat")
+  const models = useMemo(() => {
+    return allModels.filter(model => model.type === undefined || model.type === 'chat');
+  }, [allModels]);
 
   const defaultPlaceholder = t('selectOrEnterModel');
 

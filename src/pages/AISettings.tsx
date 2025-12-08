@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Check, Bot, ArrowLeft, Trash2, GripVertical, ChevronDown, RotateCcw, FileText, Plus, Edit, ExternalLink, X } from 'lucide-react';
 import {
@@ -334,6 +334,20 @@ export function AISettings() {
 
   const configuredProviderIds = settings.providers.map(p => p.id);
   const availablePresets = AI_PROVIDER_PRESETS.filter(preset => !configuredProviderIds.includes(preset.id));
+
+  const imageModelFilter = useCallback((model: { type?: 'chat' | 'image'; modalities?: string[] }) => {
+    // Filter out models that are definitely NOT image models
+    // If type is "chat", exclude it
+    if (model.type === 'chat') {
+      return false;
+    }
+    // If modalities exist but don't include "image", exclude it
+    if (model.modalities && !model.modalities.includes('image')) {
+      return false;
+    }
+    // Otherwise include it (type is "image", modalities includes "image", or both are undefined)
+    return true;
+  }, []);
 
   return (
     <div className="p-6 space-y-6 pb-16">
@@ -685,19 +699,7 @@ export function AISettings() {
                     value={settings.imageModel || ''}
                     onChange={(value) => updateSettings({ imageModel: value || undefined })}
                     className="flex-1"
-                    modelFilter={(model) => {
-                      // Filter out models that are definitely NOT image models
-                      // If type is "chat", exclude it
-                      if (model.type === 'chat') {
-                        return false;
-                      }
-                      // If modalities exist but don't include "image", exclude it
-                      if (model.modalities && !model.modalities.includes('image')) {
-                        return false;
-                      }
-                      // Otherwise include it (type is "image", modalities includes "image", or both are undefined)
-                      return true;
-                    }}
+                    modelFilter={imageModelFilter}
                   />
                   {settings.imageModel && (
                     <Button

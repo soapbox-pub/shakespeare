@@ -172,7 +172,7 @@ Shakespeare supports AI-powered image generation. Users can configure an image m
 **Important Notes:**
 - Models that support image generation can use either the chat completions endpoint (for models with "image" output modality) or the dedicated images generation endpoint
 - If users experience issues with image generation, they should try selecting a different image model in Settings > AI
-- Recommended models include gpt-image-1, dall-e-3, or similar high-quality yet affordable options
+- Recommended models include gpt-image-1 and gemini-3-pro-image
 - The generate_image tool will only be available once a compatible image model is configured
 
 ## Available Tools

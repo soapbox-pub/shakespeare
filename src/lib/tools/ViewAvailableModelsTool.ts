@@ -28,7 +28,19 @@ export class ViewAvailableModelsTool implements Tool<Record<string, never>> {
     }
 
     // Filter image-capable models
-    const filteredModels = this.models.filter(m => m.type !== 'image' && (!m.modalities || m.modalities.includes('image')));
+    // Filter out models that are definitely NOT image models
+    const filteredModels = this.models.filter((model) => {
+      // If type is "chat", exclude it
+      if (model.type === 'chat') {
+        return false;
+      }
+      // If modalities exist but don't include "image", exclude it
+      if (model.modalities && !model.modalities.includes('image')) {
+        return false;
+      }
+      // Otherwise include it (type is "image", modalities includes "image", or both are undefined)
+      return true;
+    });
 
     // Group models by provider
     const modelsByProvider = new Map<string, ProviderModel[]>();

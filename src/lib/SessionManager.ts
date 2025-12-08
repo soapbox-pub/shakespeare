@@ -612,6 +612,9 @@ export class SessionManager {
                   updatedSession.totalCost = currentCost + result.cost;
                   this.sessions.set(projectId, updatedSession);
                   this.emit('costUpdated', projectId, updatedSession.totalCost);
+
+                  // Accumulate tool cost to project total
+                  await this.accumulateProjectCost(projectId, result.cost);
                 }
               }
             } catch (error) {

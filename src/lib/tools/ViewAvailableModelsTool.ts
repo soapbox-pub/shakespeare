@@ -3,6 +3,7 @@ import type { Tool } from './Tool';
 
 interface ProviderModel {
   id: string;
+  type?: 'chat' | 'image';
   name?: string;
   provider: string;
   fullId: string;
@@ -27,7 +28,7 @@ export class ViewAvailableModelsTool implements Tool<Record<string, never>> {
     }
 
     // Filter image-capable models
-    const filteredModels = this.models.filter(m => !m.modalities || m.modalities.includes('image'));
+    const filteredModels = this.models.filter(m => m.type !== 'image' && (!m.modalities || m.modalities.includes('image')));
 
     // Group models by provider
     const modelsByProvider = new Map<string, ProviderModel[]>();

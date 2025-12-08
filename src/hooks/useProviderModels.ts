@@ -8,6 +8,7 @@ import { createAIClient } from '@/lib/ai-client';
 
 interface ProviderModel {
   id: string;
+  type?: "chat" | "image";
   name?: string;
   provider: string;
   fullId: string; // provider/model format
@@ -21,6 +22,7 @@ interface ProviderModel {
     /** Output/completion pricing per token */
     completion: Decimal;
   };
+  /** For "chat" type models - which output modalities are supported */
   modalities?: string[];
 }
 
@@ -64,6 +66,10 @@ export function useProviderModels(): ModelFetchResult {
                 provider: provider.id,
                 fullId: `${provider.id}/${model.id}`,
               };
+
+              if ('type' in model && (model.type === 'chat' || model.type === 'image')) {
+                providerModel.type = model.type;
+              }
 
               if ('name' in model && typeof model.name === 'string') {
                 providerModel.name = model.name;

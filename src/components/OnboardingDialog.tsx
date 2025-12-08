@@ -69,9 +69,10 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
   // Also filter to only show text models (modalities absent or includes "text")
   const providerModels = selectedProvider
     ? models.filter(model =>
-        model.provider === selectedProvider.id &&
+      model.provider === selectedProvider.id &&
+        model.type !== 'image' &&
         (!model.modalities || model.modalities.includes('text'))
-      )
+    )
     : [];
 
   // Filter models by search query

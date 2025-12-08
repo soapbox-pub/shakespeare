@@ -198,7 +198,20 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
         const providerModel = models.find(m => m.fullId === settings.imageModel);
 
         // Determine mode: 'chat' if model supports image output modality, otherwise 'image'
-        const mode = providerModel?.modalities?.includes('image') ? 'chat' : 'image';
+        let mode: 'chat' | 'image' = 'image';
+
+        if (providerModel?.type) {
+          switch (providerModel.type) {
+            case 'chat':
+              mode = 'chat';
+              break;
+            case 'image':
+              mode = 'image';
+              break;
+          }
+        } else if (providerModel?.modalities?.includes('image')) {
+          mode = 'chat';
+        }
 
         tools.generate_image = new GenerateImageTool(
           fs,

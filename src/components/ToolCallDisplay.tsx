@@ -328,7 +328,24 @@ export function ToolCallDisplay({ toolName, toolArgs, state, result }: ToolCallD
 
   // Special rendering for generate_image - always show image below the tool
   const renderImageBelowTool = () => {
-    if (toolName !== 'generate_image' || !result) return null;
+    if (toolName !== 'generate_image') return null;
+
+    // Show placeholder while generating (calling or waiting states)
+    if (state === 'calling' || state === 'waiting') {
+      return (
+        <div className="mt-1 p-3 bg-muted/30 rounded border max-w-xs">
+          <div className="relative w-full aspect-square">
+            <div className="w-full h-full rounded bg-muted/50" />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Loader2 className="h-12 w-12 text-muted-foreground/30 animate-spin" />
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // For completed state, we need the result
+    if (!result) return null;
 
     // Parse "Generated image: /tmp/filename.png" from result
     const match = result.match(/Generated image:\s*(\/tmp\/[^\s\n]+)/);
@@ -350,21 +367,9 @@ export function ToolCallDisplay({ toolName, toolArgs, state, result }: ToolCallD
           </div>
         </div>
       );
-    } else if (state === 'completed') {
+    } else {
       // Image generation failed - show error in place
       return <ImageGenerationError />;
-    } else if (state === 'calling' || state === 'waiting') {
-      // Show placeholder while generating
-      return (
-        <div className="mt-1 p-3 bg-muted/30 rounded border max-w-xs">
-          <div className="relative w-full aspect-square">
-            <div className="w-full h-full rounded bg-muted/50" />
-            <div className="absolute inset-0 flex items-center justify-center">
-              <Loader2 className="h-12 w-12 text-muted-foreground/30 animate-spin" />
-            </div>
-          </div>
-        </div>
-      );
     }
   };
 

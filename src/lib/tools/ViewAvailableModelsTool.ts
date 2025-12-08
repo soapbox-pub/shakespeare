@@ -43,7 +43,7 @@ export class ViewAvailableModelsTool implements Tool<Record<string, never>> {
 
     // Add note about current image model if configured
     if (this.currentImageModel) {
-      output += `**Current Image Model**: ${this.currentImageModel} ⭐\n\n`;
+      output += `**Current Image Model**: ${this.currentImageModel}\n\n`;
     } else {
       output += '**Current Image Model**: Not configured\n\n';
     }
@@ -60,16 +60,15 @@ export class ViewAvailableModelsTool implements Tool<Record<string, never>> {
       output += `### ${provider} (${providerModels.length} models)\n\n`;
 
       for (const model of providerModels) {
-        const isCurrentModel = this.currentImageModel === model.fullId;
-        const marker = isCurrentModel ? ' ⭐' : '';
+        // Mark models that are DEFINITE image models with a star
+        const isImageModel = model.type === 'image' || model.modalities?.includes('image');
+        const marker = isImageModel ? ' ⭐' : '';
         output += `- ${model.fullId}${marker}\n`;
       }
       output += '\n';
     }
 
-    if (this.currentImageModel) {
-      output += `Current selection (⭐) indicates user preference for this provider/model family.\n`;
-    }
+    output += `Models marked with ⭐ are definite image generation models.\n`;
 
     return output;
   }

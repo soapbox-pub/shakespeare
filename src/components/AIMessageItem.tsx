@@ -1,15 +1,47 @@
 import { memo, useState } from 'react';
 import { Streamdown } from 'streamdown';
-import { Wrench, Eye, FileText, Edit, Package, PackageMinus, GitCommit, BookOpen, Download, Hash, Tag, Network, List, Plus, Terminal, Globe, Lightbulb, Loader2, Logs, Send, Puzzle, Image } from 'lucide-react';
+import { Wrench, Eye, FileText, Edit, Package, PackageMinus, GitCommit, BookOpen, Download, Hash, Tag, Network, List, Plus, Terminal, Globe, Lightbulb, Loader2, Logs, Send, Puzzle, Image, AlertCircle } from 'lucide-react';
 import type { AIMessage } from '@/lib/SessionManager';
 import { cn } from '@/lib/utils';
 import { UserMessage } from '@/components/UserMessage';
 import { VFSImage } from '@/components/VFSImage';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { ImageModelDialog } from '@/components/ImageModelDialog';
 import OpenAI from 'openai';
 import { useTheme } from '@/hooks/useTheme';
 import { isEmptyMessage } from '@/lib/isEmptyMessage';
 import { Dialog, DialogPortal, DialogOverlay } from '@/components/ui/dialog';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
+
+// Component to show image generation errors inline
+function ImageGenerationError() {
+  const [showImageModelDialog, setShowImageModelDialog] = useState(false);
+
+  return (
+    <>
+      <div className="mt-1 max-w-xs">
+        <Alert variant="default" className="border-primary/20 bg-primary/5">
+          <AlertCircle className="h-4 w-4 text-primary" />
+          <AlertDescription className="text-sm">
+            <span className="text-foreground">
+              Image generation failed. This could be due to an issue with the selected image model or the AI provider.{' '}
+            </span>
+            <button
+              className="text-primary underline hover:no-underline font-medium"
+              onClick={() => setShowImageModelDialog(true)}
+            >
+              Change image model
+            </button>
+          </AlertDescription>
+        </Alert>
+      </div>
+      <ImageModelDialog
+        open={showImageModelDialog}
+        onOpenChange={setShowImageModelDialog}
+      />
+    </>
+  );
+}
 
 // Type guard to check if message has reasoning content
 function hasReasoningContent(message: AIMessage): message is AIMessage & { reasoning_content: string } {
@@ -284,6 +316,9 @@ export const AIMessageItem = memo(({
               />
             </div>
           );
+        } else {
+          // Image generation failed - show error in place
+          return <ImageGenerationError />;
         }
       }
 

@@ -621,7 +621,7 @@ Skills: {{ skills.length }}`;
     it('should include model and provider information in the system prompt', async () => {
       const result = await makeSystemPrompt(baseOpts);
 
-      expect(result).toContain('**AI Model**: openai/gpt-4 (OpenAI)');
+      expect(result).toContain('**AI Model**: openai/gpt-4');
     });
 
     it('should include model information with different provider', async () => {
@@ -642,7 +642,7 @@ Skills: {{ skills.length }}`;
         provider,
       });
 
-      expect(result).toContain('**AI Model**: anthropic/claude-3-opus (Anthropic)');
+      expect(result).toContain('**AI Model**: anthropic/claude-3-opus');
     });
 
     it('should make model and provider objects accessible in custom templates', async () => {

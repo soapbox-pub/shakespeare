@@ -1,17 +1,16 @@
 import { memo, useState } from 'react';
 import { Streamdown } from 'streamdown';
-import { Wrench, Eye, FileText, Edit, Package, PackageMinus, GitCommit, BookOpen, Download, Hash, Tag, Network, List, Plus, Terminal, Globe, Lightbulb, Loader2, Logs, Send, Puzzle, Image, AlertCircle, X } from 'lucide-react';
+import { Wrench, Eye, FileText, Edit, Package, PackageMinus, GitCommit, BookOpen, Download, Hash, Tag, Network, List, Plus, Terminal, Globe, Lightbulb, Loader2, Logs, Send, Puzzle, Image, AlertCircle } from 'lucide-react';
 import type { AIMessage } from '@/lib/SessionManager';
 import { cn } from '@/lib/utils';
 import { UserMessage } from '@/components/UserMessage';
 import { VFSImage } from '@/components/VFSImage';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ImageModelDialog } from '@/components/ImageModelDialog';
+import { ImageLightbox } from '@/components/ImageLightbox';
 import OpenAI from 'openai';
 import { useTheme } from '@/hooks/useTheme';
 import { isEmptyMessage } from '@/lib/isEmptyMessage';
-import { Dialog, DialogPortal, DialogOverlay } from '@/components/ui/dialog';
-import * as DialogPrimitive from '@radix-ui/react-dialog';
 
 // Component to show image generation errors inline
 function ImageGenerationError() {
@@ -370,52 +369,11 @@ export const AIMessageItem = memo(({
           {renderImageBelowTool()}
         </div>
 
-        {/* Image expansion lightbox - shared for all message types */}
-        <Dialog open={!!expandedImageUrl} onOpenChange={(open) => !open && setExpandedImageUrl(null)}>
-          <DialogPortal>
-            <DialogOverlay className="bg-black/95" />
-            <DialogPrimitive.Content
-              className={cn(
-                "fixed inset-0 z-50 flex items-center justify-center p-4 bg-transparent border-0 shadow-none",
-                "data-[state=open]:animate-in data-[state=closed]:animate-out",
-                "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-                "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
-              )}
-              onPointerDownOutside={() => setExpandedImageUrl(null)}
-              onEscapeKeyDown={() => setExpandedImageUrl(null)}
-            >
-              {expandedImageUrl && (
-                <>
-                  {/* Close button */}
-                  <button
-                    onClick={() => setExpandedImageUrl(null)}
-                    className="absolute top-4 right-4 z-10 p-2 rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors"
-                    aria-label="Close"
-                  >
-                    <X className="h-6 w-6" />
-                  </button>
-
-                  {/* Image */}
-                  <div className="relative w-full h-full flex items-center justify-center">
-                    {expandedImageUrl.startsWith('/') ? (
-                      <VFSImage
-                        path={expandedImageUrl}
-                        alt="Expanded image"
-                        className="max-w-full max-h-full w-auto h-auto object-contain rounded-lg"
-                      />
-                    ) : (
-                      <img
-                        src={expandedImageUrl}
-                        alt="Expanded image"
-                        className="max-w-full max-h-full w-auto h-auto object-contain rounded-lg"
-                      />
-                    )}
-                  </div>
-                </>
-              )}
-            </DialogPrimitive.Content>
-          </DialogPortal>
-        </Dialog>
+        {/* Image expansion lightbox */}
+        <ImageLightbox
+          imageUrl={expandedImageUrl}
+          onClose={() => setExpandedImageUrl(null)}
+        />
       </>
     );
   }
@@ -480,40 +438,11 @@ export const AIMessageItem = memo(({
           </div>
         </div>
 
-        {/* Image expansion lightbox - shared for all message types */}
-        <Dialog open={!!expandedImageUrl} onOpenChange={(open) => !open && setExpandedImageUrl(null)}>
-          <DialogPortal>
-            <DialogOverlay className="bg-black/95" />
-            <DialogPrimitive.Content
-              className={cn(
-                "fixed left-[50%] top-[50%] z-50 max-w-[95vw] max-h-[95vh] translate-x-[-50%] translate-y-[-50%] p-0 bg-transparent border-0 shadow-none",
-                "data-[state=open]:animate-in data-[state=closed]:animate-out",
-                "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-                "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
-              )}
-              onPointerDownOutside={() => setExpandedImageUrl(null)}
-              onEscapeKeyDown={() => setExpandedImageUrl(null)}
-            >
-              {expandedImageUrl && (
-                <div className="relative flex items-center justify-center">
-                  {expandedImageUrl.startsWith('/') ? (
-                    <VFSImage
-                      path={expandedImageUrl}
-                      alt="Expanded image"
-                      className="max-w-full max-h-[95vh] w-auto h-auto object-contain rounded-lg"
-                    />
-                  ) : (
-                    <img
-                      src={expandedImageUrl}
-                      alt="Expanded image"
-                      className="max-w-full max-h-[95vh] w-auto h-auto object-contain rounded-lg"
-                    />
-                  )}
-                </div>
-              )}
-            </DialogPrimitive.Content>
-          </DialogPortal>
-        </Dialog>
+        {/* Image expansion lightbox */}
+        <ImageLightbox
+          imageUrl={expandedImageUrl}
+          onClose={() => setExpandedImageUrl(null)}
+        />
       </>
     );
   }
@@ -591,52 +520,11 @@ export const AIMessageItem = memo(({
     <>
       {assistantContent}
 
-      {/* Image expansion lightbox - shared for all message types */}
-      <Dialog open={!!expandedImageUrl} onOpenChange={(open) => !open && setExpandedImageUrl(null)}>
-        <DialogPortal>
-          <DialogOverlay className="bg-black/95" />
-          <DialogPrimitive.Content
-            className={cn(
-              "fixed inset-0 z-50 flex items-center justify-center p-4 bg-transparent border-0 shadow-none",
-              "data-[state=open]:animate-in data-[state=closed]:animate-out",
-              "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-              "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
-            )}
-            onPointerDownOutside={() => setExpandedImageUrl(null)}
-            onEscapeKeyDown={() => setExpandedImageUrl(null)}
-          >
-            {expandedImageUrl && (
-              <>
-                {/* Close button */}
-                <button
-                  onClick={() => setExpandedImageUrl(null)}
-                  className="absolute top-4 right-4 z-10 p-2 rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors"
-                  aria-label="Close"
-                >
-                  <X className="h-6 w-6" />
-                </button>
-
-                {/* Image */}
-                <div className="relative w-full h-full flex items-center justify-center">
-                  {expandedImageUrl.startsWith('/') ? (
-                    <VFSImage
-                      path={expandedImageUrl}
-                      alt="Expanded image"
-                      className="max-w-full max-h-full w-auto h-auto object-contain rounded-lg"
-                    />
-                  ) : (
-                    <img
-                      src={expandedImageUrl}
-                      alt="Expanded image"
-                      className="max-w-full max-h-full w-auto h-auto object-contain rounded-lg"
-                    />
-                  )}
-                </div>
-              </>
-            )}
-          </DialogPrimitive.Content>
-        </DialogPortal>
-      </Dialog>
+      {/* Image expansion lightbox */}
+      <ImageLightbox
+        imageUrl={expandedImageUrl}
+        onClose={() => setExpandedImageUrl(null)}
+      />
     </>
   );
 });

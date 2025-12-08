@@ -23,6 +23,7 @@ import {
   Image,
   AlertCircle,
   LucideIcon,
+  Settings,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { VFSImage } from '@/components/VFSImage';
@@ -227,6 +228,20 @@ function getToolInfo(toolName: string, args: Record<string, unknown>): ToolInfo 
         icon: Image,
         title: args.prompt ? String(args.prompt) : 'Generated Image',
         callingTitle: args.prompt ? String(args.prompt) : 'Generating Image',
+      };
+
+    case 'view_available_models':
+      return {
+        icon: Eye,
+        title: 'Viewed Available Models',
+        callingTitle: 'Viewing Available Models',
+      };
+
+    case 'configure_image_generation':
+      return {
+        icon: Settings,
+        title: args.model ? `Configured image model: ${args.model}` : 'Configured Image Generation',
+        callingTitle: args.model ? `Configuring image model: ${args.model}` : 'Configuring Image Generation',
       };
 
     default: {

@@ -17,7 +17,7 @@ interface ProviderModel {
 }
 
 export class ConfigureImageGenerationTool implements Tool<ConfigureImageGenerationParams> {
-  readonly description = 'Configure the AI model to use for image generation. The modelId must be a complete model identifier in the format "provider/model" (e.g., "openrouter/openai/gpt-image-1", "openai/dall-e-3", or "shakespeare/gpt-image-1"). You can optionally call view_available_models first to see available image models, but any valid model ID from a configured provider will work. Select a high-quality yet affordable model like gpt-image-1 or dall-e-3 unless the user has specific requirements.';
+  readonly description = 'Configure the AI model to use for image generation. The modelId must be a complete model identifier in the format "provider/model" (e.g., "openrouter/openai/gpt-image-1", "openai/dall-e-3", or "shakespeare/gpt-image-1"). You can optionally call view_available_models first to see available image models, but any valid model ID from a configured provider will work. Prefer gpt-image-1 as the first choice, followed by gemini-3-pro-image, unless the user has specific requirements.';
 
   readonly inputSchema = z.object({
     modelId: z.string().describe('The complete model identifier in "provider/model" format (e.g., "openrouter/openai/gpt-image-1", "openai/dall-e-3").'),

@@ -54,7 +54,7 @@ describe('GenerateImageTool', () => {
       '/tmp',
       mockProvider,
       'dall-e-3',
-      undefined,
+      'image',
       undefined,
       undefined
     );
@@ -70,7 +70,7 @@ describe('GenerateImageTool', () => {
       '/tmp',
       mockProvider,
       'dall-e-3',
-      undefined,
+      'image',
       undefined,
       undefined
     );
@@ -85,7 +85,7 @@ describe('GenerateImageTool', () => {
       '/tmp',
       mockProvider,
       'dall-e-3',
-      undefined,
+      'image',
       undefined,
       undefined
     );
@@ -94,13 +94,13 @@ describe('GenerateImageTool', () => {
     expect(result.success).toBe(false);
   });
 
-  it('should generate image with standard OpenAI provider', async () => {
+  it('should generate image with standard OpenAI provider using image mode', async () => {
     const tool = new GenerateImageTool(
       mockFS,
       '/tmp',
       mockProvider,
       'dall-e-3',
-      undefined,
+      'image',
       undefined,
       undefined
     );
@@ -122,7 +122,7 @@ describe('GenerateImageTool', () => {
     );
   });
 
-  it('should handle models with image output modality', async () => {
+  it('should handle models with chat mode for image generation', async () => {
     const openRouterProvider: AIProvider = {
       id: 'openrouter',
       name: 'OpenRouter',
@@ -135,7 +135,7 @@ describe('GenerateImageTool', () => {
       '/tmp',
       openRouterProvider,
       'flux-1.1-pro',
-      ['image'], // Model supports image output modality
+      'chat', // Use chat mode for image generation
       undefined,
       undefined
     );
@@ -175,7 +175,7 @@ describe('GenerateImageTool', () => {
       '/tmp',
       mockProvider,
       'dall-e-3',
-      undefined,
+      'image',
       undefined,
       undefined
     );
@@ -189,7 +189,7 @@ describe('GenerateImageTool', () => {
     );
   });
 
-  it('should throw error when model with image modality returns invalid response', async () => {
+  it('should throw error when chat mode returns invalid response', async () => {
     const openRouterProvider: AIProvider = {
       id: 'openrouter',
       name: 'OpenRouter',
@@ -202,7 +202,7 @@ describe('GenerateImageTool', () => {
       '/tmp',
       openRouterProvider,
       'flux-1.1-pro',
-      ['image'], // Model supports image output modality
+      'chat', // Use chat mode
       undefined,
       undefined
     );
@@ -222,7 +222,7 @@ describe('GenerateImageTool', () => {
     );
   });
 
-  it('should determine file extension from data URI for models with image modality', async () => {
+  it('should determine file extension from data URI for chat mode', async () => {
     const openRouterProvider: AIProvider = {
       id: 'openrouter',
       name: 'OpenRouter',
@@ -235,7 +235,7 @@ describe('GenerateImageTool', () => {
       '/tmp',
       openRouterProvider,
       'flux-1.1-pro',
-      ['image'], // Model supports image output modality
+      'chat', // Use chat mode
       undefined,
       undefined
     );
@@ -265,7 +265,7 @@ describe('GenerateImageTool', () => {
     expect(result).toMatch(/^Generated image: \/tmp\/generated-\d+\.jpeg$/);
   });
 
-  it('should throw error when model with image modality returns invalid data URI', async () => {
+  it('should throw error when chat mode returns invalid data URI', async () => {
     const openRouterProvider: AIProvider = {
       id: 'openrouter',
       name: 'OpenRouter',
@@ -278,7 +278,7 @@ describe('GenerateImageTool', () => {
       '/tmp',
       openRouterProvider,
       'flux-1.1-pro',
-      ['image'], // Model supports image output modality
+      'chat', // Use chat mode
       undefined,
       undefined
     );

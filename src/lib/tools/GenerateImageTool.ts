@@ -10,6 +10,8 @@ interface GenerateImageParams {
   prompt: string;
 }
 
+export type ImageGenerationMode = 'chat' | 'image';
+
 export class GenerateImageTool implements Tool<GenerateImageParams> {
   readonly description = 'Generate an image from a text prompt and save it to the virtual filesystem';
 
@@ -22,7 +24,7 @@ export class GenerateImageTool implements Tool<GenerateImageParams> {
     private tmpPath: string,
     private provider: AIProvider,
     private model: string,
-    private modalities: string[] | undefined,
+    private mode: ImageGenerationMode,
     private user?: NUser,
     private corsProxy?: string,
   ) {}
@@ -36,10 +38,8 @@ export class GenerateImageTool implements Tool<GenerateImageParams> {
       let imageData: Uint8Array;
       let extension = 'png';
 
-      // Check if the model supports image output modality (chat completions path)
-      const supportsImageOutput = this.modalities?.includes('image');
-
-      if (supportsImageOutput) {
+      // Use chat completions endpoint for models that support image output modality
+      if (this.mode === 'chat') {
         const response = await client.chat.completions.create({
           model: this.model,
           messages: [

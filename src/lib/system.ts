@@ -170,7 +170,7 @@ When a project is first created, you (the AI) choose an appropriate template fro
 Shakespeare supports AI-powered image generation. Users can configure an image model in **Settings > AI** under the "Advanced" section.
 
 **Important Notes:**
-- Only models that support image generation (with "image" in their modalities) can be used
+- Models that support image generation can use either the chat completions endpoint (for models with "image" output modality) or the dedicated images generation endpoint
 - If users experience issues with image generation, they should try selecting a different image model in Settings > AI
 - Recommended models include gpt-image-1, dall-e-3, or similar high-quality yet affordable options
 - The generate_image tool will only be available once a compatible image model is configured

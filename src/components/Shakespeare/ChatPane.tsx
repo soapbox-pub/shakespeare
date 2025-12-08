@@ -194,15 +194,18 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
       try {
         const { provider, model } = parseProviderModel(settings.imageModel, settings.providers);
 
-        // Find the model data to get modalities
+        // Find the model data to determine the generation mode
         const providerModel = models.find(m => m.fullId === settings.imageModel);
+
+        // Determine mode: 'chat' if model supports image output modality, otherwise 'image'
+        const mode = providerModel?.modalities?.includes('image') ? 'chat' : 'image';
 
         tools.generate_image = new GenerateImageTool(
           fs,
           tmpPath,
           provider,
           model,
-          providerModel?.modalities,
+          mode,
           user,
           config.corsProxy
         );

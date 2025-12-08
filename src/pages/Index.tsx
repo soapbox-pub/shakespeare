@@ -300,97 +300,97 @@ export default function Index() {
             </div>
 
             <div>
-            {/* Quilly Helper - shows when there are errors */}
-            {quillyError && (
-              <div className="mb-4">
-                <Quilly
-                  error={quillyError}
-                  onDismiss={handleQuillyDismiss}
-                  onNewChat={handleQuillyNewChat}
-                  onOpenModelSelector={handleQuillyOpenModelSelector}
-                  providerModel={providerModel}
-                />
-              </div>
-            )}
-
-            {/* Chat Input Container - matching the ChatPane style */}
-            <div
-              className={`flex flex-col rounded-3xl border border-input bg-background shadow-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 transition-all ${isDragOver ? 'border-primary bg-primary/5 ring-2 ring-primary/20' : ''
-              }`}
-              onDragEnter={handleDragEnter}
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-            >
-              <Textarea
-                placeholder={
-                  !hasProvidersConfigured
-                    ? t('examplePrompt')
-                    : !providerModel.trim()
-                      ? t('selectModelToDescribe')
-                      : t('examplePrompt')
-                }
-                value={prompt}
-                onChange={handlePromptChange}
-                onKeyDown={handleKeyDown}
-                onClick={handleTextareaClick}
-                className="resize-none border-0 bg-transparent px-4 py-3 text-base focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground"
-                disabled={isCreating || isGeneratingInfo || (hasProvidersConfigured && !providerModel.trim())}
-                rows={2}
-                style={{
-                  height: 'auto',
-                  minHeight: '80px',
-                  maxHeight: '256px'
-                }}
-                onInput={(e) => {
-                  const target = e.target as HTMLTextAreaElement;
-                  target.style.height = 'auto';
-                  target.style.height = Math.min(target.scrollHeight, 256) + 'px';
-                }}
-              />
-
-              {/* Bottom Controls Row */}
-              <div className="flex items-center gap-4 px-3 py-3">
-                {/* File Attachment */}
-                <FileAttachment
-                  onFileSelect={handleFileSelect}
-                  onFileRemove={handleFileRemove}
-                  selectedFiles={attachedFiles}
-                  disabled={isCreating || isGeneratingInfo}
-                  multiple={true}
-                />
-
-                {/* Model Selector - always show to allow configuration */}
-                <div className="flex-1 max-w-72 ml-auto overflow-hidden">
-                  <ModelSelector
-                    value={providerModel}
-                    onChange={setProviderModel}
-                    className="w-full"
-                    disabled={isCreating || isGeneratingInfo}
-                    placeholder={t('chooseModel')}
+              {/* Quilly Helper - shows when there are errors */}
+              {quillyError && (
+                <div className="mb-4">
+                  <Quilly
+                    error={quillyError}
+                    onDismiss={handleQuillyDismiss}
+                    onNewChat={handleQuillyNewChat}
+                    onOpenModelSelector={handleQuillyOpenModelSelector}
+                    providerModel={providerModel}
                   />
                 </div>
+              )}
 
-                {/* Create Project Button */}
-                <Button
-                  onClick={handleCreateProject}
-                  disabled={
-                    !prompt.trim() ||
+              {/* Chat Input Container - matching the ChatPane style */}
+              <div
+                className={`flex flex-col rounded-3xl border border-input bg-background shadow-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 transition-all ${isDragOver ? 'border-primary bg-primary/5 ring-2 ring-primary/20' : ''
+                }`}
+                onDragEnter={handleDragEnter}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+              >
+                <Textarea
+                  placeholder={
+                    !hasProvidersConfigured
+                      ? t('examplePrompt')
+                      : !providerModel.trim()
+                        ? t('selectModelToDescribe')
+                        : t('examplePrompt')
+                  }
+                  value={prompt}
+                  onChange={handlePromptChange}
+                  onKeyDown={handleKeyDown}
+                  onClick={handleTextareaClick}
+                  className="resize-none border-0 bg-transparent px-4 py-3 text-base focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground"
+                  disabled={isCreating || isGeneratingInfo || (hasProvidersConfigured && !providerModel.trim())}
+                  rows={2}
+                  style={{
+                    height: 'auto',
+                    minHeight: '80px',
+                    maxHeight: '256px'
+                  }}
+                  onInput={(e) => {
+                    const target = e.target as HTMLTextAreaElement;
+                    target.style.height = 'auto';
+                    target.style.height = Math.min(target.scrollHeight, 256) + 'px';
+                  }}
+                />
+
+                {/* Bottom Controls Row */}
+                <div className="flex items-center gap-4 px-3 py-3">
+                  {/* File Attachment */}
+                  <FileAttachment
+                    onFileSelect={handleFileSelect}
+                    onFileRemove={handleFileRemove}
+                    selectedFiles={attachedFiles}
+                    disabled={isCreating || isGeneratingInfo}
+                    multiple={true}
+                  />
+
+                  {/* Model Selector - always show to allow configuration */}
+                  <div className="flex-1 max-w-72 ml-auto overflow-hidden">
+                    <ModelSelector
+                      value={providerModel}
+                      onChange={setProviderModel}
+                      className="w-full"
+                      disabled={isCreating || isGeneratingInfo}
+                      placeholder={t('chooseModel')}
+                    />
+                  </div>
+
+                  {/* Create Project Button */}
+                  <Button
+                    onClick={handleCreateProject}
+                    disabled={
+                      !prompt.trim() ||
                     isCreating ||
                     isGeneratingInfo ||
                     (hasProvidersConfigured && !providerModel.trim())
-                  }
-                  size="sm"
-                  className="size-8 [&_svg]:size-5 rounded-full p-0"
-                >
-                  {isCreating || isGeneratingInfo ? (
-                    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white" />
-                  ) : (
-                    <ArrowUp />
-                  )}
-                </Button>
+                    }
+                    size="sm"
+                    className="size-8 [&_svg]:size-5 rounded-full p-0"
+                  >
+                    {isCreating || isGeneratingInfo ? (
+                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white" />
+                    ) : (
+                      <ArrowUp />
+                    )}
+                  </Button>
+                </div>
               </div>
-            </div>
             </div>
           </div>
         </div>

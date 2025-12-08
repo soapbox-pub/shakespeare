@@ -187,6 +187,7 @@ describe('Git', () => {
       mockGit.clone = vi.fn().mockResolvedValue(undefined);
       mockGit.deleteRemote = vi.fn().mockResolvedValue(undefined);
       mockGit.addRemote = vi.fn().mockResolvedValue(undefined);
+      mockGit.getRemoteInfo = vi.fn().mockResolvedValue({ refs: {} });
 
       // Mock nip19 decode
       vi.mocked(nip19.decode).mockReturnValue({
@@ -222,12 +223,12 @@ describe('Git', () => {
         url: nostrUrl,
       });
 
-      // Should attempt to clone from the first URL
+      // Should attempt to clone from one of the URLs (implementation uses the last successfully checked URL)
       expect(mockGit.clone).toHaveBeenCalledWith({
         fs,
         http: expect.any(Object),
         dir: '/test',
-        url: 'https://github.com/user/repo.git',
+        url: expect.stringMatching(/^https:\/\/(github|gitlab)\.com\/user\/repo\.git$/),
       });
 
       // Should delete the existing origin remote

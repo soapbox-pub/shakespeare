@@ -21,6 +21,8 @@ describe('GenerateImageTool', () => {
   beforeEach(() => {
     mockFS = {
       writeFile: vi.fn(),
+      mkdir: vi.fn(),
+      stat: vi.fn().mockRejectedValue(new Error('ENOENT')), // Directory doesn't exist by default
     } as unknown as JSRuntimeFS;
 
     mockProvider = {

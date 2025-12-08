@@ -4,6 +4,7 @@ import type { AIProvider } from '@/contexts/AISettingsContext';
 import type { NUser } from '@nostrify/react/login';
 import { createAIClient } from '@/lib/ai-client';
 import type { JSRuntimeFS } from '@/lib/JSRuntime';
+import { proxyUrl } from '../proxyUrl';
 
 interface GenerateImageParams {
   prompt: string;
@@ -87,27 +88,53 @@ export class GenerateImageTool implements Tool<GenerateImageParams> {
           imageData[i] = binaryString.charCodeAt(i);
         }
       } else {
-        // Standard OpenAI image generation - use b64_json format
+        // Standard OpenAI image generation
         const response = await client.images.generate({
           model: this.model,
           prompt,
-          response_format: 'b64_json',
         });
 
-        const b64Json = response.data?.[0]?.b64_json;
-        if (!b64Json) {
-          throw new Error('No base64 image data returned from the API');
+        const firstImage = response.data?.[0];
+        if (!firstImage) {
+          throw new Error('No image data returned from the API');
         }
 
-        // Decode base64 to bytes
-        const binaryString = atob(b64Json);
-        imageData = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) {
-          imageData[i] = binaryString.charCodeAt(i);
+        // Check if we got b64_json or url
+        if (firstImage.b64_json) {
+          // Decode base64 to bytes
+          const binaryString = atob(firstImage.b64_json);
+          imageData = new Uint8Array(binaryString.length);
+          for (let i = 0; i < binaryString.length; i++) {
+            imageData[i] = binaryString.charCodeAt(i);
+          }
+        } else if (firstImage.url) {
+          // Fetch the image from the URL
+          const imageUrl = this.corsProxy ? proxyUrl(this.corsProxy, firstImage.url) : firstImage.url;
+          const imageResponse = await fetch(imageUrl);
+
+          if (!imageResponse.ok) {
+            throw new Error(`Failed to fetch image from URL: ${imageResponse.status} ${imageResponse.statusText}`);
+          }
+
+          const arrayBuffer = await imageResponse.arrayBuffer();
+          imageData = new Uint8Array(arrayBuffer);
+
+          // Try to determine extension from content-type header
+          const contentType = imageResponse.headers.get('content-type');
+          if (contentType) {
+            const match = contentType.match(/image\/([^;]+)/);
+            if (match) {
+              extension = match[1];
+            }
+          }
+        } else {
+          throw new Error('No base64 image data or URL returned from the API');
         }
 
-        // Extension is PNG for standard OpenAI responses
-        extension = 'png';
+        // Default extension is PNG for standard OpenAI responses
+        if (extension === 'png') {
+          extension = 'png';
+        }
       }
 
       // Generate unique filename

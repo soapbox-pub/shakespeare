@@ -183,7 +183,7 @@ describe('GenerateImageTool', () => {
     });
 
     await expect(tool.execute({ prompt: 'test' })).rejects.toThrow(
-      'No base64 image data returned from the API'
+      'No image data returned from the API'
     );
   });
 

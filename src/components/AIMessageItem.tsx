@@ -59,9 +59,8 @@ export const AIMessageItem = memo(({
   isCurrentlyLoading = false,
   toolCall,
 }: AIMessageItemProps) => {
-  // Check if this is a generate_image tool to expand by default
-  const isGenerateImageTool = message.role === 'tool' && toolCall?.type === 'function' && toolCall.function.name === 'generate_image';
-  const [isToolExpanded, setIsToolExpanded] = useState(isGenerateImageTool);
+  // All tools start collapsed by default
+  const [isToolExpanded, setIsToolExpanded] = useState(false);
   const [isReasoningExpanded, setIsReasoningExpanded] = useState(false);
   const [expandedImageUrl, setExpandedImageUrl] = useState<string | null>(null);
   const { displayTheme } = useTheme();
@@ -300,26 +299,12 @@ export const AIMessageItem = memo(({
       }
 
       if (toolName === 'generate_image') {
-        // Parse "Generated image: /tmp/filename.png" from content
-        const match = content.match(/Generated image:\s*(\/tmp\/[^\s\n]+)/);
-        if (match) {
-          const imagePath = match[1];
-          const filename = imagePath.split('/').pop() || imagePath;
-
-          return (
-            <div className="mt-1 p-3 bg-muted/30 rounded border max-w-xs">
-              <VFSImage
-                path={imagePath}
-                alt={filename}
-                className="max-w-full h-auto rounded cursor-pointer hover:opacity-90 transition-opacity"
-                onClick={() => setExpandedImageUrl(imagePath)}
-              />
-            </div>
-          );
-        } else {
-          // Image generation failed - show error in place
-          return <ImageGenerationError />;
-        }
+        // For generate_image, when expanded show the full prompt
+        return (
+          <div className="mt-1 p-3 bg-muted/30 rounded border text-xs">
+            <div>{typeof toolArgs.prompt === 'string' ? toolArgs.prompt : 'No prompt provided'}</div>
+          </div>
+        );
       }
 
       // Default rendering for other tools
@@ -330,6 +315,32 @@ export const AIMessageItem = memo(({
           </div>
         </div>
       );
+    };
+
+    // Special rendering for generate_image - always show image below the tool
+    const renderImageBelowTool = () => {
+      if (toolName !== 'generate_image') return null;
+
+      // Parse "Generated image: /tmp/filename.png" from content
+      const match = content.match(/Generated image:\s*(\/tmp\/[^\s\n]+)/);
+      if (match) {
+        const imagePath = match[1];
+        const filename = imagePath.split('/').pop() || imagePath;
+
+        return (
+          <div className="mt-1 p-3 bg-muted/30 rounded border max-w-xs">
+            <VFSImage
+              path={imagePath}
+              alt={filename}
+              className="max-w-full h-auto rounded cursor-pointer hover:opacity-90 transition-opacity"
+              onClick={() => setExpandedImageUrl(imagePath)}
+            />
+          </div>
+        );
+      } else {
+        // Image generation failed - show error in place
+        return <ImageGenerationError />;
+      }
     };
 
     // Regular tool message rendering
@@ -349,6 +360,9 @@ export const AIMessageItem = memo(({
         </button>
 
         {isToolExpanded && renderSpecialContent()}
+
+        {/* Always render image below for generate_image tool */}
+        {renderImageBelowTool()}
       </div>
     );
   }

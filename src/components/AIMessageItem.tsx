@@ -1,46 +1,14 @@
 import { memo, useState } from 'react';
 import { Streamdown } from 'streamdown';
-import { Wrench, Eye, FileText, Edit, Package, PackageMinus, GitCommit, BookOpen, Download, Hash, Tag, Network, List, Plus, Terminal, Globe, Lightbulb, Loader2, Logs, Send, Puzzle, Image, AlertCircle } from 'lucide-react';
+import { Lightbulb, Loader2 } from 'lucide-react';
 import type { AIMessage } from '@/lib/SessionManager';
 import { cn } from '@/lib/utils';
 import { UserMessage } from '@/components/UserMessage';
-import { VFSImage } from '@/components/VFSImage';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ImageModelDialog } from '@/components/ImageModelDialog';
 import { ImageLightbox } from '@/components/ImageLightbox';
+import { ToolCallDisplay } from '@/components/ToolCallDisplay';
 import OpenAI from 'openai';
 import { useTheme } from '@/hooks/useTheme';
 import { isEmptyMessage } from '@/lib/isEmptyMessage';
-
-// Component to show image generation errors inline
-function ImageGenerationError() {
-  const [showImageModelDialog, setShowImageModelDialog] = useState(false);
-
-  return (
-    <>
-      <div className="mt-1 max-w-xs">
-        <Alert variant="default" className="border-primary/20 bg-primary/5">
-          <AlertCircle className="h-4 w-4 text-primary" />
-          <AlertDescription className="text-sm">
-            <span className="text-foreground">
-              Image generation failed. This could be due to an issue with the selected image model or the AI provider.{' '}
-            </span>
-            <button
-              className="text-primary underline hover:no-underline font-medium"
-              onClick={() => setShowImageModelDialog(true)}
-            >
-              Change image model
-            </button>
-          </AlertDescription>
-        </Alert>
-      </div>
-      <ImageModelDialog
-        open={showImageModelDialog}
-        onOpenChange={setShowImageModelDialog}
-      />
-    </>
-  );
-}
 
 // Type guard to check if message has reasoning content
 function hasReasoningContent(message: AIMessage): message is AIMessage & { reasoning_content: string } {
@@ -58,8 +26,6 @@ export const AIMessageItem = memo(({
   isCurrentlyLoading = false,
   toolCall,
 }: AIMessageItemProps) => {
-  // All tools start collapsed by default
-  const [isToolExpanded, setIsToolExpanded] = useState(false);
   const [isReasoningExpanded, setIsReasoningExpanded] = useState(false);
   const [expandedImageUrl, setExpandedImageUrl] = useState<string | null>(null);
   const { displayTheme } = useTheme();
@@ -83,162 +49,11 @@ export const AIMessageItem = memo(({
     return '';
   };
 
-  // Get tool info including icon and title
-  const getToolInfo = () => {
-    if (message.role === 'tool' && toolCall) {
-      if (toolCall.type === 'function') {
-        const toolName = toolCall.function.name;
-        let args;
-
-        try {
-          args = JSON.parse(toolCall.function.arguments);
-        } catch {
-          args = {};
-        }
-
-        // Generate icons and titles based on tool name and arguments
-        switch (toolName) {
-          case 'shell':
-            return {
-              icon: Terminal,
-              title: args.command ? args.command : 'Shell Command'
-            };
-          case 'text_editor_view': {
-            const title = args.path
-              ? (args.start_line || args.end_line
-                ? `Viewed ${args.path} (lines ${args.start_line || 1}-${args.end_line || 'end'})`
-                : `Viewed ${args.path}`)
-              : 'Viewed File';
-            return { icon: Eye, title };
-          }
-          case 'text_editor_write':
-            return {
-              icon: FileText,
-              title: args.path ? `Wrote ${args.path}` : 'Wrote File'
-            };
-          case 'text_editor_str_replace':
-            return {
-              icon: Edit,
-              title: args.path ? `Edited ${args.path}` : 'Edited File'
-            };
-          case 'npm_add_package': {
-            const installTitle = args.name
-              ? (args.dev ? `Installed ${args.name} (dev)` : `Installed ${args.name}`)
-              : 'Installed Package';
-            return { icon: Package, title: installTitle };
-          }
-          case 'npm_remove_package':
-            return {
-              icon: PackageMinus,
-              title: args.name ? `Removed ${args.name}` : 'Removed Package'
-            };
-          case 'git_commit':
-            return {
-              icon: GitCommit,
-              title: args.message ? `Committed: ${args.message}` : 'Committed Changes'
-            };
-          case 'build_project':
-            return {
-              icon: Package,
-              title: 'Built Project'
-            };
-          case 'nostr_read_nip':
-            return {
-              icon: BookOpen,
-              title: args.nip ? `Read NIP-${args.nip}` : 'Read NIP'
-            };
-          case 'nostr_fetch_event':
-            return {
-              icon: Download,
-              title: args.identifier ? `Fetched ${args.identifier.slice(0, 16)}...` : 'Fetched Event'
-            };
-          case 'nostr_read_kind':
-            return {
-              icon: Hash,
-              title: args.kind !== undefined ? `Read Kind ${args.kind}` : 'Read Kind'
-            };
-          case 'nostr_read_tag':
-            return {
-              icon: Tag,
-              title: args.tag ? `Read Tag "${args.tag}"` : 'Read Tag'
-            };
-          case 'nostr_read_protocol':
-            return {
-              icon: Network,
-              title: args.doc ? `Read Protocol: ${args.doc}` : 'Read Protocol'
-            };
-          case 'nostr_read_nips_index':
-            return {
-              icon: List,
-              title: 'Read NIPs Index'
-            };
-          case 'nostr_generate_kind':
-            return {
-              icon: Plus,
-              title: args.range ? `Generated ${args.range} kind` : 'Generated Kind'
-            };
-          case 'nostr_publish_events': {
-            const eventCount = args.events?.length || 0;
-            return {
-              icon: Send,
-              title: eventCount > 1 ? `Published ${eventCount} Nostr events` : 'Published Nostr event'
-            };
-          }
-          case 'deploy_project':
-            return {
-              icon: Globe,
-              title: args.deployServer ? `Deployed to ${args.deployServer}` : 'Deployed Project'
-            };
-          case 'read_console_messages':
-            return {
-              icon: Logs,
-              title: 'Read Console'
-            };
-          case 'skill':
-            return {
-              icon: Puzzle,
-              title: args.name ? `Skill: ${args.name}` : 'Skill'
-            };
-          case 'generate_image':
-            return {
-              icon: Image,
-              title: args.prompt ? args.prompt : 'Generated Image'
-            };
-          default:
-            return {
-              icon: Wrench,
-              title: toolName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
-            };
-        }
-      }
-    }
-
-    // Fallback to extracting from content
-    if (message.role === 'tool') {
-      const content = getContent();
-      const lines = content.split('\n');
-      const firstLine = lines[0];
-
-      if (firstLine && firstLine.length < 100) {
-        return {
-          icon: Wrench,
-          title: firstLine.replace(/^(Error |Tool |Executing |Result: )/i, '').trim()
-        };
-      }
-
-      return { icon: Wrench, title: 'Tool Result' };
-    }
-
-    return { icon: Wrench, title: 'Tool' };
-  };
-
   // Special rendering for tool messages
   if (message.role === 'tool') {
     const content = getContent();
-    const toolInfo = getToolInfo();
-    const IconComponent = toolInfo.icon;
 
-    // Get tool call arguments for special rendering
+    // Get tool call arguments
     let toolArgs: Record<string, unknown> = {};
     let toolName = '';
     if (toolCall?.type === 'function') {
@@ -250,131 +65,13 @@ export const AIMessageItem = memo(({
       }
     }
 
-    // Special rendering for tools
-    const renderSpecialContent = () => {
-      if (toolName === 'text_editor_write' && typeof toolArgs.file_text === 'string') {
-        return (
-          <div className="mt-1 p-3 bg-muted/30 rounded border text-xs">
-            <div className="whitespace-pre-wrap break-words font-mono">
-              {toolArgs.file_text}
-            </div>
-          </div>
-        );
-      }
-
-      if (toolName === 'text_editor_str_replace' && typeof toolArgs.old_str === 'string' && typeof toolArgs.new_str === 'string') {
-        const oldLines = toolArgs.old_str.split('\n');
-        const newLines = toolArgs.new_str.split('\n');
-
-        return (
-          <div className="mt-1 p-3 bg-muted/30 rounded border text-xs font-mono">
-            <div className="space-y-1">
-              {/* Old content (removed) */}
-              <div className="space-y-0">
-                {oldLines.map((line, index) => (
-                  <div key={`old-${index}`} className="flex">
-                    <span className="text-red-500 select-none mr-2">-</span>
-                    <span className="bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-300 flex-1 whitespace-pre-wrap break-words">
-                      {line}
-                    </span>
-                  </div>
-                ))}
-              </div>
-
-              {/* New content (added) */}
-              <div className="space-y-0">
-                {newLines.map((line, index) => (
-                  <div key={`new-${index}`} className="flex">
-                    <span className="text-green-500 select-none mr-2">+</span>
-                    <span className="bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-300 flex-1 whitespace-pre-wrap break-words">
-                      {line}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        );
-      }
-
-      if (toolName === 'generate_image') {
-        // For generate_image, when expanded show the full prompt
-        return (
-          <div className="mt-1 p-3 bg-muted/30 rounded border text-xs">
-            <div>{typeof toolArgs.prompt === 'string' ? toolArgs.prompt : 'No prompt provided'}</div>
-          </div>
-        );
-      }
-
-      // Default rendering for other tools
-      return (
-        <div className="mt-1 p-3 bg-muted/30 rounded border text-xs">
-          <div className="whitespace-pre-wrap break-words font-mono">
-            {content}
-          </div>
-        </div>
-      );
-    };
-
-    // Special rendering for generate_image - always show image below the tool
-    const renderImageBelowTool = () => {
-      if (toolName !== 'generate_image') return null;
-
-      // Parse "Generated image: /tmp/filename.png" from content
-      const match = content.match(/Generated image:\s*(\/tmp\/[^\s\n]+)/);
-      if (match) {
-        const imagePath = match[1];
-        const filename = imagePath.split('/').pop() || imagePath;
-
-        return (
-          <div className="mt-1 p-3 bg-muted/30 rounded border max-w-xs">
-            <div
-              className="cursor-pointer hover:opacity-90 transition-opacity"
-              onClick={() => setExpandedImageUrl(imagePath)}
-            >
-              <VFSImage
-                path={imagePath}
-                alt={filename}
-                className="max-w-full h-auto rounded"
-              />
-            </div>
-          </div>
-        );
-      } else {
-        // Image generation failed - show error in place
-        return <ImageGenerationError />;
-      }
-    };
-
-    // Regular tool message rendering
     return (
-      <>
-        <div className="-mt-2"> {/* -mt-2 to make it snug with the previous assistant message */}
-          <button
-            onClick={() => setIsToolExpanded(!isToolExpanded)}
-            className={cn(
-              "w-full flex items-center gap-2 px-2 py-1 text-xs",
-              "hover:bg-muted/30 rounded transition-colors duration-200"
-            )}
-          >
-            <IconComponent className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-            <span className="text-muted-foreground font-medium truncate flex-1 text-left">
-              {toolInfo.title}
-            </span>
-          </button>
-
-          {isToolExpanded && renderSpecialContent()}
-
-          {/* Always render image below for generate_image tool */}
-          {renderImageBelowTool()}
-        </div>
-
-        {/* Image expansion lightbox */}
-        <ImageLightbox
-          imageUrl={expandedImageUrl}
-          onClose={() => setExpandedImageUrl(null)}
-        />
-      </>
+      <ToolCallDisplay
+        toolName={toolName}
+        toolArgs={toolArgs}
+        state="completed"
+        result={content}
+      />
     );
   }
 

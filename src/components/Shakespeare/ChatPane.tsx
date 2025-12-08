@@ -16,6 +16,7 @@ import { useProviderModels } from '@/hooks/useProviderModels';
 import { useSessionManager } from '@/hooks/useSessionManager';
 import { useMCPTools } from '@/hooks/useMCPTools';
 import { AIMessageItem } from '@/components/AIMessageItem';
+import { ToolCallDisplay } from '@/components/ToolCallDisplay';
 import { TextEditorViewTool } from '@/lib/tools/TextEditorViewTool';
 import { TextEditorWriteTool } from '@/lib/tools/TextEditorWriteTool';
 import { TextEditorStrReplaceTool } from '@/lib/tools/TextEditorStrReplaceTool';
@@ -612,16 +613,20 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
               isCurrentlyLoading={isLoading}
             />
           )}
-          {/* "Running <tool>..." if streaming tool call is in progress */}
+          {/* Show tool call in "calling" state if streaming tool call is in progress */}
           {(streamingToolCall?.type === 'function') ? (
-            <div key="tool-calls-loading" className="-mt-2">
-              <div className="flex items-center gap-2 px-2 py-1 text-xs text-muted-foreground">
-                <Loader2 className="h-3 w-3 animate-spin flex-shrink-0" />
-                <span className="font-medium">
-                  {t('runningTool', { tool: streamingToolCall.function.name })}
-                </span>
-              </div>
-            </div>
+            <ToolCallDisplay
+              key="tool-calls-loading"
+              toolName={streamingToolCall.function.name}
+              toolArgs={(() => {
+                try {
+                  return JSON.parse(streamingToolCall.function.arguments);
+                } catch {
+                  return {};
+                }
+              })()}
+              state="calling"
+            />
           ) : (
             <>
               {/* Show loading skeleton if AI appears stuck generating tools */}
@@ -643,30 +648,21 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     const lastMessage = messages[messages.length - 1] as AIMessage | undefined;
     const lastToolCall = lastMessage?.role === 'assistant' ? lastMessage?.tool_calls?.[0] : undefined;
 
-    // "Waiting for <tool>..." if last tool call is still executing
+    // Show tool call in "waiting" state if last tool call is still executing
     if (lastToolCall?.type === 'function') {
-      const isGenerateImageTool = lastToolCall.function.name === 'generate_image';
-
       return (
-        <div key="tool-running-loading" className="-mt-2">
-          <div className="flex items-center gap-2 px-2 py-1 text-xs text-muted-foreground">
-            <Loader2 className="h-3 w-3 animate-spin flex-shrink-0" />
-            <span className="font-medium">
-              {t('waitingForTool', { tool: lastToolCall.function.name })}
-            </span>
-          </div>
-          {/* Special placeholder for generate_image tool */}
-          {isGenerateImageTool && (
-            <div className="mt-1 p-3 bg-muted/30 rounded border max-w-xs">
-              <div className="relative w-full aspect-square">
-                <Skeleton className="w-full h-full rounded" />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <Loader2 className="h-12 w-12 text-muted-foreground/30 animate-spin" />
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+        <ToolCallDisplay
+          key="tool-running-loading"
+          toolName={lastToolCall.function.name}
+          toolArgs={(() => {
+            try {
+              return JSON.parse(lastToolCall.function.arguments);
+            } catch {
+              return {};
+            }
+          })()}
+          state="waiting"
+        />
       );
     }
 

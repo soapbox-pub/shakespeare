@@ -1,4 +1,4 @@
-import type { Tool } from './Tool';
+import type { Tool, ToolResult } from './Tool';
 import type { MCPClient } from '@/lib/MCPClient';
 
 /**
@@ -19,8 +19,9 @@ export class MCPTool implements Tool<Record<string, unknown>> {
     this.originalToolName = originalToolName;
   }
 
-  async execute(args: Record<string, unknown>): Promise<string> {
-    return await this.client.callTool(this.originalToolName, args);
+  async execute(args: Record<string, unknown>): Promise<ToolResult> {
+    const content = await this.client.callTool(this.originalToolName, args);
+    return { content };
   }
 }
 

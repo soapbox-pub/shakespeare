@@ -2,7 +2,7 @@ import { z } from "zod";
 import { NPool, NRelay1, type NostrEvent } from '@nostrify/nostrify';
 import { generateSecretKey, getPublicKey, finalizeEvent } from 'nostr-tools';
 
-import type { Tool } from "./Tool";
+import type { Tool, ToolResult } from "./Tool";
 
 interface NostrPublishEventsParams {
   events: Array<{
@@ -29,7 +29,7 @@ export class NostrPublishEventsTool implements Tool<NostrPublishEventsParams> {
     relays: z.array(z.string().url()).optional().describe('Optional array of relay URLs to publish to (default: hardcoded relay list)'),
   });
 
-  async execute(args: NostrPublishEventsParams): Promise<string> {
+  async execute(args: NostrPublishEventsParams): Promise<ToolResult> {
     const { events: partialEvents, relays } = args;
 
     // Default relays if none provided
@@ -114,7 +114,7 @@ export class NostrPublishEventsTool implements Tool<NostrPublishEventsParams> {
         })),
       };
 
-      return JSON.stringify(summary, null, 2);
+      return { content: JSON.stringify(summary, null, 2) };
     } catch (error) {
       throw new Error(`Error publishing events: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {

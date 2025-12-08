@@ -122,7 +122,7 @@ describe('TextEditorWriteTool', () => {
       file_text: 'console.log("test");'
     });
 
-    expect(result).toContain('File successfully written to src/test.ts');
+    expect(result.content).toContain('File successfully written to src/test.ts');
     expect(mockFS.hasFile('/project/src/test.ts')).toBe(true);
     expect(mockFS.getFileContent('/project/src/test.ts')).toBe('console.log("test");');
   });
@@ -140,7 +140,7 @@ describe('TextEditorWriteTool', () => {
       file_text: 'temporary content'
     });
 
-    expect(result).toContain('File successfully written to /tmp/temp-file.txt');
+    expect(result.content).toContain('File successfully written to /tmp/temp-file.txt');
     expect(mockFS.hasFile('/tmp/temp-file.txt')).toBe(true);
     expect(mockFS.getFileContent('/tmp/temp-file.txt')).toBe('temporary content');
   });

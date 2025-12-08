@@ -70,8 +70,8 @@ describe('NpmAddPackageTool', () => {
       expect.stringContaining('"lodash": "^4.17.21"'),
       'utf8'
     );
-    expect(result).toContain('✅ Successfully added lodash@4.17.21');
-    expect(result).toContain('Updated: package.json');
+    expect(result.content).toContain('✅ Successfully added lodash@4.17.21');
+    expect(result.content).toContain('Updated: package.json');
   });
 
   it('should add package with specific version', async () => {
@@ -105,7 +105,7 @@ describe('NpmAddPackageTool', () => {
       expect.stringContaining('"lodash": "^4.17.20"'),
       'utf8'
     );
-    expect(result).toContain('✅ Successfully added lodash@4.17.20');
+    expect(result.content).toContain('✅ Successfully added lodash@4.17.20');
   });
 
   it('should add dev dependency', async () => {
@@ -146,7 +146,7 @@ describe('NpmAddPackageTool', () => {
     expect(writtenPackageJson.devDependencies.typescript).toBe('^5.0.0');
     expect(writtenPackageJson.dependencies?.typescript).toBeUndefined();
 
-    expect(result).toContain('Development dependency');
+    expect(result.content).toContain('Development dependency');
   });
 
   it('should move package from dependencies to devDependencies', async () => {
@@ -183,7 +183,7 @@ describe('NpmAddPackageTool', () => {
     expect(writtenPackageJson.devDependencies.typescript).toBe('^5.0.0');
     // dependencies object should be empty or not contain typescript
     expect(writtenPackageJson.dependencies?.typescript).toBeUndefined();
-    expect(result).toContain('✅ Successfully added');
+    expect(result.content).toContain('✅ Successfully added');
   });
 
   it('should handle package already installed', async () => {
@@ -202,7 +202,7 @@ describe('NpmAddPackageTool', () => {
     // Should not fetch from registry when no version specified and package already installed
     expect(mockFetch).not.toHaveBeenCalled();
     expect(mockFS.writeFile).not.toHaveBeenCalled();
-    expect(result).toContain('ℹ️ Package lodash is already installed in dependencies with version ^4.17.21.');
+    expect(result.content).toContain('ℹ️ Package lodash is already installed in dependencies with version ^4.17.21.');
   });
 
   it('should handle package already installed with specific version', async () => {
@@ -230,7 +230,7 @@ describe('NpmAddPackageTool', () => {
     const result = await tool.execute({ name: 'lodash', version: '4.17.21' });
 
     expect(mockFS.writeFile).not.toHaveBeenCalled();
-    expect(result).toContain('ℹ️ Package lodash@4.17.21 is already installed in dependencies.');
+    expect(result.content).toContain('ℹ️ Package lodash@4.17.21 is already installed in dependencies.');
   });
 
   it('should handle missing package.json', async () => {
@@ -295,7 +295,7 @@ describe('NpmAddPackageTool', () => {
     const dependencyKeys = Object.keys(writtenPackageJson.dependencies);
 
     expect(dependencyKeys).toEqual(['axios', 'lodash', 'zlib']);
-    expect(result).toContain('✅ Successfully added');
+    expect(result.content).toContain('✅ Successfully added');
   });
 
   it('should update package-lock.json when it exists', async () => {
@@ -354,7 +354,7 @@ describe('NpmAddPackageTool', () => {
       license: 'MIT'
     });
 
-    expect(result).toContain('Updated: package.json, package-lock.json');
+    expect(result.content).toContain('Updated: package.json, package-lock.json');
   });
 
   it('should update package-lock.json for dev dependencies', async () => {
@@ -413,7 +413,7 @@ describe('NpmAddPackageTool', () => {
       engines: { node: '>=14.17' }
     });
 
-    expect(result).toContain('Updated: package.json, package-lock.json');
+    expect(result.content).toContain('Updated: package.json, package-lock.json');
   });
 
   it('should move package between dependency types in package-lock.json', async () => {
@@ -487,7 +487,7 @@ describe('NpmAddPackageTool', () => {
       dev: true
     });
 
-    expect(result).toContain('✅ Successfully added');
+    expect(result.content).toContain('✅ Successfully added');
   });
 
   it('should handle corrupted package-lock.json gracefully', async () => {
@@ -516,8 +516,8 @@ describe('NpmAddPackageTool', () => {
     // Should not throw error, just log warning and continue
     const result = await tool.execute({ name: 'lodash' });
 
-    expect(result).toContain('✅ Successfully added lodash@4.17.21');
-    expect(result).toContain('Updated: package.json'); // Should not mention package-lock.json
+    expect(result.content).toContain('✅ Successfully added lodash@4.17.21');
+    expect(result.content).toContain('Updated: package.json'); // Should not mention package-lock.json
     expect(mockFS.writeFile).toHaveBeenCalledTimes(1); // Only package.json should be written
   });
 });

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import type { Tool } from "./Tool";
+import type { Tool, ToolResult } from "./Tool";
 import { KindGenerator, type KindRange } from "../KindGenerator";
 import { NIPsClient } from "../NIPsClient";
 
@@ -26,7 +26,7 @@ export class NostrGenerateKindTool implements Tool<NostrGenerateKindParams> {
     });
   }
 
-  async execute(args: NostrGenerateKindParams): Promise<string> {
+  async execute(args: NostrGenerateKindParams): Promise<ToolResult> {
     const { range } = args;
 
     try {
@@ -39,7 +39,9 @@ export class NostrGenerateKindTool implements Tool<NostrGenerateKindParams> {
 
       const rangeInfo = KindGenerator.getKindRangeInfo(range);
 
-      return `Generated unused kind: ${availableKind}\n\nRange: ${rangeInfo.name} (${rangeInfo.min}-${rangeInfo.max})\nDescription: ${rangeInfo.description}\n\nThis kind number is currently not used by any official NIP.`;
+      return {
+        content: `Generated unused kind: ${availableKind}\n\nRange: ${rangeInfo.name} (${rangeInfo.min}-${rangeInfo.max})\nDescription: ${rangeInfo.description}\n\nThis kind number is currently not used by any official NIP.`
+      };
     } catch (error) {
       throw new Error(`Error generating kind: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }

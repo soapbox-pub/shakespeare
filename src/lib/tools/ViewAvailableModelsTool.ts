@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { Tool } from './Tool';
+import type { Tool, ToolResult } from './Tool';
 
 interface ProviderModel {
   id: string;
@@ -22,9 +22,9 @@ export class ViewAvailableModelsTool implements Tool<Record<string, never>> {
     private currentImageModel?: string,
   ) {}
 
-  async execute(): Promise<string> {
+  async execute(): Promise<ToolResult> {
     if (this.models.length === 0) {
-      return 'No AI models are currently available. Please configure at least one AI provider in Settings > AI.';
+      return { content: 'No AI models are currently available. Please configure at least one AI provider in Settings > AI.' };
     }
 
     // Filter image-capable models
@@ -63,7 +63,7 @@ export class ViewAvailableModelsTool implements Tool<Record<string, never>> {
     if (filteredModels.length === 0) {
       output += 'No models found in configured providers.\n';
       output += `Total models available: ${this.models.length} (none support image generation)\n`;
-      return output;
+      return { content: output };
     }
 
     output += `Found ${filteredModels.length} models:\n\n`;
@@ -82,6 +82,6 @@ export class ViewAvailableModelsTool implements Tool<Record<string, never>> {
 
     output += `Models marked with ⭐ are definite image generation models.\n`;
 
-    return output;
+    return { content: output };
   }
 }

@@ -1,7 +1,7 @@
 import { join } from "path-browserify";
 import { z } from "zod";
 
-import type { Tool } from "./Tool";
+import type { Tool, ToolResult } from "./Tool";
 import type { JSRuntimeFS } from "../JSRuntime";
 
 interface TextEditorViewParams {
@@ -35,7 +35,7 @@ export class TextEditorViewTool implements Tool<TextEditorViewParams> {
     this.projectsPath = options?.projectsPath || '/projects';
   }
 
-  async execute(args: TextEditorViewParams): Promise<string> {
+  async execute(args: TextEditorViewParams): Promise<ToolResult> {
     const { path, start_line, end_line } = args;
 
     try {
@@ -58,7 +58,7 @@ export class TextEditorViewTool implements Tool<TextEditorViewParams> {
         const normalizedPath = absolutePath.replace(/\/$/, ''); // Remove trailing slash
         if (normalizedPath === this.projectsPath) {
           const tree = await this.generateDirectoryTree(absolutePath, "", 1); // Only show immediate children
-          return tree;
+          return { content: tree };
         }
 
         // Check if we're starting from a .git directory
@@ -67,7 +67,7 @@ export class TextEditorViewTool implements Tool<TextEditorViewParams> {
         // If it's a directory, generate a tree-like listing
         // Note: start_line and end_line are ignored for directories
         const tree = await this.generateDirectoryTree(absolutePath, "", 3, 0, isGitRoot);
-        return tree;
+        return { content: tree };
       }
 
       // If it's a file, check if it's binary first
@@ -75,7 +75,9 @@ export class TextEditorViewTool implements Tool<TextEditorViewParams> {
         const stats = await this.fs.stat(absolutePath);
         const fileSize = this.formatFileSize(stats.size || 0);
         const fileExtension = this.getFileExtension(absolutePath);
-        return `[Binary file: ${fileExtension.toUpperCase()} file, ${fileSize}]\n\nThis appears to be a binary file and cannot be displayed as text.`;
+        return {
+          content: `[Binary file: ${fileExtension.toUpperCase()} file, ${fileSize}]\n\nThis appears to be a binary file and cannot be displayed as text.`
+        };
       }
 
       // If it's a text file, read and return its contents
@@ -108,7 +110,7 @@ export class TextEditorViewTool implements Tool<TextEditorViewParams> {
         content = lines.slice(startIdx, endIdx).join('\n');
       }
 
-      return content;
+      return { content };
     } catch (error) {
       throw new Error(String(error));
     }

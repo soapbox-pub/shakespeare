@@ -241,11 +241,12 @@ export class SessionManager {
       const maxSteps = session.maxSteps || 50;
 
       // Main AI generation loop
-      while (stepCount < maxSteps && session.isLoading) {
-        session = this.sessions.get(projectId);
-        if (!session) {
-          throw new Error('Session not found');
+      while (stepCount < maxSteps) {
+        const currentSession = this.sessions.get(projectId);
+        if (!currentSession || !currentSession.isLoading) {
+          break;
         }
+        session = currentSession;
 
         stepCount++;
 
@@ -600,8 +601,19 @@ export class SessionManager {
                 const rawArgs = functionToolCall.function.arguments;
                 toolArgs = rawArgs ? JSON.parse(rawArgs) : {};
               }
-              const content = await tool.execute(toolArgs);
-              await this.addToolMessage(projectId, functionToolCall.id, content);
+              const result = await tool.execute(toolArgs);
+              await this.addToolMessage(projectId, functionToolCall.id, result.content);
+
+              // Update session cost if tool returned a cost
+              if (result.cost !== undefined) {
+                const updatedSession = this.sessions.get(projectId);
+                if (updatedSession) {
+                  const currentCost = updatedSession.totalCost || 0;
+                  updatedSession.totalCost = currentCost + result.cost;
+                  this.sessions.set(projectId, updatedSession);
+                  this.emit('costUpdated', projectId, updatedSession.totalCost);
+                }
+              }
             } catch (error) {
               const errorMsg = error instanceof Error ? error.message : 'Unknown error';
               await this.addToolMessage(projectId, functionToolCall.id, `Error with tool ${toolName}: ${errorMsg}`);

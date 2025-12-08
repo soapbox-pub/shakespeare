@@ -51,19 +51,19 @@ describe('ShellTool', () => {
 
   it('should return error for empty command', async () => {
     const result = await shellTool.execute({ command: '' });
-    expect(result).toBe('Error: Empty command');
+    expect(result.content).toBe('Error: Empty command');
   });
 
   it('should return error for whitespace-only command', async () => {
     const result = await shellTool.execute({ command: '   ' });
-    expect(result).toBe('Error: Empty command');
+    expect(result.content).toBe('Error: Empty command');
   });
 
   it('should return error for unknown command', async () => {
     const result = await shellTool.execute({ command: 'unknowncommand' });
-    expect(result).toContain("Command 'unknowncommand' not found");
-    expect(result).toContain('Available commands:');
-    expect(result).toContain('cat');
+    expect(result.content).toContain("Command 'unknowncommand' not found");
+    expect(result.content).toContain('Available commands:');
+    expect(result.content).toContain('cat');
   });
 
   it('should execute cat command successfully', async () => {
@@ -76,7 +76,7 @@ describe('ShellTool', () => {
 
     const result = await shellTool.execute({ command: 'cat test.txt' });
 
-    expect(result).toBe(fileContent);
+    expect(result.content).toBe(fileContent);
   });
 
   it('should parse commands with arguments correctly', async () => {
@@ -90,7 +90,7 @@ describe('ShellTool', () => {
 
     const result = await shellTool.execute({ command: 'cat file1.txt file2.txt' });
 
-    expect(result).toBe('File 1\nFile 2\n');
+    expect(result.content).toBe('File 1\nFile 2\n');
   });
 
   it('should handle quoted arguments', async () => {
@@ -143,27 +143,27 @@ describe('ShellTool', () => {
 
     const result = await shellTool.execute({ command: 'cat nonexistent.txt' });
 
-    expect(result).toContain('No such file or directory');
-    expect(result).toContain('Exit code: 1');
+    expect(result.content).toContain('No such file or directory');
+    expect(result.content).toContain('Exit code: 1');
   });
 
   it('should show stderr output', async () => {
     const result = await shellTool.execute({ command: 'cat' });
 
-    expect(result).toContain('missing file operand');
-    expect(result).toContain('Exit code: 1');
+    expect(result.content).toContain('missing file operand');
+    expect(result.content).toContain('Exit code: 1');
   });
 
   it('should execute echo command', async () => {
     const result = await shellTool.execute({ command: 'echo hello world' });
 
-    expect(result).toBe('hello world\n');
+    expect(result.content).toBe('hello world\n');
   });
 
   it('should execute pwd command', async () => {
     const result = await shellTool.execute({ command: 'pwd' });
 
-    expect(result).toBe(testCwd);
+    expect(result.content).toBe(testCwd);
   });
 
   it('should handle cd command and update working directory', async () => {
@@ -174,7 +174,7 @@ describe('ShellTool', () => {
 
     const result = await shellTool.execute({ command: 'cd subdir' });
 
-    expect(result).toBe('(no output)');
+    expect(result.content).toBe('(no output)');
     expect(shellTool.getCurrentWorkingDirectory()).toBe('/test/dir/subdir');
   });
 
@@ -182,7 +182,7 @@ describe('ShellTool', () => {
     it('should redirect output to file with > operator', async () => {
       const result = await shellTool.execute({ command: 'echo "hello world" > test.txt' });
 
-      expect(result).toBe('(no output)');
+      expect(result.content).toBe('(no output)');
       expect(mockFS.writeFile).toHaveBeenCalledWith('/test/dir/test.txt', 'hello world\n', 'utf8');
     });
 
@@ -191,7 +191,7 @@ describe('ShellTool', () => {
 
       const result = await shellTool.execute({ command: 'echo "new line" >> test.txt' });
 
-      expect(result).toBe('(no output)');
+      expect(result.content).toBe('(no output)');
       expect(mockFS.readFile).toHaveBeenCalledWith('/test/dir/test.txt', 'utf8');
       expect(mockFS.writeFile).toHaveBeenCalledWith('/test/dir/test.txt', 'existing content\nnew line\n', 'utf8');
     });
@@ -201,21 +201,21 @@ describe('ShellTool', () => {
 
       const result = await shellTool.execute({ command: 'echo "first line" >> newfile.txt' });
 
-      expect(result).toBe('(no output)');
+      expect(result.content).toBe('(no output)');
       expect(mockFS.writeFile).toHaveBeenCalledWith('/test/dir/newfile.txt', 'first line\n', 'utf8');
     });
 
     it('should handle quoted filenames in redirection', async () => {
       const result = await shellTool.execute({ command: 'echo test > "file with spaces.txt"' });
 
-      expect(result).toBe('(no output)');
+      expect(result.content).toBe('(no output)');
       expect(mockFS.writeFile).toHaveBeenCalledWith('/test/dir/file with spaces.txt', 'test\n', 'utf8');
     });
 
     it('should handle absolute paths in redirection', async () => {
       const result = await shellTool.execute({ command: 'echo test > /tmp/absolute.txt' });
 
-      expect(result).toBe('(no output)');
+      expect(result.content).toBe('(no output)');
       expect(mockFS.writeFile).toHaveBeenCalledWith('/tmp/absolute.txt', 'test\n', 'utf8');
     });
 
@@ -224,8 +224,8 @@ describe('ShellTool', () => {
 
       const result = await shellTool.execute({ command: 'echo test > /readonly/file.txt' });
 
-      expect(result).toContain('Redirection error: Permission denied');
-      expect(result).toContain('Exit code: 1');
+      expect(result.content).toContain('Redirection error: Permission denied');
+      expect(result.content).toContain('Exit code: 1');
     });
   });
 
@@ -233,8 +233,8 @@ describe('ShellTool', () => {
     it('should execute commands with && operator (success case)', async () => {
       const result = await shellTool.execute({ command: 'pwd && echo hello' });
 
-      expect(result).toContain(testCwd);
-      expect(result).toContain('hello');
+      expect(result.content).toContain(testCwd);
+      expect(result.content).toContain('hello');
     });
 
     it('should execute commands with && operator (failure case)', async () => {
@@ -242,15 +242,15 @@ describe('ShellTool', () => {
 
       const result = await shellTool.execute({ command: 'cat nonexistent.txt && echo should not run' });
 
-      expect(result).toContain('No such file or directory');
-      expect(result).not.toContain('should not run');
+      expect(result.content).toContain('No such file or directory');
+      expect(result.content).not.toContain('should not run');
     });
 
     it('should execute commands with || operator (success case)', async () => {
       const result = await shellTool.execute({ command: 'pwd || echo fallback' });
 
-      expect(result).toContain(testCwd);
-      expect(result).not.toContain('fallback');
+      expect(result.content).toContain(testCwd);
+      expect(result.content).not.toContain('fallback');
     });
 
     it('should execute commands with || operator (failure case)', async () => {
@@ -258,36 +258,36 @@ describe('ShellTool', () => {
 
       const result = await shellTool.execute({ command: 'cat nonexistent.txt || echo fallback' });
 
-      expect(result).toContain('No such file or directory');
-      expect(result).toContain('fallback');
+      expect(result.content).toContain('No such file or directory');
+      expect(result.content).toContain('fallback');
     });
 
     it('should execute commands with ; operator', async () => {
       const result = await shellTool.execute({ command: 'echo first; echo second' });
 
-      expect(result).toContain('first');
-      expect(result).toContain('second');
+      expect(result.content).toContain('first');
+      expect(result.content).toContain('second');
     });
 
     it('should execute commands with pipe operator', async () => {
       const result = await shellTool.execute({ command: 'echo "hello world" | cat' });
 
-      expect(result).toContain('hello world');
+      expect(result.content).toContain('hello world');
     });
 
     it('should handle complex compound commands', async () => {
       const result = await shellTool.execute({ command: 'echo "line1\nline2\nline3" | head -n 2' });
 
-      expect(result).toContain('line1');
-      expect(result).toContain('line2');
-      expect(result).not.toContain('line3');
+      expect(result.content).toContain('line1');
+      expect(result.content).toContain('line2');
+      expect(result.content).not.toContain('line3');
     });
 
     it('should parse quoted strings in compound commands', async () => {
       const result = await shellTool.execute({ command: 'echo "hello && world" && echo success' });
 
-      expect(result).toContain('hello && world');
-      expect(result).toContain('success');
+      expect(result.content).toContain('hello && world');
+      expect(result.content).toContain('success');
     });
   });
 });

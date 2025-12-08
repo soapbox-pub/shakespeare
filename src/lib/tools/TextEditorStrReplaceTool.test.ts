@@ -119,7 +119,7 @@ describe('TextEditorStrReplaceTool', () => {
       new_str: 'hello universe'
     });
 
-    expect(result).toContain('String successfully replaced in src/test.ts');
+    expect(result.content).toContain('String successfully replaced in src/test.ts');
     expect(mockFS.getFileContent('/project/src/test.ts')).toContain('hello universe');
     expect(mockFS.getFileContent('/project/src/test.ts')).not.toContain('hello world');
   });
@@ -150,7 +150,7 @@ describe('TextEditorStrReplaceTool', () => {
       new_str: 'modified'
     });
 
-    expect(result).toContain('String successfully replaced');
+    expect(result.content).toContain('String successfully replaced');
     expect(mockFS.getFileContent('/tmp/temp-file.txt')).toBe('modified content');
   });
 
@@ -162,7 +162,7 @@ describe('TextEditorStrReplaceTool', () => {
       normalize_whitespace: true
     });
 
-    expect(result).toContain('String successfully replaced');
+    expect(result.content).toContain('String successfully replaced');
     expect(mockFS.getFileContent('/project/src/test.ts')).toContain('const greeting = "hello universe";');
   });
 });

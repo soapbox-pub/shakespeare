@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { Tool } from './Tool';
+import type { Tool, ToolResult } from './Tool';
 import type { AISettingsContextType } from '@/contexts/AISettingsContext';
 
 interface ConfigureImageGenerationParams {
@@ -28,12 +28,12 @@ export class ConfigureImageGenerationTool implements Tool<ConfigureImageGenerati
     private models: ProviderModel[],
   ) {}
 
-  async execute(args: ConfigureImageGenerationParams): Promise<string> {
+  async execute(args: ConfigureImageGenerationParams): Promise<ToolResult> {
     const { modelId } = args;
 
     // Validate model ID format
     if (!modelId.includes('/')) {
-      return 'ERROR: Invalid model ID format. The modelId must be in "provider/model" format (e.g., "openrouter/openai/gpt-image-1" or "openai/dall-e-3").';
+      return { content: 'ERROR: Invalid model ID format. The modelId must be in "provider/model" format (e.g., "openrouter/openai/gpt-image-1" or "openai/dall-e-3").' };
     }
 
     // Check if model exists in available models (optional - provides helpful info if available)
@@ -55,6 +55,6 @@ export class ConfigureImageGenerationTool implements Tool<ConfigureImageGenerati
 
     response += `\nThe generate_image tool is now available and ready to use. You can generate images by calling the generate_image tool with a detailed text prompt.`;
 
-    return response;
+    return { content: response };
   }
 }

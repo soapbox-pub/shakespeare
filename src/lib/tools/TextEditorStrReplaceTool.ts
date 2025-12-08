@@ -1,7 +1,7 @@
 import { join } from "path-browserify";
 import { z } from "zod";
 
-import type { Tool } from "./Tool";
+import type { Tool, ToolResult } from "./Tool";
 import type { JSRuntimeFS } from "../JSRuntime";
 import { isAbsolutePath, isWriteAllowed, createWriteAccessDeniedError } from "../security";
 
@@ -38,7 +38,7 @@ export class TextEditorStrReplaceTool implements Tool<TextEditorStrReplaceParams
     this.onFileChanged = options?.onFileChanged;
   }
 
-  async execute(args: TextEditorStrReplaceParams): Promise<string> {
+  async execute(args: TextEditorStrReplaceParams): Promise<ToolResult> {
     const { path, old_str, new_str, normalize_whitespace = true } = args;
 
     // Check write permissions
@@ -184,7 +184,7 @@ export class TextEditorStrReplaceTool implements Tool<TextEditorStrReplaceParams
         successMessage += ` (${occurrences} occurrences found, only first occurrence replaced)`;
       }
 
-      return successMessage;
+      return { content: successMessage };
     } catch (error) {
       throw new Error(String(error));
     }

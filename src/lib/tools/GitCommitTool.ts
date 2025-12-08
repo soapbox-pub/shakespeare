@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { Git } from "../git";
 
-import type { Tool } from "./Tool";
+import type { Tool, ToolResult } from "./Tool";
 import type { JSRuntimeFS } from "../JSRuntime";
 
 interface GitCommitParams {
@@ -25,7 +25,7 @@ export class GitCommitTool implements Tool<GitCommitParams> {
     this.cwd = cwd;
   }
 
-  async execute(args: GitCommitParams): Promise<string> {
+  async execute(args: GitCommitParams): Promise<ToolResult> {
     const { message } = args;
 
     try {
@@ -75,7 +75,7 @@ export class GitCommitTool implements Tool<GitCommitParams> {
       });
 
       if (changedFiles.length === 0) {
-        return `ℹ️ No changes to commit. Working tree is clean.`;
+        return { content: `ℹ️ No changes to commit. Working tree is clean.` };
       }
 
       // Add all changed files to staging
@@ -133,7 +133,7 @@ export class GitCommitTool implements Tool<GitCommitParams> {
       if (modifiedFiles > 0) details += `  • ${modifiedFiles} file${modifiedFiles !== 1 ? 's' : ''} modified\n`;
       if (deletedFiles > 0) details += `  • ${deletedFiles} file${deletedFiles !== 1 ? 's' : ''} deleted\n`;
 
-      return `${summary}\n\n${details}`;
+      return { content: `${summary}\n\n${details}` };
     } catch (error) {
       throw new Error(`❌ Error committing changes: ${String(error)}`);
     }

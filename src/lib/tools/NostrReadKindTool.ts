@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import type { Tool } from "./Tool";
+import type { Tool, ToolResult } from "./Tool";
 import { NostrbookClient } from "../NostrbookClient";
 import { HTTPError } from "../HTTPError";
 
@@ -23,12 +23,12 @@ export class NostrReadKindTool implements Tool<NostrReadKindParams> {
     });
   }
 
-  async execute(args: NostrReadKindParams): Promise<string> {
+  async execute(args: NostrReadKindParams): Promise<ToolResult> {
     const { kind } = args;
 
     try {
       const text = await this.nostrbookClient.readKind(kind);
-      return text;
+      return { content: text };
     } catch (error) {
       if (error instanceof HTTPError && error.response.status === 404) {
         throw new Error(

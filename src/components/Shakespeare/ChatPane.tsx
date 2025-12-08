@@ -374,9 +374,11 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
       ]
     });
 
+    const result = await tool.execute({ filter: 'error' });
+
     await addMessage({
       role: 'tool',
-      content: await tool.execute({ filter: 'error' }),
+      content: result.content,
       tool_call_id: toolCallId,
     });
 

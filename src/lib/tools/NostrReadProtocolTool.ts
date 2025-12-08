@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import type { Tool } from "./Tool";
+import type { Tool, ToolResult } from "./Tool";
 import { NostrbookClient } from "../NostrbookClient";
 
 interface NostrReadProtocolParams {
@@ -22,12 +22,12 @@ export class NostrReadProtocolTool implements Tool<NostrReadProtocolParams> {
     });
   }
 
-  async execute(args: NostrReadProtocolParams): Promise<string> {
+  async execute(args: NostrReadProtocolParams): Promise<ToolResult> {
     const { doc } = args;
 
     try {
       const text = await this.nostrbookClient.readProtocol(doc);
-      return text;
+      return { content: text };
     } catch (error) {
       throw new Error(`Error reading protocol doc "${doc}": ${error instanceof Error ? error.message : 'Unknown error'}`);
     }

@@ -78,7 +78,7 @@ describe('NostrPublishEventsTool', () => {
       events: [{}],
     });
 
-    const parsed = JSON.parse(result);
+    const parsed = JSON.parse(result.content);
     expect(parsed.success).toBe(true);
     expect(parsed.pubkey).toBeDefined();
     expect(parsed.events_published).toBe(2); // kind 0 + 1 user event
@@ -95,7 +95,7 @@ describe('NostrPublishEventsTool', () => {
       ],
     });
 
-    const parsed = JSON.parse(result);
+    const parsed = JSON.parse(result.content);
     expect(parsed.success).toBe(true);
     expect(parsed.events_published).toBe(3); // kind 0 + 2 user events
     expect(parsed.events[1].kind).toBe(1);
@@ -110,7 +110,7 @@ describe('NostrPublishEventsTool', () => {
       relays: customRelays,
     });
 
-    const parsed = JSON.parse(result);
+    const parsed = JSON.parse(result.content);
     expect(parsed.relays).toEqual(customRelays);
   });
 
@@ -120,7 +120,7 @@ describe('NostrPublishEventsTool', () => {
       events: [{ kind: 1, content: longContent }],
     });
 
-    const parsed = JSON.parse(result);
+    const parsed = JSON.parse(result.content);
     expect(parsed.events[1].content).toHaveLength(103); // 100 chars + '...'
     expect(parsed.events[1].content).toMatch(/^a+\.\.\.$/);
   });
@@ -143,7 +143,7 @@ describe('NostrPublishEventsTool', () => {
       events: [{ kind: 1, content: 'test', created_at: customTime }],
     });
 
-    const parsed = JSON.parse(result);
+    const parsed = JSON.parse(result.content);
     expect(parsed.success).toBe(true);
   });
 
@@ -155,7 +155,7 @@ describe('NostrPublishEventsTool', () => {
       ],
     });
 
-    const parsed = JSON.parse(result);
+    const parsed = JSON.parse(result.content);
     expect(parsed.success).toBe(true);
     expect(parsed.events_published).toBe(2); // Only the 2 user events, no fallback
     expect(parsed.events[0].kind).toBe(0); // User's kind 0
@@ -170,7 +170,7 @@ describe('NostrPublishEventsTool', () => {
       ],
     });
 
-    const parsed = JSON.parse(result);
+    const parsed = JSON.parse(result.content);
     expect(parsed.success).toBe(true);
     expect(parsed.events_published).toBe(3); // Fallback kind 0 + 2 user events
     expect(parsed.events[0].kind).toBe(0); // Fallback profile event

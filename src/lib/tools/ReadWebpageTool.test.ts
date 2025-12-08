@@ -77,14 +77,14 @@ describe("ReadWebpageTool", () => {
         url: "https://example.com/article",
       });
 
-      expect(result).toContain("# Test Article");
-      expect(result).toContain("**Source:** https://example.com/article");
-      expect(result).toContain("Main Article Title");
-      expect(result).toContain("**bold text**");
-      expect(result).toContain("*italic text*");
-      expect(result).toContain("## Subsection");
-      expect(result).toContain("*   First item");
-      expect(result).toContain("*   Second item");
+      expect(result.content).toContain("# Test Article");
+      expect(result.content).toContain("**Source:** https://example.com/article");
+      expect(result.content).toContain("Main Article Title");
+      expect(result.content).toContain("**bold text**");
+      expect(result.content).toContain("*italic text*");
+      expect(result.content).toContain("## Subsection");
+      expect(result.content).toContain("*   First item");
+      expect(result.content).toContain("*   Second item");
     });
 
     it("should handle articles with metadata", async () => {
@@ -122,8 +122,8 @@ describe("ReadWebpageTool", () => {
         url: "https://example.com/article-with-metadata",
       });
 
-      expect(result).toContain("# Article with Metadata");
-      expect(result).toContain("**Source:** https://example.com/article-with-metadata");
+      expect(result.content).toContain("# Article with Metadata");
+      expect(result.content).toContain("**Source:** https://example.com/article-with-metadata");
     });
 
     it("should handle code blocks properly", async () => {
@@ -158,9 +158,9 @@ function hello() {
         url: "https://example.com/code-example",
       });
 
-      expect(result).toContain("```");
-      expect(result).toContain("function hello()");
-      expect(result).toContain("`code`");
+      expect(result.content).toContain("```");
+      expect(result.content).toContain("function hello()");
+      expect(result.content).toContain("`code`");
     });
 
     it("should handle HTTP errors", async () => {
@@ -223,8 +223,8 @@ function hello() {
         url: "https://example.com/minimal-content",
       });
 
-      expect(result).toContain("# Untitled");
-      expect(result).toContain("**Source:** https://example.com/minimal-content");
+      expect(result.content).toContain("# Untitled");
+      expect(result.content).toContain("**Source:** https://example.com/minimal-content");
     });
 
     it("should handle invalid URLs", async () => {

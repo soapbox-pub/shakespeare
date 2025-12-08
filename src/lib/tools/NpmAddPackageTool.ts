@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import type { Tool } from "./Tool";
+import type { Tool, ToolResult } from "./Tool";
 import type { JSRuntimeFS } from "../JSRuntime";
 
 interface NpmAddPackageParams {
@@ -66,7 +66,7 @@ export class NpmAddPackageTool implements Tool<NpmAddPackageParams> {
     this.cwd = cwd;
   }
 
-  async execute(args: NpmAddPackageParams): Promise<string> {
+  async execute(args: NpmAddPackageParams): Promise<ToolResult> {
     const { name, version, dev = false } = args;
 
     try {
@@ -95,7 +95,7 @@ export class NpmAddPackageTool implements Tool<NpmAddPackageParams> {
       // If no version is specified and package is already installed, it's a no-op
       if (!version && packageJson[dependencyKey]?.[name]) {
         const currentVersion = packageJson[dependencyKey][name];
-        return `ℹ️ Package ${name} is already installed in ${dependencyKey} with version ${currentVersion}.`;
+        return { content: `ℹ️ Package ${name} is already installed in ${dependencyKey} with version ${currentVersion}.` };
       }
 
       // Determine version to use and fetch package metadata
@@ -121,7 +121,7 @@ export class NpmAddPackageTool implements Tool<NpmAddPackageParams> {
       if (packageJson[dependencyKey]?.[name]) {
         const currentVersion = packageJson[dependencyKey][name];
         if (currentVersion === `^${targetVersion}`) {
-          return `ℹ️ Package ${name}@${targetVersion} is already installed in ${dependencyKey}.`;
+          return { content: `ℹ️ Package ${name}@${targetVersion} is already installed in ${dependencyKey}.` };
         }
       }
 
@@ -164,7 +164,9 @@ export class NpmAddPackageTool implements Tool<NpmAddPackageParams> {
       // Update package-lock.json if it exists
       await this.updatePackageLock(name, targetVersion, packageMetadata, dev);
 
-      return `✅ Successfully added ${name}@${targetVersion} to ${dependencyKey}\n\n📦 Package: ${name}\n🏷️ Version: ^${targetVersion}\n📁 Type: ${dev ? 'Development dependency' : 'Production dependency'}\n📄 Updated: package.json${await this.packageLockExists() ? ', package-lock.json' : ''}`;
+      return {
+        content: `✅ Successfully added ${name}@${targetVersion} to ${dependencyKey}\n\n📦 Package: ${name}\n🏷️ Version: ^${targetVersion}\n📁 Type: ${dev ? 'Development dependency' : 'Production dependency'}\n📄 Updated: package.json${await this.packageLockExists() ? ', package-lock.json' : ''}`
+      };
     } catch (error) {
       throw new Error(`❌ Error adding package ${name}: ${String(error)}`);
     }

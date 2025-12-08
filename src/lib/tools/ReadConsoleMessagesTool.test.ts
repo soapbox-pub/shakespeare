@@ -16,31 +16,31 @@ describe('ReadConsoleMessagesTool', () => {
     const tool = new ReadConsoleMessagesTool();
     const result = await tool.execute({});
 
-    expect(result).toContain('Found 4 console messages');
-    expect(result).toContain('[LOG] App started');
-    expect(result).toContain('[WARN] Deprecated API used');
-    expect(result).toContain('[ERROR] Network request failed');
-    expect(result).toContain('[INFO] User logged in');
+    expect(result.content).toContain('Found 4 console messages');
+    expect(result.content).toContain('[LOG] App started');
+    expect(result.content).toContain('[WARN] Deprecated API used');
+    expect(result.content).toContain('[ERROR] Network request failed');
+    expect(result.content).toContain('[INFO] User logged in');
   });
 
   it('should filter messages by level', async () => {
     const tool = new ReadConsoleMessagesTool();
     const result = await tool.execute({ filter: 'error' });
 
-    expect(result).toContain('Found 1 console message (level: error)');
-    expect(result).toContain('[ERROR] Network request failed');
-    expect(result).not.toContain('[LOG] App started');
+    expect(result.content).toContain('Found 1 console message (level: error)');
+    expect(result.content).toContain('[ERROR] Network request failed');
+    expect(result.content).not.toContain('[LOG] App started');
   });
 
   it('should limit number of messages', async () => {
     const tool = new ReadConsoleMessagesTool();
     const result = await tool.execute({ limit: 2 });
 
-    expect(result).toContain('Found 2 console messages');
+    expect(result.content).toContain('Found 2 console messages');
     // Should get the last 2 messages
-    expect(result).toContain('[ERROR] Network request failed');
-    expect(result).toContain('[INFO] User logged in');
-    expect(result).not.toContain('[LOG] App started');
+    expect(result.content).toContain('[ERROR] Network request failed');
+    expect(result.content).toContain('[INFO] User logged in');
+    expect(result.content).not.toContain('[LOG] App started');
   });
 
   it('should handle no messages found', async () => {
@@ -48,14 +48,14 @@ describe('ReadConsoleMessagesTool', () => {
     const tool = new ReadConsoleMessagesTool();
     const result = await tool.execute({});
 
-    expect(result).toBe('No console messages found.');
+    expect(result.content).toBe('No console messages found.');
   });
 
   it('should handle no messages found with filter', async () => {
     const tool = new ReadConsoleMessagesTool();
     const result = await tool.execute({ filter: 'debug' });
 
-    expect(result).toBe('No console messages found for level: debug.');
+    expect(result.content).toBe('No console messages found for level: debug.');
   });
 
   it('should handle all filter levels', async () => {
@@ -63,16 +63,16 @@ describe('ReadConsoleMessagesTool', () => {
 
     // Test each filter level
     const errorResult = await tool.execute({ filter: 'error' });
-    expect(errorResult).toContain('[ERROR] Network request failed');
+    expect(errorResult.content).toContain('[ERROR] Network request failed');
 
     const warnResult = await tool.execute({ filter: 'warn' });
-    expect(warnResult).toContain('[WARN] Deprecated API used');
+    expect(warnResult.content).toContain('[WARN] Deprecated API used');
 
     const logResult = await tool.execute({ filter: 'log' });
-    expect(logResult).toContain('[LOG] App started');
+    expect(logResult.content).toContain('[LOG] App started');
 
     const infoResult = await tool.execute({ filter: 'info' });
-    expect(infoResult).toContain('[INFO] User logged in');
+    expect(infoResult.content).toContain('[INFO] User logged in');
   });
 
   it('should format messages correctly', async () => {
@@ -82,7 +82,7 @@ describe('ReadConsoleMessagesTool', () => {
     const tool = new ReadConsoleMessagesTool();
     const result = await tool.execute({});
 
-    expect(result).toContain('[ERROR] Test error with special chars: <>&"');
+    expect(result.content).toContain('[ERROR] Test error with special chars: <>&"');
   });
 
   it('should handle limit correctly', async () => {
@@ -90,11 +90,11 @@ describe('ReadConsoleMessagesTool', () => {
 
     // Limit should return only the most recent messages
     const limitedResult = await tool.execute({ limit: 2 });
-    expect(limitedResult).toContain('Found 2 console messages');
+    expect(limitedResult.content).toContain('Found 2 console messages');
 
     // Default limit (50) should return all messages when total is less than 50
     const allResult = await tool.execute({});
-    expect(allResult).toContain('Found 4 console messages');
+    expect(allResult.content).toContain('Found 4 console messages');
   });
 
   it('should show truncation note when messages exceed limit', async () => {
@@ -108,12 +108,12 @@ describe('ReadConsoleMessagesTool', () => {
 
     // Default limit is 50
     const result = await tool.execute({});
-    expect(result).toContain('(showing last 50 of 60)');
-    expect(result).toContain('Message 60'); // Most recent
-    expect(result).not.toContain('Message 10'); // Too old
+    expect(result.content).toContain('(showing last 50 of 60)');
+    expect(result.content).toContain('Message 60'); // Most recent
+    expect(result.content).not.toContain('Message 10'); // Too old
 
     // Custom limit
     const limitedResult = await tool.execute({ limit: 10 });
-    expect(limitedResult).toContain('(showing last 10 of 60)');
+    expect(limitedResult.content).toContain('(showing last 10 of 60)');
   });
 });

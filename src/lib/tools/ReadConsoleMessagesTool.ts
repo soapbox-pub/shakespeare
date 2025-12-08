@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { Tool } from './Tool';
+import { Tool, ToolResult } from './Tool';
 import { getConsoleMessages } from '@/lib/consoleMessages';
 
 export interface ReadConsoleMessagesParams {
@@ -23,7 +23,7 @@ export class ReadConsoleMessagesTool implements Tool<ReadConsoleMessagesParams> 
     ),
   });
 
-  async execute(params: ReadConsoleMessagesParams): Promise<string> {
+  async execute(params: ReadConsoleMessagesParams): Promise<ToolResult> {
     const { filter = 'all', limit = 50 } = params;
 
     let messages = getConsoleMessages()
@@ -33,7 +33,7 @@ export class ReadConsoleMessagesTool implements Tool<ReadConsoleMessagesParams> 
     messages = messages.slice(-limit);
 
     if (messages.length === 0) {
-      return `No console messages found${filter !== 'all' ? ` for level: ${filter}` : ''}.`;
+      return { content: `No console messages found${filter !== 'all' ? ` for level: ${filter}` : ''}.` };
     }
 
     const formatted = messages
@@ -44,6 +44,8 @@ export class ReadConsoleMessagesTool implements Tool<ReadConsoleMessagesParams> 
     const totalAvailable = getConsoleMessages().filter(msg => filter === 'all' || msg.level === filter).length;
     const truncatedNote = totalAvailable > messages.length ? ` (showing last ${messages.length} of ${totalAvailable})` : '';
 
-    return `Found ${messages.length} console message${messages.length !== 1 ? 's' : ''}${suffix}${truncatedNote}:\n\n${formatted}`;
+    return {
+      content: `Found ${messages.length} console message${messages.length !== 1 ? 's' : ''}${suffix}${truncatedNote}:\n\n${formatted}`
+    };
   }
 }

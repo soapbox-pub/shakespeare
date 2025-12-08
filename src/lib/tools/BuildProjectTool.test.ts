@@ -75,12 +75,12 @@ describe('BuildProjectTool', () => {
       domParser: expect.any(DOMParser),
     });
 
-    expect(result).toContain('✅ Successfully built project!');
-    expect(result).toContain('📁 Output: /test/project/dist');
-    expect(result).toContain('📦 Files generated: 3');
-    expect(result).toContain('📄 index.html');
-    expect(result).toContain('📄 main.js');
-    expect(result).toContain('📄 main.css');
+    expect(result.content).toContain('✅ Successfully built project!');
+    expect(result.content).toContain('📁 Output: /test/project/dist');
+    expect(result.content).toContain('📦 Files generated: 3');
+    expect(result.content).toContain('📄 index.html');
+    expect(result.content).toContain('📄 main.js');
+    expect(result.content).toContain('📄 main.css');
   });
 
   it('should clean existing dist directory before building', async () => {

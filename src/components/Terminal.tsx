@@ -145,8 +145,8 @@ export function Terminal({ cwd, className }: TerminalProps) {
           const result = await shellToolRef.current.execute({ command });
 
           // Add output
-          if (result && result.trim()) {
-            addLine('output', result);
+          if (result.content && result.content.trim()) {
+            addLine('output', result.content);
           }
         }
       }

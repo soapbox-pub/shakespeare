@@ -1,4 +1,4 @@
-import type { Tool } from "./Tool";
+import type { Tool, ToolResult } from "./Tool";
 import type { JSRuntimeFS } from "../JSRuntime";
 import { buildProject } from "../build";
 
@@ -15,7 +15,7 @@ export class BuildProjectTool implements Tool<void> {
     this.esmUrl = esmUrl;
   }
 
-  async execute(): Promise<string> {
+  async execute(): Promise<ToolResult> {
     try {
       // Build and write the project files
       const result = await buildProject({
@@ -28,7 +28,9 @@ export class BuildProjectTool implements Tool<void> {
       const fileCount = Object.keys(result.files).length;
       const fileList = Object.keys(result.files).map(file => `  📄 ${file}`).join('\n');
 
-      return `✅ Successfully built project!\n\n📁 Output: ${result.outputPath}\n📦 Files generated: ${fileCount}\n\n${fileList}\n\n🚀 Your project is ready for deployment!`;
+      return {
+        content: `✅ Successfully built project!\n\n📁 Output: ${result.outputPath}\n📦 Files generated: ${fileCount}\n\n${fileList}\n\n🚀 Your project is ready for deployment!`
+      };
     } catch (error) {
       throw new Error(`❌ Build failed: ${String(error)}`);
     }

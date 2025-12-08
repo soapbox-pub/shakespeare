@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { Tool } from './Tool';
+import type { Tool, ToolResult } from './Tool';
 import type { AIProvider } from '@/contexts/AISettingsContext';
 import type { NUser } from '@nostrify/react/login';
 import { createAIClient } from '@/lib/ai-client';
@@ -29,7 +29,7 @@ export class GenerateImageTool implements Tool<GenerateImageParams> {
     private corsProxy?: string,
   ) {}
 
-  async execute(args: GenerateImageParams): Promise<string> {
+  async execute(args: GenerateImageParams): Promise<ToolResult> {
     const { prompt } = args;
 
     try {
@@ -152,7 +152,7 @@ export class GenerateImageTool implements Tool<GenerateImageParams> {
       // Write image to VFS
       await this.fs.writeFile(filepath, imageData);
 
-      return `Generated image: ${filepath}`;
+      return { content: `Generated image: ${filepath}` };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       throw new Error(`Failed to generate image: ${errorMessage}`);

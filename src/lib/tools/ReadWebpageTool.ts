@@ -2,7 +2,7 @@ import { Readability } from "@mozilla/readability";
 import TurndownService from "turndown";
 import { z } from "zod";
 
-import type { Tool } from "./Tool";
+import type { Tool, ToolResult } from "./Tool";
 
 interface ReadWebpageParams {
   url: string;
@@ -54,7 +54,7 @@ export class ReadWebpageTool implements Tool<ReadWebpageParams> {
     });
   }
 
-  async execute(args: ReadWebpageParams): Promise<string> {
+  async execute(args: ReadWebpageParams): Promise<ToolResult> {
     const { url } = args;
 
     try {
@@ -111,7 +111,7 @@ export class ReadWebpageTool implements Tool<ReadWebpageParams> {
         markdown,
       ].filter(Boolean).join("\n");
 
-      return result;
+      return { content: result };
 
     } catch (error) {
       if (error instanceof TypeError && error.message.includes("fetch")) {

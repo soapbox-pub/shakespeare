@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { Tool } from './Tool';
+import type { Tool, ToolResult } from './Tool';
 import type { JSRuntimeFS } from '../JSRuntime';
 import { findSkill, readSkillContent } from '../plugins';
 
@@ -24,7 +24,7 @@ export class SkillTool implements Tool<SkillParams> {
     this.projectPath = projectPath;
   }
 
-  async execute(args: SkillParams): Promise<string> {
+  async execute(args: SkillParams): Promise<ToolResult> {
     const { name } = args;
 
     try {
@@ -38,7 +38,8 @@ export class SkillTool implements Tool<SkillParams> {
       // Read and return the skill content
       const content = await readSkillContent(this.fs, skill);
 
-      return `# Skill: ${skill.name}
+      return {
+        content: `# Skill: ${skill.name}
 
 **Source**: ${skill.plugin === 'project' ? 'Project' : `Plugin: ${skill.plugin}`}
 **Description**: ${skill.description}
@@ -46,7 +47,8 @@ export class SkillTool implements Tool<SkillParams> {
 
 ---
 
-${content}`;
+${content}`
+      };
     } catch (error) {
       if (error instanceof Error) {
         throw error;

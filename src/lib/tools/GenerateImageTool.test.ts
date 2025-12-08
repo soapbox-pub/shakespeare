@@ -115,7 +115,7 @@ describe('GenerateImageTool', () => {
 
     const result = await tool.execute({ prompt: 'a beautiful sunset' });
 
-    expect(result).toMatch(/^Generated image: \/tmp\/generated-\d+\.png$/);
+    expect(result.content).toMatch(/^Generated image: \/tmp\/generated-\d+\.png$/);
     expect(mockFS.writeFile).toHaveBeenCalledWith(
       expect.stringMatching(/^\/tmp\/generated-\d+\.png$/),
       expect.any(Uint8Array)
@@ -162,7 +162,7 @@ describe('GenerateImageTool', () => {
 
     const result = await tool.execute({ prompt: 'a beautiful sunset' });
 
-    expect(result).toMatch(/^Generated image: \/tmp\/generated-\d+\.png$/);
+    expect(result.content).toMatch(/^Generated image: \/tmp\/generated-\d+\.png$/);
     expect(mockFS.writeFile).toHaveBeenCalledWith(
       expect.stringMatching(/^\/tmp\/generated-\d+\.png$/),
       expect.any(Uint8Array)
@@ -262,7 +262,7 @@ describe('GenerateImageTool', () => {
 
     const result = await tool.execute({ prompt: 'a beautiful sunset' });
 
-    expect(result).toMatch(/^Generated image: \/tmp\/generated-\d+\.jpeg$/);
+    expect(result.content).toMatch(/^Generated image: \/tmp\/generated-\d+\.jpeg$/);
   });
 
   it('should throw error when chat mode returns invalid data URI', async () => {

@@ -51,7 +51,7 @@ describe('NpmRemovePackageTool', () => {
 
     expect(writtenPackageJson.dependencies.lodash).toBeUndefined();
     expect(writtenPackageJson.dependencies.axios).toBe('^1.0.0');
-    expect(result).toContain('✅ Successfully removed lodash from dependencies');
+    expect(result.content).toContain('✅ Successfully removed lodash from dependencies');
   });
 
   it('should successfully remove package from devDependencies', async () => {
@@ -77,7 +77,7 @@ describe('NpmRemovePackageTool', () => {
     expect(writtenPackageJson.devDependencies.typescript).toBeUndefined();
     expect(writtenPackageJson.devDependencies.eslint).toBe('^8.0.0');
     expect(writtenPackageJson.dependencies.react).toBe('^18.0.0');
-    expect(result).toContain('✅ Successfully removed typescript from devDependencies');
+    expect(result.content).toContain('✅ Successfully removed typescript from devDependencies');
   });
 
   it('should remove empty dependencies object', async () => {
@@ -97,7 +97,7 @@ describe('NpmRemovePackageTool', () => {
     const writtenPackageJson = JSON.parse(writtenContent);
 
     expect(writtenPackageJson.dependencies).toBeUndefined();
-    expect(result).toContain('✅ Successfully removed');
+    expect(result.content).toContain('✅ Successfully removed');
   });
 
   it('should remove empty devDependencies object', async () => {
@@ -121,7 +121,7 @@ describe('NpmRemovePackageTool', () => {
 
     expect(writtenPackageJson.devDependencies).toBeUndefined();
     expect(writtenPackageJson.dependencies.react).toBe('^18.0.0');
-    expect(result).toContain('✅ Successfully removed');
+    expect(result.content).toContain('✅ Successfully removed');
   });
 
   it('should handle package not found', async () => {
@@ -138,7 +138,7 @@ describe('NpmRemovePackageTool', () => {
     const result = await tool.execute({ name: 'nonexistent-package' });
 
     expect(mockFS.writeFile).not.toHaveBeenCalled();
-    expect(result).toContain('ℹ️ Package nonexistent-package was not found');
+    expect(result.content).toContain('ℹ️ Package nonexistent-package was not found');
   });
 
   it('should handle missing package.json', async () => {
@@ -173,7 +173,7 @@ describe('NpmRemovePackageTool', () => {
     const dependencyKeys = Object.keys(writtenPackageJson.dependencies);
 
     expect(dependencyKeys).toEqual(['axios', 'zlib']);
-    expect(result).toContain('✅ Successfully removed');
+    expect(result.content).toContain('✅ Successfully removed');
   });
 
   it('should include version information in success message', async () => {
@@ -189,7 +189,7 @@ describe('NpmRemovePackageTool', () => {
 
     const result = await tool.execute({ name: 'lodash' });
 
-    expect(result).toContain('🏷️ Version: ^4.17.21');
-    expect(result).toContain('📁 Removed from: dependencies');
+    expect(result.content).toContain('🏷️ Version: ^4.17.21');
+    expect(result.content).toContain('📁 Removed from: dependencies');
   });
 });

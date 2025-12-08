@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import type { Tool } from "./Tool";
+import type { Tool, ToolResult } from "./Tool";
 import type { JSRuntimeFS } from "../JSRuntime";
 
 interface NpmRemovePackageParams {
@@ -28,7 +28,7 @@ export class NpmRemovePackageTool implements Tool<NpmRemovePackageParams> {
     this.cwd = cwd;
   }
 
-  async execute(args: NpmRemovePackageParams): Promise<string> {
+  async execute(args: NpmRemovePackageParams): Promise<ToolResult> {
     const { name } = args;
 
     try {
@@ -75,7 +75,7 @@ export class NpmRemovePackageTool implements Tool<NpmRemovePackageParams> {
       }
 
       if (!foundIn) {
-        return `ℹ️ Package ${name} was not found in package.json dependencies or devDependencies.`;
+        return { content: `ℹ️ Package ${name} was not found in package.json dependencies or devDependencies.` };
       }
 
       // Sort remaining dependencies alphabetically
@@ -99,7 +99,9 @@ export class NpmRemovePackageTool implements Tool<NpmRemovePackageParams> {
       const updatedContent = JSON.stringify(packageJson, null, 2) + '\n';
       await this.fs.writeFile(packageJsonPath, updatedContent, "utf8");
 
-      return `✅ Successfully removed ${name} from ${foundIn} in package.json\n\n📦 Package: ${name}\n🏷️ Version: ${removedVersion}\n📁 Removed from: ${foundIn}\n\n⚠️ **Next step**: Run \`npm install\` to update node_modules and package-lock.json`;
+      return {
+        content: `✅ Successfully removed ${name} from ${foundIn} in package.json\n\n📦 Package: ${name}\n🏷️ Version: ${removedVersion}\n📁 Removed from: ${foundIn}\n\n⚠️ **Next step**: Run \`npm install\` to update node_modules and package-lock.json`
+      };
     } catch (error) {
       throw new Error(`❌ Error removing package ${name}: ${String(error)}`);
     }

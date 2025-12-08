@@ -1,4 +1,4 @@
-import type { Tool } from "./Tool";
+import type { Tool, ToolResult } from "./Tool";
 import { NIPsClient } from "../NIPsClient";
 
 export class NostrReadNipsIndexTool implements Tool<void> {
@@ -12,10 +12,10 @@ export class NostrReadNipsIndexTool implements Tool<void> {
     });
   }
 
-  async execute(): Promise<string> {
+  async execute(): Promise<ToolResult> {
     try {
       const text = await this.nipsClient.readIndex();
-      return text;
+      return { content: text };
     } catch (error) {
       throw new Error(`Error reading NIPs index: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }

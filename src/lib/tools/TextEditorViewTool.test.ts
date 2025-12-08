@@ -192,22 +192,22 @@ describe('TextEditorViewTool', () => {
   it('should handle viewing current directory', async () => {
     const result = await tool.execute({ path: '.' });
 
-    expect(result).toContain('src/');
-    expect(result).toContain('package.json');
-    expect(result).toContain('.gitignore');
-    expect(result).toContain('.git/'); // .git directory should now be visible
+    expect(result.content).toContain('src/');
+    expect(result.content).toContain('package.json');
+    expect(result.content).toContain('.gitignore');
+    expect(result.content).toContain('.git/'); // .git directory should now be visible
   });
 
   it('should handle viewing subdirectory', async () => {
     const result = await tool.execute({ path: 'src' });
 
-    expect(result).toContain('index.ts');
+    expect(result.content).toContain('index.ts');
   });
 
   it('should handle viewing a file', async () => {
     const result = await tool.execute({ path: 'src/index.ts' });
 
-    expect(result).toBe('console.log("hello");');
+    expect(result.content).toBe('console.log("hello");');
   });
 
   it('should handle line filtering', async () => {
@@ -217,19 +217,19 @@ describe('TextEditorViewTool', () => {
       end_line: 1
     });
 
-    expect(result).toBe('console.log("hello");');
+    expect(result.content).toBe('console.log("hello");');
   });
 
   it('should handle absolute paths', async () => {
     const result = await tool.execute({ path: '/tmp/uploaded-file.txt' });
 
-    expect(result).toBe('This is an uploaded file');
+    expect(result.content).toBe('This is an uploaded file');
   });
 
   it('should handle absolute directory paths', async () => {
     const result = await tool.execute({ path: '/tmp' });
 
-    expect(result).toContain('uploaded-file.txt');
+    expect(result.content).toContain('uploaded-file.txt');
   });
 
   it('should handle absolute paths with line filtering', async () => {
@@ -239,97 +239,97 @@ describe('TextEditorViewTool', () => {
       end_line: 1
     });
 
-    expect(result).toBe('This is an uploaded file');
+    expect(result.content).toBe('This is an uploaded file');
   });
 
   it('should detect binary files by extension and show placeholder', async () => {
     const result = await tool.execute({ path: 'logo.png' });
 
-    expect(result).toContain('[Binary file: PNG file');
-    expect(result).toContain('This appears to be a binary file and cannot be displayed as text.');
-    expect(result).not.toContain('BINARY_CONTENT_PNG');
+    expect(result.content).toContain('[Binary file: PNG file');
+    expect(result.content).toContain('This appears to be a binary file and cannot be displayed as text.');
+    expect(result.content).not.toContain('BINARY_CONTENT_PNG');
   });
 
   it('should detect PDF files as binary', async () => {
     const result = await tool.execute({ path: 'document.pdf' });
 
-    expect(result).toContain('[Binary file: PDF file');
-    expect(result).toContain('This appears to be a binary file and cannot be displayed as text.');
+    expect(result.content).toContain('[Binary file: PDF file');
+    expect(result.content).toContain('This appears to be a binary file and cannot be displayed as text.');
   });
 
   it('should detect binary files with absolute paths', async () => {
     const result = await tool.execute({ path: '/tmp/image.jpg' });
 
-    expect(result).toContain('[Binary file: JPG file');
-    expect(result).toContain('This appears to be a binary file and cannot be displayed as text.');
+    expect(result.content).toContain('[Binary file: JPG file');
+    expect(result.content).toContain('This appears to be a binary file and cannot be displayed as text.');
   });
 
   it('should show only project directories when viewing /projects', async () => {
     const result = await tool.execute({ path: '/projects' });
 
     // Should show the project directories
-    expect(result).toContain('project1/');
-    expect(result).toContain('project2/');
+    expect(result.content).toContain('project1/');
+    expect(result.content).toContain('project2/');
 
     // Should NOT show the contents of the project directories (depth 1 only)
-    expect(result).not.toContain('package.json');
-    expect(result).not.toContain('src/');
-    expect(result).not.toContain('index.ts');
-    expect(result).not.toContain('main.ts');
+    expect(result.content).not.toContain('package.json');
+    expect(result.content).not.toContain('src/');
+    expect(result.content).not.toContain('index.ts');
+    expect(result.content).not.toContain('main.ts');
   });
 
   it('should show only project directories when viewing /projects/', async () => {
     const result = await tool.execute({ path: '/projects/' });
 
     // Should show the project directories
-    expect(result).toContain('project1/');
-    expect(result).toContain('project2/');
+    expect(result.content).toContain('project1/');
+    expect(result.content).toContain('project2/');
 
     // Should NOT show the contents of the project directories (depth 1 only)
-    expect(result).not.toContain('package.json');
-    expect(result).not.toContain('src/');
-    expect(result).not.toContain('index.ts');
-    expect(result).not.toContain('main.ts');
+    expect(result.content).not.toContain('package.json');
+    expect(result.content).not.toContain('src/');
+    expect(result.content).not.toContain('index.ts');
+    expect(result.content).not.toContain('main.ts');
   });
 
   it('should show .git directory but not traverse its contents when viewing project root', async () => {
     const result = await tool.execute({ path: '/project' });
 
     // Should show the .git directory
-    expect(result).toContain('.git/');
+    expect(result.content).toContain('.git/');
 
     // Should show "..." under .git instead of its contents
-    expect(result).toContain('...');
+    expect(result.content).toContain('...');
 
     // Should NOT show .git file contents
-    expect(result).not.toContain('config');
-    expect(result).not.toContain('HEAD');
-    expect(result).not.toContain('repositoryformatversion');
+    expect(result.content).not.toContain('config');
+    expect(result.content).not.toContain('HEAD');
+    expect(result.content).not.toContain('repositoryformatversion');
 
     // Should still show other directory contents normally
-    expect(result).toContain('src/');
-    expect(result).toContain('package.json');
+    expect(result.content).toContain('src/');
+    expect(result.content).toContain('package.json');
   });
 
   it('should show .git contents when explicitly viewing .git directory', async () => {
     const result = await tool.execute({ path: '/project/.git' });
 
     // Should show the .git file contents when explicitly requested
-    expect(result).toContain('config');
-    expect(result).toContain('HEAD');
+    expect(result.content).toContain('config');
+    expect(result.content).toContain('HEAD');
 
     // Should NOT show "..." when explicitly viewing .git
-    expect(result).not.toContain('...');
+    expect(result.content).not.toContain('...');
   });
 
   it('should show .git contents when explicitly viewing .git with relative path', async () => {
     const result = await tool.execute({ path: '.git' });
 
     // Should show the .git file contents when explicitly requested
-    expect(result).toContain('config');
-    expect(result).toContain('HEAD');
+    expect(result.content).toContain('config');
+    expect(result.content).toContain('HEAD');
 
     // Should NOT show "..." when explicitly viewing .git
-    expect(result).not.toContain('...');
+    expect(result.content).not.toContain('...');
   });
 });

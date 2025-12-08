@@ -1,7 +1,7 @@
 import { join, dirname } from "path-browserify";
 import { z } from "zod";
 
-import type { Tool } from "./Tool";
+import type { Tool, ToolResult } from "./Tool";
 import type { JSRuntimeFS } from "../JSRuntime";
 import { isAbsolutePath, isWriteAllowed, createWriteAccessDeniedError } from "../security";
 
@@ -34,7 +34,7 @@ export class TextEditorWriteTool implements Tool<TextEditorWriteParams> {
     this.onFileChanged = options?.onFileChanged;
   }
 
-  async execute(args: TextEditorWriteParams): Promise<string> {
+  async execute(args: TextEditorWriteParams): Promise<ToolResult> {
     const { path, file_text } = args;
 
     // Check write permissions
@@ -66,7 +66,7 @@ export class TextEditorWriteTool implements Tool<TextEditorWriteParams> {
         this.onFileChanged(path);
       }
 
-      return `File successfully written to ${path}`;
+      return { content: `File successfully written to ${path}` };
     } catch (error) {
       throw new Error(String(error));
     }

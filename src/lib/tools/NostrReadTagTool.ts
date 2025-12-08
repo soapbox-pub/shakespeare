@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import type { Tool } from "./Tool";
+import type { Tool, ToolResult } from "./Tool";
 import { NostrbookClient } from "../NostrbookClient";
 import { HTTPError } from "../HTTPError";
 
@@ -23,12 +23,12 @@ export class NostrReadTagTool implements Tool<NostrReadTagParams> {
     });
   }
 
-  async execute(args: NostrReadTagParams): Promise<string> {
+  async execute(args: NostrReadTagParams): Promise<ToolResult> {
     const { tag } = args;
 
     try {
       const text = await this.nostrbookClient.readTag(tag);
-      return text;
+      return { content: text };
     } catch (error) {
       if (error instanceof HTTPError && error.response.status === 404) {
         throw new Error(

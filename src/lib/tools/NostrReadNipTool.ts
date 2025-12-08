@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import type { Tool } from "./Tool";
+import type { Tool, ToolResult } from "./Tool";
 import { NIPsClient } from "../NIPsClient";
 import { HTTPError } from "../HTTPError";
 
@@ -30,12 +30,12 @@ export class NostrReadNipTool implements Tool<NostrReadNipParams> {
     });
   }
 
-  async execute(args: NostrReadNipParams): Promise<string> {
+  async execute(args: NostrReadNipParams): Promise<ToolResult> {
     const { nip } = args;
 
     try {
       const text = await this.nipsClient.readNip(nip);
-      return text;
+      return { content: text };
     } catch (error) {
       if (error instanceof HTTPError && error.response.status === 404) {
         throw new Error(

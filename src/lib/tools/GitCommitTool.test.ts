@@ -76,8 +76,8 @@ describe('GitCommitTool', () => {
       dir: '/test/project',
       message: 'Add new feature',
     });
-    expect(result).toContain('✅ Successfully committed 2 files (abcd123)');
-    expect(result).toContain('Add new feature');
+    expect(result.content).toContain('✅ Successfully committed 2 files (abcd123)');
+    expect(result.content).toContain('Add new feature');
   });
 
   it('should handle empty commit message', async () => {
@@ -121,8 +121,8 @@ describe('GitCommitTool', () => {
     expect(mockGitInstance.commit).toHaveBeenCalledWith(expect.objectContaining({
       message: specialMessage,
     }));
-    expect(result).toContain('✅ Successfully committed');
-    expect(result).toContain(specialMessage);
+    expect(result.content).toContain('✅ Successfully committed');
+    expect(result.content).toContain(specialMessage);
   });
 
   it('should handle multiline commit message', async () => {
@@ -136,8 +136,8 @@ describe('GitCommitTool', () => {
     const result = await tool.execute({ message: multilineMessage });
 
     expect(mockGitInstance.commit).toHaveBeenCalled();
-    expect(result).toContain('✅ Successfully committed');
-    expect(result).toContain('Add new feature');
+    expect(result.content).toContain('✅ Successfully committed');
+    expect(result.content).toContain('Add new feature');
   });
 
   it('should handle no changes to commit', async () => {
@@ -152,7 +152,7 @@ describe('GitCommitTool', () => {
 
     const result = await tool.execute({ message: 'Update documentation' });
 
-    expect(result).toContain('ℹ️ No changes to commit. Working tree is clean.');
+    expect(result.content).toContain('ℹ️ No changes to commit. Working tree is clean.');
     expect(mockGitInstance.commit).not.toHaveBeenCalled();
   });
 
@@ -165,10 +165,10 @@ describe('GitCommitTool', () => {
 
     const result = await tool.execute({ message: 'Update documentation' });
 
-    expect(result).toContain('📝 Commit: "Update documentation"');
-    expect(result).toContain('🔗 Hash:');
-    expect(result).toContain('🌿 Branch:');
-    expect(result).toContain('📊 Changes:');
+    expect(result.content).toContain('📝 Commit: "Update documentation"');
+    expect(result.content).toContain('🔗 Hash:');
+    expect(result.content).toContain('🌿 Branch:');
+    expect(result.content).toContain('📊 Changes:');
   });
 
 
@@ -183,7 +183,7 @@ describe('GitCommitTool', () => {
     const longMessage = 'A'.repeat(1000); // Very long commit message
     const result = await tool.execute({ message: longMessage });
 
-    expect(result).toContain('✅ Successfully committed');
+    expect(result.content).toContain('✅ Successfully committed');
   });
 
   it('should error when HEAD is detached (currentBranch returns null)', async () => {

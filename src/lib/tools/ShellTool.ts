@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { Tool } from "./Tool";
+import type { Tool, ToolResult } from "./Tool";
 import type { JSRuntimeFS } from "../JSRuntime";
 import type { ShellCommand } from "../commands/ShellCommand";
 import { Git } from "../git";
@@ -323,32 +323,35 @@ export class ShellTool implements Tool<ShellToolParams> {
     }
   }
 
-  async execute(args: ShellToolParams): Promise<string> {
+  async execute(args: ShellToolParams): Promise<ToolResult> {
     const { command: commandStr } = args;
 
     if (!commandStr.trim()) {
-      return "Error: Empty command";
+      return { content: "Error: Empty command" };
     }
 
     // Check if running in Electron - if so, use real shell execution
     if (window.electron?.shell) {
-      return this.executeRealShell(commandStr);
+      const content = await this.executeRealShell(commandStr);
+      return { content };
     }
 
     // Parse compound commands
     const commands = this.parseCompoundCommand(commandStr);
 
     if (commands.length === 0) {
-      return "Error: No command specified";
+      return { content: "Error: No command specified" };
     }
 
     // If it's a simple command (no operators), use the optimized single command execution
     if (commands.length === 1) {
-      return this.executeSimpleCommand(commands[0].command);
+      const content = await this.executeSimpleCommand(commands[0].command);
+      return { content };
     }
 
     // Execute compound commands
-    return this.executeCompoundCommands(commands);
+    const content = await this.executeCompoundCommands(commands);
+    return { content };
   }
 
   /**

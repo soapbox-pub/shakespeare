@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import type { Tool } from "./Tool";
+import type { Tool, ToolResult } from "./Tool";
 import type { JSRuntimeFS } from "../JSRuntime";
 import { ShakespeareAdapter } from "../deploy";
 import type { NostrSigner } from "@nostrify/nostrify";
@@ -28,7 +28,7 @@ export class DeployProjectTool implements Tool<DeployProjectParams> {
     this.projectId = projectId;
   }
 
-  async execute(args: DeployProjectParams): Promise<string> {
+  async execute(args: DeployProjectParams): Promise<ToolResult> {
     try {
       // Use provided deployServer or default to shakespeare.wtf
       const deployServer = args.deployServer || "shakespeare.wtf";
@@ -59,7 +59,9 @@ export class DeployProjectTool implements Tool<DeployProjectParams> {
         projectPath: this.cwd,
       });
 
-      return `✅ Successfully deployed project!\n\n🌐 Live URL: ${result.url}\n\n🚀 Your project is now live and accessible to anyone with the URL!`;
+      return {
+        content: `✅ Successfully deployed project!\n\n🌐 Live URL: ${result.url}\n\n🚀 Your project is now live and accessible to anyone with the URL!`
+      };
     } catch (error) {
       throw new Error(`❌ Deployment failed: ${String(error)}`);
     }

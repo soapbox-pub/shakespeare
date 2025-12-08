@@ -2,7 +2,7 @@ import { z } from "zod";
 import { NPool, NRelay1, type NostrEvent } from '@nostrify/nostrify';
 import { nip19 } from 'nostr-tools';
 
-import type { Tool } from "./Tool";
+import type { Tool, ToolResult } from "./Tool";
 
 interface NostrFetchEventParams {
   identifier: string;
@@ -26,7 +26,7 @@ export class NostrFetchEventTool implements Tool<NostrFetchEventParams> {
           });
           return;
         }
-        
+
         // Reject nsec for security reasons
         if (decoded.type === 'nsec') {
           ctx.addIssue({
@@ -36,7 +36,7 @@ export class NostrFetchEventTool implements Tool<NostrFetchEventParams> {
           });
           return;
         }
-        
+
         // Accept npub, nprofile, naddr, note, nevent
         if (!['npub', 'nprofile', 'naddr', 'note', 'nevent'].includes(decoded.type)) {
           ctx.addIssue({
@@ -52,7 +52,7 @@ export class NostrFetchEventTool implements Tool<NostrFetchEventParams> {
       ),
   });
 
-  async execute(args: NostrFetchEventParams): Promise<string> {
+  async execute(args: NostrFetchEventParams): Promise<ToolResult> {
     const { identifier } = args;
 
     const decoded = nip19.decode(identifier);
@@ -169,12 +169,12 @@ export class NostrFetchEventTool implements Tool<NostrFetchEventParams> {
       // Special handling for specific kinds
       if (event.kind === 30817) {
         // Kind 30817 is a NIP document, return just the content
-        return event.content;
+        return { content: event.content };
       }
-      
+
       // For other kinds, return the full event JSON
-      return JSON.stringify(event, null, 2);
-      
+      return { content: JSON.stringify(event, null, 2) };
+
     } catch (error) {
       throw new Error(`Error fetching event: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {

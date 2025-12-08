@@ -5,8 +5,9 @@ import type { JSRuntimeFS } from './JSRuntime';
  * @param fs - The filesystem instance
  * @param dirPath - The directory path to clean
  * @param maxAgeMs - Maximum age in milliseconds (files older than this will be removed)
+ * @param rootPath - The root directory being cleaned (should never be deleted)
  */
-async function cleanupDirectory(fs: JSRuntimeFS, dirPath: string, maxAgeMs: number): Promise<void> {
+async function cleanupDirectory(fs: JSRuntimeFS, dirPath: string, maxAgeMs: number, rootPath: string): Promise<void> {
   const now = Date.now();
 
   try {
@@ -34,11 +35,14 @@ async function cleanupDirectory(fs: JSRuntimeFS, dirPath: string, maxAgeMs: numb
         if (fileAge > maxAgeMs) {
           if (entry.isDirectory()) {
             // Recursively clean subdirectory first, then remove it
-            await cleanupDirectory(fs, fullPath, maxAgeMs);
+            await cleanupDirectory(fs, fullPath, maxAgeMs, rootPath);
             try {
-              // Try to remove the directory (will only succeed if empty)
-              await fs.rmdir(fullPath);
-              console.log(`Removed old directory: ${fullPath}`);
+              // Never delete the root cleanup directory itself, only its contents
+              if (fullPath !== rootPath) {
+                // Try to remove the directory (will only succeed if empty)
+                await fs.rmdir(fullPath);
+                console.log(`Removed old directory: ${fullPath}`);
+              }
             } catch {
               // Directory might not be empty, that's okay
             }
@@ -49,7 +53,7 @@ async function cleanupDirectory(fs: JSRuntimeFS, dirPath: string, maxAgeMs: numb
           }
         } else if (entry.isDirectory()) {
           // Directory is not old enough to remove, but clean its contents
-          await cleanupDirectory(fs, fullPath, maxAgeMs);
+          await cleanupDirectory(fs, fullPath, maxAgeMs, rootPath);
         }
       } catch (error) {
         // Log error but continue with other files
@@ -72,7 +76,7 @@ export async function cleanupTmpDirectory(fs: JSRuntimeFS, tmpPath = '/tmp'): Pr
   console.log(`Starting ${tmpPath} directory cleanup...`);
 
   try {
-    await cleanupDirectory(fs, tmpPath, ONE_HOUR_MS);
+    await cleanupDirectory(fs, tmpPath, ONE_HOUR_MS, tmpPath);
     console.log(`Completed ${tmpPath} directory cleanup`);
   } catch (error) {
     console.error(`Error during ${tmpPath} cleanup:`, error);

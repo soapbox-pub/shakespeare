@@ -142,6 +142,13 @@ export class GenerateImageTool implements Tool<GenerateImageParams> {
       const filename = `generated-${timestamp}.${extension}`;
       const filepath = `${this.tmpPath}/${filename}`;
 
+      // Ensure tmp directory exists
+      try {
+        await this.fs.stat(this.tmpPath);
+      } catch {
+        await this.fs.mkdir(this.tmpPath, { recursive: true });
+      }
+
       // Write image to VFS
       await this.fs.writeFile(filepath, imageData);
 

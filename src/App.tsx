@@ -146,15 +146,33 @@ const fs = globalThis.electron
   ? new ElectronFSAdapter()
   : new LightningFSAdapter(new LightningFS('shakespeare-fs').promises);
 
-// Component to handle filesystem cleanup on startup
-// Automatically removes files older than 1 hour from tmp directory
+// Component to handle filesystem initialization and cleanup on startup
+// Ensures tmp directory exists and removes files older than 1 hour
 function FSCleanupHandler() {
   const { config } = useAppContext();
 
   useEffect(() => {
-    // Run cleanup on application startup to remove stale temporary files
-    // This helps prevent the VFS from accumulating old files over time
-    cleanupTmpDirectory(fs, config.fsPathTmp).catch(console.error);
+    // Ensure tmp directory exists before cleanup
+    const initializeAndCleanup = async () => {
+      try {
+        // Create tmp directory if it doesn't exist
+        try {
+          await fs.stat(config.fsPathTmp);
+        } catch {
+          // Directory doesn't exist, create it
+          await fs.mkdir(config.fsPathTmp);
+          console.log(`Created ${config.fsPathTmp} directory`);
+        }
+
+        // Run cleanup to remove stale temporary files
+        // This helps prevent the VFS from accumulating old files over time
+        await cleanupTmpDirectory(fs, config.fsPathTmp);
+      } catch (error) {
+        console.error(`Error during filesystem initialization:`, error);
+      }
+    };
+
+    initializeAndCleanup();
   }, [config.fsPathTmp]);
 
   return null;

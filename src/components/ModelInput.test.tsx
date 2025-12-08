@@ -66,14 +66,15 @@ describe('ModelInput', () => {
     expect(screen.getByRole('combobox')).toBeInTheDocument();
   });
 
-  it('accepts inputModalities and outputModalities props', () => {
+  it('accepts modelFilter prop', () => {
     const onChange = vi.fn();
+    const modelFilter = (model: { modalities?: string[] }) => model.modalities?.includes('image');
     render(
       <TestApp>
         <ModelInput
           value=""
           onChange={onChange}
-          modalities={['image']}
+          modelFilter={modelFilter}
         />
       </TestApp>
     );

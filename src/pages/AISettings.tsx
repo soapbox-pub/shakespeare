@@ -685,7 +685,19 @@ export function AISettings() {
                     value={settings.imageModel || ''}
                     onChange={(value) => updateSettings({ imageModel: value || undefined })}
                     className="flex-1"
-                    modalities={["image"]}
+                    modelFilter={(model) => {
+                      // Filter out models that are definitely NOT image models
+                      // If type is "chat", exclude it
+                      if (model.type === 'chat') {
+                        return false;
+                      }
+                      // If modalities exist but don't include "image", exclude it
+                      if (model.modalities && !model.modalities.includes('image')) {
+                        return false;
+                      }
+                      // Otherwise include it (type is "image", modalities includes "image", or both are undefined)
+                      return true;
+                    }}
                   />
                   {settings.imageModel && (
                     <Button

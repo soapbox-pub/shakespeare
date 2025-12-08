@@ -9,12 +9,27 @@ import { useProviderModels } from '@/hooks/useProviderModels';
 import { ExternalFavicon } from '@/components/ExternalFavicon';
 import { cn } from '@/lib/utils';
 
+interface ProviderModel {
+  id: string;
+  type?: "chat" | "image";
+  name?: string;
+  provider: string;
+  fullId: string;
+  description?: string;
+  contextLength?: number;
+  pricing?: {
+    prompt: unknown;
+    completion: unknown;
+  };
+  modalities?: string[];
+}
+
 interface ModelInputProps {
   value: string;
   onChange: (value: string) => void;
   className?: string;
   placeholder?: string;
-  modalities?: string[];
+  modelFilter?: (model: ProviderModel) => boolean;
 }
 
 export function ModelInput({
@@ -22,7 +37,7 @@ export function ModelInput({
   onChange,
   className,
   placeholder,
-  modalities,
+  modelFilter,
 }: ModelInputProps) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
@@ -31,16 +46,13 @@ export function ModelInput({
 
   const defaultPlaceholder = 'Select a model...';
 
-  // Filter models by modalities
+  // Filter models using the provided filter function
   const filteredModels = useMemo(() => {
-    return models.filter((model) => {
-      // Filter by modalities if specified
-      if (modalities && model.modalities) {
-        return modalities.every((modality) => model.modalities!.includes(modality));
-      }
-      return true;
-    });
-  }, [models, modalities]);
+    if (modelFilter) {
+      return models.filter(modelFilter);
+    }
+    return models;
+  }, [models, modelFilter]);
 
   // Group models by provider
   const modelsByProvider = useMemo(() => {

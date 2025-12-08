@@ -17,10 +17,10 @@ interface ProviderModel {
 }
 
 export class ConfigureImageGenerationTool implements Tool<ConfigureImageGenerationParams> {
-  readonly description = 'Configure the AI model to use for image generation. The modelId must be a complete model identifier in the format "provider/model" (e.g., "openrouter/openai/gpt-image-1", "openai/dall-e-3", or "shakespeare/gpt-image-1"). IMPORTANT: You MUST call the view_available_models tool FIRST to see which models are available and support image generation (look for models with "image" in their modalities). Select a high-quality yet affordable model like gpt-image-1 or dall-e-3 unless the user has specific requirements. Consider the currently configured model (if any) to understand user preferences.';
+  readonly description = 'Configure the AI model to use for image generation. The modelId must be a complete model identifier in the format "provider/model" (e.g., "openrouter/openai/gpt-image-1", "openai/dall-e-3", or "shakespeare/gpt-image-1"). You can optionally call view_available_models first to see available image models, but any valid model ID from a configured provider will work. Select a high-quality yet affordable model like gpt-image-1 or dall-e-3 unless the user has specific requirements.';
 
   readonly inputSchema = z.object({
-    modelId: z.string().describe('The complete model identifier in "provider/model" format (e.g., "openrouter/openai/gpt-image-1", "openai/dall-e-3"). Must be from the available models list.'),
+    modelId: z.string().describe('The complete model identifier in "provider/model" format (e.g., "openrouter/openai/gpt-image-1", "openai/dall-e-3").'),
   });
 
   constructor(
@@ -33,37 +33,23 @@ export class ConfigureImageGenerationTool implements Tool<ConfigureImageGenerati
 
     // Validate model ID format
     if (!modelId.includes('/')) {
-      return 'ERROR: Invalid model ID format. The modelId must be in "provider/model" format (e.g., "openrouter/openai/gpt-image-1" or "openai/dall-e-3").\n\n' +
-        'Please call the view_available_models tool first to see the list of available models and their full IDs, then use one of those full IDs.';
+      return 'ERROR: Invalid model ID format. The modelId must be in "provider/model" format (e.g., "openrouter/openai/gpt-image-1" or "openai/dall-e-3").';
     }
 
-    // Check if model exists in available models
+    // Check if model exists in available models (optional - provides helpful info if available)
     const model = this.models.find(m => m.fullId === modelId);
-    
-    if (!model) {
-      return `ERROR: Model "${modelId}" is not available in the configured providers.\n\n` +
-        'Please call the view_available_models tool to see the list of available models, then select one from that list.';
-    }
-
-    // Check if model supports image generation
-    const supportsImage = model.modalities?.includes('image');
-    
-    if (!supportsImage) {
-      return `ERROR: Model "${modelId}" does not support image generation.\n\n` +
-        'Please call the view_available_models tool and select a model that has "image" listed in its modalities (look for models marked with "✅ Supports image generation").';
-    }
 
     // Update the settings
     this.aiSettings.updateSettings({ imageModel: modelId });
 
     let response = `✅ Successfully configured image generation!\n\n`;
     response += `**Image Model**: ${modelId}\n`;
-    
-    if (model.name) {
+
+    if (model?.name) {
       response += `**Name**: ${model.name}\n`;
     }
-    
-    if (model.description) {
+
+    if (model?.description) {
       response += `**Description**: ${model.description}\n`;
     }
 

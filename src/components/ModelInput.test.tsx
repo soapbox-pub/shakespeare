@@ -73,8 +73,7 @@ describe('ModelInput', () => {
         <ModelInput
           value=""
           onChange={onChange}
-          inputModalities={['text']}
-          outputModalities={['image']}
+          modalities={['image']}
         />
       </TestApp>
     );

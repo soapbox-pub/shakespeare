@@ -5,6 +5,7 @@ import type { NUser } from '@nostrify/react/login';
 import { createAIClient } from '@/lib/ai-client';
 import type { JSRuntimeFS } from '@/lib/JSRuntime';
 import { proxyUrl } from '../proxyUrl';
+import { ImageGenerationError } from '@/lib/errors/ImageGenerationError';
 
 interface GenerateImageParams {
   prompt: string;
@@ -154,8 +155,10 @@ export class GenerateImageTool implements Tool<GenerateImageParams> {
 
       return `Generated image: ${filepath}`;
     } catch (error) {
-      throw new Error(
-        `Failed to generate image: ${error instanceof Error ? error.message : String(error)}`
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      throw new ImageGenerationError(
+        `Failed to generate image: ${errorMessage}`,
+        error instanceof Error ? error : undefined
       );
     }
   }

@@ -11,7 +11,9 @@ import { ProjectPreviewConsoleError } from '@/lib/consoleMessages';
 import { useState } from 'react';
 import { MalformedToolCallError } from '@/lib/errors/MalformedToolCallError';
 import { EmptyMessageError } from '@/lib/errors/EmptyMessageError';
+import { ImageGenerationError } from '@/lib/errors/ImageGenerationError';
 import { AIProvider } from '@/contexts/AISettingsContext';
+import { ImageModelDialog } from '@/components/ImageModelDialog';
 
 export interface QuillyProps {
   error: Error;
@@ -29,6 +31,7 @@ interface ErrorBody {
     label: string;
     onClick: () => void;
   }>;
+  showImageModelButton?: boolean;
 }
 
 interface QuillyContentProps {
@@ -43,8 +46,18 @@ interface QuillyContentProps {
 
 function QuillyContent({ error, onDismiss, onNewChat, onOpenModelSelector, onTryAgain, onRequestConsoleErrorHelp, provider }: QuillyContentProps) {
   const navigate = useNavigate();
+  const [showImageModelDialog, setShowImageModelDialog] = useState(false);
 
-  const renderBody = (error: Error | APIError | MalformedToolCallError | ProjectPreviewConsoleError): ErrorBody & { showCreditsButton?: boolean } => {
+  const renderBody = (error: Error | APIError | MalformedToolCallError | ProjectPreviewConsoleError | ImageGenerationError): ErrorBody & { showCreditsButton?: boolean } => {
+    // Handle Image Generation Errors
+    if (error instanceof ImageGenerationError) {
+      return {
+        message: 'Image generation failed. This could be due to an issue with the selected image model or the AI provider. Try selecting a different image model.',
+        showImageModelButton: true,
+        actions: [],
+      };
+    }
+
     // Handle Project Preview Console Errors
     if (error instanceof ProjectPreviewConsoleError) {
       return {
@@ -207,51 +220,65 @@ function QuillyContent({ error, onDismiss, onNewChat, onOpenModelSelector, onTry
     };
   };
 
-  const { message, actions = [], showCreditsButton } = renderBody(error);
+  const { message, actions = [], showCreditsButton, showImageModelButton } = renderBody(error);
 
   return (
-    <div className="py-2 px-3 bg-primary/5 border border-primary/20 rounded-lg">
-      <div className="flex items-start gap-2">
-        <QuillySVG className="h-20 px-2 flex-shrink-0" fillColor="hsl(var(--primary))" />
-        <div className="flex-1 min-w-0">
-          <div className="space-y-1">
-            <h4 className="font-semibold text-primary">
-              Pardon the interruption
-            </h4>
-            <p className="text-sm text-muted-foreground">
-              {message}
-              {showCreditsButton && provider && (
-                <>
-                  {' '}
-                  <QuillyCreditsButton provider={provider} />
-                </>
-              )}
-              {actions.length > 0 && (
-                <>
-                  {' '}
-                  {actions.map((action, i) => (
-                    <span key={action.label}>
-                      <button className="text-primary underline" onClick={action.onClick}>
-                        {action.label}
-                      </button>
-                      {i < actions.length - 1 && <> or </>}
-                    </span>
-                  ))}
-                </>
-              )}
-            </p>
+    <>
+      <div className="py-2 px-3 bg-primary/5 border border-primary/20 rounded-lg">
+        <div className="flex items-start gap-2">
+          <QuillySVG className="h-20 px-2 flex-shrink-0" fillColor="hsl(var(--primary))" />
+          <div className="flex-1 min-w-0">
+            <div className="space-y-1">
+              <h4 className="font-semibold text-primary">
+                Pardon the interruption
+              </h4>
+              <p className="text-sm text-muted-foreground">
+                {message}
+                {showCreditsButton && provider && (
+                  <>
+                    {' '}
+                    <QuillyCreditsButton provider={provider} />
+                  </>
+                )}
+                {showImageModelButton && (
+                  <>
+                    {' '}
+                    <button className="text-primary underline" onClick={() => setShowImageModelDialog(true)}>
+                      Change image model
+                    </button>
+                  </>
+                )}
+                {actions.length > 0 && (
+                  <>
+                    {' '}
+                    {actions.map((action, i) => (
+                      <span key={action.label}>
+                        <button className="text-primary underline" onClick={action.onClick}>
+                          {action.label}
+                        </button>
+                        {i < actions.length - 1 && <> or </>}
+                      </span>
+                    ))}
+                  </>
+                )}
+              </p>
+            </div>
           </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onDismiss}
+            className="h-5 w-5 p-0 hover:text-foreground/70 hover:bg-transparent flex-shrink-0"
+          >
+            <X className="h-4 w-4" />
+          </Button>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onDismiss}
-          className="h-5 w-5 p-0 hover:text-foreground/70 hover:bg-transparent flex-shrink-0"
-        >
-          <X className="h-4 w-4" />
-        </Button>
       </div>
-    </div>
+      <ImageModelDialog
+        open={showImageModelDialog}
+        onOpenChange={setShowImageModelDialog}
+      />
+    </>
   );
 }
 

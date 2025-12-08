@@ -36,6 +36,8 @@ import { ShellTool } from '@/lib/tools/ShellTool';
 import { ReadConsoleMessagesTool } from '@/lib/tools/ReadConsoleMessagesTool';
 import { SkillTool } from '@/lib/tools/SkillTool';
 import { GenerateImageTool } from '@/lib/tools/GenerateImageTool';
+import { ViewAvailableModelsTool } from '@/lib/tools/ViewAvailableModelsTool';
+import { ConfigureImageGenerationTool } from '@/lib/tools/ConfigureImageGenerationTool';
 import { createMCPTools } from '@/lib/tools/MCPTool';
 import { ProjectPreviewConsoleError } from '@/lib/consoleMessages';
 import { toolToOpenAI } from '@/lib/tools/openai-adapter';
@@ -100,7 +102,8 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   // Use external state if provided, otherwise default to false
   const isBuildLoading = externalIsBuildLoading || false;
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const { isConfigured, settings, addRecentlyUsedModel } = useAISettings();
+  const aiSettings = useAISettings();
+  const { isConfigured, settings, addRecentlyUsedModel } = aiSettings;
   const [providerModel, setProviderModel] = useState(() => {
     // Initialize with first recently used model if available, otherwise empty
     return settings.recentlyUsedModels?.[0] || '';
@@ -206,10 +209,20 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
       } catch (error) {
         console.warn('Failed to parse imageModel:', error);
       }
+    } else {
+      // If imageModel is not configured, provide tools to help configure it
+      tools.view_available_models = new ViewAvailableModelsTool(
+        models,
+        settings.imageModel
+      );
+      tools.configure_image_generation = new ConfigureImageGenerationTool(
+        aiSettings,
+        models
+      );
     }
 
     return tools;
-  }, [fs, git, cwd, user, projectId, projectsPath, tmpPath, pluginsPath, config.corsProxy, settings.imageModel, settings.providers, models, handleFileChanged]);
+  }, [fs, git, cwd, user, projectId, projectsPath, tmpPath, pluginsPath, config.corsProxy, settings, aiSettings, models, handleFileChanged]);
 
   // MCP tools wrapped for execution
   const mcpToolWrappers = useMemo(() => createMCPTools(mcpClients), [mcpClients]);

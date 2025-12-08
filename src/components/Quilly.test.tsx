@@ -28,6 +28,11 @@ vi.mock('./CreditsDialog', () => ({
   CreditsDialog: () => null
 }));
 
+// Mock ImageModelDialog to avoid NostrProvider dependency
+vi.mock('./ImageModelDialog', () => ({
+  ImageModelDialog: () => null
+}));
+
 describe('Quilly', () => {
   const defaultProps = {
     error: new Error('Generic error'),

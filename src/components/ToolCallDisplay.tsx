@@ -24,6 +24,8 @@ import {
   AlertCircle,
   LucideIcon,
   Settings,
+  TriangleAlert,
+  X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { VFSImage } from '@/components/VFSImage';
@@ -35,6 +37,7 @@ interface ToolInfo {
   icon: LucideIcon;
   title: string;
   callingTitle?: string; // Title to show while calling (e.g., "Editing {path}")
+  errorTitle?: string; // Title to show when error occurs (e.g., "Failed to edit {path}")
 }
 
 interface ToolCallDisplayProps {
@@ -84,6 +87,7 @@ function getToolInfo(toolName: string, args: Record<string, unknown>): ToolInfo 
         icon: Terminal,
         title: args.command ? String(args.command) : 'Shell Command',
         callingTitle: args.command ? String(args.command) : 'Running Shell Command',
+        errorTitle: args.command ? `Failed: ${String(args.command)}` : 'Shell Command Failed',
       };
 
     case 'text_editor_view': {
@@ -96,6 +100,7 @@ function getToolInfo(toolName: string, args: Record<string, unknown>): ToolInfo 
         icon: Eye,
         title: `Viewed ${path}${lineInfo}`,
         callingTitle: `Viewing ${path}${lineInfo}`,
+        errorTitle: `Failed to view ${path}${lineInfo}`,
       };
     }
 
@@ -104,6 +109,7 @@ function getToolInfo(toolName: string, args: Record<string, unknown>): ToolInfo 
         icon: FileText,
         title: args.path ? `Wrote ${args.path}` : 'Wrote File',
         callingTitle: args.path ? `Writing ${args.path}` : 'Writing File',
+        errorTitle: args.path ? `Failed to write ${args.path}` : 'Failed to Write File',
       };
 
     case 'text_editor_str_replace':
@@ -111,6 +117,7 @@ function getToolInfo(toolName: string, args: Record<string, unknown>): ToolInfo 
         icon: Edit,
         title: args.path ? `Edited ${args.path}` : 'Edited File',
         callingTitle: args.path ? `Editing ${args.path}` : 'Editing File',
+        errorTitle: args.path ? `Failed to edit ${args.path}` : 'Failed to Edit File',
       };
 
     case 'npm_add_package': {
@@ -120,6 +127,7 @@ function getToolInfo(toolName: string, args: Record<string, unknown>): ToolInfo 
         icon: Package,
         title: `Installed ${name}${devSuffix}`,
         callingTitle: `Installing ${name}${devSuffix}`,
+        errorTitle: `Failed to install ${name}${devSuffix}`,
       };
     }
 
@@ -128,6 +136,7 @@ function getToolInfo(toolName: string, args: Record<string, unknown>): ToolInfo 
         icon: PackageMinus,
         title: args.name ? `Removed ${args.name}` : 'Removed Package',
         callingTitle: args.name ? `Removing ${args.name}` : 'Removing Package',
+        errorTitle: args.name ? `Failed to remove ${args.name}` : 'Failed to Remove Package',
       };
 
     case 'git_commit':
@@ -135,6 +144,7 @@ function getToolInfo(toolName: string, args: Record<string, unknown>): ToolInfo 
         icon: GitCommit,
         title: args.message ? `Committed: ${args.message}` : 'Committed Changes',
         callingTitle: args.message ? `Committing: ${args.message}` : 'Committing Changes',
+        errorTitle: 'Failed to Commit Changes',
       };
 
     case 'build_project':
@@ -142,6 +152,7 @@ function getToolInfo(toolName: string, args: Record<string, unknown>): ToolInfo 
         icon: Package,
         title: 'Built Project',
         callingTitle: 'Building Project',
+        errorTitle: 'Failed to Build Project',
       };
 
     case 'nostr_read_nip':
@@ -149,6 +160,7 @@ function getToolInfo(toolName: string, args: Record<string, unknown>): ToolInfo 
         icon: BookOpen,
         title: args.nip ? `Read NIP-${args.nip}` : 'Read NIP',
         callingTitle: args.nip ? `Reading NIP-${args.nip}` : 'Reading NIP',
+        errorTitle: args.nip ? `Failed to read NIP-${args.nip}` : 'Failed to Read NIP',
       };
 
     case 'nostr_fetch_event':
@@ -156,6 +168,7 @@ function getToolInfo(toolName: string, args: Record<string, unknown>): ToolInfo 
         icon: Download,
         title: args.identifier ? `Fetched ${String(args.identifier).slice(0, 16)}...` : 'Fetched Event',
         callingTitle: args.identifier ? `Fetching ${String(args.identifier).slice(0, 16)}...` : 'Fetching Event',
+        errorTitle: args.identifier ? `Failed to fetch ${String(args.identifier).slice(0, 16)}...` : 'Failed to Fetch Event',
       };
 
     case 'nostr_read_kind':
@@ -163,6 +176,7 @@ function getToolInfo(toolName: string, args: Record<string, unknown>): ToolInfo 
         icon: Hash,
         title: args.kind !== undefined ? `Read Kind ${args.kind}` : 'Read Kind',
         callingTitle: args.kind !== undefined ? `Reading Kind ${args.kind}` : 'Reading Kind',
+        errorTitle: args.kind !== undefined ? `Failed to read Kind ${args.kind}` : 'Failed to Read Kind',
       };
 
     case 'nostr_read_tag':
@@ -170,6 +184,7 @@ function getToolInfo(toolName: string, args: Record<string, unknown>): ToolInfo 
         icon: Tag,
         title: args.tag ? `Read Tag "${args.tag}"` : 'Read Tag',
         callingTitle: args.tag ? `Reading Tag "${args.tag}"` : 'Reading Tag',
+        errorTitle: args.tag ? `Failed to read Tag "${args.tag}"` : 'Failed to Read Tag',
       };
 
     case 'nostr_read_protocol':
@@ -177,6 +192,7 @@ function getToolInfo(toolName: string, args: Record<string, unknown>): ToolInfo 
         icon: Network,
         title: args.doc ? `Read Protocol: ${args.doc}` : 'Read Protocol',
         callingTitle: args.doc ? `Reading Protocol: ${args.doc}` : 'Reading Protocol',
+        errorTitle: args.doc ? `Failed to read Protocol: ${args.doc}` : 'Failed to Read Protocol',
       };
 
     case 'nostr_read_nips_index':
@@ -184,6 +200,7 @@ function getToolInfo(toolName: string, args: Record<string, unknown>): ToolInfo 
         icon: List,
         title: 'Read NIPs Index',
         callingTitle: 'Reading NIPs Index',
+        errorTitle: 'Failed to Read NIPs Index',
       };
 
     case 'nostr_generate_kind':
@@ -191,6 +208,7 @@ function getToolInfo(toolName: string, args: Record<string, unknown>): ToolInfo 
         icon: Plus,
         title: args.range ? `Generated ${args.range} kind` : 'Generated Kind',
         callingTitle: args.range ? `Generating ${args.range} kind` : 'Generating Kind',
+        errorTitle: args.range ? `Failed to generate ${args.range} kind` : 'Failed to Generate Kind',
       };
 
     case 'nostr_publish_events': {
@@ -199,6 +217,7 @@ function getToolInfo(toolName: string, args: Record<string, unknown>): ToolInfo 
         icon: Send,
         title: eventCount > 1 ? `Published ${eventCount} Nostr events` : 'Published Nostr event',
         callingTitle: eventCount > 1 ? `Publishing ${eventCount} Nostr events` : 'Publishing Nostr event',
+        errorTitle: eventCount > 1 ? `Failed to publish ${eventCount} Nostr events` : 'Failed to Publish Nostr Event',
       };
     }
 
@@ -207,6 +226,7 @@ function getToolInfo(toolName: string, args: Record<string, unknown>): ToolInfo 
         icon: Globe,
         title: args.deployServer ? `Deployed to ${args.deployServer}` : 'Deployed Project',
         callingTitle: args.deployServer ? `Deploying to ${args.deployServer}` : 'Deploying Project',
+        errorTitle: args.deployServer ? `Failed to deploy to ${args.deployServer}` : 'Failed to Deploy Project',
       };
 
     case 'read_console_messages':
@@ -214,6 +234,7 @@ function getToolInfo(toolName: string, args: Record<string, unknown>): ToolInfo 
         icon: Logs,
         title: 'Read Console',
         callingTitle: 'Reading Console',
+        errorTitle: 'Failed to Read Console',
       };
 
     case 'skill':
@@ -221,6 +242,7 @@ function getToolInfo(toolName: string, args: Record<string, unknown>): ToolInfo 
         icon: Puzzle,
         title: args.name ? `Skill: ${args.name}` : 'Skill',
         callingTitle: args.name ? `Running Skill: ${args.name}` : 'Running Skill',
+        errorTitle: args.name ? `Skill Failed: ${args.name}` : 'Skill Failed',
       };
 
     case 'generate_image':
@@ -228,6 +250,7 @@ function getToolInfo(toolName: string, args: Record<string, unknown>): ToolInfo 
         icon: Image,
         title: args.prompt ? String(args.prompt) : 'Generated Image',
         callingTitle: args.prompt ? String(args.prompt) : 'Generating Image',
+        errorTitle: 'Failed to Generate Image',
       };
 
     case 'view_available_models':
@@ -235,6 +258,7 @@ function getToolInfo(toolName: string, args: Record<string, unknown>): ToolInfo 
         icon: Eye,
         title: 'Viewed Available Models',
         callingTitle: 'Viewing Available Models',
+        errorTitle: 'Failed to View Available Models',
       };
 
     case 'configure_image_generation':
@@ -242,6 +266,7 @@ function getToolInfo(toolName: string, args: Record<string, unknown>): ToolInfo 
         icon: Settings,
         title: args.model ? `Configured image model: ${args.model}` : 'Configured Image Generation',
         callingTitle: args.model ? `Configuring image model: ${args.model}` : 'Configuring Image Generation',
+        errorTitle: args.model ? `Failed to configure image model: ${args.model}` : 'Failed to Configure Image Generation',
       };
 
     default: {
@@ -256,6 +281,22 @@ function getToolInfo(toolName: string, args: Record<string, unknown>): ToolInfo 
 }
 
 /**
+ * Parse tool error from result string
+ * Format: "Error with tool {toolName}: {errorMsg}"
+ * Returns null if not an error or if format doesn't match exactly
+ */
+function parseToolError(result: string | undefined, expectedToolName: string): string | null {
+  if (!result) return null;
+
+  // Strict parsing - exact format required
+  const prefix = `Error with tool ${expectedToolName}: `;
+  if (!result.startsWith(prefix)) return null;
+
+  // Extract error message after the prefix
+  return result.substring(prefix.length);
+}
+
+/**
  * Unified component for displaying tool calls in all states
  */
 export function ToolCallDisplay({ toolName, toolArgs, state, result }: ToolCallDisplayProps) {
@@ -265,10 +306,19 @@ export function ToolCallDisplay({ toolName, toolArgs, state, result }: ToolCallD
   const toolInfo = getToolInfo(toolName, toolArgs);
   const IconComponent = toolInfo.icon;
 
+  // Check if this is an error result
+  const errorMessage = state === 'completed' ? parseToolError(result, toolName) : null;
+  const hasError = errorMessage !== null;
+
   // Determine which title to show based on state
-  const displayTitle = state === 'completed'
-    ? toolInfo.title
-    : (toolInfo.callingTitle || toolInfo.title);
+  let displayTitle: string;
+  if (hasError && toolInfo.errorTitle) {
+    displayTitle = toolInfo.errorTitle;
+  } else if (state === 'completed') {
+    displayTitle = toolInfo.title;
+  } else {
+    displayTitle = toolInfo.callingTitle || toolInfo.title;
+  }
 
   // Only allow clicking when completed
   const isClickable = state === 'completed';
@@ -276,6 +326,20 @@ export function ToolCallDisplay({ toolName, toolArgs, state, result }: ToolCallD
   // Render special content for specific tools when expanded
   const renderExpandedContent = () => {
     if (!result || !isExpanded) return null;
+
+    // Show error message if present and expanded
+    if (hasError) {
+      return (
+        <div className="mt-1 p-3 bg-destructive/5 rounded border border-destructive/20 text-xs">
+          <div className="flex gap-2">
+            <TriangleAlert className="h-4 w-4 text-destructive flex-shrink-0 mt-0.5" />
+            <div className="whitespace-pre-wrap break-words text-foreground">
+              {errorMessage}
+            </div>
+          </div>
+        </div>
+      );
+    }
 
     if (toolName === 'text_editor_write' && typeof toolArgs.file_text === 'string') {
       return (
@@ -343,6 +407,7 @@ export function ToolCallDisplay({ toolName, toolArgs, state, result }: ToolCallD
 
   // Special rendering for generate_image - always show image below the tool
   const renderImageBelowTool = () => {
+    if (hasError) return null;
     if (toolName !== 'generate_image') return null;
 
     // Show placeholder while generating (calling or waiting states)
@@ -402,6 +467,8 @@ export function ToolCallDisplay({ toolName, toolArgs, state, result }: ToolCallD
         >
           {state === 'calling' || state === 'waiting' ? (
             <Loader2 className="h-3 w-3 text-muted-foreground flex-shrink-0 animate-spin" />
+          ) : hasError ? (
+            <X className="h-3 w-3 text-muted-foreground flex-shrink-0" />
           ) : (
             <IconComponent className="h-3 w-3 text-muted-foreground flex-shrink-0" />
           )}

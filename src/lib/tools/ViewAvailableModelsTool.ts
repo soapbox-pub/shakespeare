@@ -13,7 +13,7 @@ interface ProviderModel {
 }
 
 export class ViewAvailableModelsTool implements Tool<Record<string, never>> {
-  readonly description = 'View all available AI models across all configured providers, including their capabilities. This tool MUST be called before attempting to configure an image model, as it shows which models support image generation and displays the currently configured model (if any) to understand user preferences.';
+  readonly description = 'View all available AI models across all configured providers, including their capabilities. This tool MUST be called before attempting to configure an image model, as it shows which models support image generation.';
 
   readonly inputSchema = z.object({});
 

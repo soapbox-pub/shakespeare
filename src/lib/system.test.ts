@@ -73,6 +73,15 @@ describe('makeSystemPrompt', () => {
       cwd: '/projects/test-project',
       config: testConfig,
       defaultConfig: testConfig,
+      model: {
+        id: 'gpt-4',
+        fullId: 'openai/gpt-4',
+      },
+      provider: {
+        id: 'openai',
+        name: 'OpenAI',
+        baseURL: 'https://api.openai.com/v1',
+      },
     };
 
     // Mock getAllSkills to return empty array by default
@@ -605,6 +614,67 @@ Skills: {{ skills.length }}`;
 
       expect(result).toContain('**MKStack**');
       expect(result).not.toContain('**(CURRENT TEMPLATE)**');
+    });
+  });
+
+  describe('model and provider information', () => {
+    it('should include model and provider information in the system prompt', async () => {
+      const result = await makeSystemPrompt(baseOpts);
+
+      expect(result).toContain('**AI Model**: openai/gpt-4 (OpenAI)');
+    });
+
+    it('should include model information with different provider', async () => {
+      const model = {
+        id: 'claude-3-opus',
+        fullId: 'anthropic/claude-3-opus',
+      };
+
+      const provider = {
+        id: 'anthropic',
+        name: 'Anthropic',
+        baseURL: 'https://api.anthropic.com/v1',
+      };
+
+      const result = await makeSystemPrompt({
+        ...baseOpts,
+        model,
+        provider,
+      });
+
+      expect(result).toContain('**AI Model**: anthropic/claude-3-opus (Anthropic)');
+    });
+
+    it('should make model and provider objects accessible in custom templates', async () => {
+      const model = {
+        id: 'claude-3-opus',
+        fullId: 'anthropic/claude-3-opus',
+      };
+
+      const provider = {
+        id: 'anthropic',
+        name: 'Anthropic',
+        baseURL: 'https://api.anthropic.com/v1',
+      };
+
+      const customTemplate = `Model ID: {{ model.id }}
+Model Full ID: {{ model.fullId }}
+Provider Name: {{ provider.name }}
+Provider ID: {{ provider.id }}
+Provider Base URL: {{ provider.baseURL }}`;
+
+      const result = await makeSystemPrompt({
+        ...baseOpts,
+        model,
+        provider,
+        template: customTemplate,
+      });
+
+      expect(result).toContain('Model ID: claude-3-opus');
+      expect(result).toContain('Model Full ID: anthropic/claude-3-opus');
+      expect(result).toContain('Provider Name: Anthropic');
+      expect(result).toContain('Provider ID: anthropic');
+      expect(result).toContain('Provider Base URL: https://api.anthropic.com/v1');
     });
   });
 });

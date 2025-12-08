@@ -8,6 +8,17 @@ import { JSRuntimeFS } from "./JSRuntime";
 import { getAllSkills } from "./plugins";
 import type { AppConfig } from "@/contexts/AppContext";
 
+export interface ModelInfo {
+  id: string;
+  fullId: string;
+}
+
+export interface ProviderInfo {
+  id: string;
+  name: string;
+  baseURL: string;
+}
+
 export interface MakeSystemPromptOpts {
   tools: OpenAI.Chat.Completions.ChatCompletionTool[];
   mode: "init" | "agent";
@@ -20,6 +31,8 @@ export interface MakeSystemPromptOpts {
   repositoryUrl?: string;
   template?: string;
   projectTemplate?: { name: string; description: string; url: string };
+  model: ModelInfo;
+  provider: ProviderInfo;
 }
 
 /**
@@ -32,6 +45,7 @@ export const defaultSystemPrompt = `{% if mode === "init" %}You are Shakespeare,
 
 You are operating within **Shakespeare**, an AI-powered website builder that allows users to create custom applications through natural language conversation.
 
+- **AI Model**: {{ model.fullId }}
 - **Current Date**: {{ date }}
 - **Current Page**: {{ location.href }}
 - **Current Working Directory**: {{ cwd }}
@@ -170,7 +184,7 @@ When a project is first created, you (the AI) choose an appropriate template fro
 Shakespeare supports AI-powered image generation. Users can configure an image model in **Settings > AI** under the "Advanced" section.
 
 **Important Notes:**
-- Models that support image generation can use either the chat completions endpoint (for models with "image" output modality) or the dedicated images generation endpoint
+- Not all models support image generation
 - If users experience issues with image generation, they should try selecting a different image model in Settings > AI
 - Recommended models include gpt-image-1 and gemini-3-pro-image
 - The generate_image tool will only be available once a compatible image model is configured
@@ -236,7 +250,7 @@ Note: the badge should be displayed at its natural size. It is recommended to om
 {{ AGENTS }}{% endif %}`;
 
 export async function makeSystemPrompt(opts: MakeSystemPromptOpts): Promise<string> {
-  const { tools, mode, fs, cwd, config, defaultConfig, user, metadata, repositoryUrl, template, projectTemplate } = opts;
+  const { tools, mode, fs, cwd, config, defaultConfig, user, metadata, repositoryUrl, template, projectTemplate, model, provider } = opts;
 
   // Add current date
   const date = new Date().toLocaleDateString("en-US", {
@@ -318,6 +332,8 @@ export async function makeSystemPrompt(opts: MakeSystemPromptOpts): Promise<stri
     README: readmeText,
     AGENTS: agentsText,
     projectTemplate,
+    model,
+    provider,
   };
 
   // Render the template with the context

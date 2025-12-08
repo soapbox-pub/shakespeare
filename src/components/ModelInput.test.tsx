@@ -68,7 +68,7 @@ describe('ModelInput', () => {
 
   it('accepts modelFilter prop', () => {
     const onChange = vi.fn();
-    const modelFilter = (model: { modalities?: string[] }) => model.modalities?.includes('image');
+    const modelFilter = (model: { modalities?: string[] }) => model.modalities?.includes('image') ?? false;
     render(
       <TestApp>
         <ModelInput

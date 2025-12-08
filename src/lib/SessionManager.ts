@@ -276,6 +276,18 @@ export class SessionManager {
           // Template metadata not available
         }
 
+        // Build model and provider info objects
+        const modelInfo = {
+          id: model,
+          fullId: providerModel,
+        };
+
+        const providerInfo = {
+          id: provider.id,
+          name: provider.name,
+          baseURL: provider.baseURL,
+        };
+
         const systemPrompt = await makeSystemPrompt({
           cwd: `${config.fsPathProjects}/${projectId}`,
           fs: this.fs,
@@ -288,6 +300,8 @@ export class SessionManager {
           repositoryUrl,
           template: config.systemPrompt,
           projectTemplate,
+          model: modelInfo,
+          provider: providerInfo,
         });
 
         // Helper function to filter out unsupported image formats (keep only JPG/JPEG/PNG)

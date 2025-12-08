@@ -186,60 +186,30 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
       tools.deploy_project = new DeployProjectTool(fs, cwd, user.signer, projectId);
     }
 
-    // Add generate_image tool if:
-    // 1. The currently selected model supports image output modality, OR
-    // 2. An imageModel is configured (as fallback)
-    const currentModelData = models.find(m => m.fullId === providerModel.trim());
-    const currentModelSupportsImageOutput = currentModelData?.modalities?.includes('image');
-
-    let imageModelToUse: string | undefined;
-    let imageProviderData: { provider: ReturnType<typeof parseProviderModel>['provider']; model: string; modalities?: string[] } | undefined;
-
-    // Prefer currently selected model if it supports image output
-    if (currentModelSupportsImageOutput && providerModel.trim()) {
-      imageModelToUse = providerModel.trim();
-      try {
-        const { provider, model } = parseProviderModel(imageModelToUse, settings.providers);
-        imageProviderData = {
-          provider,
-          model,
-          modalities: currentModelData?.modalities,
-        };
-      } catch (error) {
-        console.warn('Failed to parse current model for image generation:', error);
-      }
-    }
-    // Fallback to configured imageModel if available
-    else if (settings.imageModel) {
-      imageModelToUse = settings.imageModel;
+    // Add generate_image tool if imageModel is configured
+    if (settings.imageModel) {
       try {
         const { provider, model } = parseProviderModel(settings.imageModel, settings.providers);
+
+        // Find the model data to get modalities
         const providerModel = models.find(m => m.fullId === settings.imageModel);
-        imageProviderData = {
+
+        tools.generate_image = new GenerateImageTool(
+          fs,
+          tmpPath,
           provider,
           model,
-          modalities: providerModel?.modalities,
-        };
+          providerModel?.modalities,
+          user,
+          config.corsProxy
+        );
       } catch (error) {
         console.warn('Failed to parse imageModel:', error);
       }
     }
 
-    // Add the tool if we have a valid image model
-    if (imageProviderData) {
-      tools.generate_image = new GenerateImageTool(
-        fs,
-        tmpPath,
-        imageProviderData.provider,
-        imageProviderData.model,
-        imageProviderData.modalities,
-        user,
-        config.corsProxy
-      );
-    }
-
     return tools;
-  }, [fs, git, cwd, user, projectId, projectsPath, tmpPath, pluginsPath, config.corsProxy, settings.imageModel, settings.providers, models, providerModel, handleFileChanged]);
+  }, [fs, git, cwd, user, projectId, projectsPath, tmpPath, pluginsPath, config.corsProxy, settings.imageModel, settings.providers, models, handleFileChanged]);
 
   // MCP tools wrapped for execution
   const mcpToolWrappers = useMemo(() => createMCPTools(mcpClients), [mcpClients]);

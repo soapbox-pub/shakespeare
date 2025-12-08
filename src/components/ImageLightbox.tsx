@@ -21,11 +21,17 @@ export function ImageLightbox({ imageUrl, onClose }: ImageLightboxProps) {
             "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
             "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
           )}
-          onPointerDownOutside={onClose}
           onEscapeKeyDown={onClose}
         >
           {imageUrl && (
             <>
+              {/* Clickable background to close */}
+              <div
+                className="absolute inset-0 cursor-pointer"
+                onClick={onClose}
+                aria-label="Close lightbox"
+              />
+
               {/* Close button */}
               <button
                 onClick={onClose}
@@ -36,7 +42,7 @@ export function ImageLightbox({ imageUrl, onClose }: ImageLightboxProps) {
               </button>
 
               {/* Image */}
-              <div className="relative w-full h-full flex items-center justify-center">
+              <div className="relative z-[1] flex items-center justify-center max-w-full max-h-full">
                 {imageUrl.startsWith('/') ? (
                   <VFSImage
                     path={imageUrl}

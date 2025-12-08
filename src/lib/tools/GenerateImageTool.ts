@@ -35,6 +35,7 @@ export class GenerateImageTool implements Tool<GenerateImageParams> {
     try {
       const client = createAIClient(this.provider, this.user, this.corsProxy);
 
+      let cost: number | undefined;
       let imageData: Uint8Array;
       let extension = 'png';
 
@@ -50,6 +51,12 @@ export class GenerateImageTool implements Tool<GenerateImageParams> {
           ],
           modalities: ['image'] as never[], // Type assertion needed as OpenAI SDK doesn't have this typed
         });
+
+        // Extract cost from response
+        const { usage } = response;
+        if (usage && 'cost' in usage && typeof usage.cost === 'number') {
+          cost = usage.cost;
+        }
 
         // Extract image data URI from response
         const message = response.choices[0]?.message;
@@ -93,6 +100,12 @@ export class GenerateImageTool implements Tool<GenerateImageParams> {
           model: this.model,
           prompt,
         });
+
+        // Extract cost from response
+        const { usage } = response;
+        if (usage && 'cost' in usage && typeof usage.cost === 'number') {
+          cost = usage.cost;
+        }
 
         const firstImage = response.data?.[0];
         if (!firstImage) {
@@ -152,7 +165,7 @@ export class GenerateImageTool implements Tool<GenerateImageParams> {
       // Write image to VFS
       await this.fs.writeFile(filepath, imageData);
 
-      return { content: `Generated image: ${filepath}` };
+      return { content: `Generated image: ${filepath}`, cost };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       throw new Error(`Failed to generate image: ${errorMessage}`);

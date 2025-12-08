@@ -66,8 +66,12 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
   );
 
   // Filter models to only show selected provider models
+  // Also filter to only show text models (modalities absent or includes "text")
   const providerModels = selectedProvider
-    ? models.filter(model => model.provider === selectedProvider.id)
+    ? models.filter(model =>
+        model.provider === selectedProvider.id &&
+        (!model.modalities || model.modalities.includes('text'))
+      )
     : [];
 
   // Filter models by search query

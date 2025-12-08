@@ -1,6 +1,6 @@
 import { memo, useState } from 'react';
 import { Streamdown } from 'streamdown';
-import { Wrench, Eye, FileText, Edit, Package, PackageMinus, GitCommit, BookOpen, Download, Hash, Tag, Network, List, Plus, Terminal, Globe, Lightbulb, Loader2, Logs, Send, Puzzle, Image, AlertCircle } from 'lucide-react';
+import { Wrench, Eye, FileText, Edit, Package, PackageMinus, GitCommit, BookOpen, Download, Hash, Tag, Network, List, Plus, Terminal, Globe, Lightbulb, Loader2, Logs, Send, Puzzle, Image, AlertCircle, X } from 'lucide-react';
 import type { AIMessage } from '@/lib/SessionManager';
 import { cn } from '@/lib/utils';
 import { UserMessage } from '@/components/UserMessage';
@@ -329,12 +329,16 @@ export const AIMessageItem = memo(({
 
         return (
           <div className="mt-1 p-3 bg-muted/30 rounded border max-w-xs">
-            <VFSImage
-              path={imagePath}
-              alt={filename}
-              className="max-w-full h-auto rounded cursor-pointer hover:opacity-90 transition-opacity"
+            <div
+              className="cursor-pointer hover:opacity-90 transition-opacity"
               onClick={() => setExpandedImageUrl(imagePath)}
-            />
+            >
+              <VFSImage
+                path={imagePath}
+                alt={filename}
+                className="max-w-full h-auto rounded"
+              />
+            </div>
           </div>
         );
       } else {
@@ -345,25 +349,74 @@ export const AIMessageItem = memo(({
 
     // Regular tool message rendering
     return (
-      <div className="-mt-2"> {/* -mt-2 to make it snug with the previous assistant message */}
-        <button
-          onClick={() => setIsToolExpanded(!isToolExpanded)}
-          className={cn(
-            "w-full flex items-center gap-2 px-2 py-1 text-xs",
-            "hover:bg-muted/30 rounded transition-colors duration-200"
-          )}
-        >
-          <IconComponent className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-          <span className="text-muted-foreground font-medium truncate flex-1 text-left">
-            {toolInfo.title}
-          </span>
-        </button>
+      <>
+        <div className="-mt-2"> {/* -mt-2 to make it snug with the previous assistant message */}
+          <button
+            onClick={() => setIsToolExpanded(!isToolExpanded)}
+            className={cn(
+              "w-full flex items-center gap-2 px-2 py-1 text-xs",
+              "hover:bg-muted/30 rounded transition-colors duration-200"
+            )}
+          >
+            <IconComponent className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+            <span className="text-muted-foreground font-medium truncate flex-1 text-left">
+              {toolInfo.title}
+            </span>
+          </button>
 
-        {isToolExpanded && renderSpecialContent()}
+          {isToolExpanded && renderSpecialContent()}
 
-        {/* Always render image below for generate_image tool */}
-        {renderImageBelowTool()}
-      </div>
+          {/* Always render image below for generate_image tool */}
+          {renderImageBelowTool()}
+        </div>
+
+        {/* Image expansion lightbox - shared for all message types */}
+        <Dialog open={!!expandedImageUrl} onOpenChange={(open) => !open && setExpandedImageUrl(null)}>
+          <DialogPortal>
+            <DialogOverlay className="bg-black/95" />
+            <DialogPrimitive.Content
+              className={cn(
+                "fixed inset-0 z-50 flex items-center justify-center p-4 bg-transparent border-0 shadow-none",
+                "data-[state=open]:animate-in data-[state=closed]:animate-out",
+                "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+                "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
+              )}
+              onPointerDownOutside={() => setExpandedImageUrl(null)}
+              onEscapeKeyDown={() => setExpandedImageUrl(null)}
+            >
+              {expandedImageUrl && (
+                <>
+                  {/* Close button */}
+                  <button
+                    onClick={() => setExpandedImageUrl(null)}
+                    className="absolute top-4 right-4 z-10 p-2 rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors"
+                    aria-label="Close"
+                  >
+                    <X className="h-6 w-6" />
+                  </button>
+
+                  {/* Image */}
+                  <div className="relative w-full h-full flex items-center justify-center">
+                    {expandedImageUrl.startsWith('/') ? (
+                      <VFSImage
+                        path={expandedImageUrl}
+                        alt="Expanded image"
+                        className="max-w-full max-h-full w-auto h-auto object-contain rounded-lg"
+                      />
+                    ) : (
+                      <img
+                        src={expandedImageUrl}
+                        alt="Expanded image"
+                        className="max-w-full max-h-full w-auto h-auto object-contain rounded-lg"
+                      />
+                    )}
+                  </div>
+                </>
+              )}
+            </DialogPrimitive.Content>
+          </DialogPortal>
+        </Dialog>
+      </>
     );
   }
 
@@ -427,7 +480,7 @@ export const AIMessageItem = memo(({
           </div>
         </div>
 
-        {/* Image expansion dialog */}
+        {/* Image expansion lightbox - shared for all message types */}
         <Dialog open={!!expandedImageUrl} onOpenChange={(open) => !open && setExpandedImageUrl(null)}>
           <DialogPortal>
             <DialogOverlay className="bg-black/95" />
@@ -475,7 +528,7 @@ export const AIMessageItem = memo(({
   }
 
   // Assistant messages: left-aligned without avatar/name
-  return (
+  const assistantContent = (
     <div className="flex">
       <div className="flex-1 min-w-0">
         <div className="text-sm space-y-3">
@@ -532,6 +585,59 @@ export const AIMessageItem = memo(({
         </div>
       </div>
     </div>
+  );
+
+  return (
+    <>
+      {assistantContent}
+
+      {/* Image expansion lightbox - shared for all message types */}
+      <Dialog open={!!expandedImageUrl} onOpenChange={(open) => !open && setExpandedImageUrl(null)}>
+        <DialogPortal>
+          <DialogOverlay className="bg-black/95" />
+          <DialogPrimitive.Content
+            className={cn(
+              "fixed inset-0 z-50 flex items-center justify-center p-4 bg-transparent border-0 shadow-none",
+              "data-[state=open]:animate-in data-[state=closed]:animate-out",
+              "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+              "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
+            )}
+            onPointerDownOutside={() => setExpandedImageUrl(null)}
+            onEscapeKeyDown={() => setExpandedImageUrl(null)}
+          >
+            {expandedImageUrl && (
+              <>
+                {/* Close button */}
+                <button
+                  onClick={() => setExpandedImageUrl(null)}
+                  className="absolute top-4 right-4 z-10 p-2 rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors"
+                  aria-label="Close"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+
+                {/* Image */}
+                <div className="relative w-full h-full flex items-center justify-center">
+                  {expandedImageUrl.startsWith('/') ? (
+                    <VFSImage
+                      path={expandedImageUrl}
+                      alt="Expanded image"
+                      className="max-w-full max-h-full w-auto h-auto object-contain rounded-lg"
+                    />
+                  ) : (
+                    <img
+                      src={expandedImageUrl}
+                      alt="Expanded image"
+                      className="max-w-full max-h-full w-auto h-auto object-contain rounded-lg"
+                    />
+                  )}
+                </div>
+              </>
+            )}
+          </DialogPrimitive.Content>
+        </DialogPortal>
+      </Dialog>
+    </>
   );
 });
 

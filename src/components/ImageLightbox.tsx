@@ -27,7 +27,7 @@ export function ImageLightbox({ imageUrl, onClose }: ImageLightboxProps) {
             <>
               {/* Clickable background to close */}
               <div
-                className="absolute inset-0 cursor-pointer"
+                className="absolute inset-0 cursor-pointer z-[1]"
                 onClick={onClose}
                 aria-label="Close lightbox"
               />
@@ -35,25 +35,28 @@ export function ImageLightbox({ imageUrl, onClose }: ImageLightboxProps) {
               {/* Close button */}
               <button
                 onClick={onClose}
-                className="absolute top-4 right-4 z-10 p-2 rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors"
+                className="absolute top-4 right-4 z-[3] p-2 rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors"
                 aria-label="Close"
               >
                 <X className="h-6 w-6" />
               </button>
 
               {/* Image */}
-              <div className="relative z-[1] flex items-center justify-center max-w-full max-h-full">
+              <div
+                className="relative z-[2] flex items-center justify-center w-full h-full pointer-events-none"
+                onClick={(e) => e.stopPropagation()}
+              >
                 {imageUrl.startsWith('/') ? (
                   <VFSImage
                     path={imageUrl}
                     alt="Expanded image"
-                    className="max-w-full max-h-full w-auto h-auto object-contain rounded-lg"
+                    className="max-w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)] w-auto h-auto object-contain rounded-lg pointer-events-auto"
                   />
                 ) : (
                   <img
                     src={imageUrl}
                     alt="Expanded image"
-                    className="max-w-full max-h-full w-auto h-auto object-contain rounded-lg"
+                    className="max-w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)] w-auto h-auto object-contain rounded-lg pointer-events-auto"
                   />
                 )}
               </div>

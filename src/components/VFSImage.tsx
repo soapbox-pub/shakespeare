@@ -72,7 +72,7 @@ export function VFSImage({ path, alt, className, onClick, onError }: VFSImagePro
     return () => {
       isMounted = false;
     };
-  }, [fs, path]);
+  }, [fs, onError, path]);
 
   if (isLoading) {
     return <Skeleton className={className || 'w-full h-64'} />;

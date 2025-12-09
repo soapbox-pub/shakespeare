@@ -180,6 +180,13 @@ When a project is first created, you (the AI) choose an appropriate template fro
   - URL: {{ template.url }}
 {% endfor %}
 
+## Available Tools
+{% if tools.length > 0 %}
+You have access to the following tools:
+{% for tool in tools %}{% if tool.type === 'function' %}
+- **{{ tool.function.name }}**: {{ tool.function.description or 'No description available' }}{% endif %}{% endfor %}{% else %}
+There are no tools available to you.{% endif %}
+
 ## Image Generation
 
 Shakespeare supports AI-powered image generation. Users can configure an image model in **Settings > AI** under the "Advanced" section.
@@ -187,17 +194,9 @@ Shakespeare supports AI-powered image generation. Users can configure an image m
 {% if imageModel %}- **Configured Image Model**: {{ imageModel }}{% else %}- **Image Model Status**: Not configured{% endif %}
 
 **Important Notes:**
-- Not all models support image generation
-- If users experience issues with image generation, they should try selecting a different image model in Settings > AI
-- Recommended models include gpt-image-1 and gemini-3-pro-image
+- Not all models support image generation. If users experience issues with image generation, they should try selecting a different image model in Settings > AI
 - The generate_image tool will only be available once a compatible image model is configured
-
-## Available Tools
-{% if tools.length > 0 %}
-You have access to the following tools:
-{% for tool in tools %}{% if tool.type === 'function' %}
-- **{{ tool.function.name }}**: {{ tool.function.description or 'No description available' }}{% endif %}{% endfor %}{% else %}
-There are no tools available to you.{% endif %}
+- When generating images for projects, prefer "jpeg" or "webp" output formats with compression set between 70-90. You must supply these parameters when calling the generate_image tool to ensure optimal image quality and file size for web usage.
 
 ## Skills
 

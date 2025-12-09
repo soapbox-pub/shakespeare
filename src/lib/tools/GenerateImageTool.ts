@@ -9,7 +9,7 @@ import { proxyUrl } from '../proxyUrl';
 interface GenerateImageParams {
   prompt: string;
   output_format?: "png" | "jpeg" | "webp";
-  quality?: "auto" | "standard" | "hd" | "low" | "medium" | "high";
+  output_compression?: number;
   size?: "auto" | "1024x1024" | "1536x1024" | "1024x1536" | "256x256" | "512x512" | "1792x1024" | "1024x1792";
 }
 
@@ -21,7 +21,7 @@ export class GenerateImageTool implements Tool<GenerateImageParams> {
   readonly inputSchema = z.object({
     prompt: z.string().describe('A detailed text description of the image to generate'),
     output_format: z.enum(["png", "jpeg", "webp"]).optional().describe('Output format for the image (e.g., "png", "jpeg", "webp"). Support varies by model - leave blank if unsure'),
-    quality: z.enum(["auto", "standard", "hd", "low", "medium", "high"]).optional().describe('Quality setting for the image (e.g., "high", "medium", "low"). Support varies by model - leave blank if unsure'),
+    output_compression: z.number().min(1).max(100).optional().describe('Compression quality for the image (0 to 100). Only applicable for "jpeg" and "webp" formats'),
     size: z.enum(["auto", "1024x1024", "1536x1024", "1024x1536", "256x256", "512x512", "1792x1024", "1024x1792"]).optional().describe('Size of the generated image (e.g., "1024x1024", "1536x1024"). Support varies by model - leave blank if unsure'),
   });
 
@@ -36,14 +36,14 @@ export class GenerateImageTool implements Tool<GenerateImageParams> {
   ) {}
 
   async execute(args: GenerateImageParams): Promise<ToolResult> {
-    const { prompt, output_format, quality, size } = args;
+    const { prompt, output_format, output_compression, size } = args;
 
     try {
       const client = createAIClient(this.provider, this.user, this.corsProxy);
 
       let cost: number | undefined;
       let imageData: Uint8Array;
-      let extension = 'png';
+      let extension = output_format ?? 'png';
 
       // Use chat completions endpoint for models that support image output modality
       if (this.mode === 'chat') {
@@ -91,7 +91,10 @@ export class GenerateImageTool implements Tool<GenerateImageParams> {
           throw new Error('Invalid data URI format');
         }
 
-        extension = dataUriMatch[1];
+        if (dataUriMatch[1] === "png" || dataUriMatch[1] === "jpeg" || dataUriMatch[1] === "webp") {
+          extension = dataUriMatch[1];
+        }
+
         const base64Data = dataUriMatch[2];
 
         // Decode base64 to bytes
@@ -106,7 +109,7 @@ export class GenerateImageTool implements Tool<GenerateImageParams> {
           model: this.model,
           prompt,
           output_format,
-          quality,
+          output_compression,
           size,
         });
 
@@ -145,17 +148,12 @@ export class GenerateImageTool implements Tool<GenerateImageParams> {
           const contentType = imageResponse.headers.get('content-type');
           if (contentType) {
             const match = contentType.match(/image\/([^;]+)/);
-            if (match) {
+            if (match && (match[1] === 'png' || match[1] === 'jpeg' || match[1] === 'webp')) {
               extension = match[1];
             }
           }
         } else {
           throw new Error('No base64 image data or URL returned from the API');
-        }
-
-        // Default extension is PNG for standard OpenAI responses
-        if (extension === 'png') {
-          extension = 'png';
         }
       }
 

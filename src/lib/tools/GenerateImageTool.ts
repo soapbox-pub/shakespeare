@@ -58,6 +58,9 @@ export class GenerateImageTool implements Tool<GenerateImageParams> {
           modalities: ['image'] as never[], // Type assertion needed as OpenAI SDK doesn't have this typed
         });
 
+        // Default extension for chat models is png (output_format is ignored)
+        extension = 'png';
+
         // Extract cost from response
         const { usage } = response;
         if (usage && 'cost' in usage && typeof usage.cost === 'number') {

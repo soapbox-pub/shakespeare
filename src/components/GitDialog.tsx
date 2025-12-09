@@ -488,6 +488,9 @@ export function GitDialog({ projectId, children, open, onOpenChange }: GitDialog
 
       console.log('Set nostr.repo config to:', result.naddr);
 
+      // Wait a few seconds for GRASP servers to update
+      await new Promise(resolve => setTimeout(resolve, 3000));
+
       // Refresh git status to pick up the new remote
       await refetchGitStatus();
 

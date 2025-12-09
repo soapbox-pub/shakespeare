@@ -12,6 +12,7 @@ import { useState } from 'react';
 import { MalformedToolCallError } from '@/lib/errors/MalformedToolCallError';
 import { EmptyMessageError } from '@/lib/errors/EmptyMessageError';
 import { AIProvider } from '@/contexts/AISettingsContext';
+import { useOffline } from '@/hooks/useOffline';
 
 export interface QuillyProps {
   error: Error;
@@ -43,6 +44,7 @@ interface QuillyContentProps {
 
 function QuillyContent({ error, onDismiss, onNewChat, onOpenModelSelector, onTryAgain, onRequestConsoleErrorHelp, provider }: QuillyContentProps) {
   const navigate = useNavigate();
+  const { isOffline } = useOffline();
 
   const renderBody = (error: Error | APIError | MalformedToolCallError | ProjectPreviewConsoleError): ErrorBody & { showCreditsButton?: boolean } => {
     // Handle Project Preview Console Errors
@@ -188,7 +190,9 @@ function QuillyContent({ error, onDismiss, onNewChat, onOpenModelSelector, onTry
 
     if (error instanceof APIConnectionError) {
       return {
-        message: 'Network error: Unable to reach AI service. Please check your internet connection and try again.',
+        message: isOffline
+          ? 'It appears you are offline. Have you tried connecting to the internet?'
+          : 'There was a network problem between your device and the AI service.',
         actions: onTryAgain ? [{
           label: 'Try again',
           onClick: () => {

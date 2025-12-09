@@ -1,4 +1,4 @@
-import { APIError } from 'openai';
+import { APIConnectionError, APIError } from 'openai';
 import { useNavigate } from 'react-router-dom';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -183,13 +183,20 @@ function QuillyContent({ error, onDismiss, onNewChat, onOpenModelSelector, onTry
             message: 'The AI service is temporarily unavailable. Please try again in a moment.',
             actions: [],
           };
-
-        default:
-          return {
-            message: `AI service error: ${error.message}`,
-            actions: [],
-          };
       }
+    }
+
+    if (error instanceof APIConnectionError) {
+      return {
+        message: 'Network error: Unable to reach AI service. Please check your internet connection and try again.',
+        actions: onTryAgain ? [{
+          label: 'Try again',
+          onClick: () => {
+            onTryAgain();
+            onDismiss();
+          },
+        }] : [],
+      };
     }
 
     // Default fallback

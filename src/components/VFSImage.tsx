@@ -8,9 +8,10 @@ interface VFSImageProps {
   alt: string;
   className?: string;
   onClick?: () => void;
+  onError?: (error: string) => void;
 }
 
-export function VFSImage({ path, alt, className, onClick }: VFSImageProps) {
+export function VFSImage({ path, alt, className, onClick, onError }: VFSImageProps) {
   const { fs } = useFS();
   const [dataUri, setDataUri] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -58,8 +59,10 @@ export function VFSImage({ path, alt, className, onClick }: VFSImageProps) {
         }
       } catch (err) {
         if (isMounted) {
-          setError(err instanceof Error ? err.message : 'Failed to load image');
+          const errorMessage = err instanceof Error ? err.message : 'Failed to load image';
+          setError(errorMessage);
           setIsLoading(false);
+          onError?.(errorMessage);
         }
       }
     }

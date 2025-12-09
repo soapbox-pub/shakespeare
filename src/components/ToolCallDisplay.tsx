@@ -302,6 +302,7 @@ function parseToolError(result: string | undefined, expectedToolName: string): s
 export function ToolCallDisplay({ toolName, toolArgs, state, result }: ToolCallDisplayProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [expandedImageUrl, setExpandedImageUrl] = useState<string | null>(null);
+  const [imageLoadError, setImageLoadError] = useState(false);
 
   const toolInfo = getToolInfo(toolName, toolArgs);
   const IconComponent = toolInfo.icon;
@@ -433,6 +434,9 @@ export function ToolCallDisplay({ toolName, toolArgs, state, result }: ToolCallD
       const imagePath = match[1];
       const filename = imagePath.split('/').pop() || imagePath;
 
+      // Hide the image section if there was a load error
+      if (imageLoadError) return null;
+
       return (
         <div className="mt-1 p-3 bg-muted/30 rounded border max-w-xs">
           <div
@@ -443,6 +447,7 @@ export function ToolCallDisplay({ toolName, toolArgs, state, result }: ToolCallD
               path={imagePath}
               alt={filename}
               className="max-w-full h-auto rounded"
+              onError={() => setImageLoadError(true)}
             />
           </div>
         </div>

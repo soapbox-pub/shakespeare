@@ -63,7 +63,7 @@ export class SessionManager {
   private listeners: Partial<Record<keyof SessionManagerEvents, Set<(...args: unknown[]) => void>>> = {};
   private fs: JSRuntimeFS;
   private nostr: NPool;
-  private getSettings: () => { providers: AIProvider[] };
+  private getSettings: () => { providers: AIProvider[]; imageModel?: string };
   private getConfig: () => AppConfig;
   private getDefaultConfig: () => AppConfig;
   private getProviderModels?: () => Array<{ id: string; provider: string; contextLength?: number; pricing?: { prompt: import('decimal.js').Decimal; completion: import('decimal.js').Decimal } }>;
@@ -72,7 +72,7 @@ export class SessionManager {
   constructor(
     fs: JSRuntimeFS,
     nostr: NPool,
-    getSettings: () => { providers: AIProvider[] },
+    getSettings: () => { providers: AIProvider[]; imageModel?: string },
     getConfig: () => AppConfig,
     getDefaultConfig: () => AppConfig,
     getProviderModels?: () => Array<{ id: string; provider: string; contextLength?: number; pricing?: { prompt: import('decimal.js').Decimal; completion: import('decimal.js').Decimal } }>,
@@ -289,6 +289,9 @@ export class SessionManager {
           baseURL: provider.baseURL,
         };
 
+        // Get imageModel from settings
+        const settings = this.getSettings();
+
         const systemPrompt = await makeSystemPrompt({
           cwd: `${config.fsPathProjects}/${projectId}`,
           fs: this.fs,
@@ -303,6 +306,7 @@ export class SessionManager {
           projectTemplate,
           model: modelInfo,
           provider: providerInfo,
+          imageModel: settings.imageModel,
         });
 
         // Helper function to filter out unsupported image formats (keep only JPG/JPEG/PNG)

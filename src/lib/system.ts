@@ -33,6 +33,7 @@ export interface MakeSystemPromptOpts {
   projectTemplate?: { name: string; description: string; url: string };
   model: ModelInfo;
   provider: ProviderInfo;
+  imageModel?: string;
 }
 
 /**
@@ -183,6 +184,8 @@ When a project is first created, you (the AI) choose an appropriate template fro
 
 Shakespeare supports AI-powered image generation. Users can configure an image model in **Settings > AI** under the "Advanced" section.
 
+{% if imageModel %}- **Configured Image Model**: {{ imageModel }}{% else %}- **Image Model Status**: Not configured{% endif %}
+
 **Important Notes:**
 - Not all models support image generation
 - If users experience issues with image generation, they should try selecting a different image model in Settings > AI
@@ -250,7 +253,7 @@ Note: the badge should be displayed at its natural size. It is recommended to om
 {{ AGENTS }}{% endif %}`;
 
 export async function makeSystemPrompt(opts: MakeSystemPromptOpts): Promise<string> {
-  const { tools, mode, fs, cwd, config, defaultConfig, user, metadata, repositoryUrl, template, projectTemplate, model, provider } = opts;
+  const { tools, mode, fs, cwd, config, defaultConfig, user, metadata, repositoryUrl, template, projectTemplate, model, provider, imageModel } = opts;
 
   // Add current date
   const date = new Date().toLocaleDateString("en-US", {
@@ -334,6 +337,7 @@ export async function makeSystemPrompt(opts: MakeSystemPromptOpts): Promise<stri
     projectTemplate,
     model,
     provider,
+    imageModel,
   };
 
   // Render the template with the context

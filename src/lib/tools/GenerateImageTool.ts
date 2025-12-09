@@ -8,6 +8,9 @@ import { proxyUrl } from '../proxyUrl';
 
 interface GenerateImageParams {
   prompt: string;
+  output_format?: "png" | "jpeg" | "webp";
+  quality?: "auto" | "standard" | "hd" | "low" | "medium" | "high";
+  size?: "auto" | "1024x1024" | "1536x1024" | "1024x1536" | "256x256" | "512x512" | "1792x1024" | "1024x1792";
 }
 
 export type ImageGenerationMode = 'chat' | 'image';
@@ -17,6 +20,9 @@ export class GenerateImageTool implements Tool<GenerateImageParams> {
 
   readonly inputSchema = z.object({
     prompt: z.string().describe('A detailed text description of the image to generate'),
+    output_format: z.enum(["png", "jpeg", "webp"]).optional().describe('Output format for the image (e.g., "png", "jpeg", "webp"). Support varies by model - leave blank if unsure'),
+    quality: z.enum(["auto", "standard", "hd", "low", "medium", "high"]).optional().describe('Quality setting for the image (e.g., "high", "medium", "low"). Support varies by model - leave blank if unsure'),
+    size: z.enum(["auto", "1024x1024", "1536x1024", "1024x1536", "256x256", "512x512", "1792x1024", "1024x1792"]).optional().describe('Size of the generated image (e.g., "1024x1024", "1536x1024"). Support varies by model - leave blank if unsure'),
   });
 
   constructor(
@@ -30,7 +36,7 @@ export class GenerateImageTool implements Tool<GenerateImageParams> {
   ) {}
 
   async execute(args: GenerateImageParams): Promise<ToolResult> {
-    const { prompt } = args;
+    const { prompt, output_format, quality, size } = args;
 
     try {
       const client = createAIClient(this.provider, this.user, this.corsProxy);
@@ -99,6 +105,9 @@ export class GenerateImageTool implements Tool<GenerateImageParams> {
         const response = await client.images.generate({
           model: this.model,
           prompt,
+          output_format,
+          quality,
+          size,
         });
 
         // Extract cost from response

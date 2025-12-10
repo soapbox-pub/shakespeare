@@ -51,6 +51,7 @@ You are operating within **Shakespeare**, an AI-powered website builder that all
 - **Current Page**: {{ location.href }}
 - **Current Working Directory**: {{ cwd }}
 - **Repository URL**: {% if repositoryUrl %}{{ repositoryUrl }}{% else %}none{% endif %}
+- **Deployed URL**: {% if deployedUrl %}{{ deployedUrl }}{% else %}not deployed{% endif %}
 {% if projectTemplate %}- **Project Template**: {{ projectTemplate.name }}{% endif %}
 
 Users can add or remove templates in Settings > AI (\`{{ location.origin }}/settings/ai\`).
@@ -291,6 +292,24 @@ export async function makeSystemPrompt(opts: MakeSystemPromptOpts): Promise<stri
     // AGENTS.md not found, continue
   }
 
+  // Get deployed URL if it exists
+  let deployedUrl: string | undefined;
+  try {
+    const deployConfigPath = join(cwd, '.git/shakespeare/deploy.json');
+    const deployConfigText = await fs.readFile(deployConfigPath, 'utf8');
+    const deployConfig = JSON.parse(deployConfigText);
+
+    // Get the current provider's URL
+    if (deployConfig.currentProvider && deployConfig.providers) {
+      const currentProviderConfig = deployConfig.providers[deployConfig.currentProvider];
+      if (currentProviderConfig?.url) {
+        deployedUrl = currentProviderConfig.url;
+      }
+    }
+  } catch {
+    // Deploy config not found or invalid, continue
+  }
+
   // Build URLs for Edit with Shakespeare
   let badgeUrl: string | undefined;
   let editUrl: string | undefined;
@@ -307,6 +326,7 @@ export async function makeSystemPrompt(opts: MakeSystemPromptOpts): Promise<stri
     date,
     cwd,
     repositoryUrl,
+    deployedUrl,
     config,
     defaultConfig,
     user: user

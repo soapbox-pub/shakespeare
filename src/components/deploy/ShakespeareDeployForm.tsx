@@ -6,6 +6,7 @@ import { AlertCircle } from 'lucide-react';
 interface ShakespeareDeployFormProps {
   host?: string;
   projectId: string;
+  savedSubdomain?: string;
   onSubdomainChange: (subdomain: string) => void;
   onValidationChange?: (isValid: boolean) => void;
 }
@@ -13,10 +14,16 @@ interface ShakespeareDeployFormProps {
 export function ShakespeareDeployForm({
   host = 'shakespeare.wtf',
   projectId,
+  savedSubdomain,
   onSubdomainChange,
   onValidationChange,
 }: ShakespeareDeployFormProps) {
-  const [subdomain, setSubdomain] = useState(projectId);
+  const [subdomain, setSubdomain] = useState(savedSubdomain || projectId);
+
+  // Update subdomain when savedSubdomain changes (e.g., when switching providers)
+  useEffect(() => {
+    setSubdomain(savedSubdomain || projectId);
+  }, [savedSubdomain, projectId]);
 
   // Validate subdomain: no periods allowed (only single-level subdomains)
   const hasPeriod = subdomain.includes('.');

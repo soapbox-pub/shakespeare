@@ -404,11 +404,14 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
 
     if (selectedProvider.type === 'shakespeare') {
       const shakespeareProvider = selectedProvider as ShakespeareDeployProvider;
+      const savedConfig = projectSettings.providers[selectedProviderId];
+      const savedSubdomain = savedConfig?.type === 'shakespeare' ? savedConfig.data.subdomain : undefined;
 
       return (
         <ShakespeareDeployForm
           host={shakespeareProvider.host}
           projectId={projectId}
+          savedSubdomain={savedSubdomain}
           onSubdomainChange={handleShakespeareSubdomainChange}
           onValidationChange={handleShakespeareValidationChange}
         />

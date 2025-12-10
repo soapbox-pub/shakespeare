@@ -51,6 +51,8 @@
   "showcaseEnabledDescription": "在主页上显示应用展示部分",
   "showcaseModerator": "展示管理员",
   "showcaseModeratorDescription": "可以审核展示提交的用户的Nostr公钥（npub）",
+  "communityFollowPack": "社区",
+  "communityFollowPackDescription": "用于社区页面社区活动部分的关注包的Nostr事件",
   "filesystemPaths": "文件系统路径",
   "projectsDirectory": "项目目录",
   "projectsDirectoryDescription": "存储项目的文件系统路径",

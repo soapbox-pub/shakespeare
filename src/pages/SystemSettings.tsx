@@ -1,4 +1,4 @@
-import { Settings, ArrowLeft, RefreshCw, Trash2, XCircle, Loader2, RotateCcw, Cog, Globe, Image, Code, Monitor, Award, Bug, FolderTree, Terminal as TerminalIcon } from "lucide-react";
+import { Settings, ArrowLeft, RefreshCw, Trash2, XCircle, Loader2, RotateCcw, Cog, Globe, Image, Code, Monitor, Award, Bug, FolderTree, Terminal as TerminalIcon, Users } from "lucide-react";
 import { useTranslation } from 'react-i18next';
 import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,7 @@ export function SystemSettings() {
   const [faviconUrlInput, setFaviconUrlInput] = useState(config.faviconUrl);
   const [previewDomainInput, setPreviewDomainInput] = useState(config.previewDomain);
   const [showcaseModeratorInput, setShowcaseModeratorInput] = useState(config.showcaseModerator);
+  const [communityFollowPackInput, setCommunityFollowPackInput] = useState(config.communityFollowPack);
   const [fsPathProjectsInput, setFsPathProjectsInput] = useState(config.fsPathProjects);
   const [fsPathConfigInput, setFsPathConfigInput] = useState(config.fsPathConfig);
   const [fsPathTmpInput, setFsPathTmpInput] = useState(config.fsPathTmp);
@@ -41,6 +42,7 @@ export function SystemSettings() {
     previewDomain: config.previewDomain !== defaultConfig.previewDomain,
     showcaseEnabled: config.showcaseEnabled !== defaultConfig.showcaseEnabled,
     showcaseModerator: config.showcaseModerator !== defaultConfig.showcaseModerator,
+    communityFollowPack: config.communityFollowPack !== defaultConfig.communityFollowPack,
     fsPathProjects: config.fsPathProjects !== defaultConfig.fsPathProjects,
     fsPathConfig: config.fsPathConfig !== defaultConfig.fsPathConfig,
     fsPathTmp: config.fsPathTmp !== defaultConfig.fsPathTmp,
@@ -98,6 +100,15 @@ export function SystemSettings() {
     setShowcaseModeratorInput(defaultValue);
     updateConfig((current) => {
       const { showcaseModerator, ...rest } = current;
+      return rest;
+    });
+  };
+
+  const restoreCommunityFollowPack = () => {
+    const defaultValue = defaultConfig.communityFollowPack;
+    setCommunityFollowPackInput(defaultValue);
+    updateConfig((current) => {
+      const { communityFollowPack, ...rest } = current;
       return rest;
     });
   };
@@ -675,6 +686,55 @@ export function SystemSettings() {
                     {t('showcaseModeratorDescription')}
                   </p>
                 </div>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+
+        {/* Community Follow Pack Configuration */}
+        <Accordion type="single" collapsible className="w-full">
+          <AccordionItem value="community-follow-pack">
+            <AccordionTrigger className="px-4 py-3 hover:no-underline">
+              <div className="flex items-center gap-2">
+                <Users className="h-4 w-4 text-muted-foreground" />
+                <h4 className="text-sm font-medium">{t('communityFollowPack')}</h4>
+                {isModified.communityFollowPack && (
+                  <div className="h-2 w-2 rounded-full bg-yellow-500" title={t('modified')} />
+                )}
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="px-4 pb-4">
+              <div className="py-1 space-y-2">
+                <div className="flex gap-2">
+                  <Input
+                    id="community-follow-pack"
+                    type="text"
+                    placeholder="naddr1..."
+                    value={communityFollowPackInput}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setCommunityFollowPackInput(value);
+                      updateConfig((current) => ({
+                        ...current,
+                        communityFollowPack: value,
+                      }));
+                    }}
+                    className="flex-1"
+                  />
+                  {isModified.communityFollowPack && (
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={restoreCommunityFollowPack}
+                      title={t('restoreToDefault')}
+                    >
+                      <RotateCcw className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {t('communityFollowPackDescription')}
+                </p>
               </div>
             </AccordionContent>
           </AccordionItem>

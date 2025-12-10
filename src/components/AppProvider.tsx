@@ -50,6 +50,7 @@ const AppConfigSchema = z.object({
   sentryDsn: z.string(),
   sentryEnabled: z.boolean(),
   systemPrompt: z.string(),
+  communityFollowPack: z.string(),
 }) satisfies z.ZodType<AppConfig>;
 
 export function AppProvider(props: AppProviderProps) {

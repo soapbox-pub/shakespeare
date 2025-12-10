@@ -1,14 +1,8 @@
 import { type NostrEvent, NRelay1 } from '@nostrify/nostrify';
 import { useNostr } from '@nostrify/react';
 import { useQuery } from '@tanstack/react-query';
-
-// Soapbox Follow Pack naddr for team members
-// naddr1qvzqqqr4xgpzpjcswsacvumftxsmcejj3vsxu8mf203p8hkxoklxtgva7rdxzm0qqy88wumn8ghj7mn0wd68yttsw43z7qg4waehxw309aex2mrp0yhx6mmddaehgu339e3k7mf0qythwumn8ghj7cn5vvhxkmr9dejxz7n0xvs8xmmrdejhytnrdakj7q3qdqr8kgh3s5q8ztw0swmvpwz98cse7rw43n4nhrpszgafnuwrxh8hscmhv5m
-const SOAPBOX_FOLLOW_PACK = {
-  pubkey: '932614571afcbad4d17a191ee281e39eebbb41b93fac8fd87829622aeb112f4d',
-  kind: 39089,
-  identifier: 'k4p5w0n22suf',
-};
+import { nip19 } from 'nostr-tools';
+import { useAppContext } from '@/hooks/useAppContext';
 
 // ShakespeareGitCommits bot npub
 // npub1msc06u2v3y3z2awdxlc7k2tnjlc78xg8awvha5rsaphd8py7ussqd0phxu
@@ -56,25 +50,91 @@ function hasShakespeareInTitle(event: NostrEvent): boolean {
 }
 
 /**
- * Hook to fetch the Soapbox Follow Pack to get team member pubkeys
+ * Decoded follow pack data - either from naddr or nevent
  */
-export function useSoapboxFollowPack() {
+type FollowPackData = {
+  /** For naddr: query by author, kind, and d-tag */
+  type: 'naddr';
+  pubkey: string;
+  kind: number;
+  identifier: string;
+} | {
+  /** For nevent: query by event id */
+  type: 'nevent';
+  id: string;
+  relays?: string[];
+};
+
+/**
+ * Decode a follow pack identifier (naddr or nevent) to get its components
+ */
+function decodeFollowPackIdentifier(identifier: string): FollowPackData | null {
+  try {
+    const decoded = nip19.decode(identifier);
+    if (decoded.type === 'naddr') {
+      return {
+        type: 'naddr',
+        pubkey: decoded.data.pubkey,
+        kind: decoded.data.kind,
+        identifier: decoded.data.identifier,
+      };
+    }
+    if (decoded.type === 'nevent') {
+      return {
+        type: 'nevent',
+        id: decoded.data.id,
+        relays: decoded.data.relays,
+      };
+    }
+  } catch {
+    // Invalid identifier
+  }
+  return null;
+}
+
+/**
+ * Hook to fetch the community follow pack to get team member pubkeys
+ * Uses the communityFollowPack setting from the app config
+ * Supports both naddr and nevent identifiers
+ */
+export function useCommunityFollowPack() {
   const { nostr } = useNostr();
+  const { config } = useAppContext();
+
+  const followPackData = decodeFollowPackIdentifier(config.communityFollowPack);
 
   return useQuery<string[]>({
-    queryKey: ['soapbox-follow-pack'],
+    queryKey: ['community-follow-pack', config.communityFollowPack],
     queryFn: async (c) => {
+      if (!followPackData) {
+        return [];
+      }
+
       const signal = AbortSignal.any([c.signal, AbortSignal.timeout(5000)]);
 
-      const events = await nostr.query(
-        [{
-          kinds: [SOAPBOX_FOLLOW_PACK.kind],
-          authors: [SOAPBOX_FOLLOW_PACK.pubkey],
-          '#d': [SOAPBOX_FOLLOW_PACK.identifier],
-          limit: 1,
-        }],
-        { signal }
-      );
+      let events: NostrEvent[];
+
+      if (followPackData.type === 'naddr') {
+        // Query by author, kind, and d-tag for addressable events
+        events = await nostr.query(
+          [{
+            kinds: [followPackData.kind],
+            authors: [followPackData.pubkey],
+            '#d': [followPackData.identifier],
+            limit: 1,
+          }],
+          { signal }
+        );
+      } else {
+        // Query by event id for nevent
+        events = await nostr.query(
+          [{
+            ids: [followPackData.id],
+            limit: 1,
+          }],
+          { signal }
+        );
+      }
 
       if (events.length === 0) {
         return [];
@@ -88,20 +148,22 @@ export function useSoapboxFollowPack() {
       return pubkeys;
     },
     staleTime: 300000, // 5 minutes
+    enabled: !!followPackData,
   });
 }
 
 /**
- * Hook to fetch calendar events from Soapbox Follow Pack members (NIP-52)
+ * Hook to fetch calendar events from community follow pack members (NIP-52)
  * Filtered to only show events with "shakespeare" in the title
  * Fetches both date-based (31922) and time-based (31923) calendar events
  */
 export function useCommunityEvents(limit = 10) {
   const { nostr } = useNostr();
-  const { data: teamPubkeys } = useSoapboxFollowPack();
+  const { config } = useAppContext();
+  const { data: teamPubkeys } = useCommunityFollowPack();
 
   return useQuery<NostrEvent[]>({
-    queryKey: ['community-events', limit, teamPubkeys],
+    queryKey: ['community-events', limit, config.communityFollowPack, teamPubkeys],
     queryFn: async (c) => {
       if (!teamPubkeys || teamPubkeys.length === 0) {
         return [];

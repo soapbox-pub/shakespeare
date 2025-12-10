@@ -51,6 +51,8 @@
   "showcaseEnabledDescription": "Nuna sashen nuni na aikace-aikace a shafin gida",
   "showcaseModerator": "Mai Kula da Nuni",
   "showcaseModeratorDescription": "Maɓallin jama'a na Nostr (npub) na mai amfani wanda zai iya kula da ƙaddamarwar nuni",
+  "communityFollowPack": "Al'umma",
+  "communityFollowPackDescription": "Taron Nostr na fakitin bi da ake amfani da shi don sashen Ayyukan Al'umma a shafin Al'umma",
   "filesystemPaths": "Hanyoyin Tsarin Fayil",
   "projectsDirectory": "Kundin Ayyuka",
   "projectsDirectoryDescription": "Hanyar tsarin fayil inda ake adana ayyuka",

@@ -51,6 +51,8 @@
   "showcaseEnabledDescription": "Display the app showcase section on the home page",
   "showcaseModerator": "Showcase Moderator",
   "showcaseModeratorDescription": "Nostr public key (npub) of the user who can moderate showcase submissions",
+  "communityFollowPack": "Community",
+  "communityFollowPackDescription": "Nostr event of the follow pack used for the Community Events section of the Community page",
   "filesystemPaths": "Filesystem Paths",
   "projectsDirectory": "Projects Directory",
   "projectsDirectoryDescription": "Filesystem path where projects are stored",

@@ -51,6 +51,8 @@
   "showcaseEnabledDescription": "Gosipụta ngalaba ngosipụta ngwa na ibe ụlọ",
   "showcaseModerator": "Onye Nlekọta Ngosipụta",
   "showcaseModeratorDescription": "Igodo ọha Nostr (npub) nke onye ọrụ nwere ike ilekọta ntinye ngosipụta",
+  "communityFollowPack": "Obodo",
+  "communityFollowPackDescription": "Ihe omume Nostr nke ngwugwu eso a na-eji maka ngalaba Mmemme Obodo na ibe Obodo",
   "filesystemPaths": "Ụzọ Sistemu Faịlụ",
   "projectsDirectory": "Ndekọ Ọrụ",
   "projectsDirectoryDescription": "Ụzọ sistemu faịlụ ebe echekwara ọrụ",

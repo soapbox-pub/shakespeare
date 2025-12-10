@@ -51,6 +51,8 @@
   "showcaseEnabledDescription": "Exibir a seção de vitrine de aplicativos na página inicial",
   "showcaseModerator": "Moderador da Vitrine",
   "showcaseModeratorDescription": "Chave pública Nostr (npub) do usuário que pode moderar envios da vitrine",
+  "communityFollowPack": "Comunidade",
+  "communityFollowPackDescription": "Evento Nostr do pacote de seguir usado para a seção de Eventos da Comunidade na página da Comunidade",
   "filesystemPaths": "Caminhos do Sistema de Arquivos",
   "projectsDirectory": "Diretório de Projetos",
   "projectsDirectoryDescription": "Caminho do sistema de arquivos onde os projetos são armazenados",

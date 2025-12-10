@@ -57,6 +57,8 @@ export interface AppConfig {
   sentryEnabled: boolean;
   /** System prompt EJS template */
   systemPrompt?: string;
+  /** Nostr follow pack naddr for community events (e.g., "naddr1...") */
+  communityFollowPack: string;
 }
 
 export interface AppContextType {

@@ -75,6 +75,7 @@ describe('useGenerateProjectInfo', () => {
       fsPathTemplates: '/templates',
       sentryDsn: '',
       sentryEnabled: false,
+      communityFollowPack: '',
     };
     mockUseAppContext.mockReturnValue({
       config,
@@ -228,6 +229,7 @@ describe('useGenerateProjectInfo', () => {
       fsPathTemplates: '/templates',
       sentryDsn: '',
       sentryEnabled: false,
+      communityFollowPack: '',
     };
     mockUseAppContext.mockReturnValue({
       config,

@@ -57,6 +57,7 @@ export function TestApp({ children }: TestAppProps) {
     fsPathTemplates: '/templates',
     sentryDsn: '',
     sentryEnabled: false,
+    communityFollowPack: 'naddr1qvzqqqr4xgpzpjcswsacvumftxsmcejj3vsxu8mf203p8hkxoklxtgva7rdxzm0qqy88wumn8ghj7mn0wd68yttsw43z7qg4waehxw309aex2mrp0yhx6mmddaehgu339e3k7mf0qythwumn8ghj7cn5vvhxkmr9dejxz7n0xvs8xmmrdejhytnrdakj7q3qdqr8kgh3s5q8ztw0swmvpwz98cse7rw43n4nhrpszgafnuwrxh8hscmhv5m',
   };
 
   // Initialize LightningFS for testing

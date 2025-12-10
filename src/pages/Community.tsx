@@ -244,7 +244,7 @@ export default function Community() {
 
           {/* #ShakespeareDIY Feed */}
           <section className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <div>
                 <h2 className="text-2xl font-bold flex items-center gap-2">
                   <Sparkles className="h-6 w-6 text-primary" />
@@ -252,7 +252,7 @@ export default function Community() {
                 </h2>
                 <p className="text-muted-foreground">See what the community is building</p>
               </div>
-              <Badge variant="outline">Live from Nostr</Badge>
+              <Badge variant="outline" className="w-fit">Live from Nostr</Badge>
             </div>
 
             {feedLoading ? (

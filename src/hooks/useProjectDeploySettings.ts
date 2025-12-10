@@ -1,56 +1,79 @@
 import { useState, useEffect, useCallback } from 'react';
+import { z } from 'zod';
 import { useFS } from './useFS';
 import { useFSPaths } from './useFSPaths';
 
-export interface ShakespeareProjectConfig {
-  type: 'shakespeare';
-  data: {
-    subdomain?: string;
-  };
-}
+const shakespeareProjectConfigSchema = z.object({
+  type: z.literal('shakespeare'),
+  url: z.string(),
+  data: z.object({
+    subdomain: z.string().optional(),
+  }),
+});
 
-export interface NsiteProjectConfig {
-  type: 'nsite';
-  data: {
-    nsec: string;
-  };
-}
+const nsiteProjectConfigSchema = z.object({
+  type: z.literal('nsite'),
+  url: z.string(),
+  data: z.object({
+    nsec: z.string(),
+  }),
+});
 
-export interface NetlifyProjectConfig {
-  type: 'netlify';
-  data: {
-    siteId?: string;
-  };
-}
+const netlifyProjectConfigSchema = z.object({
+  type: z.literal('netlify'),
+  url: z.string(),
+  data: z.object({
+    siteId: z.string().optional(),
+  }),
+});
 
-export interface VercelProjectConfig {
-  type: 'vercel';
-  data: {
-    teamId?: string;
-    projectId?: string;
-  };
-}
+const vercelProjectConfigSchema = z.object({
+  type: z.literal('vercel'),
+  url: z.string(),
+  data: z.object({
+    teamId: z.string().optional(),
+    projectId: z.string().optional(),
+  }),
+});
 
-export interface CloudflareProjectConfig {
-  type: 'cloudflare';
-  data: {
-    projectName?: string;
-  };
-}
+const cloudflareProjectConfigSchema = z.object({
+  type: z.literal('cloudflare'),
+  url: z.string(),
+  data: z.object({
+    projectName: z.string().optional(),
+  }),
+});
 
-export interface DenoDeployProjectConfig {
-  type: 'deno';
-  data: {
-    projectName?: string;
-  };
-}
+const denoDeployProjectConfigSchema = z.object({
+  type: z.literal('deno'),
+  url: z.string(),
+  data: z.object({
+    projectName: z.string().optional(),
+  }),
+});
 
-export type ProjectProviderConfig = ShakespeareProjectConfig | NsiteProjectConfig | NetlifyProjectConfig | VercelProjectConfig | CloudflareProjectConfig | DenoDeployProjectConfig;
+const projectProviderConfigSchema = z.discriminatedUnion('type', [
+  shakespeareProjectConfigSchema,
+  nsiteProjectConfigSchema,
+  netlifyProjectConfigSchema,
+  vercelProjectConfigSchema,
+  cloudflareProjectConfigSchema,
+  denoDeployProjectConfigSchema,
+]);
 
-export interface ProjectDeploySettings {
-  providers: Record<string, ProjectProviderConfig>;
-  currentProvider?: string;
-}
+const projectDeploySettingsSchema = z.object({
+  providers: z.record(z.string(), projectProviderConfigSchema),
+  currentProvider: z.string().optional(),
+});
+
+export type ShakespeareProjectConfig = z.infer<typeof shakespeareProjectConfigSchema>;
+export type NsiteProjectConfig = z.infer<typeof nsiteProjectConfigSchema>;
+export type NetlifyProjectConfig = z.infer<typeof netlifyProjectConfigSchema>;
+export type VercelProjectConfig = z.infer<typeof vercelProjectConfigSchema>;
+export type CloudflareProjectConfig = z.infer<typeof cloudflareProjectConfigSchema>;
+export type DenoDeployProjectConfig = z.infer<typeof denoDeployProjectConfigSchema>;
+export type ProjectProviderConfig = z.infer<typeof projectProviderConfigSchema>;
+export type ProjectDeploySettings = z.infer<typeof projectDeploySettingsSchema>;
 
 /**
  * Hook to manage project-specific deployment settings
@@ -77,17 +100,14 @@ export function useProjectDeploySettings(projectId: string | null) {
       const content = await fs.fs.readFile(settingsPath, 'utf8');
       const parsed = JSON.parse(content as string);
 
-      // Handle migration from old format (flat Record) to new format (with providers key)
-      if (parsed && typeof parsed === 'object' && !('providers' in parsed)) {
-        // Old format: Record<string, ProjectProviderConfig>
-        // Migrate to new format
-        setSettings({ providers: parsed });
-      } else {
-        // New format or empty
-        setSettings(parsed || { providers: {} });
+      // Validate with Zod
+      const validated = projectDeploySettingsSchema.parse(parsed);
+      setSettings(validated);
+    } catch (error) {
+      // File doesn't exist, is invalid JSON, or doesn't match schema - use empty settings
+      if (error instanceof Error && !error.message.includes('ENOENT')) {
+        console.warn('Failed to load or validate deploy settings:', error);
       }
-    } catch {
-      // File doesn't exist or is invalid, use empty settings
       setSettings({ providers: {} });
     } finally {
       setIsLoading(false);

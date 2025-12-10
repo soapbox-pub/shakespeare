@@ -307,6 +307,7 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
       if (selectedProvider.type === 'shakespeare') {
         await updateProjectSettings(selectedProviderId, {
           type: 'shakespeare',
+          url: result.url,
           data: {
             subdomain: shakespeareForm.subdomain || undefined,
           },
@@ -314,6 +315,7 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
       } else if (selectedProvider.type === 'nsite') {
         await updateProjectSettings(selectedProviderId, {
           type: 'nsite',
+          url: result.url,
           data: {
             nsec: nsiteForm.nsec,
           },
@@ -321,6 +323,7 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
       } else if (selectedProvider.type === 'netlify') {
         await updateProjectSettings(selectedProviderId, {
           type: 'netlify',
+          url: result.url,
           data: {
             siteId: result.metadata?.siteId as string | undefined,
           },
@@ -328,6 +331,7 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
       } else if (selectedProvider.type === 'vercel') {
         await updateProjectSettings(selectedProviderId, {
           type: 'vercel',
+          url: result.url,
           data: {
             teamId: vercelForm.teamId || undefined,
             projectId: vercelForm.projectName || undefined,
@@ -336,6 +340,7 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
       } else if (selectedProvider.type === 'cloudflare') {
         await updateProjectSettings(selectedProviderId, {
           type: 'cloudflare',
+          url: result.url,
           data: {
             projectName: cloudflareForm.projectName || undefined,
           },
@@ -343,6 +348,7 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
       } else if (selectedProvider.type === 'deno') {
         await updateProjectSettings(selectedProviderId, {
           type: 'deno',
+          url: result.url,
           data: {
             projectName: denoDeployForm.projectName || undefined,
           },
@@ -596,6 +602,35 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
                     </SelectContent>
                   </Select>
                 </div>
+
+                {selectedProvider && selectedProviderId && (() => {
+                  const savedConfig = projectSettings.providers[selectedProviderId];
+                  const url = savedConfig?.url;
+
+                  if (url) {
+                    return (
+                      <div className="space-y-2">
+                        <Label>Last Deployment</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            value={url}
+                            readOnly
+                            className="flex-1 text-muted-foreground"
+                          />
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => window.open(url, '_blank')}
+                            title="Visit last deployment"
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
 
                 {selectedProvider && renderProviderFields()}
 

@@ -7,6 +7,7 @@ import {
   Calendar,
   Award,
   MapPin,
+  Video,
   BookOpen,
   Sparkles,
   ArrowRight,
@@ -654,10 +655,21 @@ function FeedPost({ event }: { event: NostrEvent }) {
   );
 }
 
+// Helper to check if a string is a URL
+function isUrl(str: string): boolean {
+  try {
+    const url = new URL(str);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
 // Event Card Component
 function EventCard({ event }: { event: NostrEvent }) {
   const eventData = extractCalendarEventData(event);
   const formattedDate = formatEventDate(eventData.start, eventData.kind, eventData.startTzid);
+  const isVirtual = eventData.location && isUrl(eventData.location);
 
   return (
     <Card className="hover:shadow-md transition-shadow overflow-hidden">
@@ -686,10 +698,23 @@ function EventCard({ event }: { event: NostrEvent }) {
           <span>{formattedDate}</span>
         </div>
         {eventData.location && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <MapPin className="h-4 w-4" />
-            <span>{eventData.location}</span>
-          </div>
+          isVirtual ? (
+            <a
+              href={eventData.location}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 text-sm text-primary hover:underline"
+            >
+              <Video className="h-4 w-4" />
+              <span>Virtual</span>
+              <ExternalLink className="h-3 w-3" />
+            </a>
+          ) : (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <MapPin className="h-4 w-4" />
+              <span>{eventData.location}</span>
+            </div>
+          )
         )}
         {eventData.hashtags.length > 0 && (
           <div className="flex flex-wrap gap-1 pt-2">

@@ -2,9 +2,13 @@ import { type NostrEvent, NRelay1 } from '@nostrify/nostrify';
 import { useNostr } from '@nostrify/react';
 import { useQuery } from '@tanstack/react-query';
 
-// Soapbox npub for calendar events
-// npub10qdp2fc9ta6vraczxrcs8prqnv69fru2k6s2dj48gqjcylulmtjsg9arpj
-const SOAPBOX_PUBKEY = '7806855384bdda1c7bc0431c40e18699345a47cadb505b2a9d012c27e7e7f5ca';
+// Soapbox Follow Pack naddr for team members
+// naddr1qvzqqqr4xgpzpjcswsacvumftxsmcejj3vsxu8mf203p8hkxoklxtgva7rdxzm0qqy88wumn8ghj7mn0wd68yttsw43z7qg4waehxw309aex2mrp0yhx6mmddaehgu339e3k7mf0qythwumn8ghj7cn5vvhxkmr9dejxz7n0xvs8xmmrdejhytnrdakj7q3qdqr8kgh3s5q8ztw0swmvpwz98cse7rw43n4nhrpszgafnuwrxh8hscmhv5m
+const SOAPBOX_FOLLOW_PACK = {
+  pubkey: '932614571afcbad4d17a191ee281e39eebbb41b93fac8fd87829622aeb112f4d',
+  kind: 39089,
+  identifier: 'k4p5w0n22suf',
+};
 
 // ShakespeareGitCommits bot npub
 // npub1msc06u2v3y3z2awdxlc7k2tnjlc78xg8awvha5rsaphd8py7ussqd0phxu
@@ -42,30 +46,105 @@ export function useShakespeareFeed(limit = 20) {
 }
 
 /**
- * Hook to fetch calendar events that Soapbox is attending (NIP-52)
- * Fetches both date-based (31922) and time-based (31923) calendar events
+ * Helper to check if an event title contains "shakespeare" (case-insensitive)
  */
-export function useCommunityEvents(limit = 10) {
+function hasShakespeareInTitle(event: NostrEvent): boolean {
+  const title = event.tags.find(([name]) => name === 'title')?.[1]
+    || event.tags.find(([name]) => name === 'name')?.[1]
+    || '';
+  return title.toLowerCase().includes('shakespeare');
+}
+
+/**
+ * Hook to fetch the Soapbox Follow Pack to get team member pubkeys
+ */
+export function useSoapboxFollowPack() {
   const { nostr } = useNostr();
 
-  return useQuery<NostrEvent[]>({
-    queryKey: ['community-events', limit],
+  return useQuery<string[]>({
+    queryKey: ['soapbox-follow-pack'],
     queryFn: async (c) => {
       const signal = AbortSignal.any([c.signal, AbortSignal.timeout(5000)]);
 
-      // Query for calendar events where Soapbox is tagged as a participant
       const events = await nostr.query(
         [{
-          kinds: [31922, 31923],
-          '#p': [SOAPBOX_PUBKEY],
-          limit
+          kinds: [SOAPBOX_FOLLOW_PACK.kind],
+          authors: [SOAPBOX_FOLLOW_PACK.pubkey],
+          '#d': [SOAPBOX_FOLLOW_PACK.identifier],
+          limit: 1,
         }],
         { signal }
       );
 
+      if (events.length === 0) {
+        return [];
+      }
+
+      // Extract all pubkeys from p tags
+      const pubkeys = events[0].tags
+        .filter(([name]) => name === 'p')
+        .map(([, pubkey]) => pubkey);
+
+      return pubkeys;
+    },
+    staleTime: 300000, // 5 minutes
+  });
+}
+
+/**
+ * Hook to fetch calendar events from Soapbox Follow Pack members (NIP-52)
+ * Filtered to only show events with "shakespeare" in the title
+ * Fetches both date-based (31922) and time-based (31923) calendar events
+ */
+export function useCommunityEvents(limit = 10) {
+  const { nostr } = useNostr();
+  const { data: teamPubkeys } = useSoapboxFollowPack();
+
+  return useQuery<NostrEvent[]>({
+    queryKey: ['community-events', limit, teamPubkeys],
+    queryFn: async (c) => {
+      if (!teamPubkeys || teamPubkeys.length === 0) {
+        return [];
+      }
+
+      const signal = AbortSignal.any([c.signal, AbortSignal.timeout(5000)]);
+
+      // Query for calendar events created by or mentioning team members
+      const [createdEvents, attendingEvents] = await Promise.all([
+        // Events created by team members
+        nostr.query(
+          [{
+            kinds: [31922, 31923],
+            authors: teamPubkeys,
+            limit: limit * 2,
+          }],
+          { signal }
+        ),
+        // Events where team members are tagged as participants
+        nostr.query(
+          [{
+            kinds: [31922, 31923],
+            '#p': teamPubkeys,
+            limit: limit * 2,
+          }],
+          { signal }
+        ),
+      ]);
+
+      // Combine all events and filter to only include those with "shakespeare" in the title
+      const allEvents = [
+        ...createdEvents,
+        ...attendingEvents,
+      ].filter(hasShakespeareInTitle);
+
+      // Deduplicate events by id
+      const uniqueEvents = allEvents.filter((event, index, self) =>
+        index === self.findIndex(e => e.id === event.id)
+      );
+
       // Filter for future events only
       const now = Math.floor(Date.now() / 1000);
-      return events.filter(event => {
+      return uniqueEvents.filter(event => {
         const startTag = event.tags.find(([name]) => name === 'start')?.[1];
         if (!startTag) return false;
 
@@ -90,6 +169,7 @@ export function useCommunityEvents(limit = 10) {
       });
     },
     staleTime: 300000, // 5 minutes
+    enabled: !!teamPubkeys && teamPubkeys.length > 0,
   });
 }
 

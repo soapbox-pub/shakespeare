@@ -256,13 +256,13 @@ export default function Community() {
             </div>
 
             {feedLoading ? (
-              <div className="grid md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {Array.from({ length: 4 }).map((_, i) => (
                   <Card key={i}>
                     <CardContent className="pt-4">
                       <div className="flex items-start gap-3">
-                        <Skeleton className="h-10 w-10 rounded-full" />
-                        <div className="flex-1 space-y-2">
+                        <Skeleton className="h-10 w-10 rounded-full flex-shrink-0" />
+                        <div className="flex-1 min-w-0 space-y-2">
                           <Skeleton className="h-4 w-24" />
                           <Skeleton className="h-16 w-full" />
                         </div>
@@ -272,7 +272,7 @@ export default function Community() {
                 ))}
               </div>
             ) : feedPosts && feedPosts.length > 0 ? (
-              <div className="grid md:grid-cols-2 gap-4 auto-rows-fr">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 auto-rows-fr">
                 {feedPosts.map((post) => (
                   <FeedPost key={post.id} event={post} />
                 ))}

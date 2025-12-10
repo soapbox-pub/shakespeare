@@ -5,6 +5,7 @@ import { URLFragmentHandler } from "./components/URLFragmentHandler";
 
 import Index from "./pages/Index";
 import Clone from "./pages/Clone";
+import Community from "./pages/Community";
 import Settings from "./pages/Settings";
 import Preferences from "./pages/Preferences";
 import NostrSettings from "./pages/NostrSettings";
@@ -36,6 +37,7 @@ export function AppRouter() {
         <Route path="/" element={<Index />} />
         <Route path="/giftcard" element={<Index />} />
         <Route path="/clone" element={<Clone />} />
+        <Route path="/community" element={<Community />} />
         <Route path="/oauth/github" element={<GitHubOAuth />} />
         <Route path="/oauth/netlify" element={<NetlifyOAuth />} />
         <Route path="/oauth/vercel" element={<VercelOAuth />} />

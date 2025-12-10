@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Plus, Folder, GitBranch, Loader2, ChevronDown, ChevronRight, Star, Columns2, X, Settings, HelpCircle, Search, Tag, Folders } from 'lucide-react';
+import { Plus, Folder, GitBranch, Loader2, ChevronDown, ChevronRight, Star, Columns2, X, Settings, HelpCircle, Search, Tag, Folders, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
@@ -511,7 +511,7 @@ export function ProjectSidebar({
         </div>
       </div>
 
-      {/* Settings and Help at Bottom */}
+      {/* Settings, Community, and Help at Bottom */}
       <div className="border-t border-sidebar-border bg-gradient-to-r from-primary/5 to-accent/5 mt-auto pb-safe">
         <div className="p-2 flex items-center gap-2">
           <Button
@@ -522,6 +522,15 @@ export function ProjectSidebar({
           >
             <Settings className="h-4 w-4 transition-colors duration-200" />
             {t('settings')}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-9 w-9 p-0 text-sidebar-foreground dark:hover:text-sidebar-primary hover:bg-primary/10 dark:hover:bg-sidebar-accent/30 transition-all duration-200"
+            onClick={() => navigateAndClose('/community')}
+            aria-label={t('community')}
+          >
+            <Users className="h-4 w-4 transition-colors duration-200" />
           </Button>
           <Button
             variant="ghost"

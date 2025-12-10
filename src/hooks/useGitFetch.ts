@@ -34,6 +34,7 @@ export function useGitFetch(projectId: string | null) {
   const previousStateRef = useRef<{
     defaultBranchOid: string | null;
     currentBranchOid: string | null;
+    dataUpdatedAt: number;
   } | null>(null);
 
   const query = useQuery({
@@ -300,22 +301,29 @@ export function useGitFetch(projectId: string | null) {
 
   // Show toast notifications when changes are detected
   useEffect(() => {
-    if (!query.data || !query.isSuccess) {
+    if (!query.data || !query.isSuccess || query.dataUpdatedAt === undefined) {
       return;
     }
 
     const currentState = {
       defaultBranchOid: query.data.defaultBranchOid,
       currentBranchOid: query.data.currentBranchOid,
+      dataUpdatedAt: query.dataUpdatedAt,
     };
 
-    // Skip on first load
+    // Initialize on first load or after component remount
     if (previousStateRef.current === null) {
       previousStateRef.current = currentState;
       return;
     }
 
     const prevState = previousStateRef.current;
+
+    // Skip if this is the same data we've already seen (same dataUpdatedAt timestamp)
+    // This prevents showing toasts when navigating back to a project with cached data
+    if (prevState.dataUpdatedAt === currentState.dataUpdatedAt) {
+      return;
+    }
 
     // Detect default branch changes
     const defaultBranchChanged =
@@ -356,7 +364,7 @@ export function useGitFetch(projectId: string | null) {
 
     // Update previous state
     previousStateRef.current = currentState;
-  }, [query.data, query.isSuccess, toast, queryClient, projectId]);
+  }, [query.data, query.isSuccess, query.dataUpdatedAt, toast, queryClient, projectId]);
 
   return query;
 }

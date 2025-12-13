@@ -1,4 +1,4 @@
-import { useState, useCallback, memo } from 'react';
+import { useState, useCallback, useMemo, memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -7,6 +7,7 @@ import { CircularProgress } from '@/components/ui/circular-progress';
 import { FileAttachment } from '@/components/ui/file-attachment';
 import { Square, ArrowUp } from 'lucide-react';
 import { ModelSelector } from '@/components/ModelSelector';
+import { createPasteHandler } from '@/lib/utils';
 
 interface ChatInputProps {
   isLoading: boolean;
@@ -83,34 +84,12 @@ export const ChatInput = memo(function ChatInput({
     }
   }, [handleSend]);
 
-  const handlePaste = useCallback(async (e: React.ClipboardEvent) => {
-    const items = e.clipboardData?.items;
-    if (!items) return;
-
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i];
-
-      // Check if the item is an image
-      if (item.type.startsWith('image/')) {
-        e.preventDefault(); // Prevent default paste behavior for images
-
-        const file = item.getAsFile();
-        if (file) {
-          // Generate a filename with timestamp
-          const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-          const extension = file.type.split('/')[1] || 'png';
-          const filename = `pasted-image-${timestamp}.${extension}`;
-
-          // Create a new File object with the generated name
-          const namedFile = new File([file], filename, { type: file.type });
-
-          // Add to attached files
-          setAttachedFiles(prev => [...prev, namedFile]);
-        }
-        break; // Only handle the first image found
-      }
-    }
-  }, []);
+  const handlePaste = useMemo(
+    () => createPasteHandler((file) => {
+      setAttachedFiles(prev => [...prev, file]);
+    }),
+    [] // setAttachedFiles is stable from useState, so no dependencies needed
+  );
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value);

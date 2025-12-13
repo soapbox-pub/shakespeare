@@ -69,3 +69,40 @@ export function formatRelativeTime(timestamp: number | Date): string {
     return `${diffYears} years ago`;
   }
 }
+
+/**
+ * Creates a paste event handler that extracts images from clipboard data
+ * and adds them via the provided callback.
+ * @param onFileAdd - Callback function to add the pasted file
+ * @returns A paste event handler function
+ */
+export function createPasteHandler(onFileAdd: (file: File) => void) {
+  return async (e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+
+      // Check if the item is an image
+      if (item.type.startsWith('image/')) {
+        e.preventDefault(); // Prevent default paste behavior for images
+
+        const file = item.getAsFile();
+        if (file) {
+          // Generate a filename with timestamp
+          const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+          const extension = file.type.split('/')[1] || 'png';
+          const filename = `pasted-image-${timestamp}.${extension}`;
+
+          // Create a new File object with the generated name
+          const namedFile = new File([file], filename, { type: file.type });
+
+          // Add to attached files
+          onFileAdd(namedFile);
+        }
+        break; // Only handle the first image found
+      }
+    }
+  };
+}

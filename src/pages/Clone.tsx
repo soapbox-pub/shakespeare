@@ -414,7 +414,7 @@ export default function Clone() {
                     placeholder="Search repositories..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-9 h-9 text-sm"
+                    className="pl-9 h-10 text-sm"
                   />
                 </div>
               )}

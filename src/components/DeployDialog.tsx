@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Rocket, ExternalLink, AlertCircle } from 'lucide-react';
+import { Rocket, ExternalLink, AlertCircle, Settings, Cloud } from 'lucide-react';
 import { ExternalFavicon } from '@/components/ExternalFavicon';
 import {
   Dialog,
@@ -562,19 +562,42 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
         ) : (
           <div className="space-y-4">
             {settings.providers.length === 0 ? (
-              <Alert>
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  No deployment providers configured.{' '}
-                  <Link
-                    to="/settings/deploy"
-                    className="underline hover:no-underline"
-                    onClick={handleClose}
-                  >
-                    Configure deployment settings
-                  </Link>
-                </AlertDescription>
-              </Alert>
+              <div className="py-8 px-4">
+                <div className="max-w-md mx-auto space-y-6 text-center">
+                  {/* Icon */}
+                  <div className="flex justify-center">
+                    <div className="relative">
+                      <div className="absolute inset-0 bg-primary/10 rounded-full blur-xl"></div>
+                      <div className="relative bg-gradient-to-br from-primary/20 to-primary/5 p-6 rounded-2xl border border-primary/20">
+                        <Cloud className="h-12 w-12 text-primary" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Heading */}
+                  <div className="space-y-2">
+                    <h3 className="text-xl font-semibold">Choose Your Deployment Platform</h3>
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      Deploy your Shakespeare projects to any hosting provider. Configure your preferred platform to get started.
+                    </p>
+                  </div>
+
+                  {/* CTA */}
+                  <div className="pt-2">
+                    <Button
+                      asChild
+                      size="lg"
+                      className="w-full"
+                      onClick={handleClose}
+                    >
+                      <Link to="/settings/deploy">
+                        <Settings className="h-4 w-4 mr-2" />
+                        Configure Deployment Provider
+                      </Link>
+                    </Button>
+                  </div>
+                </div>
+              </div>
             ) : (
               <>
                 <div className="space-y-2">

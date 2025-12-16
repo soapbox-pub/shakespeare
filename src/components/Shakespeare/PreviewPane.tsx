@@ -33,6 +33,7 @@ import { Terminal as TerminalComponent } from '@/components/Terminal';
 import { useSearchParams } from 'react-router-dom';
 import { useAppContext } from '@/hooks/useAppContext';
 import { isMediaFile } from '@/lib/fileUtils';
+import { injectNostrShim, getNostrShimCode, NOSTR_SHIM_PATH } from '@/lib/nostrShim';
 
 interface PreviewPaneProps {
   projectId: string;
@@ -319,6 +320,104 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
     }
   }, [historyIndex, navigationHistory, sendNavigationCommand]);
 
+  // Handle nostr.* requests from iframe (NIP-07 proxy)
+  const handleNostrRequest = useCallback(async (message: {
+    jsonrpc: '2.0';
+    method: string;
+    params: Record<string, unknown>;
+    id: number;
+  }) => {
+    const { method, params, id } = message;
+    const nostrMethod = method.replace('nostr.', '');
+    
+    try {
+      // Check if window.nostr is available in the parent
+      if (!window.nostr) {
+        throw new Error('Nostr extension not found. Please install a NIP-07 browser extension.');
+      }
+
+      let result: unknown;
+
+      switch (nostrMethod) {
+        case 'getPublicKey':
+          result = await window.nostr.getPublicKey();
+          break;
+          
+        case 'signEvent':
+          result = await window.nostr.signEvent(params.event as Parameters<typeof window.nostr.signEvent>[0]);
+          break;
+          
+        case 'getRelays':
+          if (window.nostr.getRelays) {
+            result = await window.nostr.getRelays();
+          } else {
+            result = {};
+          }
+          break;
+          
+        case 'nip04.encrypt':
+          if (!window.nostr.nip04) {
+            throw new Error('NIP-04 encryption not supported by this extension');
+          }
+          result = await window.nostr.nip04.encrypt(
+            params.pubkey as string,
+            params.plaintext as string
+          );
+          break;
+          
+        case 'nip04.decrypt':
+          if (!window.nostr.nip04) {
+            throw new Error('NIP-04 decryption not supported by this extension');
+          }
+          result = await window.nostr.nip04.decrypt(
+            params.pubkey as string,
+            params.ciphertext as string
+          );
+          break;
+          
+        case 'nip44.encrypt':
+          if (!window.nostr.nip44) {
+            throw new Error('NIP-44 encryption not supported by this extension');
+          }
+          result = await window.nostr.nip44.encrypt(
+            params.pubkey as string,
+            params.plaintext as string
+          );
+          break;
+          
+        case 'nip44.decrypt':
+          if (!window.nostr.nip44) {
+            throw new Error('NIP-44 decryption not supported by this extension');
+          }
+          result = await window.nostr.nip44.decrypt(
+            params.pubkey as string,
+            params.ciphertext as string
+          );
+          break;
+          
+        default:
+          throw new Error(`Unknown nostr method: ${nostrMethod}`);
+      }
+
+      // Send success response
+      sendResponse({
+        jsonrpc: '2.0',
+        result: result as JSONRPCResponse['result'],
+        id
+      });
+    } catch (error) {
+      console.error(`[Preview] Nostr ${nostrMethod} error:`, error);
+      sendError({
+        jsonrpc: '2.0',
+        error: {
+          code: -32000,
+          message: error instanceof Error ? error.message : 'Unknown error',
+        },
+        id
+      });
+    }
+  }, [sendResponse, sendError]);
+
   const handleFetch = useCallback(async (request: JSONRPCRequest) => {
     const { params, id } = request;
     const { request: fetchRequest } = params;
@@ -348,10 +447,40 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
       // Skip SPA fallback for static assets (files with extensions)
       const isStaticAsset = /\.[a-zA-Z0-9]+$/.test(path);
 
+      // Serve the nostr shim script at the special path
+      if (path === NOSTR_SHIM_PATH) {
+        console.log('[Preview] Serving nostr shim script');
+        const shimCode = getNostrShimCode();
+        sendResponse({
+          jsonrpc: '2.0',
+          result: {
+            status: 200,
+            statusText: 'OK',
+            headers: {
+              'Content-Type': 'application/javascript',
+              'Cache-Control': 'no-cache',
+            },
+            body: encodeBase64(new TextEncoder().encode(shimCode)),
+          },
+          id
+        });
+        return;
+      }
+
       // SPA routing: try to serve the exact file first
       try {
         const bytes = await projectsManager.readFileBytes(projectId, 'dist' + filePath);
         console.log(`Serving file: ${filePath}`);
+
+        // Inject nostr shim into index.html
+        let responseBody: string;
+        if (filePath === '/index.html') {
+          const html = new TextDecoder().decode(bytes);
+          const injectedHtml = injectNostrShim(html);
+          responseBody = encodeBase64(new TextEncoder().encode(injectedHtml));
+        } else {
+          responseBody = encodeBase64(bytes);
+        }
 
         sendResponse({
           jsonrpc: '2.0',
@@ -362,7 +491,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
               'Content-Type': getContentType(filePath),
               'Cache-Control': 'no-cache',
             },
-            body: encodeBase64(bytes),
+            body: responseBody,
           },
           id
         });
@@ -393,6 +522,10 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
         const bytes = await projectsManager.readFileBytes(projectId, 'dist/index.html');
         console.log(`Serving index.html fallback for: ${path}`);
 
+        // Inject nostr shim into index.html for SPA fallback
+        const html = new TextDecoder().decode(bytes);
+        const injectedHtml = injectNostrShim(html);
+
         sendResponse({
           jsonrpc: '2.0',
           result: {
@@ -402,7 +535,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
               'Content-Type': 'text/html',
               'Cache-Control': 'no-cache',
             },
-            body: encodeBase64(bytes),
+            body: encodeBase64(new TextEncoder().encode(injectedHtml)),
           },
           id
         });
@@ -453,12 +586,14 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
         handleConsoleMessage(message);
       } else if (message.jsonrpc === '2.0' && message.method === 'updateNavigationState') {
         handleUpdateNavigationState(message);
+      } else if (message.jsonrpc === '2.0' && message.method?.startsWith('nostr.')) {
+        handleNostrRequest(message);
       }
     };
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [handleFetch, handleConsoleMessage, handleUpdateNavigationState, projectId, previewDomain]);
+  }, [handleFetch, handleConsoleMessage, handleUpdateNavigationState, handleNostrRequest, projectId, previewDomain]);
 
   useEffect(() => {
     if (selectedFile) {

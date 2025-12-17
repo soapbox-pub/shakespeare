@@ -428,11 +428,13 @@ export function ToolCallDisplay({ toolName, toolArgs, state, result }: ToolCallD
     // For completed state, we need the result
     if (!result) return null;
 
-    // Parse "Generated image: /tmp/filename.png" from result
-    const match = result.match(/Generated image:\s*(\/tmp\/[^\s\n]+)/);
+    // Parse "Generated image: <path>" from result
+    // Path can be VFS style (/tmp/...) or OS path (C:/Users/.../Temp/... on Windows)
+    const match = result.match(/Generated image:\s*([^\s\n]+)/);
     if (match) {
       const imagePath = match[1];
-      const filename = imagePath.split('/').pop() || imagePath;
+      // Handle both forward and back slashes for getting filename
+      const filename = imagePath.split(/[/\\]/).pop() || imagePath;
 
       // Hide the image section if there was a load error
       if (imageLoadError) return null;

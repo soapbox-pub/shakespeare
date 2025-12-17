@@ -2,6 +2,7 @@ import { join, dirname, extname } from "path-browserify";
 
 import type { Loader, Plugin } from "esbuild-wasm";
 import type { JSRuntimeFS } from '@/lib/JSRuntime';
+import { isAbsolutePath, normalizeToForwardSlashes } from '@/lib/pathUtils';
 
 interface TsConfig {
   compilerOptions?: {
@@ -35,21 +36,36 @@ export function fsPlugin(options: FsPluginOptions): Plugin {
           return;
         }
 
+        // Check if this looks like a bare module specifier (npm package)
+        // Bare specifiers don't start with '.', '..', '/', or '@/' (our alias)
+        // Examples: 'react', 'react/jsx-runtime', '@tanstack/react-query'
+        const isBareSpecifier = !args.path.startsWith('.') && 
+                                !args.path.startsWith('/') && 
+                                !args.path.startsWith('@/') &&
+                                !isAbsolutePath(args.path);
+
         let resolved: string;
-        if (args.path.startsWith("/")) {
-          resolved = args.path;
+        // Handle absolute paths (Unix or Windows style)
+        if (isAbsolutePath(args.path)) {
+          resolved = normalizeToForwardSlashes(args.path);
         } else if (args.path.startsWith("@/")) {
           resolved = join(cwd, "src", args.path.slice(2));
         } else if (args.importer && (args.path.startsWith("./") || args.path.startsWith("../"))) {
           resolved = join(dirname(args.importer), args.path);
-        } else if (args.importer && tsconfig?.compilerOptions?.baseUrl) {
+        } else if (args.importer && tsconfig?.compilerOptions?.baseUrl && !isBareSpecifier) {
+          // Only use baseUrl for non-bare specifiers (local project paths)
+          // Don't try to resolve npm packages via baseUrl
           resolved = join(cwd, tsconfig.compilerOptions.baseUrl, args.path);
         } else {
           return;
         }
 
+        // Normalize to forward slashes for consistent comparison
+        resolved = normalizeToForwardSlashes(resolved);
+        const normalizedCwd = normalizeToForwardSlashes(cwd);
+
         // Security: prevent accessing files outside the project directory
-        if (resolved.startsWith("/") && !resolved.startsWith(cwd)) {
+        if (isAbsolutePath(resolved) && !resolved.startsWith(normalizedCwd)) {
           throw new Error(`Access to files outside the project directory is not allowed: ${resolved}`);
         }
 

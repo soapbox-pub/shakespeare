@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { AppContext, type AppConfig, type AppContextType, type Theme, type RelayMetadata } from '@/contexts/AppContext';
 import i18n from '@/lib/i18n';
+import { expandTildePath, normalizeToForwardSlashes } from '@/lib/pathUtils';
 
 interface AppProviderProps {
   children: ReactNode;
@@ -156,16 +157,16 @@ function useApplyLanguage(language?: string): void {
   }, [language]);
 }
 
-/** Expand FS paths with the user's home directory, if available. */
+/** Expand FS paths with the user's home directory, if available.
+ *  Also normalizes to forward slashes for cross-platform consistency.
+ */
 function expandPath(path: string): string {
   const homedir = window.electron?.homedir;
   if (!homedir) {
     return path;
-  } else if (path.startsWith('~/')) {
-    return homedir + path.slice(1);
-  } else if (path === '~') {
-    return homedir;
-  } else {
-    return path;
   }
+  // Expand tilde and normalize to forward slashes for consistency
+  // This ensures paths work correctly on Windows where homedir uses backslashes
+  const expanded = expandTildePath(path, homedir);
+  return normalizeToForwardSlashes(expanded);
 }

@@ -178,9 +178,13 @@ ipcMain.handle('get-platform', () => {
 });
 
 // Helper function to expand tilde (~) in paths
+// Handles both Unix (~/) and Windows (~\) style paths
 function expandTilde(filepath) {
-  if (filepath.startsWith('~/') || filepath === '~') {
-    return path.join(os.homedir(), filepath.slice(1));
+  if (filepath === '~') {
+    return os.homedir();
+  }
+  if (filepath.startsWith('~/') || filepath.startsWith('~\\')) {
+    return path.join(os.homedir(), filepath.slice(2));
   }
   return filepath;
 }
@@ -188,10 +192,8 @@ function expandTilde(filepath) {
 // Filesystem IPC handlers
 ipcMain.handle('fs:readFile', async (event, filePath, encoding) => {
   if (!filePath) {
-    const err = new Error('Failed to read file: path is required');
-    err.code = 'EINVAL';
-    // Don't log - empty paths are expected from isomorphic-git's ref resolution
-    throw err;
+    // Return error object instead of throwing to avoid Electron's noisy error logging
+    return { __error: true, code: 'EINVAL', message: 'Failed to read file: path is required' };
   }
   try {
     const fullPath = expandTilde(filePath);
@@ -199,10 +201,13 @@ ipcMain.handle('fs:readFile', async (event, filePath, encoding) => {
     // If no encoding, convert Buffer to array for IPC serialization
     return encoding ? data : Array.from(data);
   } catch (error) {
-    // Re-throw with original error code preserved for ENOENT handling
-    // Serialize the error code as a regular property so it survives IPC
+    // For ENOENT/EINVAL errors, return error info instead of throwing to avoid Electron's noisy error logging
+    // These are expected during module resolution and git operations
+    if (error.code === 'ENOENT' || error.code === 'EINVAL') {
+      return { __error: true, code: error.code, message: `Failed to read file ${filePath}: ${error.message}` };
+    }
+    // Re-throw other errors with original error code preserved
     const err = new Error(`Failed to read file ${filePath}: ${error.message}`);
-    // Copy enumerable properties including code
     if (error.code) {
       Object.defineProperty(err, 'code', {
         value: error.code,
@@ -211,11 +216,7 @@ ipcMain.handle('fs:readFile', async (event, filePath, encoding) => {
         configurable: true,
       });
     }
-    // Don't log ENOENT errors - these are expected for git packed objects and missing refs
-    // Only log unexpected errors
-    if (error.code !== 'ENOENT' && error.code !== 'EINVAL') {
-      console.error(err);
-    }
+    console.error(err);
     throw err;
   }
 });
@@ -263,7 +264,11 @@ ipcMain.handle('fs:readdir', async (event, dirPath, withFileTypes) => {
 
     return entries;
   } catch (error) {
-    // Re-throw with original error code preserved for ENOENT handling
+    // Return error object instead of throwing for expected errors to suppress Electron's noisy logging
+    if (error.code === 'ENOTDIR' || error.code === 'ENOENT') {
+      return { __error: true, message: error.message, code: error.code };
+    }
+    // For other errors, re-throw with original error code preserved
     const err = new Error(`Failed to read directory ${dirPath}: ${error.message}`);
     if (error.code) {
       Object.defineProperty(err, 'code', {
@@ -272,10 +277,6 @@ ipcMain.handle('fs:readdir', async (event, dirPath, withFileTypes) => {
         writable: true,
         configurable: true,
       });
-    }
-    // Only log non-ENOTDIR errors (ENOTDIR is expected when checking if a file is a directory)
-    if (error.code !== 'ENOTDIR') {
-      console.error(err);
     }
     throw err;
   }
@@ -323,7 +324,12 @@ ipcMain.handle('fs:stat', async (event, filePath) => {
       atime: stats.atime?.getTime() ?? now,
     };
   } catch (error) {
-    // Re-throw with original error code preserved for ENOENT handling
+    // For ENOENT errors, return error info instead of throwing to avoid Electron's noisy error logging
+    // These are expected during module resolution and git operations
+    if (error.code === 'ENOENT') {
+      return { __error: true, code: 'ENOENT', message: `Failed to stat ${filePath}: ${error.message}` };
+    }
+    // Re-throw other errors with original error code preserved
     const err = new Error(`Failed to stat ${filePath}: ${error.message}`);
     if (error.code) {
       Object.defineProperty(err, 'code', {
@@ -361,6 +367,10 @@ ipcMain.handle('fs:lstat', async (event, filePath) => {
       atime: stats.atime?.getTime() ?? now,
     };
   } catch (error) {
+    // For ENOENT errors, return error info instead of throwing to avoid Electron's noisy error logging
+    if (error.code === 'ENOENT') {
+      return { __error: true, code: 'ENOENT', message: `Failed to lstat ${filePath}: ${error.message}` };
+    }
     const err = new Error(`Failed to lstat ${filePath}: ${error.message}`);
     if (error.code) {
       Object.defineProperty(err, 'code', {
@@ -379,6 +389,11 @@ ipcMain.handle('fs:unlink', async (event, filePath) => {
     const fullPath = expandTilde(filePath);
     await fs.unlink(fullPath);
   } catch (error) {
+    // Return error object instead of throwing for ENOENT to suppress Electron's noisy logging
+    // This is expected when isomorphic-git tries to delete .git/shallow on non-shallow clones
+    if (error.code === 'ENOENT') {
+      return { __error: true, message: error.message, code: error.code };
+    }
     const err = new Error(`Failed to unlink ${filePath}: ${error.message}`);
     if (error.code) {
       Object.defineProperty(err, 'code', {

@@ -3,6 +3,7 @@ import { Dialog, DialogPortal, DialogOverlay } from '@/components/ui/dialog';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { VFSImage } from '@/components/VFSImage';
 import { cn } from '@/lib/utils';
+import { isAbsolutePath } from '@/lib/pathUtils';
 
 interface ImageLightboxProps {
   imageUrl: string | null;
@@ -46,7 +47,7 @@ export function ImageLightbox({ imageUrl, onClose }: ImageLightboxProps) {
                 className="relative z-[2] flex items-center justify-center w-full h-full pointer-events-none"
                 onClick={(e) => e.stopPropagation()}
               >
-                {imageUrl.startsWith('/') ? (
+                {isAbsolutePath(imageUrl) ? (
                   <VFSImage
                     path={imageUrl}
                     alt="Expanded image"

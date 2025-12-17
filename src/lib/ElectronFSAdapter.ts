@@ -1,4 +1,25 @@
 import type { JSRuntimeFS, DirectoryEntry } from './JSRuntime';
+import { getParentDirectory } from './pathUtils';
+
+/**
+ * Error object returned from IPC handlers instead of throwing
+ * to avoid Electron's noisy error logging for expected errors.
+ */
+interface IPCErrorResult {
+  __error: true;
+  code: string;
+  message: string;
+}
+
+/**
+ * Type guard to check if an IPC result is an error object.
+ */
+function isIPCError(result: unknown): result is IPCErrorResult {
+  return result !== null && 
+         typeof result === 'object' && 
+         '__error' in result && 
+         (result as IPCErrorResult).__error === true;
+}
 
 /**
  * Electron filesystem adapter that implements JSRuntimeFS interface
@@ -7,9 +28,27 @@ import type { JSRuntimeFS, DirectoryEntry } from './JSRuntime';
  *
  * Note: This adapter should only be instantiated when running in Electron.
  */
+/** Stat result with function methods matching the JSRuntimeFS interface */
+interface StatResult {
+  isDirectory(): boolean;
+  isFile(): boolean;
+  isBlockDevice(): boolean;
+  isCharacterDevice(): boolean;
+  isSymbolicLink(): boolean;
+  isFIFO(): boolean;
+  isSocket(): boolean;
+  size: number;
+  mtimeMs: number;
+  ctimeMs: number;
+  atimeMs: number;
+  mtime: Date;
+  ctime: Date;
+  atime: Date;
+}
+
 export class ElectronFSAdapter implements JSRuntimeFS {
   // Cache for stat results to avoid repeated IPC calls
-  private statCache = new Map<string, { result: Awaited<ReturnType<typeof this.electron.fs.stat>>; timestamp: number }>();
+  private statCache = new Map<string, { result: StatResult; timestamp: number }>();
   private readonly STAT_CACHE_TTL = 1000; // 1 second TTL for stat cache
 
   // Cache for ENOENT results to avoid repeated failed reads (especially for git objects)
@@ -80,6 +119,23 @@ export class ElectronFSAdapter implements JSRuntimeFS {
       const encoding = typeof options === 'string' ? options : options?.encoding;
       const result = await this.electron.fs.readFile(path, encoding);
 
+      // Handle error objects returned from IPC (to avoid Electron's noisy error logging)
+      if (isIPCError(result)) {
+        const err = new Error(result.message);
+        (err as NodeJS.ErrnoException).code = result.code;
+        
+        // Cache ENOENT errors
+        if (result.code === 'ENOENT') {
+          this.enoentCache.add(path);
+          if (this.enoentCache.size > this.ENOENT_CACHE_MAX_SIZE) {
+            const entries = Array.from(this.enoentCache);
+            entries.slice(0, 1000).forEach(entry => this.enoentCache.delete(entry));
+          }
+        }
+        
+        throw err;
+      }
+
       // If no encoding, convert array to Uint8Array
       if (!encoding && Array.isArray(result)) {
         return new Uint8Array(result);
@@ -117,7 +173,7 @@ export class ElectronFSAdapter implements JSRuntimeFS {
       this.statCache.delete(path);
       this.statCache.delete(`lstat:${path}`);
       this.enoentCache.delete(path); // File now exists
-      const parentDir = path.substring(0, path.lastIndexOf('/'));
+      const parentDir = getParentDirectory(path);
       if (parentDir) {
         this.statCache.delete(parentDir);
         this.statCache.delete(`lstat:${parentDir}`);
@@ -138,19 +194,71 @@ export class ElectronFSAdapter implements JSRuntimeFS {
       // Use cached stat if available to avoid extra IPC call
       const cached = this.statCache.get(path);
       if (cached && Date.now() - cached.timestamp < this.STAT_CACHE_TTL) {
-        if (cached.result.isFile) {
+        // Note: cached.result has isFile as a function (from statResult), so we must call it
+        if (cached.result.isFile()) {
           // This is a file, not a directory - throw ENOTDIR immediately
           const err = new Error(`ENOTDIR: not a directory, scandir '${path}'`);
           (err as NodeJS.ErrnoException).code = 'ENOTDIR';
           throw err;
         }
+      } else {
+        // No cached stat - do a stat check first to avoid unnecessary readdir IPC calls on files
+        // This is important for performance since FileTree iterates all entries and calls readdir on each
+        try {
+          const statResult = await this.stat(path);
+          if (statResult.isFile()) {
+            const err = new Error(`ENOTDIR: not a directory, scandir '${path}'`);
+            (err as NodeJS.ErrnoException).code = 'ENOTDIR';
+            throw err;
+          }
+        } catch (statError) {
+          // If stat fails with ENOENT, let readdir handle it
+          if ((statError as NodeJS.ErrnoException).code !== 'ENOENT') {
+            throw statError;
+          }
+        }
       }
 
       const result = await this.electron.fs.readdir(path, options?.withFileTypes);
 
+      // Handle error objects returned from IPC (to avoid Electron's noisy error logging)
+      if (isIPCError(result)) {
+        const err = new Error(result.message);
+        (err as NodeJS.ErrnoException).code = result.code;
+        throw err;
+      }
+
       if (options?.withFileTypes) {
+        const entries = result as Array<{ name: string; isDirectory: boolean; isFile: boolean }>;
+        const now = Date.now();
+        
+        // Cache the file type info for each child entry to speed up subsequent stat/readdir calls
+        // This is a key optimization - FileTree calls readdir on all children, and we can fast-fail
+        // files without hitting IPC
+        for (const entry of entries) {
+          const childPath = path.endsWith('/') ? `${path}${entry.name}` : `${path}/${entry.name}`;
+          const nowDate = new Date(now);
+          const statResult: StatResult = {
+            isDirectory: () => entry.isDirectory,
+            isFile: () => entry.isFile,
+            isBlockDevice: () => false,
+            isCharacterDevice: () => false,
+            isSymbolicLink: () => false,
+            isFIFO: () => false,
+            isSocket: () => false,
+            size: 0,
+            mtimeMs: now,
+            ctimeMs: now,
+            atimeMs: now,
+            mtime: nowDate,
+            ctime: nowDate,
+            atime: nowDate,
+          };
+          this.statCache.set(childPath, { result: statResult, timestamp: now });
+        }
+
         // Convert plain objects to DirectoryEntry format
-        return (result as Array<{ name: string; isDirectory: boolean; isFile: boolean }>).map(entry => ({
+        return entries.map(entry => ({
           name: entry.name,
           isDirectory: () => entry.isDirectory,
           isFile: () => entry.isFile,
@@ -173,7 +281,7 @@ export class ElectronFSAdapter implements JSRuntimeFS {
       // Invalidate cache for this path and parent
       this.statCache.delete(path);
       this.statCache.delete(`lstat:${path}`);
-      const parentDir = path.substring(0, path.lastIndexOf('/'));
+      const parentDir = getParentDirectory(path);
       if (parentDir) {
         this.statCache.delete(parentDir);
         this.statCache.delete(`lstat:${parentDir}`);
@@ -209,6 +317,14 @@ export class ElectronFSAdapter implements JSRuntimeFS {
       }
 
       const result = await this.electron.fs.stat(path);
+      
+      // Handle error objects returned from IPC (to avoid Electron's noisy error logging)
+      if (isIPCError(result)) {
+        const err = new Error(result.message);
+        (err as NodeJS.ErrnoException).code = result.code;
+        throw err;
+      }
+      
       const now = Date.now();
       const statResult = {
         isDirectory: () => result.isDirectory,
@@ -270,6 +386,14 @@ export class ElectronFSAdapter implements JSRuntimeFS {
       }
 
       const result = await this.electron.fs.lstat(path);
+      
+      // Handle error objects returned from IPC (to avoid Electron's noisy error logging)
+      if (isIPCError(result)) {
+        const err = new Error(result.message);
+        (err as NodeJS.ErrnoException).code = result.code;
+        throw err;
+      }
+      
       const now = Date.now();
       const statResult = {
         isDirectory: () => result.isDirectory,
@@ -309,10 +433,17 @@ export class ElectronFSAdapter implements JSRuntimeFS {
     try {
       const result = await this.electron.fs.unlink(path);
 
+      // Handle error objects returned from IPC (to avoid Electron's noisy error logging)
+      if (isIPCError(result)) {
+        const err = new Error(result.message);
+        (err as NodeJS.ErrnoException).code = result.code;
+        throw err;
+      }
+
       // Invalidate cache for this path and parent
       this.statCache.delete(path);
       this.statCache.delete(`lstat:${path}`);
-      const parentDir = path.substring(0, path.lastIndexOf('/'));
+      const parentDir = getParentDirectory(path);
       if (parentDir) {
         this.statCache.delete(parentDir);
         this.statCache.delete(`lstat:${parentDir}`);
@@ -331,7 +462,7 @@ export class ElectronFSAdapter implements JSRuntimeFS {
       // Invalidate cache for this path and parent
       this.statCache.delete(path);
       this.statCache.delete(`lstat:${path}`);
-      const parentDir = path.substring(0, path.lastIndexOf('/'));
+      const parentDir = getParentDirectory(path);
       if (parentDir) {
         this.statCache.delete(parentDir);
         this.statCache.delete(`lstat:${parentDir}`);
@@ -353,13 +484,13 @@ export class ElectronFSAdapter implements JSRuntimeFS {
       this.statCache.delete(newPath);
       this.statCache.delete(`lstat:${newPath}`);
 
-      const oldParent = oldPath.substring(0, oldPath.lastIndexOf('/'));
+      const oldParent = getParentDirectory(oldPath);
       if (oldParent) {
         this.statCache.delete(oldParent);
         this.statCache.delete(`lstat:${oldParent}`);
       }
 
-      const newParent = newPath.substring(0, newPath.lastIndexOf('/'));
+      const newParent = getParentDirectory(newPath);
       if (newParent) {
         this.statCache.delete(newParent);
         this.statCache.delete(`lstat:${newParent}`);

@@ -3,6 +3,7 @@
  */
 
 import { normalize } from "path-browserify";
+import { normalizeToForwardSlashes } from "./pathUtils";
 
 /**
  * Check if the given path is an absolute path
@@ -38,11 +39,12 @@ export function isWriteAllowed(
   }
 
   // For absolute paths, apply restrictions
-  const absolutePath = normalize(path);
+  // Normalize to forward slashes for consistent comparison (handles both Unix and Windows paths)
+  const absolutePath = normalizeToForwardSlashes(normalize(path));
 
-  // Get configured paths with defaults
-  const tmpPath = options?.tmpPath || '/tmp';
-  const projectsPath = options?.projectsPath || '/projects';
+  // Get configured paths with defaults and normalize them
+  const tmpPath = normalizeToForwardSlashes(options?.tmpPath || '/tmp');
+  const projectsPath = normalizeToForwardSlashes(options?.projectsPath || '/projects');
 
   // Allow writes to tmp directory and its subdirectories
   if (absolutePath.startsWith(tmpPath + '/') || absolutePath === tmpPath) {
@@ -56,7 +58,7 @@ export function isWriteAllowed(
 
   // If we have a current working directory, allow writes within that directory tree
   if (cwd) {
-    const normalizedCwd = normalize(cwd);
+    const normalizedCwd = normalizeToForwardSlashes(normalize(cwd));
     if (absolutePath.startsWith(normalizedCwd + '/') || absolutePath === normalizedCwd) {
       return true;
     }

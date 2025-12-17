@@ -1,10 +1,12 @@
 import { z } from "zod";
+import { join } from "path-browserify";
 import type { Tool, ToolResult } from "./Tool";
 import type { JSRuntimeFS } from "../JSRuntime";
 import type { ShellCommand } from "../commands/ShellCommand";
 import { Git } from "../git";
 import { stripAnsiCodes } from "../ansiToHtml";
 import type { NostrSigner } from "@nostrify/nostrify";
+import { isAbsolutePath } from "../pathUtils";
 import {
   CatCommand,
   CdCommand,
@@ -433,7 +435,7 @@ export class ShellTool implements Tool<ShellToolParams> {
    */
   private async handleRedirection(output: string, redirectType: '>' | '>>', redirectFile: string): Promise<void> {
     // Resolve the file path relative to current working directory
-    const filePath = redirectFile.startsWith('/') ? redirectFile : `${this.cwd}/${redirectFile}`;
+    const filePath = isAbsolutePath(redirectFile) ? redirectFile : join(this.cwd, redirectFile);
 
     if (redirectType === '>') {
       // Overwrite the file

@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { RefreshCw } from 'lucide-react';
+import { CheckIcon, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ReactNode } from 'react';
 
@@ -37,12 +37,11 @@ export function BrowserAddressBar({
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(event.target as Node) &&
-        inputRef.current &&
-        !inputRef.current.contains(event.target as Node)
-      ) {
+      const target = event.target as Node | null;
+      const dropdownElement = dropdownRef.current;
+      const inputElement = inputRef.current;
+
+      if (target && !dropdownElement?.contains(target) && !inputElement?.contains(target)) {
         setShowHistory(false);
       }
     };
@@ -85,7 +84,7 @@ export function BrowserAddressBar({
   };
 
   // Get unique history items (reverse to show most recent first, remove duplicates)
-  const uniqueHistory = Array.from(new Set([...navigationHistory].reverse()));
+  const uniqueHistory = useMemo(() => Array.from(new Set([...navigationHistory].reverse())), [navigationHistory]);
 
   return (
     <div className={cn(
@@ -132,9 +131,17 @@ export function BrowserAddressBar({
                   key={index}
                   type="button"
                   onClick={() => handleHistoryItemClick(path)}
-                  className="w-full p-3 text-left text-xs hover:bg-muted/50 transition-colors flex items-center gap-2 border-b last:border-b-0"
+                  className={cn(
+                    "w-full p-3 text-left text-xs hover:bg-muted/50 transition-colors flex items-center gap-2 border-b last:border-b-0",
+                    {
+                      "bg-muted/30 font-medium": path === currentPath,
+                    },
+                  )}
                 >
                   <span className="truncate">{path}</span>
+                  {path === currentPath && (
+                    <CheckIcon className="size-3 text-muted-foreground ml-auto" />
+                  )}
                 </button>
               ))}
             </div>

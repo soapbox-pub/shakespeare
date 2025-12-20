@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { RefreshCw } from 'lucide-react';
@@ -12,6 +12,7 @@ interface BrowserAddressBarProps {
   className?: string;
   extraContent?: ReactNode;
   leftContent?: ReactNode;
+  navigationHistory?: string[];
 }
 
 export function BrowserAddressBar({
@@ -21,13 +22,34 @@ export function BrowserAddressBar({
   className,
   extraContent,
   leftContent,
+  navigationHistory = [],
 }: BrowserAddressBarProps) {
   const [inputValue, setInputValue] = useState(currentPath);
+  const [showHistory, setShowHistory] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Update input value when currentPath changes (e.g., when iframe navigates)
   useEffect(() => {
     setInputValue(currentPath);
   }, [currentPath]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node) &&
+        inputRef.current &&
+        !inputRef.current.contains(event.target as Node)
+      ) {
+        setShowHistory(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,11 +63,29 @@ export function BrowserAddressBar({
     }
 
     onNavigate(path);
+    setShowHistory(false);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInputValue(e.target.value);
   };
+
+  const handleInputFocus = () => {
+    if (navigationHistory.length > 0) {
+      setShowHistory(true);
+    }
+  };
+
+  const handleHistoryItemClick = (path: string) => {
+    if (onNavigate) {
+      onNavigate(path);
+      setShowHistory(false);
+      inputRef.current?.blur();
+    }
+  };
+
+  // Get unique history items (reverse to show most recent first, remove duplicates)
+  const uniqueHistory = Array.from(new Set([...navigationHistory].reverse()));
 
   return (
     <div className={cn(
@@ -56,27 +96,50 @@ export function BrowserAddressBar({
       {leftContent}
 
       {/* Address bar with refresh button inside */}
-      <form onSubmit={handleSubmit} className="flex-1 mx-auto px-6 max-w-80 relative">
-        <Input
-          type="text"
-          value={inputValue}
-          onChange={handleInputChange}
-          placeholder="Enter path (e.g., /, /about)"
-          className="h-7 text-xs md:text-xs bg-muted/50 border-muted-foreground/20 focus:bg-background pr-9 rounded-full"
-          disabled={!onNavigate}
-        />
-        {onRefresh && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={onRefresh}
-            className="size-6 absolute right-7 top-1/2 -translate-y-1/2 hover:bg-muted/50 rounded-full transition-colors group"
-            title="Refresh"
-          >
-            <RefreshCw className="size-3 text-muted-foreground transition-colors group-hover:text-foreground" />
-          </Button>
-        )}
+      <form onSubmit={handleSubmit} className="flex-1 px-6">
+        <div className="relative max-w-64 mx-auto">
+          <Input
+            ref={inputRef}
+            type="text"
+            value={inputValue}
+            onChange={handleInputChange}
+            onFocus={handleInputFocus}
+            placeholder="Enter path (e.g., /, /about)"
+            className="h-7 text-xs md:text-xs bg-muted/50 border-muted-foreground/20 focus:bg-background pr-9 rounded-full"
+            disabled={!onNavigate}
+          />
+          {onRefresh && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={onRefresh}
+              className="size-6 absolute right-1 top-1/2 -translate-y-1/2 hover:bg-muted/50 rounded-full transition-colors group"
+              title="Refresh"
+            >
+              <RefreshCw className="size-3 text-muted-foreground transition-colors group-hover:text-foreground" />
+            </Button>
+          )}
+
+          {/* Navigation history dropdown */}
+          {showHistory && uniqueHistory.length > 0 && (
+            <div
+              ref={dropdownRef}
+              className="absolute top-full left-1/2 -translate-x-1/2 mt-1 bg-background border rounded-lg shadow-lg overflow-hidden z-50 max-h-64 w-full overflow-y-auto"
+            >
+              {uniqueHistory.map((path, index) => (
+                <button
+                  key={index}
+                  type="button"
+                  onClick={() => handleHistoryItemClick(path)}
+                  className="w-full p-3 text-left text-xs hover:bg-muted/50 transition-colors flex items-center gap-2 border-b last:border-b-0"
+                >
+                  <span className="truncate">{path}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </form>
 
       {/* Extra content */}

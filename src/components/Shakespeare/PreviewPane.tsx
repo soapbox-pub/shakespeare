@@ -665,6 +665,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
                   currentPath={currentPath}
                   onNavigate={hasBuiltProject ? navigateIframe : undefined}
                   onRefresh={hasBuiltProject ? refreshIframe : undefined}
+                  navigationHistory={navigationHistory}
                   leftContent={(
                     <Button
                       variant="ghost"

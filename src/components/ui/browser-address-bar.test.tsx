@@ -81,4 +81,80 @@ describe('BrowserAddressBar', () => {
 
     expect(screen.getByTestId('extra-button')).toBeInTheDocument();
   });
+
+  it('shows navigation history dropdown when input is focused', () => {
+    const navigationHistory = ['/', '/about', '/contact'];
+    render(
+      <BrowserAddressBar
+        navigationHistory={navigationHistory}
+        onNavigate={vi.fn()}
+      />
+    );
+
+    const input = screen.getByPlaceholderText('Enter path (e.g., /, /about)');
+    fireEvent.focus(input);
+
+    // History should be shown in reverse order (most recent first)
+    expect(screen.getByText('/contact')).toBeInTheDocument();
+    expect(screen.getByText('/about')).toBeInTheDocument();
+    expect(screen.getByText('/')).toBeInTheDocument();
+  });
+
+  it('does not show history dropdown when navigationHistory is empty', () => {
+    render(
+      <BrowserAddressBar
+        navigationHistory={[]}
+        onNavigate={vi.fn()}
+      />
+    );
+
+    const input = screen.getByPlaceholderText('Enter path (e.g., /, /about)');
+    fireEvent.focus(input);
+
+    // No history items should be visible
+    expect(screen.queryByRole('button', { name: /\// })).not.toBeInTheDocument();
+  });
+
+  it('navigates when clicking a history item', () => {
+    const onNavigate = vi.fn();
+    const navigationHistory = ['/', '/about', '/contact'];
+    render(
+      <BrowserAddressBar
+        navigationHistory={navigationHistory}
+        onNavigate={onNavigate}
+      />
+    );
+
+    const input = screen.getByPlaceholderText('Enter path (e.g., /, /about)');
+    fireEvent.focus(input);
+
+    const aboutButton = screen.getByText('/about');
+    fireEvent.click(aboutButton);
+
+    expect(onNavigate).toHaveBeenCalledWith('/about');
+  });
+
+  it('removes duplicate paths from history', () => {
+    const navigationHistory = ['/', '/about', '/', '/contact', '/about'];
+    render(
+      <BrowserAddressBar
+        navigationHistory={navigationHistory}
+        onNavigate={vi.fn()}
+      />
+    );
+
+    const input = screen.getByPlaceholderText('Enter path (e.g., /, /about)');
+    fireEvent.focus(input);
+
+    // Should only show unique paths
+    const allButtons = screen.getAllByRole('button');
+    // Filter out the refresh button if present, only count history items
+    const historyButtons = allButtons.filter(btn =>
+      btn.textContent === '/' ||
+      btn.textContent === '/about' ||
+      btn.textContent === '/contact'
+    );
+
+    expect(historyButtons).toHaveLength(3);
+  });
 });

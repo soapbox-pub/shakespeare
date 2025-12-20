@@ -193,12 +193,6 @@ class NavigationHandler {
           case "refresh":
             this.handleRefresh();
             break;
-          case "goBack":
-            this.handleGoBack();
-            break;
-          case "goForward":
-            this.handleGoForward();
-            break;
         }
       }
     });
@@ -284,14 +278,6 @@ class NavigationHandler {
 
     // Actually reload the iframe to get a fresh SPA instance
     window.location.reload();
-  }
-
-  handleGoBack() {
-    window.history.back();
-  }
-
-  handleGoForward() {
-    window.history.forward();
   }
 
   updateNavigationState() {

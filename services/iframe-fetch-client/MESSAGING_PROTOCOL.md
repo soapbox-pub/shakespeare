@@ -160,16 +160,6 @@ consistent handling of both text and binary data across the messaging protocol.
 **Parameters:** None
 **Result:** None (notification only)
 
-#### `goBack`
-**Purpose:** Navigate back in the iframe's history
-**Parameters:** None
-**Result:** None (notification only)
-
-#### `goForward`
-**Purpose:** Navigate forward in the iframe's history
-**Parameters:** None
-**Result:** None (notification only)
-
 #### `updateNavigationState`
 **Purpose:** Update parent about iframe's current navigation state
 **Parameters:**

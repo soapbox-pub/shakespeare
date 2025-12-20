@@ -56,13 +56,13 @@ export function BrowserAddressBar({
       {leftContent}
 
       {/* Address bar with refresh button inside */}
-      <form onSubmit={handleSubmit} className="flex-1 mx-auto px-4 max-w-2xl relative">
+      <form onSubmit={handleSubmit} className="flex-1 mx-auto px-6 max-w-80 relative">
         <Input
           type="text"
           value={inputValue}
           onChange={handleInputChange}
           placeholder="Enter path (e.g., /, /about)"
-          className="h-8 bg-muted/50 border-muted-foreground/20 focus:bg-background pr-9"
+          className="h-7 text-xs md:text-xs bg-muted/50 border-muted-foreground/20 focus:bg-background pr-9 rounded-full"
           disabled={!onNavigate}
         />
         {onRefresh && (
@@ -71,10 +71,10 @@ export function BrowserAddressBar({
             variant="ghost"
             size="sm"
             onClick={onRefresh}
-            className="h-6 w-6 p-0 absolute right-5 top-1/2 -translate-y-1/2 hover:bg-transparent"
+            className="size-6 absolute right-7 top-1/2 -translate-y-1/2 hover:bg-muted/50 rounded-full transition-colors group"
             title="Refresh"
           >
-            <RefreshCw className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+            <RefreshCw className="size-3 text-muted-foreground transition-colors group-hover:text-foreground" />
           </Button>
         )}
       </form>

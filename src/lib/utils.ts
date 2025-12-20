@@ -69,3 +69,4 @@ export function formatRelativeTime(timestamp: number | Date): string {
     return `${diffYears} years ago`;
   }
 }
+

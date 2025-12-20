@@ -333,6 +333,7 @@ export default function Index() {
                   value={prompt}
                   onChange={handlePromptChange}
                   onKeyDown={handleKeyDown}
+                  onPasteImage={(file) => setAttachedFiles(prev => [...prev, file])}
                   onClick={handleTextareaClick}
                   className="resize-none border-0 bg-transparent px-4 py-3 text-base focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground"
                   disabled={isCreating || isGeneratingInfo || (hasProvidersConfigured && !providerModel.trim())}

@@ -10,7 +10,7 @@ import { useBuildProject } from '@/hooks/useBuildProject';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { FolderOpen, ArrowLeft, Bug, Copy, Check, Play, Loader2, MenuIcon, Code, Rocket, X, Terminal } from 'lucide-react';
+import { FolderOpen, ArrowLeft, Bug, Copy, Check, Play, Loader2, MenuIcon, Code, Rocket, X, Terminal, Expand, Shrink } from 'lucide-react';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { GitStatusIndicator } from '@/components/GitStatusIndicator';
 import { BrowserAddressBar } from '@/components/ui/browser-address-bar';
@@ -89,6 +89,8 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
   const [historyIndex, setHistoryIndex] = useState(0);
 
   const [deployDialogOpen, setDeployDialogOpen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const previewContainerRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const { fs } = useFS();
   const { projectsPath } = useFSPaths();
@@ -291,33 +293,9 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
     sendNavigationCommand('refresh');
   }, [sendNavigationCommand]);
 
-  const goBackIframe = useCallback(() => {
-    if (historyIndex > 0) {
-      // Move back in history
-      const newIndex = historyIndex - 1;
-      const targetPath = navigationHistory[newIndex];
-
-      setHistoryIndex(newIndex);
-      setCurrentPath(targetPath);
-
-      // Tell iframe to navigate to this path
-      sendNavigationCommand('navigate', { url: targetPath });
-    }
-  }, [historyIndex, navigationHistory, sendNavigationCommand]);
-
-  const goForwardIframe = useCallback(() => {
-    if (historyIndex < navigationHistory.length - 1) {
-      // Move forward in history
-      const newIndex = historyIndex + 1;
-      const targetPath = navigationHistory[newIndex];
-
-      setHistoryIndex(newIndex);
-      setCurrentPath(targetPath);
-
-      // Tell iframe to navigate to this path
-      sendNavigationCommand('navigate', { url: targetPath });
-    }
-  }, [historyIndex, navigationHistory, sendNavigationCommand]);
+  const toggleFullscreen = useCallback(() => {
+    setIsFullscreen(prev => !prev);
+  }, []);
 
   const handleFetch = useCallback(async (request: JSONRPCRequest) => {
     const { params, id } = request;
@@ -563,7 +541,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
         </PopoverTrigger>
         <PopoverContent
           align="end"
-          className="w-[calc(100vw-1rem)] max-w-[480px] max-h-[512px] overflow-hidden shadow-lg border rounded-lg bg-background p-0"
+          className="w-[calc(100vw-1rem)] max-w-[480px] max-h-[512px] overflow-hidden shadow-lg border rounded-lg bg-background p-0 z-[9999]"
           sideOffset={4}
         >
 
@@ -643,7 +621,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
             <span className="sr-only">Open menu</span>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-48 sm:w-48">
+        <DropdownMenuContent align="end" className="w-48 sm:w-48 z-[9999]">
           <DropdownMenuItem
             onClick={handleBuildProject}
             disabled={isBuildLoading}
@@ -674,17 +652,35 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
       <Tabs value={activeTab} className="h-full">
         {isPreviewable && (
           <TabsContent value="preview" className="h-full mt-0">
-            <div className="h-full w-full flex flex-col relative">
+            <div
+              ref={previewContainerRef}
+              className={cn(
+                "h-full w-full flex flex-col relative",
+                isFullscreen && "fixed inset-0 z-[100] bg-background"
+              )}
+            >
               {/* Always show browser address bar */}
               <div className="h-12 flex items-center w-full">
                 <BrowserAddressBar
                   currentPath={currentPath}
                   onNavigate={hasBuiltProject ? navigateIframe : undefined}
                   onRefresh={hasBuiltProject ? refreshIframe : undefined}
-                  onBack={hasBuiltProject ? goBackIframe : undefined}
-                  onForward={hasBuiltProject ? goForwardIframe : undefined}
-                  canGoBack={hasBuiltProject && historyIndex > 0}
-                  canGoForward={hasBuiltProject && historyIndex < navigationHistory.length - 1}
+                  navigationHistory={navigationHistory}
+                  leftContent={(
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={toggleFullscreen}
+                      className="h-8 w-8 p-0 ml-1"
+                      title={isFullscreen ? 'Exit immersive view' : 'Enter immersive view'}
+                    >
+                      {isFullscreen ? (
+                        <Shrink className="h-4 w-4" />
+                      ) : (
+                        <Expand className="h-4 w-4" />
+                      )}
+                    </Button>
+                  )}
                   extraContent={(
                     <div className="flex items-center">
                       {(!isMobile && onToggleView && isPreviewable) && (

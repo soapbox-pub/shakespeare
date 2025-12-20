@@ -335,7 +335,7 @@ export function ProjectView() {
         <div className="flex-1 overflow-hidden">
           <ResizablePanelGroup direction="horizontal" className="h-full">
             {/* Chat Panel */}
-            <ResizablePanel defaultSize={40} minSize={25}>
+            <ResizablePanel defaultSize={35} minSize={25}>
               <div className="h-full flex flex-col">
                 {/* Chat Header */}
                 <div className="h-12 px-4 border-b flex-shrink-0">
@@ -429,7 +429,7 @@ export function ProjectView() {
             <ResizableHandle withHandle />
 
             {/* Preview/Code Panel */}
-            <ResizablePanel defaultSize={60} minSize={30}>
+            <ResizablePanel defaultSize={65} minSize={30}>
               <div className="h-full">
                 {project ? (
                   <PreviewPane

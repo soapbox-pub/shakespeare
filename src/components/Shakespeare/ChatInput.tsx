@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, memo } from 'react';
+import { useState, useCallback, memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -7,7 +7,6 @@ import { CircularProgress } from '@/components/ui/circular-progress';
 import { FileAttachment } from '@/components/ui/file-attachment';
 import { Square, ArrowUp } from 'lucide-react';
 import { ModelSelector } from '@/components/ModelSelector';
-import { createPasteHandler } from '@/lib/utils';
 
 interface ChatInputProps {
   isLoading: boolean;
@@ -84,13 +83,6 @@ export const ChatInput = memo(function ChatInput({
     }
   }, [handleSend]);
 
-  const handlePaste = useMemo(
-    () => createPasteHandler((file) => {
-      setAttachedFiles(prev => [...prev, file]);
-    }),
-    [] // setAttachedFiles is stable from useState, so no dependencies needed
-  );
-
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value);
   }, []);
@@ -111,7 +103,7 @@ export const ChatInput = memo(function ChatInput({
           value={input}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
-          onPaste={handlePaste}
+          onPasteImage={(file) => setAttachedFiles(prev => [...prev, file])}
           onFocus={onFocus}
           placeholder={
             !isConfigured

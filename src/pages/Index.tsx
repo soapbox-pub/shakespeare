@@ -25,7 +25,6 @@ import { useSeoMeta } from '@unhead/react';
 import { ShakespeareLogo } from '@/components/ShakespeareLogo';
 import { AppShowcase } from '@/components/AppShowcase';
 import { useToast } from '@/hooks/useToast';
-import { createPasteHandler } from '@/lib/utils';
 
 export default function Index() {
   const { t } = useTranslation();
@@ -188,11 +187,6 @@ export default function Index() {
     }
   };
 
-  // Handle paste - extract images from clipboard
-  const handlePaste = createPasteHandler((file) => {
-    setAttachedFiles(prev => [...prev, file]);
-  });
-
   // Handle textarea click - show onboarding if no providers configured
   const handleTextareaClick = () => {
     if (!hasProvidersConfigured) {
@@ -339,7 +333,7 @@ export default function Index() {
                   value={prompt}
                   onChange={handlePromptChange}
                   onKeyDown={handleKeyDown}
-                  onPaste={handlePaste}
+                  onPasteImage={(file) => setAttachedFiles(prev => [...prev, file])}
                   onClick={handleTextareaClick}
                   className="resize-none border-0 bg-transparent px-4 py-3 text-base focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground"
                   disabled={isCreating || isGeneratingInfo || (hasProvidersConfigured && !providerModel.trim())}

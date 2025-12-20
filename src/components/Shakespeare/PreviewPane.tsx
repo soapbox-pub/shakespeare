@@ -293,34 +293,6 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
     sendNavigationCommand('refresh');
   }, [sendNavigationCommand]);
 
-  const goBackIframe = useCallback(() => {
-    if (historyIndex > 0) {
-      // Move back in history
-      const newIndex = historyIndex - 1;
-      const targetPath = navigationHistory[newIndex];
-
-      setHistoryIndex(newIndex);
-      setCurrentPath(targetPath);
-
-      // Tell iframe to navigate to this path
-      sendNavigationCommand('navigate', { url: targetPath });
-    }
-  }, [historyIndex, navigationHistory, sendNavigationCommand]);
-
-  const goForwardIframe = useCallback(() => {
-    if (historyIndex < navigationHistory.length - 1) {
-      // Move forward in history
-      const newIndex = historyIndex + 1;
-      const targetPath = navigationHistory[newIndex];
-
-      setHistoryIndex(newIndex);
-      setCurrentPath(targetPath);
-
-      // Tell iframe to navigate to this path
-      sendNavigationCommand('navigate', { url: targetPath });
-    }
-  }, [historyIndex, navigationHistory, sendNavigationCommand]);
-
   const toggleFullscreen = useCallback(() => {
     setIsFullscreen(prev => !prev);
   }, []);
@@ -680,8 +652,8 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
       <Tabs value={activeTab} className="h-full">
         {isPreviewable && (
           <TabsContent value="preview" className="h-full mt-0">
-            <div 
-              ref={previewContainerRef} 
+            <div
+              ref={previewContainerRef}
               className={cn(
                 "h-full w-full flex flex-col relative",
                 isFullscreen && "fixed inset-0 z-[100] bg-background"
@@ -693,25 +665,23 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
                   currentPath={currentPath}
                   onNavigate={hasBuiltProject ? navigateIframe : undefined}
                   onRefresh={hasBuiltProject ? refreshIframe : undefined}
-                  onBack={hasBuiltProject ? goBackIframe : undefined}
-                  onForward={hasBuiltProject ? goForwardIframe : undefined}
-                  canGoBack={hasBuiltProject && historyIndex > 0}
-                  canGoForward={hasBuiltProject && historyIndex < navigationHistory.length - 1}
+                  leftContent={(
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={toggleFullscreen}
+                      className="h-8 w-8 p-0 ml-1"
+                      title={isFullscreen ? 'Exit immersive view' : 'Enter immersive view'}
+                    >
+                      {isFullscreen ? (
+                        <Minimize className="h-4 w-4" />
+                      ) : (
+                        <Maximize className="h-4 w-4" />
+                      )}
+                    </Button>
+                  )}
                   extraContent={(
                     <div className="flex items-center">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={toggleFullscreen}
-                        className="h-8 w-8 p-0"
-                        title={isFullscreen ? 'Exit immersive view' : 'Enter immersive view'}
-                      >
-                        {isFullscreen ? (
-                          <Minimize className="h-4 w-4" />
-                        ) : (
-                          <Maximize className="h-4 w-4" />
-                        )}
-                      </Button>
                       {(!isMobile && onToggleView && isPreviewable) && (
                         <Button
                           variant="ghost"

@@ -3,11 +3,9 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { BrowserAddressBar } from './browser-address-bar';
 
 describe('BrowserAddressBar', () => {
-  it('renders navigation buttons and address input', () => {
-    render(<BrowserAddressBar />);
+  it('renders address input and refresh button', () => {
+    render(<BrowserAddressBar onRefresh={vi.fn()} />);
 
-    expect(screen.getByTitle('Go back')).toBeInTheDocument();
-    expect(screen.getByTitle('Go forward')).toBeInTheDocument();
     expect(screen.getByTitle('Refresh')).toBeInTheDocument();
     expect(screen.getByPlaceholderText('Enter path (e.g., /, /about)')).toBeInTheDocument();
   });
@@ -23,63 +21,28 @@ describe('BrowserAddressBar', () => {
     expect(onNavigate).toHaveBeenCalledWith('/about');
   });
 
-  it('disables back/forward buttons based on canGoBack/canGoForward props and handlers', () => {
-    // Test with handlers provided
-    const onBack = vi.fn();
-    const onForward = vi.fn();
+  it('disables input when no onNavigate handler is provided', () => {
+    render(<BrowserAddressBar />);
 
-    render(
-      <BrowserAddressBar
-        onBack={onBack}
-        onForward={onForward}
-        canGoBack={false}
-        canGoForward={true}
-      />
-    );
-
-    expect(screen.getByTitle('Go back')).toBeDisabled(); // disabled because canGoBack=false
-    expect(screen.getByTitle('Go forward')).not.toBeDisabled(); // enabled because canGoForward=true and handler provided
-  });
-
-  it('disables buttons when no handlers are provided', () => {
-    render(
-      <BrowserAddressBar
-        canGoBack={true}
-        canGoForward={true}
-      />
-    );
-
-    // All buttons should be disabled when no handlers are provided
-    expect(screen.getByTitle('Go back')).toBeDisabled();
-    expect(screen.getByTitle('Go forward')).toBeDisabled();
-    expect(screen.getByTitle('Refresh')).toBeDisabled();
-
-    // Input should also be disabled when no onNavigate handler is provided
+    // Input should be disabled when no onNavigate handler is provided
     expect(screen.getByPlaceholderText('Enter path (e.g., /, /about)')).toBeDisabled();
   });
 
-  it('calls navigation handlers when buttons are clicked', () => {
-    const onBack = vi.fn();
-    const onForward = vi.fn();
+  it('shows refresh button inside input when onRefresh handler is provided', () => {
     const onRefresh = vi.fn();
+    render(<BrowserAddressBar onRefresh={onRefresh} />);
 
-    render(
-      <BrowserAddressBar
-        onBack={onBack}
-        onForward={onForward}
-        onRefresh={onRefresh}
-        canGoBack={true}
-        canGoForward={true}
-      />
-    );
+    const refreshButton = screen.getByTitle('Refresh');
+    expect(refreshButton).toBeInTheDocument();
 
-    fireEvent.click(screen.getByTitle('Go back'));
-    fireEvent.click(screen.getByTitle('Go forward'));
-    fireEvent.click(screen.getByTitle('Refresh'));
-
-    expect(onBack).toHaveBeenCalled();
-    expect(onForward).toHaveBeenCalled();
+    fireEvent.click(refreshButton);
     expect(onRefresh).toHaveBeenCalled();
+  });
+
+  it('does not show refresh button when no onRefresh handler is provided', () => {
+    render(<BrowserAddressBar />);
+
+    expect(screen.queryByTitle('Refresh')).not.toBeInTheDocument();
   });
 
   it('updates input value when currentPath prop changes', () => {
@@ -97,5 +60,25 @@ describe('BrowserAddressBar', () => {
     rerender(<BrowserAddressBar currentPath="/contact" />);
 
     expect(input).toHaveValue('/contact');
+  });
+
+  it('renders leftContent when provided', () => {
+    render(
+      <BrowserAddressBar
+        leftContent={<button data-testid="left-button">Left</button>}
+      />
+    );
+
+    expect(screen.getByTestId('left-button')).toBeInTheDocument();
+  });
+
+  it('renders extraContent when provided', () => {
+    render(
+      <BrowserAddressBar
+        extraContent={<button data-testid="extra-button">Extra</button>}
+      />
+    );
+
+    expect(screen.getByTestId('extra-button')).toBeInTheDocument();
   });
 });

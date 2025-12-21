@@ -752,7 +752,7 @@ export function DeploySettings() {
 
                       return (
                         <SortableProviderItem
-                          key={index}
+                          key={provider.id}
                           provider={provider}
                           index={index}
                           preset={preset}

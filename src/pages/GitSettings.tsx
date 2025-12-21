@@ -70,13 +70,12 @@ const PRESET_PROVIDERS: PresetProvider[] = [
 
 interface SortableCredentialItemProps {
   credential: GitCredential;
-  index: number;
-  onUpdate: (index: number, credential: Partial<GitCredential>) => void;
-  onRemove: (index: number) => void;
+  onUpdate: (updatedCredential: GitCredential) => void;
+  onRemove: (id: string) => void;
   showDragHandle: boolean;
 }
 
-function SortableCredentialItem({ credential, index, onUpdate, onRemove, showDragHandle }: SortableCredentialItemProps) {
+function SortableCredentialItem({ credential, onUpdate, onRemove, showDragHandle }: SortableCredentialItemProps) {
   const { t } = useTranslation();
   const origin = `${credential.protocol}://${credential.host}`;
   const preset = PRESET_PROVIDERS.find(p => p.origin === origin);
@@ -89,7 +88,7 @@ function SortableCredentialItem({ credential, index, onUpdate, onRemove, showDra
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: `credential-${index}` });
+  } = useSortable({ id: credential.id });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -114,16 +113,20 @@ function SortableCredentialItem({ credential, index, onUpdate, onRemove, showDra
     }
   };
 
+  const updateCredential = (updates: Partial<GitCredential>) => {
+    onUpdate({ ...credential, ...updates });
+  };
+
   const handleOriginChange = (newOrigin: string) => {
     const parsed = parseOrigin(newOrigin);
-    onUpdate(index, parsed);
+    updateCredential(parsed);
   };
 
   return (
     <AccordionItem
       ref={setNodeRef}
       style={style}
-      value={`credential-${index}`}
+      value={credential.id}
       className="border rounded-lg"
     >
       <AccordionTrigger className="px-4 py-3 hover:no-underline">
@@ -143,7 +146,7 @@ function SortableCredentialItem({ credential, index, onUpdate, onRemove, showDra
             fallback={<GitBranch size={16} />}
           />
           <span className="font-medium">
-            {preset?.name || credential.host}
+            {credential.name}
           </span>
           {isCustom && <Badge variant="outline">{t('custom')}</Badge>}
         </div>
@@ -151,42 +154,53 @@ function SortableCredentialItem({ credential, index, onUpdate, onRemove, showDra
       <AccordionContent className="px-4 pb-4">
         <div className="space-y-3">
           <div className="grid gap-2">
-            <Label htmlFor={`credential-${index}-origin`}>
+            <Label htmlFor={`credential-${credential.id}-name`}>
+              {t('name')} <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              id={`credential-${credential.id}-name`}
+              placeholder="GitHub"
+              value={credential.name}
+              onChange={(e) => updateCredential({ name: e.target.value })}
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor={`credential-${credential.id}-origin`}>
               {t('origin')} <span className="text-destructive">*</span>
             </Label>
             <Input
-              id={`credential-${index}-origin`}
+              id={`credential-${credential.id}-origin`}
               placeholder="https://github.com"
               value={origin}
               onChange={(e) => handleOriginChange(e.target.value)}
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor={`credential-${index}-username`}>
+            <Label htmlFor={`credential-${credential.id}-username`}>
               {t('username')} <span className="text-destructive">*</span>
             </Label>
             <Input
-              id={`credential-${index}-username`}
+              id={`credential-${credential.id}-username`}
               placeholder="git"
               value={credential.username}
-              onChange={(e) => onUpdate(index, { username: e.target.value })}
+              onChange={(e) => updateCredential({ username: e.target.value })}
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor={`credential-${index}-password`}>
+            <Label htmlFor={`credential-${credential.id}-password`}>
               {t('password')} <span className="text-destructive">*</span>
             </Label>
             <PasswordInput
-              id={`credential-${index}-password`}
+              id={`credential-${credential.id}-password`}
               placeholder={t('enterPassword')}
               value={credential.password}
-              onChange={(e) => onUpdate(index, { password: e.target.value })}
+              onChange={(e) => updateCredential({ password: e.target.value })}
             />
           </div>
           <Button
             variant="destructive"
             size="sm"
-            onClick={() => onRemove(index)}
+            onClick={() => onRemove(credential.id)}
           >
             <Trash2 className="h-4 w-4 mr-2" />
             {t('delete')}
@@ -199,10 +213,11 @@ function SortableCredentialItem({ credential, index, onUpdate, onRemove, showDra
 
 export function GitSettings() {
   const { t } = useTranslation();
-  const { settings, addCredential, removeCredential, updateCredential, setCredentials, updateSettings, isInitialized } = useGitSettings();
+  const { settings, addCredential, removeCredential, setCredentials, updateSettings, isInitialized } = useGitSettings();
   const { initiateOAuth, isLoading: isOAuthLoading, error: oauthError, isOAuthConfigured } = useGitHubOAuth();
   const isMobile = useIsMobile();
   const navigate = useNavigate();
+  const [customName, setCustomName] = useState('');
   const [customOrigin, setCustomOrigin] = useState('');
   const [customUsername, setCustomUsername] = useState('');
   const [customPassword, setCustomPassword] = useState('');
@@ -240,6 +255,8 @@ export function GitSettings() {
 
     const parsed = parseOrigin(preset.origin);
     const newCredential: GitCredential = {
+      id: crypto.randomUUID(),
+      name: preset.name,
       ...parsed,
       username: preset.username,
       password: token.trim(),
@@ -256,10 +273,13 @@ export function GitSettings() {
   };
 
   const handleAddCustomProvider = () => {
-    if (!customOrigin.trim() || !customUsername.trim() || !customPassword.trim()) return;
+    if (!customName.trim() || !customOrigin.trim() || !customUsername.trim() || !customPassword.trim()) return;
 
     const parsed = parseOrigin(customOrigin.trim());
+
     const newCredential: GitCredential = {
+      id: crypto.randomUUID(),
+      name: customName.trim(),
       ...parsed,
       username: customUsername.trim(),
       password: customPassword.trim(),
@@ -268,27 +288,31 @@ export function GitSettings() {
     // Auto-save: Add credential immediately to persistent storage
     addCredential(newCredential);
 
+    setCustomName('');
     setCustomOrigin('');
     setCustomUsername('');
     setCustomPassword('');
   };
 
-  const handleRemoveCredential = (index: number) => {
+  const handleRemoveCredential = (id: string) => {
     // Auto-save: Remove credential immediately from persistent storage
-    removeCredential(index);
+    removeCredential(id);
   };
 
-  const handleUpdateCredential = (index: number, credential: Partial<GitCredential>) => {
+  const handleUpdateCredential = (updatedCredential: GitCredential) => {
     // Auto-save: Update credential immediately in persistent storage
-    updateCredential(index, credential);
+    const updatedCredentials = settings.credentials.map((cred) =>
+      cred.id === updatedCredential.id ? updatedCredential : cred
+    );
+    setCredentials(updatedCredentials);
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 
     if (active.id !== over?.id) {
-      const oldIndex = settings.credentials.findIndex((_, i) => `credential-${i}` === active.id);
-      const newIndex = settings.credentials.findIndex((_, i) => `credential-${i}` === over?.id);
+      const oldIndex = settings.credentials.findIndex((cred) => cred.id === active.id);
+      const newIndex = settings.credentials.findIndex((cred) => cred.id === over?.id);
 
       if (oldIndex !== -1 && newIndex !== -1) {
         const newCredentials = arrayMove(settings.credentials, oldIndex, newIndex);
@@ -385,15 +409,14 @@ export function GitSettings() {
                 onDragEnd={handleDragEnd}
               >
                 <SortableContext
-                  items={settings.credentials.map((_, i) => `credential-${i}`)}
+                  items={settings.credentials.map((cred) => cred.id)}
                   strategy={verticalListSortingStrategy}
                 >
                   <Accordion type="multiple" className="w-full space-y-2">
-                    {settings.credentials.map((credential, index) => (
+                    {settings.credentials.map((credential) => (
                       <SortableCredentialItem
-                        key={`credential-${index}`}
+                        key={credential.id}
                         credential={credential}
-                        index={index}
                         onUpdate={handleUpdateCredential}
                         onRemove={handleRemoveCredential}
                         showDragHandle={settings.credentials.length > 1}
@@ -554,6 +577,17 @@ export function GitSettings() {
                 <AccordionContent className="px-4 pb-4">
                   <div className="space-y-3">
                     <div className="grid gap-2">
+                      <Label htmlFor="custom-name">
+                        {t('name')} <span className="text-destructive">*</span>
+                      </Label>
+                      <Input
+                        id="custom-name"
+                        placeholder="My Git Server"
+                        value={customName}
+                        onChange={(e) => setCustomName(e.target.value)}
+                      />
+                    </div>
+                    <div className="grid gap-2">
                       <Label htmlFor="custom-origin">
                         {t('origin')} <span className="text-destructive">*</span>
                       </Label>
@@ -589,10 +623,11 @@ export function GitSettings() {
                     <Button
                       onClick={handleAddCustomProvider}
                       disabled={
+                        !customName.trim() ||
                         !customOrigin.trim() ||
-                      !customUsername.trim() ||
-                      !customPassword.trim() ||
-                      customOrigin.trim() in settings.credentials
+                        !customUsername.trim() ||
+                        !customPassword.trim() ||
+                        customOrigin.trim() in settings.credentials
                       }
                       size="sm"
                       className="gap-2"

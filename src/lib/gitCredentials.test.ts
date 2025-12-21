@@ -2,6 +2,19 @@ import { describe, it, expect } from 'vitest';
 import { findCredentialsForRepo } from './gitCredentials';
 import type { GitCredential } from '@/contexts/GitSettingsContext';
 
+// Helper to create test credentials with required fields
+function createTestCredential(overrides: Partial<GitCredential>): GitCredential {
+  return {
+    id: crypto.randomUUID(),
+    name: 'Test Credential',
+    protocol: 'https',
+    host: 'github.com',
+    username: 'user',
+    password: 'pass',
+    ...overrides,
+  };
+}
+
 describe('gitCredentials', () => {
   describe('findCredentialsForRepo', () => {
     it('returns undefined when no credentials are provided', () => {
@@ -11,12 +24,9 @@ describe('gitCredentials', () => {
 
     it('returns undefined when no credentials match', () => {
       const credentials: GitCredential[] = [
-        {
-          protocol: 'https',
+        createTestCredential({
           host: 'gitlab.com',
-          username: 'user',
-          password: 'pass',
-        },
+        }),
       ];
       const result = findCredentialsForRepo('https://github.com/user/repo.git', credentials);
       expect(result).toBeUndefined();
@@ -24,12 +34,9 @@ describe('gitCredentials', () => {
 
     it('matches credential with exact protocol, hostname, and default port', () => {
       const credentials: GitCredential[] = [
-        {
-          protocol: 'https',
+        createTestCredential({
           host: 'github.com',
-          username: 'user',
-          password: 'pass',
-        },
+        }),
       ];
       const result = findCredentialsForRepo('https://github.com/user/repo.git', credentials);
       expect(result).toBe(credentials[0]);
@@ -37,12 +44,9 @@ describe('gitCredentials', () => {
 
     it('matches credential with explicit port 443 for https', () => {
       const credentials: GitCredential[] = [
-        {
-          protocol: 'https',
+        createTestCredential({
           host: 'github.com:443',
-          username: 'user',
-          password: 'pass',
-        },
+        }),
       ];
       const result = findCredentialsForRepo('https://github.com/user/repo.git', credentials);
       expect(result).toBe(credentials[0]);
@@ -50,12 +54,10 @@ describe('gitCredentials', () => {
 
     it('matches credential with explicit port 80 for http', () => {
       const credentials: GitCredential[] = [
-        {
+        createTestCredential({
           protocol: 'http',
           host: 'example.com:80',
-          username: 'user',
-          password: 'pass',
-        },
+        }),
       ];
       const result = findCredentialsForRepo('http://example.com/repo.git', credentials);
       expect(result).toBe(credentials[0]);
@@ -63,12 +65,9 @@ describe('gitCredentials', () => {
 
     it('matches credential with custom port when URL has same custom port', () => {
       const credentials: GitCredential[] = [
-        {
-          protocol: 'https',
+        createTestCredential({
           host: 'gitlab.local:8443',
-          username: 'user',
-          password: 'pass',
-        },
+        }),
       ];
       const result = findCredentialsForRepo('https://gitlab.local:8443/repo.git', credentials);
       expect(result).toBe(credentials[0]);
@@ -76,12 +75,9 @@ describe('gitCredentials', () => {
 
     it('does not match when ports differ', () => {
       const credentials: GitCredential[] = [
-        {
-          protocol: 'https',
+        createTestCredential({
           host: 'gitlab.local:8443',
-          username: 'user',
-          password: 'pass',
-        },
+        }),
       ];
       const result = findCredentialsForRepo('https://gitlab.local:9443/repo.git', credentials);
       expect(result).toBeUndefined();
@@ -89,12 +85,9 @@ describe('gitCredentials', () => {
 
     it('does not match when protocol differs', () => {
       const credentials: GitCredential[] = [
-        {
+        createTestCredential({
           protocol: 'http',
-          host: 'github.com',
-          username: 'user',
-          password: 'pass',
-        },
+        }),
       ];
       const result = findCredentialsForRepo('https://github.com/user/repo.git', credentials);
       expect(result).toBeUndefined();
@@ -102,12 +95,9 @@ describe('gitCredentials', () => {
 
     it('does not match when hostname differs', () => {
       const credentials: GitCredential[] = [
-        {
-          protocol: 'https',
+        createTestCredential({
           host: 'github.com',
-          username: 'user',
-          password: 'pass',
-        },
+        }),
       ];
       const result = findCredentialsForRepo('https://gitlab.com/user/repo.git', credentials);
       expect(result).toBeUndefined();
@@ -115,18 +105,14 @@ describe('gitCredentials', () => {
 
     it('prefers credential with matching username over credential without username', () => {
       const credentials: GitCredential[] = [
-        {
-          protocol: 'https',
-          host: 'github.com',
+        createTestCredential({
           username: '',
           password: 'pass1',
-        },
-        {
-          protocol: 'https',
-          host: 'github.com',
+        }),
+        createTestCredential({
           username: 'alice',
           password: 'pass2',
-        },
+        }),
       ];
       const result = findCredentialsForRepo('https://alice@github.com/repo.git', credentials);
       expect(result).toBe(credentials[1]);
@@ -134,18 +120,14 @@ describe('gitCredentials', () => {
 
     it('returns first match when no username preference exists', () => {
       const credentials: GitCredential[] = [
-        {
-          protocol: 'https',
-          host: 'github.com',
+        createTestCredential({
           username: '',
           password: 'pass1',
-        },
-        {
-          protocol: 'https',
-          host: 'github.com',
+        }),
+        createTestCredential({
           username: '',
           password: 'pass2',
-        },
+        }),
       ];
       const result = findCredentialsForRepo('https://github.com/repo.git', credentials);
       expect(result).toBe(credentials[0]);
@@ -153,12 +135,9 @@ describe('gitCredentials', () => {
 
     it('does not match when usernames differ', () => {
       const credentials: GitCredential[] = [
-        {
-          protocol: 'https',
-          host: 'github.com',
+        createTestCredential({
           username: 'alice',
-          password: 'pass',
-        },
+        }),
       ];
       const result = findCredentialsForRepo('https://bob@github.com/repo.git', credentials);
       expect(result).toBeUndefined();
@@ -166,12 +145,9 @@ describe('gitCredentials', () => {
 
     it('matches when credential has username but URL does not', () => {
       const credentials: GitCredential[] = [
-        {
-          protocol: 'https',
-          host: 'github.com',
+        createTestCredential({
           username: 'alice',
-          password: 'pass',
-        },
+        }),
       ];
       const result = findCredentialsForRepo('https://github.com/repo.git', credentials);
       expect(result).toBe(credentials[0]);
@@ -179,12 +155,9 @@ describe('gitCredentials', () => {
 
     it('matches when URL has username but credential does not', () => {
       const credentials: GitCredential[] = [
-        {
-          protocol: 'https',
-          host: 'github.com',
+        createTestCredential({
           username: '',
-          password: 'pass',
-        },
+        }),
       ];
       const result = findCredentialsForRepo('https://alice@github.com/repo.git', credentials);
       expect(result).toBe(credentials[0]);
@@ -192,24 +165,18 @@ describe('gitCredentials', () => {
 
     it('handles multiple matching credentials and returns the one with matching username', () => {
       const credentials: GitCredential[] = [
-        {
-          protocol: 'https',
-          host: 'github.com',
+        createTestCredential({
           username: 'alice',
           password: 'pass1',
-        },
-        {
-          protocol: 'https',
-          host: 'github.com',
+        }),
+        createTestCredential({
           username: 'bob',
           password: 'pass2',
-        },
-        {
-          protocol: 'https',
-          host: 'github.com',
+        }),
+        createTestCredential({
           username: '',
           password: 'pass3',
-        },
+        }),
       ];
       const result = findCredentialsForRepo('https://bob@github.com/repo.git', credentials);
       expect(result).toBe(credentials[1]);
@@ -217,12 +184,7 @@ describe('gitCredentials', () => {
 
     it('handles complex URLs with paths and query parameters', () => {
       const credentials: GitCredential[] = [
-        {
-          protocol: 'https',
-          host: 'github.com',
-          username: 'user',
-          password: 'pass',
-        },
+        createTestCredential({}),
       ];
       const result = findCredentialsForRepo(
         'https://github.com/org/repo.git?foo=bar#fragment',
@@ -233,12 +195,9 @@ describe('gitCredentials', () => {
 
     it('handles URLs with encoded characters', () => {
       const credentials: GitCredential[] = [
-        {
-          protocol: 'https',
-          host: 'github.com',
+        createTestCredential({
           username: 'user%40email.com',
-          password: 'pass',
-        },
+        }),
       ];
       const result = findCredentialsForRepo(
         'https://user%40email.com@github.com/repo.git',
@@ -249,12 +208,9 @@ describe('gitCredentials', () => {
 
     it('handles subdomains correctly', () => {
       const credentials: GitCredential[] = [
-        {
-          protocol: 'https',
+        createTestCredential({
           host: 'api.github.com',
-          username: 'user',
-          password: 'pass',
-        },
+        }),
       ];
       // Should not match github.com
       const result1 = findCredentialsForRepo('https://github.com/repo.git', credentials);
@@ -267,12 +223,11 @@ describe('gitCredentials', () => {
 
     it('handles credentials with empty username', () => {
       const credentials: GitCredential[] = [
-        {
-          protocol: 'https',
+        createTestCredential({
           host: 'github.com',
           username: '',
           password: 'token',
-        },
+        }),
       ];
       const result = findCredentialsForRepo('https://github.com/repo.git', credentials);
       expect(result).toBe(credentials[0]);
@@ -280,12 +235,10 @@ describe('gitCredentials', () => {
 
     it('returns credential when both URL and credential have no username', () => {
       const credentials: GitCredential[] = [
-        {
-          protocol: 'https',
-          host: 'github.com',
+        createTestCredential({
           username: '',
           password: 'token',
-        },
+        }),
       ];
       const result = findCredentialsForRepo('https://github.com/repo.git', credentials);
       expect(result).toBe(credentials[0]);
@@ -293,12 +246,10 @@ describe('gitCredentials', () => {
 
     it('handles IPv4 addresses as hostnames', () => {
       const credentials: GitCredential[] = [
-        {
+        createTestCredential({
           protocol: 'http',
           host: '192.168.1.100:8080',
-          username: 'user',
-          password: 'pass',
-        },
+        }),
       ];
       const result = findCredentialsForRepo('http://192.168.1.100:8080/repo.git', credentials);
       expect(result).toBe(credentials[0]);
@@ -306,12 +257,10 @@ describe('gitCredentials', () => {
 
     it('does not match IPv4 addresses with different ports', () => {
       const credentials: GitCredential[] = [
-        {
+        createTestCredential({
           protocol: 'http',
           host: '192.168.1.100:8080',
-          username: 'user',
-          password: 'pass',
-        },
+        }),
       ];
       const result = findCredentialsForRepo('http://192.168.1.100:9090/repo.git', credentials);
       expect(result).toBeUndefined();
@@ -319,12 +268,11 @@ describe('gitCredentials', () => {
 
     it('handles localhost URLs', () => {
       const credentials: GitCredential[] = [
-        {
+        createTestCredential({
           protocol: 'http',
           host: 'localhost:3000',
           username: 'dev',
-          password: 'pass',
-        },
+        }),
       ];
       const result = findCredentialsForRepo('http://localhost:3000/repo.git', credentials);
       expect(result).toBe(credentials[0]);

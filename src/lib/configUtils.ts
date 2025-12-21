@@ -59,6 +59,8 @@ const aiSettingsSchema = z.object({
 
 // New format for git credentials
 const gitCredentialSchema = z.object({
+  id: z.string(),
+  name: z.string(),
   protocol: z.string(),
   host: z.string(),
   username: z.string(),
@@ -218,16 +220,39 @@ export async function writeAISettings(fs: JSRuntimeFS, settings: AISettings, con
 }
 
 /**
+ * Generate a display name for a credential based on its hostname
+ */
+function generateCredentialName(host: string): string {
+  const hostname = host.split(':')[0]; // Remove port if present
+
+  if (hostname === 'github.com') {
+    return 'GitHub';
+  }
+
+  if (hostname === 'gitlab.com') {
+    return 'GitLab';
+  }
+
+  // For other hosts, use the hostname as the name
+  return hostname;
+}
+
+/**
  * Convert old format credentials (map) to new format (array)
+ * This is only used for migrating from the old map-based format
  */
 function convertCredentialsToNewFormat(
   credentials: Record<string, { username: string; password: string }>
 ): GitCredential[] {
   return Object.entries(credentials).map(([origin, cred]) => {
     const url = new URL(origin);
+    const host = url.host; // Includes port if non-standard
+
     return {
+      id: crypto.randomUUID(),
+      name: generateCredentialName(host),
       protocol: url.protocol.replace(/:$/, ''),
-      host: url.host, // Includes port if non-standard
+      host,
       username: cred.username,
       password: cred.password,
     };

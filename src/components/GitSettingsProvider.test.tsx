@@ -14,10 +14,12 @@ vi.mock('@/lib/configUtils', () => ({
 
 // Test component that uses the hook
 function TestComponent() {
-  const { settings, addCredential, removeCredential, updateCredential, isConfigured } = useGitSettings();
+  const { settings, addCredential, removeCredential, setCredentials, isConfigured } = useGitSettings();
 
   const handleAdd = () => {
     const credential: GitCredential = {
+      id: crypto.randomUUID(),
+      name: 'GitHub',
       protocol: 'https',
       host: 'github.com',
       username: 'git',
@@ -27,11 +29,20 @@ function TestComponent() {
   };
 
   const handleUpdate = () => {
-    updateCredential(0, { password: 'updated-token' });
+    const githubCred = settings.credentials.find(c => c.host === 'github.com');
+    if (githubCred) {
+      const updatedCredentials = settings.credentials.map((cred) =>
+        cred.id === githubCred.id ? { ...cred, password: 'updated-token' } : cred
+      );
+      setCredentials(updatedCredentials);
+    }
   };
 
   const handleRemove = () => {
-    removeCredential(0);
+    const githubCred = settings.credentials.find(c => c.host === 'github.com');
+    if (githubCred) {
+      removeCredential(githubCred.id);
+    }
   };
 
   const githubCred = settings.credentials.find(c => c.host === 'github.com');
@@ -168,14 +179,14 @@ describe('GitSettingsProvider', () => {
       expect(writeGitSettings).toHaveBeenCalledWith(
         expect.anything(), // fs instance
         expect.objectContaining({
-          credentials: [
-            {
+          credentials: expect.arrayContaining([
+            expect.objectContaining({
               protocol: 'https',
               host: 'github.com',
               username: 'git',
               password: 'test-token',
-            }
-          ]
+            })
+          ])
         }),
         '/config' // configPath
       );
@@ -186,6 +197,8 @@ describe('GitSettingsProvider', () => {
     const settings = {
       credentials: [
         {
+          id: crypto.randomUUID(),
+          name: 'GitLab',
           protocol: 'https',
           host: 'gitlab.com',
           username: 'git',

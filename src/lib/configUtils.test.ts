@@ -157,6 +157,8 @@ describe('configUtils', () => {
     const sampleGitSettingsNew: GitSettings = {
       credentials: [
         {
+          id: crypto.randomUUID(),
+          name: 'GitHub',
           protocol: 'https',
           host: 'github.com',
           username: 'user',
@@ -190,16 +192,16 @@ describe('configUtils', () => {
         const result = await readGitSettings(mockFS);
 
         expect(mockFS.readFile).toHaveBeenCalledWith('/config/git.json', 'utf8');
-        expect(result).toEqual({
-          credentials: [
-            {
-              protocol: 'https',
-              host: 'github.com',
-              username: 'user',
-              password: 'token123',
-            },
-          ],
+        expect(result.credentials).toHaveLength(1);
+        expect(result.credentials[0]).toMatchObject({
+          protocol: 'https',
+          host: 'github.com',
+          username: 'user',
+          password: 'token123',
+          name: 'GitHub',
         });
+        expect(result.credentials[0].id).toBeDefined();
+        expect(typeof result.credentials[0].id).toBe('string');
       });
 
       it('should handle old format with custom ports', async () => {
@@ -216,16 +218,16 @@ describe('configUtils', () => {
 
         const result = await readGitSettings(mockFS);
 
-        expect(result).toEqual({
-          credentials: [
-            {
-              protocol: 'https',
-              host: 'git.example.com:8080',
-              username: 'user',
-              password: 'token456',
-            },
-          ],
+        expect(result.credentials).toHaveLength(1);
+        expect(result.credentials[0]).toMatchObject({
+          protocol: 'https',
+          host: 'git.example.com:8080',
+          username: 'user',
+          password: 'token456',
+          name: 'git.example.com',
         });
+        expect(result.credentials[0].id).toBeDefined();
+        expect(typeof result.credentials[0].id).toBe('string');
       });
 
       it('should return default settings if file does not exist and no localStorage data', async () => {

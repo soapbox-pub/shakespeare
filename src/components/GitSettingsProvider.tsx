@@ -61,25 +61,11 @@ export function GitSettingsProvider({ children }: GitSettingsProviderProps) {
     }));
   };
 
-  const removeCredential = (index: number) => {
+  const removeCredential = (id: string) => {
     setSettings(prev => ({
       ...prev,
-      credentials: prev.credentials.filter((_, i) => i !== index),
+      credentials: prev.credentials.filter((cred) => cred.id !== id),
     }));
-  };
-
-  const updateCredential = (index: number, credential: Partial<GitCredential>) => {
-    setSettings(prev => {
-      const newCredentials = [...prev.credentials];
-      newCredentials[index] = {
-        ...newCredentials[index],
-        ...credential,
-      };
-      return {
-        ...prev,
-        credentials: newCredentials,
-      };
-    });
   };
 
   const setCredentials = (credentials: GitCredential[]) => {
@@ -96,7 +82,6 @@ export function GitSettingsProvider({ children }: GitSettingsProviderProps) {
     updateSettings,
     addCredential,
     removeCredential,
-    updateCredential,
     setCredentials,
     isConfigured,
     isInitialized,

@@ -1,6 +1,8 @@
 import { createContext } from 'react';
 
 export interface GitCredential {
+  id: string; // UUID generated with crypto.randomUUID()
+  name: string; // Display name for the credential
   protocol: string;
   host: string; // Includes port if non-standard (e.g., "github.com:8080")
   username: string;
@@ -18,8 +20,7 @@ export interface GitSettingsContextType {
   settings: GitSettings;
   updateSettings: (settings: Partial<GitSettings>) => void;
   addCredential: (credential: GitCredential) => void;
-  removeCredential: (index: number) => void;
-  updateCredential: (index: number, credential: Partial<GitCredential>) => void;
+  removeCredential: (id: string) => void;
   setCredentials: (credentials: GitCredential[]) => void;
   isConfigured: boolean;
   isInitialized: boolean;

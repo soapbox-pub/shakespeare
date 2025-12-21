@@ -61,8 +61,7 @@ const aiSettingsSchema = z.object({
 const gitCredentialSchema = z.object({
   id: z.string(),
   name: z.string(),
-  protocol: z.string(),
-  host: z.string(),
+  origin: z.string(),
   username: z.string(),
   password: z.string(),
 });
@@ -251,8 +250,7 @@ function convertCredentialsToNewFormat(
     return {
       id: crypto.randomUUID(),
       name: generateCredentialName(host),
-      protocol: url.protocol.replace(/:$/, ''),
-      host,
+      origin,
       username: cred.username,
       password: cred.password,
     };

@@ -77,8 +77,7 @@ interface SortableCredentialItemProps {
 
 function SortableCredentialItem({ credential, onUpdate, onRemove, showDragHandle }: SortableCredentialItemProps) {
   const { t } = useTranslation();
-  const origin = `${credential.protocol}://${credential.host}`;
-  const preset = PRESET_PROVIDERS.find(p => p.origin === origin);
+  const preset = PRESET_PROVIDERS.find(p => p.origin === credential.origin);
   const isCustom = !preset;
 
   const {
@@ -96,30 +95,8 @@ function SortableCredentialItem({ credential, onUpdate, onRemove, showDragHandle
     opacity: isDragging ? 0.5 : 1,
   };
 
-  // Helper to parse origin URL into credential parts
-  const parseOrigin = (origin: string): { protocol: string; host: string } => {
-    try {
-      const url = new URL(origin);
-      return {
-        protocol: url.protocol.replace(':', ''), // Remove trailing colon
-        host: url.host, // Includes port if non-standard (e.g., "github.com:8080")
-      };
-    } catch {
-      // Fallback: assume https and treat as hostname
-      return {
-        protocol: 'https',
-        host: origin,
-      };
-    }
-  };
-
   const updateCredential = (updates: Partial<GitCredential>) => {
     onUpdate({ ...credential, ...updates });
-  };
-
-  const handleOriginChange = (newOrigin: string) => {
-    const parsed = parseOrigin(newOrigin);
-    updateCredential(parsed);
   };
 
   return (
@@ -141,7 +118,7 @@ function SortableCredentialItem({ credential, onUpdate, onRemove, showDragHandle
             </div>
           )}
           <ExternalFavicon
-            url={origin}
+            url={credential.origin}
             size={16}
             fallback={<GitBranch size={16} />}
           />
@@ -171,8 +148,8 @@ function SortableCredentialItem({ credential, onUpdate, onRemove, showDragHandle
             <Input
               id={`credential-${credential.id}-origin`}
               placeholder="https://github.com"
-              value={origin}
-              onChange={(e) => handleOriginChange(e.target.value)}
+              value={credential.origin}
+              onChange={(e) => updateCredential({ origin: e.target.value })}
             />
           </div>
           <div className="grid gap-2">
@@ -231,33 +208,15 @@ export function GitSettings() {
     })
   );
 
-  // Helper to parse origin URL into credential parts
-  const parseOrigin = (origin: string): { protocol: string; host: string } => {
-    try {
-      const url = new URL(origin);
-      return {
-        protocol: url.protocol.replace(':', ''), // Remove trailing colon
-        host: url.host, // Includes port if non-standard (e.g., "github.com:8080")
-      };
-    } catch {
-      // Fallback: assume https and treat as hostname
-      return {
-        protocol: 'https',
-        host: origin,
-      };
-    }
-  };
-
   const handleAddPresetProvider = (preset: PresetProvider) => {
     const token = presetTokens[preset.id] as string | undefined;
 
     if (!token?.trim()) return;
 
-    const parsed = parseOrigin(preset.origin);
     const newCredential: GitCredential = {
       id: crypto.randomUUID(),
       name: preset.name,
-      ...parsed,
+      origin: preset.origin,
       username: preset.username,
       password: token.trim(),
     };
@@ -275,12 +234,10 @@ export function GitSettings() {
   const handleAddCustomProvider = () => {
     if (!customName.trim() || !customOrigin.trim() || !customUsername.trim() || !customPassword.trim()) return;
 
-    const parsed = parseOrigin(customOrigin.trim());
-
     const newCredential: GitCredential = {
       id: crypto.randomUUID(),
       name: customName.trim(),
-      ...parsed,
+      origin: customOrigin.trim(),
       username: customUsername.trim(),
       password: customPassword.trim(),
     };
@@ -321,13 +278,8 @@ export function GitSettings() {
     }
   };
 
-  // Helper to get origin string from credential
-  const getOriginFromCredential = (cred: GitCredential): string => {
-    return `${cred.protocol}://${cred.host}`; // host already includes port if non-standard
-  };
-
   // Get list of configured origins
-  const configuredOrigins = settings.credentials.map(getOriginFromCredential);
+  const configuredOrigins = settings.credentials.map(cred => cred.origin);
   const availablePresets = PRESET_PROVIDERS.filter(preset => !configuredOrigins.includes(preset.origin));
 
   return (

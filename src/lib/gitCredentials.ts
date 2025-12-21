@@ -24,30 +24,30 @@ function matchesCredential(
   urlString: string
 ): boolean {
   const targetURL = new URL(urlString);
-  const credURL = new URL(`${credential.protocol}://${credential.host}/`);
-  
+  const credURL = new URL(credential.origin);
+
   // 1. Protocol must match exactly
   if (credURL.protocol !== targetURL.protocol) {
     return false;
   }
-  
+
   // 2. Hostname must match exactly
   if (credURL.hostname !== targetURL.hostname) {
     return false;
   }
-  
+
   // 3. Port must match exactly (after default conversion)
   if (getEffectivePort(credURL) !== getEffectivePort(targetURL)) {
     return false;
   }
-  
+
   // 4. Username must match if both are specified
   if (credential.username && targetURL.username) {
     if (credential.username !== targetURL.username) {
       return false;
     }
   }
-  
+
   return true;
 }
 
@@ -61,15 +61,15 @@ export function findCredentialsForRepo(
 ): GitCredential | undefined {
   const targetURL = new URL(urlString);
   const matches = credentials.filter(cred => matchesCredential(cred, urlString));
-  
+
   if (matches.length === 0) {
     return undefined;
   }
-  
+
   // Prefer credentials with matching username
   const withUsername = matches.find(
     cred => cred.username && cred.username === targetURL.username,
   );
-  
+
   return withUsername ?? matches[0];
 }

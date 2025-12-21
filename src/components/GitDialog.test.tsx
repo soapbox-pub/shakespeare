@@ -61,8 +61,9 @@ describe('GitDialog', () => {
       settings: {
         credentials: [
           {
-            protocol: 'https',
-            host: 'github.com',
+            id: crypto.randomUUID(),
+            name: 'GitHub',
+            origin: 'https://github.com',
             username: 'git',
             password: 'github-token',
           },

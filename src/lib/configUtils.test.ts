@@ -159,8 +159,7 @@ describe('configUtils', () => {
         {
           id: crypto.randomUUID(),
           name: 'GitHub',
-          protocol: 'https',
-          host: 'github.com',
+          origin: 'https://github.com',
           username: 'user',
           password: 'token123',
         },
@@ -194,8 +193,7 @@ describe('configUtils', () => {
         expect(mockFS.readFile).toHaveBeenCalledWith('/config/git.json', 'utf8');
         expect(result.credentials).toHaveLength(1);
         expect(result.credentials[0]).toMatchObject({
-          protocol: 'https',
-          host: 'github.com',
+          origin: 'https://github.com',
           username: 'user',
           password: 'token123',
           name: 'GitHub',
@@ -220,8 +218,7 @@ describe('configUtils', () => {
 
         expect(result.credentials).toHaveLength(1);
         expect(result.credentials[0]).toMatchObject({
-          protocol: 'https',
-          host: 'git.example.com:8080',
+          origin: 'https://git.example.com:8080',
           username: 'user',
           password: 'token456',
           name: 'git.example.com',

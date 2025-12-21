@@ -3,15 +3,20 @@ import { findCredentialsForRepo } from './gitCredentials';
 import type { GitCredential } from '@/contexts/GitSettingsContext';
 
 // Helper to create test credentials with required fields
-function createTestCredential(overrides: Partial<GitCredential>): GitCredential {
+function createTestCredential(overrides: Partial<GitCredential> & { protocol?: string; host?: string } = {}): GitCredential {
+  // Extract protocol and host if provided (for backward compatibility with tests)
+  const { protocol = 'https', host = 'github.com', ...rest } = overrides;
+
+  // Construct origin from protocol and host if origin is not provided
+  const origin = rest.origin || `${protocol}://${host}`;
+
   return {
     id: crypto.randomUUID(),
     name: 'Test Credential',
-    protocol: 'https',
-    host: 'github.com',
+    origin,
     username: 'user',
     password: 'pass',
-    ...overrides,
+    ...rest,
   };
 }
 

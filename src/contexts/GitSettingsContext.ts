@@ -3,8 +3,7 @@ import { createContext } from 'react';
 export interface GitCredential {
   id: string; // UUID generated with crypto.randomUUID()
   name: string; // Display name for the credential
-  protocol: string;
-  host: string; // Includes port if non-standard (e.g., "github.com:8080")
+  origin: string; // Full origin URL (e.g., "https://github.com")
   username: string;
   password: string;
 }

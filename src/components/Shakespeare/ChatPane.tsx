@@ -24,7 +24,6 @@ import { NpmAddPackageTool } from '@/lib/tools/NpmAddPackageTool';
 import { NpmRemovePackageTool } from '@/lib/tools/NpmRemovePackageTool';
 import { GitCommitTool } from '@/lib/tools/GitCommitTool';
 import { BuildProjectTool } from '@/lib/tools/BuildProjectTool';
-import { DeployProjectTool } from '@/lib/tools/DeployProjectTool';
 import { NostrReadNipTool } from '@/lib/tools/NostrReadNipTool';
 import { NostrFetchEventTool } from '@/lib/tools/NostrFetchEventTool';
 import { NostrReadKindTool } from '@/lib/tools/NostrReadKindTool';
@@ -185,11 +184,6 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
       skill: new SkillTool(fs, pluginsPath, cwd),
     };
 
-    // Add deploy tool only if user is logged in
-    if (user && user.signer) {
-      tools.deploy_project = new DeployProjectTool(fs, cwd, user.signer, projectId);
-    }
-
     // Add generate_image tool if imageModel is configured
     if (settings.imageModel) {
       try {
@@ -239,7 +233,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     }
 
     return tools;
-  }, [fs, git, cwd, user, projectId, projectsPath, tmpPath, pluginsPath, config.corsProxy, settings, aiSettings, models, handleFileChanged]);
+  }, [fs, git, cwd, user, projectsPath, tmpPath, pluginsPath, config.corsProxy, settings, aiSettings, models, handleFileChanged]);
 
   // MCP tools wrapped for execution
   const mcpToolWrappers = useMemo(() => createMCPTools(mcpClients), [mcpClients]);

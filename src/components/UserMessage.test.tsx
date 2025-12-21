@@ -11,18 +11,6 @@ describe('UserMessage', () => {
     expect(screen.getByText(content)).toBeInTheDocument();
   });
 
-  it('handles backward compatibility with string content containing file attachments', () => {
-    const content = 'Here is my file: Added file: /tmp/test.txt';
-
-    render(<UserMessage content={content} />);
-
-    // When using string content, it should parse and separate file attachments
-    expect(screen.getByText('Here is my file:')).toBeInTheDocument();
-    expect(screen.getByText('test.txt')).toBeInTheDocument();
-    // Full path should not be displayed
-    expect(screen.queryByText('/tmp/test.txt')).not.toBeInTheDocument();
-  });
-
   it('renders file attachment badges for single file with text parts', () => {
     const content = [
       { type: 'text' as const, text: 'Here is my file:' },

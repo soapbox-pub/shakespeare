@@ -106,6 +106,13 @@ const defaultConfig: AppConfig = {
     ],
     updatedAt: 0,
   },
+  graspMetadata: {
+    relays: [
+      { url: 'wss://git.shakespeare.diy/' },
+      { url: 'wss://relay.ngit.dev/' },
+    ],
+    updatedAt: 0,
+  },
   templates: [
     {
       name: "MKStack",
@@ -129,7 +136,6 @@ const defaultConfig: AppConfig = {
   previewDomain: "local-shakespeare.dev",
   showcaseEnabled: true,
   showcaseModerator: "npub1jvnpg4c6ljadf5t6ry0w9q0rnm4mksde87kglkrc993z46c39axsgq89sc",
-  ngitServers: ["git.shakespeare.diy", "relay.ngit.dev"],
   fsPathProjects: electronPaths.fsPathProjects,
   fsPathConfig: electronPaths.fsPathConfig,
   fsPathTmp: electronPaths.fsPathTmp,

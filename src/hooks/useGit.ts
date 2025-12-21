@@ -12,7 +12,20 @@ export function useGit(): { git: Git } {
   const { fs } = useFS();
   const { nostr } = useNostr();
   const { config } = useAppContext();
-  const { corsProxy, ngitServers } = config;
+  const { corsProxy, graspMetadata } = config;
+
+  const ngitServers = useMemo(() => {
+    // Extract hostnames from grasp relay URLs for backwards compatibility with Git class
+    return graspMetadata.relays.map(r => {
+      try {
+        const url = new URL(r.url);
+        return url.hostname;
+      } catch {
+        // Fallback: try to extract hostname from URL string
+        return r.url.replace(/^wss?:\/\//, '').replace(/\/.*$/, '');
+      }
+    });
+  }, [graspMetadata.relays]);
 
   const git = useMemo(() => {
     return new Git({ fs, nostr, corsProxy, ngitServers });

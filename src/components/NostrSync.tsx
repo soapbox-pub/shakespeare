@@ -10,6 +10,7 @@ import { useContacts } from '@/hooks/useContacts';
  * This component runs globally to sync various Nostr data when the user logs in.
  * Currently syncs:
  * - NIP-65 relay list (kind 10002)
+ * - NIP-34 grasp server list (kind 10317)
  */
 export function NostrSync() {
   const { nostr } = useNostr();
@@ -61,6 +62,46 @@ export function NostrSync() {
 
     syncRelaysFromNostr();
   }, [user, config.relayMetadata.updatedAt, nostr, updateConfig]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const syncGraspServersFromNostr = async () => {
+      try {
+        const events = await nostr.query(
+          [{ kinds: [10317], authors: [user.pubkey], limit: 1 }],
+          { signal: AbortSignal.timeout(5000) }
+        );
+
+        if (events.length > 0) {
+          const event = events[0];
+
+          // Only update if the event is newer than our stored data
+          if (event.created_at > config.graspMetadata.updatedAt) {
+            const fetchedRelays = event.tags
+              .filter(([name]) => name === 'g')
+              .map(([_, url]) => ({ url }))
+              .filter(relay => relay.url); // Filter out empty URLs
+
+            if (fetchedRelays.length > 0) {
+              console.log('Syncing grasp server list from Nostr:', fetchedRelays);
+              updateConfig((current) => ({
+                ...current,
+                graspMetadata: {
+                  relays: fetchedRelays,
+                  updatedAt: event.created_at,
+                },
+              }));
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Failed to sync grasp servers from Nostr:', error);
+      }
+    };
+
+    syncGraspServersFromNostr();
+  }, [user, config.graspMetadata.updatedAt, nostr, updateConfig]);
 
   return null;
 }

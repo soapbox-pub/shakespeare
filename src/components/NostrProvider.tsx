@@ -19,7 +19,7 @@ const NostrProvider: React.FC<NostrProviderProps> = (props) => {
   const { children } = props;
   const { config } = useAppContext();
 
-  const gitRelays = config.ngitServers.map(server => `wss://${server}/`);
+  const gitRelays = config.graspMetadata.relays.map(r => r.url);
   const queryClient = useQueryClient();
 
   // Create NPool instance only once

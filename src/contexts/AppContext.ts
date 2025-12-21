@@ -9,6 +9,13 @@ export interface RelayMetadata {
   updatedAt: number;
 }
 
+export interface GraspMetadata {
+  /** List of grasp server relays */
+  relays: { url: string }[];
+  /** Unix timestamp of when the grasp list was last updated */
+  updatedAt: number;
+}
+
 export interface ProjectTemplate {
   /** Template name */
   name: string;
@@ -23,6 +30,8 @@ export interface AppConfig {
   theme: Theme;
   /** NIP-65 relay list metadata */
   relayMetadata: RelayMetadata;
+  /** NIP-34 grasp server list metadata */
+  graspMetadata: GraspMetadata;
   /** Available project templates */
   templates: ProjectTemplate[];
   /** ESM CDN URL for package imports */
@@ -39,8 +48,6 @@ export interface AppConfig {
   showcaseEnabled: boolean;
   /** Npub of the showcase moderator */
   showcaseModerator: string;
-  /** Nostr Git Servers (hostnames) */
-  ngitServers: string[];
   /** VFS path for projects directory */
   fsPathProjects: string;
   /** VFS path for config directory */

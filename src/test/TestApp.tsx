@@ -49,7 +49,13 @@ export function TestApp({ children }: TestAppProps) {
     language: 'en',
     showcaseEnabled: true,
     showcaseModerator: 'npub1jvnpg4c6ljadf5t6ry0w9q0rnm4mksde87kglkrc993z46c39axsgq89sc',
-    ngitServers: ['git.shakespeare.diy', 'relay.ngit.dev'],
+    graspMetadata: {
+      relays: [
+        { url: 'wss://git.shakespeare.diy/' },
+        { url: 'wss://relay.ngit.dev/' },
+      ],
+      updatedAt: 0,
+    },
     fsPathProjects: '/projects',
     fsPathConfig: '/config',
     fsPathTmp: '/tmp',

@@ -1,12 +1,11 @@
-import { ArrowLeft, Wifi, Users, UserPlus, LogOut, Trash2, User, Plus, Server, X, Key } from 'lucide-react';
+import { ArrowLeft, Wifi, Users, UserPlus, LogOut, Trash2, User, Plus, Server, Key } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
 import { RelayListManager } from '@/components/RelayListManager';
+import { GraspListManager } from '@/components/GraspListManager';
 import SimpleLoginDialog from '@/components/auth/SimpleLoginDialog';
 import SimpleSignupDialog from '@/components/auth/SimpleSignupDialog';
 import { useIsMobile } from '@/hooks/useIsMobile';
@@ -14,7 +13,6 @@ import { useNavigate } from 'react-router-dom';
 import { useLoggedInAccounts, type Account } from '@/hooks/useLoggedInAccounts';
 import { genUserName } from '@/lib/genUserName';
 import { useState } from 'react';
-import { useAppContext } from '@/hooks/useAppContext';
 import { toast } from '@/hooks/useToast';
 import { useNostrLogin } from '@nostrify/react/login';
 
@@ -29,8 +27,6 @@ export function NostrSettings() {
   const { authors, currentUser, setLogin, removeLogin, isLoading } = useLoggedInAccounts();
   const [showLoginDialog, setShowLoginDialog] = useState(false);
   const [showSignupDialog, setShowSignupDialog] = useState(false);
-  const { config, updateConfig } = useAppContext();
-  const [newServerHostname, setNewServerHostname] = useState('');
   const { logins } = useNostrLogin();
 
   const handleSwitchAccount = (accountId: string) => {
@@ -51,30 +47,6 @@ export function NostrSettings() {
 
   const getDisplayName = (account: Account) => {
     return account.metadata?.name ?? genUserName(account.pubkey);
-  };
-
-  const handleAddServer = () => {
-    const hostname = newServerHostname.trim();
-    if (!hostname) return;
-
-    // Basic validation - check if it's a valid hostname format
-    if (!/^[a-zA-Z0-9][a-zA-Z0-9-_.]*[a-zA-Z0-9]$/.test(hostname)) {
-      return;
-    }
-
-    updateConfig((current) => ({
-      ...current,
-      ngitServers: [...(current.ngitServers ?? config.ngitServers), hostname],
-    }));
-
-    setNewServerHostname('');
-  };
-
-  const handleRemoveServer = (hostname: string) => {
-    updateConfig((current) => ({
-      ...current,
-      ngitServers: (current.ngitServers ?? config.ngitServers).filter(s => s !== hostname),
-    }));
   };
 
   const getAccountLogin = (accountId: string) => {
@@ -307,61 +279,7 @@ export function NostrSettings() {
             <Server className="h-5 w-5 text-primary" />
             <h3 className="text-lg font-semibold">{t('nostrGitServers')}</h3>
           </div>
-          <div className="space-y-4">
-            {/* Server List */}
-            <div className="space-y-2">
-              {config.ngitServers.map((hostname) => (
-                <div
-                  key={hostname}
-                  className="flex items-center gap-2 p-2 rounded-md border bg-muted/20"
-                >
-                  <Server className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <span className="font-mono text-sm flex-1 truncate">
-                    {hostname}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleRemoveServer(hostname)}
-                    className="size-5 text-muted-foreground hover:text-destructive hover:bg-transparent shrink-0"
-                    disabled={config.ngitServers.length <= 1}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-
-            {/* Add Server Form */}
-            <div className="flex gap-2">
-              <div className="flex-1">
-                <Label htmlFor="new-server-hostname" className="sr-only">
-                  {t('serverHostname')}
-                </Label>
-                <Input
-                  id="new-server-hostname"
-                  placeholder={t('enterHostname')}
-                  value={newServerHostname}
-                  onChange={(e) => setNewServerHostname(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      handleAddServer();
-                    }
-                  }}
-                />
-              </div>
-              <Button
-                onClick={handleAddServer}
-                disabled={!newServerHostname.trim()}
-                variant="outline"
-                size="sm"
-                className="h-10 shrink-0"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                {t('addServer')}
-              </Button>
-            </div>
-          </div>
+          <GraspListManager />
         </div>
       </div>
 

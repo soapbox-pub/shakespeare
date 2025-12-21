@@ -151,20 +151,28 @@ export function AnnounceRepositoryDialog({
       .join(' ');
     setName(defaultName);
 
-    // Prepopulate clone URLs and relays from ngitServers (matching original handlePushToNostr)
-    if (user?.pubkey && config.ngitServers && config.ngitServers.length > 0) {
-      // Clone URLs: https://{server}/{npub}/{repo-id}.git
+    // Prepopulate clone URLs and relays from grasp servers (matching original handlePushToNostr)
+    if (user?.pubkey && config.graspMetadata.relays && config.graspMetadata.relays.length > 0) {
       const npub = nip19.npubEncode(user.pubkey);
-      const cloneUrls = config.ngitServers.map(server =>
-        `https://${server}/${npub}/${defaultRepoId}.git`
-      );
+
+      // Clone URLs: https://{hostname}/{npub}/{repo-id}.git
+      const cloneUrls = config.graspMetadata.relays.map(relay => {
+        try {
+          const url = new URL(relay.url);
+          return `https://${url.hostname}/${npub}/${defaultRepoId}.git`;
+        } catch {
+          // Fallback: extract hostname from URL string
+          const hostname = relay.url.replace(/^wss?:\/\//, '').replace(/\/.*$/, '');
+          return `https://${hostname}/${npub}/${defaultRepoId}.git`;
+        }
+      });
       setCloneUrls(cloneUrls);
 
-      // Relay URLs: wss://{server}
-      const relayUrls = config.ngitServers.map(server => `wss://${server}`);
+      // Relay URLs from grasp metadata
+      const relayUrls = config.graspMetadata.relays.map(r => r.url);
       setRelays(relayUrls);
     } else {
-      // Fallback to write relays if no ngitServers configured
+      // Fallback to write relays if no grasp servers configured
       const writeRelays = config.relayMetadata.relays
         .filter(r => r.write)
         .map(r => r.url);
@@ -193,7 +201,7 @@ export function AnnounceRepositoryDialog({
 
     // Get earliest commit
     await getEarliestCommit();
-  }, [projectId, projectPath, fs, config.relayMetadata, config.ngitServers, user?.pubkey, getEarliestCommit]);
+  }, [projectId, projectPath, fs, config.relayMetadata, config.graspMetadata.relays, user?.pubkey, getEarliestCommit]);
 
   // Load existing repository data if editing, or prepopulate fields for new repos
   useEffect(() => {

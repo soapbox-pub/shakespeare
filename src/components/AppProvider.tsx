@@ -1,7 +1,7 @@
 import { ReactNode, useEffect } from 'react';
 import { z } from 'zod';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
-import { AppContext, type AppConfig, type AppContextType, type Theme, type RelayMetadata } from '@/contexts/AppContext';
+import { AppContext, type AppConfig, type AppContextType, type Theme, type RelayMetadata, type GraspMetadata } from '@/contexts/AppContext';
 import i18n from '@/lib/i18n';
 
 interface AppProviderProps {
@@ -22,6 +22,14 @@ const RelayMetadataSchema = z.object({
   updatedAt: z.number(),
 }) satisfies z.ZodType<RelayMetadata>;
 
+// Zod schema for GraspMetadata
+const GraspMetadataSchema = z.object({
+  relays: z.array(z.object({
+    url: z.string().url(),
+  })),
+  updatedAt: z.number(),
+}) satisfies z.ZodType<GraspMetadata>;
+
 // Zod schema for ProjectTemplate
 const ProjectTemplateSchema = z.object({
   name: z.string().min(1),
@@ -33,6 +41,7 @@ const ProjectTemplateSchema = z.object({
 const AppConfigSchema = z.object({
   theme: z.enum(['dark', 'light', 'system']),
   relayMetadata: RelayMetadataSchema,
+  graspMetadata: GraspMetadataSchema,
   templates: z.array(ProjectTemplateSchema),
   esmUrl: z.string().url(),
   corsProxy: z.string().url(),
@@ -41,7 +50,6 @@ const AppConfigSchema = z.object({
   language: z.string(),
   showcaseEnabled: z.boolean(),
   showcaseModerator: z.string(),
-  ngitServers: z.array(z.string()),
   fsPathProjects: z.string().min(1),
   fsPathConfig: z.string().min(1),
   fsPathTmp: z.string().min(1),

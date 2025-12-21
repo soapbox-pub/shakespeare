@@ -20,8 +20,14 @@ export function UserMessage({ content }: UserMessageProps) {
   // Process each content part and categorize as text or file
   const processedParts: Array<{ type: 'text' | 'file'; content: string; filepath?: string }> = [];
 
-  contentParts.forEach(part => {
+  contentParts.forEach((part, index) => {
     const text = part.text.trim();
+
+    // First content part is always treated as text
+    if (index === 0) {
+      processedParts.push({ type: 'text', content: text });
+      return;
+    }
 
     // Matches the pattern anywhere in the text
     // Regular expression to match "Added file: <filename>" patterns

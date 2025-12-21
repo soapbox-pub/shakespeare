@@ -96,8 +96,9 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   const [templateInfo, setTemplateInfo] = useState<{ name: string; description: string; url: string } | null>(null);
   const [showTemplateInfo, setShowTemplateInfo] = useState(false);
 
-  // Determine which error to show - console error takes priority over AI errors
-  const displayError = consoleError || aiError;
+  // Determine which error to show - AI errors take priority over console errors
+  // since they are more immediately relevant to the user's current action
+  const displayError = aiError || consoleError;
 
   // Use external state if provided, otherwise default to false
   const isBuildLoading = externalIsBuildLoading || false;

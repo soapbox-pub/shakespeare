@@ -730,7 +730,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
                     />
                   </div>
                 ) : (
-                  <div className="h-full flex items-center justify-center bg-muted">
+                  <div className="h-full w-full flex items-center justify-center bg-muted">
                     <div className="text-center">
                       <h3 className="text-lg font-semibold mb-2">{t('projectPreview')}</h3>
                       <p className="text-muted-foreground mb-4">

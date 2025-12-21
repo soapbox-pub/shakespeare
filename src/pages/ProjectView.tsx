@@ -266,7 +266,7 @@ export function ProjectView() {
               variant="ghost"
               size="sm"
               onClick={() => setMobileView('chat')}
-              className={cn("flex-1 rounded-none mobile-nav-button", { "text-primary": mobileView === 'chat' })}
+              className={cn("flex-1 rounded-none mobile-nav-button text-muted-foreground", { "text-foreground": mobileView === 'chat' })}
               disabled={!project}
             >
               <MessageSquare className="h-4 w-4 mr-1" />
@@ -277,7 +277,7 @@ export function ProjectView() {
                 variant="ghost"
                 size="sm"
                 onClick={() => setMobileView('preview')}
-                className={cn("flex-1 rounded-none mobile-nav-button", { "text-primary": mobileView === 'preview' })}
+                className={cn("flex-1 rounded-none mobile-nav-button text-muted-foreground", { "text-foreground": mobileView === 'preview' })}
                 disabled={!project}
               >
                 <Eye className="h-4 w-4 mr-1" />
@@ -288,7 +288,7 @@ export function ProjectView() {
               variant="ghost"
               size="sm"
               onClick={() => setMobileView('code')}
-              className={cn("flex-1 rounded-none mobile-nav-button", { "text-primary": mobileView === 'code' })}
+              className={cn("flex-1 rounded-none mobile-nav-button text-muted-foreground", { "text-foreground": mobileView === 'code' })}
               disabled={!project}
             >
               <Code className="h-4 w-4 mr-1" />

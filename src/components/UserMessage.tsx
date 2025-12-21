@@ -17,28 +17,22 @@ export function UserMessage({ content }: UserMessageProps) {
     ? [{ type: 'text' as const, text: content }]
     : content.filter(part => part.type === 'text') as Array<{ type: 'text'; text: string }>;
 
-  // Regular expression to match "Added file: /tmp/<filename>" patterns
-  // Matches the pattern anywhere in the text
-  const filePattern = /Added file:\s*(\/tmp\/[^\s\n]+)/g;
-
   // Process each content part and categorize as text or file
   const processedParts: Array<{ type: 'text' | 'file'; content: string; filepath?: string }> = [];
 
   contentParts.forEach(part => {
     const text = part.text.trim();
+
+    // Matches the pattern anywhere in the text
+    // Regular expression to match "Added file: <filename>" patterns
+    const filePattern = /^Added file: (\/[^\s\n]+$)/g;
     
     // Find all file patterns in this text part
-    const fileMatches: Array<{ filepath: string; index: number; length: number }> = [];
-    let match;
-    filePattern.lastIndex = 0; // Reset regex
-    
-    while ((match = filePattern.exec(text)) !== null) {
-      fileMatches.push({
-        filepath: match[1], // "/tmp/filename.txt"
-        index: match.index,
-        length: match[0].length
-      });
-    }
+    const fileMatches = [...text.matchAll(filePattern)].map(match => ({
+      filepath: match[1], // "/tmp/filename.txt"
+      index: match.index,
+      length: match[0].length,
+    }));
 
     if (fileMatches.length > 0) {
       // Split text around file patterns and process each segment

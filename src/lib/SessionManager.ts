@@ -340,7 +340,7 @@ export class SessionManager {
         const stripImageUrls = (msgs: OpenAI.Chat.Completions.ChatCompletionMessageParam[]): OpenAI.Chat.Completions.ChatCompletionMessageParam[] => {
           return msgs.map(msg => {
             if (msg.role === 'user' && typeof msg.content !== 'string' && Array.isArray(msg.content)) {
-              // Keep only text parts (this includes "Added file: /tmp/..." paths)
+              // Keep only text parts (this includes "Added file: <filename>" paths)
               const textParts = msg.content.filter(part => part.type === 'text');
 
               // If we had images, convert to string content (or empty if no text)

@@ -12,8 +12,12 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowLeft, MessageSquare, Eye, Code, Menu } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { ActionsMenu } from '@/components/ActionsMenu';
 import { useIsMobile } from '@/hooks/useIsMobile';
+import { ProjectTitleMenu } from '@/components/ProjectTitleMenu';
+import { GitHistoryDialog } from '@/components/ai/GitHistoryDialog';
+import { GitDialog } from '@/components/GitDialog';
+import { DeployDialog } from '@/components/DeployDialog';
+import { DuplicateProjectDialog } from '@/components/DuplicateProjectDialog';
 import { GitStatusIndicator } from '@/components/GitStatusIndicator';
 import { StarButton } from '@/components/StarButton';
 import { useBuildProject } from '@/hooks/useBuildProject';
@@ -30,6 +34,10 @@ export function ProjectView() {
   const [mobileView, setMobileView] = useState<'chat' | 'preview' | 'code'>('chat');
   const [isAILoading, setIsAILoading] = useState(false);
   const [isProjectDetailsOpen, setIsProjectDetailsOpen] = useState(false);
+  const [gitHistoryOpen, setGitHistoryOpen] = useState(false);
+  const [gitDialogOpen, setGitDialogOpen] = useState(false);
+  const [deployDialogOpen, setDeployDialogOpen] = useState(false);
+  const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
 
   // Use console error state from provider
   const { consoleError, dismissConsoleError, clearErrors } = useConsoleError();
@@ -120,6 +128,8 @@ export function ProjectView() {
     navigate('/');
   };
 
+  const isAnyLoading = isAILoading || build.isPending;
+
   if (!project && !isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -149,13 +159,18 @@ export function ProjectView() {
               </Button>
               <div className="flex min-w-0 flex-1">
                 {project ? (
-                  <Button
-                    variant="ghost"
-                    className="block p-0 h-auto text-sm font-semibold truncate hover:bg-transparent hover:text-primary"
-                    onClick={() => setIsProjectDetailsOpen(true)}
-                  >
-                    {project.name}
-                  </Button>
+                  <ProjectTitleMenu
+                    projectName={project.name}
+                    onNewChat={handleNewChat}
+                    onGitHistory={() => setGitHistoryOpen(true)}
+                    onGitDialog={() => setGitDialogOpen(true)}
+                    onDeploy={() => setDeployDialogOpen(true)}
+                    onDuplicate={() => setDuplicateDialogOpen(true)}
+                    onProjectDetails={() => setIsProjectDetailsOpen(true)}
+                    isAILoading={isAILoading}
+                    isAnyLoading={isAnyLoading}
+                    className="text-sm"
+                  />
                 ) : (
                   <Skeleton className="h-5 w-32" />
                 )}
@@ -164,27 +179,13 @@ export function ProjectView() {
 
             <div className="flex items-center gap-2">
               {project ? (
-                <>
-                  <StarButton
-                    projectId={project.id}
-                    projectName={project.name}
-                    className="h-8 w-8"
-                  />
-                  <ActionsMenu
-                    projectId={project.id}
-                    projectName={project.name}
-                    onNewChat={handleNewChat}
-                    onProjectDetails={() => setIsProjectDetailsOpen(true)}
-                    isLoading={isAILoading}
-                    isBuildLoading={build.isPending}
-                    onFirstInteraction={handleFirstInteraction}
-                  />
-                </>
+                <StarButton
+                  projectId={project.id}
+                  projectName={project.name}
+                  className="h-8 w-8"
+                />
               ) : (
-                <>
-                  <Skeleton className="h-8 w-8 rounded" />
-                  <Skeleton className="h-8 w-8 rounded" />
-                </>
+                <Skeleton className="h-8 w-8 rounded" />
               )}
             </div>
           </div>
@@ -298,14 +299,38 @@ export function ProjectView() {
           </div>
         </div>
 
-        {/* Project Details Dialog */}
+        {/* Dialogs */}
         {project && (
-          <ProjectDetailsDialog
-            project={project}
-            open={isProjectDetailsOpen}
-            onOpenChange={setIsProjectDetailsOpen}
-            onProjectDeleted={handleProjectDeleted}
-          />
+          <>
+            <ProjectDetailsDialog
+              project={project}
+              open={isProjectDetailsOpen}
+              onOpenChange={setIsProjectDetailsOpen}
+              onProjectDeleted={handleProjectDeleted}
+            />
+            <GitDialog
+              projectId={project.id}
+              open={gitDialogOpen}
+              onOpenChange={setGitDialogOpen}
+            />
+            <GitHistoryDialog
+              projectId={project.id}
+              open={gitHistoryOpen}
+              onOpenChange={setGitHistoryOpen}
+            />
+            <DeployDialog
+              projectId={project.id}
+              projectName={project.name}
+              open={deployDialogOpen}
+              onOpenChange={setDeployDialogOpen}
+            />
+            <DuplicateProjectDialog
+              projectId={project.id}
+              projectName={project.name}
+              open={duplicateDialogOpen}
+              onOpenChange={setDuplicateDialogOpen}
+            />
+          </>
         )}
       </div>
     );
@@ -357,43 +382,34 @@ export function ProjectView() {
                       {/* Project title */}
                       <div className="flex flex-1 min-w-0 truncate">
                         {project ? (
-                          <Button
-                            variant="ghost"
-                            className="block p-0 h-auto font-semibold text-lg truncate hover:bg-transparent hover:text-primary"
-                            onClick={() => setIsProjectDetailsOpen(true)}
-                          >
-                            {project.name}
-                          </Button>
+                          <ProjectTitleMenu
+                            projectName={project.name}
+                            onNewChat={handleNewChat}
+                            onGitHistory={() => setGitHistoryOpen(true)}
+                            onGitDialog={() => setGitDialogOpen(true)}
+                            onDeploy={() => setDeployDialogOpen(true)}
+                            onDuplicate={() => setDuplicateDialogOpen(true)}
+                            onProjectDetails={() => setIsProjectDetailsOpen(true)}
+                            isAILoading={isAILoading}
+                            isAnyLoading={isAnyLoading}
+                            className="text-lg"
+                          />
                         ) : (
                           <Skeleton className="h-6 w-40" />
                         )}
                       </div>
                     </div>
 
-                    {/* Right side - Star and Actions Menu */}
+                    {/* Right side - Star button only */}
                     <div className="flex items-center gap-2">
                       {project ? (
-                        <>
-                          <StarButton
-                            projectId={project.id}
-                            projectName={project.name}
-                            className="h-8 w-8"
-                          />
-                          <ActionsMenu
-                            projectId={project.id}
-                            projectName={project.name}
-                            onNewChat={handleNewChat}
-                            onProjectDetails={() => setIsProjectDetailsOpen(true)}
-                            isLoading={isAILoading}
-                            isBuildLoading={build.isPending}
-                            onFirstInteraction={handleFirstInteraction}
-                          />
-                        </>
+                        <StarButton
+                          projectId={project.id}
+                          projectName={project.name}
+                          className="h-8 w-8"
+                        />
                       ) : (
-                        <>
-                          <Skeleton className="h-8 w-8 rounded" />
-                          <Skeleton className="h-8 w-8 rounded" />
-                        </>
+                        <Skeleton className="h-8 w-8 rounded" />
                       )}
                     </div>
                   </div>
@@ -452,14 +468,38 @@ export function ProjectView() {
         </div>
       </div>
 
-      {/* Project Details Dialog */}
+      {/* Dialogs */}
       {project && (
-        <ProjectDetailsDialog
-          project={project}
-          open={isProjectDetailsOpen}
-          onOpenChange={setIsProjectDetailsOpen}
-          onProjectDeleted={handleProjectDeleted}
-        />
+        <>
+          <ProjectDetailsDialog
+            project={project}
+            open={isProjectDetailsOpen}
+            onOpenChange={setIsProjectDetailsOpen}
+            onProjectDeleted={handleProjectDeleted}
+          />
+          <GitDialog
+            projectId={project.id}
+            open={gitDialogOpen}
+            onOpenChange={setGitDialogOpen}
+          />
+          <GitHistoryDialog
+            projectId={project.id}
+            open={gitHistoryOpen}
+            onOpenChange={setGitHistoryOpen}
+          />
+          <DeployDialog
+            projectId={project.id}
+            projectName={project.name}
+            open={deployDialogOpen}
+            onOpenChange={setDeployDialogOpen}
+          />
+          <DuplicateProjectDialog
+            projectId={project.id}
+            projectName={project.name}
+            open={duplicateDialogOpen}
+            onOpenChange={setDuplicateDialogOpen}
+          />
+        </>
       )}
     </div>
   );

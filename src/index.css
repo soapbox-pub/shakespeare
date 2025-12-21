@@ -251,22 +251,6 @@
     max-height: 100dvh;
   }
 
-  /* Mobile navigation button styles - text/icon highlighting only */
-  .mobile-nav-button,
-  .mobile-nav-button:hover,
-  .mobile-nav-button:active,
-  .mobile-nav-button-active,
-  .mobile-nav-button-active:hover,
-  .mobile-nav-button-active:active {
-    background-color: transparent !important;
-  }
-
-  .mobile-nav-button-active,
-  .mobile-nav-button-active:hover,
-  .mobile-nav-button-active:active {
-    color: hsl(var(--primary)) !important;
-  }
-
   pre.shiki {
     background-color: transparent !important;
   }

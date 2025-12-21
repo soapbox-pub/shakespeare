@@ -24,6 +24,7 @@ import { useBuildProject } from '@/hooks/useBuildProject';
 import { useIsProjectPreviewable } from '@/hooks/useIsProjectPreviewable';
 import { useConsoleError } from '@/hooks/useConsoleError';
 import { useAutoBuild } from '@/hooks/useAutoBuild';
+import { cn } from '@/lib/utils';
 
 export function ProjectView() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -265,7 +266,7 @@ export function ProjectView() {
               variant="ghost"
               size="sm"
               onClick={() => setMobileView('chat')}
-              className={`flex-1 rounded-none mobile-nav-button ${mobileView === 'chat' ? 'mobile-nav-button-active' : ''}`}
+              className={cn("flex-1 rounded-none mobile-nav-button", { "text-primary": mobileView === 'chat' })}
               disabled={!project}
             >
               <MessageSquare className="h-4 w-4 mr-1" />
@@ -276,7 +277,7 @@ export function ProjectView() {
                 variant="ghost"
                 size="sm"
                 onClick={() => setMobileView('preview')}
-                className={`flex-1 rounded-none mobile-nav-button ${mobileView === 'preview' ? 'mobile-nav-button-active' : ''}`}
+                className={cn("flex-1 rounded-none mobile-nav-button", { "text-primary": mobileView === 'preview' })}
                 disabled={!project}
               >
                 <Eye className="h-4 w-4 mr-1" />
@@ -287,7 +288,7 @@ export function ProjectView() {
               variant="ghost"
               size="sm"
               onClick={() => setMobileView('code')}
-              className={`flex-1 rounded-none mobile-nav-button ${mobileView === 'code' ? 'mobile-nav-button-active' : ''}`}
+              className={cn("flex-1 rounded-none mobile-nav-button", { "text-primary": mobileView === 'code' })}
               disabled={!project}
             >
               <Code className="h-4 w-4 mr-1" />

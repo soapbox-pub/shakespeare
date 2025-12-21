@@ -65,7 +65,7 @@ export function FileAttachment({
         size="sm"
         onClick={handleButtonClick}
         disabled={disabled}
-        className="h-8 w-8 p-0 rounded-full hover:bg-muted/50 dark:hover:text-sidebar-primary"
+        className="h-8 w-8 p-0 rounded-full hover:bg-muted/50"
         aria-label="Attach files"
         data-testid="paperclip-button"
       >
@@ -90,7 +90,7 @@ export function FileAttachment({
                   onClick={() => handleRemoveFile(file)}
                   className="h-3 w-3 p-0 hover:bg-muted/70"
                 >
-                  <X className="h-2 w-2" />
+                  <X className="size-3" />
                 </Button>
               )}
             </div>

@@ -82,6 +82,13 @@ export function GitSettingsProvider({ children }: GitSettingsProviderProps) {
     });
   };
 
+  const setCredentials = (credentials: GitCredential[]) => {
+    setSettings(prev => ({
+      ...prev,
+      credentials,
+    }));
+  };
+
   const isConfigured = settings.credentials.length > 0;
 
   const contextValue: GitSettingsContextType = {
@@ -90,6 +97,7 @@ export function GitSettingsProvider({ children }: GitSettingsProviderProps) {
     addCredential,
     removeCredential,
     updateCredential,
+    setCredentials,
     isConfigured,
     isInitialized,
   };

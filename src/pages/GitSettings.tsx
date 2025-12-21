@@ -1,6 +1,25 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Check, GitBranch, ArrowLeft, Trash2, ChevronDown, Plus, User } from 'lucide-react';
+import { Check, GitBranch, ArrowLeft, Trash2, ChevronDown, Plus, User, GripVertical } from 'lucide-react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import {
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -49,9 +68,138 @@ const PRESET_PROVIDERS: PresetProvider[] = [
   },
 ];
 
+interface SortableCredentialItemProps {
+  credential: GitCredential;
+  index: number;
+  onUpdate: (index: number, credential: Partial<GitCredential>) => void;
+  onRemove: (index: number) => void;
+  showDragHandle: boolean;
+}
+
+function SortableCredentialItem({ credential, index, onUpdate, onRemove, showDragHandle }: SortableCredentialItemProps) {
+  const { t } = useTranslation();
+  const origin = `${credential.protocol}://${credential.host}`;
+  const preset = PRESET_PROVIDERS.find(p => p.origin === origin);
+  const isCustom = !preset;
+
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: `credential-${index}` });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  // Helper to parse origin URL into credential parts
+  const parseOrigin = (origin: string): { protocol: string; host: string } => {
+    try {
+      const url = new URL(origin);
+      return {
+        protocol: url.protocol.replace(':', ''), // Remove trailing colon
+        host: url.host, // Includes port if non-standard (e.g., "github.com:8080")
+      };
+    } catch {
+      // Fallback: assume https and treat as hostname
+      return {
+        protocol: 'https',
+        host: origin,
+      };
+    }
+  };
+
+  const handleOriginChange = (newOrigin: string) => {
+    const parsed = parseOrigin(newOrigin);
+    onUpdate(index, parsed);
+  };
+
+  return (
+    <AccordionItem
+      ref={setNodeRef}
+      style={style}
+      value={`credential-${index}`}
+      className="border rounded-lg"
+    >
+      <AccordionTrigger className="px-4 py-3 hover:no-underline">
+        <div className="flex items-center gap-2 w-full mr-3">
+          {showDragHandle && (
+            <div
+              {...attributes}
+              {...listeners}
+              className="cursor-grab active:cursor-grabbing p-1 -ml-1 text-muted-foreground hover:text-foreground"
+            >
+              <GripVertical className="h-4 w-4" />
+            </div>
+          )}
+          <ExternalFavicon
+            url={origin}
+            size={16}
+            fallback={<GitBranch size={16} />}
+          />
+          <span className="font-medium">
+            {preset?.name || credential.host}
+          </span>
+          {isCustom && <Badge variant="outline">{t('custom')}</Badge>}
+        </div>
+      </AccordionTrigger>
+      <AccordionContent className="px-4 pb-4">
+        <div className="space-y-3">
+          <div className="grid gap-2">
+            <Label htmlFor={`credential-${index}-origin`}>
+              {t('origin')} <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              id={`credential-${index}-origin`}
+              placeholder="https://github.com"
+              value={origin}
+              onChange={(e) => handleOriginChange(e.target.value)}
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor={`credential-${index}-username`}>
+              {t('username')} <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              id={`credential-${index}-username`}
+              placeholder="git"
+              value={credential.username}
+              onChange={(e) => onUpdate(index, { username: e.target.value })}
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor={`credential-${index}-password`}>
+              {t('password')} <span className="text-destructive">*</span>
+            </Label>
+            <PasswordInput
+              id={`credential-${index}-password`}
+              placeholder={t('enterPassword')}
+              value={credential.password}
+              onChange={(e) => onUpdate(index, { password: e.target.value })}
+            />
+          </div>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => onRemove(index)}
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            {t('delete')}
+          </Button>
+        </div>
+      </AccordionContent>
+    </AccordionItem>
+  );
+}
+
 export function GitSettings() {
   const { t } = useTranslation();
-  const { settings, addCredential, removeCredential, updateCredential, updateSettings, isInitialized } = useGitSettings();
+  const { settings, addCredential, removeCredential, updateCredential, setCredentials, updateSettings, isInitialized } = useGitSettings();
   const { initiateOAuth, isLoading: isOAuthLoading, error: oauthError, isOAuthConfigured } = useGitHubOAuth();
   const isMobile = useIsMobile();
   const navigate = useNavigate();
@@ -60,6 +208,13 @@ export function GitSettings() {
   const [customPassword, setCustomPassword] = useState('');
   const [presetTokens, setPresetTokens] = useState<Record<string, string>>({});
   const [forceManualEntry, setForceManualEntry] = useState<Record<string, boolean>>({});
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   // Helper to parse origin URL into credential parts
   const parseOrigin = (origin: string): { protocol: string; host: string } => {
@@ -126,6 +281,20 @@ export function GitSettings() {
   const handleUpdateCredential = (index: number, credential: Partial<GitCredential>) => {
     // Auto-save: Update credential immediately in persistent storage
     updateCredential(index, credential);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (active.id !== over?.id) {
+      const oldIndex = settings.credentials.findIndex((_, i) => `credential-${i}` === active.id);
+      const newIndex = settings.credentials.findIndex((_, i) => `credential-${i}` === over?.id);
+
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const newCredentials = arrayMove(settings.credentials, oldIndex, newIndex);
+        setCredentials(newCredentials);
+      }
+    }
   };
 
   // Helper to get origin string from credential
@@ -210,77 +379,29 @@ export function GitSettings() {
           {settings.credentials.length > 0 && (
             <div className="space-y-3">
               <h4 className="text-sm font-medium">{t('configuredCredentials')}</h4>
-              <Accordion type="multiple" className="w-full space-y-2">
-                {settings.credentials.map((credential, index) => {
-                  const origin = getOriginFromCredential(credential);
-                  const preset = PRESET_PROVIDERS.find(p => p.origin === origin);
-                  const isCustom = !preset;
-
-                  return (
-                    <AccordionItem key={`${origin}-${index}`} value={`${origin}-${index}`}>
-                      <AccordionTrigger className="px-4 py-3 hover:no-underline">
-                        <div className="flex items-center gap-2">
-                          <ExternalFavicon
-                            url={origin}
-                            size={16}
-                            fallback={<GitBranch size={16} />}
-                          />
-                          <span className="font-medium">
-                            {preset?.name || credential.host}
-                          </span>
-                          {isCustom && <Badge variant="outline">{t('custom')}</Badge>}
-                        </div>
-                      </AccordionTrigger>
-                      <AccordionContent className="px-4 pb-4">
-                        <div className="space-y-3">
-                          <div className="grid gap-2">
-                            <Label htmlFor={`${origin}-${index}-origin`}>
-                              {t('origin')} <span className="text-destructive">*</span>
-                            </Label>
-                            <Input
-                              id={`${origin}-${index}-origin`}
-                              placeholder="https://github.com"
-                              value={origin}
-                              disabled
-                              className="bg-muted"
-                            />
-                          </div>
-                          <div className="grid gap-2">
-                            <Label htmlFor={`${origin}-${index}-username`}>
-                              {t('username')} <span className="text-destructive">*</span>
-                            </Label>
-                            <Input
-                              id={`${origin}-${index}-username`}
-                              placeholder="git"
-                              value={credential.username}
-                              onChange={(e) => handleUpdateCredential(index, { username: e.target.value })}
-                            />
-                          </div>
-                          <div className="grid gap-2">
-                            <Label htmlFor={`${origin}-${index}-password`}>
-                              {t('password')} <span className="text-destructive">*</span>
-                            </Label>
-                            <PasswordInput
-                              id={`${origin}-${index}-password`}
-                              placeholder={t('enterPassword')}
-                              value={credential.password}
-                              onChange={(e) => handleUpdateCredential(index, { password: e.target.value })}
-                            />
-                          </div>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => handleRemoveCredential(index)}
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            {t('delete')}
-                          </Button>
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  );
-                })}
-              </Accordion>
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext
+                  items={settings.credentials.map((_, i) => `credential-${i}`)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <Accordion type="multiple" className="w-full space-y-2">
+                    {settings.credentials.map((credential, index) => (
+                      <SortableCredentialItem
+                        key={`credential-${index}`}
+                        credential={credential}
+                        index={index}
+                        onUpdate={handleUpdateCredential}
+                        onRemove={handleRemoveCredential}
+                        showDragHandle={settings.credentials.length > 1}
+                      />
+                    ))}
+                  </Accordion>
+                </SortableContext>
+              </DndContext>
             </div>
           )}
 

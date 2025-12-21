@@ -20,6 +20,7 @@ export interface GitSettingsContextType {
   addCredential: (credential: GitCredential) => void;
   removeCredential: (index: number) => void;
   updateCredential: (index: number, credential: Partial<GitCredential>) => void;
+  setCredentials: (credentials: GitCredential[]) => void;
   isConfigured: boolean;
   isInitialized: boolean;
 }

@@ -314,9 +314,9 @@ export const ModelSelector = memo(function ModelSelector({
               className={cn(
                 "h-8 p-0 gap-1 text-xs border-0 bg-transparent hover:bg-transparent hover:text-foreground focus-visible:ring-0 focus-visible:ring-offset-0 text-muted-foreground text-right min-w-0 max-w-[280px]"
               )}
-              disabled={disabled || isLoadingSettings}
+              disabled={disabled || isLoading || isLoadingSettings}
             >
-              {isLoadingSettings ? (
+              {(isLoading || isLoadingSettings) ? (
                 <Skeleton className="h-4 w-32" />
               ) : selectedModelDisplay ? (
                 <>
@@ -339,7 +339,9 @@ export const ModelSelector = memo(function ModelSelector({
                   {placeholder || defaultPlaceholder}
                 </span>
               )}
-              {!isLoadingSettings && <ChevronDown className="size-3 shrink-0 opacity-50" />}
+              {(!isLoading && !isLoadingSettings) && (
+                <ChevronDown className="size-3 shrink-0 opacity-50" />
+              )}
             </Button>
           </PopoverTrigger>
           <PopoverContent className="p-0 w-80" align="end">

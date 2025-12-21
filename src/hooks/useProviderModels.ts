@@ -56,7 +56,7 @@ export function useProviderModels(): ModelFetchResult {
           // Fetch models with timeout
           try {
             const response = await openai.models.list({
-              signal: AbortSignal.timeout(10_000),
+              signal: AbortSignal.timeout(8_000),
             });
 
             // Transform models to our format

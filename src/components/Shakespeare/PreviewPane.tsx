@@ -14,6 +14,7 @@ import { FolderOpen, ArrowLeft, Bug, Copy, Check, Play, Loader2, MenuIcon, Code,
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { GitStatusIndicator } from '@/components/GitStatusIndicator';
 import { BrowserAddressBar } from '@/components/ui/browser-address-bar';
+import { type DeviceMode } from '@/components/ui/device-toggle';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -90,6 +91,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
 
   const [deployDialogOpen, setDeployDialogOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [deviceMode, setDeviceMode] = useState<DeviceMode>('laptop');
   const previewContainerRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const { fs } = useFS();
@@ -659,58 +661,74 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
                 isFullscreen && "fixed inset-0 z-[100] bg-background"
               )}
             >
-              {/* Always show browser address bar */}
-              <div className="h-12 flex items-center w-full">
-                <BrowserAddressBar
-                  currentPath={currentPath}
-                  onNavigate={hasBuiltProject ? navigateIframe : undefined}
-                  onRefresh={hasBuiltProject ? refreshIframe : undefined}
-                  navigationHistory={navigationHistory}
-                  leftContent={(
+              {/* Top navigation bar */}
+              <div className="h-12 flex items-center gap-2 p-2 border-b bg-background w-full">
+                {/* Left side - fullscreen toggle */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={toggleFullscreen}
+                  className="h-8 w-8 p-0"
+                  title={isFullscreen ? 'Exit immersive view' : 'Enter immersive view'}
+                >
+                  {isFullscreen ? (
+                    <Shrink className="h-4 w-4" />
+                  ) : (
+                    <Expand className="h-4 w-4" />
+                  )}
+                </Button>
+
+                {/* Center - address bar with device toggle */}
+                <div className="flex-1 px-6">
+                  <div className="relative max-w-64 mx-auto">
+                    <BrowserAddressBar
+                      currentPath={currentPath}
+                      onNavigate={hasBuiltProject ? navigateIframe : undefined}
+                      onRefresh={hasBuiltProject ? refreshIframe : undefined}
+                      navigationHistory={navigationHistory}
+                      deviceMode={deviceMode}
+                      onDeviceModeChange={setDeviceMode}
+                    />
+                  </div>
+                </div>
+
+                {/* Right side - actions */}
+                <div className="flex items-center">
+                  {(!isMobile && onToggleView && isPreviewable) && (
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={toggleFullscreen}
-                      className="h-8 w-8 p-0 ml-1"
-                      title={isFullscreen ? 'Exit immersive view' : 'Enter immersive view'}
+                      onClick={onToggleView}
+                      className="h-8 gap-2"
                     >
-                      {isFullscreen ? (
-                        <Shrink className="h-4 w-4" />
-                      ) : (
-                        <Expand className="h-4 w-4" />
-                      )}
+                      <Code className="h-4 w-4" />
                     </Button>
                   )}
-                  extraContent={(
-                    <div className="flex items-center">
-                      {(!isMobile && onToggleView && isPreviewable) && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={onToggleView}
-                          className="h-8 gap-2"
-                        >
-                          <Code className="h-4 w-4" />
-                        </Button>
-                      )}
-                      <ConsoleDropdown />
-                      <Menu />
-                    </div>
-                  )}
-                />
+                  <ConsoleDropdown />
+                  <Menu />
+                </div>
               </div>
 
               {/* Content area */}
-              <div className="flex-1">
+              <div className="flex-1 flex items-center justify-center bg-muted/30">
                 {hasBuiltProject ? (
-                  <iframe
-                    key={projectId}
-                    ref={iframeRef}
-                    src={`https://${projectId}.${previewDomain}/`}
-                    className="w-full h-full border-0"
-                    title="Project Preview"
-                    sandbox="allow-scripts allow-same-origin allow-forms"
-                  />
+                  <div
+                    className={cn(
+                      "h-full transition-all duration-300 ease-in-out bg-background",
+                      deviceMode === 'laptop' && "w-full",
+                      deviceMode === 'tablet' && "w-full max-w-3xl shadow-lg",
+                      deviceMode === 'phone' && "w-full max-w-sm shadow-lg"
+                    )}
+                  >
+                    <iframe
+                      key={projectId}
+                      ref={iframeRef}
+                      src={`https://${projectId}.${previewDomain}/`}
+                      className="w-full h-full border-0"
+                      title="Project Preview"
+                      sandbox="allow-scripts allow-same-origin allow-forms"
+                    />
+                  </div>
                 ) : (
                   <div className="h-full flex items-center justify-center bg-muted">
                     <div className="text-center">

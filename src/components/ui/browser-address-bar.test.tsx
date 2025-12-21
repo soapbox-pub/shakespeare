@@ -62,25 +62,7 @@ describe('BrowserAddressBar', () => {
     expect(input).toHaveValue('/contact');
   });
 
-  it('renders leftContent when provided', () => {
-    render(
-      <BrowserAddressBar
-        leftContent={<button data-testid="left-button">Left</button>}
-      />
-    );
 
-    expect(screen.getByTestId('left-button')).toBeInTheDocument();
-  });
-
-  it('renders extraContent when provided', () => {
-    render(
-      <BrowserAddressBar
-        extraContent={<button data-testid="extra-button">Extra</button>}
-      />
-    );
-
-    expect(screen.getByTestId('extra-button')).toBeInTheDocument();
-  });
 
   it('shows navigation history dropdown when input is focused', () => {
     const navigationHistory = ['/', '/about', '/contact'];

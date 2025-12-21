@@ -62,16 +62,8 @@ const gitCredentialSchema = z.object({
   password: z.string(),
 });
 
-const gitHostTokenSchema = z.object({
-  token: z.string(),
-  username: z.string().optional(),
-  scopes: z.array(z.string()).optional(),
-  createdAt: z.number().optional(),
-});
-
 const gitSettingsSchema = z.object({
   credentials: z.record(z.string(), gitCredentialSchema),
-  hostTokens: z.record(z.string(), gitHostTokenSchema).optional(),
   name: z.string().optional(),
   email: z.string().optional(),
   coAuthorEnabled: z.boolean().optional(),
@@ -220,7 +212,6 @@ export async function writeAISettings(fs: JSRuntimeFS, settings: AISettings, con
 export async function readGitSettings(fs: JSRuntimeFS, configPath = '/config'): Promise<GitSettings> {
   const defaultSettings: GitSettings = {
     credentials: {},
-    hostTokens: {},
     coAuthorEnabled: true,
   };
 
@@ -229,12 +220,7 @@ export async function readGitSettings(fs: JSRuntimeFS, configPath = '/config'): 
     const gitConfigPath = getGitConfigPath(configPath);
     const content = await fs.readFile(gitConfigPath, 'utf8');
     const data = JSON.parse(content);
-    const parsed = gitSettingsSchema.parse(data);
-    // Ensure hostTokens exists even if not in parsed data
-    return {
-      ...parsed,
-      hostTokens: parsed.hostTokens || {},
-    };
+    return gitSettingsSchema.parse(data);
   } catch {
     return defaultSettings;
   }

@@ -2,7 +2,6 @@ import { useCallback } from 'react';
 import { useOAuth, type OAuthConfig, type OAuthResult } from './useOAuth';
 import { useGitSettings } from './useGitSettings';
 import { proxyUrl } from '@/lib/proxyUrl';
-import type { GitHostToken } from '@/contexts/GitSettingsContext';
 
 interface GitHubUserInfo {
   login: string;
@@ -18,7 +17,7 @@ interface GitHubUserInfo {
  * Uses the generic useOAuth hook with GitHub-specific configuration.
  */
 export function useGitHubOAuth() {
-  const { addCredential, addHostToken, isInitialized } = useGitSettings();
+  const { addCredential, isInitialized } = useGitSettings();
 
   // GitHub OAuth configuration
   const config: OAuthConfig = {
@@ -71,23 +70,14 @@ export function useGitHubOAuth() {
       return false;
     }
 
-    // Store the credentials (legacy format for existing push/pull operations)
+    // Store the credentials
     addCredential('https://github.com', {
       username: result.username || 'git',
       password: result.accessToken,
     });
 
-    // Also store as host token for PR/contribution operations
-    const hostToken: GitHostToken = {
-      token: result.accessToken,
-      username: result.username || 'git',
-      scopes: result.scopes || [],
-      createdAt: Date.now(),
-    };
-    addHostToken('github.com', hostToken);
-
     return true;
-  }, [oauth, addCredential, addHostToken, isInitialized]);
+  }, [oauth, addCredential, isInitialized]);
 
   return {
     ...oauth,

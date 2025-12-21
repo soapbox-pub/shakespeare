@@ -1,5 +1,5 @@
 import { ReactNode, useState, useEffect } from 'react';
-import { GitSettingsContext, type GitSettings, type GitCredential, type GitHostToken, type GitSettingsContextType } from '@/contexts/GitSettingsContext';
+import { GitSettingsContext, type GitSettings, type GitCredential, type GitSettingsContextType } from '@/contexts/GitSettingsContext';
 import { useFS } from '@/hooks/useFS';
 import { useFSPaths } from '@/hooks/useFSPaths';
 import { readGitSettings, writeGitSettings } from '@/lib/configUtils';
@@ -10,7 +10,6 @@ interface GitSettingsProviderProps {
 
 const DEFAULT_SETTINGS: GitSettings = {
   credentials: {},
-  hostTokens: {},
 };
 
 export function GitSettingsProvider({ children }: GitSettingsProviderProps) {
@@ -88,39 +87,6 @@ export function GitSettingsProvider({ children }: GitSettingsProviderProps) {
     }));
   };
 
-  const addHostToken = (host: string, token: GitHostToken) => {
-    setSettings(prev => ({
-      ...prev,
-      hostTokens: {
-        ...prev.hostTokens,
-        [host]: token,
-      },
-    }));
-  };
-
-  const removeHostToken = (host: string) => {
-    setSettings(prev => {
-      const { [host]: removed, ...rest } = prev.hostTokens;
-      return {
-        ...prev,
-        hostTokens: rest,
-      };
-    });
-  };
-
-  const updateHostToken = (host: string, token: Partial<GitHostToken>) => {
-    setSettings(prev => ({
-      ...prev,
-      hostTokens: {
-        ...prev.hostTokens,
-        [host]: {
-          ...prev.hostTokens[host],
-          ...token,
-        },
-      },
-    }));
-  };
-
   const isConfigured = Object.entries(settings.credentials).length > 0;
 
   const contextValue: GitSettingsContextType = {
@@ -129,9 +95,6 @@ export function GitSettingsProvider({ children }: GitSettingsProviderProps) {
     addCredential,
     removeCredential,
     updateCredential,
-    addHostToken,
-    removeHostToken,
-    updateHostToken,
     isConfigured,
     isInitialized,
   };

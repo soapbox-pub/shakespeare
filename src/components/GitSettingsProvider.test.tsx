@@ -68,7 +68,6 @@ describe('GitSettingsProvider', () => {
     const { readGitSettings } = await import('@/lib/configUtils');
     vi.mocked(readGitSettings).mockResolvedValue({
       credentials: {},
-      hostTokens: {},
     });
   });
 
@@ -185,7 +184,6 @@ describe('GitSettingsProvider', () => {
           password: 'gitlab-token',
         },
       },
-      hostTokens: {},
     };
 
     const { readGitSettings } = await import('@/lib/configUtils');

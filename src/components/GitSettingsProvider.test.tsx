@@ -18,31 +18,35 @@ function TestComponent() {
 
   const handleAdd = () => {
     const credential: GitCredential = {
+      protocol: 'https',
+      host: 'github.com',
       username: 'git',
       password: 'test-token',
     };
-    addCredential('https://github.com', credential);
+    addCredential(credential);
   };
 
   const handleUpdate = () => {
-    updateCredential('https://github.com', { password: 'updated-token' });
+    updateCredential(0, { password: 'updated-token' });
   };
 
   const handleRemove = () => {
-    removeCredential('https://github.com');
+    removeCredential(0);
   };
+
+  const githubCred = settings.credentials.find(c => c.host === 'github.com');
 
   return (
     <div>
       <div data-testid="configured">{isConfigured ? 'configured' : 'not-configured'}</div>
-      <div data-testid="count">{Object.keys(settings.credentials).length}</div>
+      <div data-testid="count">{settings.credentials.length}</div>
       <button onClick={handleAdd}>Add GitHub</button>
       <button onClick={handleUpdate}>Update GitHub</button>
       <button onClick={handleRemove}>Remove GitHub</button>
-      {settings.credentials['https://github.com'] && (
+      {githubCred && (
         <div data-testid="github-creds">
-          {settings.credentials['https://github.com'].username}:
-          {settings.credentials['https://github.com'].password}
+          {githubCred.username}:
+          {githubCred.password}
         </div>
       )}
     </div>
@@ -67,7 +71,7 @@ describe('GitSettingsProvider', () => {
     // Mock the read function to return default settings
     const { readGitSettings } = await import('@/lib/configUtils');
     vi.mocked(readGitSettings).mockResolvedValue({
-      credentials: {},
+      credentials: [],
     });
   });
 
@@ -164,12 +168,14 @@ describe('GitSettingsProvider', () => {
       expect(writeGitSettings).toHaveBeenCalledWith(
         expect.anything(), // fs instance
         expect.objectContaining({
-          credentials: {
-            'https://github.com': {
+          credentials: [
+            {
+              protocol: 'https',
+              host: 'github.com',
               username: 'git',
               password: 'test-token',
             }
-          }
+          ]
         }),
         '/config' // configPath
       );
@@ -178,12 +184,14 @@ describe('GitSettingsProvider', () => {
 
   it('loads settings from VFS', async () => {
     const settings = {
-      credentials: {
-        'https://gitlab.com': {
+      credentials: [
+        {
+          protocol: 'https',
+          host: 'gitlab.com',
           username: 'git',
           password: 'gitlab-token',
         },
-      },
+      ],
     };
 
     const { readGitSettings } = await import('@/lib/configUtils');

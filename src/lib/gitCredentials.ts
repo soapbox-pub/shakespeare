@@ -1,72 +1,75 @@
 import type { GitCredential } from '@/contexts/GitSettingsContext';
 
 /**
- * Extract the origin (protocol + hostname + port) from a Git URL
+ * Get the effective port for a URL (considering defaults)
  */
-export function extractGitOrigin(gitUrl: string): string | null {
-  try {
-    // Handle SSH URLs like git@github.com:user/repo.git
-    if (gitUrl.startsWith('git@')) {
-      const match = gitUrl.match(/^git@([^:]+):/);
-      if (match) {
-        return `https://${match[1]}`;
-      }
-    }
-
-    // Handle HTTP/HTTPS URLs
-    if (gitUrl.startsWith('http://') || gitUrl.startsWith('https://')) {
-      const url = new URL(gitUrl);
-      return `${url.protocol}//${url.host}`;
-    }
-
-    return null;
-  } catch {
-    return null;
+function getEffectivePort(url: URL): number | undefined {
+  if (url.port) {
+    return parseInt(url.port);
+  }
+  switch (url.protocol) {
+    case 'http:':
+      return 80;
+    case 'https:':
+      return 443;
   }
 }
 
 /**
- * Find matching credentials for a repository URL
+ * Match a URL against a credential
+ * Returns true if the credential matches the URL
+ */
+function matchesCredential(
+  credential: GitCredential,
+  urlString: string
+): boolean {
+  const targetURL = new URL(urlString);
+  const credURL = new URL(`${credential.protocol}://${credential.host}/`);
+  
+  // 1. Protocol must match exactly
+  if (credURL.protocol !== targetURL.protocol) {
+    return false;
+  }
+  
+  // 2. Hostname must match exactly
+  if (credURL.hostname !== targetURL.hostname) {
+    return false;
+  }
+  
+  // 3. Port must match exactly (after default conversion)
+  if (getEffectivePort(credURL) !== getEffectivePort(targetURL)) {
+    return false;
+  }
+  
+  // 4. Username must match if both are specified
+  if (credential.username && targetURL.username) {
+    if (credential.username !== targetURL.username) {
+      return false;
+    }
+  }
+  
+  return true;
+}
+
+/**
+ * Find the best matching credential for a URL from a list of credentials
+ * Returns the credential with username match preferred over no username
  */
 export function findCredentialsForRepo(
-  repoUrl: string,
-  credentials: Record<string, GitCredential>
+  urlString: string,
+  credentials: GitCredential[],
 ): GitCredential | undefined {
-  const repoOrigin = extractGitOrigin(repoUrl);
-  if (!repoOrigin) return;
-
-  // Direct match
-  if (credentials[repoOrigin]) {
-    return credentials[repoOrigin];
+  const targetURL = new URL(urlString);
+  const matches = credentials.filter(cred => matchesCredential(cred, urlString));
+  
+  if (matches.length === 0) {
+    return undefined;
   }
-
-  // Try to find a match by normalizing common variations
-  const normalizedRepoOrigin = repoOrigin.toLowerCase();
-
-  for (const [origin, credential] of Object.entries(credentials)) {
-    const normalizedOrigin = origin.toLowerCase();
-
-    // Exact match (case-insensitive)
-    if (normalizedOrigin === normalizedRepoOrigin) {
-      return credential;
-    }
-
-    // Handle www variations
-    if (normalizedOrigin.replace(/^https?:\/\/www\./, 'https://') ===
-        normalizedRepoOrigin.replace(/^https?:\/\/www\./, 'https://')) {
-      return credential;
-    }
-  }
-}
-
-/**
- * Get the display name for a Git origin URL
- */
-export function getOriginDisplayName(origin: string): string {
-  try {
-    const url = new URL(origin);
-    return url.host; // Use host instead of hostname to include port
-  } catch {
-    return origin;
-  }
+  
+  // Prefer credentials with matching username
+  const withUsername = matches.find(
+    cred => cred.username && cred.username === targetURL.username,
+  );
+  
+  return withUsername ?? matches[0];
 }

@@ -9,7 +9,7 @@ interface GitSettingsProviderProps {
 }
 
 const DEFAULT_SETTINGS: GitSettings = {
-  credentials: {},
+  credentials: [],
 };
 
 export function GitSettingsProvider({ children }: GitSettingsProviderProps) {
@@ -54,40 +54,35 @@ export function GitSettingsProvider({ children }: GitSettingsProviderProps) {
     setSettings(prev => ({ ...prev, ...newSettings }));
   };
 
-  const addCredential = (origin: string, credential: GitCredential) => {
+  const addCredential = (credential: GitCredential) => {
     setSettings(prev => ({
       ...prev,
-      credentials: {
-        ...prev.credentials,
-        [origin]: credential,
-      },
+      credentials: [...prev.credentials, credential],
     }));
   };
 
-  const removeCredential = (origin: string) => {
+  const removeCredential = (index: number) => {
+    setSettings(prev => ({
+      ...prev,
+      credentials: prev.credentials.filter((_, i) => i !== index),
+    }));
+  };
+
+  const updateCredential = (index: number, credential: Partial<GitCredential>) => {
     setSettings(prev => {
-      const { [origin]: removed, ...rest } = prev.credentials;
+      const newCredentials = [...prev.credentials];
+      newCredentials[index] = {
+        ...newCredentials[index],
+        ...credential,
+      };
       return {
         ...prev,
-        credentials: rest,
+        credentials: newCredentials,
       };
     });
   };
 
-  const updateCredential = (origin: string, credential: Partial<GitCredential>) => {
-    setSettings(prev => ({
-      ...prev,
-      credentials: {
-        ...prev.credentials,
-        [origin]: {
-          ...prev.credentials[origin],
-          ...credential,
-        },
-      },
-    }));
-  };
-
-  const isConfigured = Object.entries(settings.credentials).length > 0;
+  const isConfigured = settings.credentials.length > 0;
 
   const contextValue: GitSettingsContextType = {
     settings,

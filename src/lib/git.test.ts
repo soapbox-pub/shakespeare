@@ -305,7 +305,7 @@ describe('Git', () => {
     it('uses shakespeare.diy as default author when no Git identity is configured', async () => {
       const { readGitSettings } = await import('./configUtils');
       vi.mocked(readGitSettings).mockResolvedValue({
-        credentials: {},
+        credentials: [],
         coAuthorEnabled: true,
       });
 
@@ -332,7 +332,7 @@ describe('Git', () => {
     it('uses custom identity when both name and email are configured', async () => {
       const { readGitSettings } = await import('./configUtils');
       vi.mocked(readGitSettings).mockResolvedValue({
-        credentials: {},
+        credentials: [],
         name: 'John Doe',
         email: 'john@example.com',
         coAuthorEnabled: true,
@@ -361,7 +361,7 @@ describe('Git', () => {
     it('does not add co-author when coAuthorEnabled is false', async () => {
       const { readGitSettings } = await import('./configUtils');
       vi.mocked(readGitSettings).mockResolvedValue({
-        credentials: {},
+        credentials: [],
         name: 'John Doe',
         email: 'john@example.com',
         coAuthorEnabled: false,
@@ -390,7 +390,7 @@ describe('Git', () => {
     it('respects provided author when explicitly passed', async () => {
       const { readGitSettings } = await import('./configUtils');
       vi.mocked(readGitSettings).mockResolvedValue({
-        credentials: {},
+        credentials: [],
         name: 'John Doe',
         email: 'john@example.com',
         coAuthorEnabled: true,

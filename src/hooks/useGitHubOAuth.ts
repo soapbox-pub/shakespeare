@@ -71,7 +71,9 @@ export function useGitHubOAuth() {
     }
 
     // Store the credentials
-    addCredential('https://github.com', {
+    addCredential({
+      protocol: 'https',
+      host: 'github.com',
       username: result.username || 'git',
       password: result.accessToken,
     });

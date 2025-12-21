@@ -3,7 +3,7 @@ import { filteredArray } from '@/lib/schema';
 import { AI_PROVIDER_PRESETS } from '@/lib/aiProviderPresets';
 import type { JSRuntimeFS } from '@/lib/JSRuntime';
 import type { AISettings, MCPServer } from '@/contexts/AISettingsContext';
-import type { GitSettings } from '@/contexts/GitSettingsContext';
+import type { GitSettings, GitCredential } from '@/contexts/GitSettingsContext';
 import type { DeployProvider, DeploySettings } from '@/contexts/DeploySettingsContext';
 
 /**
@@ -57,13 +57,26 @@ const aiSettingsSchema = z.object({
   mcpServers: z.record(z.string(), mcpServerSchema).optional(),
 });
 
+// New format for git credentials
 const gitCredentialSchema = z.object({
+  protocol: z.string(),
+  host: z.string(),
   username: z.string(),
   password: z.string(),
 });
 
+// Old format (map of origins to credentials)
+const gitCredentialOldSchema = z.object({
+  username: z.string(),
+  password: z.string(),
+});
+
+// Schema that accepts both old and new formats
 const gitSettingsSchema = z.object({
-  credentials: z.record(z.string(), gitCredentialSchema),
+  credentials: z.union([
+    z.array(gitCredentialSchema), // New format: array
+    z.record(z.string(), gitCredentialOldSchema), // Old format: map
+  ]),
   name: z.string().optional(),
   email: z.string().optional(),
   coAuthorEnabled: z.boolean().optional(),
@@ -205,13 +218,30 @@ export async function writeAISettings(fs: JSRuntimeFS, settings: AISettings, con
 }
 
 /**
+ * Convert old format credentials (map) to new format (array)
+ */
+function convertCredentialsToNewFormat(
+  credentials: Record<string, { username: string; password: string }>
+): GitCredential[] {
+  return Object.entries(credentials).map(([origin, cred]) => {
+    const url = new URL(origin);
+    return {
+      protocol: url.protocol.replace(/:$/, ''),
+      host: url.host, // Includes port if non-standard
+      username: cred.username,
+      password: cred.password,
+    };
+  });
+}
+
+/**
  * Read Git settings from VFS
  * @param fs - Filesystem instance
  * @param configPath - Custom config path (default: /config)
  */
 export async function readGitSettings(fs: JSRuntimeFS, configPath = '/config'): Promise<GitSettings> {
   const defaultSettings: GitSettings = {
-    credentials: {},
+    credentials: [],
     coAuthorEnabled: true,
   };
 
@@ -220,7 +250,20 @@ export async function readGitSettings(fs: JSRuntimeFS, configPath = '/config'): 
     const gitConfigPath = getGitConfigPath(configPath);
     const content = await fs.readFile(gitConfigPath, 'utf8');
     const data = JSON.parse(content);
-    return gitSettingsSchema.parse(data);
+    const parsed = gitSettingsSchema.parse(data);
+
+    // Convert old format to new format if needed
+    let credentials: GitCredential[];
+    if (Array.isArray(parsed.credentials)) {
+      credentials = parsed.credentials;
+    } else {
+      credentials = convertCredentialsToNewFormat(parsed.credentials);
+    }
+
+    return {
+      ...parsed,
+      credentials,
+    };
   } catch {
     return defaultSettings;
   }

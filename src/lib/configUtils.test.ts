@@ -154,9 +154,20 @@ describe('configUtils', () => {
   });
 
   describe('Git Settings', () => {
-    const sampleGitSettings: GitSettings = {
+    const sampleGitSettingsNew: GitSettings = {
+      credentials: [
+        {
+          protocol: 'https',
+          host: 'github.com',
+          username: 'user',
+          password: 'token123',
+        },
+      ],
+    };
+
+    const sampleGitSettingsOld = {
       credentials: {
-        'github.com': {
+        'https://github.com': {
           username: 'user',
           password: 'token123',
         },
@@ -164,13 +175,57 @@ describe('configUtils', () => {
     };
 
     describe('readGitSettings', () => {
-      it('should read Git settings from VFS', async () => {
-        vi.mocked(mockFS.readFile).mockResolvedValue(JSON.stringify(sampleGitSettings));
+      it('should read Git settings from VFS (new format)', async () => {
+        vi.mocked(mockFS.readFile).mockResolvedValue(JSON.stringify(sampleGitSettingsNew));
 
         const result = await readGitSettings(mockFS);
 
         expect(mockFS.readFile).toHaveBeenCalledWith('/config/git.json', 'utf8');
-        expect(result).toEqual(sampleGitSettings);
+        expect(result).toEqual(sampleGitSettingsNew);
+      });
+
+      it('should convert old format to new format', async () => {
+        vi.mocked(mockFS.readFile).mockResolvedValue(JSON.stringify(sampleGitSettingsOld));
+
+        const result = await readGitSettings(mockFS);
+
+        expect(mockFS.readFile).toHaveBeenCalledWith('/config/git.json', 'utf8');
+        expect(result).toEqual({
+          credentials: [
+            {
+              protocol: 'https',
+              host: 'github.com',
+              username: 'user',
+              password: 'token123',
+            },
+          ],
+        });
+      });
+
+      it('should handle old format with custom ports', async () => {
+        const oldFormatWithPort = {
+          credentials: {
+            'https://git.example.com:8080': {
+              username: 'user',
+              password: 'token456',
+            },
+          },
+        };
+
+        vi.mocked(mockFS.readFile).mockResolvedValue(JSON.stringify(oldFormatWithPort));
+
+        const result = await readGitSettings(mockFS);
+
+        expect(result).toEqual({
+          credentials: [
+            {
+              protocol: 'https',
+              host: 'git.example.com:8080',
+              username: 'user',
+              password: 'token456',
+            },
+          ],
+        });
       });
 
       it('should return default settings if file does not exist and no localStorage data', async () => {
@@ -180,7 +235,7 @@ describe('configUtils', () => {
         const result = await readGitSettings(mockFS);
 
         expect(result).toEqual({
-          credentials: {},
+          credentials: [],
           coAuthorEnabled: true,
         });
       });
@@ -192,12 +247,12 @@ describe('configUtils', () => {
         vi.mocked(mockFS.mkdir).mockResolvedValue(undefined);
         vi.mocked(mockFS.writeFile).mockResolvedValue(undefined);
 
-        await writeGitSettings(mockFS, sampleGitSettings);
+        await writeGitSettings(mockFS, sampleGitSettingsNew);
 
         expect(mockFS.mkdir).toHaveBeenCalledWith('/config', { recursive: true });
         expect(mockFS.writeFile).toHaveBeenCalledWith(
           '/config/git.json',
-          JSON.stringify(sampleGitSettings, null, 2),
+          JSON.stringify(sampleGitSettingsNew, null, 2),
           'utf8'
         );
       });

@@ -60,18 +60,37 @@ export function GitSettings() {
   const [presetTokens, setPresetTokens] = useState<Record<string, string>>({});
   const [forceManualEntry, setForceManualEntry] = useState<Record<string, boolean>>({});
 
+  // Helper to parse origin URL into credential parts
+  const parseOrigin = (origin: string): { protocol: string; host: string } => {
+    try {
+      const url = new URL(origin);
+      return {
+        protocol: url.protocol.replace(':', ''), // Remove trailing colon
+        host: url.host, // Includes port if non-standard (e.g., "github.com:8080")
+      };
+    } catch {
+      // Fallback: assume https and treat as hostname
+      return {
+        protocol: 'https',
+        host: origin,
+      };
+    }
+  };
+
   const handleAddPresetProvider = (preset: PresetProvider) => {
     const token = presetTokens[preset.id] as string | undefined;
 
     if (!token?.trim()) return;
 
+    const parsed = parseOrigin(preset.origin);
     const newCredential: GitCredential = {
+      ...parsed,
       username: preset.username,
       password: token.trim(),
     };
 
     // Auto-save: Add credential immediately to persistent storage
-    addCredential(preset.origin, newCredential);
+    addCredential(newCredential);
 
     // Clear the token input for this preset
     setPresetTokens(prev => ({
@@ -83,30 +102,38 @@ export function GitSettings() {
   const handleAddCustomProvider = () => {
     if (!customOrigin.trim() || !customUsername.trim() || !customPassword.trim()) return;
 
+    const parsed = parseOrigin(customOrigin.trim());
     const newCredential: GitCredential = {
+      ...parsed,
       username: customUsername.trim(),
       password: customPassword.trim(),
     };
 
     // Auto-save: Add credential immediately to persistent storage
-    addCredential(customOrigin.trim(), newCredential);
+    addCredential(newCredential);
 
     setCustomOrigin('');
     setCustomUsername('');
     setCustomPassword('');
   };
 
-  const handleRemoveCredential = (origin: string) => {
+  const handleRemoveCredential = (index: number) => {
     // Auto-save: Remove credential immediately from persistent storage
-    removeCredential(origin);
+    removeCredential(index);
   };
 
-  const handleUpdateCredential = (origin: string, credential: Partial<GitCredential>) => {
+  const handleUpdateCredential = (index: number, credential: Partial<GitCredential>) => {
     // Auto-save: Update credential immediately in persistent storage
-    updateCredential(origin, credential);
+    updateCredential(index, credential);
   };
 
-  const configuredOrigins = Object.keys(settings.credentials);
+  // Helper to get origin string from credential
+  const getOriginFromCredential = (cred: GitCredential): string => {
+    return `${cred.protocol}://${cred.host}`; // host already includes port if non-standard
+  };
+
+  // Get list of configured origins
+  const configuredOrigins = settings.credentials.map(getOriginFromCredential);
   const availablePresets = PRESET_PROVIDERS.filter(preset => !configuredOrigins.includes(preset.origin));
 
   return (
@@ -148,17 +175,17 @@ export function GitSettings() {
 
       <div className="space-y-6">
         {/* Configured Credentials */}
-        {configuredOrigins.length > 0 && (
+        {settings.credentials.length > 0 && (
           <div className="space-y-3">
             <h4 className="text-sm font-medium">{t('configuredCredentials')}</h4>
             <Accordion type="multiple" className="w-full space-y-2">
-              {configuredOrigins.map((origin) => {
+              {settings.credentials.map((credential, index) => {
+                const origin = getOriginFromCredential(credential);
                 const preset = PRESET_PROVIDERS.find(p => p.origin === origin);
-                const credential = settings.credentials[origin];
                 const isCustom = !preset;
 
                 return (
-                  <AccordionItem key={origin} value={origin}>
+                  <AccordionItem key={`${origin}-${index}`} value={`${origin}-${index}`}>
                     <AccordionTrigger className="px-4 py-3 hover:no-underline">
                       <div className="flex items-center gap-2">
                         <ExternalFavicon
@@ -167,7 +194,7 @@ export function GitSettings() {
                           fallback={<GitBranch size={16} />}
                         />
                         <span className="font-medium">
-                          {preset?.name || new URL(origin).hostname}
+                          {preset?.name || credential.host}
                         </span>
                         {isCustom && <Badge variant="outline">{t('custom')}</Badge>}
                       </div>
@@ -175,11 +202,11 @@ export function GitSettings() {
                     <AccordionContent className="px-4 pb-4">
                       <div className="space-y-3">
                         <div className="grid gap-2">
-                          <Label htmlFor={`${origin}-origin`}>
+                          <Label htmlFor={`${origin}-${index}-origin`}>
                             {t('origin')} <span className="text-destructive">*</span>
                           </Label>
                           <Input
-                            id={`${origin}-origin`}
+                            id={`${origin}-${index}-origin`}
                             placeholder="https://github.com"
                             value={origin}
                             disabled
@@ -187,31 +214,31 @@ export function GitSettings() {
                           />
                         </div>
                         <div className="grid gap-2">
-                          <Label htmlFor={`${origin}-username`}>
+                          <Label htmlFor={`${origin}-${index}-username`}>
                             {t('username')} <span className="text-destructive">*</span>
                           </Label>
                           <Input
-                            id={`${origin}-username`}
+                            id={`${origin}-${index}-username`}
                             placeholder="git"
-                            value={credential?.username || ''}
-                            onChange={(e) => handleUpdateCredential(origin, { username: e.target.value })}
+                            value={credential.username}
+                            onChange={(e) => handleUpdateCredential(index, { username: e.target.value })}
                           />
                         </div>
                         <div className="grid gap-2">
-                          <Label htmlFor={`${origin}-password`}>
+                          <Label htmlFor={`${origin}-${index}-password`}>
                             {t('password')} <span className="text-destructive">*</span>
                           </Label>
                           <PasswordInput
-                            id={`${origin}-password`}
+                            id={`${origin}-${index}-password`}
                             placeholder={t('enterPassword')}
-                            value={credential?.password || ''}
-                            onChange={(e) => handleUpdateCredential(origin, { password: e.target.value })}
+                            value={credential.password}
+                            onChange={(e) => handleUpdateCredential(index, { password: e.target.value })}
                           />
                         </div>
                         <Button
                           variant="destructive"
                           size="sm"
-                          onClick={() => handleRemoveCredential(origin)}
+                          onClick={() => handleRemoveCredential(index)}
                         >
                           <Trash2 className="h-4 w-4 mr-2" />
                           {t('delete')}

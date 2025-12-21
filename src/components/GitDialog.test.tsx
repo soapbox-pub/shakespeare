@@ -59,12 +59,14 @@ describe('GitDialog', () => {
 
     mockUseGitSettings.mockReturnValue({
       settings: {
-        credentials: {
-          'https://github.com': {
+        credentials: [
+          {
+            protocol: 'https',
+            host: 'github.com',
             username: 'git',
             password: 'github-token',
           },
-        },
+        ],
       },
     });
   });
@@ -217,7 +219,7 @@ describe('GitDialog', () => {
     // Mock git settings with no credentials and mock git status with an https remote
     mockUseGitSettings.mockReturnValue({
       settings: {
-        credentials: {},
+        credentials: [],
       },
     });
 

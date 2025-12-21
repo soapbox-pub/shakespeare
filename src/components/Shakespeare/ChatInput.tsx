@@ -11,6 +11,7 @@ import { ModelSelector } from '@/components/ModelSelector';
 interface ChatInputProps {
   isLoading: boolean;
   isConfigured: boolean;
+  isLoadingSettings: boolean;
   providerModel: string;
   onProviderModelChange: (model: string) => void;
   onSend: (input: string, files: File[]) => void;
@@ -33,6 +34,7 @@ interface ChatInputProps {
 export const ChatInput = memo(function ChatInput({
   isLoading,
   isConfigured,
+  isLoadingSettings,
   providerModel,
   onProviderModelChange,
   onSend,
@@ -113,7 +115,7 @@ export const ChatInput = memo(function ChatInput({
                 : t('selectModelFirst')
           }
           className="flex-1 resize-none border-0 bg-transparent px-4 py-3 text-sm focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground"
-          disabled={isLoading || (isConfigured && !providerModel.trim())}
+          disabled={isLoadingSettings || isLoading || (isConfigured && !providerModel.trim())}
           rows={1}
           aria-label="Chat message input"
           style={{
@@ -134,7 +136,7 @@ export const ChatInput = memo(function ChatInput({
             onFileSelect={handleFileSelect}
             onFileRemove={handleFileRemove}
             selectedFiles={attachedFiles}
-            disabled={isLoading}
+            disabled={isLoadingSettings || isLoading}
             multiple={true}
           />
 
@@ -183,7 +185,7 @@ export const ChatInput = memo(function ChatInput({
             <ModelSelector
               value={providerModel}
               onChange={onProviderModelChange}
-              disabled={isLoading}
+              disabled={isLoadingSettings || isLoading}
               placeholder={t('chooseModel')}
               open={isModelSelectorOpen}
               onOpenChange={onModelSelectorOpenChange}
@@ -205,7 +207,7 @@ export const ChatInput = memo(function ChatInput({
               <Button
                 onClick={handleSend}
                 onMouseDown={onFirstInteraction}
-                disabled={(!input.trim() && attachedFiles.length === 0) || (isConfigured && !providerModel.trim())}
+                disabled={isLoadingSettings || (!input.trim() && attachedFiles.length === 0) || (isConfigured && !providerModel.trim())}
                 size="sm"
                 className="size-8 [&_svg]:size-5 rounded-full p-0"
               >

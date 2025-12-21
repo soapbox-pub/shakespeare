@@ -104,7 +104,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   const isBuildLoading = externalIsBuildLoading || false;
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const aiSettings = useAISettings();
-  const { isConfigured, settings, addRecentlyUsedModel } = aiSettings;
+  const { isConfigured, settings, addRecentlyUsedModel, isLoading: isLoadingSettings } = aiSettings;
   const [providerModel, setProviderModel] = useState(() => {
     // Initialize with first recently used model if available, otherwise empty
     return settings.recentlyUsedModels?.[0] || '';
@@ -788,6 +788,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
       <ChatInput
         isLoading={isLoading}
         isConfigured={isConfigured}
+        isLoadingSettings={isLoadingSettings}
         providerModel={providerModel}
         onProviderModelChange={handleModelChange}
         onSend={handleSend}

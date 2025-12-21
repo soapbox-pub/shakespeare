@@ -1,5 +1,5 @@
 import { Decimal } from 'decimal.js';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAISettings } from '@/hooks/useAISettings';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
@@ -40,7 +40,7 @@ export function useProviderModels(): ModelFetchResult {
   const [error, setError] = useState<string | null>(null);
 
   const {
-    data: models = [],
+    data,
     isLoading,
     refetch,
   } = useQuery({
@@ -146,6 +146,10 @@ export function useProviderModels(): ModelFetchResult {
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
     retry: false, // Don't retry on failure
   });
+
+  // Memoize the models array to prevent unnecessary re-renders
+  // This ensures the same empty array reference is returned when there's no data
+  const models = useMemo(() => data ?? [], [data]);
 
   return {
     models,

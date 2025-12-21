@@ -347,7 +347,7 @@ export class SessionManager {
               if (textParts.length > 0) {
                 return {
                   ...msg,
-                  content: textParts.map(part => (part as OpenAI.Chat.Completions.ChatCompletionContentPartText).text).join('\n')
+                  content: textParts,
                 };
               }
 

@@ -80,14 +80,6 @@ export const AIMessageItem = memo(({
     // User messages: right-aligned bubble without avatar/name
     // Extract text and image parts from message content
     const contentArray = Array.isArray(message.content) ? message.content : null;
-    const textParts = contentArray
-      ? contentArray.filter(part => part.type === 'text') as OpenAI.Chat.Completions.ChatCompletionContentPartText[]
-      : [];
-    const userContent = typeof message.content === 'string'
-      ? message.content
-      : textParts.length > 0
-        ? textParts.map(part => part.text).join('\n')
-        : '';
 
     // Extract image URLs from content array
     const imageUrls = contentArray
@@ -102,7 +94,7 @@ export const AIMessageItem = memo(({
           <div className="max-w-[80%] bg-secondary rounded-2xl rounded-br-md px-4 py-3">
             <div className="text-sm break-words space-y-2">
               {/* Render text content and attachments first */}
-              {userContent && <UserMessage content={userContent} />}
+              <UserMessage content={message.content} />
               {/* Render images after text and attachments */}
               {imageUrls.length > 0 && (
                 <div className="space-y-2">

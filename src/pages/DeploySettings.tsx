@@ -35,6 +35,7 @@ import { Label } from '@/components/ui/label';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useDeploySettings } from '@/hooks/useDeploySettings';
 import { useNetlifyOAuth } from '@/hooks/useNetlifyOAuth';
 import { useVercelOAuth } from '@/hooks/useVercelOAuth';
@@ -424,7 +425,7 @@ function getProviderUrl(provider: DeployProvider | PresetProvider): string | nul
 
 export function DeploySettings() {
   const { t } = useTranslation();
-  const { settings, removeProvider, setProviders } = useDeploySettings();
+  const { settings, removeProvider, setProviders, isInitialized } = useDeploySettings();
   const { user } = useCurrentUser();
   const isMobile = useIsMobile();
   const navigate = useNavigate();
@@ -704,455 +705,483 @@ export function DeploySettings() {
         </div>
       )}
 
-      <div className="space-y-6">
-        {/* Configured Providers */}
-        {settings.providers.length > 0 && (
+      {!isInitialized ? (
+        <div className="space-y-6">
+          {/* Loading skeleton for configured providers */}
           <div className="space-y-3">
-            <h4 className="text-sm font-medium">{t('configuredProviders')}</h4>
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext
-                items={settings.providers.map((_, index) => index)}
-                strategy={verticalListSortingStrategy}
-              >
-                <Accordion type="multiple" className="w-full space-y-2">
-                  {settings.providers.map((provider, index) => {
-                    const preset = PRESET_PROVIDERS.find(p => p.type === provider.type);
-
-                    return (
-                      <SortableProviderItem
-                        key={index}
-                        provider={provider}
-                        index={index}
-                        preset={preset}
-                        onRemove={handleRemoveProvider}
-                        onUpdate={handleUpdateProvider}
-                        showDragHandle={settings.providers.length > 1}
-                      />
-                    );
-                  })}
-                </Accordion>
-              </SortableContext>
-            </DndContext>
+            <Skeleton className="h-4 w-40" />
+            <div className="space-y-2">
+              <Skeleton className="h-16 w-full rounded-lg" />
+              <Skeleton className="h-16 w-full rounded-lg" />
+            </div>
           </div>
-        )}
 
-        {/* Available Preset Providers */}
-        {availablePresets.length > 0 && (
+          {/* Loading skeleton for add provider section */}
           <div className="space-y-3">
-            <h4 className="text-sm font-medium">{t('addProvider')}</h4>
+            <Skeleton className="h-4 w-32" />
             <div className="grid grid-cols-[repeat(auto-fit,minmax(min(280px,100%),1fr))] gap-3">
-              {availablePresets.map((preset) => {
-                const isNostrPreset = preset.requiresNostr;
-                const isLoggedIntoNostr = !!user;
-                const showNostrLoginRequired = isNostrPreset && !isLoggedIntoNostr;
+              <Skeleton className="h-40 w-full rounded-lg" />
+              <Skeleton className="h-40 w-full rounded-lg" />
+              <Skeleton className="h-40 w-full rounded-lg" />
+            </div>
+          </div>
 
-                // Get OAuth hook for this preset
-                const oauthHook = preset.type === 'netlify' ? netlifyOAuth :
-                  preset.type === 'vercel' ? vercelOAuth : null;
-                const isOAuthConfigured = oauthHook?.isOAuthConfigured ?? false;
-                const isOAuthLoading = oauthHook?.isLoading ?? false;
-                const oauthError = oauthHook?.error ?? null;
+          {/* Loading skeleton for custom provider */}
+          <div className="space-y-3">
+            <Skeleton className="h-16 w-full rounded-lg" />
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {/* Configured Providers */}
+          {settings.providers.length > 0 && (
+            <div className="space-y-3">
+              <h4 className="text-sm font-medium">{t('configuredProviders')}</h4>
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext
+                  items={settings.providers.map((_, index) => index)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <Accordion type="multiple" className="w-full space-y-2">
+                    {settings.providers.map((provider, index) => {
+                      const preset = PRESET_PROVIDERS.find(p => p.type === provider.type);
 
-                return (
-                  <Card key={preset.id}>
-                    <CardContent className="p-4 space-y-3">
-                      <div className="flex items-center gap-2">
-                        {(() => {
-                          const url = getProviderUrl(preset);
-                          return url ? (
-                            <ExternalFavicon
-                              url={url}
-                              size={16}
-                              fallback={<Rocket size={16} />}
-                            />
-                          ) : (
-                            <Rocket size={16} />
-                          );
-                        })()}
-                        <h5 className="font-medium">{preset.name}</h5>
-                      </div>
-                      <p className="text-sm text-muted-foreground">{preset.description}</p>
+                      return (
+                        <SortableProviderItem
+                          key={index}
+                          provider={provider}
+                          index={index}
+                          preset={preset}
+                          onRemove={handleRemoveProvider}
+                          onUpdate={handleUpdateProvider}
+                          showDragHandle={settings.providers.length > 1}
+                        />
+                      );
+                    })}
+                  </Accordion>
+                </SortableContext>
+              </DndContext>
+            </div>
+          )}
 
-                      {showNostrLoginRequired ? (
-                        <div className="space-y-2">
-                          <p className="text-sm text-muted-foreground">
-                            {t('loginToNostrRequired')}
-                          </p>
-                          <Button asChild className="w-full">
-                            <Link to="/settings/nostr">
-                              {t('goToNostrSettings')}
-                            </Link>
-                          </Button>
+          {/* Available Preset Providers */}
+          {availablePresets.length > 0 && (
+            <div className="space-y-3">
+              <h4 className="text-sm font-medium">{t('addProvider')}</h4>
+              <div className="grid grid-cols-[repeat(auto-fit,minmax(min(280px,100%),1fr))] gap-3">
+                {availablePresets.map((preset) => {
+                  const isNostrPreset = preset.requiresNostr;
+                  const isLoggedIntoNostr = !!user;
+                  const showNostrLoginRequired = isNostrPreset && !isLoggedIntoNostr;
+
+                  // Get OAuth hook for this preset
+                  const oauthHook = preset.type === 'netlify' ? netlifyOAuth :
+                    preset.type === 'vercel' ? vercelOAuth : null;
+                  const isOAuthConfigured = oauthHook?.isOAuthConfigured ?? false;
+                  const isOAuthLoading = oauthHook?.isLoading ?? false;
+                  const oauthError = oauthHook?.error ?? null;
+
+                  return (
+                    <Card key={preset.id}>
+                      <CardContent className="p-4 space-y-3">
+                        <div className="flex items-center gap-2">
+                          {(() => {
+                            const url = getProviderUrl(preset);
+                            return url ? (
+                              <ExternalFavicon
+                                url={url}
+                                size={16}
+                                fallback={<Rocket size={16} />}
+                              />
+                            ) : (
+                              <Rocket size={16} />
+                            );
+                          })()}
+                          <h5 className="font-medium">{preset.name}</h5>
                         </div>
-                      ) : isOAuthConfigured && !forceManualEntry[preset.id] ? (
-                        // Show OAuth button if OAuth is configured and not forced to manual
-                        <div className="space-y-3">
-                          <div className="flex gap-0">
-                            <Button
-                              onClick={() => oauthHook?.initiateOAuth()}
-                              disabled={isOAuthLoading}
-                              className="flex-1 rounded-r-none gap-2"
-                              variant="default"
-                            >
-                              {isOAuthLoading ? (
-                                <>
-                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                                  Connecting...
-                                </>
-                              ) : (
-                                <>
-                                  {(() => {
-                                    const url = getProviderUrl(preset);
-                                    return url ? (
-                                      <ExternalFavicon
-                                        url={url}
-                                        size={16}
-                                        fallback={<Rocket size={16} />}
-                                      />
-                                    ) : (
-                                      <Rocket size={16} />
-                                    );
-                                  })()}
-                                  <span className="truncate text-ellipsis overflow-hidden">
-                                    Connect to {preset.name}
-                                  </span>
-                                </>
-                              )}
-                            </Button>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  variant="default"
-                                  className="rounded-l-none border-l border-primary-foreground/20 px-2"
-                                  disabled={isOAuthLoading}
-                                >
-                                  <ChevronDown className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem
-                                  onClick={() => setForceManualEntry(prev => ({ ...prev, [preset.id]: true }))}
-                                >
-                                  Enter API key
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                          {oauthError && (
-                            <p className="text-sm text-destructive">
-                              {oauthError}
+                        <p className="text-sm text-muted-foreground">{preset.description}</p>
+
+                        {showNostrLoginRequired ? (
+                          <div className="space-y-2">
+                            <p className="text-sm text-muted-foreground">
+                              {t('loginToNostrRequired')}
                             </p>
-                          )}
-                        </div>
-                      ) : (
+                            <Button asChild className="w-full">
+                              <Link to="/settings/nostr">
+                                {t('goToNostrSettings')}
+                              </Link>
+                            </Button>
+                          </div>
+                        ) : isOAuthConfigured && !forceManualEntry[preset.id] ? (
+                        // Show OAuth button if OAuth is configured and not forced to manual
+                          <div className="space-y-3">
+                            <div className="flex gap-0">
+                              <Button
+                                onClick={() => oauthHook?.initiateOAuth()}
+                                disabled={isOAuthLoading}
+                                className="flex-1 rounded-r-none gap-2"
+                                variant="default"
+                              >
+                                {isOAuthLoading ? (
+                                  <>
+                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                  Connecting...
+                                  </>
+                                ) : (
+                                  <>
+                                    {(() => {
+                                      const url = getProviderUrl(preset);
+                                      return url ? (
+                                        <ExternalFavicon
+                                          url={url}
+                                          size={16}
+                                          fallback={<Rocket size={16} />}
+                                        />
+                                      ) : (
+                                        <Rocket size={16} />
+                                      );
+                                    })()}
+                                    <span className="truncate text-ellipsis overflow-hidden">
+                                    Connect to {preset.name}
+                                    </span>
+                                  </>
+                                )}
+                              </Button>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="default"
+                                    className="rounded-l-none border-l border-primary-foreground/20 px-2"
+                                    disabled={isOAuthLoading}
+                                  >
+                                    <ChevronDown className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem
+                                    onClick={() => setForceManualEntry(prev => ({ ...prev, [preset.id]: true }))}
+                                  >
+                                  Enter API key
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+                            {oauthError && (
+                              <p className="text-sm text-destructive">
+                                {oauthError}
+                              </p>
+                            )}
+                          </div>
+                        ) : (
                         // Show manual token input
-                        <div className="space-y-2">
-                          {!preset.requiresNostr && preset.type !== 'nsite' && (
-                            <>
-                              {preset.type === 'cloudflare' && (
-                                <ExternalInput
-                                  type="text"
-                                  placeholder={preset.accountIdLabel || 'Account ID'}
-                                  value={presetApiKeys[`${preset.id}-accountId`] || ''}
-                                  onChange={(e) => setPresetApiKeys(prev => ({
-                                    ...prev,
-                                    [`${preset.id}-accountId`]: e.target.value,
-                                  }))}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter' && presetApiKeys[preset.id]?.trim() &&
+                          <div className="space-y-2">
+                            {!preset.requiresNostr && preset.type !== 'nsite' && (
+                              <>
+                                {preset.type === 'cloudflare' && (
+                                  <ExternalInput
+                                    type="text"
+                                    placeholder={preset.accountIdLabel || 'Account ID'}
+                                    value={presetApiKeys[`${preset.id}-accountId`] || ''}
+                                    onChange={(e) => setPresetApiKeys(prev => ({
+                                      ...prev,
+                                      [`${preset.id}-accountId`]: e.target.value,
+                                    }))}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter' && presetApiKeys[preset.id]?.trim() &&
                                         presetApiKeys[`${preset.id}-accountId`]?.trim()) {
-                                      handleAddPresetProvider(preset);
-                                    }
-                                  }}
-                                  url={preset.accountIdURL}
-                                  urlTitle="Find ID"
-                                />
-                              )}
-                              {preset.type === 'deno' && (
+                                        handleAddPresetProvider(preset);
+                                      }
+                                    }}
+                                    url={preset.accountIdURL}
+                                    urlTitle="Find ID"
+                                  />
+                                )}
+                                {preset.type === 'deno' && (
+                                  <ExternalInput
+                                    type="text"
+                                    placeholder={preset.organizationIdLabel || 'Organization ID'}
+                                    value={presetApiKeys[`${preset.id}-organizationId`] || ''}
+                                    onChange={(e) => setPresetApiKeys(prev => ({
+                                      ...prev,
+                                      [`${preset.id}-organizationId`]: e.target.value,
+                                    }))}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter' && presetApiKeys[preset.id]?.trim() &&
+                                        presetApiKeys[`${preset.id}-organizationId`]?.trim()) {
+                                        handleAddPresetProvider(preset);
+                                      }
+                                    }}
+                                    url={preset.organizationIdURL}
+                                    urlTitle="Find ID"
+                                  />
+                                )}
                                 <ExternalInput
-                                  type="text"
-                                  placeholder={preset.organizationIdLabel || 'Organization ID'}
-                                  value={presetApiKeys[`${preset.id}-organizationId`] || ''}
+                                  type="password"
+                                  placeholder={preset.apiKeyLabel || t('enterApiKey')}
+                                  value={presetApiKeys[preset.id] || ''}
                                   onChange={(e) => setPresetApiKeys(prev => ({
                                     ...prev,
-                                    [`${preset.id}-organizationId`]: e.target.value,
+                                    [preset.id]: e.target.value,
                                   }))}
                                   onKeyDown={(e) => {
                                     if (e.key === 'Enter' && presetApiKeys[preset.id]?.trim() &&
-                                        presetApiKeys[`${preset.id}-organizationId`]?.trim()) {
-                                      handleAddPresetProvider(preset);
-                                    }
-                                  }}
-                                  url={preset.organizationIdURL}
-                                  urlTitle="Find ID"
-                                />
-                              )}
-                              <ExternalInput
-                                type="password"
-                                placeholder={preset.apiKeyLabel || t('enterApiKey')}
-                                value={presetApiKeys[preset.id] || ''}
-                                onChange={(e) => setPresetApiKeys(prev => ({
-                                  ...prev,
-                                  [preset.id]: e.target.value,
-                                }))}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter' && presetApiKeys[preset.id]?.trim() &&
                                       (preset.type !== 'cloudflare' || presetApiKeys[`${preset.id}-accountId`]?.trim()) &&
                                       (preset.type !== 'deno' || presetApiKeys[`${preset.id}-organizationId`]?.trim())) {
-                                    handleAddPresetProvider(preset);
-                                  }
-                                }}
-                                url={preset.apiKeyURL}
-                                urlTitle="Get Key"
-                              />
-                            </>
-                          )}
-                          <Button
-                            onClick={() => handleAddPresetProvider(preset)}
-                            disabled={
-                              (preset.requiresNostr && !isLoggedIntoNostr) ||
+                                      handleAddPresetProvider(preset);
+                                    }
+                                  }}
+                                  url={preset.apiKeyURL}
+                                  urlTitle="Get Key"
+                                />
+                              </>
+                            )}
+                            <Button
+                              onClick={() => handleAddPresetProvider(preset)}
+                              disabled={
+                                (preset.requiresNostr && !isLoggedIntoNostr) ||
                               (!preset.requiresNostr && preset.type !== 'nsite' && !presetApiKeys[preset.id]?.trim()) ||
                               (preset.type === 'cloudflare' && !presetApiKeys[`${preset.id}-accountId`]?.trim()) ||
                               (preset.type === 'deno' && !presetApiKeys[`${preset.id}-organizationId`]?.trim())
-                            }
-                            className="w-full"
-                          >
-                            {t('add')}
-                          </Button>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Custom Provider */}
-        <div className="space-y-3">
-          <Accordion type="single" collapsible className="w-full">
-            <AccordionItem value="custom-provider">
-              <AccordionTrigger className="px-4 py-3 hover:no-underline">
-                <div className="flex items-center gap-2">
-                  <Plus className="h-4 w-4" />
-                  <h4 className="text-sm font-medium">{t('addCustomProvider')}</h4>
-                </div>
-              </AccordionTrigger>
-              <AccordionContent className="px-4 pb-4">
-                <div className="space-y-3">
-                  <div className="grid gap-2">
-                    <Label htmlFor="custom-provider-type">
-                      {t('providerType')} <span className="text-destructive">*</span>
-                    </Label>
-                    <Select
-                      value={customProviderType}
-                      onValueChange={(value: 'shakespeare' | 'netlify' | 'vercel' | 'nsite' | 'cloudflare' | 'deno') => {
-                        setCustomProviderType(value);
-                        // Reset form when provider type changes
-                        setCustomApiKey('');
-                        setCustomAccountId('');
-                        setCustomOrganizationId('');
-                        setCustomBaseURL('');
-                        setCustomBaseDomain('');
-                        setCustomHost('');
-                        setCustomProxy(false);
-                        setCustomGateway('');
-                        setCustomRelayUrls('');
-                        setCustomBlossomServers('');
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder={t('selectProviderType')} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="shakespeare">Shakespeare Deploy</SelectItem>
-                        <SelectItem value="nsite">nsite</SelectItem>
-                        <SelectItem value="netlify">Netlify</SelectItem>
-                        <SelectItem value="vercel">Vercel</SelectItem>
-                        <SelectItem value="cloudflare">Cloudflare</SelectItem>
-                        <SelectItem value="deno">Deno Deploy</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {customProviderType && (
-                    <>
-                      <div className="grid gap-2">
-                        <Label htmlFor="custom-name">
-                          {t('providerName')} <span className="text-destructive">*</span>
-                        </Label>
-                        <Input
-                          id="custom-name"
-                          placeholder="e.g., My Production Deploy"
-                          value={customName}
-                          onChange={(e) => setCustomName(e.target.value)}
-                        />
-                      </div>
-
-                      {customProviderType === 'shakespeare' ? (
-                        <>
-                          <p className="text-sm text-muted-foreground">
-                            {t('shakespeareDeployNostrAuth')}
-                          </p>
-                          <div className="grid gap-2">
-                            <Label htmlFor="custom-host">Host (Optional)</Label>
-                            <Input
-                              id="custom-host"
-                              placeholder="shakespeare.wtf"
-                              value={customHost}
-                              onChange={(e) => setCustomHost(e.target.value)}
-                            />
-                          </div>
-                        </>
-                      ) : customProviderType === 'nsite' ? (
-                        <>
-                          <p className="text-sm text-muted-foreground">
-                            Deploy to Nostr as a static website. Uses kind 34128 events and Blossom file storage.
-                          </p>
-                          <div className="grid gap-2">
-                            <Label htmlFor="custom-gateway">Gateway</Label>
-                            <Input
-                              id="custom-gateway"
-                              placeholder="nsite.lol"
-                              value={customGateway}
-                              onChange={(e) => setCustomGateway(e.target.value)}
-                            />
-                          </div>
-                          <div className="grid gap-2">
-                            <Label htmlFor="custom-relays">Relay URLs (comma-separated)</Label>
-                            <Input
-                              id="custom-relays"
-                              placeholder="wss://relay.nostr.band, wss://relay.damus.io"
-                              value={customRelayUrls}
-                              onChange={(e) => setCustomRelayUrls(e.target.value)}
-                            />
-                          </div>
-                          <div className="grid gap-2">
-                            <Label htmlFor="custom-blossom">Blossom Servers (comma-separated)</Label>
-                            <Input
-                              id="custom-blossom"
-                              placeholder="https://blossom.primal.net/"
-                              value={customBlossomServers}
-                              onChange={(e) => setCustomBlossomServers(e.target.value)}
-                            />
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          {customProviderType === 'cloudflare' && (
-                            <div className="grid gap-2">
-                              <Label htmlFor="custom-accountid">
-                                Account ID <span className="text-destructive">*</span>
-                              </Label>
-                              <Input
-                                id="custom-accountid"
-                                placeholder="Enter Account ID"
-                                value={customAccountId}
-                                onChange={(e) => setCustomAccountId(e.target.value)}
-                              />
-                            </div>
-                          )}
-                          {customProviderType === 'deno' && (
-                            <div className="grid gap-2">
-                              <Label htmlFor="custom-organizationid">
-                                Organization ID <span className="text-destructive">*</span>
-                              </Label>
-                              <Input
-                                id="custom-organizationid"
-                                placeholder="Enter Organization ID"
-                                value={customOrganizationId}
-                                onChange={(e) => setCustomOrganizationId(e.target.value)}
-                              />
-                            </div>
-                          )}
-                          <div className="grid gap-2">
-                            <Label htmlFor="custom-apikey">
-                              {customProviderType === 'netlify' ? 'Personal Access Token' :
-                                customProviderType === 'cloudflare' ? 'API Token' :
-                                  customProviderType === 'deno' ? 'Access Token' :
-                                    'Access Token'} <span className="text-destructive">*</span>
-                            </Label>
-                            <PasswordInput
-                              id="custom-apikey"
-                              placeholder={t('enterApiKey')}
-                              value={customApiKey}
-                              onChange={(e) => setCustomApiKey(e.target.value)}
-                            />
-                          </div>
-                          <div className="grid gap-2">
-                            <Label htmlFor="custom-baseurl">Base URL (Optional)</Label>
-                            <Input
-                              id="custom-baseurl"
-                              placeholder={
-                                customProviderType === 'netlify'
-                                  ? 'https://api.netlify.com/api/v1'
-                                  : customProviderType === 'vercel'
-                                    ? 'https://api.vercel.com'
-                                    : customProviderType === 'deno'
-                                      ? 'https://api.deno.com/v1'
-                                      : 'https://api.cloudflare.com/client/v4'
                               }
-                              value={customBaseURL}
-                              onChange={(e) => setCustomBaseURL(e.target.value)}
-                            />
+                              className="w-full"
+                            >
+                              {t('add')}
+                            </Button>
                           </div>
-                          {(customProviderType === 'cloudflare' || customProviderType === 'deno') && (
+                        )}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Custom Provider */}
+          <div className="space-y-3">
+            <Accordion type="single" collapsible className="w-full">
+              <AccordionItem value="custom-provider">
+                <AccordionTrigger className="px-4 py-3 hover:no-underline">
+                  <div className="flex items-center gap-2">
+                    <Plus className="h-4 w-4" />
+                    <h4 className="text-sm font-medium">{t('addCustomProvider')}</h4>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="px-4 pb-4">
+                  <div className="space-y-3">
+                    <div className="grid gap-2">
+                      <Label htmlFor="custom-provider-type">
+                        {t('providerType')} <span className="text-destructive">*</span>
+                      </Label>
+                      <Select
+                        value={customProviderType}
+                        onValueChange={(value: 'shakespeare' | 'netlify' | 'vercel' | 'nsite' | 'cloudflare' | 'deno') => {
+                          setCustomProviderType(value);
+                          // Reset form when provider type changes
+                          setCustomApiKey('');
+                          setCustomAccountId('');
+                          setCustomOrganizationId('');
+                          setCustomBaseURL('');
+                          setCustomBaseDomain('');
+                          setCustomHost('');
+                          setCustomProxy(false);
+                          setCustomGateway('');
+                          setCustomRelayUrls('');
+                          setCustomBlossomServers('');
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder={t('selectProviderType')} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="shakespeare">Shakespeare Deploy</SelectItem>
+                          <SelectItem value="nsite">nsite</SelectItem>
+                          <SelectItem value="netlify">Netlify</SelectItem>
+                          <SelectItem value="vercel">Vercel</SelectItem>
+                          <SelectItem value="cloudflare">Cloudflare</SelectItem>
+                          <SelectItem value="deno">Deno Deploy</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {customProviderType && (
+                      <>
+                        <div className="grid gap-2">
+                          <Label htmlFor="custom-name">
+                            {t('providerName')} <span className="text-destructive">*</span>
+                          </Label>
+                          <Input
+                            id="custom-name"
+                            placeholder="e.g., My Production Deploy"
+                            value={customName}
+                            onChange={(e) => setCustomName(e.target.value)}
+                          />
+                        </div>
+
+                        {customProviderType === 'shakespeare' ? (
+                          <>
+                            <p className="text-sm text-muted-foreground">
+                              {t('shakespeareDeployNostrAuth')}
+                            </p>
                             <div className="grid gap-2">
-                              <Label htmlFor="custom-basedomain">Base Domain (Optional)</Label>
+                              <Label htmlFor="custom-host">Host (Optional)</Label>
                               <Input
-                                id="custom-basedomain"
-                                placeholder={customProviderType === 'cloudflare' ? 'workers.dev' : 'deno.dev'}
-                                value={customBaseDomain}
-                                onChange={(e) => setCustomBaseDomain(e.target.value)}
+                                id="custom-host"
+                                placeholder="shakespeare.wtf"
+                                value={customHost}
+                                onChange={(e) => setCustomHost(e.target.value)}
                               />
-                              <p className="text-xs text-muted-foreground">
-                                {customProviderType === 'cloudflare'
-                                  ? 'The domain suffix for deployed workers (e.g., workers.dev)'
-                                  : 'The domain suffix for deployed projects (e.g., deno.dev)'}
-                              </p>
                             </div>
-                          )}
-                        </>
-                      )}
+                          </>
+                        ) : customProviderType === 'nsite' ? (
+                          <>
+                            <p className="text-sm text-muted-foreground">
+                            Deploy to Nostr as a static website. Uses kind 34128 events and Blossom file storage.
+                            </p>
+                            <div className="grid gap-2">
+                              <Label htmlFor="custom-gateway">Gateway</Label>
+                              <Input
+                                id="custom-gateway"
+                                placeholder="nsite.lol"
+                                value={customGateway}
+                                onChange={(e) => setCustomGateway(e.target.value)}
+                              />
+                            </div>
+                            <div className="grid gap-2">
+                              <Label htmlFor="custom-relays">Relay URLs (comma-separated)</Label>
+                              <Input
+                                id="custom-relays"
+                                placeholder="wss://relay.nostr.band, wss://relay.damus.io"
+                                value={customRelayUrls}
+                                onChange={(e) => setCustomRelayUrls(e.target.value)}
+                              />
+                            </div>
+                            <div className="grid gap-2">
+                              <Label htmlFor="custom-blossom">Blossom Servers (comma-separated)</Label>
+                              <Input
+                                id="custom-blossom"
+                                placeholder="https://blossom.primal.net/"
+                                value={customBlossomServers}
+                                onChange={(e) => setCustomBlossomServers(e.target.value)}
+                              />
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            {customProviderType === 'cloudflare' && (
+                              <div className="grid gap-2">
+                                <Label htmlFor="custom-accountid">
+                                Account ID <span className="text-destructive">*</span>
+                                </Label>
+                                <Input
+                                  id="custom-accountid"
+                                  placeholder="Enter Account ID"
+                                  value={customAccountId}
+                                  onChange={(e) => setCustomAccountId(e.target.value)}
+                                />
+                              </div>
+                            )}
+                            {customProviderType === 'deno' && (
+                              <div className="grid gap-2">
+                                <Label htmlFor="custom-organizationid">
+                                Organization ID <span className="text-destructive">*</span>
+                                </Label>
+                                <Input
+                                  id="custom-organizationid"
+                                  placeholder="Enter Organization ID"
+                                  value={customOrganizationId}
+                                  onChange={(e) => setCustomOrganizationId(e.target.value)}
+                                />
+                              </div>
+                            )}
+                            <div className="grid gap-2">
+                              <Label htmlFor="custom-apikey">
+                                {customProviderType === 'netlify' ? 'Personal Access Token' :
+                                  customProviderType === 'cloudflare' ? 'API Token' :
+                                    customProviderType === 'deno' ? 'Access Token' :
+                                      'Access Token'} <span className="text-destructive">*</span>
+                              </Label>
+                              <PasswordInput
+                                id="custom-apikey"
+                                placeholder={t('enterApiKey')}
+                                value={customApiKey}
+                                onChange={(e) => setCustomApiKey(e.target.value)}
+                              />
+                            </div>
+                            <div className="grid gap-2">
+                              <Label htmlFor="custom-baseurl">Base URL (Optional)</Label>
+                              <Input
+                                id="custom-baseurl"
+                                placeholder={
+                                  customProviderType === 'netlify'
+                                    ? 'https://api.netlify.com/api/v1'
+                                    : customProviderType === 'vercel'
+                                      ? 'https://api.vercel.com'
+                                      : customProviderType === 'deno'
+                                        ? 'https://api.deno.com/v1'
+                                        : 'https://api.cloudflare.com/client/v4'
+                                }
+                                value={customBaseURL}
+                                onChange={(e) => setCustomBaseURL(e.target.value)}
+                              />
+                            </div>
+                            {(customProviderType === 'cloudflare' || customProviderType === 'deno') && (
+                              <div className="grid gap-2">
+                                <Label htmlFor="custom-basedomain">Base Domain (Optional)</Label>
+                                <Input
+                                  id="custom-basedomain"
+                                  placeholder={customProviderType === 'cloudflare' ? 'workers.dev' : 'deno.dev'}
+                                  value={customBaseDomain}
+                                  onChange={(e) => setCustomBaseDomain(e.target.value)}
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                  {customProviderType === 'cloudflare'
+                                    ? 'The domain suffix for deployed workers (e.g., workers.dev)'
+                                    : 'The domain suffix for deployed projects (e.g., deno.dev)'}
+                                </p>
+                              </div>
+                            )}
+                          </>
+                        )}
 
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="custom-proxy"
-                          checked={customProxy}
-                          onCheckedChange={(checked) => setCustomProxy(checked === true)}
-                        />
-                        <Label htmlFor="custom-proxy" className="text-sm font-normal cursor-pointer">
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="custom-proxy"
+                            checked={customProxy}
+                            onCheckedChange={(checked) => setCustomProxy(checked === true)}
+                          />
+                          <Label htmlFor="custom-proxy" className="text-sm font-normal cursor-pointer">
                           Use CORS Proxy
-                        </Label>
-                      </div>
+                          </Label>
+                        </div>
 
-                      <Button
-                        onClick={handleAddCustomProvider}
-                        disabled={
-                          !customProviderType ||
+                        <Button
+                          onClick={handleAddCustomProvider}
+                          disabled={
+                            !customProviderType ||
                           !customName.trim() ||
                           (customProviderType !== 'shakespeare' && customProviderType !== 'nsite' && !customApiKey.trim()) ||
                           (customProviderType === 'cloudflare' && !customAccountId.trim()) ||
                           (customProviderType === 'deno' && !customOrganizationId.trim())
-                        }
-                        className="gap-2 ml-auto"
-                      >
-                        <Check className="h-4 w-4" />
-                        {t('add')}
-                      </Button>
-                    </>
-                  )}
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
+                          }
+                          className="gap-2 ml-auto"
+                        >
+                          <Check className="h-4 w-4" />
+                          {t('add')}
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

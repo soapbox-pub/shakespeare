@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Card, CardContent } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -50,7 +51,7 @@ const PRESET_PROVIDERS: PresetProvider[] = [
 
 export function GitSettings() {
   const { t } = useTranslation();
-  const { settings, addCredential, removeCredential, updateCredential, updateSettings } = useGitSettings();
+  const { settings, addCredential, removeCredential, updateCredential, updateSettings, isInitialized } = useGitSettings();
   const { initiateOAuth, isLoading: isOAuthLoading, error: oauthError, isOAuthConfigured } = useGitHubOAuth();
   const isMobile = useIsMobile();
   const navigate = useNavigate();
@@ -173,157 +174,218 @@ export function GitSettings() {
         </div>
       )}
 
-      <div className="space-y-6">
-        {/* Configured Credentials */}
-        {settings.credentials.length > 0 && (
+      {!isInitialized ? (
+        <div className="space-y-6">
+          {/* Loading skeleton for configured credentials */}
           <div className="space-y-3">
-            <h4 className="text-sm font-medium">{t('configuredCredentials')}</h4>
-            <Accordion type="multiple" className="w-full space-y-2">
-              {settings.credentials.map((credential, index) => {
-                const origin = getOriginFromCredential(credential);
-                const preset = PRESET_PROVIDERS.find(p => p.origin === origin);
-                const isCustom = !preset;
+            <Skeleton className="h-4 w-40" />
+            <div className="space-y-2">
+              <Skeleton className="h-16 w-full rounded-lg" />
+              <Skeleton className="h-16 w-full rounded-lg" />
+            </div>
+          </div>
 
-                return (
-                  <AccordionItem key={`${origin}-${index}`} value={`${origin}-${index}`}>
-                    <AccordionTrigger className="px-4 py-3 hover:no-underline">
+          {/* Loading skeleton for add provider section */}
+          <div className="space-y-3">
+            <Skeleton className="h-4 w-32" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <Skeleton className="h-32 w-full rounded-lg" />
+              <Skeleton className="h-32 w-full rounded-lg" />
+            </div>
+          </div>
+
+          {/* Loading skeleton for custom provider */}
+          <div className="space-y-3">
+            <Skeleton className="h-16 w-full rounded-lg" />
+          </div>
+
+          {/* Loading skeleton for git identity */}
+          <div className="space-y-3">
+            <Skeleton className="h-16 w-full rounded-lg" />
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {/* Configured Credentials */}
+          {settings.credentials.length > 0 && (
+            <div className="space-y-3">
+              <h4 className="text-sm font-medium">{t('configuredCredentials')}</h4>
+              <Accordion type="multiple" className="w-full space-y-2">
+                {settings.credentials.map((credential, index) => {
+                  const origin = getOriginFromCredential(credential);
+                  const preset = PRESET_PROVIDERS.find(p => p.origin === origin);
+                  const isCustom = !preset;
+
+                  return (
+                    <AccordionItem key={`${origin}-${index}`} value={`${origin}-${index}`}>
+                      <AccordionTrigger className="px-4 py-3 hover:no-underline">
+                        <div className="flex items-center gap-2">
+                          <ExternalFavicon
+                            url={origin}
+                            size={16}
+                            fallback={<GitBranch size={16} />}
+                          />
+                          <span className="font-medium">
+                            {preset?.name || credential.host}
+                          </span>
+                          {isCustom && <Badge variant="outline">{t('custom')}</Badge>}
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="px-4 pb-4">
+                        <div className="space-y-3">
+                          <div className="grid gap-2">
+                            <Label htmlFor={`${origin}-${index}-origin`}>
+                              {t('origin')} <span className="text-destructive">*</span>
+                            </Label>
+                            <Input
+                              id={`${origin}-${index}-origin`}
+                              placeholder="https://github.com"
+                              value={origin}
+                              disabled
+                              className="bg-muted"
+                            />
+                          </div>
+                          <div className="grid gap-2">
+                            <Label htmlFor={`${origin}-${index}-username`}>
+                              {t('username')} <span className="text-destructive">*</span>
+                            </Label>
+                            <Input
+                              id={`${origin}-${index}-username`}
+                              placeholder="git"
+                              value={credential.username}
+                              onChange={(e) => handleUpdateCredential(index, { username: e.target.value })}
+                            />
+                          </div>
+                          <div className="grid gap-2">
+                            <Label htmlFor={`${origin}-${index}-password`}>
+                              {t('password')} <span className="text-destructive">*</span>
+                            </Label>
+                            <PasswordInput
+                              id={`${origin}-${index}-password`}
+                              placeholder={t('enterPassword')}
+                              value={credential.password}
+                              onChange={(e) => handleUpdateCredential(index, { password: e.target.value })}
+                            />
+                          </div>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleRemoveCredential(index)}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            {t('delete')}
+                          </Button>
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  );
+                })}
+              </Accordion>
+            </div>
+          )}
+
+          {/* Available Preset Providers */}
+          {availablePresets.length > 0 && (
+            <div className="space-y-3">
+              <h4 className="text-sm font-medium">{t('addProvider')}</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {availablePresets.map((preset) => (
+                  <Card key={preset.id}>
+                    <CardContent className="p-4 space-y-3">
                       <div className="flex items-center gap-2">
                         <ExternalFavicon
-                          url={origin}
+                          url={preset.origin}
                           size={16}
                           fallback={<GitBranch size={16} />}
                         />
-                        <span className="font-medium">
-                          {preset?.name || credential.host}
-                        </span>
-                        {isCustom && <Badge variant="outline">{t('custom')}</Badge>}
+                        <h5 className="font-medium">{preset.name}</h5>
                       </div>
-                    </AccordionTrigger>
-                    <AccordionContent className="px-4 pb-4">
-                      <div className="space-y-3">
-                        <div className="grid gap-2">
-                          <Label htmlFor={`${origin}-${index}-origin`}>
-                            {t('origin')} <span className="text-destructive">*</span>
-                          </Label>
-                          <Input
-                            id={`${origin}-${index}-origin`}
-                            placeholder="https://github.com"
-                            value={origin}
-                            disabled
-                            className="bg-muted"
-                          />
-                        </div>
-                        <div className="grid gap-2">
-                          <Label htmlFor={`${origin}-${index}-username`}>
-                            {t('username')} <span className="text-destructive">*</span>
-                          </Label>
-                          <Input
-                            id={`${origin}-${index}-username`}
-                            placeholder="git"
-                            value={credential.username}
-                            onChange={(e) => handleUpdateCredential(index, { username: e.target.value })}
-                          />
-                        </div>
-                        <div className="grid gap-2">
-                          <Label htmlFor={`${origin}-${index}-password`}>
-                            {t('password')} <span className="text-destructive">*</span>
-                          </Label>
-                          <PasswordInput
-                            id={`${origin}-${index}-password`}
-                            placeholder={t('enterPassword')}
-                            value={credential.password}
-                            onChange={(e) => handleUpdateCredential(index, { password: e.target.value })}
-                          />
-                        </div>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => handleRemoveCredential(index)}
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          {t('delete')}
-                        </Button>
-                      </div>
-                    </AccordionContent>
-                  </AccordionItem>
-                );
-              })}
-            </Accordion>
-          </div>
-        )}
 
-        {/* Available Preset Providers */}
-        {availablePresets.length > 0 && (
-          <div className="space-y-3">
-            <h4 className="text-sm font-medium">{t('addProvider')}</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {availablePresets.map((preset) => (
-                <Card key={preset.id}>
-                  <CardContent className="p-4 space-y-3">
-                    <div className="flex items-center gap-2">
-                      <ExternalFavicon
-                        url={preset.origin}
-                        size={16}
-                        fallback={<GitBranch size={16} />}
-                      />
-                      <h5 className="font-medium">{preset.name}</h5>
-                    </div>
-
-                    {preset.id === 'github' ? (
+                      {preset.id === 'github' ? (
                       // Special rendering for GitHub - OAuth button if configured, otherwise token input
-                      isOAuthConfigured && !forceManualEntry[preset.id] ? (
-                        <div className="space-y-3">
-                          <div className="flex gap-0">
-                            <Button
-                              onClick={initiateOAuth}
-                              disabled={isOAuthLoading}
-                              className="flex-1 rounded-r-none gap-2"
-                              variant="default"
-                            >
-                              {isOAuthLoading ? (
-                                <>
-                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        isOAuthConfigured && !forceManualEntry[preset.id] ? (
+                          <div className="space-y-3">
+                            <div className="flex gap-0">
+                              <Button
+                                onClick={initiateOAuth}
+                                disabled={isOAuthLoading}
+                                className="flex-1 rounded-r-none gap-2"
+                                variant="default"
+                              >
+                                {isOAuthLoading ? (
+                                  <>
+                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                                   Connecting...
-                                </>
-                              ) : (
-                                <>
-                                  <ExternalFavicon
-                                    url="https://github.com"
-                                    size={16}
-                                    fallback={<GitBranch size={16} />}
-                                  />
-                                  <span className="truncate text-ellipsis overflow-hidden">
+                                  </>
+                                ) : (
+                                  <>
+                                    <ExternalFavicon
+                                      url="https://github.com"
+                                      size={16}
+                                      fallback={<GitBranch size={16} />}
+                                    />
+                                    <span className="truncate text-ellipsis overflow-hidden">
                                     Connect to GitHub
-                                  </span>
-                                </>
-                              )}
-                            </Button>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  variant="default"
-                                  className="rounded-l-none border-l border-primary-foreground/20 px-2"
-                                  disabled={isOAuthLoading}
-                                >
-                                  <ChevronDown className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem
-                                  onClick={() => setForceManualEntry(prev => ({ ...prev, [preset.id]: true }))}
-                                >
+                                    </span>
+                                  </>
+                                )}
+                              </Button>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="default"
+                                    className="rounded-l-none border-l border-primary-foreground/20 px-2"
+                                    disabled={isOAuthLoading}
+                                  >
+                                    <ChevronDown className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem
+                                    onClick={() => setForceManualEntry(prev => ({ ...prev, [preset.id]: true }))}
+                                  >
                                   Enter API key
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+                            {oauthError && (
+                              <p className="text-sm text-destructive">
+                                {oauthError}
+                              </p>
+                            )}
                           </div>
-                          {oauthError && (
-                            <p className="text-sm text-destructive">
-                              {oauthError}
-                            </p>
-                          )}
-                        </div>
+                        ) : (
+                          <div className="flex gap-2">
+                            <ExternalInput
+                              type="password"
+                              className="flex-1"
+                              placeholder={t('enterToken')}
+                              value={presetTokens[preset.id] || ''}
+                              onChange={(e) => setPresetTokens(prev => ({
+                                ...prev,
+                                [preset.id]: e.target.value,
+                              }))}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' && presetTokens[preset.id]?.trim()) {
+                                  handleAddPresetProvider(preset);
+                                }
+                              }}
+                              url={preset.tokenURL}
+                              urlTitle="Get Token"
+                            />
+                            <Button
+                              onClick={() => handleAddPresetProvider(preset)}
+                              disabled={!presetTokens[preset.id]?.trim()}
+                              size="sm"
+                              className="h-10"
+                            >
+                              {t('add')}
+                            </Button>
+                          </div>
+                        )
                       ) : (
+                      // Standard rendering for other providers
                         <div className="flex gap-2">
                           <ExternalInput
                             type="password"
@@ -346,165 +408,136 @@ export function GitSettings() {
                             onClick={() => handleAddPresetProvider(preset)}
                             disabled={!presetTokens[preset.id]?.trim()}
                             size="sm"
-                            className="h-10"
                           >
                             {t('add')}
                           </Button>
                         </div>
-                      )
-                    ) : (
-                      // Standard rendering for other providers
-                      <div className="flex gap-2">
-                        <ExternalInput
-                          type="password"
-                          className="flex-1"
-                          placeholder={t('enterToken')}
-                          value={presetTokens[preset.id] || ''}
-                          onChange={(e) => setPresetTokens(prev => ({
-                            ...prev,
-                            [preset.id]: e.target.value,
-                          }))}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' && presetTokens[preset.id]?.trim()) {
-                              handleAddPresetProvider(preset);
-                            }
-                          }}
-                          url={preset.tokenURL}
-                          urlTitle="Get Token"
-                        />
-                        <Button
-                          onClick={() => handleAddPresetProvider(preset)}
-                          disabled={!presetTokens[preset.id]?.trim()}
-                          size="sm"
-                        >
-                          {t('add')}
-                        </Button>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Custom Provider */}
-        <div className="space-y-3">
-          <Accordion type="single" collapsible className="w-full">
-            <AccordionItem value="custom-provider">
-              <AccordionTrigger className="px-4 py-3 hover:no-underline">
-                <div className="flex items-center gap-2">
-                  <Plus className="h-4 w-4" />
-                  <h4 className="text-sm font-medium">{t('addCustomProvider')}</h4>
-                </div>
-              </AccordionTrigger>
-              <AccordionContent className="px-4 pb-4">
-                <div className="space-y-3">
-                  <div className="grid gap-2">
-                    <Label htmlFor="custom-origin">
-                      {t('origin')} <span className="text-destructive">*</span>
-                    </Label>
-                    <Input
-                      id="custom-origin"
-                      placeholder="https://git.example.com"
-                      value={customOrigin}
-                      onChange={(e) => setCustomOrigin(e.target.value)}
-                    />
+          {/* Custom Provider */}
+          <div className="space-y-3">
+            <Accordion type="single" collapsible className="w-full">
+              <AccordionItem value="custom-provider">
+                <AccordionTrigger className="px-4 py-3 hover:no-underline">
+                  <div className="flex items-center gap-2">
+                    <Plus className="h-4 w-4" />
+                    <h4 className="text-sm font-medium">{t('addCustomProvider')}</h4>
                   </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="custom-username">
-                      {t('username')} <span className="text-destructive">*</span>
-                    </Label>
-                    <Input
-                      id="custom-username"
-                      placeholder="git"
-                      value={customUsername}
-                      onChange={(e) => setCustomUsername(e.target.value)}
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="custom-password">
-                      {t('password')} <span className="text-destructive">*</span>
-                    </Label>
-                    <PasswordInput
-                      id="custom-password"
-                      placeholder={t('enterPassword')}
-                      value={customPassword}
-                      onChange={(e) => setCustomPassword(e.target.value)}
-                    />
-                  </div>
-                  <Button
-                    onClick={handleAddCustomProvider}
-                    disabled={
-                      !customOrigin.trim() ||
+                </AccordionTrigger>
+                <AccordionContent className="px-4 pb-4">
+                  <div className="space-y-3">
+                    <div className="grid gap-2">
+                      <Label htmlFor="custom-origin">
+                        {t('origin')} <span className="text-destructive">*</span>
+                      </Label>
+                      <Input
+                        id="custom-origin"
+                        placeholder="https://git.example.com"
+                        value={customOrigin}
+                        onChange={(e) => setCustomOrigin(e.target.value)}
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="custom-username">
+                        {t('username')} <span className="text-destructive">*</span>
+                      </Label>
+                      <Input
+                        id="custom-username"
+                        placeholder="git"
+                        value={customUsername}
+                        onChange={(e) => setCustomUsername(e.target.value)}
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="custom-password">
+                        {t('password')} <span className="text-destructive">*</span>
+                      </Label>
+                      <PasswordInput
+                        id="custom-password"
+                        placeholder={t('enterPassword')}
+                        value={customPassword}
+                        onChange={(e) => setCustomPassword(e.target.value)}
+                      />
+                    </div>
+                    <Button
+                      onClick={handleAddCustomProvider}
+                      disabled={
+                        !customOrigin.trim() ||
                       !customUsername.trim() ||
                       !customPassword.trim() ||
                       customOrigin.trim() in settings.credentials
-                    }
-                    size="sm"
-                    className="gap-2"
-                  >
-                    <Check className="h-4 w-4" />
-                    {t('addCustomProviderButton')}
-                  </Button>
-                  {customOrigin.trim() in settings.credentials && (
-                    <p className="text-sm text-destructive">
-                      {t('credentialsExist')}
-                    </p>
-                  )}
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
-        </div>
+                      }
+                      size="sm"
+                      className="gap-2"
+                    >
+                      <Check className="h-4 w-4" />
+                      {t('addCustomProviderButton')}
+                    </Button>
+                    {customOrigin.trim() in settings.credentials && (
+                      <p className="text-sm text-destructive">
+                        {t('credentialsExist')}
+                      </p>
+                    )}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </div>
 
-        {/* Git Identity */}
-        <div className="space-y-3">
-          <Accordion type="single" collapsible className="w-full">
-            <AccordionItem value="git-identity">
-              <AccordionTrigger className="px-4 py-3 hover:no-underline">
-                <div className="flex items-center gap-2">
-                  <User className="h-4 w-4" />
-                  <h4 className="text-sm font-medium">{t('gitIdentity')}</h4>
-                </div>
-              </AccordionTrigger>
-              <AccordionContent className="px-4 pb-4">
-                <div className="space-y-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="git-name">{t('name')}</Label>
-                    <Input
-                      id="git-name"
-                      placeholder="Your Name"
-                      value={settings.name || ''}
-                      onChange={(e) => updateSettings({ name: e.target.value })}
-                    />
+          {/* Git Identity */}
+          <div className="space-y-3">
+            <Accordion type="single" collapsible className="w-full">
+              <AccordionItem value="git-identity">
+                <AccordionTrigger className="px-4 py-3 hover:no-underline">
+                  <div className="flex items-center gap-2">
+                    <User className="h-4 w-4" />
+                    <h4 className="text-sm font-medium">{t('gitIdentity')}</h4>
                   </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="git-email">{t('email')}</Label>
-                    <Input
-                      id="git-email"
-                      type="email"
-                      placeholder="your.email@example.com"
-                      value={settings.email || ''}
-                      onChange={(e) => updateSettings({ email: e.target.value })}
-                    />
+                </AccordionTrigger>
+                <AccordionContent className="px-4 pb-4">
+                  <div className="space-y-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="git-name">{t('name')}</Label>
+                      <Input
+                        id="git-name"
+                        placeholder="Your Name"
+                        value={settings.name || ''}
+                        onChange={(e) => updateSettings({ name: e.target.value })}
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="git-email">{t('email')}</Label>
+                      <Input
+                        id="git-email"
+                        type="email"
+                        placeholder="your.email@example.com"
+                        value={settings.email || ''}
+                        onChange={(e) => updateSettings({ email: e.target.value })}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between space-x-2">
+                      <Label htmlFor="co-author" className="flex-1 cursor-pointer">
+                        {t('coAuthoredByShakespeare')}
+                      </Label>
+                      <Switch
+                        id="co-author"
+                        checked={settings.coAuthorEnabled ?? true}
+                        onCheckedChange={(checked) => updateSettings({ coAuthorEnabled: checked })}
+                      />
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between space-x-2">
-                    <Label htmlFor="co-author" className="flex-1 cursor-pointer">
-                      {t('coAuthoredByShakespeare')}
-                    </Label>
-                    <Switch
-                      id="co-author"
-                      checked={settings.coAuthorEnabled ?? true}
-                      onCheckedChange={(checked) => updateSettings({ coAuthorEnabled: checked })}
-                    />
-                  </div>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

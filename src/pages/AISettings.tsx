@@ -33,6 +33,7 @@ import { CreditsBadge } from '@/components/CreditsBadge';
 import { CreditsDialog } from '@/components/CreditsDialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useAISettings } from '@/hooks/useAISettings';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
@@ -202,7 +203,7 @@ function generateIdFromName(name: string): string {
 
 export function AISettings() {
   const { t } = useTranslation();
-  const { settings, updateSettings, setProvider, removeProvider, setProviders } = useAISettings();
+  const { settings, updateSettings, setProvider, removeProvider, setProviders, isLoading } = useAISettings();
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const { user } = useCurrentUser();
@@ -387,395 +388,422 @@ export function AISettings() {
         </div>
       )}
 
-      <div className="space-y-6">
-        {/* Configured Providers */}
-        {settings.providers.length > 0 && (
+      {isLoading ? (
+        <div className="space-y-6">
+          {/* Loading skeleton for configured providers */}
           <div className="space-y-3">
-            <h4 className="text-sm font-medium">{t('configuredProviders')}</h4>
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext
-                items={settings.providers.map(p => p.id)}
-                strategy={verticalListSortingStrategy}
-              >
-                <Accordion type="multiple" className="w-full space-y-2">
-                  {settings.providers.map((provider) => {
-                    const preset = AI_PROVIDER_PRESETS.find(p => p.id === provider.id);
-
-                    return (
-                      <SortableProviderItem
-                        key={provider.id}
-                        provider={provider}
-                        preset={preset}
-                        onRemove={handleRemoveProvider}
-                        onSetProvider={handleSetProvider}
-                        onOpenCreditsDialog={handleOpenCreditsDialog}
-                        showDragHandle={settings.providers.length > 1}
-                      />
-                    );
-                  })}
-                </Accordion>
-              </SortableContext>
-            </DndContext>
-          </div>
-        )}
-
-        {/* Available Preset Providers */}
-        {availablePresets.length > 0 && (
-          <div className="space-y-3">
-            <h4 className="text-sm font-medium">{t('addProvider')}</h4>
-            <div className="grid grid-cols-[repeat(auto-fit,minmax(min(280px,100%),1fr))] gap-3">
-              {availablePresets.map((preset) => {
-                const isNostrPreset = preset.nostr;
-                const isLoggedIntoNostr = !!user;
-                const showNostrLoginRequired = isNostrPreset && !isLoggedIntoNostr;
-
-                return (
-                  <Card key={preset.id}>
-                    <CardContent className="p-4 space-y-3">
-                      <div className="flex items-center gap-2">
-                        <ExternalFavicon
-                          url={preset.baseURL}
-                          size={16}
-                          fallback={<Bot size={16} />}
-                        />
-                        <h5 className="font-medium">{preset.name}</h5>
-                      </div>
-
-                      {showNostrLoginRequired ? (
-                        <div className="space-y-2">
-                          <p className="text-sm text-muted-foreground">
-                            {t('loginToNostrRequired')}
-                          </p>
-                          <Button
-                            asChild
-                            className="w-full"
-                          >
-                            <Link to="/settings/nostr">
-                              {t('goToNostrSettings')}
-                            </Link>
-                          </Button>
-                        </div>
-                      ) : (
-                        <div className="space-y-2">
-                          <div className="flex gap-2">
-                            {!preset.nostr && (
-                              <ExternalInput
-                                type="password"
-                                className="flex-1"
-                                placeholder={preset.id === "routstr" ? t('enterCashuToken') : t('enterApiKey')}
-                                value={presetApiKeys[preset.id] || ''}
-                                onChange={(e) => setPresetApiKeys(prev => ({
-                                  ...prev,
-                                  [preset.id]: e.target.value,
-                                }))}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter' &&
-                                      presetApiKeys[preset.id]?.trim() &&
-                                      presetTermsAgreements[preset.id]) {
-                                    handleAddPresetProvider(preset);
-                                  }
-                                }}
-                                url={preset.apiKeysURL}
-                                urlTitle="Get Key"
-                              />
-                            )}
-                            <Button
-                              onClick={() => handleAddPresetProvider(preset)}
-                              disabled={
-                                !presetTermsAgreements[preset.id] ||
-                                (!!preset.apiKeysURL && !presetApiKeys[preset.id]?.trim())
-                              }
-                              className={preset.nostr ? "w-full" : "h-10 px-4 ml-auto"}
-                            >
-                              {t('add')}
-                            </Button>
-                          </div>
-
-                          {/* Terms of Service Agreement */}
-                          <div className="flex items-center gap-1.5">
-                            <Checkbox
-                              id={`agree-terms-${preset.id}`}
-                              checked={presetTermsAgreements[preset.id] || false}
-                              onCheckedChange={(checked) => setPresetTermsAgreements(prev => ({
-                                ...prev,
-                                [preset.id]: checked === true,
-                              }))}
-                              className="size-3 [&_svg]:size-3"
-                            />
-                            <label
-                              htmlFor={`agree-terms-${preset.id}`}
-                              className="text-xs text-muted-foreground leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                            >
-                              {t('agreeToTermsOfService', { providerName: preset.name })}{' '}
-                              {preset.tosURL ? (
-                                <a
-                                  href={preset.tosURL}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-muted-foreground underline hover:text-foreground hover:no-underline"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  {t('termsOfService')}
-                                </a>
-                              ) : (
-                                t('termsOfService')
-                              )}
-                            </label>
-                          </div>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                );
-              })}
+            <Skeleton className="h-4 w-40" />
+            <div className="space-y-2">
+              <Skeleton className="h-16 w-full rounded-lg" />
+              <Skeleton className="h-16 w-full rounded-lg" />
             </div>
           </div>
-        )}
 
-        {/* Custom Provider */}
-        <div className="space-y-3">
-          <Accordion type="single" collapsible className="w-full">
-            <AccordionItem value="custom-provider">
-              <AccordionTrigger className="px-4 py-3 hover:no-underline">
-                <div className="flex items-center gap-2">
-                  <Plus className="h-4 w-4" />
-                  <h4 className="text-sm font-medium">{t('addCustomProvider')}</h4>
-                </div>
-              </AccordionTrigger>
-              <AccordionContent className="px-4 pb-4">
-                <div className="space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="grid gap-2">
-                      <Label htmlFor="custom-name">
-                        {t('name')} <span className="text-destructive">*</span>
-                      </Label>
-                      <Input
-                        id="custom-name"
-                        placeholder="e.g., My Custom API"
-                        value={customProviderName}
-                        onChange={(e) => {
-                          const newName = e.target.value;
-                          setCustomProviderName(newName);
+          {/* Loading skeleton for add provider section */}
+          <div className="space-y-3">
+            <Skeleton className="h-4 w-32" />
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(min(280px,100%),1fr))] gap-3">
+              <Skeleton className="h-32 w-full rounded-lg" />
+              <Skeleton className="h-32 w-full rounded-lg" />
+            </div>
+          </div>
 
-                          // Auto-generate ID from name if ID hasn't been manually edited
-                          if (!customIdManuallyEdited) {
-                            setCustomProviderId(generateIdFromName(newName));
-                          }
-                        }}
-                      />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="custom-id">
-                        {t('id')} <span className="text-destructive">*</span>
-                      </Label>
-                      <Input
-                        id="custom-id"
-                        placeholder="e.g., my-custom-api"
-                        value={customProviderId}
-                        onChange={(e) => {
-                          setCustomProviderId(e.target.value);
-                          setCustomIdManuallyEdited(true);
-                        }}
-                      />
-                    </div>
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="custom-baseurl">
-                      {t('baseUrl')} <span className="text-destructive">*</span>
-                    </Label>
-                    <Input
-                      id="custom-baseurl"
-                      placeholder="https://api.example.com/v1"
-                      value={customBaseURL}
-                      onChange={(e) => setCustomBaseURL(e.target.value)}
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="custom-auth">{t('authentication')}</Label>
-                    <Select
-                      value={customAuthMethod}
-                      onValueChange={(value: 'api-key' | 'nostr') => {
-                        setCustomAuthMethod(value);
-                        if (value === 'nostr') {
-                          setCustomApiKey(''); // Clear API key when switching to Nostr auth
-                        }
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="api-key">{t('apiKey')}</SelectItem>
-                        <SelectItem value="nostr">Nostr</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  {customAuthMethod === 'api-key' && (
-                    <div className="grid gap-2">
-                      <Label htmlFor="custom-apikey">{t('apiKey')}</Label>
-                      <PasswordInput
-                        id="custom-apikey"
-                        placeholder={t('enterApiKey') + ' (optional)'}
-                        value={customApiKey}
-                        onChange={(e) => setCustomApiKey(e.target.value)}
-                      />
-                    </div>
-                  )}
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id="custom-proxy"
-                      checked={customProxy}
-                      onCheckedChange={(checked) => setCustomProxy(checked === true)}
-                    />
-                    <Label htmlFor="custom-proxy" className="cursor-pointer">
-                      {t('useCorsProxy')}
-                    </Label>
-                  </div>
-                  <Button
-                    onClick={handleAddCustomProvider}
-                    disabled={
-                      !customProviderName.trim() ||
-                      !customProviderId.trim() ||
-                      !customBaseURL.trim() ||
-                      settings.providers.some(p => p.id === customProviderId.trim())
-                    }
-                    className="gap-2 ml-auto"
-                  >
-                    <Check className="h-4 w-4" />
-                    {t('addCustomProviderButton')}
-                  </Button>
-                  {settings.providers.some(p => p.id === customProviderId.trim()) && (
-                    <p className="text-sm text-destructive">
-                      {t('providerExists')}
-                    </p>
-                  )}
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
+          {/* Loading skeleton for custom provider */}
+          <div className="space-y-3">
+            <Skeleton className="h-16 w-full rounded-lg" />
+          </div>
         </div>
+      ) : (
+        <div className="space-y-6">
+          {/* Configured Providers */}
+          {settings.providers.length > 0 && (
+            <div className="space-y-3">
+              <h4 className="text-sm font-medium">{t('configuredProviders')}</h4>
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext
+                  items={settings.providers.map(p => p.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <Accordion type="multiple" className="w-full space-y-2">
+                    {settings.providers.map((provider) => {
+                      const preset = AI_PROVIDER_PRESETS.find(p => p.id === provider.id);
 
-        {/* Advanced Settings */}
-        <div className="space-y-4">
-          <Separator className="my-6" />
-          <button
-            type="button"
-            onClick={() => setShowAdvanced(!showAdvanced)}
-            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <span>{t('advanced')}</span>
-            <ChevronDown
-              className={`h-4 w-4 transition-transform ${showAdvanced ? 'rotate-180' : ''}`}
-            />
-          </button>
-
-          {showAdvanced && (
-            <div className="space-y-6">
-              {/* Image Model Configuration */}
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Bot className="h-5 w-5 text-primary" />
-                    <h3 className="text-lg font-semibold">{t('imageModel')}</h3>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    {t('imageModelDescription')}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <ModelInput
-                    value={settings.imageModel || ''}
-                    onChange={(value) => updateSettings({ imageModel: value || undefined })}
-                    className="flex-1"
-                    modelFilter={imageModelFilter}
-                  />
-                  {settings.imageModel && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => updateSettings({ imageModel: undefined })}
-                      className="h-10 px-3"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-              </div>
-              <Separator />
-
-              {/* Project Templates Section */}
-              <ProjectTemplatesSection />
-              <Separator />
-
-              {/* MCP Servers Section */}
-              <MCPServersSection />
-              <Separator />
-
-              {/* Plugins Section */}
-              <PluginsSection />
-              <Separator />
-
-              {/* System Prompt Configuration */}
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <FileText className="h-5 w-5 text-primary" />
-                    <h3 className="text-lg font-semibold">{t('systemPrompt')}</h3>
-                    {isSystemPromptModified && (
-                      <div className="h-2 w-2 rounded-full bg-yellow-500" title={t('modified')} />
-                    )}
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    {t('systemPromptDescription')}
-                  </p>
-                </div>
-                <Accordion type="single" collapsible className="w-full">
-                  <AccordionItem value="system-prompt" className="border rounded-lg">
-                    <AccordionTrigger className="px-4 py-3 hover:no-underline">
-                      <div className="flex items-center gap-2">
-                        <Edit className="h-4 w-4" />
-                        <span className="font-medium">{t('systemPrompt')}</span>
-                      </div>
-                    </AccordionTrigger>
-                    <AccordionContent className="px-4 pb-4">
-                      <div className="space-y-2">
-                        <Textarea
-                          id="system-prompt"
-                          placeholder="Enter EJS template..."
-                          value={systemPromptInput}
-                          onChange={(e) => {
-                            const value = e.target.value;
-                            setSystemPromptInput(value);
-                            updateConfig((current) => ({
-                              ...current,
-                              systemPrompt: value,
-                            }));
-                          }}
-                          className="flex-1 font-mono text-xs min-h-[400px]"
+                      return (
+                        <SortableProviderItem
+                          key={provider.id}
+                          provider={provider}
+                          preset={preset}
+                          onRemove={handleRemoveProvider}
+                          onSetProvider={handleSetProvider}
+                          onOpenCreditsDialog={handleOpenCreditsDialog}
+                          showDragHandle={settings.providers.length > 1}
                         />
-                        {isSystemPromptModified && (
-                          <Button
-                            variant="outline"
-                            onClick={restoreSystemPrompt}
-                            className="w-full"
-                          >
-                            <RotateCcw className="h-4 w-4 mr-2" />
-                            {t('restoreToDefault')}
-                          </Button>
+                      );
+                    })}
+                  </Accordion>
+                </SortableContext>
+              </DndContext>
+            </div>
+          )}
+
+          {/* Available Preset Providers */}
+          {availablePresets.length > 0 && (
+            <div className="space-y-3">
+              <h4 className="text-sm font-medium">{t('addProvider')}</h4>
+              <div className="grid grid-cols-[repeat(auto-fit,minmax(min(280px,100%),1fr))] gap-3">
+                {availablePresets.map((preset) => {
+                  const isNostrPreset = preset.nostr;
+                  const isLoggedIntoNostr = !!user;
+                  const showNostrLoginRequired = isNostrPreset && !isLoggedIntoNostr;
+
+                  return (
+                    <Card key={preset.id}>
+                      <CardContent className="p-4 space-y-3">
+                        <div className="flex items-center gap-2">
+                          <ExternalFavicon
+                            url={preset.baseURL}
+                            size={16}
+                            fallback={<Bot size={16} />}
+                          />
+                          <h5 className="font-medium">{preset.name}</h5>
+                        </div>
+
+                        {showNostrLoginRequired ? (
+                          <div className="space-y-2">
+                            <p className="text-sm text-muted-foreground">
+                              {t('loginToNostrRequired')}
+                            </p>
+                            <Button
+                              asChild
+                              className="w-full"
+                            >
+                              <Link to="/settings/nostr">
+                                {t('goToNostrSettings')}
+                              </Link>
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            <div className="flex gap-2">
+                              {!preset.nostr && (
+                                <ExternalInput
+                                  type="password"
+                                  className="flex-1"
+                                  placeholder={preset.id === "routstr" ? t('enterCashuToken') : t('enterApiKey')}
+                                  value={presetApiKeys[preset.id] || ''}
+                                  onChange={(e) => setPresetApiKeys(prev => ({
+                                    ...prev,
+                                    [preset.id]: e.target.value,
+                                  }))}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter' &&
+                                      presetApiKeys[preset.id]?.trim() &&
+                                      presetTermsAgreements[preset.id]) {
+                                      handleAddPresetProvider(preset);
+                                    }
+                                  }}
+                                  url={preset.apiKeysURL}
+                                  urlTitle="Get Key"
+                                />
+                              )}
+                              <Button
+                                onClick={() => handleAddPresetProvider(preset)}
+                                disabled={
+                                  !presetTermsAgreements[preset.id] ||
+                                (!!preset.apiKeysURL && !presetApiKeys[preset.id]?.trim())
+                                }
+                                className={preset.nostr ? "w-full" : "h-10 px-4 ml-auto"}
+                              >
+                                {t('add')}
+                              </Button>
+                            </div>
+
+                            {/* Terms of Service Agreement */}
+                            <div className="flex items-center gap-1.5">
+                              <Checkbox
+                                id={`agree-terms-${preset.id}`}
+                                checked={presetTermsAgreements[preset.id] || false}
+                                onCheckedChange={(checked) => setPresetTermsAgreements(prev => ({
+                                  ...prev,
+                                  [preset.id]: checked === true,
+                                }))}
+                                className="size-3 [&_svg]:size-3"
+                              />
+                              <label
+                                htmlFor={`agree-terms-${preset.id}`}
+                                className="text-xs text-muted-foreground leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                              >
+                                {t('agreeToTermsOfService', { providerName: preset.name })}{' '}
+                                {preset.tosURL ? (
+                                  <a
+                                    href={preset.tosURL}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-muted-foreground underline hover:text-foreground hover:no-underline"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    {t('termsOfService')}
+                                  </a>
+                                ) : (
+                                  t('termsOfService')
+                                )}
+                              </label>
+                            </div>
+                          </div>
                         )}
-                      </div>
-                    </AccordionContent>
-                  </AccordionItem>
-                </Accordion>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             </div>
           )}
+
+          {/* Custom Provider */}
+          <div className="space-y-3">
+            <Accordion type="single" collapsible className="w-full">
+              <AccordionItem value="custom-provider">
+                <AccordionTrigger className="px-4 py-3 hover:no-underline">
+                  <div className="flex items-center gap-2">
+                    <Plus className="h-4 w-4" />
+                    <h4 className="text-sm font-medium">{t('addCustomProvider')}</h4>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="px-4 pb-4">
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="grid gap-2">
+                        <Label htmlFor="custom-name">
+                          {t('name')} <span className="text-destructive">*</span>
+                        </Label>
+                        <Input
+                          id="custom-name"
+                          placeholder="e.g., My Custom API"
+                          value={customProviderName}
+                          onChange={(e) => {
+                            const newName = e.target.value;
+                            setCustomProviderName(newName);
+
+                            // Auto-generate ID from name if ID hasn't been manually edited
+                            if (!customIdManuallyEdited) {
+                              setCustomProviderId(generateIdFromName(newName));
+                            }
+                          }}
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="custom-id">
+                          {t('id')} <span className="text-destructive">*</span>
+                        </Label>
+                        <Input
+                          id="custom-id"
+                          placeholder="e.g., my-custom-api"
+                          value={customProviderId}
+                          onChange={(e) => {
+                            setCustomProviderId(e.target.value);
+                            setCustomIdManuallyEdited(true);
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="custom-baseurl">
+                        {t('baseUrl')} <span className="text-destructive">*</span>
+                      </Label>
+                      <Input
+                        id="custom-baseurl"
+                        placeholder="https://api.example.com/v1"
+                        value={customBaseURL}
+                        onChange={(e) => setCustomBaseURL(e.target.value)}
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="custom-auth">{t('authentication')}</Label>
+                      <Select
+                        value={customAuthMethod}
+                        onValueChange={(value: 'api-key' | 'nostr') => {
+                          setCustomAuthMethod(value);
+                          if (value === 'nostr') {
+                            setCustomApiKey(''); // Clear API key when switching to Nostr auth
+                          }
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="api-key">{t('apiKey')}</SelectItem>
+                          <SelectItem value="nostr">Nostr</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {customAuthMethod === 'api-key' && (
+                      <div className="grid gap-2">
+                        <Label htmlFor="custom-apikey">{t('apiKey')}</Label>
+                        <PasswordInput
+                          id="custom-apikey"
+                          placeholder={t('enterApiKey') + ' (optional)'}
+                          value={customApiKey}
+                          onChange={(e) => setCustomApiKey(e.target.value)}
+                        />
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id="custom-proxy"
+                        checked={customProxy}
+                        onCheckedChange={(checked) => setCustomProxy(checked === true)}
+                      />
+                      <Label htmlFor="custom-proxy" className="cursor-pointer">
+                        {t('useCorsProxy')}
+                      </Label>
+                    </div>
+                    <Button
+                      onClick={handleAddCustomProvider}
+                      disabled={
+                        !customProviderName.trim() ||
+                      !customProviderId.trim() ||
+                      !customBaseURL.trim() ||
+                      settings.providers.some(p => p.id === customProviderId.trim())
+                      }
+                      className="gap-2 ml-auto"
+                    >
+                      <Check className="h-4 w-4" />
+                      {t('addCustomProviderButton')}
+                    </Button>
+                    {settings.providers.some(p => p.id === customProviderId.trim()) && (
+                      <p className="text-sm text-destructive">
+                        {t('providerExists')}
+                      </p>
+                    )}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </div>
+
+          {/* Advanced Settings */}
+          <div className="space-y-4">
+            <Separator className="my-6" />
+            <button
+              type="button"
+              onClick={() => setShowAdvanced(!showAdvanced)}
+              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <span>{t('advanced')}</span>
+              <ChevronDown
+                className={`h-4 w-4 transition-transform ${showAdvanced ? 'rotate-180' : ''}`}
+              />
+            </button>
+
+            {showAdvanced && (
+              <div className="space-y-6">
+                {/* Image Model Configuration */}
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Bot className="h-5 w-5 text-primary" />
+                      <h3 className="text-lg font-semibold">{t('imageModel')}</h3>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {t('imageModelDescription')}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <ModelInput
+                      value={settings.imageModel || ''}
+                      onChange={(value) => updateSettings({ imageModel: value || undefined })}
+                      className="flex-1"
+                      modelFilter={imageModelFilter}
+                    />
+                    {settings.imageModel && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => updateSettings({ imageModel: undefined })}
+                        className="h-10 px-3"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                <Separator />
+
+                {/* Project Templates Section */}
+                <ProjectTemplatesSection />
+                <Separator />
+
+                {/* MCP Servers Section */}
+                <MCPServersSection />
+                <Separator />
+
+                {/* Plugins Section */}
+                <PluginsSection />
+                <Separator />
+
+                {/* System Prompt Configuration */}
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-5 w-5 text-primary" />
+                      <h3 className="text-lg font-semibold">{t('systemPrompt')}</h3>
+                      {isSystemPromptModified && (
+                        <div className="h-2 w-2 rounded-full bg-yellow-500" title={t('modified')} />
+                      )}
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {t('systemPromptDescription')}
+                    </p>
+                  </div>
+                  <Accordion type="single" collapsible className="w-full">
+                    <AccordionItem value="system-prompt" className="border rounded-lg">
+                      <AccordionTrigger className="px-4 py-3 hover:no-underline">
+                        <div className="flex items-center gap-2">
+                          <Edit className="h-4 w-4" />
+                          <span className="font-medium">{t('systemPrompt')}</span>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="px-4 pb-4">
+                        <div className="space-y-2">
+                          <Textarea
+                            id="system-prompt"
+                            placeholder="Enter EJS template..."
+                            value={systemPromptInput}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              setSystemPromptInput(value);
+                              updateConfig((current) => ({
+                                ...current,
+                                systemPrompt: value,
+                              }));
+                            }}
+                            className="flex-1 font-mono text-xs min-h-[400px]"
+                          />
+                          {isSystemPromptModified && (
+                            <Button
+                              variant="outline"
+                              onClick={restoreSystemPrompt}
+                              className="w-full"
+                            >
+                              <RotateCcw className="h-4 w-4 mr-2" />
+                              {t('restoreToDefault')}
+                            </Button>
+                          )}
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Render credits dialog outside of accordion structure */}
       {activeCreditsDialog && (() => {

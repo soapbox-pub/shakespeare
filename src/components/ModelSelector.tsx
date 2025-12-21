@@ -44,7 +44,7 @@ export const ModelSelector = memo(function ModelSelector({
 
   const [isCustomInput, setIsCustomInput] = useState(false);
   const [customValue, setCustomValue] = useState('');
-  const { settings, addRecentlyUsedModel, isConfigured } = useAISettings();
+  const { settings, addRecentlyUsedModel, isConfigured, isLoading: isLoadingSettings } = useAISettings();
   const { models: allModels, isLoading, error, refetch } = useProviderModels();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
@@ -314,9 +314,11 @@ export const ModelSelector = memo(function ModelSelector({
               className={cn(
                 "h-8 p-0 gap-1 text-xs border-0 bg-transparent hover:bg-transparent hover:text-foreground focus-visible:ring-0 focus-visible:ring-offset-0 text-muted-foreground text-right min-w-0 max-w-[280px]"
               )}
-              disabled={disabled}
+              disabled={disabled || isLoadingSettings}
             >
-              {selectedModelDisplay ? (
+              {isLoadingSettings ? (
+                <Skeleton className="h-4 w-32" />
+              ) : selectedModelDisplay ? (
                 <>
                   {selectedModelDisplay.baseURL ? (
                     <ExternalFavicon
@@ -337,7 +339,7 @@ export const ModelSelector = memo(function ModelSelector({
                   {placeholder || defaultPlaceholder}
                 </span>
               )}
-              <ChevronDown className="size-3 shrink-0 opacity-50" />
+              {!isLoadingSettings && <ChevronDown className="size-3 shrink-0 opacity-50" />}
             </Button>
           </PopoverTrigger>
           <PopoverContent className="p-0 w-80" align="end">

@@ -324,13 +324,11 @@ export default function Index() {
               >
                 <Textarea
                   placeholder={
-                    isLoadingSettings
-                      ? t('loading')
-                      : !hasProvidersConfigured
-                        ? t('examplePrompt')
-                        : !providerModel.trim()
-                          ? t('selectModelToDescribe')
-                          : t('examplePrompt')
+                    !hasProvidersConfigured
+                      ? t('examplePrompt')
+                      : !providerModel.trim()
+                        ? t('selectModelToDescribe')
+                        : t('examplePrompt')
                   }
                   value={prompt}
                   onChange={handlePromptChange}

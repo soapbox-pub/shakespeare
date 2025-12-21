@@ -13,13 +13,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { useDeploySettings } from '@/hooks/useDeploySettings';
 import { useProjectDeploySettings } from '@/hooks/useProjectDeploySettings';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
@@ -36,6 +29,7 @@ import { VercelDeployForm } from '@/components/deploy/VercelDeployForm';
 import { NsiteDeployForm } from '@/components/deploy/NsiteDeployForm';
 import { CloudflareDeployForm } from '@/components/deploy/CloudflareDeployForm';
 import { DenoDeployForm } from '@/components/deploy/DenoDeployForm';
+import { cn } from '@/lib/utils';
 
 /**
  * Helper function to get provider URL for favicon
@@ -601,29 +595,26 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
             ) : (
               <>
                 <div className="space-y-2">
-                  <Label htmlFor="provider">Select Provider</Label>
-                  <Select value={selectedProviderId} onValueChange={setSelectedProviderId}>
-                    <SelectTrigger id="provider">
-                      {selectedProvider ? (
-                        <div className="flex items-center gap-2">
-                          {renderProviderIcon(selectedProvider, 14)}
-                          <span>{selectedProvider.name}</span>
-                        </div>
-                      ) : (
-                        <SelectValue placeholder="Choose a deployment provider..." />
-                      )}
-                    </SelectTrigger>
-                    <SelectContent>
-                      {settings.providers.map((provider) => (
-                        <SelectItem key={provider.id} value={provider.id}>
-                          <div className="flex items-center gap-2">
-                            {renderProviderIcon(provider, 14)}
-                            <span>{provider.name}</span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label>Select Provider</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {settings.providers.map((provider) => (
+                      <button
+                        key={provider.id}
+                        type="button"
+                        onClick={() => setSelectedProviderId(provider.id)}
+                        className={cn(
+                          "inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all",
+                          "border-2 hover:scale-105 active:scale-95",
+                          selectedProviderId === provider.id
+                            ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                            : "bg-background text-foreground border-border hover:border-primary/50"
+                        )}
+                      >
+                        {renderProviderIcon(provider, 14)}
+                        <span>{provider.name}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 {selectedProvider && selectedProviderId && (() => {
@@ -680,36 +671,32 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
                   </Alert>
                 )}
 
-                <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={handleClose}>
-                    {t('cancel')}
-                  </Button>
-                  <Button
-                    onClick={handleDeploy}
-                    disabled={
-                      !selectedProvider ||
-                      isDeploying ||
-                      (selectedProvider.type === 'shakespeare' && !user) ||
-                      (selectedProvider.type === 'shakespeare' && !isShakespeareFormValid) ||
-                      (selectedProvider.type === 'nsite' && !nsiteForm.nsec) ||
-                      (selectedProvider.type === 'netlify' && !netlifyForm.siteId && !netlifyForm.siteName) ||
-                      (selectedProvider.type === 'cloudflare' && !cloudflareForm.projectName) ||
-                      (selectedProvider.type === 'deno' && !denoDeployForm.projectName)
-                    }
-                  >
-                    {isDeploying ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                        Deploying...
-                      </>
-                    ) : (
-                      <>
-                        <Rocket className="h-4 w-4 mr-2" />
-                        Deploy
-                      </>
-                    )}
-                  </Button>
-                </div>
+                <Button
+                  onClick={handleDeploy}
+                  disabled={
+                    !selectedProvider ||
+                    isDeploying ||
+                    (selectedProvider.type === 'shakespeare' && !user) ||
+                    (selectedProvider.type === 'shakespeare' && !isShakespeareFormValid) ||
+                    (selectedProvider.type === 'nsite' && !nsiteForm.nsec) ||
+                    (selectedProvider.type === 'netlify' && !netlifyForm.siteId && !netlifyForm.siteName) ||
+                    (selectedProvider.type === 'cloudflare' && !cloudflareForm.projectName) ||
+                    (selectedProvider.type === 'deno' && !denoDeployForm.projectName)
+                  }
+                  className="w-full"
+                >
+                  {isDeploying ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Deploying...
+                    </>
+                  ) : (
+                    <>
+                      <Rocket className="h-4 w-4 mr-2" />
+                      Deploy
+                    </>
+                  )}
+                </Button>
               </>
             )}
           </div>

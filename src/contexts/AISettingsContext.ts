@@ -36,6 +36,7 @@ export interface AISettingsContextType {
   setMCPServer: (name: string, server: MCPServer) => void;
   removeMCPServer: (name: string) => void;
   isConfigured: boolean;
+  isLoading: boolean;
 }
 
 export const AISettingsContext = createContext<AISettingsContextType | undefined>(undefined);

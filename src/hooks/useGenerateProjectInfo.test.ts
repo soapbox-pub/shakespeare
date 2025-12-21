@@ -126,6 +126,7 @@ describe('useGenerateProjectInfo', () => {
     mockUseAISettings.mockReturnValue({
       settings: { providers: [], recentlyUsedModels: [], mcpServers: {} },
       isConfigured: false,
+      isLoading: false,
       updateSettings: vi.fn(),
       setProvider: vi.fn(),
       removeProvider: vi.fn(),
@@ -145,6 +146,7 @@ describe('useGenerateProjectInfo', () => {
     mockUseAISettings.mockReturnValue({
       settings: { providers: [], recentlyUsedModels: [], mcpServers: {} },
       isConfigured: false,
+      isLoading: false,
       updateSettings: vi.fn(),
       setProvider: vi.fn(),
       removeProvider: vi.fn(),
@@ -171,6 +173,7 @@ describe('useGenerateProjectInfo', () => {
         mcpServers: {}
       },
       isConfigured: true,
+      isLoading: false,
       updateSettings: vi.fn(),
       setProvider: vi.fn(),
       removeProvider: vi.fn(),
@@ -197,6 +200,7 @@ describe('useGenerateProjectInfo', () => {
         mcpServers: {}
       },
       isConfigured: true,
+      isLoading: false,
       updateSettings: vi.fn(),
       setProvider: vi.fn(),
       removeProvider: vi.fn(),
@@ -252,6 +256,7 @@ describe('useGenerateProjectInfo', () => {
         mcpServers: {}
       },
       isConfigured: true,
+      isLoading: false,
       updateSettings: vi.fn(),
       setProvider: vi.fn(),
       removeProvider: vi.fn(),
@@ -293,6 +298,7 @@ describe('useGenerateProjectInfo', () => {
         mcpServers: {}
       },
       isConfigured: true,
+      isLoading: false,
       updateSettings: vi.fn(),
       setProvider: vi.fn(),
       removeProvider: vi.fn(),
@@ -346,6 +352,7 @@ describe('useGenerateProjectInfo', () => {
         mcpServers: {}
       },
       isConfigured: true,
+      isLoading: false,
       updateSettings: vi.fn(),
       setProvider: vi.fn(),
       removeProvider: vi.fn(),
@@ -382,6 +389,7 @@ describe('useGenerateProjectInfo', () => {
         mcpServers: {}
       },
       isConfigured: true,
+      isLoading: false,
       updateSettings: vi.fn(),
       setProvider: vi.fn(),
       removeProvider: vi.fn(),
@@ -420,6 +428,7 @@ describe('useGenerateProjectInfo', () => {
         mcpServers: {}
       },
       isConfigured: true,
+      isLoading: false,
       updateSettings: vi.fn(),
       setProvider: vi.fn(),
       removeProvider: vi.fn(),
@@ -452,6 +461,7 @@ describe('useGenerateProjectInfo', () => {
         mcpServers: {}
       },
       isConfigured: true,
+      isLoading: false,
       updateSettings: vi.fn(),
       setProvider: vi.fn(),
       removeProvider: vi.fn(),

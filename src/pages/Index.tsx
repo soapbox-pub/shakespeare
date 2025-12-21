@@ -42,7 +42,7 @@ export default function Index() {
   const projectsManager = useProjectsManager();
   const { fs } = useFS();
   const { generateProjectInfo, isLoading: isGeneratingInfo } = useGenerateProjectInfo();
-  const { settings, addRecentlyUsedModel } = useAISettings();
+  const { settings, addRecentlyUsedModel, isLoading: isLoadingSettings } = useAISettings();
   const { config } = useAppContext();
   const [providerModel, setProviderModel] = useState(() => {
     // Initialize with first recently used model if available, otherwise empty
@@ -53,8 +53,8 @@ export default function Index() {
   const [isDragOver, setIsDragOver] = useState(false);
   const [quillyError, setQuillyError] = useState<Error | null>(null);
 
-  // Check if any providers are configured
-  const hasProvidersConfigured = settings.providers.length > 0;
+  // Check if any providers are configured (only valid after settings are loaded)
+  const hasProvidersConfigured = !isLoadingSettings && settings.providers.length > 0;
 
   useEffect(() => {
     if (!providerModel && settings.recentlyUsedModels?.length) {
@@ -187,9 +187,9 @@ export default function Index() {
     }
   };
 
-  // Handle textarea click - show onboarding if no providers configured
+  // Handle textarea click - show onboarding if no providers configured (but only after settings are loaded)
   const handleTextareaClick = () => {
-    if (!hasProvidersConfigured) {
+    if (!isLoadingSettings && !hasProvidersConfigured) {
       setShowOnboarding(true);
     }
   };
@@ -324,11 +324,13 @@ export default function Index() {
               >
                 <Textarea
                   placeholder={
-                    !hasProvidersConfigured
-                      ? t('examplePrompt')
-                      : !providerModel.trim()
-                        ? t('selectModelToDescribe')
-                        : t('examplePrompt')
+                    isLoadingSettings
+                      ? t('loading')
+                      : !hasProvidersConfigured
+                        ? t('examplePrompt')
+                        : !providerModel.trim()
+                          ? t('selectModelToDescribe')
+                          : t('examplePrompt')
                   }
                   value={prompt}
                   onChange={handlePromptChange}
@@ -336,7 +338,7 @@ export default function Index() {
                   onPasteImage={(file) => setAttachedFiles(prev => [...prev, file])}
                   onClick={handleTextareaClick}
                   className="resize-none border-0 bg-transparent px-4 py-3 text-base focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground"
-                  disabled={isCreating || isGeneratingInfo || (hasProvidersConfigured && !providerModel.trim())}
+                  disabled={isLoadingSettings || isCreating || isGeneratingInfo || (hasProvidersConfigured && !providerModel.trim())}
                   rows={2}
                   style={{
                     height: 'auto',
@@ -357,7 +359,7 @@ export default function Index() {
                     onFileSelect={handleFileSelect}
                     onFileRemove={handleFileRemove}
                     selectedFiles={attachedFiles}
-                    disabled={isCreating || isGeneratingInfo}
+                    disabled={isLoadingSettings || isCreating || isGeneratingInfo}
                     multiple={true}
                   />
 
@@ -367,7 +369,7 @@ export default function Index() {
                       value={providerModel}
                       onChange={setProviderModel}
                       className="w-full"
-                      disabled={isCreating || isGeneratingInfo}
+                      disabled={isLoadingSettings || isCreating || isGeneratingInfo}
                       placeholder={t('chooseModel')}
                     />
                   </div>
@@ -376,10 +378,11 @@ export default function Index() {
                   <Button
                     onClick={handleCreateProject}
                     disabled={
+                      isLoadingSettings ||
                       !prompt.trim() ||
-                    isCreating ||
-                    isGeneratingInfo ||
-                    (hasProvidersConfigured && !providerModel.trim())
+                      isCreating ||
+                      isGeneratingInfo ||
+                      (hasProvidersConfigured && !providerModel.trim())
                     }
                     size="sm"
                     className="size-8 [&_svg]:size-5 rounded-full p-0"

@@ -151,6 +151,7 @@ export function AISettingsProvider({ children }: AISettingsProviderProps) {
   };
 
   const isConfigured = settings.providers.length > 0;
+  const isLoading = !isInitialized;
 
   const contextValue: AISettingsContextType = {
     settings,
@@ -162,6 +163,7 @@ export function AISettingsProvider({ children }: AISettingsProviderProps) {
     setMCPServer,
     removeMCPServer,
     isConfigured,
+    isLoading,
   };
 
   return (

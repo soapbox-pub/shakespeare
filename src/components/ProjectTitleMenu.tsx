@@ -52,7 +52,7 @@ export function ProjectTitleMenu({
           className={cn("p-0 h-auto font-semibold truncate hover:bg-transparent hover:text-muted-foreground flex items-center gap-1", className)}
         >
           <span className="truncate">{projectName}</span>
-          <ChevronDown className="h-4 w-4 flex-shrink-0" />
+          <ChevronDown className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-48">

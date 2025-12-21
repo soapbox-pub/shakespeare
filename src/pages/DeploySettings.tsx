@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Rocket, ArrowLeft, Trash2, Check, GripVertical, ChevronDown, Plus, ExternalLink } from 'lucide-react';
+import { Rocket, ArrowLeft, Trash2, Check, GripVertical, ChevronDown, Plus } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   DropdownMenu,
@@ -30,6 +30,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
+import { ExternalInput } from '@/components/ui/external-input';
 import { Label } from '@/components/ui/label';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Card, CardContent } from '@/components/ui/card';
@@ -853,89 +854,61 @@ export function DeploySettings() {
                           {!preset.requiresNostr && preset.type !== 'nsite' && (
                             <>
                               {preset.type === 'cloudflare' && (
-                                <div className="relative">
-                                  <Input
-                                    placeholder={preset.accountIdLabel || 'Account ID'}
-                                    value={presetApiKeys[`${preset.id}-accountId`] || ''}
-                                    onChange={(e) => setPresetApiKeys(prev => ({
-                                      ...prev,
-                                      [`${preset.id}-accountId`]: e.target.value,
-                                    }))}
-                                    onKeyDown={(e) => {
-                                      if (e.key === 'Enter' && presetApiKeys[preset.id]?.trim() &&
-                                          presetApiKeys[`${preset.id}-accountId`]?.trim()) {
-                                        handleAddPresetProvider(preset);
-                                      }
-                                    }}
-                                  />
-                                  {preset.accountIdURL && !presetApiKeys[`${preset.id}-accountId`] && (
-                                    <button
-                                      type="button"
-                                      className="absolute right-3 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-muted"
-                                      onClick={() => window.open(preset.accountIdURL, '_blank')}
-                                    >
-                                      Find ID
-                                      <ExternalLink className="h-3 w-3" />
-                                    </button>
-                                  )}
-                                </div>
-                              )}
-                              {preset.type === 'deno' && (
-                                <div className="relative">
-                                  <Input
-                                    placeholder={preset.organizationIdLabel || 'Organization ID'}
-                                    value={presetApiKeys[`${preset.id}-organizationId`] || ''}
-                                    onChange={(e) => setPresetApiKeys(prev => ({
-                                      ...prev,
-                                      [`${preset.id}-organizationId`]: e.target.value,
-                                    }))}
-                                    onKeyDown={(e) => {
-                                      if (e.key === 'Enter' && presetApiKeys[preset.id]?.trim() &&
-                                          presetApiKeys[`${preset.id}-organizationId`]?.trim()) {
-                                        handleAddPresetProvider(preset);
-                                      }
-                                    }}
-                                  />
-                                  {preset.organizationIdURL && !presetApiKeys[`${preset.id}-organizationId`] && (
-                                    <button
-                                      type="button"
-                                      className="absolute right-3 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-muted"
-                                      onClick={() => window.open(preset.organizationIdURL, '_blank')}
-                                    >
-                                      Find ID
-                                      <ExternalLink className="h-3 w-3" />
-                                    </button>
-                                  )}
-                                </div>
-                              )}
-                              <div className="relative">
-                                <PasswordInput
-                                  placeholder={preset.apiKeyLabel || t('enterApiKey')}
-                                  value={presetApiKeys[preset.id] || ''}
+                                <ExternalInput
+                                  type="text"
+                                  placeholder={preset.accountIdLabel || 'Account ID'}
+                                  value={presetApiKeys[`${preset.id}-accountId`] || ''}
                                   onChange={(e) => setPresetApiKeys(prev => ({
                                     ...prev,
-                                    [preset.id]: e.target.value,
+                                    [`${preset.id}-accountId`]: e.target.value,
                                   }))}
                                   onKeyDown={(e) => {
                                     if (e.key === 'Enter' && presetApiKeys[preset.id]?.trim() &&
-                                        (preset.type !== 'cloudflare' || presetApiKeys[`${preset.id}-accountId`]?.trim()) &&
-                                        (preset.type !== 'deno' || presetApiKeys[`${preset.id}-organizationId`]?.trim())) {
+                                        presetApiKeys[`${preset.id}-accountId`]?.trim()) {
                                       handleAddPresetProvider(preset);
                                     }
                                   }}
-                                  showToggle={!!presetApiKeys[preset.id]}
+                                  url={preset.accountIdURL}
+                                  urlTitle="Find ID"
                                 />
-                                {preset.apiKeyURL && !presetApiKeys[preset.id] && (
-                                  <button
-                                    type="button"
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-muted"
-                                    onClick={() => window.open(preset.apiKeyURL, '_blank')}
-                                  >
-                                    Get Key
-                                    <ExternalLink className="h-3 w-3" />
-                                  </button>
-                                )}
-                              </div>
+                              )}
+                              {preset.type === 'deno' && (
+                                <ExternalInput
+                                  type="text"
+                                  placeholder={preset.organizationIdLabel || 'Organization ID'}
+                                  value={presetApiKeys[`${preset.id}-organizationId`] || ''}
+                                  onChange={(e) => setPresetApiKeys(prev => ({
+                                    ...prev,
+                                    [`${preset.id}-organizationId`]: e.target.value,
+                                  }))}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && presetApiKeys[preset.id]?.trim() &&
+                                        presetApiKeys[`${preset.id}-organizationId`]?.trim()) {
+                                      handleAddPresetProvider(preset);
+                                    }
+                                  }}
+                                  url={preset.organizationIdURL}
+                                  urlTitle="Find ID"
+                                />
+                              )}
+                              <ExternalInput
+                                type="password"
+                                placeholder={preset.apiKeyLabel || t('enterApiKey')}
+                                value={presetApiKeys[preset.id] || ''}
+                                onChange={(e) => setPresetApiKeys(prev => ({
+                                  ...prev,
+                                  [preset.id]: e.target.value,
+                                }))}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' && presetApiKeys[preset.id]?.trim() &&
+                                      (preset.type !== 'cloudflare' || presetApiKeys[`${preset.id}-accountId`]?.trim()) &&
+                                      (preset.type !== 'deno' || presetApiKeys[`${preset.id}-organizationId`]?.trim())) {
+                                    handleAddPresetProvider(preset);
+                                  }
+                                }}
+                                url={preset.apiKeyURL}
+                                urlTitle="Get Key"
+                              />
                             </>
                           )}
                           <Button

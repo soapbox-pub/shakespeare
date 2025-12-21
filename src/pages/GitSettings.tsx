@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Check, GitBranch, ArrowLeft, Trash2, ChevronDown, Plus, User, ExternalLink } from 'lucide-react';
+import { Check, GitBranch, ArrowLeft, Trash2, ChevronDown, Plus, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -20,6 +20,7 @@ import { useIsMobile } from '@/hooks/useIsMobile';
 import { useNavigate } from 'react-router-dom';
 import type { GitCredential } from '@/contexts/GitSettingsContext';
 import { PasswordInput } from '@/components/ui/password-input';
+import { ExternalInput } from '@/components/ui/external-input';
 import { ExternalFavicon } from '@/components/ExternalFavicon';
 
 interface PresetProvider {
@@ -297,32 +298,23 @@ export function GitSettings() {
                         </div>
                       ) : (
                         <div className="flex gap-2">
-                          <div className="relative flex-1">
-                            <PasswordInput
-                              placeholder={t('enterToken')}
-                              value={presetTokens[preset.id] || ''}
-                              onChange={(e) => setPresetTokens(prev => ({
-                                ...prev,
-                                [preset.id]: e.target.value,
-                              }))}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter' && presetTokens[preset.id]?.trim()) {
-                                  handleAddPresetProvider(preset);
-                                }
-                              }}
-                              showToggle={!!presetTokens[preset.id]}
-                            />
-                            {preset.tokenURL && !presetTokens[preset.id] && (
-                              <button
-                                type="button"
-                                className="absolute right-3 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-muted"
-                                onClick={() => window.open(preset.tokenURL, '_blank')}
-                              >
-                                Get Token
-                                <ExternalLink className="h-3 w-3" />
-                              </button>
-                            )}
-                          </div>
+                          <ExternalInput
+                            type="password"
+                            className="flex-1"
+                            placeholder={t('enterToken')}
+                            value={presetTokens[preset.id] || ''}
+                            onChange={(e) => setPresetTokens(prev => ({
+                              ...prev,
+                              [preset.id]: e.target.value,
+                            }))}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && presetTokens[preset.id]?.trim()) {
+                                handleAddPresetProvider(preset);
+                              }
+                            }}
+                            url={preset.tokenURL}
+                            urlTitle="Get Token"
+                          />
                           <Button
                             onClick={() => handleAddPresetProvider(preset)}
                             disabled={!presetTokens[preset.id]?.trim()}
@@ -335,32 +327,23 @@ export function GitSettings() {
                     ) : (
                       // Standard rendering for other providers
                       <div className="flex gap-2">
-                        <div className="relative flex-1">
-                          <PasswordInput
-                            placeholder={t('enterToken')}
-                            value={presetTokens[preset.id] || ''}
-                            onChange={(e) => setPresetTokens(prev => ({
-                              ...prev,
-                              [preset.id]: e.target.value,
-                            }))}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter' && presetTokens[preset.id]?.trim()) {
-                                handleAddPresetProvider(preset);
-                              }
-                            }}
-                            showToggle={!!presetTokens[preset.id]}
-                          />
-                          {preset.tokenURL && !presetTokens[preset.id] && (
-                            <button
-                              type="button"
-                              className="absolute right-3 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-muted"
-                              onClick={() => window.open(preset.tokenURL, '_blank')}
-                            >
-                              Get Token
-                              <ExternalLink className="h-3 w-3" />
-                            </button>
-                          )}
-                        </div>
+                        <ExternalInput
+                          type="password"
+                          className="flex-1"
+                          placeholder={t('enterToken')}
+                          value={presetTokens[preset.id] || ''}
+                          onChange={(e) => setPresetTokens(prev => ({
+                            ...prev,
+                            [preset.id]: e.target.value,
+                          }))}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && presetTokens[preset.id]?.trim()) {
+                              handleAddPresetProvider(preset);
+                            }
+                          }}
+                          url={preset.tokenURL}
+                          urlTitle="Get Token"
+                        />
                         <Button
                           onClick={() => handleAddPresetProvider(preset)}
                           disabled={!presetTokens[preset.id]?.trim()}

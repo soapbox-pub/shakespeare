@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Check, Bot, ArrowLeft, Trash2, GripVertical, ChevronDown, RotateCcw, FileText, Plus, Edit, ExternalLink, X } from 'lucide-react';
+import { Check, Bot, ArrowLeft, Trash2, GripVertical, ChevronDown, RotateCcw, FileText, Plus, Edit, X } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -23,6 +23,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
+import { ExternalInput } from '@/components/ui/external-input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
@@ -462,34 +463,25 @@ export function AISettings() {
                         <div className="space-y-2">
                           <div className="flex gap-2">
                             {!preset.nostr && (
-                              <div className="relative flex-1">
-                                <PasswordInput
-                                  placeholder={preset.id === "routstr" ? t('enterCashuToken') : t('enterApiKey')}
-                                  value={presetApiKeys[preset.id] || ''}
-                                  onChange={(e) => setPresetApiKeys(prev => ({
-                                    ...prev,
-                                    [preset.id]: e.target.value,
-                                  }))}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter' &&
-                                        presetApiKeys[preset.id]?.trim() &&
-                                        presetTermsAgreements[preset.id]) {
-                                      handleAddPresetProvider(preset);
-                                    }
-                                  }}
-                                  showToggle={!!presetApiKeys[preset.id]}
-                                />
-                                {preset.apiKeysURL && !presetApiKeys[preset.id] && (
-                                  <button
-                                    type="button"
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-muted"
-                                    onClick={() => window.open(preset.apiKeysURL, '_blank')}
-                                  >
-                                    Get Key
-                                    <ExternalLink className="h-3 w-3" />
-                                  </button>
-                                )}
-                              </div>
+                              <ExternalInput
+                                type="password"
+                                className="flex-1"
+                                placeholder={preset.id === "routstr" ? t('enterCashuToken') : t('enterApiKey')}
+                                value={presetApiKeys[preset.id] || ''}
+                                onChange={(e) => setPresetApiKeys(prev => ({
+                                  ...prev,
+                                  [preset.id]: e.target.value,
+                                }))}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' &&
+                                      presetApiKeys[preset.id]?.trim() &&
+                                      presetTermsAgreements[preset.id]) {
+                                    handleAddPresetProvider(preset);
+                                  }
+                                }}
+                                url={preset.apiKeysURL}
+                                urlTitle="Get Key"
+                              />
                             )}
                             <Button
                               onClick={() => handleAddPresetProvider(preset)}

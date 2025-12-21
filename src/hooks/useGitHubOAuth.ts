@@ -74,8 +74,7 @@ export function useGitHubOAuth() {
     addCredential({
       id: crypto.randomUUID(),
       name: 'GitHub',
-      protocol: 'https',
-      host: 'github.com',
+      origin: 'https://github.com',
       username: result.username || 'git',
       password: result.accessToken,
     });

@@ -442,7 +442,7 @@ export function PullRequestDialog({
       if (remoteInfo.platform !== 'nostr') {
         credentials = findCredentialsForRepo(remoteUrl || '', settings.credentials);
         console.log('Found credentials:', credentials ? 'Yes' : 'No');
-        console.log('Available credentials:', settings.credentials.map(c => `${c.protocol}://${c.host}`));
+        console.log('Available credentials:', settings.credentials.map(c => c.origin));
 
         if (credentials) {
           console.log('Credential username:', credentials.username);

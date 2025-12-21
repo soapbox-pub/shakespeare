@@ -20,8 +20,7 @@ function TestComponent() {
     const credential: GitCredential = {
       id: crypto.randomUUID(),
       name: 'GitHub',
-      protocol: 'https',
-      host: 'github.com',
+      origin: 'https://github.com',
       username: 'git',
       password: 'test-token',
     };
@@ -29,7 +28,7 @@ function TestComponent() {
   };
 
   const handleUpdate = () => {
-    const githubCred = settings.credentials.find(c => c.host === 'github.com');
+    const githubCred = settings.credentials.find(c => c.origin === 'https://github.com');
     if (githubCred) {
       const updatedCredentials = settings.credentials.map((cred) =>
         cred.id === githubCred.id ? { ...cred, password: 'updated-token' } : cred
@@ -39,13 +38,13 @@ function TestComponent() {
   };
 
   const handleRemove = () => {
-    const githubCred = settings.credentials.find(c => c.host === 'github.com');
+    const githubCred = settings.credentials.find(c => c.origin === 'https://github.com');
     if (githubCred) {
       removeCredential(githubCred.id);
     }
   };
 
-  const githubCred = settings.credentials.find(c => c.host === 'github.com');
+  const githubCred = settings.credentials.find(c => c.origin === 'https://github.com');
 
   return (
     <div>
@@ -181,8 +180,7 @@ describe('GitSettingsProvider', () => {
         expect.objectContaining({
           credentials: expect.arrayContaining([
             expect.objectContaining({
-              protocol: 'https',
-              host: 'github.com',
+              origin: 'https://github.com',
               username: 'git',
               password: 'test-token',
             })
@@ -199,8 +197,7 @@ describe('GitSettingsProvider', () => {
         {
           id: crypto.randomUUID(),
           name: 'GitLab',
-          protocol: 'https',
-          host: 'gitlab.com',
+          origin: 'https://gitlab.com',
           username: 'git',
           password: 'gitlab-token',
         },

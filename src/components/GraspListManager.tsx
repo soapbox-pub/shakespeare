@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { Plus, X, Server } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -10,7 +9,6 @@ import { useNostrPublish } from '@/hooks/useNostrPublish';
 import { toast } from '@/hooks/useToast';
 
 export function GraspListManager() {
-  const { t } = useTranslation();
   const { config, updateConfig } = useAppContext();
   const { user } = useCurrentUser();
   const { mutate: publishEvent } = useNostrPublish();

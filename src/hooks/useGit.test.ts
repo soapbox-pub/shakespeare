@@ -92,7 +92,7 @@ describe('useGit', () => {
       fs: mockFS,
       nostr: mockNostr,
       corsProxy: 'https://cors.isomorphic-git.org',
-      graspMetadata: { relays: [{ url: 'wss://git.shakespeare.diy/' }, { url: 'wss://relay.ngit.dev/' }], updatedAt: 0 },
+      ngitServers: ['git.shakespeare.diy', 'relay.ngit.dev'],
     });
     expect(result.current).toEqual({ git: expect.any(Object) });
   });
@@ -106,7 +106,7 @@ describe('useGit', () => {
       fs: mockFS,
       nostr: mockNostr,
       corsProxy: 'https://custom-cors.example.com',
-      graspMetadata: { relays: [{ url: 'wss://git.shakespeare.diy/' }, { url: 'wss://relay.ngit.dev/' }], updatedAt: 0 },
+      ngitServers: ['git.shakespeare.diy', 'relay.ngit.dev'],
     });
     expect(result.current).toEqual({ git: expect.any(Object) });
   });
@@ -120,7 +120,7 @@ describe('useGit', () => {
       fs: mockFS,
       nostr: mockNostr,
       corsProxy: 'https://cors.isomorphic-git.org',
-      graspMetadata: { relays: [{ url: 'wss://git.shakespeare.diy/' }, { url: 'wss://relay.ngit.dev/' }], updatedAt: 0 },
+      ngitServers: ['git.shakespeare.diy', 'relay.ngit.dev'],
     });
 
     // Rerender with a different wrapper (different CORS proxy)

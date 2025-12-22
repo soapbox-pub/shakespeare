@@ -2260,69 +2260,47 @@ export class Git {
             toCreate: changes.refsToCreate.length,
           });
 
-          // Add a temporary remote
-          const tempRemoteName = `sync-${Date.now()}`;
-          await git.addRemote({
-            fs: this.fs,
-            dir,
-            remote: tempRemoteName,
-            url: cloneUrl,
-          });
+          // Push all refs that need to be created or updated
+          const refsToPush = [...changes.refsToCreate, ...changes.refsToUpdate];
 
-          try {
-            // Push all refs that need to be created or updated
-            const refsToPush = [...changes.refsToCreate, ...changes.refsToUpdate];
-
-            if (refsToPush.length > 0) {
-              for (const ref of refsToPush) {
-                try {
-                  await git.push({
-                    fs: this.fs,
-                    http: this.http,
-                    dir,
-                    remote: tempRemoteName,
-                    ref,
-                    force: true, // Force push to ensure refs are updated
-                  });
-                  console.log(`  ✓ Pushed ${ref}`);
-                } catch (pushError) {
-                  console.warn(`  ✗ Failed to push ${ref}:`, pushError);
-                }
+          if (refsToPush.length > 0) {
+            for (const ref of refsToPush) {
+              try {
+                await git.push({
+                  fs: this.fs,
+                  http: this.http,
+                  dir,
+                  url: cloneUrl,
+                  ref,
+                  force: true, // Force push to ensure refs are updated
+                });
+                console.log(`  ✓ Pushed ${ref}`);
+              } catch (pushError) {
+                console.warn(`  ✗ Failed to push ${ref}:`, pushError);
               }
-            }
-
-            // Delete refs that should not exist on the remote
-            // Note: Git push with :ref syntax deletes remote refs
-            if (changes.refsToDelete.length > 0) {
-              for (const ref of changes.refsToDelete) {
-                try {
-                  await git.push({
-                    fs: this.fs,
-                    http: this.http,
-                    dir,
-                    remote: tempRemoteName,
-                    ref: `:${ref}`, // :ref syntax deletes the remote ref
-                  });
-                  console.log(`  ✓ Deleted ${ref}`);
-                } catch (deleteError) {
-                  console.warn(`  ✗ Failed to delete ${ref}:`, deleteError);
-                }
-              }
-            }
-
-            console.log(`✓ Synced ${cloneUrl}`);
-          } finally {
-            // Clean up the temporary remote
-            try {
-              await git.deleteRemote({
-                fs: this.fs,
-                dir,
-                remote: tempRemoteName,
-              });
-            } catch {
-              // Ignore cleanup errors
             }
           }
+
+          // Delete refs that should not exist on the remote
+          // Note: Git push with :ref syntax deletes remote refs
+          if (changes.refsToDelete.length > 0) {
+            for (const ref of changes.refsToDelete) {
+              try {
+                await git.push({
+                  fs: this.fs,
+                  http: this.http,
+                  dir,
+                  url: cloneUrl,
+                  ref: `:${ref}`, // :ref syntax deletes the remote ref
+                });
+                console.log(`  ✓ Deleted ${ref}`);
+              } catch (deleteError) {
+                console.warn(`  ✗ Failed to delete ${ref}:`, deleteError);
+              }
+            }
+          }
+
+          console.log(`✓ Synced ${cloneUrl}`);
         } catch (error) {
           console.warn(`Failed to sync ${cloneUrl}:`, error);
         }

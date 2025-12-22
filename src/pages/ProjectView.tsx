@@ -19,6 +19,7 @@ import { DeployDialog } from '@/components/DeployDialog';
 import { DuplicateProjectDialog } from '@/components/DuplicateProjectDialog';
 import { GitStatusIndicator } from '@/components/GitStatusIndicator';
 import { StarButton } from '@/components/StarButton';
+import { GitSyncButton } from '@/components/GitSyncButton';
 import { useBuildProject } from '@/hooks/useBuildProject';
 import { useIsProjectPreviewable } from '@/hooks/useIsProjectPreviewable';
 import { useConsoleError } from '@/hooks/useConsoleError';
@@ -177,13 +178,22 @@ export function ProjectView() {
 
             <div className="flex items-center gap-2">
               {project ? (
-                <StarButton
-                  projectId={project.id}
-                  projectName={project.name}
-                  className="h-8 w-8"
-                />
+                <>
+                  <GitSyncButton
+                    projectId={project.id}
+                    className="h-8 w-8"
+                  />
+                  <StarButton
+                    projectId={project.id}
+                    projectName={project.name}
+                    className="h-8 w-8"
+                  />
+                </>
               ) : (
-                <Skeleton className="h-8 w-8 rounded" />
+                <>
+                  <Skeleton className="h-8 w-8 rounded" />
+                  <Skeleton className="h-8 w-8 rounded" />
+                </>
               )}
             </div>
           </div>
@@ -392,16 +402,25 @@ export function ProjectView() {
                       </div>
                     </div>
 
-                    {/* Right side - Star button only */}
+                    {/* Right side - Sync and Star buttons */}
                     <div className="flex items-center gap-2">
                       {project ? (
-                        <StarButton
-                          projectId={project.id}
-                          projectName={project.name}
-                          className="h-8 w-8"
-                        />
+                        <>
+                          <GitSyncButton
+                            projectId={project.id}
+                            className="h-8 w-8"
+                          />
+                          <StarButton
+                            projectId={project.id}
+                            projectName={project.name}
+                            className="h-8 w-8"
+                          />
+                        </>
                       ) : (
-                        <Skeleton className="h-8 w-8 rounded" />
+                        <>
+                          <Skeleton className="h-8 w-8 rounded" />
+                          <Skeleton className="h-8 w-8 rounded" />
+                        </>
                       )}
                     </div>
                   </div>

@@ -2349,9 +2349,6 @@ class GitHttp implements HttpClient {
   }
 }
 
-
-
-
 // Drain an async iterable of Uint8Array into one Uint8Array
 async function collectToUint8Array(
   src: AsyncIterable<Uint8Array> | AsyncIterableIterator<Uint8Array>
@@ -2403,6 +2400,7 @@ interface RespositoryState {
   headBranch?: string;
   refs: Record<string, string>;
 }
+
 /**
  * Parse repository state information from a NIP-34 repository state event
  */

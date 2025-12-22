@@ -2047,50 +2047,20 @@ export class Git {
     try {
       console.log(`Fetching from Git remote: ${httpsCloneUrl}`);
 
-      // Add a temporary remote
-      const tempRemoteName = `temp-${Date.now()}`;
-      await git.addRemote({
+      // Fetch from the temporary remote
+      const fetchResult = await git.fetch({
         fs: this.fs,
+        http: this.http,
         dir,
-        remote: tempRemoteName,
+        tags: true,
         url: httpsCloneUrl,
       });
 
-      try {
-        // Fetch from the temporary remote
-        const fetchResult = await git.fetch({
-          fs: this.fs,
-          http: this.http,
-          dir,
-          tags: true,
-          remote: tempRemoteName,
-        });
-
-        // Remove the temporary remote
-        await git.deleteRemote({
-          fs: this.fs,
-          dir,
-          remote: tempRemoteName,
-        });
-
-        return {
-          fetchHead: fetchResult.fetchHead || null,
-          fetchHeadDescription: `Fetched from Git remote: ${httpsCloneUrl}`,
-          defaultBranch: fetchResult.defaultBranch || null,
-        };
-      } catch (fetchError) {
-        // Clean up the temporary remote
-        try {
-          await git.deleteRemote({
-            fs: this.fs,
-            dir,
-            remote: tempRemoteName,
-          });
-        } catch {
-          // Ignore cleanup errors
-        }
-        throw fetchError;
-      }
+      return {
+        fetchHead: fetchResult.fetchHead || null,
+        fetchHeadDescription: `Fetched from Git remote: ${httpsCloneUrl}`,
+        defaultBranch: fetchResult.defaultBranch || null,
+      };
     } catch (error) {
       console.warn(`Failed to fetch from ${httpsCloneUrl}:`, error);
       throw error instanceof Error ? error : new Error('Unknown error');

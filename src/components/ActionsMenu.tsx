@@ -8,7 +8,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
-  GitBranch,
   MoreHorizontal,
   MessageSquarePlus,
   History,
@@ -17,7 +16,6 @@ import {
   Copy,
 } from 'lucide-react';
 import { GitHistoryDialog } from '@/components/ai/GitHistoryDialog';
-import { GitDialog } from '@/components/GitDialog';
 import { DeployDialog } from '@/components/DeployDialog';
 import { DuplicateProjectDialog } from '@/components/DuplicateProjectDialog';
 
@@ -44,7 +42,6 @@ export function ActionsMenu({
 }: ActionsMenuProps) {
   const { t } = useTranslation();
   const [gitHistoryOpen, setGitHistoryOpen] = useState(false);
-  const [gitDialogOpen, setGitDialogOpen] = useState(false);
   const [deployDialogOpen, setDeployDialogOpen] = useState(false);
   const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
 
@@ -86,15 +83,6 @@ export function ActionsMenu({
           </DropdownMenuItem>
 
           <DropdownMenuItem
-            onClick={() => setGitDialogOpen(true)}
-            disabled={isAnyLoading}
-            className="gap-2"
-          >
-            <GitBranch className="h-4 w-4" />
-            Repository
-          </DropdownMenuItem>
-
-          <DropdownMenuItem
             onClick={() => setDeployDialogOpen(true)}
             disabled={isAnyLoading}
             className="gap-2"
@@ -126,12 +114,6 @@ export function ActionsMenu({
       </DropdownMenu>
 
       {/* Dialogs */}
-      <GitDialog
-        projectId={projectId}
-        open={gitDialogOpen}
-        onOpenChange={setGitDialogOpen}
-      />
-
       <GitHistoryDialog
         projectId={projectId}
         open={gitHistoryOpen}

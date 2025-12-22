@@ -15,7 +15,6 @@ import { useNavigate } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { ProjectTitleMenu } from '@/components/ProjectTitleMenu';
 import { GitHistoryDialog } from '@/components/ai/GitHistoryDialog';
-import { GitDialog } from '@/components/GitDialog';
 import { DeployDialog } from '@/components/DeployDialog';
 import { DuplicateProjectDialog } from '@/components/DuplicateProjectDialog';
 import { GitStatusIndicator } from '@/components/GitStatusIndicator';
@@ -36,7 +35,6 @@ export function ProjectView() {
   const [isAILoading, setIsAILoading] = useState(false);
   const [isProjectDetailsOpen, setIsProjectDetailsOpen] = useState(false);
   const [gitHistoryOpen, setGitHistoryOpen] = useState(false);
-  const [gitDialogOpen, setGitDialogOpen] = useState(false);
   const [deployDialogOpen, setDeployDialogOpen] = useState(false);
   const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
 
@@ -164,7 +162,6 @@ export function ProjectView() {
                     projectName={project.name}
                     onNewChat={handleNewChat}
                     onGitHistory={() => setGitHistoryOpen(true)}
-                    onGitDialog={() => setGitDialogOpen(true)}
                     onDeploy={() => setDeployDialogOpen(true)}
                     onDuplicate={() => setDuplicateDialogOpen(true)}
                     onProjectDetails={() => setIsProjectDetailsOpen(true)}
@@ -309,11 +306,6 @@ export function ProjectView() {
               onOpenChange={setIsProjectDetailsOpen}
               onProjectDeleted={handleProjectDeleted}
             />
-            <GitDialog
-              projectId={project.id}
-              open={gitDialogOpen}
-              onOpenChange={setGitDialogOpen}
-            />
             <GitHistoryDialog
               projectId={project.id}
               open={gitHistoryOpen}
@@ -387,7 +379,6 @@ export function ProjectView() {
                             projectName={project.name}
                             onNewChat={handleNewChat}
                             onGitHistory={() => setGitHistoryOpen(true)}
-                            onGitDialog={() => setGitDialogOpen(true)}
                             onDeploy={() => setDeployDialogOpen(true)}
                             onDuplicate={() => setDuplicateDialogOpen(true)}
                             onProjectDetails={() => setIsProjectDetailsOpen(true)}
@@ -477,11 +468,6 @@ export function ProjectView() {
             open={isProjectDetailsOpen}
             onOpenChange={setIsProjectDetailsOpen}
             onProjectDeleted={handleProjectDeleted}
-          />
-          <GitDialog
-            projectId={project.id}
-            open={gitDialogOpen}
-            onOpenChange={setGitDialogOpen}
           />
           <GitHistoryDialog
             projectId={project.id}

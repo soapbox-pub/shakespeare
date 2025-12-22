@@ -7,7 +7,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
-  GitBranch,
   MessageSquarePlus,
   History,
   Folder,
@@ -21,7 +20,6 @@ interface ProjectTitleMenuProps {
   projectName: string;
   onNewChat: () => void;
   onGitHistory: () => void;
-  onGitDialog: () => void;
   onDeploy: () => void;
   onDuplicate: () => void;
   onProjectDetails: () => void;
@@ -34,7 +32,6 @@ export function ProjectTitleMenu({
   projectName,
   onNewChat,
   onGitHistory,
-  onGitDialog,
   onDeploy,
   onDuplicate,
   onProjectDetails,
@@ -72,15 +69,6 @@ export function ProjectTitleMenu({
         >
           <History className="h-4 w-4" />
           Rollback
-        </DropdownMenuItem>
-
-        <DropdownMenuItem
-          onClick={onGitDialog}
-          disabled={isAnyLoading}
-          className="gap-2"
-        >
-          <GitBranch className="h-4 w-4" />
-          Repository
         </DropdownMenuItem>
 
         <DropdownMenuItem

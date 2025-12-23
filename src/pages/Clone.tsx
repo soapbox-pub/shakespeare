@@ -156,7 +156,10 @@ export default function Clone() {
       const repoName = await extractRepoName(targetUrl);
 
       // Clone the repository (Git class handles both regular Git URLs and Nostr URIs)
-      const project = await projectsManager.cloneProject(repoName, targetUrl.trim());
+      const project = await projectsManager.cloneProject({
+        name: repoName,
+        repoUrl: targetUrl.trim(),
+      });
 
       // Determine success message based on URL type
       const isNostrUri = targetUrl.startsWith('nostr://');

@@ -457,7 +457,10 @@ describe('ProjectsManager', () => {
       Object.assign(projectsManager, { git: mockGit });
 
       // Attempt to clone a project
-      await expect(projectsManager.cloneProject('test-project', 'https://github.com/test/repo.git'))
+      await expect(projectsManager.cloneProject({
+        name: 'test-project',
+        repoUrl: 'https://github.com/test/repo.git',
+      }))
         .rejects.toThrow('Clone failed');
 
       // Verify that the project directory was cleaned up
@@ -488,7 +491,10 @@ describe('ProjectsManager', () => {
 
       try {
         // Attempt to clone a project
-        await expect(projectsManager.cloneProject('test-project', 'https://github.com/test/repo.git'))
+        await expect(projectsManager.cloneProject({
+          name: 'test-project',
+          repoUrl: 'https://github.com/test/repo.git',
+        }))
           .rejects.toThrow('Clone failed');
 
         // Should have logged a cleanup warning

@@ -41,7 +41,10 @@ export function RepositoryCard({ repo }: RepositoryCardProps) {
       await projectsManager.init();
 
       // Clone the repository using the Nostr URI
-      const project = await projectsManager.cloneProject(repo.name, nostrURI.toString());
+      const project = await projectsManager.cloneProject({
+        name: repo.name,
+        repoUrl: nostrURI.toString(),
+      });
 
       toast({
         title: t('nostrRepositoryImportedSuccessfully'),

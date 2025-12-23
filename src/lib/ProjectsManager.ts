@@ -494,7 +494,14 @@ export class ProjectsManager {
     }
   }
 
-  async cloneProject(name: string, repoUrl: string, customId?: string, options?: { depth?: number }): Promise<Project> {
+  async cloneProject(options: {
+    name: string;
+    repoUrl: string;
+    customId?: string;
+    depth?: number;
+    remote?: string;
+  }): Promise<Project> {
+    const { name, repoUrl, customId, depth, remote } = options;
     const id = customId || await this.generateUniqueProjectId(name);
 
     // Check if project with this ID already exists when using custom ID
@@ -512,7 +519,8 @@ export class ProjectsManager {
         dir: projectPath,
         url: repoUrl,
         singleBranch: true,
-        depth: options?.depth, // Use depth if provided, otherwise clone full history
+        depth, // Use depth if provided, otherwise clone full history
+        remote, // Use remote if provided, otherwise defaults to 'origin'
       });
 
       // Get filesystem stats for timestamps

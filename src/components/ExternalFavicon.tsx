@@ -1,5 +1,6 @@
 import { useAppContext } from '@/hooks/useAppContext';
-import { faviconUrl, normalizeUrl } from '@/lib/faviconUrl';
+import { faviconUrl } from '@/lib/faviconUrl';
+import { normalizeUrl } from '@/lib/url';
 import { cn } from '@/lib/utils';
 import { ReactNode, useMemo } from 'react';
 

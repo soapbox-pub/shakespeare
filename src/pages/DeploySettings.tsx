@@ -44,7 +44,7 @@ import { useIsMobile } from '@/hooks/useIsMobile';
 import { useNavigate, Link } from 'react-router-dom';
 import type { DeployProvider } from '@/contexts/DeploySettingsContext';
 import { ExternalFavicon } from '@/components/ExternalFavicon';
-import { normalizeUrl } from '@/lib/faviconUrl';
+import { normalizeUrl } from '@/lib/url';
 
 interface PresetProvider {
   id: string;

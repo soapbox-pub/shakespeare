@@ -9,9 +9,9 @@ import { useGitStatus } from '@/hooks/useGitStatus';
 import { useGitSettings } from '@/hooks/useGitSettings';
 import { useGit } from '@/hooks/useGit';
 import { useFSPaths } from '@/hooks/useFSPaths';
-import type { SyncStepProps } from '../types';
+import type { StepProps } from '../types';
 
-export function SyncStep({ projectId }: SyncStepProps) {
+export function SyncStep({ projectId }: StepProps) {
   const [isPushing, setIsPushing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copiedUrl, setCopiedUrl] = useState(false);

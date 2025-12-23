@@ -16,8 +16,7 @@ export function ConfigureRepoStep({
   onBack,
   onSuccess,
   onClose,
-  onRefetchStatus,
-}: ConfigureRepoStepProps & { onRefetchStatus: () => void }) {
+}: ConfigureRepoStepProps) {
   const [repositoryUrl, setRepositoryUrl] = useState('');
   const [isPushing, setIsPushing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -25,7 +24,7 @@ export function ConfigureRepoStep({
   const { user } = useCurrentUser();
   const { git } = useGit();
   const { projectsPath } = useFSPaths();
-  const { data: gitStatus } = useGitStatus(projectId);
+  const { data: gitStatus, refetch: refetchGitStatus } = useGitStatus(projectId);
 
   const handlePushInitial = async () => {
     setIsPushing(true);
@@ -78,7 +77,7 @@ export function ConfigureRepoStep({
       }
 
       // Refresh git status before showing success
-      await onRefetchStatus();
+      await refetchGitStatus();
       // Show success state
       onSuccess();
     } catch (err) {

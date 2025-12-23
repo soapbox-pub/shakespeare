@@ -29,7 +29,3 @@ export interface ConfigureRepoStepProps extends StepProps {
   onBack: () => void;
   onSuccess: () => void;
 }
-
-export interface SyncStepProps extends StepProps {
-  onRefetchStatus: () => void;
-}

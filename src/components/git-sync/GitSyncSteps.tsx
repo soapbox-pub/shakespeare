@@ -12,7 +12,7 @@ interface GitSyncStepsProps {
 }
 
 export function GitSyncSteps({ projectId, onClose }: GitSyncStepsProps) {
-  const { data: gitStatus, isLoading: isGitStatusLoading, refetch: refetchGitStatus } = useGitStatus(projectId);
+  const { data: gitStatus, isLoading: isGitStatusLoading } = useGitStatus(projectId);
 
   // Determine if we have a remote configured
   const originRemote = gitStatus?.remotes.find(r => r.name === 'origin');
@@ -52,10 +52,6 @@ export function GitSyncSteps({ projectId, onClose }: GitSyncStepsProps) {
     setCurrentStep('init-success');
   };
 
-  const handleRefetchStatus = async () => {
-    await refetchGitStatus();
-  };
-
   // Don't render anything while loading git status
   if (isGitStatusLoading) {
     return (
@@ -86,7 +82,6 @@ export function GitSyncSteps({ projectId, onClose }: GitSyncStepsProps) {
         onSuccess={handleSuccess}
         onChangeStep={setCurrentStep}
         onClose={onClose}
-        onRefetchStatus={handleRefetchStatus}
       />
     );
   }
@@ -97,7 +92,6 @@ export function GitSyncSteps({ projectId, onClose }: GitSyncStepsProps) {
         projectId={projectId}
         onChangeStep={setCurrentStep}
         onClose={onClose}
-        onRefetchStatus={handleRefetchStatus}
       />
     );
   }

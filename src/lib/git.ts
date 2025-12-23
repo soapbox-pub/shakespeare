@@ -1,4 +1,4 @@
-import git, { FetchResult, GitHttpRequest, GitHttpResponse, HttpClient } from 'isomorphic-git';
+import git, { AuthCallback, FetchResult, GitHttpRequest, GitHttpResponse, HttpClient } from 'isomorphic-git';
 import { NIP05 } from '@nostrify/nostrify';
 import { nip19 } from 'nostr-tools';
 import { proxyUrl } from './proxyUrl';
@@ -13,6 +13,7 @@ export interface GitOptions {
   corsProxy?: string;
   ngitServers?: string[];
   systemAuthor?: { name: string; email: string };
+  onAuth?: AuthCallback;
 }
 
 interface NostrCloneURI {
@@ -33,6 +34,7 @@ export class Git {
   private nostr: NPool;
   private ngitServers: string[];
   private systemAuthor: { name: string; email: string };
+  private onAuth?: AuthCallback;
 
   constructor(options: GitOptions) {
     this.fs = options.fs;
@@ -43,6 +45,7 @@ export class Git {
       name: 'shakespeare.diy',
       email: 'assistant@shakespeare.diy',
     };
+    this.onAuth = options.onAuth;
   }
 
   // Repository initialization and configuration
@@ -241,7 +244,7 @@ export class Git {
     });
   }
 
-  async push(options: Omit<Parameters<typeof git.push>[0], 'fs' | 'http' | 'corsProxy'> & { signer?: NostrSigner }) {
+  async push(options: Omit<Parameters<typeof git.push>[0], 'fs' | 'http' | 'onAuth' | 'corsProxy'> & { signer?: NostrSigner }) {
     // Check if this is a Nostr repository by looking at the remote URL
     const remote = options.remote || 'origin';
     const dir = options.dir || '.';
@@ -257,6 +260,7 @@ export class Git {
     return git.push({
       fs: this.fs,
       http: this.http,
+      onAuth: this.onAuth,
       ...options,
     });
   }

@@ -64,15 +64,6 @@ export function ConfigureRepoStep({
           dir,
           remote: 'origin',
           ref: gitStatus?.currentBranch || 'main',
-          onAuth: () => {
-            if (selectedProvider.credential) {
-              return {
-                username: selectedProvider.credential.username,
-                password: selectedProvider.credential.password,
-              };
-            }
-            return undefined;
-          },
         });
       }
 

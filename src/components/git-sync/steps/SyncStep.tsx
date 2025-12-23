@@ -41,15 +41,6 @@ export function SyncStep({ projectId }: StepProps) {
         dir,
         ref: gitStatus?.currentBranch || 'main',
         singleBranch: true,
-        onAuth: () => {
-          if (matchedCredential) {
-            return {
-              username: matchedCredential.username,
-              password: matchedCredential.password,
-            };
-          }
-          return undefined;
-        },
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to pull';
@@ -72,15 +63,6 @@ export function SyncStep({ projectId }: StepProps) {
         dir,
         remote: 'origin',
         ref: gitStatus?.currentBranch || 'main',
-        onAuth: () => {
-          if (matchedCredential) {
-            return {
-              username: matchedCredential.username,
-              password: matchedCredential.password,
-            };
-          }
-          return undefined;
-        },
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to push';

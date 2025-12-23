@@ -93,6 +93,7 @@ describe('useGit', () => {
       nostr: mockNostr,
       corsProxy: 'https://cors.isomorphic-git.org',
       ngitServers: ['git.shakespeare.diy', 'relay.ngit.dev'],
+      onAuth: expect.any(Function),
     });
     expect(result.current).toEqual({ git: expect.any(Object) });
   });
@@ -107,6 +108,7 @@ describe('useGit', () => {
       nostr: mockNostr,
       corsProxy: 'https://custom-cors.example.com',
       ngitServers: ['git.shakespeare.diy', 'relay.ngit.dev'],
+      onAuth: expect.any(Function),
     });
     expect(result.current).toEqual({ git: expect.any(Object) });
   });
@@ -121,6 +123,7 @@ describe('useGit', () => {
       nostr: mockNostr,
       corsProxy: 'https://cors.isomorphic-git.org',
       ngitServers: ['git.shakespeare.diy', 'relay.ngit.dev'],
+      onAuth: expect.any(Function),
     });
 
     // Rerender with a different wrapper (different CORS proxy)

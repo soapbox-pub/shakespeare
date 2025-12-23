@@ -4,8 +4,6 @@ import type { NostrSigner } from "@nostrify/nostrify";
 import { createSuccessResult, createErrorResult } from "../ShellCommand";
 import type { GitSubcommand, GitSubcommandOptions } from "../git";
 import type { Git } from "../../git";
-import { findCredentialsForRepo } from "@/lib/gitCredentials";
-import { readGitSettings } from "@/lib/configUtils";
 
 export class GitPushCommand implements GitSubcommand {
   name = 'push';
@@ -64,8 +62,6 @@ export class GitPushCommand implements GitSubcommand {
         return createErrorResult(`fatal: '${remote}' does not appear to be a git repository`);
       }
 
-      const settings = await readGitSettings(this.fs);
-
       try {
         await this.git.push({
           dir: cwd,
@@ -73,7 +69,6 @@ export class GitPushCommand implements GitSubcommand {
           ref: targetBranch,
           remoteRef: targetBranch,
           force: options.force,
-          onAuth: (url) => findCredentialsForRepo(url, settings.credentials),
           signer: this.signer,
         });
 

@@ -1,8 +1,10 @@
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { Git } from '@/lib/git';
 import { useFS } from '@/hooks/useFS';
 import { useNostr } from '@nostrify/react';
 import { useAppContext } from '@/hooks/useAppContext';
+import { findCredentialsForRepo } from '@/lib/gitCredentials';
+import { useGitSettings } from './useGitSettings';
 
 /**
  * Hook that provides a Git instance configured with the virtual filesystem
@@ -12,6 +14,7 @@ export function useGit(): { git: Git } {
   const { fs } = useFS();
   const { nostr } = useNostr();
   const { config } = useAppContext();
+  const { settings } = useGitSettings();
   const { corsProxy, graspMetadata } = config;
 
   const ngitServers = useMemo(() => {
@@ -26,9 +29,13 @@ export function useGit(): { git: Git } {
     }).filter((hostname): hostname is string => Boolean(hostname));
   }, [graspMetadata.relays]);
 
+  const onAuth = useCallback((url: string) => {
+    return findCredentialsForRepo(url, settings.credentials);
+  }, [settings.credentials]);
+
   const git = useMemo(() => {
-    return new Git({ fs, nostr, corsProxy, ngitServers });
-  }, [fs, nostr, corsProxy, ngitServers]);
+    return new Git({ fs, nostr, corsProxy, ngitServers, onAuth });
+  }, [fs, nostr, corsProxy, ngitServers, onAuth]);
 
   return { git };
 }

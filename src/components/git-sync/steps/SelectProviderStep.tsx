@@ -19,6 +19,7 @@ export function SelectProviderStep({
     ...settings.credentials.map(credential => ({
       id: credential.id,
       name: credential.name,
+      origin: credential.origin,
       icon: (
         <ExternalFavicon
           url={credential.origin}

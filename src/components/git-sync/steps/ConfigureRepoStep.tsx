@@ -212,7 +212,7 @@ export function ConfigureRepoStep({
         </div>
 
         <p className="text-sm text-muted-foreground">
-          Push your code to Nostr with one click. Your repository will be stored on public Nostr relays.
+          Push your code to Nostr with one click. Your repository will be stored on public Nostr git <Link className="underline" to="/settings/nostr">servers</Link>.
         </p>
 
         {error && (
@@ -258,7 +258,7 @@ export function ConfigureRepoStep({
           onChange={(e) => setRepositoryUrl(e.target.value)}
         />
         <p className="text-xs text-muted-foreground">
-          First create the repository on {selectedProvider.name}, then paste the URL here.
+          First create the repository on {selectedProvider.origin ? <a href={selectedProvider.origin} className="underline" target="_blank">{selectedProvider.name}</a> : selectedProvider.name}, then paste the URL here.
         </p>
       </div>
 

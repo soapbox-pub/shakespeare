@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 export interface ProviderOption {
   id: string;
   name: string;
+  origin?: string;
   icon: ReactNode;
   credential?: GitCredential;
 }

@@ -13,6 +13,8 @@ import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { useToast } from '@/hooks/useToast';
 import { useTranslation } from 'react-i18next';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useGitSettings } from '@/hooks/useGitSettings';
+import { detectFork } from '@/lib/detectFork';
 
 interface RepositoryCardProps {
   repo: Repository;
@@ -21,6 +23,7 @@ interface RepositoryCardProps {
 export function RepositoryCard({ repo }: RepositoryCardProps) {
   const { data: authorData } = useAuthor(repo.pubkey);
   const { user } = useCurrentUser();
+  const { settings: gitSettings } = useGitSettings();
   const navigate = useNavigate();
   const projectsManager = useProjectsManager();
   const { toast } = useToast();
@@ -42,11 +45,15 @@ export function RepositoryCard({ repo }: RepositoryCardProps) {
     try {
       await projectsManager.init();
 
+      // Determine if this is a fork
+      const repoUrl = nostrURI.toString();
+      const fork = await detectFork(repoUrl, user?.pubkey, gitSettings.credentials);
+
       // Clone the repository using the Nostr URI
       const project = await projectsManager.cloneProject({
         name: repo.name,
-        repoUrl: nostrURI.toString(),
-        fork: user?.pubkey !== repo.pubkey,
+        repoUrl,
+        fork,
       });
 
       toast({

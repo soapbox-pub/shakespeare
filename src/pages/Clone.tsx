@@ -26,7 +26,7 @@ import { NSchema as n } from '@nostrify/nostrify';
 import type { NostrMetadata } from '@nostrify/nostrify';
 import { NostrURI } from '@/lib/NostrURI';
 import { useGitSettings } from '@/hooks/useGitSettings';
-import { findCredentialsForRepo } from '@/lib/gitCredentials';
+import { detectFork } from '@/lib/detectFork';
 
 export default function Clone() {
   const { t } = useTranslation();
@@ -159,29 +159,7 @@ export default function Clone() {
       const repoName = await extractRepoName(targetUrl);
 
       // Determine if this is a fork
-      let fork = false;
-
-      if (targetUrl.startsWith('nostr://') && user) {
-        // For Nostr URIs: check if the repository owner is different from current user
-        try {
-          const nostrURI = await NostrURI.parse(targetUrl);
-          fork = nostrURI.pubkey !== user.pubkey;
-        } catch {
-          // If parsing fails, default to fork=false
-        }
-      } else if (targetUrl.startsWith('http://') || targetUrl.startsWith('https://')) {
-        // For HTTPS URLs: check if the URL belongs to the user based on credentials
-        // A repository is NOT a fork if it starts with ${credential.origin}/${credential.username}/
-        const credential = findCredentialsForRepo(targetUrl, gitSettings.credentials);
-
-        if (credential) {
-          const expectedPrefix = `${credential.origin}/${credential.username}/`;
-          fork = !targetUrl.startsWith(expectedPrefix);
-        } else {
-          // No matching credentials found, treat as fork
-          fork = true;
-        }
-      }
+      const fork = await detectFork(targetUrl, user?.pubkey, gitSettings.credentials);
 
       // Clone the repository (Git class handles both regular Git URLs and Nostr URIs)
       const project = await projectsManager.cloneProject({

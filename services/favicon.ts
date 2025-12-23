@@ -23,6 +23,14 @@ export default {
     } catch {
       return new Response('Invalid url parameter', { status: 400 });
     }
+
+    // GitHub hack: neutral color for light/dark mode
+    if (url.hostname === 'github.com') {
+      const svg = await (await fetch('https://github.githubassets.com/favicons/favicon.svg')).text();
+      return new Response(svg.replaceAll('#24292E', '#808080'), {
+        headers: { 'Content-Type': 'image/svg+xml' },
+      });
+    }
     
     // AI-provider-specific hacks
     let hostname = url.hostname;

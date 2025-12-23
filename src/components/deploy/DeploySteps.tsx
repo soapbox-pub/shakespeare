@@ -499,13 +499,10 @@ export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProp
 
   return (
     <div className="space-y-4">
-      <div className="space-y-2">
-        <h3 className="font-semibold text-lg flex items-center gap-2">
-          <Rocket className="h-5 w-5" />
-          Deploy Project
-        </h3>
+      <div>
+        <h3 className="font-semibold mb-1">Deploy your project</h3>
         <p className="text-sm text-muted-foreground">
-          Deploy your project to a hosting platform
+          Choose a provider to deploy your project
         </p>
       </div>
 
@@ -660,32 +657,33 @@ export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProp
                 </Alert>
               )}
 
-              <Button
-                onClick={handleDeploy}
-                disabled={
-                  !selectedProvider ||
-                  isDeploying ||
-                  (selectedProvider.type === 'shakespeare' && !user) ||
-                  (selectedProvider.type === 'shakespeare' && !isShakespeareFormValid) ||
-                  (selectedProvider.type === 'nsite' && !nsiteForm.nsec) ||
-                  (selectedProvider.type === 'netlify' && !netlifyForm.siteId && !netlifyForm.siteName) ||
-                  (selectedProvider.type === 'cloudflare' && !cloudflareForm.projectName) ||
-                  (selectedProvider.type === 'deno' && !denoDeployForm.projectName)
-                }
-                className="w-full"
-              >
-                {isDeploying ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Deploying...
-                  </>
-                ) : (
-                  <>
-                    <Rocket className="h-4 w-4 mr-2" />
-                    Deploy
-                  </>
-                )}
-              </Button>
+              {selectedProvider && (
+                <Button
+                  onClick={handleDeploy}
+                  disabled={
+                    isDeploying ||
+                    (selectedProvider.type === 'shakespeare' && !user) ||
+                    (selectedProvider.type === 'shakespeare' && !isShakespeareFormValid) ||
+                    (selectedProvider.type === 'nsite' && !nsiteForm.nsec) ||
+                    (selectedProvider.type === 'netlify' && !netlifyForm.siteId && !netlifyForm.siteName) ||
+                    (selectedProvider.type === 'cloudflare' && !cloudflareForm.projectName) ||
+                    (selectedProvider.type === 'deno' && !denoDeployForm.projectName)
+                  }
+                  className="w-full"
+                >
+                  {isDeploying ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Deploying...
+                    </>
+                  ) : (
+                    <>
+                      <Rocket className="h-4 w-4 mr-2" />
+                      Deploy
+                    </>
+                  )}
+                </Button>
+              )}
             </>
           )}
         </div>

@@ -8,31 +8,25 @@ import type { StepType, ProviderOption } from './types';
 
 interface GitSyncStepsProps {
   projectId: string;
-  isOpen: boolean;
   onClose: () => void;
 }
 
-export function GitSyncSteps({ projectId, isOpen, onClose }: GitSyncStepsProps) {
-  const [currentStep, setCurrentStep] = useState<StepType>('select-provider');
-  const [selectedProvider, setSelectedProvider] = useState<ProviderOption | null>(null);
-
+export function GitSyncSteps({ projectId, onClose }: GitSyncStepsProps) {
   const { data: gitStatus, isLoading: isGitStatusLoading, refetch: refetchGitStatus } = useGitStatus(projectId);
 
   // Determine if we have a remote configured
   const originRemote = gitStatus?.remotes.find(r => r.name === 'origin');
   const hasRemote = !!originRemote;
 
-  // Reset state when popover opens/closes
+  const [currentStep, setCurrentStep] = useState<StepType>(hasRemote ? 'sync' : 'select-provider');
+  const [selectedProvider, setSelectedProvider] = useState<ProviderOption | null>(null);
+
+  // Handle a remote being added after loading
   useEffect(() => {
-    if (isOpen) {
-      if (hasRemote) {
-        setCurrentStep('sync');
-      } else {
-        setCurrentStep('select-provider');
-      }
-      setSelectedProvider(null);
+    if (hasRemote && currentStep === 'select-provider') {
+      setCurrentStep('sync');
     }
-  }, [isOpen, hasRemote]);
+  }, [hasRemote, currentStep]);
 
   // Auto-reset success state after 2 seconds
   useEffect(() => {

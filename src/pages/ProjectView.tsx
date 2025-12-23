@@ -443,7 +443,6 @@ export function ProjectView() {
               project={project}
               open={isProjectDetailsOpen}
               onOpenChange={setIsProjectDetailsOpen}
-              onProjectDeleted={handleProjectDeleted}
             />
             <GitHistoryDialog
               projectId={project.id}
@@ -649,7 +648,6 @@ export function ProjectView() {
             project={project}
             open={isProjectDetailsOpen}
             onOpenChange={setIsProjectDetailsOpen}
-            onProjectDeleted={handleProjectDeleted}
           />
           <GitHistoryDialog
             projectId={project.id}

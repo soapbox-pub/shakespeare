@@ -19,7 +19,7 @@ import { DeployDialog } from '@/components/DeployDialog';
 import { DuplicateProjectDialog } from '@/components/DuplicateProjectDialog';
 import { GitStatusIndicator } from '@/components/GitStatusIndicator';
 import { StarButton } from '@/components/StarButton';
-import { GitSyncButton } from '@/components/GitSyncButton';
+import { GitSyncButton } from '@/components/git-sync';
 import { useBuildProject } from '@/hooks/useBuildProject';
 import { useIsProjectPreviewable } from '@/hooks/useIsProjectPreviewable';
 import { useConsoleError } from '@/hooks/useConsoleError';

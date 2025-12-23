@@ -38,7 +38,7 @@ export function GitSyncButton({ projectId, className }: GitSyncButtonProps) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [copiedUrl, setCopiedUrl] = useState(false);
 
-  const { data: gitStatus, isLoading: isGitStatusLoading } = useGitStatus(projectId);
+  const { data: gitStatus, isLoading: isGitStatusLoading, refetch: refetchGitStatus } = useGitStatus(projectId);
   const { settings } = useGitSettings();
   const { user } = useCurrentUser();
   const { git } = useGit();
@@ -55,6 +55,16 @@ export function GitSyncButton({ projectId, className }: GitSyncButtonProps) {
 
   // Determine if we need to show the indicator dot
   const showIndicator = !isGitStatusLoading && !hasRemote;
+
+  // Auto-reset success state after 2 seconds
+  useEffect(() => {
+    if (syncState === 'success') {
+      const timer = setTimeout(() => {
+        setSyncState('default');
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [syncState])
 
   // Reset state when popover opens/closes
   useEffect(() => {
@@ -121,7 +131,7 @@ export function GitSyncButton({ projectId, className }: GitSyncButtonProps) {
     setSyncState('configure-repo');
   };
 
-  const handlePush = async () => {
+  const handlePushInitial = async () => {
     if (!selectedProvider) return;
 
     setIsPushing(true);
@@ -142,8 +152,6 @@ export function GitSyncButton({ projectId, className }: GitSyncButtonProps) {
           remote: 'origin',
           url: nostrUri,
         });
-
-        setSyncState('success');
       } else {
         // Validate repository URL
         if (!repositoryUrl.trim()) {
@@ -173,15 +181,12 @@ export function GitSyncButton({ projectId, className }: GitSyncButtonProps) {
             return undefined;
           },
         });
-
-        setSyncState('success');
-
-        // Auto-dismiss after 2 seconds
-        setTimeout(() => {
-          setOpen(false);
-          setSyncState('default');
-        }, 2000);
       }
+
+      // Refresh git status before showing success
+      await refetchGitStatus();
+      // Display success state
+      setSyncState('success');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to push';
       setErrorMessage(message);
@@ -216,12 +221,6 @@ export function GitSyncButton({ projectId, className }: GitSyncButtonProps) {
       });
 
       setSyncState('success');
-
-      // Auto-dismiss after 2 seconds
-      setTimeout(() => {
-        setOpen(false);
-        setSyncState('default');
-      }, 2000);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to pull';
       setErrorMessage(message);
@@ -231,7 +230,7 @@ export function GitSyncButton({ projectId, className }: GitSyncButtonProps) {
     }
   };
 
-  const handlePushConfigured = async () => {
+  const handlePush = async () => {
     if (!originRemote) return;
 
     setIsPushing(true);
@@ -256,12 +255,6 @@ export function GitSyncButton({ projectId, className }: GitSyncButtonProps) {
       });
 
       setSyncState('success');
-
-      // Auto-dismiss after 2 seconds
-      setTimeout(() => {
-        setOpen(false);
-        setSyncState('default');
-      }, 2000);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to push';
       setErrorMessage(message);
@@ -370,7 +363,7 @@ export function GitSyncButton({ projectId, className }: GitSyncButtonProps) {
               )}
             </Button>
             <Button
-              onClick={handlePushConfigured}
+              onClick={handlePush}
               disabled={isPushing}
               className="flex-1"
             >
@@ -518,7 +511,7 @@ export function GitSyncButton({ projectId, className }: GitSyncButtonProps) {
             )}
 
             <Button
-              onClick={handlePush}
+              onClick={handlePushInitial}
               disabled={isPushing}
               className="w-full"
             >
@@ -563,7 +556,7 @@ export function GitSyncButton({ projectId, className }: GitSyncButtonProps) {
           )}
 
           <Button
-            onClick={handlePush}
+            onClick={handlePushInitial}
             disabled={isPushing || !repositoryUrl.trim()}
             className="w-full"
           >

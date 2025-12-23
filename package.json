@@ -79,7 +79,7 @@
     "isomorphic-git": "^1.32.1",
     "jsonc-parser": "^3.3.1",
     "jszip": "^3.10.1",
-    "lucide-react": "^0.525.0",
+    "lucide-react": "^0.562.0",
     "mime": "^4.1.0",
     "nostr-tools": "^2.15.2",
     "nunjucks": "^3.2.4",

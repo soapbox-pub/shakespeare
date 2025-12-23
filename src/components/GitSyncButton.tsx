@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Cloud, Zap, GitBranch, Copy, Check } from 'lucide-react';
+import { CloudUpload, Zap, GitBranch, Copy, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -631,7 +631,7 @@ export function GitSyncButton({ projectId, className }: GitSyncButtonProps) {
           className={cn("h-8 w-8 p-0 relative", className)}
           aria-label="Sync with Git"
         >
-          <Cloud className="h-4 w-4" />
+          <CloudUpload className="size-5 text-muted-foreground" />
           {showIndicator && (
             <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-primary" />
           )}

@@ -61,7 +61,7 @@ export function StarButton({
     >
       <Star
         className={cn(
-          "h-4 w-4",
+          "size-5",
           isFavorite ? "text-yellow-500 fill-current" : "text-muted-foreground hover:text-yellow-500"
         )}
       />

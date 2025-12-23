@@ -10,7 +10,17 @@ import { ProjectDetailsDialog } from '@/components/ProjectDetailsDialog';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, MessageSquare, Eye, Code, Menu } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { ArrowLeft, MessageSquare, Eye, Code, Menu, Rocket, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { ProjectTitleMenu } from '@/components/ProjectTitleMenu';
@@ -18,12 +28,16 @@ import { GitHistoryDialog } from '@/components/ai/GitHistoryDialog';
 import { DeployDialog } from '@/components/DeployDialog';
 import { DuplicateProjectDialog } from '@/components/DuplicateProjectDialog';
 import { GitStatusIndicator } from '@/components/GitStatusIndicator';
-import { StarButton } from '@/components/StarButton';
 import { GitSyncButton } from '@/components/git-sync';
 import { useBuildProject } from '@/hooks/useBuildProject';
 import { useIsProjectPreviewable } from '@/hooks/useIsProjectPreviewable';
 import { useConsoleError } from '@/hooks/useConsoleError';
 import { useAutoBuild } from '@/hooks/useAutoBuild';
+import { useToast } from '@/hooks/useToast';
+import { useFS } from '@/hooks/useFS';
+import { useFSPaths } from '@/hooks/useFSPaths';
+import { useQueryClient } from '@tanstack/react-query';
+import JSZip from 'jszip';
 import { cn } from '@/lib/utils';
 
 export function ProjectView() {
@@ -38,6 +52,9 @@ export function ProjectView() {
   const [gitHistoryOpen, setGitHistoryOpen] = useState(false);
   const [deployDialogOpen, setDeployDialogOpen] = useState(false);
   const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Use console error state from provider
   const { consoleError, dismissConsoleError, clearErrors } = useConsoleError();
@@ -46,6 +63,10 @@ export function ProjectView() {
   const chatPaneRef = useRef<ChatPaneRef>(null);
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { toast } = useToast();
+  const { fs } = useFS();
+  const { projectsPath } = useFSPaths();
+  const queryClient = useQueryClient();
 
   const [isSidebarVisible, setIsSidebarVisible] = useState(!isMobile);
 
@@ -128,6 +149,107 @@ export function ProjectView() {
     navigate('/');
   };
 
+  const handleExportProject = async () => {
+    if (!project) return;
+
+    setIsExporting(true);
+    try {
+      const zip = new JSZip();
+      const projectPath = `${projectsPath}/${project.id}`;
+
+      // Recursive function to add files and directories to zip from a specific project
+      const addFolderToZip = async (dirPath: string, zipFolder: JSZip) => {
+        try {
+          const entries = await fs.readdir(dirPath, { withFileTypes: true });
+
+          for (const entry of entries) {
+            const fullPath = `${dirPath}/${entry.name}`;
+
+            if (entry.isDirectory()) {
+              // Create folder in zip and recursively add its contents
+              const folder = zipFolder.folder(entry.name);
+              if (folder) {
+                await addFolderToZip(fullPath, folder);
+              }
+            } else if (entry.isFile()) {
+              // Add file to zip
+              try {
+                const fileContent = await fs.readFile(fullPath);
+                zipFolder.file(entry.name, fileContent);
+              } catch (error) {
+                console.warn(`Failed to read file ${fullPath}:`, error);
+              }
+            }
+          }
+        } catch (error) {
+          console.warn(`Failed to read directory ${dirPath}:`, error);
+        }
+      };
+
+      // Start from the project directory
+      await addFolderToZip(projectPath, zip);
+
+      // Generate zip file
+      const content = await zip.generateAsync({ type: 'blob' });
+
+      // Create download link
+      const url = URL.createObjectURL(content);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${project.id}.zip`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: "Project exported successfully",
+        description: `"${project.name}" has been downloaded as a zip file.`,
+      });
+    } catch (error) {
+      console.error('Failed to export project:', error);
+      toast({
+        title: "Failed to export project",
+        description: error instanceof Error ? error.message : "An unexpected error occurred",
+        variant: "destructive",
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleDeleteProject = async () => {
+    if (!project) return;
+
+    setIsDeleting(true);
+    try {
+      await projectsManager.deleteProject(project.id);
+
+      // Invalidate the projects query to update the sidebar
+      await queryClient.invalidateQueries({ queryKey: ['projects'] });
+
+      toast({
+        title: "Project deleted",
+        description: `"${project.name}" has been permanently deleted.`,
+      });
+
+      // Close the dialog first
+      setDeleteDialogOpen(false);
+
+      // Navigate back to home and notify parent
+      navigate('/');
+      handleProjectDeleted();
+    } catch (error) {
+      toast({
+        title: "Failed to delete project",
+        description: error instanceof Error ? error.message : "An unexpected error occurred",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const isAnyLoading = isAILoading || build.isPending;
 
   if (!project && !isLoading) {
@@ -160,14 +282,16 @@ export function ProjectView() {
               <div className="flex min-w-0 flex-1">
                 {project ? (
                   <ProjectTitleMenu
+                    projectId={project.id}
                     projectName={project.name}
                     onNewChat={handleNewChat}
                     onGitHistory={() => setGitHistoryOpen(true)}
-                    onDeploy={() => setDeployDialogOpen(true)}
                     onDuplicate={() => setDuplicateDialogOpen(true)}
+                    onExport={handleExportProject}
+                    onDelete={() => setDeleteDialogOpen(true)}
                     onProjectDetails={() => setIsProjectDetailsOpen(true)}
                     isAILoading={isAILoading}
-                    isAnyLoading={isAnyLoading}
+                    isAnyLoading={isAnyLoading || isExporting || isDeleting}
                     className="text-sm"
                   />
                 ) : (
@@ -183,11 +307,16 @@ export function ProjectView() {
                     projectId={project.id}
                     className="h-8 w-8"
                   />
-                  <StarButton
-                    projectId={project.id}
-                    projectName={project.name}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setDeployDialogOpen(true)}
+                    disabled={isAnyLoading}
                     className="h-8 w-8"
-                  />
+                    aria-label="Deploy project"
+                  >
+                    <Rocket className="size-5 text-muted-foreground" />
+                  </Button>
                 </>
               ) : (
                 <>
@@ -333,6 +462,33 @@ export function ProjectView() {
               open={duplicateDialogOpen}
               onOpenChange={setDuplicateDialogOpen}
             />
+            <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete Project</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to delete "{project.name}"? This action cannot be undone and will permanently delete all project data including files.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleDeleteProject}
+                    disabled={isDeleting}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    {isDeleting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Deleting...
+                      </>
+                    ) : (
+                      'Delete Project'
+                    )}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </>
         )}
       </div>
@@ -386,14 +542,16 @@ export function ProjectView() {
                       <div className="flex flex-1 min-w-0 truncate">
                         {project ? (
                           <ProjectTitleMenu
+                            projectId={project.id}
                             projectName={project.name}
                             onNewChat={handleNewChat}
                             onGitHistory={() => setGitHistoryOpen(true)}
-                            onDeploy={() => setDeployDialogOpen(true)}
                             onDuplicate={() => setDuplicateDialogOpen(true)}
+                            onExport={handleExportProject}
+                            onDelete={() => setDeleteDialogOpen(true)}
                             onProjectDetails={() => setIsProjectDetailsOpen(true)}
                             isAILoading={isAILoading}
-                            isAnyLoading={isAnyLoading}
+                            isAnyLoading={isAnyLoading || isExporting || isDeleting}
                             className="text-lg"
                           />
                         ) : (
@@ -402,7 +560,7 @@ export function ProjectView() {
                       </div>
                     </div>
 
-                    {/* Right side - Sync and Star buttons */}
+                    {/* Right side - Deploy and Sync buttons */}
                     <div className="flex items-center gap-2">
                       {project ? (
                         <>
@@ -410,11 +568,16 @@ export function ProjectView() {
                             projectId={project.id}
                             className="h-8 w-8"
                           />
-                          <StarButton
-                            projectId={project.id}
-                            projectName={project.name}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setDeployDialogOpen(true)}
+                            disabled={isAnyLoading}
                             className="h-8 w-8"
-                          />
+                            aria-label="Deploy project"
+                          >
+                            <Rocket className="size-5 text-muted-foreground" />
+                          </Button>
                         </>
                       ) : (
                         <>
@@ -505,6 +668,33 @@ export function ProjectView() {
             open={duplicateDialogOpen}
             onOpenChange={setDuplicateDialogOpen}
           />
+          <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete Project</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to delete "{project.name}"? This action cannot be undone and will permanently delete all project data including files.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleDeleteProject}
+                  disabled={isDeleting}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  {isDeleting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Deleting...
+                    </>
+                  ) : (
+                    'Delete Project'
+                  )}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </>
       )}
     </div>

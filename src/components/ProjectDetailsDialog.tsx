@@ -7,17 +7,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -29,16 +18,12 @@ import { useNavigate } from 'react-router-dom';
 import {
   Calendar,
   Folder,
-  Download,
   Loader2,
-  Trash2,
   Save,
   DollarSign,
   ExternalLink,
   FileCode,
 } from 'lucide-react';
-import JSZip from 'jszip';
-import { Separator } from './ui/separator';
 import { Skeleton } from './ui/skeleton';
 import { DotAI } from '@/lib/DotAI';
 import { LabelSelector } from '@/components/labels/LabelSelector';
@@ -49,11 +34,11 @@ interface ProjectDetailsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onProjectDeleted?: () => void;
+  onExportProject?: () => Promise<void>;
+  onDeleteProject?: () => Promise<void>;
 }
 
-export function ProjectDetailsDialog({ project, open, onOpenChange, onProjectDeleted }: ProjectDetailsDialogProps) {
-  const [isExporting, setIsExporting] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
+export function ProjectDetailsDialog({ project, open, onOpenChange, onProjectDeleted, onExportProject, onDeleteProject }: ProjectDetailsDialogProps) {
   const [isRenaming, setIsRenaming] = useState(false);
   const [newProjectName, setNewProjectName] = useState(project.id);
   const [totalCost, setTotalCost] = useState<number | null>(null);
@@ -144,105 +129,6 @@ export function ProjectDetailsDialog({ project, open, onOpenChange, onProjectDel
       setNewProjectName(project.id); // Reset to original name
     } finally {
       setIsRenaming(false);
-    }
-  };
-
-  const handleDeleteProject = async () => {
-    setIsDeleting(true);
-    try {
-      await projectsManager.deleteProject(project.id);
-
-      // Invalidate the projects query to update the sidebar
-      await queryClient.invalidateQueries({ queryKey: ['projects'] });
-
-      toast({
-        title: "Project deleted",
-        description: `"${project.name}" has been permanently deleted.`,
-      });
-
-      // Close the dialog first
-      onOpenChange(false);
-
-      // Navigate back to home and notify parent
-      navigate('/');
-      if (onProjectDeleted) {
-        onProjectDeleted();
-      }
-    } catch (error) {
-      toast({
-        title: "Failed to delete project",
-        description: error instanceof Error ? error.message : "An unexpected error occurred",
-        variant: "destructive",
-      });
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
-  const handleExportProject = async () => {
-    setIsExporting(true);
-    try {
-      const zip = new JSZip();
-      const projectPath = `${projectsPath}/${project.id}`;
-
-      // Recursive function to add files and directories to zip from a specific project
-      const addFolderToZip = async (dirPath: string, zipFolder: JSZip) => {
-        try {
-          const entries = await fs.readdir(dirPath, { withFileTypes: true });
-
-          for (const entry of entries) {
-            const fullPath = `${dirPath}/${entry.name}`;
-
-            if (entry.isDirectory()) {
-              // Create folder in zip and recursively add its contents
-              const folder = zipFolder.folder(entry.name);
-              if (folder) {
-                await addFolderToZip(fullPath, folder);
-              }
-            } else if (entry.isFile()) {
-              // Add file to zip
-              try {
-                const fileContent = await fs.readFile(fullPath);
-                zipFolder.file(entry.name, fileContent);
-              } catch (error) {
-                console.warn(`Failed to read file ${fullPath}:`, error);
-              }
-            }
-          }
-        } catch (error) {
-          console.warn(`Failed to read directory ${dirPath}:`, error);
-        }
-      };
-
-      // Start from the project directory
-      await addFolderToZip(projectPath, zip);
-
-      // Generate zip file
-      const content = await zip.generateAsync({ type: 'blob' });
-
-      // Create download link
-      const url = URL.createObjectURL(content);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `${project.id}.zip`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-
-      toast({
-        title: "Project exported successfully",
-        description: `"${project.name}" has been downloaded as a zip file.`,
-      });
-    } catch (error) {
-      console.error('Failed to export project:', error);
-      toast({
-        title: "Failed to export project",
-        description: error instanceof Error ? error.message : "An unexpected error occurred",
-        variant: "destructive",
-      });
-    } finally {
-      setIsExporting(false);
     }
   };
 
@@ -340,62 +226,6 @@ export function ProjectDetailsDialog({ project, open, onOpenChange, onProjectDel
 
           {/* Labels */}
           <LabelSelector projectId={project.id} />
-
-          <Separator />
-
-          {/* Export Project Button */}
-          <Button
-            onClick={handleExportProject}
-            disabled={isExporting || isDeleting || isRenaming}
-            className="w-full gap-2"
-            variant="outline"
-          >
-            {isExporting ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Download className="h-4 w-4" />
-            )}
-            {isExporting ? 'Exporting...' : 'Export Project'}
-          </Button>
-
-          {/* Delete Project Button */}
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button
-                variant="destructive"
-                className="w-full gap-2"
-                disabled={isExporting || isDeleting || isRenaming}
-              >
-                <Trash2 className="h-4 w-4" />
-                Delete Project
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Delete Project</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Are you sure you want to delete "{project.name}"? This action cannot be undone and will permanently delete all project data including files.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={handleDeleteProject}
-                  disabled={isDeleting}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                >
-                  {isDeleting ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Deleting...
-                    </>
-                  ) : (
-                    'Delete Project'
-                  )}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
         </div>
       </DialogContent>
     </Dialog>

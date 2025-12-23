@@ -28,7 +28,7 @@ export function SyncStep({ projectId }: StepProps) {
     ? settings.credentials.find(c => originRemote.url.startsWith(c.origin))
     : null;
 
-  const handlePull = async () => {
+  const handleSync = async () => {
     if (!originRemote) return;
 
     setIsPushing(true);
@@ -37,35 +37,21 @@ export function SyncStep({ projectId }: StepProps) {
     try {
       const dir = `${projectsPath}/${projectId}`;
 
+      // Pull first to get latest changes
       await git.pull({
         dir,
         ref: gitStatus?.currentBranch || 'main',
         singleBranch: true,
       });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to pull';
-      setError(message);
-    } finally {
-      setIsPushing(false);
-    }
-  };
 
-  const handlePush = async () => {
-    if (!originRemote) return;
-
-    setIsPushing(true);
-    setError(null);
-
-    try {
-      const dir = `${projectsPath}/${projectId}`;
-
+      // Then push local changes
       await git.push({
         dir,
         remote: 'origin',
         ref: gitStatus?.currentBranch || 'main',
       });
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to push';
+      const message = err instanceof Error ? err.message : 'Failed to sync';
       setError(message);
     } finally {
       setIsPushing(false);
@@ -158,31 +144,17 @@ export function SyncStep({ projectId }: StepProps) {
         </Alert>
       )}
 
-      <div className="flex gap-2">
-        <Button
-          onClick={handlePull}
-          disabled={isPushing}
-          className="flex-1"
-          variant="outline"
-        >
-          {isPushing ? (
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current" />
-          ) : (
-            'Pull'
-          )}
-        </Button>
-        <Button
-          onClick={handlePush}
-          disabled={isPushing}
-          className="flex-1"
-        >
-          {isPushing ? (
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current" />
-          ) : (
-            'Push'
-          )}
-        </Button>
-      </div>
+      <Button
+        onClick={handleSync}
+        disabled={isPushing}
+        className="w-full"
+      >
+        {isPushing ? (
+          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current" />
+        ) : (
+          'Sync'
+        )}
+      </Button>
     </div>
   );
 }

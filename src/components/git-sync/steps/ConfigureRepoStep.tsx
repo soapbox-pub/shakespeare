@@ -57,34 +57,34 @@ export function ConfigureRepoStep({
           { signal: AbortSignal.timeout(5000) }
         );
 
+        // Convert user's GRASP servers to clone URLs and relay URLs
+        const npub = nip19.npubEncode(user.pubkey);
+        const cloneUrls = new Set<string>();
+        const relays = new Set<string>();
+
+        for (const graspRelay of config.graspMetadata.relays) {
+          try {
+            const relayUrl = new URL(graspRelay.url);
+            relays.add(relayUrl.href);
+
+            const cloneUrl = new URL(`/${npub}/${projectId}.git`, `https://${relayUrl.host}`);
+
+            cloneUrls.add(cloneUrl.href);
+          } catch (err) {
+            console.warn(`Failed to parse Nostr git relay URL: ${graspRelay.url}`, err);
+          }
+        }
+
+        // Validate that we have at least one clone URL and relay
+        if (cloneUrls.size === 0 || relays.size === 0) {
+          throw new Error('No Nostr git servers configured. Please configure Nostr git servers in Settings > Nostr.');
+        }
+
         let repoEvent: NostrEvent;
 
         if (existingRepos.length > 0) {
           // Use existing repo announcement as template and update with current GRASP servers
           const existingEvent = existingRepos[0];
-
-          // Convert user's GRASP servers to clone URLs and relay URLs
-          const npub = nip19.npubEncode(user.pubkey);
-          const cloneUrls = new Set<string>();
-          const relays = new Set<string>();
-
-          for (const graspRelay of config.graspMetadata.relays) {
-            try {
-              const relayUrl = new URL(graspRelay.url);
-              relays.add(relayUrl.href);
-
-              const cloneUrl = new URL(`/${npub}/${projectId}.git`, `https://${relayUrl.host}`);
-
-              cloneUrls.add(cloneUrl.href);
-            } catch (err) {
-              console.warn(`Failed to parse Nostr git relay URL: ${graspRelay.url}`, err);
-            }
-          }
-
-          // Validate that we have at least one clone URL and relay
-          if (cloneUrls.size === 0 || relays.size === 0) {
-            throw new Error('No Nostr git servers configured. Please configure Nostr git servers in Settings > Nostr.');
-          }
 
           // Extract existing data from the event
           const name = existingEvent.tags.find(([tagName]) => tagName === 'name')?.[1];
@@ -111,9 +111,6 @@ export function ConfigureRepoStep({
 
           // Publish the updated event
           repoEvent = await publishEvent(eventTemplate);
-
-          // Wait 5 seconds for Nostr git servers to update
-          await new Promise(resolve => setTimeout(resolve, 5000));
         } else {
           // Create and publish new NIP-34 repository announcement
 
@@ -128,29 +125,6 @@ export function ConfigureRepoStep({
             tTags.push(template.name);
           }
 
-          // Convert user's GRASP servers to clone URLs and relay URLs
-          const npub = nip19.npubEncode(user.pubkey);
-          const cloneUrls = new Set<string>();
-          const relays = new Set<string>();
-
-          for (const graspRelay of config.graspMetadata.relays) {
-            try {
-              const relayUrl = new URL(graspRelay.url);
-              relays.add(relayUrl.href);
-
-              const cloneUrl = new URL(`/${npub}/${projectId}.git`, `https://${relayUrl.host}`);
-
-              cloneUrls.add(cloneUrl.href);
-            } catch (err) {
-              console.warn(`Failed to parse Nostr git relay URL: ${graspRelay.url}`, err);
-            }
-          }
-
-          // Validate that we have at least one clone URL and relay
-          if (cloneUrls.size === 0 || relays.size === 0) {
-            throw new Error('No Nostr git servers configured. Please configure Nostr git servers in Settings > Nostr.');
-          }
-
           // Create the repository announcement event
           const eventTemplate = createRepositoryAnnouncementEvent({
             repoId: projectId,
@@ -162,10 +136,10 @@ export function ConfigureRepoStep({
 
           // Publish the event
           repoEvent = await publishEvent(eventTemplate);
-
-          // Wait 5 seconds for Nostr git servers to update
-          await new Promise(resolve => setTimeout(resolve, 5000));
         }
+
+        // Wait 5 seconds for Nostr git servers to update
+        await new Promise(resolve => setTimeout(resolve, 5000));
 
         // Construct Nostr URI
         const nostrURI = new NostrURI({ pubkey: repoEvent.pubkey, identifier: projectId });

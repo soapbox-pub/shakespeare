@@ -21,10 +21,9 @@ export function useGit(): { git: Git } {
         const url = new URL(r.url);
         return url.hostname;
       } catch {
-        // Fallback: try to extract hostname from URL string
-        return r.url.replace(/^wss?:\/\//, '').replace(/\/.*$/, '');
+        return undefined;
       }
-    });
+    }).filter((hostname): hostname is string => Boolean(hostname));
   }, [graspMetadata.relays]);
 
   const git = useMemo(() => {

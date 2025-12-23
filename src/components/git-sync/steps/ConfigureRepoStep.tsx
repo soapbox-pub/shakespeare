@@ -10,9 +10,11 @@ import { useFSPaths } from '@/hooks/useFSPaths';
 import { useNostr } from '@nostrify/react';
 import { useNostrPublish } from '@/hooks/useNostrPublish';
 import { useFS } from '@/hooks/useFS';
+import { useAppContext } from '@/hooks/useAppContext';
 import { Link } from 'react-router-dom';
 import { createRepositoryAnnouncementEvent } from '@/lib/announceRepository';
 import { DotAI } from '@/lib/DotAI';
+import { nip19 } from 'nostr-tools';
 import type { ConfigureRepoStepProps } from '../types';
 import type { NostrEvent } from '@nostrify/nostrify';
 import { NostrURI } from '@/lib/NostrURI';
@@ -35,6 +37,7 @@ export function ConfigureRepoStep({
   const { nostr } = useNostr();
   const { mutateAsync: publishEvent } = useNostrPublish();
   const { fs } = useFS();
+  const { config } = useAppContext();
 
   const handlePushInitial = async () => {
     setIsPushing(true);
@@ -59,6 +62,10 @@ export function ConfigureRepoStep({
         if (existingRepos.length > 0) {
           // Use existing repo announcement
           repoEvent = existingRepos[0];
+
+          // Republish the event
+          // TODO: use this event as a template, and "fix" it, signing and publishing a new event
+          await nostr.event(repoEvent);
         } else {
           // Create and publish new NIP-34 repository announcement
 
@@ -73,11 +80,35 @@ export function ConfigureRepoStep({
             tTags.push(template.name);
           }
 
+          // Convert user's GRASP servers to clone URLs and relay URLs
+          const npub = nip19.npubEncode(user.pubkey);
+          const cloneUrls = new Set<string>();
+          const relays = new Set<string>();
+
+          for (const graspRelay of config.graspMetadata.relays) {
+            try {
+              const relayUrl = new URL(graspRelay.url);
+              relays.add(relayUrl.href);
+
+              const cloneUrl = new URL(`/${npub}/${projectId}.git`, `https://${relayUrl.host}`);
+
+              cloneUrls.add(cloneUrl.href);
+            } catch (err) {
+              console.warn(`Failed to parse Nostr git relay URL: ${graspRelay.url}`, err);
+            }
+          }
+
+          // Validate that we have at least one clone URL and relay
+          if (cloneUrls.size === 0 || relays.size === 0) {
+            throw new Error('No Nostr git servers configured. Please configure Nostr git servers in Settings > Nostr.');
+          }
+
           // Create the repository announcement event
           const eventTemplate = createRepositoryAnnouncementEvent({
             repoId: projectId,
             name: projectId,
-            cloneUrls: [], // Will be populated by git servers
+            cloneUrls: [...cloneUrls],
+            relays: [...relays],
             tTags,
           });
 

@@ -1,14 +1,17 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { GitBranch } from 'lucide-react';
+import { GitBranch, Loader2 } from 'lucide-react';
 import type { Repository } from '@/hooks/useUserRepositories';
 import { useAuthor } from '@/hooks/useAuthor';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { genUserName } from '@/lib/genUserName';
 import { useNavigate } from 'react-router-dom';
 import { NostrURI } from '@/lib/NostrURI';
+import { useProjectsManager } from '@/hooks/useProjectsManager';
+import { useToast } from '@/hooks/useToast';
+import { useTranslation } from 'react-i18next';
 
 interface RepositoryCardProps {
   repo: Repository;
@@ -17,6 +20,10 @@ interface RepositoryCardProps {
 export function RepositoryCard({ repo }: RepositoryCardProps) {
   const { data: authorData } = useAuthor(repo.pubkey);
   const navigate = useNavigate();
+  const projectsManager = useProjectsManager();
+  const { toast } = useToast();
+  const { t } = useTranslation();
+  const [isCloning, setIsCloning] = useState(false);
 
   const displayName = authorData?.metadata?.name || genUserName(repo.pubkey);
   const profileImage = authorData?.metadata?.picture;
@@ -24,13 +31,53 @@ export function RepositoryCard({ repo }: RepositoryCardProps) {
   // Construct Nostr clone URL
   const nostrURI = new NostrURI({ pubkey: repo.pubkey, identifier: repo.repoId });
 
-  const handleClone = () => {
-    // Navigate to clone page with Nostr URL parameter
-    navigate(`/clone?url=${encodeURIComponent(nostrURI.toString())}`);
+  const handleClone = async (e: React.MouseEvent) => {
+    // Prevent card click from triggering
+    e.stopPropagation();
+
+    setIsCloning(true);
+
+    try {
+      await projectsManager.init();
+
+      // Clone the repository using the Nostr URI
+      const project = await projectsManager.cloneProject(repo.name, nostrURI.toString());
+
+      toast({
+        title: t('nostrRepositoryImportedSuccessfully'),
+        description: t('repositoryClonedFromNostr', { repoName: repo.name }),
+      });
+
+      // Navigate to the new project with build parameter
+      navigate(`/project/${project.id}?build`);
+    } catch (error) {
+      console.error('Failed to clone repository:', error);
+
+      let errorMessage = t('failedToImportRepository');
+      if (error instanceof Error) {
+        if (error.message.includes('Repository not found on Nostr network')) {
+          errorMessage = t('repositoryNotFoundOnNostr');
+        } else if (error.message.includes('No clone URLs found')) {
+          errorMessage = t('noCloneUrlsFound');
+        } else if (error.message.includes('All clone attempts failed')) {
+          errorMessage = t('allCloneAttemptsFailed');
+        } else {
+          errorMessage = error.message;
+        }
+      }
+
+      toast({
+        title: t('failedToImportRepository'),
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsCloning(false);
+    }
   };
 
   return (
-    <Card className="h-full flex flex-col hover:shadow-lg transition-shadow cursor-pointer" onClick={handleClone}>
+    <Card className="h-full flex flex-col hover:shadow-lg transition-shadow">
       <CardContent className="p-6 flex flex-col flex-1">
         {/* Header with name and author */}
         <div className="mb-4">
@@ -88,9 +135,19 @@ export function RepositoryCard({ repo }: RepositoryCardProps) {
             size="sm"
             className="w-full"
             onClick={handleClone}
+            disabled={isCloning}
           >
-            <GitBranch className="h-4 w-4 mr-2" />
-            Clone
+            {isCloning ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Cloning...
+              </>
+            ) : (
+              <>
+                <GitBranch className="h-4 w-4 mr-2" />
+                Clone
+              </>
+            )}
           </Button>
         </div>
       </CardContent>

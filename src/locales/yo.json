@@ -46,6 +46,8 @@
   "serviceWorkerClearCacheFailed": "Ninu Cache Kuna",
   "faviconUrl": "URL Favicon",
   "faviconUrlDescription": "Awoṣe URL fun gbigba awọn favicon. Awọn oniyipada to wa: {hostname}, {origin}, {href}, {protocol}, {pathname}",
+  "ngitWebUrl": "URL Wẹẹbu Nostr Git",
+  "ngitWebUrlDescription": "Awoṣe URL fun awọn ibi ipamọ Nostr Git. Awọn oniyipada to wa: {naddr}, {npub}, {pubkey}, {identifier}",
   "showcase": "Ifihan",
   "showcaseEnabled": "Ifihan Ṣiṣẹ",
   "showcaseEnabledDescription": "Ṣafihan apakan ifihan ohun elo lori oju-iwe ile",

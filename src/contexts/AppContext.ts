@@ -40,6 +40,8 @@ export interface AppConfig {
   corsProxy: string;
   /** Favicon URL template (e.g., "https://external-content.duckduckgo.com/ip3/{hostname}.ico") */
   faviconUrl: string;
+  /** Nostr Git web URL template (e.g., "https://nostrhub.io/{naddr}") */
+  ngitWebUrl: string;
   /** Preview domain for iframe sandboxing (e.g., "local-shakespeare.dev") */
   previewDomain: string;
   /** Selected language */

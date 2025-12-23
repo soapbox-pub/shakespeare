@@ -133,6 +133,7 @@ const defaultConfig: AppConfig = {
   esmUrl: "https://esm.sh",
   corsProxy: "https://proxy.shakespeare.diy/?url={href}",
   faviconUrl: "https://favicon.shakespeare.diy/?url={href}",
+  ngitWebUrl: "https://nostrhub.io/{naddr}",
   previewDomain: "local-shakespeare.dev",
   showcaseEnabled: true,
   showcaseModerator: "npub1jvnpg4c6ljadf5t6ry0w9q0rnm4mksde87kglkrc993z46c39axsgq89sc",

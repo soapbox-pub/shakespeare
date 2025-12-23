@@ -46,6 +46,8 @@
   "serviceWorkerClearCacheFailed": "Share Cache Ya Gaza",
   "faviconUrl": "URL na Favicon",
   "faviconUrlDescription": "Samfurin URL don ɗaukar favicons. Masu canji da ake samu: {hostname}, {origin}, {href}, {protocol}, {pathname}",
+  "ngitWebUrl": "URL na Nostr Git Web",
+  "ngitWebUrlDescription": "Samfurin URL don ma'ajiyar Nostr Git. Masu canji da ake samu: {naddr}, {npub}, {pubkey}, {identifier}",
   "showcase": "Nuni",
   "showcaseEnabled": "An Kunna Nuni",
   "showcaseEnabledDescription": "Nuna sashen nuni na aikace-aikace a shafin gida",

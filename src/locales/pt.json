@@ -46,6 +46,8 @@
   "serviceWorkerClearCacheFailed": "Limpeza de Cache Falhou",
   "faviconUrl": "URL do Favicon",
   "faviconUrlDescription": "Modelo de URL para buscar favicons. Variáveis disponíveis: {hostname}, {origin}, {href}, {protocol}, {pathname}",
+  "ngitWebUrl": "URL Web do Nostr Git",
+  "ngitWebUrlDescription": "Modelo de URL para repositórios Nostr Git. Variáveis disponíveis: {naddr}, {npub}, {pubkey}, {identifier}",
   "showcase": "Vitrine",
   "showcaseEnabled": "Vitrine Ativada",
   "showcaseEnabledDescription": "Exibir a seção de vitrine de aplicativos na página inicial",

@@ -46,6 +46,8 @@
   "serviceWorkerClearCacheFailed": "Clear Cache Failed",
   "faviconUrl": "Favicon URL",
   "faviconUrlDescription": "URL template for fetching favicons. Available variables: {hostname}, {origin}, {href}, {protocol}, {pathname}",
+  "ngitWebUrl": "Nostr Git Web URL",
+  "ngitWebUrlDescription": "URL template for Nostr Git repositories. Available variables: {naddr}, {npub}, {pubkey}, {identifier}",
   "showcase": "Showcase",
   "showcaseEnabled": "Showcase Enabled",
   "showcaseEnabledDescription": "Display the app showcase section on the home page",

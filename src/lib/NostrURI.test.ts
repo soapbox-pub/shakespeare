@@ -127,7 +127,7 @@ describe('NostrURI', () => {
         identifier: testIdentifier,
       });
 
-      const naddr = uri.toNaddr(30617);
+      const naddr = uri.toNaddr();
       const decoded = nip19.decode(naddr);
 
       expect(decoded.type).toBe('naddr');
@@ -147,7 +147,7 @@ describe('NostrURI', () => {
         relay: testRelay,
       });
 
-      const naddr = uri.toNaddr(30617);
+      const naddr = uri.toNaddr();
       const decoded = nip19.decode(naddr);
 
       expect(decoded.type).toBe('naddr');
@@ -272,7 +272,7 @@ describe('NostrURI', () => {
         relay: testRelay,
       });
 
-      const naddr = uri.toNaddr(30617);
+      const naddr = uri.toNaddr();
       const result = NostrURI.fromNaddr(naddr);
 
       expect(result.pubkey).toBe(uri.pubkey);

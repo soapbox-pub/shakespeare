@@ -1299,7 +1299,7 @@ export class Git {
     await this.setConfig({
       dir: options.dir,
       path: 'nostr.repo',
-      value: nostrURI.toNaddr(30617),
+      value: nostrURI.toNaddr(),
     });
 
     // Validate the cloned repository against the expected state

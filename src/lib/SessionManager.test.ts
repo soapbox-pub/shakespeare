@@ -44,6 +44,7 @@ const testConfig: AppConfig = {
   esmUrl: 'https://esm.shakespeare.diy',
   corsProxy: 'https://proxy.shakespeare.diy/?url={href}',
   faviconUrl: 'https://external-content.duckduckgo.com/ip3/{hostname}.ico',
+  ngitWebUrl: 'https://nostrhub.io/{naddr}',
   previewDomain: 'local-shakespeare.dev',
   language: 'en',
   showcaseEnabled: true,

@@ -46,6 +46,8 @@
   "serviceWorkerClearCacheFailed": "清除缓存失败",
   "faviconUrl": "Favicon URL",
   "faviconUrlDescription": "获取favicon的URL模板。可用变量：{hostname}、{origin}、{href}、{protocol}、{pathname}",
+  "ngitWebUrl": "Nostr Git 网址",
+  "ngitWebUrlDescription": "Nostr Git 仓库的 URL 模板。可用变量：{naddr}、{npub}、{pubkey}、{identifier}",
   "showcase": "展示",
   "showcaseEnabled": "启用展示",
   "showcaseEnabledDescription": "在主页上显示应用展示部分",

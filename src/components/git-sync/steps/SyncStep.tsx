@@ -15,9 +15,11 @@ import { useGitStatus } from '@/hooks/useGitStatus';
 import { useGitSettings } from '@/hooks/useGitSettings';
 import { useGit } from '@/hooks/useGit';
 import { useFSPaths } from '@/hooks/useFSPaths';
+import { useAppContext } from '@/hooks/useAppContext';
 import type { StepProps } from '../types';
 import { cn } from '@/lib/utils';
 import { NostrURI } from '@/lib/NostrURI';
+import { ngitWebUrl } from '@/lib/ngitWebUrl';
 
 export function SyncStep({ projectId }: StepProps) {
   const [isSyncing, setIsSyncing] = useState(false);
@@ -29,6 +31,7 @@ export function SyncStep({ projectId }: StepProps) {
   const { settings } = useGitSettings();
   const { git } = useGit();
   const { projectsPath } = useFSPaths();
+  const { config } = useAppContext();
 
   const originRemote = gitStatus?.remotes.find(r => r.name === 'origin');
 
@@ -109,10 +112,9 @@ export function SyncStep({ projectId }: StepProps) {
         // For HTTPS URLs, open directly
         externalUrl = originRemote.url;
       } else if (originRemote.url.startsWith('nostr://')) {
-        // For Nostr URLs, parse and convert to naddr, then link to nostrhub.io
+        // For Nostr URLs, parse and generate URL using the configured template
         const nostrUri = await NostrURI.parse(originRemote.url);
-        const naddr = nostrUri.toNaddr();
-        externalUrl = `https://nostrhub.io/${naddr}`;
+        externalUrl = ngitWebUrl(config.ngitWebUrl, nostrUri);
       } else {
         // Unsupported URL type
         return;

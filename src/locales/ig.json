@@ -46,6 +46,8 @@
   "serviceWorkerClearCacheFailed": "Nhicha Cache Dara",
   "faviconUrl": "URL Favicon",
   "faviconUrlDescription": "Ụdịdị URL maka ịnweta favicon. Mgbanwe dị: {hostname}, {origin}, {href}, {protocol}, {pathname}",
+  "ngitWebUrl": "URL Weebụ Nostr Git",
+  "ngitWebUrlDescription": "Ụdịdị URL maka ebe nchekwa Nostr Git. Mgbanwe dị: {naddr}, {npub}, {pubkey}, {identifier}",
   "showcase": "Ngosipụta",
   "showcaseEnabled": "Ngosipụta Emechara",
   "showcaseEnabledDescription": "Gosipụta ngalaba ngosipụta ngwa na ibe ụlọ",

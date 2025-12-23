@@ -171,23 +171,22 @@ export class NostrURI {
   /**
    * Convert to an naddr (NIP-19 addressable event identifier)
    *
-   * @param kind - The event kind (default: 30617 for repository announcements)
    * @returns An naddr string
    *
    * @example
    * ```ts
    * const uri = new NostrURI({ pubkey: 'abc...', identifier: 'my-repo' });
-   * const naddr = uri.toNaddr(30617);
+   * const naddr = uri.toNaddr();
    * ```
    */
-  toNaddr(kind: number = 30617): string {
+  toNaddr(): string {
     const data: {
       kind: number;
       pubkey: string;
       identifier: string;
       relays?: string[];
     } = {
-      kind,
+      kind: 30617,
       pubkey: this.pubkey,
       identifier: this.identifier,
     };

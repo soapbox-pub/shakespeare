@@ -1,4 +1,4 @@
-import { Settings, ArrowLeft, RefreshCw, Trash2, XCircle, Loader2, RotateCcw, Cog, Globe, Image, Code, Monitor, Award, Bug, FolderTree, Terminal as TerminalIcon } from "lucide-react";
+import { Settings, ArrowLeft, RefreshCw, Trash2, XCircle, Loader2, RotateCcw, Cog, Globe, Image, Code, Monitor, Award, Bug, FolderTree, Terminal as TerminalIcon, GitBranch } from "lucide-react";
 import { useTranslation } from 'react-i18next';
 import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,7 @@ export function SystemSettings() {
   const [esmUrlInput, setEsmUrlInput] = useState(config.esmUrl);
   const [corsProxyInput, setCorsProxyInput] = useState(config.corsProxy);
   const [faviconUrlInput, setFaviconUrlInput] = useState(config.faviconUrl);
+  const [ngitWebUrlInput, setNgitWebUrlInput] = useState(config.ngitWebUrl);
   const [previewDomainInput, setPreviewDomainInput] = useState(config.previewDomain);
   const [showcaseModeratorInput, setShowcaseModeratorInput] = useState(config.showcaseModerator);
   const [fsPathProjectsInput, setFsPathProjectsInput] = useState(config.fsPathProjects);
@@ -38,6 +39,7 @@ export function SystemSettings() {
     esmUrl: config.esmUrl !== defaultConfig.esmUrl,
     corsProxy: config.corsProxy !== defaultConfig.corsProxy,
     faviconUrl: config.faviconUrl !== defaultConfig.faviconUrl,
+    ngitWebUrl: config.ngitWebUrl !== defaultConfig.ngitWebUrl,
     previewDomain: config.previewDomain !== defaultConfig.previewDomain,
     showcaseEnabled: config.showcaseEnabled !== defaultConfig.showcaseEnabled,
     showcaseModerator: config.showcaseModerator !== defaultConfig.showcaseModerator,
@@ -73,6 +75,15 @@ export function SystemSettings() {
     setFaviconUrlInput(defaultValue);
     updateConfig((current) => {
       const { faviconUrl, ...rest } = current;
+      return rest;
+    });
+  };
+
+  const restoreNgitWebUrl = () => {
+    const defaultValue = defaultConfig.ngitWebUrl;
+    setNgitWebUrlInput(defaultValue);
+    updateConfig((current) => {
+      const { ngitWebUrl, ...rest } = current;
       return rest;
     });
   };
@@ -480,6 +491,55 @@ export function SystemSettings() {
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {t('faviconUrlDescription')}
+                </p>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+
+        {/* Nostr Git Web URL Configuration */}
+        <Accordion type="single" collapsible className="w-full">
+          <AccordionItem value="ngit-web-url">
+            <AccordionTrigger className="px-4 py-3 hover:no-underline">
+              <div className="flex items-center gap-2">
+                <GitBranch className="h-4 w-4 text-muted-foreground" />
+                <h4 className="text-sm font-medium">{t('ngitWebUrl')}</h4>
+                {isModified.ngitWebUrl && (
+                  <div className="h-2 w-2 rounded-full bg-yellow-500" title={t('modified')} />
+                )}
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="px-4 pb-4">
+              <div className="py-1 space-y-2">
+                <div className="flex gap-2">
+                  <Input
+                    id="ngit-web-url"
+                    type="url"
+                    placeholder="https://nostrhub.io/{naddr}"
+                    value={ngitWebUrlInput}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setNgitWebUrlInput(value);
+                      updateConfig((current) => ({
+                        ...current,
+                        ngitWebUrl: value,
+                      }));
+                    }}
+                    className="flex-1"
+                  />
+                  {isModified.ngitWebUrl && (
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={restoreNgitWebUrl}
+                      title={t('restoreToDefault')}
+                    >
+                      <RotateCcw className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {t('ngitWebUrlDescription')}
                 </p>
               </div>
             </AccordionContent>

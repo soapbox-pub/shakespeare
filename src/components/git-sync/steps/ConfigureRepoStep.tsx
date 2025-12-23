@@ -7,8 +7,15 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useGit } from '@/hooks/useGit';
 import { useGitStatus } from '@/hooks/useGitStatus';
 import { useFSPaths } from '@/hooks/useFSPaths';
+import { useNostr } from '@nostrify/react';
+import { useNostrPublish } from '@/hooks/useNostrPublish';
+import { useFS } from '@/hooks/useFS';
 import { Link } from 'react-router-dom';
+import { nip19 } from 'nostr-tools';
+import { createRepositoryAnnouncementEvent } from '@/lib/announceRepository';
+import { DotAI } from '@/lib/DotAI';
 import type { ConfigureRepoStepProps } from '../types';
+import type { NostrEvent } from '@nostrify/nostrify';
 
 export function ConfigureRepoStep({
   projectId,
@@ -25,6 +32,9 @@ export function ConfigureRepoStep({
   const { git } = useGit();
   const { projectsPath } = useFSPaths();
   const { data: gitStatus, refetch: refetchGitStatus } = useGitStatus(projectId);
+  const { nostr } = useNostr();
+  const { mutateAsync: publishEvent } = useNostrPublish();
+  const { fs } = useFS();
 
   const handlePushInitial = async () => {
     setIsPushing(true);
@@ -34,16 +44,67 @@ export function ConfigureRepoStep({
       const dir = `${projectsPath}/${projectId}`;
 
       if (selectedProvider.id === 'nostr') {
-        // TODO: Implement Nostr push
-        // For now, just simulate success
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        if (!user) {
+          throw new Error('User is not logged in');
+        }
 
-        // Configure a Nostr URI as the origin
-        const nostrUri = `nostr://npub1example/${projectId}`;
+        // Check if a NIP-34 repo announcement already exists for this project
+        const existingRepos = await nostr.query(
+          [{ kinds: [30617], authors: [user.pubkey], '#d': [projectId], limit: 1 }],
+          { signal: AbortSignal.timeout(5000) }
+        );
+
+        let repoEvent: NostrEvent;
+
+        if (existingRepos.length > 0) {
+          // Use existing repo announcement
+          repoEvent = existingRepos[0];
+        } else {
+          // Create and publish new NIP-34 repository announcement
+
+          // Get the template name
+          const dotAI = new DotAI(fs, `${projectsPath}/${projectId}`);
+          const template = await dotAI.readTemplate();
+          const templateName = template?.name;
+
+          // Build t-tags array
+          const tTags = ['shakespeare'];
+
+          if (templateName) {
+            tTags.push(templateName);
+          }
+
+          // Create the repository announcement event
+          const eventTemplate = createRepositoryAnnouncementEvent({
+            repoId: projectId,
+            name: projectId,
+            cloneUrls: [], // Will be populated by git servers
+            tTags,
+          });
+
+          // Publish the event
+          repoEvent = await publishEvent(eventTemplate);
+
+          // Wait 5 seconds for Nostr git servers to update
+          await new Promise(resolve => setTimeout(resolve, 5000));
+        }
+
+        // Construct Nostr URI
+        const nostrUri = `nostr://${nip19.npubEncode(repoEvent.pubkey)}/${projectId}`;
+
+        // Configure the Nostr URI as the origin
         await git.addRemote({
           dir,
           remote: 'origin',
           url: nostrUri,
+          force: true,
+        });
+
+        // Push to Nostr (the rest of the Nostr logic is handled internally by git.push)
+        await git.push({
+          dir,
+          remote: 'origin',
+          ref: gitStatus?.currentBranch || 'main',
         });
       } else {
         // Validate repository URL

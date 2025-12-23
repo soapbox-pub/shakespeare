@@ -71,6 +71,7 @@ export class Git {
     return git.clone({
       fs: this.fs,
       http: this.http,
+      onAuth: this.onAuth,
       ...options,
     });
   }
@@ -202,6 +203,7 @@ export class Git {
 
     return git.getRemoteInfo({
       http: this.http,
+      onAuth: this.onAuth,
       ...options,
     });
   }
@@ -220,6 +222,7 @@ export class Git {
     return git.fetch({
       fs: this.fs,
       http: this.http,
+      onAuth: this.onAuth,
       ...options,
     });
   }
@@ -239,6 +242,7 @@ export class Git {
     return git.pull({
       fs: this.fs,
       http: this.http,
+      onAuth: this.onAuth,
       ...options,
       author,
     });
@@ -378,10 +382,13 @@ export class Git {
   }
 
   // Merge operations
-  async merge(options: Omit<Parameters<typeof git.merge>[0], 'fs'>) {
+  async merge(options: Omit<Parameters<typeof git.merge>[0], 'fs' | 'author'>) {
+    const { author } = await this.getGitSettings();
+
     return git.merge({
       fs: this.fs,
       ...options,
+      author,
     });
   }
 
@@ -410,6 +417,7 @@ export class Git {
   async getRemoteInfo2(options: Omit<Parameters<typeof git.getRemoteInfo2>[0], 'http' | 'corsProxy'>) {
     return git.getRemoteInfo2({
       http: this.http,
+      onAuth: this.onAuth,
       ...options,
     });
   }
@@ -535,6 +543,7 @@ export class Git {
   async listServerRefs(options: Omit<Parameters<typeof git.listServerRefs>[0], 'http' | 'corsProxy'>) {
     return git.listServerRefs({
       http: this.http,
+      onAuth: this.onAuth,
       ...options,
     });
   }
@@ -644,6 +653,7 @@ export class Git {
         try {
           const gitRemoteInfo = await git.getRemoteInfo({
             http: this.http,
+            onAuth: this.onAuth,
             url: repo.httpsCloneUrls[0],
           });
 
@@ -1209,6 +1219,7 @@ export class Git {
         const remoteInfo = await Promise.race([
           git.getRemoteInfo({
             http: this.http,
+            onAuth: this.onAuth,
             url: cloneUrl,
           }),
           new Promise<never>((_, reject) =>
@@ -1236,6 +1247,7 @@ export class Git {
             git.clone({
               fs: this.fs,
               http: this.http,
+              onAuth: this.onAuth,
               ...options,
               url: cloneUrl,
             }),
@@ -1293,6 +1305,7 @@ export class Git {
           git.clone({
             fs: this.fs,
             http: this.http,
+            onAuth: this.onAuth,
             ...options,
             url: bestCloneUrl,
           }),
@@ -1320,6 +1333,7 @@ export class Git {
             git.clone({
               fs: this.fs,
               http: this.http,
+              onAuth: this.onAuth,
               ...options,
               url: cloneUrl,
             }),
@@ -1556,6 +1570,7 @@ export class Git {
         try {
           const result = await git.getRemoteInfo({
             http: this.http,
+            onAuth: this.onAuth,
             url: cloneUrl,
           });
           return { cloneUrl, result };
@@ -1827,6 +1842,7 @@ export class Git {
         ours: currentCommit,
         theirs: upstreamCommit,
         message: `Merge remote-tracking branch '${options.remote}/${currentBranch}' from Nostr`,
+        author: options.author,
       });
 
       if (mergeResult.alreadyMerged) {
@@ -1837,7 +1853,7 @@ export class Git {
     }
   }
 
-  private async nostrPush(nostrUrl: string, options: Omit<Parameters<typeof git.push>[0], 'fs' | 'http' | 'corsProxy'> & { signer: NostrSigner }) {
+  private async nostrPush(nostrUrl: string, options: Omit<Parameters<typeof git.push>[0], 'fs' | 'http' | 'onAuth' | 'corsProxy'> & { signer: NostrSigner }) {
     const { signer, ...gitPushOptions } = options;
     const dir = options.dir || '.';
     const ref = options.ref || 'HEAD';
@@ -2019,10 +2035,10 @@ export class Git {
       console.log(`Pushing to Git remote: ${cloneUrl}`);
 
       try {
-        // Push to the temporary remote
         await git.push({
           fs: this.fs,
           http: this.http,
+          onAuth: this.onAuth,
           dir,
           url: cloneUrl,
           ...gitPushOptions,
@@ -2052,6 +2068,7 @@ export class Git {
       const fetchResult = await git.fetch({
         fs: this.fs,
         http: this.http,
+        onAuth: this.onAuth,
         dir,
         tags: true,
         url: httpsCloneUrl,
@@ -2240,6 +2257,7 @@ export class Git {
                 await git.push({
                   fs: this.fs,
                   http: this.http,
+                  onAuth: this.onAuth,
                   dir,
                   url: cloneUrl,
                   ref,
@@ -2260,6 +2278,7 @@ export class Git {
                 await git.push({
                   fs: this.fs,
                   http: this.http,
+                  onAuth: this.onAuth,
                   dir,
                   url: cloneUrl,
                   ref: `:${ref}`, // :ref syntax deletes the remote ref

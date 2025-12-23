@@ -91,10 +91,6 @@ export function usePlugins() {
         dir: pluginDir,
         singleBranch: true,
         fastForward: true,
-        author: {
-          name: 'shakespeare.diy',
-          email: 'assistant@shakespeare.diy',
-        },
       });
 
       return pluginName;

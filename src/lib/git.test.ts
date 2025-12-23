@@ -306,7 +306,7 @@ describe('Git', () => {
       const { readGitSettings } = await import('./configUtils');
       vi.mocked(readGitSettings).mockResolvedValue({
         credentials: [],
-        coAuthorEnabled: true,
+        coAuthorEnabled: false,
       });
 
       await gitInstance.commit({
@@ -319,10 +319,6 @@ describe('Git', () => {
         dir: '/test',
         message: 'Test commit',
         author: {
-          name: 'shakespeare.diy',
-          email: 'assistant@shakespeare.diy',
-        },
-        committer: {
           name: 'shakespeare.diy',
           email: 'assistant@shakespeare.diy',
         },
@@ -351,10 +347,6 @@ describe('Git', () => {
           name: 'John Doe',
           email: 'john@example.com',
         },
-        committer: {
-          name: 'John Doe',
-          email: 'john@example.com',
-        },
       });
     });
 
@@ -379,47 +371,6 @@ describe('Git', () => {
         author: {
           name: 'John Doe',
           email: 'john@example.com',
-        },
-        committer: {
-          name: 'John Doe',
-          email: 'john@example.com',
-        },
-      });
-    });
-
-    it('respects provided author when explicitly passed', async () => {
-      const { readGitSettings } = await import('./configUtils');
-      vi.mocked(readGitSettings).mockResolvedValue({
-        credentials: [],
-        name: 'John Doe',
-        email: 'john@example.com',
-        coAuthorEnabled: true,
-      });
-
-      await gitInstance.commit({
-        dir: '/test',
-        message: 'Test commit',
-        author: {
-          name: 'Custom Author',
-          email: 'custom@example.com',
-        },
-        committer: {
-          name: 'Custom Committer',
-          email: 'committer@example.com',
-        },
-      });
-
-      expect(mockGit.commit).toHaveBeenCalledWith({
-        fs,
-        dir: '/test',
-        message: 'Test commit',
-        author: {
-          name: 'Custom Author',
-          email: 'custom@example.com',
-        },
-        committer: {
-          name: 'Custom Committer',
-          email: 'committer@example.com',
         },
       });
     });

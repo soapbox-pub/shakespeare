@@ -12,6 +12,7 @@ export interface GitOptions {
   nostr: NPool;
   corsProxy?: string;
   ngitServers?: string[];
+  systemAuthor?: { name: string; email: string };
 }
 
 interface NostrCloneURI {
@@ -31,12 +32,17 @@ export class Git {
   private http: HttpClient;
   private nostr: NPool;
   private ngitServers: string[];
+  private systemAuthor: { name: string; email: string };
 
   constructor(options: GitOptions) {
     this.fs = options.fs;
     this.http = new GitHttp(options.corsProxy);
     this.nostr = options.nostr;
     this.ngitServers = options.ngitServers ?? ['git.shakespeare.diy', 'relay.ngit.dev'];
+    this.systemAuthor = options.systemAuthor ?? {
+      name: 'shakespeare.diy',
+      email: 'assistant@shakespeare.diy',
+    };
   }
 
   // Repository initialization and configuration
@@ -96,50 +102,19 @@ export class Git {
   }
 
   // Commits and history
-  async commit(options: Omit<Parameters<typeof git.commit>[0], 'fs'>) {
-    // If author is not provided, use Git identity settings
-    let author = options.author;
-    let committer = options.committer;
+  async commit(options: Omit<Parameters<typeof git.commit>[0], 'fs' | 'author'>) {
+    const { author, coAuthorEnabled } = await this.getGitSettings();
+    
+    // Add system co-author if enabled
     let message = options.message;
-
-    if (!author || !committer) {
-      // Read Git identity settings from config
-      const gitSettings = await readGitSettings(this.fs);
-
-      // Determine author based on Git identity settings
-      const defaultAuthor = {
-        name: 'shakespeare.diy',
-        email: 'assistant@shakespeare.diy',
-      };
-
-      const hasCustomIdentity = gitSettings.name && gitSettings.email;
-
-      if (hasCustomIdentity) {
-        const customAuthor = {
-          name: gitSettings.name!,
-          email: gitSettings.email!,
-        };
-
-        // Use custom identity
-        if (!author) author = customAuthor;
-        if (!committer) committer = customAuthor;
-
-        // Add Shakespeare as co-author if enabled
-        if (gitSettings.coAuthorEnabled ?? true) {
-          message = `${message}\n\nCo-authored-by: shakespeare.diy <assistant@shakespeare.diy>`;
-        }
-      } else {
-        // Use Shakespeare as default author
-        if (!author) author = defaultAuthor;
-        if (!committer) committer = defaultAuthor;
-      }
+    if (coAuthorEnabled) {
+      message = `${message}\n\nCo-authored-by: ${this.systemAuthor.name} <${this.systemAuthor.email}>`;
     }
 
     return git.commit({
       fs: this.fs,
       ...options,
       author,
-      committer,
       message,
     });
   }
@@ -246,14 +221,15 @@ export class Git {
     });
   }
 
-  async pull(options: Omit<Parameters<typeof git.pull>[0], 'fs' | 'http' | 'corsProxy'>) {
+  async pull(options: Omit<Parameters<typeof git.pull>[0], 'fs' | 'http' | 'author' | 'corsProxy'>) {
     // Check if this is a Nostr repository by looking at the remote URL
     const remote = options.remote || 'origin';
     const dir = options.dir || '.';
     const remoteUrl = await this.getRemoteURL(dir, remote);
+    const { author } = await this.getGitSettings();
 
     if (remoteUrl && remoteUrl.startsWith('nostr://')) {
-      return this.nostrPull(remoteUrl, { ...options, remote, dir });
+      return this.nostrPull(remoteUrl, { ...options, author, remote, dir });
     }
 
     // Regular Git pull
@@ -261,6 +237,7 @@ export class Git {
       fs: this.fs,
       http: this.http,
       ...options,
+      author,
     });
   }
 
@@ -596,6 +573,26 @@ export class Git {
   // Version info
   version() {
     return git.version();
+  }
+
+  private async getGitSettings(): Promise<{ author: { name: string; email: string }; coAuthorEnabled: boolean }> {
+    const {
+      name,
+      email,
+      coAuthorEnabled = true,
+    } = await readGitSettings(this.fs);
+
+    if (name && email) {
+      return {
+        author: { name, email },
+        coAuthorEnabled,
+      };
+    } else {
+      return {
+        author: this.systemAuthor,
+        coAuthorEnabled,
+      }
+    }
   }
 
   // Nostr-specific helper methods

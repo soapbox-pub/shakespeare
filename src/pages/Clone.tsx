@@ -155,10 +155,22 @@ export default function Clone() {
       // Extract repository name
       const repoName = await extractRepoName(targetUrl);
 
+      // Determine if this is a fork (cloning from someone else's Nostr repository)
+      let fork = false;
+      if (targetUrl.startsWith('nostr://') && user) {
+        try {
+          const nostrURI = await NostrURI.parse(targetUrl);
+          fork = nostrURI.pubkey !== user.pubkey;
+        } catch {
+          // If parsing fails, default to fork=false
+        }
+      }
+
       // Clone the repository (Git class handles both regular Git URLs and Nostr URIs)
       const project = await projectsManager.cloneProject({
         name: repoName,
         repoUrl: targetUrl.trim(),
+        fork,
       });
 
       // Determine success message based on URL type
@@ -209,7 +221,7 @@ export default function Clone() {
     } finally {
       setIsCloning(false);
     }
-  }, [navigate, projectsManager, repoUrl, t, toast, validateGitUrl]);
+  }, [navigate, projectsManager, repoUrl, t, toast, validateGitUrl, user]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !isCloning) {

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Zap, GitBranch, Copy, Check } from 'lucide-react';
+import { Zap, GitBranch, Copy, Check, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,11 +10,13 @@ import { useGitSettings } from '@/hooks/useGitSettings';
 import { useGit } from '@/hooks/useGit';
 import { useFSPaths } from '@/hooks/useFSPaths';
 import type { StepProps } from '../types';
+import { cn } from '@/lib/utils';
 
 export function SyncStep({ projectId }: StepProps) {
-  const [isPushing, setIsPushing] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copiedUrl, setCopiedUrl] = useState(false);
+  const [syncSuccess, setSyncSuccess] = useState(false);
 
   const { data: gitStatus } = useGitStatus(projectId);
   const { settings } = useGitSettings();
@@ -31,8 +33,9 @@ export function SyncStep({ projectId }: StepProps) {
   const handleSync = async () => {
     if (!originRemote) return;
 
-    setIsPushing(true);
+    setIsSyncing(true);
     setError(null);
+    setSyncSuccess(false);
 
     try {
       const dir = `${projectsPath}/${projectId}`;
@@ -50,11 +53,15 @@ export function SyncStep({ projectId }: StepProps) {
         remote: 'origin',
         ref: gitStatus?.currentBranch || 'main',
       });
+
+      // Show success feedback
+      setSyncSuccess(true);
+      setTimeout(() => setSyncSuccess(false), 1500);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to sync';
       setError(message);
     } finally {
-      setIsPushing(false);
+      setIsSyncing(false);
     }
   };
 
@@ -146,14 +153,15 @@ export function SyncStep({ projectId }: StepProps) {
 
       <Button
         onClick={handleSync}
-        disabled={isPushing}
+        disabled={isSyncing}
         className="w-full"
       >
-        {isPushing ? (
-          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current" />
-        ) : (
-          'Sync'
-        )}
+        <div className="flex items-center gap-2">
+          {syncSuccess
+            ? <Check className="h-4 w-4" />
+            : <RefreshCw className={cn("size-4", { "animate-spin": isSyncing })} />}
+          <span>Sync</span>
+        </div>
       </Button>
     </div>
   );

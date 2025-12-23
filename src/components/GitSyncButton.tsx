@@ -38,7 +38,7 @@ export function GitSyncButton({ projectId, className }: GitSyncButtonProps) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [copiedUrl, setCopiedUrl] = useState(false);
 
-  const { data: gitStatus } = useGitStatus(projectId);
+  const { data: gitStatus, isLoading: isGitStatusLoading } = useGitStatus(projectId);
   const { settings } = useGitSettings();
   const { user } = useCurrentUser();
   const { git } = useGit();
@@ -54,7 +54,7 @@ export function GitSyncButton({ projectId, className }: GitSyncButtonProps) {
     : null;
 
   // Determine if we need to show the indicator dot
-  const showIndicator = !hasRemote;
+  const showIndicator = !isGitStatusLoading && !hasRemote;
 
   // Reset state when popover opens/closes
   useEffect(() => {

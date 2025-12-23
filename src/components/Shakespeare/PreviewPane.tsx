@@ -179,14 +179,17 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
   // Legacy refresh function for build completion events
   const refreshIframeLegacy = useCallback(() => {
     if (iframeRef.current) {
-      // Force reload the iframe by updating its src
-      iframeRef.current.src = '/';
-      // Use a small timeout to ensure the src is cleared before setting it back
+      // Force reload the iframe by updating its src with a timestamp to bust cache
+      const currentSrc = `https://${projectId}.${previewDomain}/`;
+      const newSrc = `${currentSrc}?_refresh=${Date.now()}`;
+      iframeRef.current.src = newSrc;
+      
+      // After a brief moment, remove the query param to clean up the URL
       setTimeout(() => {
         if (iframeRef.current) {
-          iframeRef.current.src = `https://${projectId}.${previewDomain}/`;
+          iframeRef.current.src = currentSrc;
         }
-      }, 10);
+      }, 100);
     }
   }, [projectId, previewDomain]);
 

@@ -65,13 +65,12 @@ export function ConfigureRepoStep({
           // Get the template name
           const dotAI = new DotAI(fs, `${projectsPath}/${projectId}`);
           const template = await dotAI.readTemplate();
-          const templateName = template?.name;
 
           // Build t-tags array
           const tTags = ['shakespeare'];
 
-          if (templateName) {
-            tTags.push(templateName);
+          if (template) {
+            tTags.push(template.name);
           }
 
           // Create the repository announcement event

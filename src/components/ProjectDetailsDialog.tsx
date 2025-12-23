@@ -33,12 +33,9 @@ interface ProjectDetailsDialogProps {
   project: Project;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onProjectDeleted?: () => void;
-  onExportProject?: () => Promise<void>;
-  onDeleteProject?: () => Promise<void>;
 }
 
-export function ProjectDetailsDialog({ project, open, onOpenChange, onProjectDeleted, onExportProject, onDeleteProject }: ProjectDetailsDialogProps) {
+export function ProjectDetailsDialog({ project, open, onOpenChange }: ProjectDetailsDialogProps) {
   const [isRenaming, setIsRenaming] = useState(false);
   const [newProjectName, setNewProjectName] = useState(project.id);
   const [totalCost, setTotalCost] = useState<number | null>(null);

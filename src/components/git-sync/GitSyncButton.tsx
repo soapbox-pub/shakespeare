@@ -21,7 +21,8 @@ export function GitSyncButton({ projectId, className }: GitSyncButtonProps) {
   const hasRemote = !!originRemote;
 
   // Determine if we need to show the indicator dot
-  const showIndicator = !isGitStatusLoading && !hasRemote;
+  // Show indicator if no origin remote is configured, UNLESS there are less than 2 commits
+  const showIndicator = !isGitStatusLoading && !hasRemote && (gitStatus?.totalCommits ?? 0) >= 2;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>

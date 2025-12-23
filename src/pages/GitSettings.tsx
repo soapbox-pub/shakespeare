@@ -504,6 +504,7 @@ export function GitSettings() {
                             onClick={() => handleAddPresetProvider(preset)}
                             disabled={!presetTokens[preset.id]?.trim()}
                             size="sm"
+                            className="h-10"
                           >
                             {t('add')}
                           </Button>

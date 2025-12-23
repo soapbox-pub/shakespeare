@@ -25,6 +25,8 @@ import { nip19 } from 'nostr-tools';
 import { NSchema as n } from '@nostrify/nostrify';
 import type { NostrMetadata } from '@nostrify/nostrify';
 import { NostrURI } from '@/lib/NostrURI';
+import { useGitSettings } from '@/hooks/useGitSettings';
+import { findCredentialsForRepo } from '@/lib/gitCredentials';
 
 export default function Clone() {
   const { t } = useTranslation();
@@ -38,6 +40,7 @@ export default function Clone() {
   const autoCloneInitiatedRef = useRef(false);
   const [isZipDialogOpen, setIsZipDialogOpen] = useState(false);
   const { user } = useCurrentUser();
+  const { settings: gitSettings } = useGitSettings();
   const { data: repositories = [], isLoading: isLoadingRepos } = useUserRepositories(user?.pubkey);
   const { data: contacts = [] } = useContacts(user?.pubkey);
   const { data: followedRepositories = [], isLoading: isLoadingFollowedRepos } = useFollowedRepositories(contacts);
@@ -155,14 +158,28 @@ export default function Clone() {
       // Extract repository name
       const repoName = await extractRepoName(targetUrl);
 
-      // Determine if this is a fork (cloning from someone else's Nostr repository)
+      // Determine if this is a fork
       let fork = false;
+
       if (targetUrl.startsWith('nostr://') && user) {
+        // For Nostr URIs: check if the repository owner is different from current user
         try {
           const nostrURI = await NostrURI.parse(targetUrl);
           fork = nostrURI.pubkey !== user.pubkey;
         } catch {
           // If parsing fails, default to fork=false
+        }
+      } else if (targetUrl.startsWith('http://') || targetUrl.startsWith('https://')) {
+        // For HTTPS URLs: check if the URL belongs to the user based on credentials
+        // A repository is NOT a fork if it starts with ${credential.origin}/${credential.username}/
+        const credential = findCredentialsForRepo(targetUrl, gitSettings.credentials);
+
+        if (credential) {
+          const expectedPrefix = `${credential.origin}/${credential.username}/`;
+          fork = !targetUrl.startsWith(expectedPrefix);
+        } else {
+          // No matching credentials found, treat as fork
+          fork = true;
         }
       }
 
@@ -221,7 +238,7 @@ export default function Clone() {
     } finally {
       setIsCloning(false);
     }
-  }, [navigate, projectsManager, repoUrl, t, toast, validateGitUrl, user]);
+  }, [navigate, projectsManager, repoUrl, t, toast, validateGitUrl, user, gitSettings.credentials]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !isCloning) {

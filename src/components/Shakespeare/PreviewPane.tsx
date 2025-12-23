@@ -32,8 +32,6 @@ interface PreviewPaneProps {
   projectId: string;
   activeTab: 'preview' | 'code';
   onToggleView?: () => void;
-  projectName?: string;
-  onFirstInteraction?: () => void;
   isPreviewable?: boolean;
 }
 
@@ -67,7 +65,7 @@ interface JSONRPCResponse {
   id: number;
 }
 
-export function PreviewPane({ projectId, activeTab, onToggleView, projectName, onFirstInteraction: _onFirstInteraction, isPreviewable = true }: PreviewPaneProps) {
+export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable = true }: PreviewPaneProps) {
   const { t } = useTranslation();
   const { config } = useAppContext();
   const { previewDomain } = config;

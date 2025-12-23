@@ -37,10 +37,7 @@ export default {
     // Strip `ai.` and `api.` subdomains for a better chance at finding a favicon
     hostname = hostname.replace(/^(ai\.|api\.)/, '');
 
-    return fetchFavicon(hostname);
+    // Fetch the favicon from DuckDuckGo's service
+    return fetch(`https://external-content.duckduckgo.com/ip3/${hostname}.ico`);
   },
 };
-
-function fetchFavicon(hostname: string): Promise<Response> {
-  return fetch(`https://external-content.duckduckgo.com/ip3/${hostname}.ico`);
-}

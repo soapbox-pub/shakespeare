@@ -10,7 +10,7 @@ import { useBuildProject } from '@/hooks/useBuildProject';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { FolderOpen, ArrowLeft, Bug, Copy, Check, Loader2, Code, X, Terminal, Expand, Shrink } from 'lucide-react';
+import { FolderOpen, ArrowLeft, Bug, Copy, Check, Loader2, Code, X, Terminal, Expand, Shrink, Hammer } from 'lucide-react';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { GitStatusIndicator } from '@/components/GitStatusIndicator';
 import { BrowserAddressBar } from '@/components/ui/browser-address-bar';
@@ -523,7 +523,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
           <Button
             variant="ghost"
             size="sm"
-            className="h-8 w-8 p-0 relative"
+            className="h-8 gap-2 relative"
           >
             <Bug className="h-4 w-4" />
             {hasConsoleErrors && (
@@ -642,7 +642,26 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
                 </div>
 
                 {/* Right side - actions */}
-                <div className="flex items-center">
+                <div className="flex items-center gap-1">
+                  {/* Build button */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => buildProject(undefined, {
+                      onError: (error) => {
+                        console.error('Build failed:', error);
+                      }
+                    })}
+                    disabled={isBuildLoading}
+                    className="h-8 gap-2"
+                    title="Build project"
+                  >
+                    {isBuildLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Hammer className="h-4 w-4" />
+                    )}
+                  </Button>
                   {(!isMobile && onToggleView && isPreviewable) && (
                     <Button
                       variant="ghost"

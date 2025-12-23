@@ -161,7 +161,7 @@ export function ConfigureRepoStep({
         </div>
 
         <p className="text-sm text-muted-foreground">
-          Push your code to Nostr with one click. Your repository will be stored on Nostr relays.
+          Push your code to Nostr with one click. Your repository will be stored on public Nostr relays.
         </p>
 
         {error && (
@@ -171,13 +171,6 @@ export function ConfigureRepoStep({
         )}
 
         <div className="flex gap-2">
-          <Button
-            onClick={onBack}
-            variant="outline"
-            className="flex-1"
-          >
-            Back
-          </Button>
           <Button
             onClick={handlePushInitial}
             disabled={isPushing}
@@ -225,13 +218,6 @@ export function ConfigureRepoStep({
       )}
 
       <div className="flex gap-2">
-        <Button
-          onClick={onBack}
-          variant="outline"
-          className="flex-1"
-        >
-          Back
-        </Button>
         <Button
           onClick={handlePushInitial}
           disabled={isPushing || !repositoryUrl.trim()}

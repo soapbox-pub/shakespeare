@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Zap, GitBranch, Copy, Check, RefreshCw, EllipsisVertical, CloudOff } from 'lucide-react';
+import { Zap, GitBranch, Copy, Check, RefreshCw, EllipsisVertical, CloudOff, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,6 +17,7 @@ import { useGit } from '@/hooks/useGit';
 import { useFSPaths } from '@/hooks/useFSPaths';
 import type { StepProps } from '../types';
 import { cn } from '@/lib/utils';
+import { NostrURI } from '@/lib/NostrURI';
 
 export function SyncStep({ projectId }: StepProps) {
   const [isSyncing, setIsSyncing] = useState(false);
@@ -98,6 +99,31 @@ export function SyncStep({ projectId }: StepProps) {
     }
   };
 
+  const handleOpenExternal = async () => {
+    if (!originRemote) return;
+
+    try {
+      let externalUrl: string;
+
+      if (originRemote.url.startsWith('https://')) {
+        // For HTTPS URLs, open directly
+        externalUrl = originRemote.url;
+      } else if (originRemote.url.startsWith('nostr://')) {
+        // For Nostr URLs, parse and convert to naddr, then link to nostrhub.io
+        const nostrUri = await NostrURI.parse(originRemote.url);
+        const naddr = nostrUri.toNaddr();
+        externalUrl = `https://nostrhub.io/${naddr}`;
+      } else {
+        // Unsupported URL type
+        return;
+      }
+
+      window.open(externalUrl, '_blank', 'noopener,noreferrer');
+    } catch (err) {
+      console.error('Failed to open external URL:', err);
+    }
+  };
+
   const getProviderInfo = () => {
     if (!originRemote) return null;
 
@@ -143,19 +169,29 @@ export function SyncStep({ projectId }: StepProps) {
           {providerInfo?.icon}
           <h3 className="font-semibold">{providerInfo?.name}</h3>
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
-              <EllipsisVertical className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={handleDisconnect} className="text-destructive">
-              <CloudOff className="h-4 w-4 mr-2" />
-              Disconnect
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={handleOpenExternal}
+          >
+            <ExternalLink className="h-4 w-4" />
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <EllipsisVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleDisconnect} className="text-destructive">
+                <CloudOff className="h-4 w-4 mr-2" />
+                Disconnect
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       <div className="space-y-2">

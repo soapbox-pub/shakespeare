@@ -499,9 +499,9 @@ export class ProjectsManager {
     repoUrl: string;
     customId?: string;
     depth?: number;
-    remote?: string;
+    fork?: boolean;
   }): Promise<Project> {
-    const { name, repoUrl, customId, depth, remote } = options;
+    const { name, repoUrl, customId, depth, fork = false } = options;
     const id = customId || await this.generateUniqueProjectId(name);
 
     // Check if project with this ID already exists when using custom ID
@@ -515,12 +515,13 @@ export class ProjectsManager {
 
     try {
       // Clone the repository (Git class now handles Nostr URIs automatically)
+      // When forking, use 'upstream' as the remote name instead of 'origin'
       await this.git.clone({
         dir: projectPath,
         url: repoUrl,
         singleBranch: true,
         depth, // Use depth if provided, otherwise clone full history
-        remote, // Use remote if provided, otherwise defaults to 'origin'
+        remote: fork ? 'upstream' : undefined, // Use 'upstream' for forks, otherwise defaults to 'origin'
       });
 
       // Get filesystem stats for timestamps

@@ -1288,9 +1288,9 @@ export class Git {
       throw lastError || new Error('All clone attempts failed');
     }
 
-    // After successful clone, update the origin remote to point to the Nostr URI
+    // After successful clone, update the remote to point to the Nostr URI
     await this.setRemoteURL({
-      remote: 'origin',
+      remote: options.remote || 'origin',
       dir: options.dir,
       url: options.url,
     });

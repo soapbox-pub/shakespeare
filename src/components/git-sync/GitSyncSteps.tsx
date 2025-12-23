@@ -25,6 +25,8 @@ export function GitSyncSteps({ projectId, onClose }: GitSyncStepsProps) {
   useEffect(() => {
     if (hasRemote && currentStep === 'select-provider') {
       setCurrentStep('sync');
+    } else if (!hasRemote && currentStep === 'sync') {
+      setCurrentStep('select-provider');
     }
   }, [hasRemote, currentStep]);
 

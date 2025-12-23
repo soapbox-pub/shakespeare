@@ -1,9 +1,15 @@
 import { useState } from 'react';
-import { Zap, GitBranch, Copy, Check, RefreshCw } from 'lucide-react';
+import { Zap, GitBranch, Copy, Check, RefreshCw, EllipsisVertical, CloudOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { ExternalFavicon } from '@/components/ExternalFavicon';
 import { useGitStatus } from '@/hooks/useGitStatus';
 import { useGitSettings } from '@/hooks/useGitSettings';
@@ -77,6 +83,21 @@ export function SyncStep({ projectId }: StepProps) {
     }
   };
 
+  const handleDisconnect = async () => {
+    if (!originRemote) return;
+
+    try {
+      const dir = `${projectsPath}/${projectId}`;
+      await git.deleteRemote({
+        dir,
+        remote: 'origin',
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to disconnect';
+      setError(message);
+    }
+  };
+
   const getProviderInfo = () => {
     if (!originRemote) return null;
 
@@ -117,9 +138,24 @@ export function SyncStep({ projectId }: StepProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        {providerInfo?.icon}
-        <h3 className="font-semibold">{providerInfo?.name}</h3>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          {providerInfo?.icon}
+          <h3 className="font-semibold">{providerInfo?.name}</h3>
+        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-8 w-8">
+              <EllipsisVertical className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={handleDisconnect} className="text-destructive">
+              <CloudOff className="h-4 w-4 mr-2" />
+              Disconnect
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <div className="space-y-2">

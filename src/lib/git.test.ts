@@ -12,6 +12,7 @@ vi.mock('nostr-tools', () => ({
   nip19: {
     decode: vi.fn(),
     naddrEncode: vi.fn(),
+    npubEncode: vi.fn((pubkey: string) => `npub1${pubkey.slice(0, 10)}`),
   },
 }));
 vi.mock('@nostrify/nostrify', () => ({

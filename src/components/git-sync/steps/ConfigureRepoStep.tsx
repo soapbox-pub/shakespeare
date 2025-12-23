@@ -11,11 +11,11 @@ import { useNostr } from '@nostrify/react';
 import { useNostrPublish } from '@/hooks/useNostrPublish';
 import { useFS } from '@/hooks/useFS';
 import { Link } from 'react-router-dom';
-import { nip19 } from 'nostr-tools';
 import { createRepositoryAnnouncementEvent } from '@/lib/announceRepository';
 import { DotAI } from '@/lib/DotAI';
 import type { ConfigureRepoStepProps } from '../types';
 import type { NostrEvent } from '@nostrify/nostrify';
+import { NostrURI } from '@/lib/NostrURI';
 
 export function ConfigureRepoStep({
   projectId,
@@ -90,13 +90,13 @@ export function ConfigureRepoStep({
         }
 
         // Construct Nostr URI
-        const nostrUri = `nostr://${nip19.npubEncode(repoEvent.pubkey)}/${projectId}`;
+        const nostrURI = new NostrURI({ pubkey: repoEvent.pubkey, identifier: projectId });
 
         // Configure the Nostr URI as the origin
         await git.addRemote({
           dir,
           remote: 'origin',
-          url: nostrUri,
+          url: nostrURI.toString(),
           force: true,
         });
 

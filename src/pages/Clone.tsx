@@ -24,6 +24,7 @@ import { useQuery } from '@tanstack/react-query';
 import { nip19 } from 'nostr-tools';
 import { NSchema as n } from '@nostrify/nostrify';
 import type { NostrMetadata } from '@nostrify/nostrify';
+import { NostrURI } from '@/lib/NostrURI';
 
 export default function Clone() {
   const { t } = useTranslation();
@@ -83,20 +84,18 @@ export default function Clone() {
     description: t('cloneGitRepository'),
   });
 
-  const extractRepoName = (url: string): string => {
+  const extractRepoName = async (url: string): Promise<string> => {
     try {
       const cleanUrl = url.trim();
 
       // Handle Nostr clone URIs
       if (cleanUrl.startsWith('nostr://')) {
-        const path = cleanUrl.slice(8); // Remove 'nostr://' prefix
-        const parts = path.split('/');
-
-        // Return the d-tag (last part) as the repo name
-        if (parts.length >= 2) {
-          return parts[parts.length - 1] || 'nostr-repo';
+        try {
+          const nostrURI = await NostrURI.parse(cleanUrl);
+          return nostrURI.identifier || 'nostr-repo';
+        } catch {
+          return 'nostr-repo';
         }
-        return 'nostr-repo';
       }
 
       // Extract from GitHub URLs, GitLab URLs, etc.
@@ -154,7 +153,7 @@ export default function Clone() {
       await projectsManager.init();
 
       // Extract repository name
-      const repoName = extractRepoName(targetUrl);
+      const repoName = await extractRepoName(targetUrl);
 
       // Clone the repository (Git class handles both regular Git URLs and Nostr URIs)
       const project = await projectsManager.cloneProject(repoName, targetUrl.trim());
@@ -254,7 +253,7 @@ export default function Clone() {
     }
 
     const lowerQuery = query.toLowerCase();
-    
+
     return repos.filter((repo) => {
       // Filter by repository name
       if (repo.name.toLowerCase().includes(lowerQuery)) {
@@ -404,7 +403,7 @@ export default function Clone() {
                   Follows
                 </TabsTrigger>
               </TabsList>
-              
+
               {/* Search Input */}
               {(repositories.length > 0 || followedRepositories.length > 0) && (
                 <div className="relative flex-1 min-w-[200px] max-w-md">

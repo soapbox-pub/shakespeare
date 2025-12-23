@@ -1,9 +1,8 @@
 import git, { AuthCallback, FetchResult, GitHttpRequest, GitHttpResponse, HttpClient } from 'isomorphic-git';
-import { NIP05 } from '@nostrify/nostrify';
-import { nip19 } from 'nostr-tools';
 import { proxyUrl } from './proxyUrl';
 import { readGitSettings } from './configUtils';
 import { parseRepositoryAnnouncement, RepositoryAnnouncement } from './announceRepository';
+import { NostrURI } from './NostrURI';
 import type { NostrEvent, NostrSigner, NPool } from '@nostrify/nostrify';
 import type { JSRuntimeFS } from './JSRuntime';
 
@@ -15,12 +14,6 @@ export interface GitOptions {
   systemAuthor?: { name: string; email: string };
   onAuth?: AuthCallback;
   signer?: NostrSigner;
-}
-
-interface NostrCloneURI {
-  pubkey: string;
-  d: string;
-  relay?: string;
 }
 
 /**
@@ -62,10 +55,7 @@ export class Git {
   async clone(options: Omit<Parameters<typeof git.clone>[0], 'fs' | 'http' | 'corsProxy'>) {
     // Check if the URL is a Nostr URI
     if (options.url.startsWith('nostr://')) {
-      const nostrURI = await this.parseNostrCloneURI(options.url);
-      if (!nostrURI) {
-        throw new Error('Invalid Nostr clone URI format');
-      }
+      const nostrURI = await NostrURI.parse(options.url);
       // Try cloning from Nostr
       return this.nostrClone(nostrURI, options);
     }
@@ -111,7 +101,7 @@ export class Git {
   // Commits and history
   async commit(options: Omit<Parameters<typeof git.commit>[0], 'fs' | 'author'>) {
     const { author, coAuthorEnabled } = await this.getGitSettings();
-    
+
     // Add system co-author if enabled
     let message = options.message;
     if (coAuthorEnabled) {
@@ -201,7 +191,8 @@ export class Git {
   async getRemoteInfo(options: Omit<Parameters<typeof git.getRemoteInfo>[0], 'http' | 'corsProxy'>) {
     // Check if the URL is a Nostr URI
     if (options.url.startsWith('nostr://')) {
-      return this.getNostrRemoteInfo(options.url);
+      const nostrURI = await NostrURI.parse(options.url);
+      return this.getNostrRemoteInfo(nostrURI);
     }
 
     return git.getRemoteInfo({
@@ -218,7 +209,8 @@ export class Git {
     const remoteUrl = await this.getRemoteURL(dir, remote);
 
     if (remoteUrl && remoteUrl.startsWith('nostr://')) {
-      return this.nostrFetch(remoteUrl, { ...options, remote, dir });
+      const nostrURI = await NostrURI.parse(remoteUrl);
+      return this.nostrFetch(nostrURI, { ...options, remote, dir });
     }
 
     // Regular Git fetch
@@ -238,7 +230,8 @@ export class Git {
     const { author } = await this.getGitSettings();
 
     if (remoteUrl && remoteUrl.startsWith('nostr://')) {
-      return this.nostrPull(remoteUrl, { ...options, author, remote, dir });
+      const nostrURI = await NostrURI.parse(remoteUrl);
+      return this.nostrPull(nostrURI, { ...options, author, remote, dir });
     }
 
     // Regular Git pull
@@ -258,7 +251,8 @@ export class Git {
     const remoteUrl = await this.getRemoteURL(dir, remote);
 
     if (remoteUrl && remoteUrl.startsWith('nostr://')) {
-      return this.nostrPush(remoteUrl, { ...options, remote, dir: dir });
+      const nostrURI = await NostrURI.parse(remoteUrl);
+      return this.nostrPush(nostrURI, { ...options, remote, dir: dir });
     }
 
     return git.push({
@@ -613,18 +607,12 @@ export class Git {
   /**
    * Get remote info for a Nostr repository URI
    */
-  private async getNostrRemoteInfo(nostrUrl: string): Promise<{
+  private async getNostrRemoteInfo(nostrURI: NostrURI): Promise<{
     capabilities: string[];
     refs: Record<string, string>;
     HEAD?: string;
   }> {
-    // Parse the Nostr URI
-    const nostrURI = await this.parseNostrCloneURI(nostrUrl);
-    if (!nostrURI) {
-      throw new Error('Invalid Nostr URI format');
-    }
-
-    console.log(`Getting remote info for Nostr repository: ${nostrUrl}`);
+    console.log(`Getting remote info for Nostr repository: ${nostrURI.toString()}`);
 
     // Fetch the repository announcement and state from Nostr
     const { repo, state } = await this.fetchNostrRepoEvents(nostrURI);
@@ -910,63 +898,7 @@ export class Git {
     return { valid, warnings };
   }
 
-  private async parseNostrCloneURI(uri: string): Promise<NostrCloneURI | null> {
-    try {
-      if (!uri.startsWith('nostr://')) {
-        return null;
-      }
 
-      const path = uri.slice(8); // Remove 'nostr://' prefix
-      const parts = path.split('/');
-
-      if (parts.length < 2) {
-        return null;
-      }
-
-      const identifier = parts[0];
-      let pubkey: string;
-
-      // Try to decode as npub first, otherwise assume it's already a hex pubkey
-      try {
-        const decoded = nip19.decode(identifier);
-        if (decoded.type === 'npub') {
-          pubkey = decoded.data;
-        } else {
-          return null;
-        }
-      } catch {
-        // If decoding fails, check if it's a NIP-05 identifier
-        if (identifier.split('@').length === 2) {
-          const pointer = await NIP05.lookup(identifier, {
-            signal: AbortSignal.timeout(3000),
-          });
-          pubkey = pointer.pubkey;
-        } else {
-          return null;
-        }
-      }
-
-      // Check if we have relay and d-tag or just d-tag
-      if (parts.length === 3) {
-        // Format: nostr://npub/relay/d
-        return {
-          pubkey,
-          relay: `wss://${parts[1]}/`,
-          d: parts[2],
-        };
-      } else if (parts.length === 2) {
-        // Format: nostr://npub/d
-        return {
-          pubkey,
-          d: parts[1],
-        };
-      }
-
-      return null;
-    } catch {
-      return null;
-    }
-  }
 
   /**
    * Process GRASP server mismatch between configured servers and announcement servers.
@@ -994,7 +926,7 @@ export class Git {
     }
   }
 
-  private async fetchNostrRepoEvents(nostrURI: NostrCloneURI): Promise<{
+  private async fetchNostrRepoEvents(nostrURI: NostrURI): Promise<{
     repo: RepositoryAnnouncement;
     state?: RespositoryState;
     serversWithoutAnnouncement?: string[];
@@ -1007,7 +939,7 @@ export class Git {
     const filter = {
       kinds: [30617, 30618],
       authors: [nostrURI.pubkey],
-      '#d': [nostrURI.d],
+      '#d': [nostrURI.identifier],
     };
 
     // Track all servers we've queried to avoid duplicates
@@ -1172,7 +1104,7 @@ export class Git {
     };
   }
 
-  private async nostrClone(nostrURI: NostrCloneURI, options: Omit<Parameters<typeof git.clone>[0], 'fs' | 'http' | 'corsProxy'>): Promise<void> {
+  private async nostrClone(nostrURI: NostrURI, options: Omit<Parameters<typeof git.clone>[0], 'fs' | 'http' | 'corsProxy'>): Promise<void> {
     // Fetch events from Nostr
     const { repo, state } = await this.fetchNostrRepoEvents(nostrURI);
 
@@ -1367,11 +1299,7 @@ export class Git {
     await this.setConfig({
       dir: options.dir,
       path: 'nostr.repo',
-      value: nip19.naddrEncode({
-        kind: 30617,
-        pubkey: nostrURI.pubkey,
-        identifier: nostrURI.d,
-      })
+      value: nostrURI.toNaddr(30617),
     });
 
     // Validate the cloned repository against the expected state
@@ -1671,14 +1599,8 @@ export class Git {
     return differences;
   }
 
-  private async nostrFetch(nostrUrl: string, options: Omit<Parameters<typeof git.fetch>[0], 'fs' | 'http' | 'corsProxy'> & { remote: string; dir: string }): Promise<FetchResult> {
-    // Parse the Nostr URI
-    const nostrURI = await this.parseNostrCloneURI(nostrUrl);
-    if (!nostrURI) {
-      throw new Error('Invalid Nostr URI format');
-    }
-
-    console.log(`Fetching updates from Nostr repository: ${nostrUrl}`);
+  private async nostrFetch(nostrURI: NostrURI, options: Omit<Parameters<typeof git.fetch>[0], 'fs' | 'http' | 'corsProxy'> & { remote: string; dir: string }): Promise<FetchResult> {
+    console.log(`Fetching updates from Nostr repository: ${nostrURI.toString()}`);
 
     // Fetch the latest repository state from Nostr
     const { repo, state, serversWithoutLatestAnnouncement, serversWithoutLatestState } = await this.fetchNostrRepoEvents(nostrURI);
@@ -1765,9 +1687,9 @@ export class Git {
     }
   }
 
-  private async nostrPull(nostrUrl: string, options: Omit<Parameters<typeof git.pull>[0], 'fs' | 'http' | 'corsProxy'> & { remote: string; dir: string }): Promise<void> {
+  private async nostrPull(nostrURI: NostrURI, options: Omit<Parameters<typeof git.pull>[0], 'fs' | 'http' | 'corsProxy'> & { remote: string; dir: string }): Promise<void> {
     // First, fetch the latest state
-    const fetchResult = await this.nostrFetch(nostrUrl, options);
+    const fetchResult = await this.nostrFetch(nostrURI, options);
 
     // Get the current branch
     const currentBranch = await git.currentBranch({ fs: this.fs, dir: options.dir });
@@ -1853,7 +1775,7 @@ export class Git {
     }
   }
 
-  private async nostrPush(nostrUrl: string, options: Omit<Parameters<typeof git.push>[0], 'fs' | 'http' | 'onAuth' | 'corsProxy'>) {
+  private async nostrPush(nostrURI: NostrURI, options: Omit<Parameters<typeof git.push>[0], 'fs' | 'http' | 'onAuth' | 'corsProxy'>) {
     if (!this.signer) {
       throw new Error('Nostr signer is required for pushing to Nostr repositories');
     }
@@ -1863,13 +1785,7 @@ export class Git {
     const remoteRef = options.remoteRef || ref;
     const force = options.force || false;
 
-    // Parse the Nostr URI
-    const nostrURI = await this.parseNostrCloneURI(nostrUrl);
-    if (!nostrURI) {
-      throw new Error('Invalid Nostr URI format');
-    }
-
-    console.log(`Pushing to Nostr repository: ${nostrUrl}`);
+    console.log(`Pushing to Nostr repository: ${nostrURI.toString()}`);
 
     // Fetch the repository announcement and state to get relay information and current remote state
     // Also check which servers don't have the latest announcement
@@ -2005,7 +1921,7 @@ export class Git {
       stateEvent = await this.applyPushAndUpdateStateEvent(state, remoteRef, localCommit, this.signer);
     } else {
       // No existing state event - create initial state from repository
-      stateEvent = await this.createInitialRepositoryState(dir, nostrURI.d, this.signer);
+      stateEvent = await this.createInitialRepositoryState(dir, nostrURI.identifier, this.signer);
     }
 
     // Publish the state event to Nostr relays

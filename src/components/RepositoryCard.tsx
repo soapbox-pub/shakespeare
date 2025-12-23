@@ -8,7 +8,7 @@ import { useAuthor } from '@/hooks/useAuthor';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { genUserName } from '@/lib/genUserName';
 import { useNavigate } from 'react-router-dom';
-import { nip19 } from 'nostr-tools';
+import { NostrURI } from '@/lib/NostrURI';
 
 interface RepositoryCardProps {
   repo: Repository;
@@ -22,11 +22,11 @@ export function RepositoryCard({ repo }: RepositoryCardProps) {
   const profileImage = authorData?.metadata?.picture;
 
   // Construct Nostr clone URL
-  const nostrCloneUrl = `nostr://${nip19.npubEncode(repo.pubkey)}/${repo.repoId}`;
+  const nostrURI = new NostrURI({ pubkey: repo.pubkey, identifier: repo.repoId });
 
   const handleClone = () => {
     // Navigate to clone page with Nostr URL parameter
-    navigate(`/clone?url=${encodeURIComponent(nostrCloneUrl)}`);
+    navigate(`/clone?url=${encodeURIComponent(nostrURI.toString())}`);
   };
 
   return (

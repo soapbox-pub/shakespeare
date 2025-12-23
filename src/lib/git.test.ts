@@ -390,9 +390,14 @@ describe('Git', () => {
       getPublicKey: vi.fn().mockResolvedValue('abcd1234567890abcdef1234567890abcdef1234567890abcdef1234567890ab'),
     };
 
+    let gitInstanceWithSigner: Git;
+
     beforeEach(() => {
       // Mock timers to avoid waiting 5 seconds
       vi.useFakeTimers();
+
+      // Create a Git instance with a signer
+      gitInstanceWithSigner = new Git({ fs, nostr, corsProxy, signer: mockSigner });
 
       mockGit.push = vi.fn().mockResolvedValue(undefined);
       mockGit.listRemotes = vi.fn().mockResolvedValue([
@@ -459,12 +464,11 @@ describe('Git', () => {
       mockGit.isDescendent = vi.fn().mockResolvedValue(false);
 
       await expect(
-        gitInstance.push({
+        gitInstanceWithSigner.push({
           dir: '/test',
           remote: 'origin',
           ref: 'main',
           force: false,
-          signer: mockSigner,
         })
       ).rejects.toThrow('Updates were rejected');
     });
@@ -474,12 +478,11 @@ describe('Git', () => {
       mockGit.isDescendent = vi.fn().mockResolvedValue(false);
 
       // Should not throw with force flag
-      const pushPromise = gitInstance.push({
+      const pushPromise = gitInstanceWithSigner.push({
         dir: '/test',
         remote: 'origin',
         ref: 'main',
         force: true,
-        signer: mockSigner,
       });
 
       // Advance timers to skip the 5 second wait
@@ -496,12 +499,11 @@ describe('Git', () => {
       mockGit.isDescendent = vi.fn().mockResolvedValue(true);
 
       // Should not throw
-      const pushPromise = gitInstance.push({
+      const pushPromise = gitInstanceWithSigner.push({
         dir: '/test',
         remote: 'origin',
         ref: 'main',
         force: false,
-        signer: mockSigner,
       });
 
       // Advance timers to skip the 5 second wait
@@ -517,12 +519,11 @@ describe('Git', () => {
       // Mock resolveRef to return the same commit as remote
       mockGit.resolveRef = vi.fn().mockResolvedValue('remotecommit456');
 
-      await gitInstance.push({
+      await gitInstanceWithSigner.push({
         dir: '/test',
         remote: 'origin',
         ref: 'main',
         force: false,
-        signer: mockSigner,
       });
 
       // Should not have attempted to push (already up-to-date)
@@ -552,12 +553,11 @@ describe('Git', () => {
       nostr.relay = vi.fn().mockReturnValue(mockRelay);
 
       // Should not throw even if not a fast-forward (no state to check against)
-      const pushPromise = gitInstance.push({
+      const pushPromise = gitInstanceWithSigner.push({
         dir: '/test',
         remote: 'origin',
         ref: 'main',
         force: false,
-        signer: mockSigner,
       });
 
       // Advance timers to skip the 5 second wait
@@ -605,12 +605,11 @@ describe('Git', () => {
       nostr.relay = vi.fn().mockReturnValue(mockRelay);
 
       // Should not throw (no matching ref in state)
-      const pushPromise = gitInstance.push({
+      const pushPromise = gitInstanceWithSigner.push({
         dir: '/test',
         remote: 'origin',
         ref: 'main',
         force: false,
-        signer: mockSigner,
       });
 
       // Advance timers to skip the 5 second wait
@@ -658,12 +657,11 @@ describe('Git', () => {
 
       nostr.group = vi.fn().mockReturnValue(mockGroupRelay);
 
-      const pushPromise = gitInstance.push({
+      const pushPromise = gitInstanceWithSigner.push({
         dir: '/test',
         remote: 'origin',
         ref: 'main',
         force: false,
-        signer: mockSigner,
       });
 
       // Advance timers to skip the 5 second wait

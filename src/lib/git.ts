@@ -14,6 +14,7 @@ export interface GitOptions {
   ngitServers?: string[];
   systemAuthor?: { name: string; email: string };
   onAuth?: AuthCallback;
+  signer?: NostrSigner;
 }
 
 interface NostrCloneURI {
@@ -35,6 +36,7 @@ export class Git {
   private ngitServers: string[];
   private systemAuthor: { name: string; email: string };
   private onAuth?: AuthCallback;
+  private signer?: NostrSigner;
 
   constructor(options: GitOptions) {
     this.fs = options.fs;
@@ -46,6 +48,7 @@ export class Git {
       email: 'assistant@shakespeare.diy',
     };
     this.onAuth = options.onAuth;
+    this.signer = options.signer;
   }
 
   // Repository initialization and configuration
@@ -248,17 +251,14 @@ export class Git {
     });
   }
 
-  async push(options: Omit<Parameters<typeof git.push>[0], 'fs' | 'http' | 'onAuth' | 'corsProxy'> & { signer?: NostrSigner }) {
+  async push(options: Omit<Parameters<typeof git.push>[0], 'fs' | 'http' | 'onAuth' | 'corsProxy'>) {
     // Check if this is a Nostr repository by looking at the remote URL
     const remote = options.remote || 'origin';
     const dir = options.dir || '.';
     const remoteUrl = await this.getRemoteURL(dir, remote);
 
     if (remoteUrl && remoteUrl.startsWith('nostr://')) {
-      if (!options.signer) {
-        throw new Error('Nostr signer is required for pushing to Nostr repositories');
-      }
-      return this.nostrPush(remoteUrl, { ...options, remote, dir: dir, signer: options.signer });
+      return this.nostrPush(remoteUrl, { ...options, remote, dir: dir });
     }
 
     return git.push({
@@ -1853,8 +1853,11 @@ export class Git {
     }
   }
 
-  private async nostrPush(nostrUrl: string, options: Omit<Parameters<typeof git.push>[0], 'fs' | 'http' | 'onAuth' | 'corsProxy'> & { signer: NostrSigner }) {
-    const { signer, ...gitPushOptions } = options;
+  private async nostrPush(nostrUrl: string, options: Omit<Parameters<typeof git.push>[0], 'fs' | 'http' | 'onAuth' | 'corsProxy'>) {
+    if (!this.signer) {
+      throw new Error('Nostr signer is required for pushing to Nostr repositories');
+    }
+
     const dir = options.dir || '.';
     const ref = options.ref || 'HEAD';
     const remoteRef = options.remoteRef || ref;
@@ -1999,10 +2002,10 @@ export class Git {
       }
 
       // Apply push changes and create updated event
-      stateEvent = await this.applyPushAndUpdateStateEvent(state, remoteRef, localCommit, signer);
+      stateEvent = await this.applyPushAndUpdateStateEvent(state, remoteRef, localCommit, this.signer);
     } else {
       // No existing state event - create initial state from repository
-      stateEvent = await this.createInitialRepositoryState(dir, nostrURI.d, signer);
+      stateEvent = await this.createInitialRepositoryState(dir, nostrURI.d, this.signer);
     }
 
     // Publish the state event to Nostr relays
@@ -2041,7 +2044,7 @@ export class Git {
           onAuth: this.onAuth,
           dir,
           url: cloneUrl,
-          ...gitPushOptions,
+          ...options,
         });
 
         pushSuccessful = true;

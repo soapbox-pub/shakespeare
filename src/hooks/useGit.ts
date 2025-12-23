@@ -5,6 +5,7 @@ import { useNostr } from '@nostrify/react';
 import { useAppContext } from '@/hooks/useAppContext';
 import { findCredentialsForRepo } from '@/lib/gitCredentials';
 import { useGitSettings } from './useGitSettings';
+import { useCurrentUser } from './useCurrentUser';
 
 /**
  * Hook that provides a Git instance configured with the virtual filesystem
@@ -12,6 +13,7 @@ import { useGitSettings } from './useGitSettings';
  */
 export function useGit(): { git: Git } {
   const { fs } = useFS();
+  const { user } = useCurrentUser();
   const { nostr } = useNostr();
   const { config } = useAppContext();
   const { settings } = useGitSettings();
@@ -34,8 +36,15 @@ export function useGit(): { git: Git } {
   }, [settings.credentials]);
 
   const git = useMemo(() => {
-    return new Git({ fs, nostr, corsProxy, ngitServers, onAuth });
-  }, [fs, nostr, corsProxy, ngitServers, onAuth]);
+    return new Git({
+      fs,
+      nostr,
+      corsProxy,
+      ngitServers,
+      onAuth,
+      signer: user?.signer,
+    });
+  }, [fs, nostr, corsProxy, ngitServers, onAuth, user?.signer]);
 
   return { git };
 }

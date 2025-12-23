@@ -1,6 +1,5 @@
 import type { JSRuntimeFS } from "../../JSRuntime";
 import type { ShellCommandResult } from "../ShellCommand";
-import type { NostrSigner } from "@nostrify/nostrify";
 import { createSuccessResult, createErrorResult } from "../ShellCommand";
 import type { GitSubcommand, GitSubcommandOptions } from "../git";
 import type { Git } from "../../git";
@@ -12,12 +11,10 @@ export class GitPushCommand implements GitSubcommand {
 
   private git: Git;
   private fs: JSRuntimeFS;
-  private signer?: NostrSigner;
 
   constructor(options: GitSubcommandOptions) {
     this.git = options.git;
     this.fs = options.fs;
-    this.signer = options.signer;
   }
 
   async execute(args: string[], cwd: string): Promise<ShellCommandResult> {
@@ -69,7 +66,6 @@ export class GitPushCommand implements GitSubcommand {
           ref: targetBranch,
           remoteRef: targetBranch,
           force: options.force,
-          signer: this.signer,
         });
 
         return createSuccessResult(`To ${remoteUrl}\n   ${targetBranch} -> ${targetBranch}\n`);

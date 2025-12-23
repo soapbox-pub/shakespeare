@@ -38,7 +38,11 @@ export function GitSyncButton({ projectId, className }: GitSyncButtonProps) {
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-96">
+      <PopoverContent
+        align="start"
+        className="w-96"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
         <GitSyncSteps projectId={projectId} onClose={() => setOpen(false)} />
       </PopoverContent>
     </Popover>

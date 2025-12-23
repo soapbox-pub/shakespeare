@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { CloudUpload, Zap, GitBranch, Copy, Check } from 'lucide-react';
+import { CloudUpload, Zap, GitBranch, Copy, Check, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,7 +11,6 @@ import { useGitSettings } from '@/hooks/useGitSettings';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useGit } from '@/hooks/useGit';
 import { useFSPaths } from '@/hooks/useFSPaths';
-import { useToast } from '@/hooks/useToast';
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import type { GitCredential } from '@/contexts/GitSettingsContext';
@@ -44,7 +43,6 @@ export function GitSyncButton({ projectId, className }: GitSyncButtonProps) {
   const { user } = useCurrentUser();
   const { git } = useGit();
   const { projectsPath } = useFSPaths();
-  const { toast } = useToast();
 
   // Determine if we have a remote configured
   const originRemote = gitStatus?.remotes.find(r => r.name === 'origin');
@@ -177,12 +175,13 @@ export function GitSyncButton({ projectId, className }: GitSyncButtonProps) {
         });
 
         setSyncState('success');
-      }
 
-      toast({
-        title: 'Push Successful',
-        description: 'Your code has been synced to the remote repository.',
-      });
+        // Auto-dismiss after 2 seconds
+        setTimeout(() => {
+          setOpen(false);
+          setSyncState('default');
+        }, 2000);
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to push';
       setErrorMessage(message);
@@ -216,18 +215,17 @@ export function GitSyncButton({ projectId, className }: GitSyncButtonProps) {
         },
       });
 
-      toast({
-        title: 'Pull Successful',
-        description: 'Your local code has been updated from the remote repository.',
-      });
+      setSyncState('success');
+
+      // Auto-dismiss after 2 seconds
+      setTimeout(() => {
+        setOpen(false);
+        setSyncState('default');
+      }, 2000);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to pull';
       setErrorMessage(message);
-      toast({
-        title: 'Pull Failed',
-        description: message,
-        variant: 'destructive',
-      });
+      setSyncState('error');
     } finally {
       setIsPushing(false);
     }
@@ -257,18 +255,17 @@ export function GitSyncButton({ projectId, className }: GitSyncButtonProps) {
         },
       });
 
-      toast({
-        title: 'Push Successful',
-        description: 'Your code has been synced to the remote repository.',
-      });
+      setSyncState('success');
+
+      // Auto-dismiss after 2 seconds
+      setTimeout(() => {
+        setOpen(false);
+        setSyncState('default');
+      }, 2000);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to push';
       setErrorMessage(message);
-      toast({
-        title: 'Push Failed',
-        description: message,
-        variant: 'destructive',
-      });
+      setSyncState('error');
     } finally {
       setIsPushing(false);
     }
@@ -391,22 +388,17 @@ export function GitSyncButton({ projectId, className }: GitSyncButtonProps) {
     // Success state
     if (syncState === 'success') {
       return (
-        <div className="space-y-4">
-          <Alert>
-            <AlertDescription className="text-sm">
-              Successfully synced to remote repository!
-            </AlertDescription>
-          </Alert>
-
-          <Button
-            onClick={() => {
-              setOpen(false);
-              setSyncState('default');
-            }}
-            className="w-full"
-          >
-            Done
-          </Button>
+        <div className="flex flex-col items-center justify-center py-8 space-y-4">
+          <div className="relative">
+            <CheckCircle2 className="h-20 w-20 text-green-500 animate-in zoom-in duration-300" />
+            <div className="absolute inset-0 h-20 w-20 rounded-full bg-green-500/20 animate-ping" />
+          </div>
+          <div className="text-center space-y-1">
+            <h3 className="font-semibold text-lg">Successfully Synced!</h3>
+            <p className="text-sm text-muted-foreground">
+              Your code has been synced to the remote repository.
+            </p>
+          </div>
         </div>
       );
     }

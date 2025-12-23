@@ -10,17 +10,11 @@ import { useBuildProject } from '@/hooks/useBuildProject';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { FolderOpen, ArrowLeft, Bug, Copy, Check, Play, Loader2, MenuIcon, Code, Rocket, X, Terminal, Expand, Shrink } from 'lucide-react';
+import { FolderOpen, ArrowLeft, Bug, Copy, Check, Loader2, Code, X, Terminal, Expand, Shrink } from 'lucide-react';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { GitStatusIndicator } from '@/components/GitStatusIndicator';
 import { BrowserAddressBar } from '@/components/ui/browser-address-bar';
 import { type DeviceMode } from '@/components/ui/device-toggle';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import {
   Popover,
   PopoverContent,
@@ -29,7 +23,6 @@ import {
 import { cn } from '@/lib/utils';
 import { FileTree } from './FileTree';
 import { FileEditor } from './FileEditor';
-import { DeployDialog } from '@/components/DeployDialog';
 import { Terminal as TerminalComponent } from '@/components/Terminal';
 import { useSearchParams } from 'react-router-dom';
 import { useAppContext } from '@/hooks/useAppContext';
@@ -89,7 +82,6 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
   const [navigationHistory, setNavigationHistory] = useState<string[]>(['/']);
   const [historyIndex, setHistoryIndex] = useState(0);
 
-  const [deployDialogOpen, setDeployDialogOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [deviceMode, setDeviceMode] = useState<DeviceMode>('laptop');
   const previewContainerRef = useRef<HTMLDivElement>(null);
@@ -105,14 +97,6 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
 
   const [searchParams, setSearchParams] = useSearchParams();
   const [shouldBuild, setShouldBuild] = useState(false);
-
-  const handleBuildProject = useCallback(() => {
-    buildProject(undefined, {
-      onError: (error) => {
-        console.error('Build failed:', error);
-      }
-    });
-  }, [buildProject]);
 
   // Handle "build" URL parameter on initial load
   useEffect(() => {
@@ -130,9 +114,13 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
   useEffect(() => {
     if (shouldBuild && isPreviewable && !isBuildLoading) {
       setShouldBuild(false);
-      handleBuildProject();
+      buildProject(undefined, {
+        onError: (error) => {
+          console.error('Build failed:', error);
+        }
+      });
     }
-  }, [isBuildLoading, isPreviewable, handleBuildProject, shouldBuild]);
+  }, [isBuildLoading, isPreviewable, buildProject, shouldBuild]);
 
   const loadFileContent = useCallback(async (filePath: string) => {
     // Skip loading media files - they can't be edited as text
@@ -502,7 +490,11 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
       // Automatically trigger a rebuild after saving a file
       if (isPreviewable) {
         console.log('File saved, triggering rebuild...');
-        handleBuildProject();
+        buildProject(undefined, {
+          onError: (error) => {
+            console.error('Build failed:', error);
+          }
+        });
       }
     } catch (error) {
       console.error('Failed to save file:', error);
@@ -608,47 +600,6 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
     );
   };
 
-  const Menu = () => {
-    const isAnyLoading = isBuildLoading;
-
-    return (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 p-0"
-          >
-            <MenuIcon className="h-4 w-4" />
-            <span className="sr-only">Open menu</span>
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-48 sm:w-48 z-[9999]">
-          <DropdownMenuItem
-            onClick={handleBuildProject}
-            disabled={isBuildLoading}
-            className="gap-2"
-          >
-            {isBuildLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Play className="h-4 w-4" />
-            )}
-            {isBuildLoading ? 'Building...' : 'Build'}
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => setDeployDialogOpen(true)}
-            disabled={isAnyLoading}
-            className="gap-2"
-          >
-            <Rocket className="h-4 w-4" />
-            Deploy
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    );
-  };
-
   return (
     <div className="h-full">
       <Tabs value={activeTab} className="h-full">
@@ -705,7 +656,6 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
                     </Button>
                   )}
                   <ConsoleDropdown />
-                  <Menu />
                 </div>
               </div>
 
@@ -733,27 +683,9 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
                   <div className="h-full w-full flex items-center justify-center bg-muted">
                     <div className="text-center">
                       <h3 className="text-lg font-semibold mb-2">{t('projectPreview')}</h3>
-                      <p className="text-muted-foreground mb-4">
+                      <p className="text-muted-foreground">
                         {t('buildProjectToSeePreview')}
                       </p>
-                      <Button
-                        onClick={handleBuildProject}
-                        disabled={isBuildLoading}
-                        variant="outline"
-                        className="gap-2"
-                      >
-                        {isBuildLoading ? (
-                          <>
-                            <Loader2 className="h-5 w-5 animate-spin" />
-                            Building...
-                          </>
-                        ) : (
-                          <>
-                            <Play className="h-5 w-5" />
-                            Build Project
-                          </>
-                        )}
-                      </Button>
                     </div>
                   </div>
                 )}
@@ -953,16 +885,6 @@ export function PreviewPane({ projectId, activeTab, onToggleView, projectName, o
           )}
         </TabsContent>
       </Tabs>
-
-      {/* Deploy Dialog */}
-      {projectName && (
-        <DeployDialog
-          projectId={projectId}
-          projectName={projectName}
-          open={deployDialogOpen}
-          onOpenChange={setDeployDialogOpen}
-        />
-      )}
     </div>
   );
 }

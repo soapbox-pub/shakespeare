@@ -2,13 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Rocket, ExternalLink, AlertCircle, Settings, Cloud } from 'lucide-react';
 import { ExternalFavicon } from '@/components/ExternalFavicon';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -93,11 +86,10 @@ function renderProviderIcon(provider: DeployProvider, size = 14) {
   return <Rocket size={size} />;
 }
 
-interface DeployDialogProps {
+interface DeployStepsProps {
   projectId: string;
   projectName: string;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+  onClose: () => void;
 }
 
 interface ShakespeareFormData {
@@ -126,7 +118,7 @@ interface DenoDeployFormData {
   projectName: string;
 }
 
-export function DeployDialog({ projectId, projectName, open, onOpenChange }: DeployDialogProps) {
+export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProps) {
   const { t } = useTranslation();
   const { settings } = useDeploySettings();
   const { settings: projectSettings, updateSettings: updateProjectSettings } = useProjectDeploySettings(projectId);
@@ -164,21 +156,19 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
     projectName: projectName || projectId,
   });
 
-  // Load project settings when dialog opens
+  // Load project settings when component mounts
   useEffect(() => {
-    if (open) {
-      // First, try to use the currentProvider from project settings
-      if (projectSettings.currentProvider && settings.providers.some(p => p.id === projectSettings.currentProvider)) {
-        setSelectedProviderId(projectSettings.currentProvider);
-      } else {
-        // Otherwise, find the first configured provider in project settings
-        const providerIds = Object.keys(projectSettings.providers);
-        if (providerIds.length > 0) {
-          setSelectedProviderId(providerIds[0]);
-        }
+    // First, try to use the currentProvider from project settings
+    if (projectSettings.currentProvider && settings.providers.some(p => p.id === projectSettings.currentProvider)) {
+      setSelectedProviderId(projectSettings.currentProvider);
+    } else {
+      // Otherwise, find the first configured provider in project settings
+      const providerIds = Object.keys(projectSettings.providers);
+      if (providerIds.length > 0) {
+        setSelectedProviderId(providerIds[0]);
       }
     }
-  }, [open, projectSettings, settings.providers]);
+  }, [projectSettings, settings.providers]);
 
   const selectedProvider = settings.providers.find(p => p.id === selectedProviderId);
 
@@ -368,7 +358,7 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
     setVercelForm({ projectName: projectName || projectId, teamId: '' });
     setCloudflareForm({ projectName: projectName || projectId });
     setDenoDeployForm({ projectName: projectName || projectId });
-    onOpenChange(false);
+    onClose();
   };
 
   const handleShakespeareSubdomainChange = useCallback((subdomain: string) => {
@@ -508,200 +498,198 @@ export function DeployDialog({ projectId, projectName, open, onOpenChange }: Dep
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Rocket className="h-5 w-5" />
-            Deploy Project
-          </DialogTitle>
-          <DialogDescription>
-            Deploy your project to a hosting platform
-          </DialogDescription>
-        </DialogHeader>
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <h3 className="font-semibold text-lg flex items-center gap-2">
+          <Rocket className="h-5 w-5" />
+          Deploy Project
+        </h3>
+        <p className="text-sm text-muted-foreground">
+          Deploy your project to a hosting platform
+        </p>
+      </div>
 
-        {deployResult ? (
-          <div className="space-y-4">
-            <Alert>
-              <Rocket className="h-4 w-4" />
-              <AlertDescription>
-                Your project has been successfully deployed!
-              </AlertDescription>
-            </Alert>
+      {deployResult ? (
+        <div className="space-y-4">
+          <Alert>
+            <Rocket className="h-4 w-4" />
+            <AlertDescription>
+              Your project has been successfully deployed!
+            </AlertDescription>
+          </Alert>
 
-            <div className="space-y-2">
-              <Label>Deployed URL</Label>
-              <div className="flex gap-2">
-                <Input
-                  value={deployResult.url}
-                  readOnly
-                  className="flex-1"
-                />
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => window.open(deployResult.url, '_blank')}
-                >
-                  <ExternalLink className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-2">
-              <Button onClick={handleClose}>
-                {t('close')}
+          <div className="space-y-2">
+            <Label>Deployed URL</Label>
+            <div className="flex gap-2">
+              <Input
+                value={deployResult.url}
+                readOnly
+                className="flex-1"
+              />
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => window.open(deployResult.url, '_blank')}
+              >
+                <ExternalLink className="h-4 w-4" />
               </Button>
             </div>
           </div>
-        ) : (
-          <div className="space-y-4">
-            {settings.providers.length === 0 ? (
-              <div className="py-8 px-4">
-                <div className="max-w-md mx-auto space-y-6 text-center">
-                  {/* Icon */}
-                  <div className="flex justify-center">
-                    <div className="relative">
-                      <div className="absolute inset-0 bg-primary/10 rounded-full blur-xl"></div>
-                      <div className="relative bg-gradient-to-br from-primary/20 to-primary/5 p-6 rounded-2xl border border-primary/20">
-                        <Cloud className="h-12 w-12 text-primary" />
-                      </div>
+
+          <div className="flex justify-end gap-2">
+            <Button onClick={handleClose}>
+              {t('close')}
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {settings.providers.length === 0 ? (
+            <div className="py-8 px-4">
+              <div className="max-w-md mx-auto space-y-6 text-center">
+                {/* Icon */}
+                <div className="flex justify-center">
+                  <div className="relative">
+                    <div className="absolute inset-0 bg-primary/10 rounded-full blur-xl"></div>
+                    <div className="relative bg-gradient-to-br from-primary/20 to-primary/5 p-6 rounded-2xl border border-primary/20">
+                      <Cloud className="h-12 w-12 text-primary" />
                     </div>
                   </div>
+                </div>
 
-                  {/* Heading */}
-                  <div className="space-y-2">
-                    <h3 className="text-xl font-semibold">Choose Your Deployment Platform</h3>
-                    <p className="text-sm text-muted-foreground leading-relaxed">
-                      Deploy your Shakespeare projects to any hosting provider. Configure your preferred platform to get started.
-                    </p>
-                  </div>
+                {/* Heading */}
+                <div className="space-y-2">
+                  <h3 className="text-xl font-semibold">Choose Your Deployment Platform</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    Deploy your Shakespeare projects to any hosting provider. Configure your preferred platform to get started.
+                  </p>
+                </div>
 
-                  {/* CTA */}
-                  <div className="pt-2">
-                    <Button
-                      asChild
-                      size="lg"
-                      className="w-full"
-                      onClick={handleClose}
-                    >
-                      <Link to="/settings/deploy">
-                        <Settings className="h-4 w-4 mr-2" />
-                        Configure Deployment Provider
-                      </Link>
-                    </Button>
-                  </div>
+                {/* CTA */}
+                <div className="pt-2">
+                  <Button
+                    asChild
+                    size="lg"
+                    className="w-full"
+                    onClick={handleClose}
+                  >
+                    <Link to="/settings/deploy">
+                      <Settings className="h-4 w-4 mr-2" />
+                      Configure Deployment Provider
+                    </Link>
+                  </Button>
                 </div>
               </div>
-            ) : (
-              <>
-                <div className="space-y-2">
-                  <Label>Select Provider</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {settings.providers.map((provider) => (
-                      <button
-                        key={provider.id}
-                        type="button"
-                        onClick={() => setSelectedProviderId(provider.id)}
-                        className={cn(
-                          "inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all",
-                          "border-2 hover:scale-105 active:scale-95",
-                          selectedProviderId === provider.id
-                            ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                            : "bg-background text-foreground border-border hover:border-primary/50"
-                        )}
-                      >
-                        {renderProviderIcon(provider, 14)}
-                        <span>{provider.name}</span>
-                      </button>
-                    ))}
-                  </div>
+            </div>
+          ) : (
+            <>
+              <div className="space-y-2">
+                <Label>Select Provider</Label>
+                <div className="flex flex-wrap gap-2">
+                  {settings.providers.map((provider) => (
+                    <button
+                      key={provider.id}
+                      type="button"
+                      onClick={() => setSelectedProviderId(provider.id)}
+                      className={cn(
+                        "inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all",
+                        "border-2 hover:scale-105 active:scale-95",
+                        selectedProviderId === provider.id
+                          ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                          : "bg-background text-foreground border-border hover:border-primary/50"
+                      )}
+                    >
+                      {renderProviderIcon(provider, 14)}
+                      <span>{provider.name}</span>
+                    </button>
+                  ))}
                 </div>
+              </div>
 
-                {selectedProvider && selectedProviderId && (() => {
-                  const savedConfig = projectSettings.providers[selectedProviderId];
-                  const url = savedConfig?.url;
+              {selectedProvider && selectedProviderId && (() => {
+                const savedConfig = projectSettings.providers[selectedProviderId];
+                const url = savedConfig?.url;
 
-                  if (url) {
-                    return (
-                      <div className="space-y-2">
-                        <Label>Last Deployment</Label>
-                        <div className="flex gap-2">
-                          <Input
-                            value={url}
-                            readOnly
-                            className="flex-1 text-muted-foreground"
-                          />
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => window.open(url, '_blank')}
-                            title="Visit last deployment"
-                          >
-                            <ExternalLink className="h-4 w-4" />
-                          </Button>
-                        </div>
+                if (url) {
+                  return (
+                    <div className="space-y-2">
+                      <Label>Last Deployment</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          value={url}
+                          readOnly
+                          className="flex-1 text-muted-foreground"
+                        />
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => window.open(url, '_blank')}
+                          title="Visit last deployment"
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                        </Button>
                       </div>
-                    );
-                  }
-                  return null;
-                })()}
+                    </div>
+                  );
+                }
+                return null;
+              })()}
 
-                {selectedProvider && renderProviderFields()}
+              {selectedProvider && renderProviderFields()}
 
-                {selectedProvider?.type === 'shakespeare' && !user && (
-                  <Alert>
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>
-                      You must be logged in with Nostr to use Shakespeare Deploy.{' '}
-                      <Link
-                        to="/settings/nostr"
-                        className="underline hover:no-underline"
-                        onClick={handleClose}
-                      >
-                        Go to Nostr Settings
-                      </Link>
-                    </AlertDescription>
-                  </Alert>
+              {selectedProvider?.type === 'shakespeare' && !user && (
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    You must be logged in with Nostr to use Shakespeare Deploy.{' '}
+                    <Link
+                      to="/settings/nostr"
+                      className="underline hover:no-underline"
+                      onClick={handleClose}
+                    >
+                      Go to Nostr Settings
+                    </Link>
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {error && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+
+              <Button
+                onClick={handleDeploy}
+                disabled={
+                  !selectedProvider ||
+                  isDeploying ||
+                  (selectedProvider.type === 'shakespeare' && !user) ||
+                  (selectedProvider.type === 'shakespeare' && !isShakespeareFormValid) ||
+                  (selectedProvider.type === 'nsite' && !nsiteForm.nsec) ||
+                  (selectedProvider.type === 'netlify' && !netlifyForm.siteId && !netlifyForm.siteName) ||
+                  (selectedProvider.type === 'cloudflare' && !cloudflareForm.projectName) ||
+                  (selectedProvider.type === 'deno' && !denoDeployForm.projectName)
+                }
+                className="w-full"
+              >
+                {isDeploying ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Deploying...
+                  </>
+                ) : (
+                  <>
+                    <Rocket className="h-4 w-4 mr-2" />
+                    Deploy
+                  </>
                 )}
-
-                {error && (
-                  <Alert variant="destructive">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>{error}</AlertDescription>
-                  </Alert>
-                )}
-
-                <Button
-                  onClick={handleDeploy}
-                  disabled={
-                    !selectedProvider ||
-                    isDeploying ||
-                    (selectedProvider.type === 'shakespeare' && !user) ||
-                    (selectedProvider.type === 'shakespeare' && !isShakespeareFormValid) ||
-                    (selectedProvider.type === 'nsite' && !nsiteForm.nsec) ||
-                    (selectedProvider.type === 'netlify' && !netlifyForm.siteId && !netlifyForm.siteName) ||
-                    (selectedProvider.type === 'cloudflare' && !cloudflareForm.projectName) ||
-                    (selectedProvider.type === 'deno' && !denoDeployForm.projectName)
-                  }
-                  className="w-full"
-                >
-                  {isDeploying ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Deploying...
-                    </>
-                  ) : (
-                    <>
-                      <Rocket className="h-4 w-4 mr-2" />
-                      Deploy
-                    </>
-                  )}
-                </Button>
-              </>
-            )}
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
+              </Button>
+            </>
+          )}
+        </div>
+      )}
+    </div>
   );
 }

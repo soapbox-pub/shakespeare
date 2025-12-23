@@ -20,15 +20,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { ArrowLeft, MessageSquare, Eye, Code, Menu, Rocket, Loader2 } from 'lucide-react';
+import { ArrowLeft, MessageSquare, Eye, Code, Menu, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { ProjectTitleMenu } from '@/components/ProjectTitleMenu';
 import { GitHistoryDialog } from '@/components/ai/GitHistoryDialog';
-import { DeployDialog } from '@/components/DeployDialog';
 import { DuplicateProjectDialog } from '@/components/DuplicateProjectDialog';
 import { GitStatusIndicator } from '@/components/GitStatusIndicator';
 import { GitSyncButton } from '@/components/git-sync';
+import { DeployPopover } from '@/components/deploy';
 import { useBuildProject } from '@/hooks/useBuildProject';
 import { useIsProjectPreviewable } from '@/hooks/useIsProjectPreviewable';
 import { useConsoleError } from '@/hooks/useConsoleError';
@@ -50,7 +50,6 @@ export function ProjectView() {
   const [isAILoading, setIsAILoading] = useState(false);
   const [isProjectDetailsOpen, setIsProjectDetailsOpen] = useState(false);
   const [gitHistoryOpen, setGitHistoryOpen] = useState(false);
-  const [deployDialogOpen, setDeployDialogOpen] = useState(false);
   const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -307,16 +306,11 @@ export function ProjectView() {
                     projectId={project.id}
                     className="h-8 w-8"
                   />
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setDeployDialogOpen(true)}
+                  <DeployPopover
+                    projectId={project.id}
+                    projectName={project.name}
                     disabled={isAnyLoading}
-                    className="h-8 w-8"
-                    aria-label="Deploy project"
-                  >
-                    <Rocket className="size-5 text-muted-foreground" />
-                  </Button>
+                  />
                 </>
               ) : (
                 <>
@@ -449,12 +443,6 @@ export function ProjectView() {
               open={gitHistoryOpen}
               onOpenChange={setGitHistoryOpen}
             />
-            <DeployDialog
-              projectId={project.id}
-              projectName={project.name}
-              open={deployDialogOpen}
-              onOpenChange={setDeployDialogOpen}
-            />
             <DuplicateProjectDialog
               projectId={project.id}
               projectName={project.name}
@@ -567,16 +555,11 @@ export function ProjectView() {
                             projectId={project.id}
                             className="h-8 w-8"
                           />
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setDeployDialogOpen(true)}
+                          <DeployPopover
+                            projectId={project.id}
+                            projectName={project.name}
                             disabled={isAnyLoading}
-                            className="h-8 w-8"
-                            aria-label="Deploy project"
-                          >
-                            <Rocket className="size-5 text-muted-foreground" />
-                          </Button>
+                          />
                         </>
                       ) : (
                         <>
@@ -653,12 +636,6 @@ export function ProjectView() {
             projectId={project.id}
             open={gitHistoryOpen}
             onOpenChange={setGitHistoryOpen}
-          />
-          <DeployDialog
-            projectId={project.id}
-            projectName={project.name}
-            open={deployDialogOpen}
-            onOpenChange={setDeployDialogOpen}
           />
           <DuplicateProjectDialog
             projectId={project.id}

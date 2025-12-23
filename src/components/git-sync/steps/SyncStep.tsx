@@ -20,8 +20,11 @@ import type { StepProps } from '../types';
 import { cn } from '@/lib/utils';
 import { NostrURI } from '@/lib/NostrURI';
 import { ngitWebUrl } from '@/lib/ngitWebUrl';
+import { useQueryClient } from '@tanstack/react-query';
 
 export function SyncStep({ projectId }: StepProps) {
+  const queryClient = useQueryClient();
+
   const [isSyncing, setIsSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copiedUrl, setCopiedUrl] = useState(false);
@@ -96,6 +99,7 @@ export function SyncStep({ projectId }: StepProps) {
         dir,
         remote: 'origin',
       });
+      queryClient.invalidateQueries({ queryKey: ['git-status', projectId] });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to disconnect';
       setError(message);

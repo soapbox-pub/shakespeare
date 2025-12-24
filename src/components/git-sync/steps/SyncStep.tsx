@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Zap, GitBranch, Copy, Check, RefreshCw, EllipsisVertical, CloudOff, ExternalLink, ChevronDown, ArrowDown, ArrowUp } from 'lucide-react';
+import { useState, useCallback } from 'react';
+import { Zap, Copy, Check, RefreshCw, EllipsisVertical, CloudOff, ExternalLink, ChevronDown, ArrowDown, ArrowUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,6 +22,8 @@ import { NostrURI } from '@/lib/NostrURI';
 import { ngitWebUrl } from '@/lib/ngitWebUrl';
 import { useQueryClient } from '@tanstack/react-query';
 
+type GitOperation = 'sync' | 'pull' | 'push';
+
 export function SyncStep({ projectId }: StepProps) {
   const queryClient = useQueryClient();
 
@@ -43,7 +45,14 @@ export function SyncStep({ projectId }: StepProps) {
     ? settings.credentials.find(c => originRemote.url.startsWith(c.origin))
     : null;
 
-  const handleSync = async () => {
+  const dir = `${projectsPath}/${projectId}`;
+  const ref = gitStatus?.currentBranch || 'main';
+
+  // Generic git operation handler
+  const executeGitOperation = useCallback(async (
+    operation: GitOperation,
+    action: () => Promise<void>
+  ) => {
     if (!originRemote) return;
 
     setIsSyncing(true);
@@ -51,94 +60,55 @@ export function SyncStep({ projectId }: StepProps) {
     setSyncSuccess(false);
 
     try {
-      const dir = `${projectsPath}/${projectId}`;
-
-      // Pull first to get latest changes
-      await git.pull({
-        dir,
-        ref: gitStatus?.currentBranch || 'main',
-        singleBranch: true,
-      });
-
-      // Then push local changes
-      await git.push({
-        dir,
-        remote: 'origin',
-        ref: gitStatus?.currentBranch || 'main',
-      });
+      await action();
 
       // Show success feedback
       setSyncSuccess(true);
       setTimeout(() => setSyncSuccess(false), 1500);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to sync';
+      const message = err instanceof Error ? err.message : `Failed to ${operation}`;
       setError(message);
     } finally {
       setIsSyncing(false);
     }
+  }, [originRemote]);
+
+  const handleSync = async () => {
+    await executeGitOperation('sync', async () => {
+      // Pull first to get latest changes
+      await git.pull({ dir, ref, singleBranch: true });
+      // Then push local changes
+      await git.push({ dir, remote: 'origin', ref });
+    });
   };
 
   const handlePull = async () => {
-    if (!originRemote) return;
-
-    setIsSyncing(true);
-    setError(null);
-    setSyncSuccess(false);
-
-    try {
-      const dir = `${projectsPath}/${projectId}`;
-
-      await git.pull({
-        dir,
-        ref: gitStatus?.currentBranch || 'main',
-        singleBranch: true,
-      });
-
-      // Show success feedback
-      setSyncSuccess(true);
-      setTimeout(() => setSyncSuccess(false), 1500);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to pull';
-      setError(message);
-    } finally {
-      setIsSyncing(false);
-    }
+    await executeGitOperation('pull', async () => {
+      await git.pull({ dir, ref, singleBranch: true });
+    });
   };
 
   const handlePush = async () => {
-    if (!originRemote) return;
-
-    setIsSyncing(true);
-    setError(null);
-    setSyncSuccess(false);
-
-    try {
-      const dir = `${projectsPath}/${projectId}`;
-
-      await git.push({
-        dir,
-        remote: 'origin',
-        ref: gitStatus?.currentBranch || 'main',
-      });
-
-      // Show success feedback
-      setSyncSuccess(true);
-      setTimeout(() => setSyncSuccess(false), 1500);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to push';
-      setError(message);
-    } finally {
-      setIsSyncing(false);
-    }
+    await executeGitOperation('push', async () => {
+      await git.push({ dir, remote: 'origin', ref });
+    });
   };
+
+  // Temporary feedback state helper
+  const showTemporaryFeedback = useCallback((
+    setter: (value: boolean) => void,
+    duration: number
+  ) => {
+    setter(true);
+    setTimeout(() => setter(false), duration);
+  }, []);
 
   const handleCopyUrl = async () => {
     if (!originRemote) return;
 
     try {
       await navigator.clipboard.writeText(originRemote.url);
-      setCopiedUrl(true);
-      setTimeout(() => setCopiedUrl(false), 2000);
+      showTemporaryFeedback(setCopiedUrl, 2000);
     } catch (err) {
       console.error('Failed to copy URL:', err);
     }
@@ -148,11 +118,7 @@ export function SyncStep({ projectId }: StepProps) {
     if (!originRemote) return;
 
     try {
-      const dir = `${projectsPath}/${projectId}`;
-      await git.deleteRemote({
-        dir,
-        remote: 'origin',
-      });
+      await git.deleteRemote({ dir, remote: 'origin' });
       queryClient.invalidateQueries({ queryKey: ['git-status', projectId] });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to disconnect';
@@ -160,38 +126,47 @@ export function SyncStep({ projectId }: StepProps) {
     }
   };
 
+  const getExternalUrl = useCallback(async (url: string): Promise<string | null> => {
+    if (url.startsWith('https://')) {
+      return url;
+    }
+
+    if (url.startsWith('nostr://')) {
+      const nostrUri = await NostrURI.parse(url);
+      return ngitWebUrl(config.ngitWebUrl, nostrUri);
+    }
+
+    return null;
+  }, [config.ngitWebUrl]);
+
   const handleOpenExternal = async () => {
     if (!originRemote) return;
 
     try {
-      let externalUrl: string;
-
-      if (originRemote.url.startsWith('https://')) {
-        // For HTTPS URLs, open directly
-        externalUrl = originRemote.url;
-      } else if (originRemote.url.startsWith('nostr://')) {
-        // For Nostr URLs, parse and generate URL using the configured template
-        const nostrUri = await NostrURI.parse(originRemote.url);
-        externalUrl = ngitWebUrl(config.ngitWebUrl, nostrUri);
-      } else {
-        // Unsupported URL type
-        return;
+      const externalUrl = await getExternalUrl(originRemote.url);
+      if (externalUrl) {
+        window.open(externalUrl, '_blank', 'noopener,noreferrer');
       }
-
-      window.open(externalUrl, '_blank', 'noopener,noreferrer');
     } catch (err) {
       console.error('Failed to open external URL:', err);
     }
   };
 
-  const getProviderInfo = () => {
+  const getProviderInfo = useCallback(() => {
     if (!originRemote) return null;
+
+    let url: URL | null;
+    try {
+      url = new URL(originRemote.url);
+    } catch {
+      url = null;
+    }
 
     // Check if it's a Nostr URI
     if (originRemote.url.startsWith('nostr://')) {
       return {
         name: 'Nostr Git',
-        icon: <Zap className="h-4 w-4" />,
+        icon: <Zap className="size-4" />,
       };
     }
 
@@ -203,7 +178,6 @@ export function SyncStep({ projectId }: StepProps) {
           <ExternalFavicon
             url={matchedCredential.origin}
             size={16}
-            fallback={<GitBranch className="h-4 w-4" />}
           />
         ),
       };
@@ -211,10 +185,9 @@ export function SyncStep({ projectId }: StepProps) {
 
     // Fallback to generic Git
     return {
-      name: 'Git',
-      icon: <GitBranch className="h-4 w-4" />,
+      name: url?.hostname || 'Git',
     };
-  };
+  }, [originRemote, matchedCredential]);
 
   const providerInfo = getProviderInfo();
 

@@ -77,7 +77,6 @@ export function SyncStepError({ error, onDismiss, onForcePull, onForcePush, onPu
   if (error instanceof GitErrors.FastForwardError) {
     return (
       <Alert variant="destructive">
-        <AlertTriangle className="h-4 w-4" />
         <div className="flex flex-col gap-3">
           <div className="flex items-start justify-between gap-2">
             <AlertDescription className="text-sm flex-1">
@@ -98,7 +97,6 @@ export function SyncStepError({ error, onDismiss, onForcePull, onForcePush, onPu
   if (error instanceof GitErrors.PushRejectedError) {
     return (
       <Alert variant="destructive">
-        <AlertTriangle className="h-4 w-4" />
         <div className="flex flex-col gap-3">
           <div className="flex items-start justify-between gap-2">
             <AlertDescription className="text-sm flex-1">
@@ -153,7 +151,6 @@ export function SyncStepError({ error, onDismiss, onForcePull, onForcePush, onPu
 
     return (
       <Alert variant="destructive">
-        <AlertTriangle className="h-4 w-4" />
         <div className="flex items-start justify-between gap-2">
           <AlertDescription className="text-sm flex-1">
             {message}
@@ -167,7 +164,6 @@ export function SyncStepError({ error, onDismiss, onForcePull, onForcePush, onPu
   // Generic error fallback
   return (
     <Alert variant="destructive">
-      <AlertTriangle className="h-4 w-4" />
       <div className="flex items-start justify-between gap-2">
         <AlertDescription className="text-sm flex-1">{error.message}</AlertDescription>
         {renderDismissButton()}

@@ -25,7 +25,7 @@ export function DeployButton({ projectId, projectName, className, disabled }: De
           aria-label="Deploy project"
           disabled={disabled}
         >
-          <Rocket className="size-5 text-muted-foreground" />
+          <Rocket className={cn("size-5", open ? "text-foreground" : "text-muted-foreground")} />
         </Button>
       </PopoverTrigger>
       <PopoverContent
@@ -33,10 +33,10 @@ export function DeployButton({ projectId, projectName, className, disabled }: De
         className="w-96"
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
-        <DeploySteps 
-          projectId={projectId} 
+        <DeploySteps
+          projectId={projectId}
           projectName={projectName}
-          onClose={() => setOpen(false)} 
+          onClose={() => setOpen(false)}
         />
       </PopoverContent>
     </Popover>

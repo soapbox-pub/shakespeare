@@ -33,7 +33,7 @@ export function GitSyncButton({ projectId, className }: GitSyncButtonProps) {
           className={cn("h-8 w-8 p-0 relative", className)}
           aria-label="Sync with Git"
         >
-          <CloudUpload className="size-5 text-muted-foreground" />
+          <CloudUpload className={cn("size-5", open ? "text-foreground" : "text-muted-foreground")} />
           {showIndicator && (
             <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-primary" />
           )}

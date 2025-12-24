@@ -1,5 +1,5 @@
 import { Errors as GitErrors } from 'isomorphic-git';
-import { AlertTriangle, X, ArrowDown, ArrowUp } from 'lucide-react';
+import { AlertTriangle, X, ArrowDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
@@ -16,10 +16,7 @@ export function SyncStepError({ error, onDismiss, onForcePull, onForcePush, onPu
     <Button
       variant="outline"
       size="sm"
-      onClick={() => {
-        onDismiss();
-        onForcePull();
-      }}
+      onClick={onForcePull}
       className="w-full hover:bg-destructive-foreground/20 border-destructive-foreground/20"
     >
       <AlertTriangle className="h-4 w-4" />
@@ -31,14 +28,22 @@ export function SyncStepError({ error, onDismiss, onForcePull, onForcePush, onPu
     <Button
       variant="outline"
       size="sm"
-      onClick={() => {
-        onDismiss();
-        onForcePush();
-      }}
+      onClick={onForcePush}
       className="w-full hover:bg-destructive-foreground/20 border-destructive-foreground/20"
     >
       <AlertTriangle className="h-4 w-4" />
       Force Push
+    </Button>
+  );
+
+  const renderPullButton = () => (
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={onPull}
+    >
+      <ArrowDown className="h-4 w-4" />
+      Pull
     </Button>
   );
 
@@ -104,30 +109,9 @@ export function SyncStepError({ error, onDismiss, onForcePull, onForcePush, onPu
             </AlertDescription>
             {renderDismissButton()}
           </div>
-          <div className="grid grid-cols-2 gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                onDismiss();
-                onPull();
-              }}
-            >
-              <ArrowDown className="h-4 w-4" />
-              Pull First
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                onDismiss();
-                onForcePush();
-              }}
-              className="hover:bg-destructive-foreground/20 border-destructive-foreground/20"
-            >
-              <ArrowUp className="h-4 w-4" />
-              Force Push
-            </Button>
+          <div className="flex gap-2">
+            {renderPullButton()}
+            {renderForcePushButton()}
           </div>
         </div>
       </Alert>

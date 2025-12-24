@@ -269,14 +269,15 @@ export function ProjectView() {
     return (
       <div className="h-dvh flex flex-col bg-background">
         <header className="pt-safe bg-gradient-to-r from-primary/10 via-accent/5 to-primary/10 backdrop-blur">
-          <div className="h-12 border-b px-4 py-3 flex items-center justify-between">
+          <div className="h-12 border-b p-2 flex items-center justify-between">
             <div className="flex items-center space-x-2 overflow-hidden">
               <Button
                 variant="ghost"
                 size="sm"
+                className="size-8 p-0"
                 onClick={() => setIsSidebarVisible(!isSidebarVisible)}
               >
-                <Menu className="h-4 w-4" />
+                <Menu className="size-5" />
               </Button>
               <div className="flex min-w-0 flex-1">
                 {project ? (
@@ -291,7 +292,7 @@ export function ProjectView() {
                     onProjectDetails={() => setIsProjectDetailsOpen(true)}
                     isAILoading={isAILoading}
                     isAnyLoading={isAnyLoading || isExporting || isDeleting}
-                    className="text-sm"
+                    className="text-base"
                   />
                 ) : (
                   <Skeleton className="h-5 w-32" />

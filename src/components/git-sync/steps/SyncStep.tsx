@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Zap, Copy, Check, RefreshCw, EllipsisVertical, CloudOff, ExternalLink, ChevronDown, ArrowDown, ArrowUp } from 'lucide-react';
+import { Zap, Copy, Check, RefreshCw, EllipsisVertical, CloudOff, ExternalLink, ChevronDown, ArrowDown, ArrowUp, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -257,7 +257,17 @@ export function SyncStep({ projectId }: StepProps) {
 
       {error && (
         <Alert variant="destructive">
-          <AlertDescription className="text-sm">{error}</AlertDescription>
+          <div className="flex items-start justify-between gap-2">
+            <AlertDescription className="text-sm flex-1">{error}</AlertDescription>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-5 shrink-0 hover:bg-destructive-foreground/10"
+              onClick={() => setError(null)}
+            >
+              <X className="size-4" />
+            </Button>
+          </div>
         </Alert>
       )}
 

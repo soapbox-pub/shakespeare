@@ -1,10 +1,8 @@
-import { Errors as GitErrors } from 'isomorphic-git';
 import { useState, useCallback } from 'react';
-import { Zap, Copy, Check, RefreshCw, EllipsisVertical, CloudOff, ExternalLink, ChevronDown, ArrowDown, ArrowUp, X, AlertTriangle } from 'lucide-react';
+import { Zap, Copy, Check, RefreshCw, EllipsisVertical, CloudOff, ExternalLink, ChevronDown, ArrowDown, ArrowUp, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,6 +20,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { ExternalFavicon } from '@/components/ExternalFavicon';
+import { SyncStepError } from './SyncStepError';
 import { useGitStatus } from '@/hooks/useGitStatus';
 import { useGitSettings } from '@/hooks/useGitSettings';
 import { useGit } from '@/hooks/useGit';
@@ -260,177 +259,7 @@ export function SyncStep({ projectId }: StepProps) {
     }
   };
 
-  const renderForcePullButton = () => (
-    <Button
-      variant="outline"
-      size="sm"
-      onClick={() => {
-        setError(null);
-        setShowForcePullDialog(true);
-      }}
-      className="w-full hover:bg-destructive-foreground/20 border-destructive-foreground/20"
-    >
-      <AlertTriangle className="h-4 w-4" />
-      Force Pull
-    </Button>
-  );
 
-  // Render special error UI based on error type
-  const renderError = () => {
-    if (!error) return null;
-
-    // MergeNotSupportedError - offer force pull
-    if (error instanceof GitErrors.MergeNotSupportedError) {
-      return (
-        <Alert variant="destructive">
-          <div className="flex flex-col gap-3">
-            <div className="flex items-start justify-between gap-2">
-              <AlertDescription className="text-sm flex-1">
-                Cannot merge changes automatically. Your local changes conflict with the remote repository.
-              </AlertDescription>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-5 shrink-0 hover:bg-destructive-foreground/10"
-                onClick={() => setError(null)}
-              >
-                <X className="size-4" />
-              </Button>
-            </div>
-            {renderForcePullButton()}
-          </div>
-        </Alert>
-      );
-    }
-
-    // FastForwardError - offer force push or force pull
-    if (error instanceof GitErrors.FastForwardError) {
-      return (
-        <Alert variant="destructive">
-          <AlertTriangle className="h-4 w-4" />
-          <div className="flex flex-col gap-3">
-            <div className="flex items-start justify-between gap-2">
-              <AlertDescription className="text-sm flex-1">
-                Cannot fast-forward. The remote has changes that conflict with your local commits.
-              </AlertDescription>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-5 shrink-0 hover:bg-destructive-foreground/10"
-                onClick={() => setError(null)}
-              >
-                <X className="size-4" />
-              </Button>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setError(null);
-                setShowForcePullDialog(true);
-              }}
-              className="w-full bg-destructive-foreground/10 hover:bg-destructive-foreground/20 border-destructive-foreground/20"
-            >
-              <AlertTriangle className="h-4 w-4" />
-              {renderForcePullButton()}
-            </Button>
-          </div>
-        </Alert>
-      );
-    }
-
-    // PushRejectedError - remote has changes
-    if (error instanceof GitErrors.PushRejectedError) {
-      return (
-        <Alert variant="destructive">
-          <AlertTriangle className="h-4 w-4" />
-          <div className="flex flex-col gap-3">
-            <div className="flex items-start justify-between gap-2">
-              <AlertDescription className="text-sm flex-1">
-                Push rejected. The remote repository has changes you don't have locally. Try pulling first.
-              </AlertDescription>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-5 shrink-0 hover:bg-destructive-foreground/10"
-                onClick={() => setError(null)}
-              >
-                <X className="size-4" />
-              </Button>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setError(null);
-                  handlePull();
-                }}
-                className="flex-1"
-              >
-                <ArrowDown className="h-4 w-4" />
-                Pull First
-              </Button>
-              {renderForcePullButton()}
-            </div>
-          </div>
-        </Alert>
-      );
-    }
-
-    // HTTP errors
-    if (error instanceof GitErrors.HttpError) {
-      let message: string;
-
-      switch (error.data.statusCode) {
-        case 401:
-          message = 'Authentication failed. Please check your credentials.';
-          break;
-        case 403:
-          message = 'Access forbidden. You do not have permission to access this repository.';
-          break;
-        default:
-          message = `HTTP Error: ${error.data.statusCode} ${error.data.statusMessage}`;
-      }
-
-      return (
-        <Alert variant="destructive">
-          <AlertTriangle className="h-4 w-4" />
-          <div className="flex items-start justify-between gap-2">
-            <AlertDescription className="text-sm flex-1">
-              {message}
-            </AlertDescription>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-5 shrink-0 hover:bg-destructive-foreground/10"
-              onClick={() => setError(null)}
-            >
-              <X className="size-4" />
-            </Button>
-          </div>
-        </Alert>
-      );
-    }
-
-    // Generic error fallback
-    return (
-      <Alert variant="destructive">
-        <AlertTriangle className="h-4 w-4" />
-        <div className="flex items-start justify-between gap-2">
-          <AlertDescription className="text-sm flex-1">{error.message}</AlertDescription>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-5 shrink-0 hover:bg-destructive-foreground/10"
-            onClick={() => setError(null)}
-          >
-            <X className="size-4" />
-          </Button>
-        </div>
-      </Alert>
-    );
-  };
 
   if (!originRemote) {
     return null;
@@ -491,7 +320,14 @@ export function SyncStep({ projectId }: StepProps) {
         </div>
       </div>
 
-      {renderError()}
+      {error && (
+        <SyncStepError
+          error={error}
+          onDismiss={() => setError(null)}
+          onForcePull={() => setShowForcePullDialog(true)}
+          onPull={handlePull}
+        />
+      )}
 
       <div className="rounded-md bg-primary">
         <div className="flex">

@@ -1,15 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Download, Trash2, AlertTriangle, Loader2, Database, Info, ArrowLeft, Shield } from 'lucide-react';
+import { Download, Trash2, AlertTriangle, Loader2, Database, Info, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { SettingsPageLayout } from '@/components/SettingsPageLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Progress } from '@/components/ui/progress';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/useToast';
 import { useFS } from '@/hooks/useFS';
-import { useIsMobile } from '@/hooks/useIsMobile';
 import { useOffline } from '@/hooks/useOffline';
 import {
   isPersistentStorageSupported,
@@ -42,9 +42,8 @@ export function StorageSettings() {
   const [isPersistent, setIsPersistent] = useState<boolean | null>(null);
   const { toast } = useToast();
   const { fs } = useFS();
-  const navigate = useNavigate();
-  const isMobile = useIsMobile();
   const { clearCache } = useOffline();
+  const navigate = useNavigate();
 
   // Format bytes to human readable format
   const formatBytes = (bytes: number): string => {
@@ -270,201 +269,169 @@ export function StorageSettings() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      {isMobile && (
-        <div className="space-y-3">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate('/settings')}
-            className="h-8 w-auto px-2 -ml-2"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            {t('backToSettings')}
-          </Button>
+    <SettingsPageLayout
+      icon={Database}
+      titleKey="storageSettings"
+      descriptionKey="storageSettingsDescription"
+      className="space-y-4"
+    >
+      {/* Storage Information */}
+      {storageError ? (
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Info className="h-4 w-4" />
+          <span className="text-sm">{storageError}</span>
+        </div>
+      ) : storageInfo ? (
+        <div className="space-y-4">
+          {/* Usage Progress */}
           <div className="space-y-2">
-            <h1 className="text-2xl font-bold flex items-center gap-3">
-              <Database className="h-6 w-6 text-primary" />
-              {t('storageSettings')}
-            </h1>
-            <p className="text-muted-foreground">
-              {t('storageSettingsDescription')}
-            </p>
+            <div className="flex justify-between items-center text-sm">
+              <span>{t('used')}: {formatBytes(storageInfo.usage)}</span>
+              <span>{t('available')}: {formatBytes(storageInfo.quota)}</span>
+            </div>
+            <Progress
+              value={storageInfo.quota > 0 ? (storageInfo.usage / storageInfo.quota) * 100 : 0}
+              className="h-2"
+            />
+            <div className="text-xs text-muted-foreground text-center">
+              {storageInfo.quota > 0
+                ? t('usagePercentage', { percentage: ((storageInfo.usage / storageInfo.quota) * 100).toFixed(1) })
+                : t('usageUnavailable')
+              }
+            </div>
           </div>
+
+        </div>
+      ) : (
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <span className="text-sm">{t('loadingStorageInfo')}</span>
         </div>
       )}
 
-      {!isMobile && (
-        <div className="space-y-2">
-          <h1 className="text-2xl font-bold flex items-center gap-3">
-            <Database className="h-6 w-6 text-primary" />
-            {t('storageSettings')}
-          </h1>
-          <p className="text-muted-foreground">
-            {t('storageSettingsDescription')}
-          </p>
-        </div>
-      )}
-
-      <div className="space-y-4">
-        {/* Storage Information */}
-        {storageError ? (
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Info className="h-4 w-4" />
-            <span className="text-sm">{storageError}</span>
+      {/* Persist Data */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Shield className="h-5 w-5" />
+            {t('persistData')}
+          </CardTitle>
+          <CardDescription>
+            {t('persistDataDescription')}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-start">
+            <Switch
+              id="persistent-storage"
+              checked={isPersistent === true}
+              onCheckedChange={handlePersistentStorageToggle}
+              disabled={isRequestingPersistent || isPersistent === null}
+            />
           </div>
-        ) : storageInfo ? (
-          <div className="space-y-4">
-            {/* Usage Progress */}
-            <div className="space-y-2">
-              <div className="flex justify-between items-center text-sm">
-                <span>{t('used')}: {formatBytes(storageInfo.usage)}</span>
-                <span>{t('available')}: {formatBytes(storageInfo.quota)}</span>
-              </div>
-              <Progress
-                value={storageInfo.quota > 0 ? (storageInfo.usage / storageInfo.quota) * 100 : 0}
-                className="h-2"
-              />
-              <div className="text-xs text-muted-foreground text-center">
-                {storageInfo.quota > 0
-                  ? t('usagePercentage', { percentage: ((storageInfo.usage / storageInfo.quota) * 100).toFixed(1) })
-                  : t('usageUnavailable')
-                }
-              </div>
-            </div>
+        </CardContent>
+      </Card>
 
-          </div>
-        ) : (
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            <span className="text-sm">{t('loadingStorageInfo')}</span>
-          </div>
-        )}
+      {/* Export Files */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Download className="h-5 w-5" />
+            {t('exportFiles')}
+          </CardTitle>
+          <CardDescription>
+            {t('exportFilesDescription')}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button
+            onClick={handleExportFiles}
+            disabled={isExporting}
+            className="w-full sm:w-auto"
+          >
+            {isExporting ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                {t('exporting')}
+              </>
+            ) : (
+              <>
+                <Download className="h-4 w-4 mr-2" />
+                {t('exportAllFiles')}
+              </>
+            )}
+          </Button>
+        </CardContent>
+      </Card>
 
-        {/* Persist Data */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Shield className="h-5 w-5" />
-              {t('persistData')}
-            </CardTitle>
-            <CardDescription>
-              {t('persistDataDescription')}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-start">
-              <Switch
-                id="persistent-storage"
-                checked={isPersistent === true}
-                onCheckedChange={handlePersistentStorageToggle}
-                disabled={isRequestingPersistent || isPersistent === null}
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Export Files */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Download className="h-5 w-5" />
-              {t('exportFiles')}
-            </CardTitle>
-            <CardDescription>
-              {t('exportFilesDescription')}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button
-              onClick={handleExportFiles}
-              disabled={isExporting}
-              className="w-full sm:w-auto"
-            >
-              {isExporting ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  {t('exporting')}
-                </>
-              ) : (
-                <>
-                  <Download className="h-4 w-4 mr-2" />
-                  {t('exportAllFiles')}
-                </>
-              )}
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* Clear All Data */}
-        <Card className="border-destructive/20">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-destructive">
-              <Trash2 className="h-5 w-5" />
-              {t('clearAllData')}
-            </CardTitle>
-            <CardDescription>
-              {t('clearAllDataDescription')}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button
-                  variant="destructive"
-                  disabled={isClearing}
-                  className="w-full sm:w-auto"
+      {/* Clear All Data */}
+      <Card className="border-destructive/20">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-destructive">
+            <Trash2 className="h-5 w-5" />
+            {t('clearAllData')}
+          </CardTitle>
+          <CardDescription>
+            {t('clearAllDataDescription')}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="destructive"
+                disabled={isClearing}
+                className="w-full sm:w-auto"
+              >
+                {isClearing ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    {t('clearing')}
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    {t('clearAllData')}
+                  </>
+                )}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle className="flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5 text-destructive" />
+                  {t('areYouSure')}
+                </AlertDialogTitle>
+                <AlertDialogDescription className="space-y-2">
+                  <p>
+                    {t('clearDataWarning')}
+                  </p>
+                  <ul className="list-disc list-inside space-y-1 text-sm">
+                    <li>{t('allProjects')}</li>
+                    <li>{t('aiSettingsAndKeys')}</li>
+                    <li>{t('gitCredentialsSettings')}</li>
+                    <li>{t('userPreferences')}</li>
+                    <li>{t('cachedData')}</li>
+                  </ul>
+                  <p className="font-medium text-destructive">
+                    {t('actionCannotBeUndone')}
+                  </p>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleClearAllData}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 >
-                  {isClearing ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      {t('clearing')}
-                    </>
-                  ) : (
-                    <>
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      {t('clearAllData')}
-                    </>
-                  )}
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle className="flex items-center gap-2">
-                    <AlertTriangle className="h-5 w-5 text-destructive" />
-                    {t('areYouSure')}
-                  </AlertDialogTitle>
-                  <AlertDialogDescription className="space-y-2">
-                    <p>
-                      {t('clearDataWarning')}
-                    </p>
-                    <ul className="list-disc list-inside space-y-1 text-sm">
-                      <li>{t('allProjects')}</li>
-                      <li>{t('aiSettingsAndKeys')}</li>
-                      <li>{t('gitCredentialsSettings')}</li>
-                      <li>{t('userPreferences')}</li>
-                      <li>{t('cachedData')}</li>
-                    </ul>
-                    <p className="font-medium text-destructive">
-                      {t('actionCannotBeUndone')}
-                    </p>
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={handleClearAllData}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  >
-                    {t('yesClearAllData')}
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+                  {t('yesClearAllData')}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </CardContent>
+      </Card>
+    </SettingsPageLayout>
   );
 }
 

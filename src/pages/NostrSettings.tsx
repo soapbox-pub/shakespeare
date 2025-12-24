@@ -1,6 +1,7 @@
-import { ArrowLeft, Wifi, Users, UserPlus, LogOut, Trash2, User, Plus, Server, Key } from 'lucide-react';
+import { Wifi, Users, UserPlus, LogOut, Trash2, User, Plus, Server, Key } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
+import { SettingsPageLayout } from '@/components/SettingsPageLayout';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
@@ -8,8 +9,6 @@ import { RelayListManager } from '@/components/RelayListManager';
 import { GraspListManager } from '@/components/GraspListManager';
 import SimpleLoginDialog from '@/components/auth/SimpleLoginDialog';
 import SimpleSignupDialog from '@/components/auth/SimpleSignupDialog';
-import { useIsMobile } from '@/hooks/useIsMobile';
-import { useNavigate } from 'react-router-dom';
 import { useLoggedInAccounts, type Account } from '@/hooks/useLoggedInAccounts';
 import { genUserName } from '@/lib/genUserName';
 import { useState } from 'react';
@@ -22,8 +21,6 @@ const sanitizeFilename = (filename: string) => {
 
 export function NostrSettings() {
   const { t } = useTranslation();
-  const isMobile = useIsMobile();
-  const navigate = useNavigate();
   const { authors, currentUser, setLogin, removeLogin, isLoading } = useLoggedInAccounts();
   const [showLoginDialog, setShowLoginDialog] = useState(false);
   const [showSignupDialog, setShowSignupDialog] = useState(false);
@@ -104,43 +101,13 @@ export function NostrSettings() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      {isMobile && (
-        <div className="space-y-3">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate('/settings')}
-            className="h-8 w-auto px-2 -ml-2"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            {t('backToSettings')}
-          </Button>
-          <div className="space-y-2">
-            <h1 className="text-2xl font-bold flex items-center gap-3">
-              <Wifi className="h-6 w-6 text-primary" />
-              {t('nostrSettings')}
-            </h1>
-            <p className="text-muted-foreground">
-              {t('nostrSettingsDescription')}
-            </p>
-          </div>
-        </div>
-      )}
-
-      {!isMobile && (
-        <div className="space-y-2">
-          <h1 className="text-2xl font-bold flex items-center gap-3">
-            <Wifi className="h-6 w-6 text-primary" />
-            {t('nostrSettings')}
-          </h1>
-          <p className="text-muted-foreground">
-            {t('nostrSettingsDescription')}
-          </p>
-        </div>
-      )}
-
-      <div className="space-y-6 max-w-xl">
+    <>
+      <SettingsPageLayout
+        icon={Wifi}
+        titleKey="nostrSettings"
+        descriptionKey="nostrSettingsDescription"
+        className="space-y-6 max-w-xl"
+      >
         {/* Account Management */}
         <div className="space-y-4">
           <div className="flex items-center gap-2">
@@ -281,7 +248,7 @@ export function NostrSettings() {
           </div>
           <GraspListManager />
         </div>
-      </div>
+      </SettingsPageLayout>
 
       {/* Login Dialog */}
       <SimpleLoginDialog
@@ -304,7 +271,7 @@ export function NostrSettings() {
           setShowLoginDialog(true);
         }}
       />
-    </div>
+    </>
   );
 }
 

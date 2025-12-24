@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Check, Bot, ArrowLeft, Trash2, GripVertical, ChevronDown, RotateCcw, FileText, Plus, Edit, X } from 'lucide-react';
+import { Check, Bot, Trash2, GripVertical, ChevronDown, RotateCcw, FileText, Plus, Edit, X } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -35,10 +35,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAISettings } from '@/hooks/useAISettings';
-import { useIsMobile } from '@/hooks/useIsMobile';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useAppContext } from '@/hooks/useAppContext';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
+import { SettingsPageLayout } from '@/components/SettingsPageLayout';
 import type { AIProvider } from '@/contexts/AISettingsContext';
 import { AI_PROVIDER_PRESETS, type PresetProvider } from '@/lib/aiProviderPresets';
 import { ExternalFavicon } from '@/components/ExternalFavicon';
@@ -204,8 +204,6 @@ function generateIdFromName(name: string): string {
 export function AISettings() {
   const { t } = useTranslation();
   const { settings, updateSettings, setProvider, removeProvider, setProviders, isLoading } = useAISettings();
-  const isMobile = useIsMobile();
-  const navigate = useNavigate();
   const { user } = useCurrentUser();
   const { config, defaultConfig, updateConfig } = useAppContext();
   const [customProviderName, setCustomProviderName] = useState('');
@@ -352,44 +350,13 @@ export function AISettings() {
   }, []);
 
   return (
-    <div className="p-6 space-y-6 pb-16">
-      {isMobile && (
-        <div className="space-y-3">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate('/settings')}
-            className="h-8 w-auto px-2 -ml-2"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            {t('backToSettings')}
-          </Button>
-          <div className="space-y-2">
-            <h1 className="text-2xl font-bold flex items-center gap-3">
-              <Bot className="h-6 w-6 text-primary" />
-              {t('aiSettings')}
-            </h1>
-            <p className="text-muted-foreground">
-              {t('aiSettingsDescription')}
-            </p>
-          </div>
-        </div>
-      )}
-
-      {!isMobile && (
-        <div className="space-y-2">
-          <h1 className="text-2xl font-bold flex items-center gap-3">
-            <Bot className="h-6 w-6 text-primary" />
-            {t('aiSettings')}
-          </h1>
-          <p className="text-muted-foreground">
-            {t('aiSettingsDescription')}
-          </p>
-        </div>
-      )}
-
+    <SettingsPageLayout
+      icon={Bot}
+      titleKey="aiSettings"
+      descriptionKey="aiSettingsDescription"
+    >
       {isLoading ? (
-        <div className="space-y-6">
+        <>
           {/* Loading skeleton for configured providers */}
           <div className="space-y-3">
             <Skeleton className="h-4 w-40" />
@@ -412,9 +379,9 @@ export function AISettings() {
           <div className="space-y-3">
             <Skeleton className="h-16 w-full rounded-lg" />
           </div>
-        </div>
+        </>
       ) : (
-        <div className="space-y-6">
+        <>
           {/* Configured Providers */}
           {settings.providers.length > 0 && (
             <div className="space-y-3">
@@ -802,7 +769,7 @@ export function AISettings() {
               </div>
             )}
           </div>
-        </div>
+        </>
       )}
 
       {/* Render credits dialog outside of accordion structure */}
@@ -820,7 +787,7 @@ export function AISettings() {
           />
         );
       })()}
-    </div>
+    </SettingsPageLayout>
   );
 }
 

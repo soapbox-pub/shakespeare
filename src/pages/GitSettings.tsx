@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Check, GitBranch, ArrowLeft, Trash2, ChevronDown, Plus, User, GripVertical } from 'lucide-react';
+import { Check, GitBranch, Trash2, ChevronDown, Plus, User, GripVertical } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -36,8 +36,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useGitSettings } from '@/hooks/useGitSettings';
 import { useGitHubOAuth } from '@/hooks/useGitHubOAuth';
-import { useIsMobile } from '@/hooks/useIsMobile';
-import { useNavigate } from 'react-router-dom';
+import { SettingsPageLayout } from '@/components/SettingsPageLayout';
 import type { GitCredential } from '@/contexts/GitSettingsContext';
 import { PasswordInput } from '@/components/ui/password-input';
 import { ExternalInput } from '@/components/ui/external-input';
@@ -192,8 +191,6 @@ export function GitSettings() {
   const { t } = useTranslation();
   const { settings, addCredential, removeCredential, setCredentials, updateSettings, isInitialized } = useGitSettings();
   const { initiateOAuth, isLoading: isOAuthLoading, error: oauthError, isOAuthConfigured } = useGitHubOAuth();
-  const isMobile = useIsMobile();
-  const navigate = useNavigate();
   const [customName, setCustomName] = useState('');
   const [customOrigin, setCustomOrigin] = useState('');
   const [customUsername, setCustomUsername] = useState('');
@@ -283,44 +280,13 @@ export function GitSettings() {
   const availablePresets = PRESET_PROVIDERS.filter(preset => !configuredOrigins.includes(preset.origin));
 
   return (
-    <div className="p-6 space-y-6">
-      {isMobile && (
-        <div className="space-y-3">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate('/settings')}
-            className="h-8 w-auto px-2 -ml-2"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            {t('backToSettings')}
-          </Button>
-          <div className="space-y-2">
-            <h1 className="text-2xl font-bold flex items-center gap-3">
-              <GitBranch className="h-6 w-6 text-primary" />
-              {t('gitSettings')}
-            </h1>
-            <p className="text-muted-foreground">
-              {t('gitSettingsDescription')}
-            </p>
-          </div>
-        </div>
-      )}
-
-      {!isMobile && (
-        <div className="space-y-2">
-          <h1 className="text-2xl font-bold flex items-center gap-3">
-            <GitBranch className="h-6 w-6 text-primary" />
-            {t('gitSettings')}
-          </h1>
-          <p className="text-muted-foreground">
-            {t('gitSettingsDescription')}
-          </p>
-        </div>
-      )}
-
+    <SettingsPageLayout
+      icon={GitBranch}
+      titleKey="gitSettings"
+      descriptionKey="gitSettingsDescription"
+    >
       {!isInitialized ? (
-        <div className="space-y-6">
+        <>
           {/* Loading skeleton for configured credentials */}
           <div className="space-y-3">
             <Skeleton className="h-4 w-40" />
@@ -348,9 +314,9 @@ export function GitSettings() {
           <div className="space-y-3">
             <Skeleton className="h-16 w-full rounded-lg" />
           </div>
-        </div>
+        </>
       ) : (
-        <div className="space-y-6">
+        <>
           {/* Configured Credentials */}
           {settings.credentials.length > 0 && (
             <div className="space-y-3">
@@ -645,9 +611,9 @@ export function GitSettings() {
               </AccordionItem>
             </Accordion>
           </div>
-        </div>
+        </>
       )}
-    </div>
+    </SettingsPageLayout>
   );
 }
 

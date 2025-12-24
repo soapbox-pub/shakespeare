@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Rocket, ArrowLeft, Trash2, Check, GripVertical, ChevronDown, Plus } from 'lucide-react';
+import { Rocket, Trash2, Check, GripVertical, ChevronDown, Plus } from 'lucide-react';
+import { SettingsPageLayout } from '@/components/SettingsPageLayout';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   DropdownMenu,
@@ -40,8 +41,7 @@ import { useDeploySettings } from '@/hooks/useDeploySettings';
 import { useNetlifyOAuth } from '@/hooks/useNetlifyOAuth';
 import { useVercelOAuth } from '@/hooks/useVercelOAuth';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
-import { useIsMobile } from '@/hooks/useIsMobile';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import type { DeployProvider } from '@/contexts/DeploySettingsContext';
 import { ExternalFavicon } from '@/components/ExternalFavicon';
 import { normalizeUrl } from '@/lib/url';
@@ -427,8 +427,6 @@ export function DeploySettings() {
   const { t } = useTranslation();
   const { settings, removeProvider, setProviders, isInitialized } = useDeploySettings();
   const { user } = useCurrentUser();
-  const isMobile = useIsMobile();
-  const navigate = useNavigate();
 
   // OAuth hooks
   const netlifyOAuth = useNetlifyOAuth();
@@ -669,44 +667,13 @@ export function DeploySettings() {
   const availablePresets = PRESET_PROVIDERS.filter(preset => !configuredProviderIds.includes(preset.id));
 
   return (
-    <div className="p-6 space-y-6">
-      {isMobile && (
-        <div className="space-y-3">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate('/settings')}
-            className="h-8 w-auto px-2 -ml-2"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            {t('backToSettings')}
-          </Button>
-          <div className="space-y-2">
-            <h1 className="text-2xl font-bold flex items-center gap-3">
-              <Rocket className="h-6 w-6 text-primary" />
-              {t('deploySettings')}
-            </h1>
-            <p className="text-muted-foreground">
-              {t('deploySettingsDescription')}
-            </p>
-          </div>
-        </div>
-      )}
-
-      {!isMobile && (
-        <div className="space-y-2">
-          <h1 className="text-2xl font-bold flex items-center gap-3">
-            <Rocket className="h-6 w-6 text-primary" />
-            {t('deploySettings')}
-          </h1>
-          <p className="text-muted-foreground">
-            {t('deploySettingsDescription')}
-          </p>
-        </div>
-      )}
-
+    <SettingsPageLayout
+      icon={Rocket}
+      titleKey="deploySettings"
+      descriptionKey="deploySettingsDescription"
+    >
       {!isInitialized ? (
-        <div className="space-y-6">
+        <>
           {/* Loading skeleton for configured providers */}
           <div className="space-y-3">
             <Skeleton className="h-4 w-40" />
@@ -730,9 +697,9 @@ export function DeploySettings() {
           <div className="space-y-3">
             <Skeleton className="h-16 w-full rounded-lg" />
           </div>
-        </div>
+        </>
       ) : (
-        <div className="space-y-6">
+        <>
           {/* Configured Providers */}
           {settings.providers.length > 0 && (
             <div className="space-y-3">
@@ -1180,9 +1147,9 @@ export function DeploySettings() {
               </AccordionItem>
             </Accordion>
           </div>
-        </div>
+        </>
       )}
-    </div>
+    </SettingsPageLayout>
   );
 }
 

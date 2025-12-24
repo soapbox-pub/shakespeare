@@ -1,13 +1,12 @@
-import { Settings, ArrowLeft, RefreshCw, Trash2, XCircle, Loader2, RotateCcw, Cog, Globe, Image, Code, Monitor, Award, Bug, FolderTree, Terminal as TerminalIcon, GitBranch } from "lucide-react";
+import { Settings, RefreshCw, Trash2, XCircle, Loader2, RotateCcw, Cog, Globe, Image, Code, Monitor, Award, Bug, FolderTree, Terminal as TerminalIcon, GitBranch } from "lucide-react";
 import { useTranslation } from 'react-i18next';
 import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
+import { SettingsPageLayout } from '@/components/SettingsPageLayout';
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { useIsMobile } from "@/hooks/useIsMobile";
-import { useNavigate } from "react-router-dom";
 import { useAppContext } from "@/hooks/useAppContext";
 import { useOffline } from "@/hooks/useOffline";
 import { useToast } from "@/hooks/useToast";
@@ -15,8 +14,6 @@ import { Terminal } from "@/components/Terminal";
 
 export function SystemSettings() {
   const { t } = useTranslation();
-  const isMobile = useIsMobile();
-  const navigate = useNavigate();
   const { config, defaultConfig, updateConfig } = useAppContext();
   const { toast } = useToast();
   const { serviceWorkerRegistration, updateServiceWorker, clearCache } = useOffline();
@@ -256,41 +253,11 @@ export function SystemSettings() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      {isMobile && (
-        <div className="space-y-3">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate('/settings')}
-            className="h-8 w-auto px-2 -ml-2"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            {t('backToSettings')}
-          </Button>
-          <div className="space-y-2">
-            <h1 className="text-2xl font-bold flex items-center gap-3">
-              <Settings className="h-6 w-6 text-primary" />
-              {t('systemSettings')}
-            </h1>
-            <p className="text-muted-foreground">
-              {t('systemSettingsDescription')}
-            </p>
-          </div>
-        </div>
-      )}
-
-      {!isMobile && (
-        <div className="space-y-2">
-          <h1 className="text-2xl font-bold flex items-center gap-3">
-            <Settings className="h-6 w-6 text-primary" />
-            {t('systemSettings')}
-          </h1>
-          <p className="text-muted-foreground">
-            {t('systemSettingsDescription')}
-          </p>
-        </div>
-      )}
+    <SettingsPageLayout
+      icon={Settings}
+      titleKey="systemSettings"
+      descriptionKey="systemSettingsDescription"
+    >
 
       <div className="space-y-3 max-w-xl">
         {/* Service Worker Configuration */}
@@ -1029,7 +996,7 @@ export function SystemSettings() {
           </AccordionItem>
         </Accordion>
       </div>
-    </div>
+    </SettingsPageLayout>
   );
 }
 

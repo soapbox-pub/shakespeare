@@ -29,7 +29,7 @@ export function SyncStep({ projectId }: StepProps) {
 
   const [isSyncing, setIsSyncing] = useState(false);
   const [currentOperation, setCurrentOperation] = useState<GitOperation | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<Error | null>(null);
   const [copiedUrl, setCopiedUrl] = useState(false);
   const [syncSuccess, setSyncSuccess] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -70,7 +70,7 @@ export function SyncStep({ projectId }: StepProps) {
       setSyncSuccess(true);
       setTimeout(() => setSyncSuccess(false), 1500);
     } catch (err) {
-      const message = err instanceof Error ? err.message : `Failed to ${operation}`;
+      const message = err instanceof Error ? err : new Error(`Failed to ${operation}`);
       setError(message);
     } finally {
       setIsSyncing(false);
@@ -126,7 +126,7 @@ export function SyncStep({ projectId }: StepProps) {
       await git.deleteRemote({ dir, remote: 'origin' });
       queryClient.invalidateQueries({ queryKey: ['git-status', projectId] });
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to disconnect';
+      const message = err instanceof Error ? err : new Error('Failed to disconnect');
       setError(message);
     }
   };
@@ -258,7 +258,7 @@ export function SyncStep({ projectId }: StepProps) {
       {error && (
         <Alert variant="destructive">
           <div className="flex items-start justify-between gap-2">
-            <AlertDescription className="text-sm flex-1">{error}</AlertDescription>
+            <AlertDescription className="text-sm flex-1">{error.message}</AlertDescription>
             <Button
               variant="ghost"
               size="icon"

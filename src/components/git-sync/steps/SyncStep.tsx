@@ -278,7 +278,7 @@ export function SyncStep({ projectId }: StepProps) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={handleDisconnect} className="text-destructive">
+              <DropdownMenuItem onClick={handleDisconnect} className="text-destructive gap-2">
                 <CloudOff className="h-4 w-4" />
                 Disconnect
               </DropdownMenuItem>

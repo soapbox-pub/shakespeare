@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Zap, GitBranch, Copy, Check, RefreshCw, EllipsisVertical, CloudOff, ExternalLink } from 'lucide-react';
+import { Zap, GitBranch, Copy, Check, RefreshCw, EllipsisVertical, CloudOff, ExternalLink, ChevronDown, ArrowDown, ArrowUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -72,6 +72,60 @@ export function SyncStep({ projectId }: StepProps) {
       setTimeout(() => setSyncSuccess(false), 1500);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to sync';
+      setError(message);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handlePull = async () => {
+    if (!originRemote) return;
+
+    setIsSyncing(true);
+    setError(null);
+    setSyncSuccess(false);
+
+    try {
+      const dir = `${projectsPath}/${projectId}`;
+
+      await git.pull({
+        dir,
+        ref: gitStatus?.currentBranch || 'main',
+        singleBranch: true,
+      });
+
+      // Show success feedback
+      setSyncSuccess(true);
+      setTimeout(() => setSyncSuccess(false), 1500);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to pull';
+      setError(message);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handlePush = async () => {
+    if (!originRemote) return;
+
+    setIsSyncing(true);
+    setError(null);
+    setSyncSuccess(false);
+
+    try {
+      const dir = `${projectsPath}/${projectId}`;
+
+      await git.push({
+        dir,
+        remote: 'origin',
+        ref: gitStatus?.currentBranch || 'main',
+      });
+
+      // Show success feedback
+      setSyncSuccess(true);
+      setTimeout(() => setSyncSuccess(false), 1500);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to push';
       setError(message);
     } finally {
       setIsSyncing(false);
@@ -229,18 +283,49 @@ export function SyncStep({ projectId }: StepProps) {
         </Alert>
       )}
 
-      <Button
-        onClick={handleSync}
-        disabled={isSyncing}
-        className="w-full"
-      >
-        <div className="flex items-center gap-2">
-          {syncSuccess
-            ? <Check className="h-4 w-4" />
-            : <RefreshCw className={cn("size-4", { "animate-spin": isSyncing })} />}
-          <span>Sync</span>
+      <div className="rounded-md bg-primary">
+        <div className="flex">
+          <Button
+            onClick={handleSync}
+            disabled={isSyncing}
+            className="flex-1 rounded-r-none bg-transparent hover:bg-white/10 transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              {syncSuccess
+                ? <Check className="h-4 w-4" />
+                : <RefreshCw className={cn("size-4", { "animate-spin": isSyncing })} />}
+              <span>Sync</span>
+            </div>
+          </Button>
+          <div className="w-px bg-border/20" />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                disabled={isSyncing}
+                className="px-3 rounded-l-none bg-transparent hover:bg-white/10 transition-colors"
+              >
+                <ChevronDown className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-40">
+              <DropdownMenuItem
+                onClick={handlePull}
+                className="flex items-center gap-2 py-3 cursor-pointer"
+              >
+                <ArrowDown className="size-3" />
+                Pull
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={handlePush}
+                className="flex items-center gap-2 py-3 cursor-pointer"
+              >
+                <ArrowUp className="size-3" />
+                Push
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-      </Button>
+      </div>
     </div>
   );
 }

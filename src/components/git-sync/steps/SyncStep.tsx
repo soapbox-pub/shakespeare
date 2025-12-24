@@ -224,10 +224,11 @@ export function SyncStep({ projectId }: StepProps) {
       };
     }
 
-    // Fallback to generic Git
-    return {
-      name: url?.hostname || 'Git',
-    };
+    if (url && (url.protocol === 'http:' || url.protocol === 'https:')) {
+      return { name: url.hostname };
+    }
+
+    return { name: 'Git' };
   }, [originRemote, matchedCredential]);
 
   const providerInfo = getProviderInfo();
@@ -370,6 +371,7 @@ export function SyncStep({ projectId }: StepProps) {
         open={showForcePullDialog}
         onOpenChange={setShowForcePullDialog}
         onConfirm={handleForcePull}
+        remoteName={providerInfo?.name}
       />
     </div>
   );

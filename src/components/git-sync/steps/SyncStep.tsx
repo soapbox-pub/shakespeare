@@ -1,5 +1,6 @@
+import { Errors as GitErrors } from 'isomorphic-git';
 import { useState, useCallback } from 'react';
-import { Zap, Copy, Check, RefreshCw, EllipsisVertical, CloudOff, ExternalLink, ChevronDown, ArrowDown, ArrowUp, X } from 'lucide-react';
+import { Zap, Copy, Check, RefreshCw, EllipsisVertical, CloudOff, ExternalLink, ChevronDown, ArrowDown, ArrowUp, X, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,6 +11,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { ExternalFavicon } from '@/components/ExternalFavicon';
 import { useGitStatus } from '@/hooks/useGitStatus';
 import { useGitSettings } from '@/hooks/useGitSettings';
@@ -22,7 +33,7 @@ import { NostrURI } from '@/lib/NostrURI';
 import { ngitWebUrl } from '@/lib/ngitWebUrl';
 import { useQueryClient } from '@tanstack/react-query';
 
-type GitOperation = 'sync' | 'pull' | 'push';
+type GitOperation = 'sync' | 'pull' | 'push' | 'force-pull';
 
 export function SyncStep({ projectId }: StepProps) {
   const queryClient = useQueryClient();
@@ -33,6 +44,7 @@ export function SyncStep({ projectId }: StepProps) {
   const [copiedUrl, setCopiedUrl] = useState(false);
   const [syncSuccess, setSyncSuccess] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [showForcePullDialog, setShowForcePullDialog] = useState(false);
 
   const { data: gitStatus } = useGitStatus(projectId);
   const { settings } = useGitSettings();
@@ -96,6 +108,40 @@ export function SyncStep({ projectId }: StepProps) {
   const handlePush = async () => {
     await executeGitOperation('push', async () => {
       await git.push({ dir, remote: 'origin', ref });
+    });
+  };
+
+  const handleForcePull = async () => {
+    await executeGitOperation('force-pull', async () => {
+      // Step 1: Fetch latest changes from remote
+      await git.fetch({
+        dir,
+        remote: 'origin',
+        ref,
+        singleBranch: true,
+      });
+
+      // Step 2: Get the remote commit SHA
+      const remoteRef = `refs/remotes/origin/${ref}`;
+      const remoteSha = await git.resolveRef({ dir, ref: remoteRef });
+
+      // Step 3: Force update the current branch to point to remote
+      await git.writeRef({
+        dir,
+        ref: `refs/heads/${ref}`,
+        value: remoteSha,
+        force: true,
+      });
+
+      // Step 4: Force checkout all files (overwrite local changes)
+      await git.checkout({
+        dir,
+        ref,
+        force: true,
+      });
+
+      // Invalidate git status to refresh UI
+      queryClient.invalidateQueries({ queryKey: ['git-status', projectId] });
     });
   };
 
@@ -196,6 +242,196 @@ export function SyncStep({ projectId }: StepProps) {
 
   const providerInfo = getProviderInfo();
 
+  // Get the button label based on current operation
+  const getButtonLabel = (): string => {
+    if (!isSyncing) return 'Sync';
+
+    switch (currentOperation) {
+      case 'pull':
+        return 'Pull';
+      case 'push':
+        return 'Push';
+      case 'force-pull':
+        return 'Force Pull';
+      case 'sync':
+        return 'Sync';
+      default:
+        return 'Sync';
+    }
+  };
+
+  const renderForcePullButton = () => (
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={() => {
+        setError(null);
+        setShowForcePullDialog(true);
+      }}
+      className="w-full hover:bg-destructive-foreground/20 border-destructive-foreground/20"
+    >
+      <AlertTriangle className="h-4 w-4" />
+      Force Pull
+    </Button>
+  );
+
+  // Render special error UI based on error type
+  const renderError = () => {
+    if (!error) return null;
+
+    // MergeNotSupportedError - offer force pull
+    if (error instanceof GitErrors.MergeNotSupportedError) {
+      return (
+        <Alert variant="destructive">
+          <div className="flex flex-col gap-3">
+            <div className="flex items-start justify-between gap-2">
+              <AlertDescription className="text-sm flex-1">
+                Cannot merge changes automatically. Your local changes conflict with the remote repository.
+              </AlertDescription>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-5 shrink-0 hover:bg-destructive-foreground/10"
+                onClick={() => setError(null)}
+              >
+                <X className="size-4" />
+              </Button>
+            </div>
+            {renderForcePullButton()}
+          </div>
+        </Alert>
+      );
+    }
+
+    // FastForwardError - offer force push or force pull
+    if (error instanceof GitErrors.FastForwardError) {
+      return (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <div className="flex flex-col gap-3">
+            <div className="flex items-start justify-between gap-2">
+              <AlertDescription className="text-sm flex-1">
+                Cannot fast-forward. The remote has changes that conflict with your local commits.
+              </AlertDescription>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-5 shrink-0 hover:bg-destructive-foreground/10"
+                onClick={() => setError(null)}
+              >
+                <X className="size-4" />
+              </Button>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setError(null);
+                setShowForcePullDialog(true);
+              }}
+              className="w-full bg-destructive-foreground/10 hover:bg-destructive-foreground/20 border-destructive-foreground/20"
+            >
+              <AlertTriangle className="h-4 w-4" />
+              {renderForcePullButton()}
+            </Button>
+          </div>
+        </Alert>
+      );
+    }
+
+    // PushRejectedError - remote has changes
+    if (error instanceof GitErrors.PushRejectedError) {
+      return (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <div className="flex flex-col gap-3">
+            <div className="flex items-start justify-between gap-2">
+              <AlertDescription className="text-sm flex-1">
+                Push rejected. The remote repository has changes you don't have locally. Try pulling first.
+              </AlertDescription>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-5 shrink-0 hover:bg-destructive-foreground/10"
+                onClick={() => setError(null)}
+              >
+                <X className="size-4" />
+              </Button>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setError(null);
+                  handlePull();
+                }}
+                className="flex-1"
+              >
+                <ArrowDown className="h-4 w-4" />
+                Pull First
+              </Button>
+              {renderForcePullButton()}
+            </div>
+          </div>
+        </Alert>
+      );
+    }
+
+    // HTTP errors
+    if (error instanceof GitErrors.HttpError) {
+      let message: string;
+
+      switch (error.data.statusCode) {
+        case 401:
+          message = 'Authentication failed. Please check your credentials.';
+          break;
+        case 403:
+          message = 'Access forbidden. You do not have permission to access this repository.';
+          break;
+        default:
+          message = `HTTP Error: ${error.data.statusCode} ${error.data.statusMessage}`;
+      }
+
+      return (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <div className="flex items-start justify-between gap-2">
+            <AlertDescription className="text-sm flex-1">
+              {message}
+            </AlertDescription>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-5 shrink-0 hover:bg-destructive-foreground/10"
+              onClick={() => setError(null)}
+            >
+              <X className="size-4" />
+            </Button>
+          </div>
+        </Alert>
+      );
+    }
+
+    // Generic error fallback
+    return (
+      <Alert variant="destructive">
+        <AlertTriangle className="h-4 w-4" />
+        <div className="flex items-start justify-between gap-2">
+          <AlertDescription className="text-sm flex-1">{error.message}</AlertDescription>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-5 shrink-0 hover:bg-destructive-foreground/10"
+            onClick={() => setError(null)}
+          >
+            <X className="size-4" />
+          </Button>
+        </div>
+      </Alert>
+    );
+  };
+
   if (!originRemote) {
     return null;
   }
@@ -224,7 +460,7 @@ export function SyncStep({ projectId }: StepProps) {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={handleDisconnect} className="text-destructive">
-                <CloudOff className="h-4 w-4 mr-2" />
+                <CloudOff className="h-4 w-4" />
                 Disconnect
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -255,21 +491,7 @@ export function SyncStep({ projectId }: StepProps) {
         </div>
       </div>
 
-      {error && (
-        <Alert variant="destructive">
-          <div className="flex items-start justify-between gap-2">
-            <AlertDescription className="text-sm flex-1">{error.message}</AlertDescription>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-5 shrink-0 hover:bg-destructive-foreground/10"
-              onClick={() => setError(null)}
-            >
-              <X className="size-4" />
-            </Button>
-          </div>
-        </Alert>
-      )}
+      {renderError()}
 
       <div className="rounded-md bg-primary">
         <div className="flex">
@@ -282,11 +504,7 @@ export function SyncStep({ projectId }: StepProps) {
               {syncSuccess
                 ? <Check className="h-4 w-4" />
                 : <RefreshCw className={cn("size-4", { "animate-spin": isSyncing })} />}
-              <span>
-                {isSyncing && currentOperation === 'pull' ? 'Pull'
-                  : isSyncing && currentOperation === 'push' ? 'Push'
-                    : 'Sync'}
-              </span>
+              <span>{getButtonLabel()}</span>
             </div>
           </Button>
           <div className="w-px bg-border/20" />
@@ -322,6 +540,47 @@ export function SyncStep({ projectId }: StepProps) {
           </DropdownMenu>
         </div>
       </div>
+
+      {/* Force Pull Confirmation Dialog */}
+      <AlertDialog open={showForcePullDialog} onOpenChange={setShowForcePullDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              Force Pull - Discard Local Changes?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              <p>
+                This will <strong className="text-destructive">permanently discard all local changes</strong> and reset your repository to match the remote.
+              </p>
+              <p className="text-sm">
+                This action cannot be undone. Any uncommitted work will be lost.
+              </p>
+              <div className="rounded-md bg-destructive/10 p-3 text-sm border border-destructive/20">
+                <p className="font-medium text-destructive mb-1">What will happen:</p>
+                <ul className="list-disc list-inside space-y-1 text-muted-foreground">
+                  <li>All local changes will be discarded</li>
+                  <li>Repository will reset to remote state</li>
+                  <li>Latest changes will be pulled from remote</li>
+                </ul>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setShowForcePullDialog(false);
+                handleForcePull();
+              }}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              <AlertTriangle className="h-4 w-4" />
+              Force Pull
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

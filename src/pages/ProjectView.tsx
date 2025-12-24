@@ -28,7 +28,7 @@ import { GitHistoryDialog } from '@/components/ai/GitHistoryDialog';
 import { DuplicateProjectDialog } from '@/components/DuplicateProjectDialog';
 import { GitStatusIndicator } from '@/components/GitStatusIndicator';
 import { GitSyncButton } from '@/components/git-sync';
-import { DeployPopover } from '@/components/deploy';
+import { DeployButton } from '@/components/deploy/DeployButton';
 import { useBuildProject } from '@/hooks/useBuildProject';
 import { useIsProjectPreviewable } from '@/hooks/useIsProjectPreviewable';
 import { useConsoleError } from '@/hooks/useConsoleError';
@@ -307,7 +307,7 @@ export function ProjectView() {
                     projectId={project.id}
                     className="h-8 w-8"
                   />
-                  <DeployPopover
+                  <DeployButton
                     projectId={project.id}
                     projectName={project.name}
                     disabled={isAnyLoading}
@@ -554,7 +554,7 @@ export function ProjectView() {
                             projectId={project.id}
                             className="h-8 w-8"
                           />
-                          <DeployPopover
+                          <DeployButton
                             projectId={project.id}
                             projectName={project.name}
                             disabled={isAnyLoading}

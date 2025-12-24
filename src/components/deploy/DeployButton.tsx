@@ -5,14 +5,14 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { cn } from '@/lib/utils';
 import { DeploySteps } from './DeploySteps';
 
-interface DeployPopoverProps {
+interface DeployButtonProps {
   projectId: string;
   projectName: string;
   className?: string;
   disabled?: boolean;
 }
 
-export function DeployPopover({ projectId, projectName, className, disabled }: DeployPopoverProps) {
+export function DeployButton({ projectId, projectName, className, disabled }: DeployButtonProps) {
   const [open, setOpen] = useState(false);
 
   return (

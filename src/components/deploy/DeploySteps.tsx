@@ -13,7 +13,6 @@ import { useFS } from '@/hooks/useFS';
 import { useFSPaths } from '@/hooks/useFSPaths';
 import { useAppContext } from '@/hooks/useAppContext';
 import { useNostr } from '@nostrify/react';
-import { ShakespeareAdapter, NetlifyAdapter, VercelAdapter, NsiteAdapter, CloudflareAdapter, DenoDeployAdapter, DeployAdapter } from '@/lib/deploy';
 import { Link } from 'react-router-dom';
 import type { DeployProvider, ShakespeareDeployProvider, NetlifyProvider, VercelProvider, CloudflareProvider, DenoDeployProvider } from '@/contexts/DeploySettingsContext';
 import { ShakespeareDeployForm } from '@/components/deploy/ShakespeareDeployForm';
@@ -23,6 +22,13 @@ import { NsiteDeployForm } from '@/components/deploy/NsiteDeployForm';
 import { CloudflareDeployForm } from '@/components/deploy/CloudflareDeployForm';
 import { DenoDeployForm } from '@/components/deploy/DenoDeployForm';
 import { cn } from '@/lib/utils';
+import { DeployAdapter } from '@/lib/deploy/types';
+import { ShakespeareAdapter } from '@/lib/deploy/ShakespeareAdapter';
+import { NsiteAdapter } from '@/lib/deploy/NsiteAdapter';
+import { NetlifyAdapter } from '@/lib/deploy/NetlifyAdapter';
+import { VercelAdapter } from '@/lib/deploy/VercelAdapter';
+import { CloudflareAdapter } from '@/lib/deploy/CloudflareAdapter';
+import { DenoDeployAdapter } from '@/lib/deploy/DenoDeployAdapter';
 
 /**
  * Helper function to get provider URL for favicon

@@ -30,10 +30,10 @@ export function GitSyncButton({ projectId, className }: GitSyncButtonProps) {
         <Button
           variant="ghost"
           size="sm"
-          className={cn("h-8 w-8 p-0 relative", className)}
+          className={cn("size-8 p-0 group relative", className)}
           aria-label="Sync with Git"
         >
-          <CloudUpload className={cn("size-5", open ? "text-foreground" : "text-muted-foreground")} />
+          <CloudUpload className={cn("size-5 group-hover:text-foreground", open ? "text-foreground" : "text-muted-foreground")} />
           {showIndicator && (
             <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-primary" />
           )}

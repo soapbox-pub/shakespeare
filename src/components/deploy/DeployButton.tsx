@@ -21,11 +21,11 @@ export function DeployButton({ projectId, projectName, className, disabled }: De
         <Button
           variant="ghost"
           size="sm"
-          className={cn("h-8 w-8 p-0", className)}
+          className={cn("size-8 p-0 group", className)}
           aria-label="Deploy project"
           disabled={disabled}
         >
-          <Rocket className={cn("size-5", open ? "text-foreground" : "text-muted-foreground")} />
+          <Rocket className={cn("size-5 group-hover:text-foreground", open ? "text-foreground" : "text-muted-foreground")} />
         </Button>
       </PopoverTrigger>
       <PopoverContent

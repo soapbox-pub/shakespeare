@@ -28,9 +28,11 @@ export function SyncStep({ projectId }: StepProps) {
   const queryClient = useQueryClient();
 
   const [isSyncing, setIsSyncing] = useState(false);
+  const [currentOperation, setCurrentOperation] = useState<GitOperation | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copiedUrl, setCopiedUrl] = useState(false);
   const [syncSuccess, setSyncSuccess] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
 
   const { data: gitStatus } = useGitStatus(projectId);
   const { settings } = useGitSettings();
@@ -56,6 +58,8 @@ export function SyncStep({ projectId }: StepProps) {
     if (!originRemote) return;
 
     setIsSyncing(true);
+    setDropdownOpen(false);
+    setCurrentOperation(operation);
     setError(null);
     setSyncSuccess(false);
 
@@ -70,6 +74,7 @@ export function SyncStep({ projectId }: StepProps) {
       setError(message);
     } finally {
       setIsSyncing(false);
+      setCurrentOperation(null);
     }
   }, [originRemote]);
 
@@ -267,11 +272,15 @@ export function SyncStep({ projectId }: StepProps) {
               {syncSuccess
                 ? <Check className="h-4 w-4" />
                 : <RefreshCw className={cn("size-4", { "animate-spin": isSyncing })} />}
-              <span>Sync</span>
+              <span>
+                {isSyncing && currentOperation === 'pull' ? 'Pull'
+                  : isSyncing && currentOperation === 'push' ? 'Push'
+                    : 'Sync'}
+              </span>
             </div>
           </Button>
           <div className="w-px bg-border/20" />
-          <DropdownMenu>
+          <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
             <DropdownMenuTrigger asChild>
               <Button
                 disabled={isSyncing}
@@ -280,21 +289,25 @@ export function SyncStep({ projectId }: StepProps) {
                 <ChevronDown className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-40">
-              <DropdownMenuItem
-                onClick={handlePull}
-                className="flex items-center gap-2 py-3 cursor-pointer"
-              >
-                <ArrowDown className="size-3" />
-                Pull
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={handlePush}
-                className="flex items-center gap-2 py-3 cursor-pointer"
-              >
-                <ArrowUp className="size-3" />
-                Push
-              </DropdownMenuItem>
+            <DropdownMenuContent align="end">
+              <div className="flex gap-2 p-2">
+                <Button
+                  onClick={handlePush}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  <ArrowUp className="h-4 w-4" />
+                  Push
+                </Button>
+                <Button
+                  onClick={handlePull}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  <ArrowDown className="h-4 w-4" />
+                  Pull
+                </Button>
+              </div>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

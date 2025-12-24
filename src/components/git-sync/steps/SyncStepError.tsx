@@ -1,5 +1,5 @@
 import { Errors as GitErrors } from 'isomorphic-git';
-import { AlertTriangle, X, ArrowDown } from 'lucide-react';
+import { AlertTriangle, X, ArrowDown, ArrowUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
@@ -7,10 +7,11 @@ interface SyncStepErrorProps {
   error: Error;
   onDismiss: () => void;
   onForcePull: () => void;
+  onForcePush: () => void;
   onPull: () => void;
 }
 
-export function SyncStepError({ error, onDismiss, onForcePull, onPull }: SyncStepErrorProps) {
+export function SyncStepError({ error, onDismiss, onForcePull, onForcePush, onPull }: SyncStepErrorProps) {
   const renderForcePullButton = () => (
     <Button
       variant="outline"
@@ -26,6 +27,21 @@ export function SyncStepError({ error, onDismiss, onForcePull, onPull }: SyncSte
     </Button>
   );
 
+  const renderForcePushButton = () => (
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={() => {
+        onDismiss();
+        onForcePush();
+      }}
+      className="w-full hover:bg-destructive-foreground/20 border-destructive-foreground/20"
+    >
+      <AlertTriangle className="h-4 w-4" />
+      Force Push
+    </Button>
+  );
+
   const renderDismissButton = () => (
     <Button
       variant="ghost"
@@ -37,7 +53,7 @@ export function SyncStepError({ error, onDismiss, onForcePull, onPull }: SyncSte
     </Button>
   );
 
-  // MergeNotSupportedError - offer force pull
+  // MergeNotSupportedError - offer force pull or force push
   if (error instanceof GitErrors.MergeNotSupportedError) {
     return (
       <Alert variant="destructive">
@@ -48,13 +64,16 @@ export function SyncStepError({ error, onDismiss, onForcePull, onPull }: SyncSte
             </AlertDescription>
             {renderDismissButton()}
           </div>
-          {renderForcePullButton()}
+          <div className="flex gap-2">
+            {renderForcePullButton()}
+            {renderForcePushButton()}
+          </div>
         </div>
       </Alert>
     );
   }
 
-  // FastForwardError - offer force pull
+  // FastForwardError - offer force pull or force push
   if (error instanceof GitErrors.FastForwardError) {
     return (
       <Alert variant="destructive">
@@ -66,7 +85,10 @@ export function SyncStepError({ error, onDismiss, onForcePull, onPull }: SyncSte
             </AlertDescription>
             {renderDismissButton()}
           </div>
-          {renderForcePullButton()}
+          <div className="flex gap-2">
+            {renderForcePullButton()}
+            {renderForcePushButton()}
+          </div>
         </div>
       </Alert>
     );
@@ -84,7 +106,7 @@ export function SyncStepError({ error, onDismiss, onForcePull, onPull }: SyncSte
             </AlertDescription>
             {renderDismissButton()}
           </div>
-          <div className="flex gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <Button
               variant="outline"
               size="sm"
@@ -92,12 +114,22 @@ export function SyncStepError({ error, onDismiss, onForcePull, onPull }: SyncSte
                 onDismiss();
                 onPull();
               }}
-              className="flex-1"
             >
               <ArrowDown className="h-4 w-4" />
               Pull First
             </Button>
-            {renderForcePullButton()}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                onDismiss();
+                onForcePush();
+              }}
+              className="hover:bg-destructive-foreground/20 border-destructive-foreground/20"
+            >
+              <ArrowUp className="h-4 w-4" />
+              Force Push
+            </Button>
           </div>
         </div>
       </Alert>

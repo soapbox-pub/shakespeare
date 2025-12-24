@@ -12,6 +12,7 @@ import {
 import { ExternalFavicon } from '@/components/ExternalFavicon';
 import { SyncStepError } from './SyncStepError';
 import { ForcePullDialog } from './ForcePullDialog';
+import { ForcePushDialog } from './ForcePushDialog';
 import { useGitStatus } from '@/hooks/useGitStatus';
 import { useGitSettings } from '@/hooks/useGitSettings';
 import { useGit } from '@/hooks/useGit';
@@ -23,7 +24,7 @@ import { NostrURI } from '@/lib/NostrURI';
 import { ngitWebUrl } from '@/lib/ngitWebUrl';
 import { useQueryClient } from '@tanstack/react-query';
 
-type GitOperation = 'sync' | 'pull' | 'push' | 'force-pull';
+type GitOperation = 'sync' | 'pull' | 'push' | 'force-pull' | 'force-push';
 
 export function SyncStep({ projectId }: StepProps) {
   const queryClient = useQueryClient();
@@ -35,6 +36,7 @@ export function SyncStep({ projectId }: StepProps) {
   const [syncSuccess, setSyncSuccess] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [showForcePullDialog, setShowForcePullDialog] = useState(false);
+  const [showForcePushDialog, setShowForcePushDialog] = useState(false);
 
   const { data: gitStatus } = useGitStatus(projectId);
   const { settings } = useGitSettings();
@@ -132,6 +134,12 @@ export function SyncStep({ projectId }: StepProps) {
 
       // Invalidate git status to refresh UI
       queryClient.invalidateQueries({ queryKey: ['git-status', projectId] });
+    });
+  };
+
+  const handleForcePush = async () => {
+    await executeGitOperation('force-push', async () => {
+      await git.push({ dir, remote: 'origin', ref, force: true });
     });
   };
 
@@ -244,6 +252,8 @@ export function SyncStep({ projectId }: StepProps) {
         return 'Push';
       case 'force-pull':
         return 'Force Pull';
+      case 'force-push':
+        return 'Force Push';
       case 'sync':
         return 'Sync';
       default:
@@ -315,6 +325,7 @@ export function SyncStep({ projectId }: StepProps) {
           error={error}
           onDismiss={() => setError(null)}
           onForcePull={() => setShowForcePullDialog(true)}
+          onForcePush={() => setShowForcePushDialog(true)}
           onPull={handlePull}
         />
       )}
@@ -371,6 +382,13 @@ export function SyncStep({ projectId }: StepProps) {
         open={showForcePullDialog}
         onOpenChange={setShowForcePullDialog}
         onConfirm={handleForcePull}
+        remoteName={providerInfo?.name}
+      />
+
+      <ForcePushDialog
+        open={showForcePushDialog}
+        onOpenChange={setShowForcePushDialog}
+        onConfirm={handleForcePush}
         remoteName={providerInfo?.name}
       />
     </div>

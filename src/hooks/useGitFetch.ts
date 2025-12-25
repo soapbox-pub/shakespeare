@@ -7,16 +7,20 @@ interface GitFetchResult {
   fetchHeadDescription: string | null;
 }
 
-export function useGitFetch(dir: string | undefined) {
+export function useGitFetch(dir: string | undefined, remote = 'origin') {
   const { git } = useGit();
 
   const query = useQuery({
     queryKey: ['git-fetch', dir],
     queryFn: async (): Promise<GitFetchResult> => {
-      if (dir) {
+      const remotes = await git.listRemotes({ dir });
+      const hasOrigin = !!remotes.find(r => r.remote === remote);
+
+      if (dir && hasOrigin) {
         try {
           return await git.fetch({
             dir,
+            remote,
           });
         } catch (error) {
           // Fetch failed, but don't throw - just log and return null

@@ -242,6 +242,7 @@ export class Git {
       http: this.httpForUrl(remoteUrl),
       onAuth: this.onAuth,
       ...options,
+      remote,
     });
   }
 

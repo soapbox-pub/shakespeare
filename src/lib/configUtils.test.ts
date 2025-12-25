@@ -162,6 +162,7 @@ describe('configUtils', () => {
           origin: 'https://github.com',
           username: 'user',
           password: 'token123',
+          proxy: true,
         },
       ],
     };

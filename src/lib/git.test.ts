@@ -70,6 +70,7 @@ describe('Git', () => {
       expect(mockGit.clone).toHaveBeenCalledWith({
         fs,
         http: expect.any(Object),
+        onAuth: expect.any(Function),
         dir: '/test',
         url: 'https://github.com/user/repo.git',
       });
@@ -84,6 +85,7 @@ describe('Git', () => {
       expect(mockGit.clone).toHaveBeenCalledWith({
         fs,
         http: expect.any(Object),
+        onAuth: expect.any(Function),
         dir: '/test',
         url: 'https://gitlab.com/user/repo.git',
       });
@@ -98,6 +100,7 @@ describe('Git', () => {
       expect(mockGit.clone).toHaveBeenCalledWith({
         fs,
         http: expect.any(Object),
+        onAuth: expect.any(Function),
         dir: '/test',
         url: 'https://custom.example.com/user/repo.git',
       });
@@ -112,6 +115,7 @@ describe('Git', () => {
       expect(mockGit.clone).toHaveBeenCalledWith({
         fs,
         http: expect.any(Object),
+        onAuth: expect.any(Function),
         dir: '/test',
         url: 'http://github.com/user/repo.git',
       });
@@ -130,6 +134,7 @@ describe('Git', () => {
 
       expect(mockGit.getRemoteInfo).toHaveBeenCalledWith({
         http: expect.any(Object),
+        onAuth: expect.any(Function),
         url: 'https://github.com/user/repo.git',
       });
     });
@@ -141,6 +146,7 @@ describe('Git', () => {
 
       expect(mockGit.getRemoteInfo).toHaveBeenCalledWith({
         http: expect.any(Object),
+        onAuth: expect.any(Function),
         url: 'https://custom.example.com/user/repo.git',
       });
     });
@@ -163,6 +169,7 @@ describe('Git', () => {
       expect(mockGit.fetch).toHaveBeenCalledWith({
         fs,
         http: expect.any(Object),
+        onAuth: expect.any(Function),
         dir: '/test',
         remote: 'origin',
       });
@@ -177,6 +184,7 @@ describe('Git', () => {
       expect(mockGit.fetch).toHaveBeenCalledWith({
         fs,
         http: expect.any(Object),
+        onAuth: expect.any(Function),
         dir: '/test',
         url: 'https://gitlab.com/user/repo.git',
       });
@@ -231,6 +239,7 @@ describe('Git', () => {
       expect(mockGit.clone).toHaveBeenCalledWith({
         fs,
         http: expect.any(Object),
+        onAuth: expect.any(Function),
         dir: '/test',
         url: expect.stringMatching(/^https:\/\/(github|gitlab)\.com\/user\/repo\.git$/),
       });

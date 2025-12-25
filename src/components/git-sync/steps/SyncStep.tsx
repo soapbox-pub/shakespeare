@@ -208,19 +208,11 @@ export function SyncStep({ projectId, remoteUrl }: SyncStepProps) {
 
     // Check if we have a matched credential
     const matchedCredential = findCredentialsForRepo(remoteUrl, settings.credentials);
-    if (matchedCredential) {
-      return {
-        name: matchedCredential.name,
-        icon: (
-          <ExternalFavicon
-            url={matchedCredential.origin}
-            size={16}
-          />
-        ),
-      };
-    }
 
-    return { name: remoteUrl.hostname };
+    return {
+      name: matchedCredential? matchedCredential.name : remoteUrl.hostname,
+      icon: <ExternalFavicon url={remoteUrl} size={16} />,
+    };
   }, [remoteUrl, settings.credentials]);
 
   const providerInfo = getProviderInfo();

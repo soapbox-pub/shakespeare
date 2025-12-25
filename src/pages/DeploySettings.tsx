@@ -44,7 +44,6 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { Link } from 'react-router-dom';
 import type { DeployProvider } from '@/contexts/DeploySettingsContext';
 import { ExternalFavicon } from '@/components/ExternalFavicon';
-import { normalizeUrl } from '@/lib/url';
 
 interface PresetProvider {
   id: string;
@@ -376,6 +375,22 @@ function generateCustomProviderId(type: string): string {
   const randomSegment = uuid.split('-')[0];
   return `${type}-${randomSegment}`;
 }
+
+/**
+ * Normalize a URL string to ensure it has a protocol
+ * @param url - The URL string to normalize
+ * @returns A fully-qualified URL string
+ */
+function normalizeUrl(url: string): string {
+  // If it already has a protocol, return as-is
+  if (/^https?:\/\//i.test(url)) {
+    return url;
+  }
+
+  // Add https:// prefix
+  return `https://${url}`;
+}
+
 
 function getProviderUrl(provider: DeployProvider | PresetProvider): string | null {
   switch (provider.type) {

@@ -1,12 +1,11 @@
 import { useAppContext } from '@/hooks/useAppContext';
 import { faviconUrl } from '@/lib/faviconUrl';
-import { normalizeUrl } from '@/lib/url';
 import { cn } from '@/lib/utils';
 import { ReactNode, useMemo } from 'react';
 
 interface ExternalFaviconProps {
   /** The URL to fetch the favicon for */
-  url: string;
+  url: string | URL;
   /** Size of the favicon in pixels */
   size?: number;
   /** Fallback element to display if favicon fails to load */
@@ -31,8 +30,7 @@ export function ExternalFavicon({
   const faviconSrc = useMemo(() => {
     try {
       // Normalize the URL to ensure it has a protocol
-      const normalizedUrl = normalizeUrl(url);
-      return faviconUrl(config.faviconUrl, normalizedUrl);
+      return faviconUrl(config.faviconUrl, url);
     } catch {
       return;
     }

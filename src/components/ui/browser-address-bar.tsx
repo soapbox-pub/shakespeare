@@ -123,7 +123,7 @@ export function BrowserAddressBar({
           variant="ghost"
           size="sm"
           onClick={onRefresh}
-          className="size-6 absolute right-1 top-1/2 -translate-y-1/2 hover:bg-muted/50 rounded-full transition-colors group"
+          className="size-6 absolute right-1 top-1/2 -translate-y-1/2 hover:bg-muted/50 rounded-full transition-colors group px-1.5"
           title="Refresh"
         >
           <RefreshCw className="size-3 text-muted-foreground transition-colors group-hover:text-foreground" />

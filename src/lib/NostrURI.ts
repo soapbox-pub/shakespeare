@@ -28,7 +28,7 @@ export interface NostrURIParts {
  * const uri = new NostrURI({
  *   pubkey: 'abc123...',
  *   identifier: 'my-repo',
- *   relay: 'relay.example.com'
+ *   relay: 'wss://relay.example.com/'
  * });
  *
  * // Parse from string

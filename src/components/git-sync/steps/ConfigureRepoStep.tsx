@@ -142,7 +142,11 @@ export function ConfigureRepoStep({
         await new Promise(resolve => setTimeout(resolve, 5000));
 
         // Construct Nostr URI
-        const nostrURI = new NostrURI({ pubkey: repoEvent.pubkey, identifier: projectId });
+        const nostrURI = new NostrURI({
+          pubkey: repoEvent.pubkey,
+          identifier: projectId,
+          relay: [...relays][0],
+        });
 
         // Configure the Nostr URI as the origin
         await git.addRemote({

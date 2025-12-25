@@ -1288,11 +1288,17 @@ export class Git {
       throw lastError || new Error('All clone attempts failed');
     }
 
+    // Construct the Nostr URI with relay if not already present
+    const repoUrl = new NostrURI({
+      ...nostrURI.toJSON(),
+      relay: nostrURI.relay ?? repo.relays[0],
+    });
+
     // After successful clone, update the remote to point to the Nostr URI
     await this.setRemoteURL({
       remote: options.remote || 'origin',
       dir: options.dir,
-      url: options.url,
+      url: repoUrl.toString(),
     });
 
     // Set the nostr.repo config to the naddr

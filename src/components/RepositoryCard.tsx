@@ -34,7 +34,11 @@ export function RepositoryCard({ repo }: RepositoryCardProps) {
   const profileImage = authorData?.metadata?.picture;
 
   // Construct Nostr clone URL
-  const nostrURI = new NostrURI({ pubkey: repo.pubkey, identifier: repo.repoId });
+  const nostrURI = new NostrURI({
+    pubkey: repo.pubkey,
+    identifier: repo.repoId,
+    relay: repo.relays[0],
+  });
 
   const handleClone = async (e: React.MouseEvent) => {
     // Prevent card click from triggering

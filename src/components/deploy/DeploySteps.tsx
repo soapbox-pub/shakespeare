@@ -14,7 +14,7 @@ import { useFSPaths } from '@/hooks/useFSPaths';
 import { useAppContext } from '@/hooks/useAppContext';
 import { useNostr } from '@nostrify/react';
 import { Link } from 'react-router-dom';
-import type { DeployProvider, ShakespeareDeployProvider, NetlifyProvider, VercelProvider, CloudflareProvider, DenoDeployProvider } from '@/contexts/DeploySettingsContext';
+import type { DeployProvider } from '@/contexts/DeploySettingsContext';
 import { ShakespeareDeployForm } from '@/components/deploy/ShakespeareDeployForm';
 import { NetlifyDeployForm } from '@/components/deploy/NetlifyDeployForm';
 import { VercelDeployForm } from '@/components/deploy/VercelDeployForm';
@@ -195,7 +195,7 @@ export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProp
           throw new Error('You must be logged in with Nostr to use Shakespeare Deploy');
         }
 
-        const shakespeareProvider = selectedProvider as ShakespeareDeployProvider;
+        const shakespeareProvider = selectedProvider;
         adapter = new ShakespeareAdapter({
           fs,
           signer: user.signer,
@@ -204,7 +204,7 @@ export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProp
           corsProxy: shakespeareProvider.proxy ? config.corsProxy : undefined,
         });
       } else if (selectedProvider.type === 'nsite') {
-        const nsiteProvider = selectedProvider as import('@/contexts/DeploySettingsContext').NsiteProvider;
+        const nsiteProvider = selectedProvider;
 
         if (!nsiteForm.nsec) {
           throw new Error('Site private key (nsec) is required');
@@ -219,7 +219,7 @@ export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProp
           blossomServers: nsiteProvider.blossomServers,
         });
       } else if (selectedProvider.type === 'netlify') {
-        const netlifyProvider = selectedProvider as NetlifyProvider;
+        const netlifyProvider = selectedProvider;
         if (!netlifyProvider.apiKey) {
           throw new Error('Netlify API key is required');
         }
@@ -235,7 +235,7 @@ export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProp
           corsProxy: netlifyProvider.proxy ? config.corsProxy : undefined,
         });
       } else if (selectedProvider.type === 'vercel') {
-        const vercelProvider = selectedProvider as VercelProvider;
+        const vercelProvider = selectedProvider;
         if (!vercelProvider.apiKey) {
           throw new Error('Vercel API key is required');
         }
@@ -249,7 +249,7 @@ export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProp
           corsProxy: vercelProvider.proxy ? config.corsProxy : undefined,
         });
       } else if (selectedProvider.type === 'cloudflare') {
-        const cloudflareProvider = selectedProvider as CloudflareProvider;
+        const cloudflareProvider = selectedProvider;
         if (!cloudflareProvider.apiKey) {
           throw new Error('Cloudflare API key is required');
         }
@@ -267,7 +267,7 @@ export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProp
           corsProxy: cloudflareProvider.proxy ? config.corsProxy : undefined,
         });
       } else if (selectedProvider.type === 'deno') {
-        const denoProvider = selectedProvider as DenoDeployProvider;
+        const denoProvider = selectedProvider;
         if (!denoProvider.apiKey) {
           throw new Error('Deno Deploy access token is required');
         }
@@ -399,7 +399,7 @@ export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProp
     if (!selectedProvider) return null;
 
     if (selectedProvider.type === 'shakespeare') {
-      const shakespeareProvider = selectedProvider as ShakespeareDeployProvider;
+      const shakespeareProvider = selectedProvider;
       const savedConfig = projectSettings.providers[selectedProviderId];
       const savedSubdomain = savedConfig?.type === 'shakespeare' ? savedConfig.data.subdomain : undefined;
 
@@ -461,7 +461,7 @@ export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProp
     }
 
     if (selectedProvider.type === 'cloudflare') {
-      const cloudflareProvider = selectedProvider as CloudflareProvider;
+      const cloudflareProvider = selectedProvider;
       const savedConfig = projectSettings.providers[selectedProviderId];
       const savedProjectName = savedConfig?.type === 'cloudflare' ? savedConfig.data.projectName : undefined;
 
@@ -481,7 +481,7 @@ export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProp
     }
 
     if (selectedProvider.type === 'deno') {
-      const denoProvider = selectedProvider as DenoDeployProvider;
+      const denoProvider = selectedProvider;
       const savedConfig = projectSettings.providers[selectedProviderId];
       const savedProjectName = savedConfig?.type === 'deno' ? savedConfig.data.projectName : undefined;
 

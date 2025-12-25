@@ -1,4 +1,5 @@
 import OpenAI from 'openai';
+import type { Decimal } from 'decimal.js';
 import type { JSRuntimeFS } from './JSRuntime';
 import { DotAI } from './DotAI';
 import { parseProviderModel } from './parseProviderModel';
@@ -66,7 +67,7 @@ export class SessionManager {
   private getSettings: () => { providers: AIProvider[]; imageModel?: string };
   private getConfig: () => AppConfig;
   private getDefaultConfig: () => AppConfig;
-  private getProviderModels?: () => Array<{ id: string; provider: string; contextLength?: number; pricing?: { prompt: import('decimal.js').Decimal; completion: import('decimal.js').Decimal } }>;
+  private getProviderModels?: () => Array<{ id: string; provider: string; contextLength?: number; pricing?: { prompt: Decimal; completion: Decimal } }>;
   private getCurrentUser?: () => { user?: NUser; metadata?: NostrMetadata };
 
   constructor(
@@ -75,7 +76,7 @@ export class SessionManager {
     getSettings: () => { providers: AIProvider[]; imageModel?: string },
     getConfig: () => AppConfig,
     getDefaultConfig: () => AppConfig,
-    getProviderModels?: () => Array<{ id: string; provider: string; contextLength?: number; pricing?: { prompt: import('decimal.js').Decimal; completion: import('decimal.js').Decimal } }>,
+    getProviderModels?: () => Array<{ id: string; provider: string; contextLength?: number; pricing?: { prompt: Decimal; completion: Decimal } }>,
     getCurrentUser?: () => { user?: NUser; metadata?: NostrMetadata },
   ) {
     this.fs = fs;

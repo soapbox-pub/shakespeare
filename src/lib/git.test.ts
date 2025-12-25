@@ -187,6 +187,7 @@ describe('Git', () => {
         onAuth: expect.any(Function),
         dir: '/test',
         url: 'https://gitlab.com/user/repo.git',
+        remote: 'origin',
       });
     });
   });

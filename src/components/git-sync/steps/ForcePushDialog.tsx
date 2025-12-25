@@ -33,11 +33,11 @@ export function ForcePushDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-destructive" />
-            Force Push - Overwrite Remote History?
+            Force Push to {remoteName}?
           </DialogTitle>
           <DialogDescription className="space-y-3">
             <p>
-              This will <strong className="text-destructive">completely overwrite the remote repository</strong> on <strong>{remoteName}</strong> with your local version, permanently deleting any commits and changes on {remoteName} that don't exist locally.
+              This will <strong className="text-destructive">completely overwrite the commit history on {remoteName}</strong> with your local version, permanently deleting any commits and changes on {remoteName} that don't exist locally.
             </p>
             <div className="rounded-md bg-destructive/10 p-3 text-sm border border-destructive/20">
               <p className="font-medium text-destructive mb-1">What will be deleted from {remoteName}:</p>

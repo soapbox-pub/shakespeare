@@ -1,7 +1,8 @@
 import { Errors as GitErrors } from 'isomorphic-git';
-import { AlertTriangle, X, ArrowDown } from 'lucide-react';
+import { X, ArrowDown, ArrowUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Link } from 'react-router-dom';
 
 interface SyncStepErrorProps {
   error: Error;
@@ -19,7 +20,7 @@ export function SyncStepError({ error, onDismiss, onForcePull, onForcePush, onPu
       onClick={onForcePull}
       className="w-full hover:bg-destructive-foreground/20 border-destructive-foreground/20"
     >
-      <AlertTriangle className="h-4 w-4" />
+      <ArrowDown className="size-4" />
       Force Pull
     </Button>
   );
@@ -31,7 +32,7 @@ export function SyncStepError({ error, onDismiss, onForcePull, onForcePush, onPu
       onClick={onForcePush}
       className="w-full hover:bg-destructive-foreground/20 border-destructive-foreground/20"
     >
-      <AlertTriangle className="h-4 w-4" />
+      <ArrowUp className="size-4" />
       Force Push
     </Button>
   );
@@ -42,7 +43,7 @@ export function SyncStepError({ error, onDismiss, onForcePull, onForcePush, onPu
       size="sm"
       onClick={onPull}
     >
-      <ArrowDown className="h-4 w-4" />
+      <ArrowDown className="size-4" />
       Pull
     </Button>
   );
@@ -120,11 +121,11 @@ export function SyncStepError({ error, onDismiss, onForcePull, onForcePush, onPu
 
   // HTTP errors
   if (error instanceof GitErrors.HttpError) {
-    let message: string;
+    let message: React.ReactNode;
 
     switch (error.data.statusCode) {
       case 401:
-        message = 'Authentication failed. Please check your credentials.';
+        message = <>Authentication failed. Please check your <Link to="/settings/git" className="underline">git credentials</Link>.</>
         break;
       case 403:
         message = 'Access forbidden. You do not have permission to access this repository.';

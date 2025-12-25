@@ -40,6 +40,7 @@ import { useGitFetch } from '@/hooks/useGitFetch';
 import { useQueryClient } from '@tanstack/react-query';
 import JSZip from 'jszip';
 import { cn } from '@/lib/utils';
+import { useProjectSessionStatus } from '@/hooks/useProjectSessionStatus';
 
 export function ProjectView() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -72,6 +73,7 @@ export function ProjectView() {
 
   const build = useBuildProject(projectId!);
   const { data: isPreviewable = false } = useIsProjectPreviewable(projectId!);
+  const { hasRunningSessions } = useProjectSessionStatus(projectId || '');
 
   // Automatically fetch from remote to keep git status updated
   useGitFetch(projectId ? `${projectsPath}/${projectId}` : undefined);
@@ -402,7 +404,11 @@ export function ProjectView() {
               className={cn("flex-1 rounded-none mobile-nav-button text-muted-foreground", { "text-foreground": mobileView === 'chat' })}
               disabled={!project}
             >
-              <MessageSquare className="h-4 w-4 mr-1" />
+              {project && hasRunningSessions ? (
+                <Loader2 className="h-4 w-4 mr-1 animate-spin text-blue-600 dark:text-blue-400" />
+              ) : (
+                <MessageSquare className="h-4 w-4 mr-1" />
+              )}
               {t('chat')}
             </Button>
             {isPreviewable && (

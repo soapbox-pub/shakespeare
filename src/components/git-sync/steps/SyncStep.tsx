@@ -70,7 +70,7 @@ export function SyncStep({ projectId, remoteUrl }: SyncStepProps) {
 
       // Show success feedback
       setSyncSuccess(true);
-      setTimeout(() => setSyncSuccess(false), 1500);
+      setTimeout(() => setSyncSuccess(false), 2500);
     } catch (err) {
       const message = err instanceof Error ? err : new Error(`Failed to ${operation}`);
       setError(message);
@@ -83,8 +83,10 @@ export function SyncStep({ projectId, remoteUrl }: SyncStepProps) {
   const handleSync = async () => {
     await executeGitOperation('sync', async () => {
       // Pull first to get latest changes
+      setCurrentOperation('pull');
       await git.pull({ dir, ref, singleBranch: true });
       // Then push local changes
+      setCurrentOperation('push');
       await git.push({ dir, remote: 'origin', ref });
     });
   };
@@ -348,10 +350,7 @@ export function SyncStep({ projectId, remoteUrl }: SyncStepProps) {
               </Button>
               <div className="w-px bg-border/20" />
               <CollapsibleTrigger asChild>
-                <Button
-                  disabled={isSyncing}
-                  className="px-3 rounded-l-none bg-transparent hover:bg-white/10 transition-colors"
-                >
+                <Button className="px-3 rounded-l-none bg-transparent hover:bg-white/10 transition-colors">
                   <ChevronDown className={cn(
                     "h-4 w-4 transition-transform duration-200",
                     { "rotate-180": isExpanded }

@@ -89,7 +89,7 @@ Shakespeare provides full Git functionality in the browser using `isomorphic-git
 - **LightningFSAdapter**: Adapts LightningFS to the unified JSRuntimeFS interface
 - **GitCommitTool**: AI tool for automated commits with staging and validation
 - **useGitStatus Hook**: Real-time Git status monitoring (updates every 5 seconds)
-- **useGitFetch Hook**: Automatic remote fetch with change detection (updates every 60 seconds, shows toast notifications)
+- **useGitFetch Hook**: Automatic remote fetch
 - **ProjectsManager**: Handles project creation, Git initialization, and template cloning
 
 #### Core Features
@@ -218,7 +218,7 @@ This project is a Nostr client application built with React 18.x, TailwindCSS 3.
   - `useGitSettings`: Manage Git credentials and repository settings
   - `useSessionManager`: Access session management for AI chat sessions
   - `useGitStatus`: Real-time Git repository status monitoring
-  - `useGitFetch`: Automatic remote fetch with change detection and toast notifications
+  - `useGitFetch`: Automatic remote fetch
   - `useProjects`: Project management and CRUD operations
   - `useProjectsManager`: Advanced project operations (creation, cloning, building, ZIP import)
   - `useTheme`: Theme management

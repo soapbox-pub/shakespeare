@@ -36,6 +36,7 @@ import { useAutoBuild } from '@/hooks/useAutoBuild';
 import { useToast } from '@/hooks/useToast';
 import { useFS } from '@/hooks/useFS';
 import { useFSPaths } from '@/hooks/useFSPaths';
+import { useGitFetch } from '@/hooks/useGitFetch';
 import { useQueryClient } from '@tanstack/react-query';
 import JSZip from 'jszip';
 import { cn } from '@/lib/utils';
@@ -71,6 +72,9 @@ export function ProjectView() {
 
   const build = useBuildProject(projectId!);
   const { data: isPreviewable = false } = useIsProjectPreviewable(projectId!);
+
+  // Automatically fetch from remote to keep git status updated
+  useGitFetch(projectId ? `${projectsPath}/${projectId}` : undefined);
 
   // Enable auto-build for previewable projects
   useAutoBuild({

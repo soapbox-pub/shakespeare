@@ -376,9 +376,6 @@ export function SyncStep({ projectId, remoteUrl }: SyncStepProps) {
                   )}
                   Pull
                 </Button>
-                {commitsBehind > 0 && (
-                  <div className="absolute -top-1 -right-1 size-3 bg-yellow-500 rounded-full border-2 border-background" />
-                )}
               </div>
               <div className="relative flex-1">
                 <Button
@@ -394,9 +391,6 @@ export function SyncStep({ projectId, remoteUrl }: SyncStepProps) {
                   )}
                   Push
                 </Button>
-                {commitsAhead > 0 && (
-                  <div className="absolute -top-1 -right-1 size-3 bg-yellow-500 rounded-full border-2 border-background" />
-                )}
               </div>
             </div>
           </CollapsibleContent>

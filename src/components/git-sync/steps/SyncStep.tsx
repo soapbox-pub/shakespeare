@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Zap, Copy, Check, RefreshCw, EllipsisVertical, CloudOff, ExternalLink, ChevronDown, ArrowDown, ArrowUp } from 'lucide-react';
+import { Zap, Copy, Check, RefreshCw, EllipsisVertical, CloudOff, ExternalLink, ChevronDown, ArrowDown, ArrowUp, LoaderCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -364,22 +364,30 @@ export function SyncStep({ projectId, remoteUrl }: SyncStepProps) {
           <CollapsibleContent className="space-y-2">
             <div className="flex gap-2">
               <Button
-                onClick={handlePush}
-                variant="outline"
-                disabled={isSyncing}
-                className="flex-1"
-              >
-                <ArrowUp className="h-4 w-4" />
-                Push
-              </Button>
-              <Button
                 onClick={handlePull}
                 variant="outline"
                 disabled={isSyncing}
                 className="flex-1"
               >
-                <ArrowDown className="h-4 w-4" />
+                {currentOperation === 'pull' || currentOperation === 'force-pull' ? (
+                  <LoaderCircle className="h-4 w-4 animate-spin" />
+                ) : (
+                  <ArrowDown className="h-4 w-4" />
+                )}
                 Pull
+              </Button>
+              <Button
+                onClick={handlePush}
+                variant="outline"
+                disabled={isSyncing}
+                className="flex-1"
+              >
+                {currentOperation === 'push' || currentOperation === 'force-push' ? (
+                  <LoaderCircle className="h-4 w-4 animate-spin" />
+                ) : (
+                  <ArrowUp className="h-4 w-4" />
+                )}
+                Push
               </Button>
             </div>
           </CollapsibleContent>

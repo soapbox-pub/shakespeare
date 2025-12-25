@@ -83,18 +83,6 @@ export function GitSyncSteps({ projectId, onClose }: GitSyncStepsProps) {
     );
   }
 
-  // Render the appropriate step
-  if (!remoteUrl || currentStep === 'select-provider') {
-    return (
-      <SelectProviderStep
-        projectId={projectId}
-        onSelectProvider={handleSelectProvider}
-        onChangeStep={setCurrentStep}
-        onClose={onClose}
-      />
-    );
-  }
-
   if (currentStep === 'configure-repo' && selectedProvider) {
     return (
       <ConfigureRepoStep
@@ -102,6 +90,18 @@ export function GitSyncSteps({ projectId, onClose }: GitSyncStepsProps) {
         selectedProvider={selectedProvider}
         onBack={handleBack}
         onSuccess={handleSuccess}
+        onChangeStep={setCurrentStep}
+        onClose={onClose}
+      />
+    );
+  }
+
+  // Render the appropriate step
+  if (!remoteUrl || currentStep === 'select-provider') {
+    return (
+      <SelectProviderStep
+        projectId={projectId}
+        onSelectProvider={handleSelectProvider}
         onChangeStep={setCurrentStep}
         onClose={onClose}
       />

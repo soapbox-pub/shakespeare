@@ -13,14 +13,14 @@ interface ForcePullDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onConfirm: () => void;
-  remoteName?: string;
+  remoteName: string;
 }
 
 export function ForcePullDialog({
   open,
   onOpenChange,
   onConfirm,
-  remoteName = 'the remote'
+  remoteName,
 }: ForcePullDialogProps) {
   const handleConfirm = () => {
     onOpenChange(false);

@@ -18,15 +18,16 @@ import { useGitSettings } from '@/hooks/useGitSettings';
 import { useGit } from '@/hooks/useGit';
 import { useFSPaths } from '@/hooks/useFSPaths';
 import { useAppContext } from '@/hooks/useAppContext';
-import type { StepProps } from '../types';
+import type { SyncStepProps } from '../types';
 import { cn } from '@/lib/utils';
 import { NostrURI } from '@/lib/NostrURI';
 import { ngitWebUrl } from '@/lib/ngitWebUrl';
 import { useQueryClient } from '@tanstack/react-query';
+import { findCredentialsForRepo } from '@/lib/gitCredentials';
 
 type GitOperation = 'sync' | 'pull' | 'push' | 'force-pull' | 'force-push';
 
-export function SyncStep({ projectId }: StepProps) {
+export function SyncStep({ projectId, remoteUrl }: SyncStepProps) {
   const queryClient = useQueryClient();
 
   const [isSyncing, setIsSyncing] = useState(false);
@@ -44,13 +45,6 @@ export function SyncStep({ projectId }: StepProps) {
   const { projectsPath } = useFSPaths();
   const { config } = useAppContext();
 
-  const originRemote = gitStatus?.remotes.find(r => r.name === 'origin');
-
-  // Match origin URL to a credential
-  const matchedCredential = originRemote
-    ? settings.credentials.find(c => originRemote.url.startsWith(c.origin))
-    : null;
-
   const dir = `${projectsPath}/${projectId}`;
   const ref = gitStatus?.currentBranch || 'main';
 
@@ -59,7 +53,7 @@ export function SyncStep({ projectId }: StepProps) {
     operation: GitOperation,
     action: () => Promise<void>
   ) => {
-    if (!originRemote) return;
+    if (!remoteUrl) return;
 
     setIsSyncing(true);
     setDropdownOpen(false);
@@ -80,7 +74,7 @@ export function SyncStep({ projectId }: StepProps) {
       setIsSyncing(false);
       setCurrentOperation(null);
     }
-  }, [originRemote]);
+  }, [remoteUrl]);
 
   const handleSync = async () => {
     await executeGitOperation('sync', async () => {
@@ -153,10 +147,10 @@ export function SyncStep({ projectId }: StepProps) {
   }, []);
 
   const handleCopyUrl = async () => {
-    if (!originRemote) return;
+    if (!remoteUrl) return;
 
     try {
-      await navigator.clipboard.writeText(originRemote.url);
+      await navigator.clipboard.writeText(remoteUrl.href);
       showTemporaryFeedback(setCopiedUrl, 2000);
     } catch (err) {
       console.error('Failed to copy URL:', err);
@@ -164,7 +158,7 @@ export function SyncStep({ projectId }: StepProps) {
   };
 
   const handleDisconnect = async () => {
-    if (!originRemote) return;
+    if (!remoteUrl) return;
 
     try {
       await git.deleteRemote({ dir, remote: 'origin' });
@@ -175,13 +169,13 @@ export function SyncStep({ projectId }: StepProps) {
     }
   };
 
-  const getExternalUrl = useCallback(async (url: string): Promise<string | null> => {
-    if (url.startsWith('https://')) {
-      return url;
+  const getExternalUrl = useCallback(async (url: URL): Promise<string | null> => {
+    if (url.protocol === 'http:' || url.protocol === 'https:') {
+      return url.href;
     }
 
-    if (url.startsWith('nostr://')) {
-      const nostrUri = await NostrURI.parse(url);
+    if (url.protocol === 'nostr:') {
+      const nostrUri = await NostrURI.parse(url.href);
       return ngitWebUrl(config.ngitWebUrl, nostrUri);
     }
 
@@ -189,10 +183,10 @@ export function SyncStep({ projectId }: StepProps) {
   }, [config.ngitWebUrl]);
 
   const handleOpenExternal = async () => {
-    if (!originRemote) return;
+    if (!remoteUrl) return;
 
     try {
-      const externalUrl = await getExternalUrl(originRemote.url);
+      const externalUrl = await getExternalUrl(remoteUrl);
       if (externalUrl) {
         window.open(externalUrl, '_blank', 'noopener,noreferrer');
       }
@@ -202,17 +196,10 @@ export function SyncStep({ projectId }: StepProps) {
   };
 
   const getProviderInfo = useCallback(() => {
-    if (!originRemote) return null;
-
-    let url: URL | null;
-    try {
-      url = new URL(originRemote.url);
-    } catch {
-      url = null;
-    }
+    if (!remoteUrl) return null;
 
     // Check if it's a Nostr URI
-    if (originRemote.url.startsWith('nostr://')) {
+    if (remoteUrl.protocol === 'nostr:') {
       return {
         name: 'Nostr Git',
         icon: <Zap className="size-4" />,
@@ -220,6 +207,7 @@ export function SyncStep({ projectId }: StepProps) {
     }
 
     // Check if we have a matched credential
+    const matchedCredential = findCredentialsForRepo(remoteUrl, settings.credentials);
     if (matchedCredential) {
       return {
         name: matchedCredential.name,
@@ -232,14 +220,11 @@ export function SyncStep({ projectId }: StepProps) {
       };
     }
 
-    if (url && (url.protocol === 'http:' || url.protocol === 'https:')) {
-      return { name: url.hostname };
-    }
-
-    return { name: 'Git' };
-  }, [originRemote, matchedCredential]);
+    return { name: remoteUrl.hostname };
+  }, [remoteUrl, settings.credentials]);
 
   const providerInfo = getProviderInfo();
+  const remoteName = providerInfo?.name ?? 'the remote';
 
   // Get the button label based on current operation
   const getButtonLabel = (): string => {
@@ -261,8 +246,13 @@ export function SyncStep({ projectId }: StepProps) {
     }
   };
 
-  if (!originRemote) {
-    return null;
+  if (!remoteUrl) {
+    return (
+      <div className="flex flex-col items-center justify-center h-32 text-center space-y-2 text-sm text-muted-foreground">
+        <p>No remote repository is configured for this project.</p>
+        <p>Please add a remote to enable Git synchronization.</p>
+      </div>
+    );
   }
 
   return (
@@ -301,7 +291,7 @@ export function SyncStep({ projectId }: StepProps) {
         <Label className="text-xs text-muted-foreground">Repository URL</Label>
         <div className="flex gap-2">
           <Input
-            value={originRemote.url}
+            value={remoteUrl.href}
             readOnly
             className="flex-1 text-sm"
           />
@@ -327,6 +317,8 @@ export function SyncStep({ projectId }: StepProps) {
           onForcePull={() => setShowForcePullDialog(true)}
           onForcePush={() => setShowForcePushDialog(true)}
           onPull={handlePull}
+          remoteName={remoteName}
+          remoteUrl={remoteUrl}
         />
       )}
 
@@ -382,14 +374,14 @@ export function SyncStep({ projectId }: StepProps) {
         open={showForcePullDialog}
         onOpenChange={setShowForcePullDialog}
         onConfirm={handleForcePull}
-        remoteName={providerInfo?.name}
+        remoteName={remoteName}
       />
 
       <ForcePushDialog
         open={showForcePushDialog}
         onOpenChange={setShowForcePushDialog}
         onConfirm={handleForcePush}
-        remoteName={providerInfo?.name}
+        remoteName={remoteName}
       />
     </div>
   );

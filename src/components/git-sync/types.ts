@@ -21,6 +21,10 @@ export interface StepProps {
   onClose: () => void;
 }
 
+export interface SyncStepProps extends StepProps {
+  remoteUrl: URL;
+}
+
 export interface SelectProviderStepProps extends StepProps {
   onSelectProvider: (provider: ProviderOption) => void;
 }

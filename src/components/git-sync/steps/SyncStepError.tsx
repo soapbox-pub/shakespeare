@@ -10,9 +10,11 @@ interface SyncStepErrorProps {
   onForcePull: () => void;
   onForcePush: () => void;
   onPull: () => void;
+  remoteUrl: URL;
+  remoteName: string;
 }
 
-export function SyncStepError({ error, onDismiss, onForcePull, onForcePush, onPull }: SyncStepErrorProps) {
+export function SyncStepError({ error, onDismiss, onForcePull, onForcePush, onPull, remoteName, remoteUrl }: SyncStepErrorProps) {
   const renderForcePullButton = () => (
     <Button
       variant="outline"
@@ -121,17 +123,21 @@ export function SyncStepError({ error, onDismiss, onForcePull, onForcePush, onPu
 
   // HTTP errors
   if (error instanceof GitErrors.HttpError) {
-    let message: React.ReactNode;
+    let message: React.ReactNode = `HTTP Error: ${error.data.statusCode} ${error.data.statusMessage}`;
 
-    switch (error.data.statusCode) {
-      case 401:
-        message = <>Authentication failed. Please check your <Link to="/settings/git" className="underline">git credentials</Link>.</>
-        break;
-      case 403:
-        message = 'Access forbidden. You do not have permission to access this repository.';
-        break;
-      default:
-        message = `HTTP Error: ${error.data.statusCode} ${error.data.statusMessage}`;
+    if (remoteUrl.protocol === 'nostr:') {
+      // This should never happen
+      // TODO: log to Sentry
+      message = `There was an HTTP (${error.data.statusCode}) error communicating with Nostr Git servers.`
+    } else if (remoteUrl.protocol !== 'http:' && remoteUrl.protocol !== 'https:') {
+      switch (error.data.statusCode) {
+        case 401:
+          message = <>Your API token for {remoteName} is probably invalid or expired. Please try logging out and back into {remoteName} in <Link to="/settings/git" className="underline">Git Settings</Link>.</>
+          break;
+        case 403:
+          message = <>You don't have permission to access this repository on {remoteName}. Try checking your permissions on <a href={remoteUrl.origin} target="_blank" className="underline">{remoteName}</a>.</>;
+          break;
+      }
     }
 
     return (

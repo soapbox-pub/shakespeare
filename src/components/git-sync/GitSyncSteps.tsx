@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useGitStatus } from '@/hooks/useGitStatus';
 import { SelectProviderStep } from './steps/SelectProviderStep';
 import { ConfigureRepoStep } from './steps/ConfigureRepoStep';
@@ -14,9 +14,19 @@ interface GitSyncStepsProps {
 export function GitSyncSteps({ projectId, onClose }: GitSyncStepsProps) {
   const { data: gitStatus, isLoading: isGitStatusLoading } = useGitStatus(projectId);
 
-  // Determine if we have a remote configured
   const originRemote = gitStatus?.remotes.find(r => r.name === 'origin');
-  const hasRemote = !!originRemote;
+
+  const remoteUrl = useMemo(() => {
+    if (originRemote) {
+      try {
+        return new URL(originRemote.url);
+      } catch {
+        return;
+      }
+    }
+  }, [originRemote]);
+
+  const hasRemote = !!remoteUrl;
 
   const [currentStep, setCurrentStep] = useState<StepType>(hasRemote ? 'sync' : 'select-provider');
   const [selectedProvider, setSelectedProvider] = useState<ProviderOption | null>(null);
@@ -64,7 +74,7 @@ export function GitSyncSteps({ projectId, onClose }: GitSyncStepsProps) {
   }
 
   // Render the appropriate step
-  if (currentStep === 'select-provider') {
+  if (!remoteUrl || currentStep === 'select-provider') {
     return (
       <SelectProviderStep
         projectId={projectId}
@@ -92,6 +102,7 @@ export function GitSyncSteps({ projectId, onClose }: GitSyncStepsProps) {
     return (
       <SyncStep
         projectId={projectId}
+        remoteUrl={remoteUrl}
         onChangeStep={setCurrentStep}
         onClose={onClose}
       />

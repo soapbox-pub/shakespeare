@@ -21,9 +21,9 @@ function getEffectivePort(url: URL): number | undefined {
  */
 function matchesCredential(
   credential: GitCredential,
-  urlString: string
+  url: URL,
 ): boolean {
-  const targetURL = new URL(urlString);
+  const targetURL = new URL(url);
   const credURL = new URL(credential.origin);
 
   // 1. Protocol must match exactly
@@ -56,11 +56,11 @@ function matchesCredential(
  * Returns the credential with username match preferred over no username
  */
 export function findCredentialsForRepo(
-  urlString: string,
+  url: string | URL,
   credentials: GitCredential[],
 ): GitCredential | undefined {
-  const targetURL = new URL(urlString);
-  const matches = credentials.filter(cred => matchesCredential(cred, urlString));
+  url = new URL(url);
+  const matches = credentials.filter(cred => matchesCredential(cred, url));
 
   if (matches.length === 0) {
     return undefined;
@@ -68,7 +68,7 @@ export function findCredentialsForRepo(
 
   // Prefer credentials with matching username
   const withUsername = matches.find(
-    cred => cred.username && cred.username === targetURL.username,
+    cred => cred.username && cred.username === url.username,
   );
 
   return withUsername ?? matches[0];

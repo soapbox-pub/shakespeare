@@ -48,6 +48,10 @@ export function SyncStep({ projectId, remoteUrl }: SyncStepProps) {
   const dir = `${projectsPath}/${projectId}`;
   const ref = gitStatus?.currentBranch || 'main';
 
+  const hasRemoteChanges = gitStatus?.remoteBranchExists && ((gitStatus?.ahead ?? 0) > 0 || (gitStatus?.behind ?? 0) > 0);
+  const commitsAhead = gitStatus?.ahead ?? 0;
+  const commitsBehind = gitStatus?.behind ?? 0;
+
   // Generic git operation handler
   const executeGitOperation = useCallback(async (
     operation: GitOperation,
@@ -238,15 +242,6 @@ export function SyncStep({ projectId, remoteUrl }: SyncStepProps) {
     }
   };
 
-  if (!remoteUrl) {
-    return (
-      <div className="flex flex-col items-center justify-center h-32 text-center space-y-2 text-sm text-muted-foreground">
-        <p>No remote repository is configured for this project.</p>
-        <p>Please add a remote to enable Git synchronization.</p>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -315,32 +310,27 @@ export function SyncStep({ projectId, remoteUrl }: SyncStepProps) {
       )}
 
       {/* Unsynced changes notification */}
-      {gitStatus?.remoteBranchExists && ((gitStatus?.ahead ?? 0) > 0 || (gitStatus?.behind ?? 0) > 0) && !error && (
+      {hasRemoteChanges && !error && (
         <div className="rounded-md bg-yellow-500/10 border border-yellow-500/20 p-3">
-          <div className="flex items-start gap-2">
-            <div className="h-2 w-2 rounded-full bg-yellow-500 shrink-0 mt-1.5" />
-            <div className="flex-1">
-              <p className="text-sm text-yellow-900 dark:text-yellow-100">
-                This branch is{' '}
-                {(gitStatus?.ahead ?? 0) > 0 && (
-                  <>
-                    <span className="font-medium">{gitStatus.ahead} commit{gitStatus.ahead !== 1 ? 's' : ''} ahead of</span>
-                    {(gitStatus?.behind ?? 0) > 0 ? ' and ' : ' '}
-                  </>
-                )}
-                {(gitStatus?.behind ?? 0) > 0 && (
-                  <>
-                    <span className="font-medium">{gitStatus.behind} commit{gitStatus.behind !== 1 ? 's' : ''} behind</span>{' '}
-                  </>
-                )}
-                <span className="font-medium">{ref}</span> on {remoteName}.
-              </p>
-            </div>
-          </div>
+          <p className="text-sm text-yellow-900 dark:text-yellow-100">
+            This branch is{' '}
+            {commitsAhead > 0 && (
+              <>
+                <span className="font-medium">{commitsAhead} commit{commitsAhead !== 1 ? 's' : ''} ahead of</span>
+                {commitsBehind > 0 ? ' and ' : ' '}
+              </>
+            )}
+            {commitsBehind > 0 && (
+              <>
+                <span className="font-medium">{commitsBehind} commit{commitsBehind !== 1 ? 's' : ''} behind</span>{' '}
+              </>
+            )}
+            <span className="font-medium">{ref}</span> on {remoteName}.
+          </p>
         </div>
       )}
 
-      <div className="rounded-md bg-primary">
+      <div className="rounded-md bg-primary relative">
         <div className="flex">
           <Button
             onClick={handleSync}

@@ -43,16 +43,22 @@ export function useAIChat({
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [totalCost, setTotalCost] = useState<number>(0);
   const [lastInputTokens, setLastInputTokens] = useState<number>(0);
+  const [isLoadingHistory, setIsLoadingHistory] = useState<boolean>(true);
 
   const initSession = useCallback(async () => {
-    // Load or update session
-    const session = await sessionManager.loadSession(projectId, tools, customTools, maxSteps);
-    // Initialize individual state variables from existing session
-    setMessages([...session.messages]);
-    setStreamingMessage(session.streamingMessage ? { ...session.streamingMessage } : undefined);
-    setIsLoading(session.isLoading);
-    setTotalCost(session.totalCost || 0);
-    setLastInputTokens(session.lastInputTokens || 0);
+    setIsLoadingHistory(true);
+    try {
+      // Load or update session
+      const session = await sessionManager.loadSession(projectId, tools, customTools, maxSteps);
+      // Initialize individual state variables from existing session
+      setMessages([...session.messages]);
+      setStreamingMessage(session.streamingMessage ? { ...session.streamingMessage } : undefined);
+      setIsLoading(session.isLoading);
+      setTotalCost(session.totalCost || 0);
+      setLastInputTokens(session.lastInputTokens || 0);
+    } finally {
+      setIsLoadingHistory(false);
+    }
   }, [sessionManager, projectId, tools, customTools, maxSteps]);
 
   // Initialize session
@@ -166,6 +172,7 @@ export function useAIChat({
     messages,
     streamingMessage,
     isLoading,
+    isLoadingHistory,
     totalCost,
     lastInputTokens,
     sendMessage,

@@ -288,6 +288,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     messages,
     streamingMessage,
     isLoading: internalIsLoading,
+    isLoadingHistory,
     totalCost,
     lastInputTokens,
     addMessage,
@@ -701,8 +702,53 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
             </div>
           )}
 
+          {/* Loading skeleton while loading history */}
+          {isLoadingHistory && (
+            <div className="space-y-6">
+              {/* User message skeleton */}
+              <div className="flex justify-end py-6">
+                <div className="max-w-[80%] bg-secondary rounded-2xl rounded-br-md px-4 py-3">
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-64" />
+                    <Skeleton className="h-4 w-48" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Assistant message skeleton */}
+              <div className="flex py-6">
+                <div className="flex-1 min-w-0">
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-5/6" />
+                    <Skeleton className="h-4 w-4/5" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Another user message skeleton */}
+              <div className="flex justify-end py-6">
+                <div className="max-w-[80%] bg-secondary rounded-2xl rounded-br-md px-4 py-3">
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-56" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Another assistant message skeleton */}
+              <div className="flex py-6">
+                <div className="flex-1 min-w-0">
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-11/12" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Empty state when no messages and not loading */}
-          {messages.length === 0 && !streamingMessage && !isLoading && (
+          {!isLoadingHistory && messages.length === 0 && !streamingMessage && !isLoading && (
             <div className="flex-1 flex items-center justify-center min-h-[400px]">
               <div className="text-center space-y-4 max-w-md mx-auto">
                 <div className="mb-6">
@@ -726,7 +772,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
             </div>
           )}
 
-          {messages.map((message, index) => {
+          {!isLoadingHistory && messages.map((message, index) => {
             // Find the corresponding tool call for tool messages
             let toolCall: OpenAI.Chat.Completions.ChatCompletionMessageToolCall | undefined = undefined;
             if (message.role === 'tool') {
@@ -749,7 +795,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
             );
           })}
 
-          {renderStreamingMessage()}
+          {!isLoadingHistory && renderStreamingMessage()}
 
           {/* Error Alert (Console or AI) - Don't show while assistant is loading */}
           {displayError && !isLoading && (

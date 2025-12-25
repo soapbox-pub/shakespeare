@@ -70,8 +70,17 @@ export function ConfigureRepoStep({
             const cloneUrl = new URL(`/${npub}/${projectId}.git`, `https://${relayUrl.host}`);
 
             cloneUrls.add(cloneUrl.href);
-          } catch (err) {
-            console.warn(`Failed to parse Nostr git relay URL: ${graspRelay.url}`, err);
+          } catch {
+            // fallthrough
+          }
+        }
+
+        for (const relay of config.relayMetadata.relays.filter(r => r.write)) {
+          try {
+            const relayUrl = new URL(relay.url);
+            relays.add(relayUrl.href);
+          } catch {
+            // fallthrough
           }
         }
 
@@ -103,8 +112,8 @@ export function ConfigureRepoStep({
             name,
             description,
             webUrls,
-            cloneUrls: [...cloneUrls],
-            relays: [...relays],
+            cloneUrls: [...cloneUrls].slice(0, 10), // Limit to first 10 clone URLs
+            relays: [...relays].slice(0, 10), // Limit to first 10 relays
             tTags: tTags.length > 0 ? tTags : undefined,
             earliestCommit,
           });

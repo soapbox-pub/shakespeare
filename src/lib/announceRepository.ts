@@ -62,7 +62,7 @@ export function createRepositoryAnnouncementEvent(
 ): EventTemplate {
   // Build tags array per NIP-34
   const tags: string[][] = [
-    ['d', data.repoId.trim()], // Required: repository identifier
+    ['d', data.repoId], // Required: repository identifier
   ];
 
   if (data.name?.trim()) {
@@ -109,6 +109,8 @@ export function createRepositoryAnnouncementEvent(
   if (data.earliestCommit?.trim()) {
     tags.push(['r', data.earliestCommit.trim(), 'euc']);
   }
+
+  tags.push(['alt', `git repository: ${data.repoId}`]);
 
   // Create repository announcement event (kind 30617)
   return {

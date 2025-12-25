@@ -9,6 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ExternalFavicon } from '@/components/ExternalFavicon';
 import { SyncStepError } from './SyncStepError';
 import { ForcePullDialog } from './ForcePullDialog';
@@ -35,7 +36,7 @@ export function SyncStep({ projectId, remoteUrl }: SyncStepProps) {
   const [error, setError] = useState<Error | null>(null);
   const [copiedUrl, setCopiedUrl] = useState(false);
   const [syncSuccess, setSyncSuccess] = useState(false);
-  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   const [showForcePullDialog, setShowForcePullDialog] = useState(false);
   const [showForcePushDialog, setShowForcePushDialog] = useState(false);
 
@@ -60,7 +61,6 @@ export function SyncStep({ projectId, remoteUrl }: SyncStepProps) {
     if (!remoteUrl) return;
 
     setIsSyncing(true);
-    setDropdownOpen(false);
     setCurrentOperation(operation);
     setError(null);
     setSyncSuccess(false);
@@ -330,53 +330,61 @@ export function SyncStep({ projectId, remoteUrl }: SyncStepProps) {
         </div>
       )}
 
-      <div className="rounded-md bg-primary relative">
-        <div className="flex">
-          <Button
-            onClick={handleSync}
-            disabled={isSyncing}
-            className="flex-1 rounded-r-none bg-transparent hover:bg-white/10 transition-colors"
-          >
-            <div className="flex items-center gap-2">
-              {syncSuccess
-                ? <Check className="h-4 w-4" />
-                : <RefreshCw className={cn("size-4", { "animate-spin": isSyncing })} />}
-              <span>{getButtonLabel()}</span>
-            </div>
-          </Button>
-          <div className="w-px bg-border/20" />
-          <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
-            <DropdownMenuTrigger asChild>
+      <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
+        <div className="space-y-2">
+          <div className="rounded-md bg-primary relative">
+            <div className="flex">
               <Button
+                onClick={handleSync}
                 disabled={isSyncing}
-                className="px-3 rounded-l-none bg-transparent hover:bg-white/10 transition-colors"
+                className="flex-1 rounded-r-none bg-transparent hover:bg-white/10 transition-colors"
               >
-                <ChevronDown className="h-4 w-4" />
+                <div className="flex items-center gap-2">
+                  {syncSuccess
+                    ? <Check className="h-4 w-4" />
+                    : <RefreshCw className={cn("size-4", { "animate-spin": isSyncing })} />}
+                  <span>{getButtonLabel()}</span>
+                </div>
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <div className="flex gap-2 p-2">
+              <div className="w-px bg-border/20" />
+              <CollapsibleTrigger asChild>
                 <Button
-                  onClick={handlePush}
-                  variant="outline"
-                  className="flex-1"
+                  disabled={isSyncing}
+                  className="px-3 rounded-l-none bg-transparent hover:bg-white/10 transition-colors"
                 >
-                  <ArrowUp className="h-4 w-4" />
-                  Push
+                  <ChevronDown className={cn(
+                    "h-4 w-4 transition-transform duration-200",
+                    { "rotate-180": isExpanded }
+                  )} />
                 </Button>
-                <Button
-                  onClick={handlePull}
-                  variant="outline"
-                  className="flex-1"
-                >
-                  <ArrowDown className="h-4 w-4" />
-                  Pull
-                </Button>
-              </div>
-            </DropdownMenuContent>
-          </DropdownMenu>
+              </CollapsibleTrigger>
+            </div>
+          </div>
+
+          <CollapsibleContent className="space-y-2">
+            <div className="flex gap-2">
+              <Button
+                onClick={handlePush}
+                variant="outline"
+                disabled={isSyncing}
+                className="flex-1"
+              >
+                <ArrowUp className="h-4 w-4" />
+                Push
+              </Button>
+              <Button
+                onClick={handlePull}
+                variant="outline"
+                disabled={isSyncing}
+                className="flex-1"
+              >
+                <ArrowDown className="h-4 w-4" />
+                Pull
+              </Button>
+            </div>
+          </CollapsibleContent>
         </div>
-      </div>
+      </Collapsible>
 
       <ForcePullDialog
         open={showForcePullDialog}

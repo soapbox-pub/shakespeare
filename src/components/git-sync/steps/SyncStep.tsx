@@ -314,6 +314,32 @@ export function SyncStep({ projectId, remoteUrl }: SyncStepProps) {
         />
       )}
 
+      {/* Unsynced changes notification */}
+      {gitStatus?.remoteBranchExists && ((gitStatus?.ahead ?? 0) > 0 || (gitStatus?.behind ?? 0) > 0) && !error && (
+        <div className="rounded-md bg-yellow-500/10 border border-yellow-500/20 p-3">
+          <div className="flex items-start gap-2">
+            <div className="h-2 w-2 rounded-full bg-yellow-500 shrink-0 mt-1.5" />
+            <div className="flex-1">
+              <p className="text-sm text-yellow-900 dark:text-yellow-100">
+                This branch is{' '}
+                {(gitStatus?.ahead ?? 0) > 0 && (
+                  <>
+                    <span className="font-medium">{gitStatus.ahead} commit{gitStatus.ahead !== 1 ? 's' : ''} ahead of</span>
+                    {(gitStatus?.behind ?? 0) > 0 ? ' and ' : ' '}
+                  </>
+                )}
+                {(gitStatus?.behind ?? 0) > 0 && (
+                  <>
+                    <span className="font-medium">{gitStatus.behind} commit{gitStatus.behind !== 1 ? 's' : ''} behind</span>{' '}
+                  </>
+                )}
+                <span className="font-medium">{ref}</span> on {remoteName}.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="rounded-md bg-primary">
         <div className="flex">
           <Button

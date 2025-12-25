@@ -20,9 +20,14 @@ export function GitSyncButton({ projectId, className }: GitSyncButtonProps) {
   const originRemote = gitStatus?.remotes.find(r => r.name === 'origin');
   const hasRemote = !!originRemote;
 
+  // Check for unsynced changes (ahead or behind remote)
+  const hasUnsyncedChanges = !isGitStatusLoading && hasRemote && gitStatus?.remoteBranchExists && ((gitStatus?.ahead ?? 0) > 0 || (gitStatus?.behind ?? 0) > 0);
+
   // Determine if we need to show the indicator dot
-  // Show indicator if no origin remote is configured, UNLESS there are less than 2 commits
-  const showIndicator = !isGitStatusLoading && !hasRemote && (gitStatus?.totalCommits ?? 0) >= 2;
+  // Yellow indicator for unsynced changes takes precedence
+  // Purple indicator if no origin remote is configured, UNLESS there are less than 2 commits
+  const showYellowIndicator = hasUnsyncedChanges;
+  const showPurpleIndicator = !isGitStatusLoading && !hasRemote && (gitStatus?.totalCommits ?? 0) >= 2 && !showYellowIndicator;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -34,7 +39,10 @@ export function GitSyncButton({ projectId, className }: GitSyncButtonProps) {
           aria-label="Sync with Git"
         >
           <CloudUpload className={cn("size-5 group-hover:text-foreground", open ? "text-foreground" : "text-muted-foreground")} />
-          {showIndicator && (
+          {showYellowIndicator && (
+            <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-yellow-500" />
+          )}
+          {showPurpleIndicator && (
             <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-primary" />
           )}
         </Button>

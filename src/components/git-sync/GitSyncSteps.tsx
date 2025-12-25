@@ -64,6 +64,16 @@ export function GitSyncSteps({ projectId, onClose }: GitSyncStepsProps) {
     setCurrentStep('init-success');
   };
 
+  if (currentStep === 'init-success') {
+    return (
+      <InitSuccessStep
+        projectId={projectId}
+        onChangeStep={setCurrentStep}
+        onClose={onClose}
+      />
+    );
+  }
+
   // Don't render anything while loading git status
   if (isGitStatusLoading) {
     return (
@@ -103,16 +113,6 @@ export function GitSyncSteps({ projectId, onClose }: GitSyncStepsProps) {
       <SyncStep
         projectId={projectId}
         remoteUrl={remoteUrl}
-        onChangeStep={setCurrentStep}
-        onClose={onClose}
-      />
-    );
-  }
-
-  if (currentStep === 'init-success') {
-    return (
-      <InitSuccessStep
-        projectId={projectId}
         onChangeStep={setCurrentStep}
         onClose={onClose}
       />

@@ -3,6 +3,7 @@ import { X, ArrowDown, ArrowUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Link } from 'react-router-dom';
+import { getSentryInstance } from '@/lib/sentry';
 
 interface SyncStepErrorProps {
   error: Error;
@@ -127,7 +128,7 @@ export function SyncStepError({ error, onDismiss, onForcePull, onForcePush, onPu
 
     if (remoteUrl.protocol === 'nostr:') {
       // This should never happen
-      // TODO: log to Sentry
+      getSentryInstance()?.captureException(error);
       message = `There was an HTTP (${error.data.statusCode}) error communicating with Nostr Git servers.`
     } else if (remoteUrl.protocol !== 'http:' && remoteUrl.protocol !== 'https:') {
       switch (error.data.statusCode) {

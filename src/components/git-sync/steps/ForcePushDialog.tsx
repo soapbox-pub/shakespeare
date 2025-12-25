@@ -41,15 +41,12 @@ export function ForcePushDialog({
             </p>
             <div className="rounded-md bg-destructive/10 p-3 text-sm border border-destructive/20">
               <p className="font-medium text-destructive mb-1">What will be deleted from {remoteName}:</p>
-              <ul className="list-disc list-inside space-y-1 text-muted-foreground">
+              <ul className="list-disc list-outside space-y-1 text-muted-foreground ml-5">
                 <li>All commits on {remoteName} that aren't in your local repository</li>
                 <li>Any work by other contributors not in your local copy</li>
-                <li>The entire commit history will be replaced with your local history</li>
+                <li>The entire commit history will be replaced with your local&nbsp;history</li>
               </ul>
             </div>
-            <p className="text-sm text-muted-foreground">
-              <strong>Warning:</strong> This operation cannot be undone and may affect other collaborators. Only use this if you're certain your local version is correct.
-            </p>
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>

@@ -41,7 +41,7 @@ export function ForcePullDialog({
             </p>
             <div className="rounded-md bg-destructive/10 p-3 text-sm border border-destructive/20">
               <p className="font-medium text-destructive mb-1">What will be deleted:</p>
-              <ul className="list-disc list-inside space-y-1 text-muted-foreground">
+              <ul className="list-disc list-outside space-y-1 text-muted-foreground ml-5">
                 <li>All local commits that haven't been pushed to {remoteName}</li>
                 <li>Any work not available on {remoteName}</li>
                 <li>All uncommitted changes</li>

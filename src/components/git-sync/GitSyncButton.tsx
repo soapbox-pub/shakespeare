@@ -16,18 +16,29 @@ export function GitSyncButton({ projectId, className }: GitSyncButtonProps) {
 
   const { data: gitStatus, isLoading: isGitStatusLoading } = useGitStatus(projectId);
 
-  // Determine if we have a remote configured
-  const originRemote = gitStatus?.remotes.find(r => r.name === 'origin');
-  const hasRemote = !!originRemote;
+  // Determine which indicator to show (only one at a time)
+  const renderIndicator = () => {
+    if (isGitStatusLoading || !gitStatus) return null;
 
-  // Check for unsynced changes (ahead or behind remote)
-  const hasUnsyncedChanges = !isGitStatusLoading && hasRemote && gitStatus?.remoteBranchExists && ((gitStatus?.ahead ?? 0) > 0 || (gitStatus?.behind ?? 0) > 0);
+    const originRemote = gitStatus.remotes.find(r => r.name === 'origin');
+    const hasRemote = !!originRemote;
 
-  // Determine if we need to show the indicator dot
-  // Yellow indicator for unsynced changes takes precedence
-  // Purple indicator if no origin remote is configured, UNLESS there are less than 2 commits
-  const showYellowIndicator = hasUnsyncedChanges;
-  const showPurpleIndicator = !isGitStatusLoading && !hasRemote && (gitStatus?.totalCommits ?? 0) >= 2 && !showYellowIndicator;
+    const { remoteBranchExists, ahead, behind, totalCommits } = gitStatus;
+
+    // Yellow indicator: unsynced changes (ahead or behind remote) - highest priority
+    const hasUnsyncedChanges = hasRemote && remoteBranchExists && (ahead > 0 || behind > 0);
+    if (hasUnsyncedChanges) {
+      return <IndicatorDot color="yellow" />;
+    }
+
+    // Purple indicator: no remote configured, but has commits - lower priority
+    const needsRemote = !hasRemote && totalCommits >= 2;
+    if (needsRemote) {
+      return <IndicatorDot color="primary" />;
+    }
+
+    return null;
+  };
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -39,12 +50,7 @@ export function GitSyncButton({ projectId, className }: GitSyncButtonProps) {
           aria-label="Sync with Git"
         >
           <CloudUpload className={cn("size-5 group-hover:text-foreground", open ? "text-foreground" : "text-muted-foreground")} />
-          {showYellowIndicator && (
-            <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-yellow-500" />
-          )}
-          {showPurpleIndicator && (
-            <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-primary" />
-          )}
+          {renderIndicator()}
         </Button>
       </PopoverTrigger>
       <PopoverContent
@@ -55,5 +61,17 @@ export function GitSyncButton({ projectId, className }: GitSyncButtonProps) {
         <GitSyncSteps projectId={projectId} onClose={() => setOpen(false)} />
       </PopoverContent>
     </Popover>
+  );
+}
+
+function IndicatorDot({ color }: { color: 'primary' | 'yellow' }) {
+  return (
+    <span className={cn(
+      "absolute top-1 right-1 h-2 w-2 rounded-full",
+      {
+        'bg-primary': color === 'primary',
+        'bg-yellow-500': color === 'yellow',
+      },
+    )} />
   );
 }

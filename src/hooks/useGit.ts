@@ -1,9 +1,8 @@
-import { useCallback, useMemo } from 'react';
+import { useMemo } from 'react';
 import { Git } from '@/lib/git';
 import { useFS } from '@/hooks/useFS';
 import { useNostr } from '@nostrify/react';
 import { useAppContext } from '@/hooks/useAppContext';
-import { findCredentialsForRepo } from '@/lib/gitCredentials';
 import { useGitSettings } from './useGitSettings';
 import { useCurrentUser } from './useCurrentUser';
 
@@ -31,20 +30,16 @@ export function useGit(): { git: Git } {
     }).filter((hostname): hostname is string => Boolean(hostname));
   }, [graspMetadata.relays]);
 
-  const onAuth = useCallback((url: string) => {
-    return findCredentialsForRepo(url, settings.credentials);
-  }, [settings.credentials]);
-
   const git = useMemo(() => {
     return new Git({
       fs,
       nostr,
       corsProxy,
       ngitServers,
-      onAuth,
+      credentials: settings.credentials,
       signer: user?.signer,
     });
-  }, [fs, nostr, corsProxy, ngitServers, onAuth, user?.signer]);
+  }, [fs, nostr, corsProxy, ngitServers, settings.credentials, user?.signer]);
 
   return { git };
 }

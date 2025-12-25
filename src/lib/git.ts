@@ -1,10 +1,12 @@
-import git, { AuthCallback, FetchResult, GitHttpRequest, GitHttpResponse, HttpClient } from 'isomorphic-git';
+import git, { FetchResult, GitHttpRequest, GitHttpResponse, HttpClient } from 'isomorphic-git';
 import { proxyUrl } from './proxyUrl';
 import { readGitSettings } from './configUtils';
 import { parseRepositoryAnnouncement, RepositoryAnnouncement } from './announceRepository';
 import { NostrURI } from './NostrURI';
 import type { NostrEvent, NostrSigner, NPool } from '@nostrify/nostrify';
 import type { JSRuntimeFS } from './JSRuntime';
+import type { GitCredential } from '@/contexts/GitSettingsContext';
+import { findCredentialsForRepo } from './gitCredentials';
 
 export interface GitOptions {
   fs: JSRuntimeFS;
@@ -12,8 +14,8 @@ export interface GitOptions {
   corsProxy?: string;
   ngitServers?: string[];
   systemAuthor?: { name: string; email: string };
-  onAuth?: AuthCallback;
   signer?: NostrSigner;
+  credentials?: GitCredential[];
 }
 
 /**
@@ -24,24 +26,45 @@ export interface GitOptions {
  */
 export class Git {
   private fs: JSRuntimeFS;
-  private http: HttpClient;
   private nostr: NPool;
   private ngitServers: string[];
   private systemAuthor: { name: string; email: string };
-  private onAuth?: AuthCallback;
   private signer?: NostrSigner;
+  private corsProxy?: string;
+  private credentials?: GitCredential[];
 
   constructor(options: GitOptions) {
     this.fs = options.fs;
-    this.http = new GitHttp(options.corsProxy);
     this.nostr = options.nostr;
+    this.corsProxy = options.corsProxy;
     this.ngitServers = options.ngitServers ?? ['git.shakespeare.diy', 'relay.ngit.dev'];
     this.systemAuthor = options.systemAuthor ?? {
       name: 'shakespeare.diy',
       email: 'assistant@shakespeare.diy',
     };
-    this.onAuth = options.onAuth;
+    this.credentials = options.credentials;
     this.signer = options.signer;
+  }
+
+  // Shared onAuth method
+  private onAuth(url: string) {
+    if (this.credentials) {
+      return findCredentialsForRepo(url, this.credentials);
+    }
+  }
+
+  // Get HTTP adapter for the given URL
+  private httpForUrl(url: string | null | undefined): GitHttp {
+    if (url?.startsWith('nostr://')) {
+      return new GitHttp();
+    }
+    if (this.credentials && url) {
+      const cred = findCredentialsForRepo(url, this.credentials);
+      if (cred && cred.proxy) {
+        return new GitHttp(this.corsProxy);
+      }
+    }
+    return new GitHttp();
   }
 
   // Repository initialization and configuration
@@ -63,7 +86,7 @@ export class Git {
     // Regular Git URL
     return git.clone({
       fs: this.fs,
-      http: this.http,
+      http: this.httpForUrl(options.url),
       onAuth: this.onAuth,
       ...options,
     });
@@ -196,7 +219,7 @@ export class Git {
     }
 
     return git.getRemoteInfo({
-      http: this.http,
+      http: this.httpForUrl(options.url),
       onAuth: this.onAuth,
       ...options,
     });
@@ -206,7 +229,7 @@ export class Git {
     // Check if this is a Nostr repository by looking at the remote URL
     const remote = options.remote || 'origin';
     const dir = options.dir || '.';
-    const remoteUrl = await this.getRemoteURL(dir, remote);
+    const remoteUrl = options.url || await this.getRemoteURL(dir, remote);
 
     if (remoteUrl && remoteUrl.startsWith('nostr://')) {
       const nostrURI = await NostrURI.parse(remoteUrl);
@@ -216,7 +239,7 @@ export class Git {
     // Regular Git fetch
     return git.fetch({
       fs: this.fs,
-      http: this.http,
+      http: this.httpForUrl(remoteUrl),
       onAuth: this.onAuth,
       ...options,
     });
@@ -226,7 +249,7 @@ export class Git {
     // Check if this is a Nostr repository by looking at the remote URL
     const remote = options.remote || 'origin';
     const dir = options.dir || '.';
-    const remoteUrl = await this.getRemoteURL(dir, remote);
+    const remoteUrl = options.url || await this.getRemoteURL(dir, remote);
     const { author } = await this.getGitSettings();
 
     if (remoteUrl && remoteUrl.startsWith('nostr://')) {
@@ -237,7 +260,7 @@ export class Git {
     // Regular Git pull
     return git.pull({
       fs: this.fs,
-      http: this.http,
+      http: this.httpForUrl(remoteUrl),
       onAuth: this.onAuth,
       ...options,
       author,
@@ -248,7 +271,7 @@ export class Git {
     // Check if this is a Nostr repository by looking at the remote URL
     const remote = options.remote || 'origin';
     const dir = options.dir || '.';
-    const remoteUrl = await this.getRemoteURL(dir, remote);
+    const remoteUrl = options.url || await this.getRemoteURL(dir, remote);
 
     if (remoteUrl && remoteUrl.startsWith('nostr://')) {
       const nostrURI = await NostrURI.parse(remoteUrl);
@@ -257,7 +280,7 @@ export class Git {
 
     return git.push({
       fs: this.fs,
-      http: this.http,
+      http: this.httpForUrl(remoteUrl),
       onAuth: this.onAuth,
       ...options,
     });
@@ -410,7 +433,7 @@ export class Git {
 
   async getRemoteInfo2(options: Omit<Parameters<typeof git.getRemoteInfo2>[0], 'http' | 'corsProxy'>) {
     return git.getRemoteInfo2({
-      http: this.http,
+      http: this.httpForUrl(options.url),
       onAuth: this.onAuth,
       ...options,
     });
@@ -536,7 +559,7 @@ export class Git {
 
   async listServerRefs(options: Omit<Parameters<typeof git.listServerRefs>[0], 'http' | 'corsProxy'>) {
     return git.listServerRefs({
-      http: this.http,
+      http: this.httpForUrl(options.url),
       onAuth: this.onAuth,
       ...options,
     });
@@ -640,7 +663,7 @@ export class Git {
         // Try to get remote info from the first clone URL
         try {
           const gitRemoteInfo = await git.getRemoteInfo({
-            http: this.http,
+            http: this.httpForUrl(undefined),
             onAuth: this.onAuth,
             url: repo.httpsCloneUrls[0],
           });
@@ -1150,7 +1173,7 @@ export class Git {
         // Get remote repository information
         const remoteInfo = await Promise.race([
           git.getRemoteInfo({
-            http: this.http,
+            http: this.httpForUrl(undefined),
             onAuth: this.onAuth,
             url: cloneUrl,
           }),
@@ -1178,7 +1201,7 @@ export class Git {
           await Promise.race([
             git.clone({
               fs: this.fs,
-              http: this.http,
+              http: this.httpForUrl(undefined),
               onAuth: this.onAuth,
               ...options,
               url: cloneUrl,
@@ -1236,7 +1259,7 @@ export class Git {
         await Promise.race([
           git.clone({
             fs: this.fs,
-            http: this.http,
+            http: this.httpForUrl(undefined),
             onAuth: this.onAuth,
             ...options,
             url: bestCloneUrl,
@@ -1264,7 +1287,7 @@ export class Git {
           await Promise.race([
             git.clone({
               fs: this.fs,
-              http: this.http,
+              http: this.httpForUrl(undefined),
               onAuth: this.onAuth,
               ...options,
               url: cloneUrl,
@@ -1503,7 +1526,7 @@ export class Git {
       repo.httpsCloneUrls.map(async (cloneUrl) => {
         try {
           const result = await git.getRemoteInfo({
-            http: this.http,
+            http: this.httpForUrl(undefined),
             onAuth: this.onAuth,
             url: cloneUrl,
           });
@@ -1962,7 +1985,7 @@ export class Git {
       try {
         await git.push({
           fs: this.fs,
-          http: this.http,
+          http: this.httpForUrl(undefined),
           onAuth: this.onAuth,
           dir,
           url: cloneUrl,
@@ -1992,7 +2015,7 @@ export class Git {
       // Fetch from the temporary remote
       const fetchResult = await git.fetch({
         fs: this.fs,
-        http: this.http,
+        http: this.httpForUrl(undefined),
         onAuth: this.onAuth,
         dir,
         tags: true,
@@ -2181,7 +2204,7 @@ export class Git {
               try {
                 await git.push({
                   fs: this.fs,
-                  http: this.http,
+                  http: this.httpForUrl(undefined),
                   onAuth: this.onAuth,
                   dir,
                   url: cloneUrl,
@@ -2202,7 +2225,7 @@ export class Git {
               try {
                 await git.push({
                   fs: this.fs,
-                  http: this.http,
+                  http: this.httpForUrl(undefined),
                   onAuth: this.onAuth,
                   dir,
                   url: cloneUrl,

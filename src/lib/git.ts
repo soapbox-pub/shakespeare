@@ -47,7 +47,7 @@ export class Git {
   }
 
   // Shared onAuth method
-  private onAuth(url: string) {
+  onAuth = (url: string) => {
     if (this.credentials) {
       return findCredentialsForRepo(url, this.credentials);
     }

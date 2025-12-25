@@ -72,6 +72,7 @@ export function SyncStep({ projectId, remoteUrl }: SyncStepProps) {
       setSyncSuccess(true);
       setTimeout(() => setSyncSuccess(false), 2500);
     } catch (err) {
+      console.warn(err);
       const message = err instanceof Error ? err : new Error(`Failed to ${operation}`);
       setError(message);
     } finally {

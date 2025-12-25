@@ -16,18 +16,28 @@ export function useGit(): { git: Git } {
   const { nostr } = useNostr();
   const { config } = useAppContext();
   const { settings } = useGitSettings();
-  const { corsProxy, graspMetadata } = config;
+  const { corsProxy, relayMetadata, graspMetadata } = config;
 
-  const ngitServers = useMemo(() => {
+  const relayList = useMemo(() => {
     // Extract hostnames from grasp relay URLs for backwards compatibility with Git class
-    return graspMetadata.relays.map(r => {
+    return relayMetadata.relays.map(r => {
       try {
-        const url = new URL(r.url);
-        return url.hostname;
+        return { ...r, url: new URL(r.url) };
       } catch {
         return undefined;
       }
-    }).filter((hostname): hostname is string => Boolean(hostname));
+    }).filter((url): url is { url: URL, read: boolean; write: boolean; } => Boolean(url));
+  }, [relayMetadata.relays]);
+
+  const graspList = useMemo(() => {
+    // Extract hostnames from grasp relay URLs for backwards compatibility with Git class
+    return graspMetadata.relays.map(r => {
+      try {
+        return { url: new URL(r.url) };
+      } catch {
+        return undefined;
+      }
+    }).filter((relay): relay is { url: URL } => Boolean(relay));
   }, [graspMetadata.relays]);
 
   const git = useMemo(() => {
@@ -35,11 +45,12 @@ export function useGit(): { git: Git } {
       fs,
       nostr,
       corsProxy,
-      ngitServers,
+      relayList,
+      graspList,
       credentials: settings.credentials,
       signer: user?.signer,
     });
-  }, [fs, nostr, corsProxy, ngitServers, settings.credentials, user?.signer]);
+  }, [fs, nostr, corsProxy, relayList, graspList, settings.credentials, user?.signer]);
 
   return { git };
 }

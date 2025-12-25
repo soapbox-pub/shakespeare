@@ -1,7 +1,6 @@
 import git, { FetchResult, GitHttpRequest, GitHttpResponse, HttpClient } from 'isomorphic-git';
 import { proxyUrl } from './proxyUrl';
 import { readGitSettings } from './configUtils';
-import { parseRepositoryAnnouncement, type RepositoryAnnouncement } from './announceRepository';
 import { NostrURI } from './NostrURI';
 import type { NostrEvent, NostrSigner, NPool } from '@nostrify/nostrify';
 import type { JSRuntimeFS } from './JSRuntime';
@@ -11,11 +10,12 @@ import { findCredentialsForRepo } from './gitCredentials';
 export interface GitOptions {
   fs: JSRuntimeFS;
   nostr: NPool;
-  corsProxy?: string;
-  ngitServers?: string[];
+  relayList?: { url: URL; read: boolean; write: boolean }[];
+  graspList?: { url: URL }[];
   systemAuthor?: { name: string; email: string };
   signer?: NostrSigner;
   credentials?: GitCredential[];
+  corsProxy?: string;
 }
 
 /**
@@ -27,7 +27,8 @@ export interface GitOptions {
 export class Git {
   private fs: JSRuntimeFS;
   private nostr: NPool;
-  private ngitServers: string[];
+  private relayList?: { url: URL; read: boolean; write: boolean }[];
+  private graspList?: { url: URL }[];
   private systemAuthor: { name: string; email: string };
   private signer?: NostrSigner;
   private corsProxy?: string;
@@ -37,7 +38,8 @@ export class Git {
     this.fs = options.fs;
     this.nostr = options.nostr;
     this.corsProxy = options.corsProxy;
-    this.ngitServers = options.ngitServers ?? ['git.shakespeare.diy', 'relay.ngit.dev'];
+    this.relayList = options.relayList;
+    this.graspList = options.graspList;
     this.systemAuthor = options.systemAuthor ?? {
       name: 'shakespeare.diy',
       email: 'assistant@shakespeare.diy',
@@ -52,6 +54,8 @@ export class Git {
       return findCredentialsForRepo(url, this.credentials);
     }
   }
+
+  private httpNoProxy = new GitHttp();
 
   // Get HTTP adapter for the given URL
   private httpForUrl(url: string | null | undefined): GitHttp {
@@ -671,9 +675,58 @@ export class Git {
     }
   }
 
+  private async nostrFetch(nostrURI: NostrURI, options: Omit<Parameters<typeof git.fetch>[0], 'fs' | 'http' | 'url' | 'corsProxy'> & { remote: string; dir: string }): Promise<FetchResult> {
+    // Fetch the latest repository state from Nostr
+    const { repo, state } = await this.fetchRepoEvents(nostrURI);
 
-  private async nostrFetch(nostrURI: NostrURI, options: Omit<Parameters<typeof git.fetch>[0], 'fs' | 'http' | 'corsProxy'> & { remote: string; dir: string }): Promise<FetchResult> {
-    // TODO: implement Nostr fetch
+    if (!repo) {
+      throw new Error('Repository not found on Nostr network');
+    }
+
+    const remote = options.remote || 'origin';
+    const cloneUrls = repo.tags.find(([name]) => name === 'clone')?.slice(1) ?? [];
+
+    if (cloneUrls.length === 0) {
+      throw new Error('No clone URLs found in repository announcement');
+    }
+
+    // Fetch from each clone URL
+    await Promise.allSettled(cloneUrls.map((url) => {
+      return Promise.race([
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Fetch from Nostr clone URL timed out')), 10_000)),
+        git.fetch({
+          ...options,
+          fs: this.fs,
+          http: this.httpNoProxy,
+          url,
+          remote,
+        }),
+      ])
+    }));
+
+    const result: FetchResult = {
+      defaultBranch: null,
+      fetchHead: null,
+      fetchHeadDescription: null,
+    };
+
+    // Update refs based on fetched state
+    for (const [name, val] of state?.tags ?? []) {
+      const symbolic = val.startsWith('ref: ');
+      const value = symbolic ? this.toRemoteRef(val.substring(5), remote) : val;
+      const ref = this.toRemoteRef(name, remote);
+
+      await git.writeRef({
+        fs: this.fs,
+        dir: options.dir,
+        ref,
+        value,
+        symbolic,
+        force: true,
+      });
+    }
+
+    return result;
   }
 
   private async nostrPull(nostrURI: NostrURI, options: Omit<Parameters<typeof git.pull>[0], 'fs' | 'http' | 'corsProxy'> & { remote: string; dir: string }): Promise<void> {
@@ -682,6 +735,52 @@ export class Git {
 
   private async nostrPush(nostrURI: NostrURI, options: Omit<Parameters<typeof git.push>[0], 'fs' | 'http' | 'onAuth' | 'corsProxy'>) {
     // TODO: implement Nostr push
+  }
+
+  /** Fetch NIP-34 repo announcement and state events from relays */
+  private async fetchRepoEvents(nostrURI: NostrURI): Promise<{ repo?: NostrEvent; state?: NostrEvent }> {
+    const filter = {
+      kinds: [30617, 30618],
+      authors: [nostrURI.pubkey],
+      '#d': [nostrURI.identifier],
+    };
+
+    const relayUrls = new Set<string>();
+
+    if (nostrURI.relay) {
+      relayUrls.add(nostrURI.relay);
+    }
+    for (const ngitRelay of this.graspList ?? []) {
+      relayUrls.add(ngitRelay.url.href);
+    }
+    for (const relay of this.relayList ?? []) {
+      if (relay.read) {
+        relayUrls.add(relay.url.href);
+      }
+    }
+
+    if (!relayUrls.size) {
+      throw new Error('No relays available to fetch Nostr repository events');
+    }
+
+    const events = await this.nostr
+      .group([...relayUrls].slice(0, 10))
+      .query([filter], { signal: AbortSignal.timeout(5000)});
+
+    const repo = events.find((e) => e.kind === 30617);
+    const state = events.find((e) => e.kind === 30618);
+
+    return { repo, state };
+  }
+
+  /** Convert NIP-34 ref tags to remote refs */
+  private toRemoteRef(ref: string, remote: string): string {
+    if (ref === 'HEAD') {
+      return `refs/remotes/${remote}/HEAD`;
+    } else if (ref.startsWith('refs/heads/')) {
+      return `refs/remotes/${remote}/${ref.substring(11)}`;
+    }
+    return ref;
   }
 }
 
@@ -767,42 +866,4 @@ function readableStreamToAsyncIterator(
       return this;
     },
   };
-}
-
-interface RespositoryState {
-  event: NostrEvent;
-  HEAD?: string;
-  headCommit?: string;
-  headBranch?: string;
-  refs: Record<string, string>;
-}
-
-/**
- * Parse repository state information from a NIP-34 repository state event
- */
-function parseRepositoryState(stateEvent: NostrEvent): RespositoryState {
-  const refs: Record<string, string> = {};
-  let HEAD: string | undefined;
-  let headCommit: string | undefined;
-  let headBranch: string | undefined;
-
-  for (const [name, value] of stateEvent.tags) {
-    if (name === 'HEAD' && value) {
-      HEAD = value;
-
-      // Parse HEAD reference to extract branch name
-      if (value.startsWith('ref: refs/heads/')) {
-        headBranch = value.slice(16); // Remove "ref: refs/heads/" prefix
-      }
-    } else if (name.startsWith('refs/') && value) {
-      refs[name] = value;
-
-      // If this ref matches the HEAD, store the commit
-      if (HEAD === `ref: ${name}`) {
-        headCommit = value;
-      }
-    }
-  }
-
-  return { event: stateEvent, HEAD, headCommit, headBranch, refs };
 }

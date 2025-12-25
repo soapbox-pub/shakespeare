@@ -218,6 +218,9 @@ describe('Git', () => {
 
     it('successfully clones from Nostr URI and updates origin remote', async () => {
       const nostrUrl = 'nostr://npub1abc123/my-repo';
+      // The mock npubEncode creates npub1 + first 10 chars of the hex pubkey
+      // pubkey: 'abcd1234567890...' -> npub1abcd123456
+      const expectedNostrUrl = 'nostr://npub1abcd123456/my-repo';
 
       await gitInstance.clone({
         dir: '/test',
@@ -239,12 +242,12 @@ describe('Git', () => {
         remote: 'origin',
       });
 
-      // Should add the Nostr URI as the new origin
+      // Should add the Nostr URI as the new origin (with properly encoded npub)
       expect(mockGit.addRemote).toHaveBeenCalledWith({
         fs,
         dir: '/test',
         remote: 'origin',
-        url: nostrUrl,
+        url: expectedNostrUrl,
       });
     });
   });

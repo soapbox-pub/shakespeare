@@ -526,6 +526,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
             className="h-8 gap-2 relative"
           >
             <Bug className="h-4 w-4" />
+            <span className="hidden lg:inline">Logs</span>
             {hasConsoleErrors && (
               <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full border-2 border-background bg-red-500" />
             )}
@@ -618,7 +619,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
                   size="sm"
                   onClick={toggleFullscreen}
                   className="h-8 w-8 p-0"
-                  title={isFullscreen ? 'Exit immersive view' : 'Enter immersive view'}
+                  title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
                 >
                   {isFullscreen ? (
                     <Shrink className="h-4 w-4" />
@@ -661,6 +662,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
                     ) : (
                       <Hammer className="h-4 w-4" />
                     )}
+                    <span className="hidden lg:inline">Build</span>
                   </Button>
                   {(!isMobile && onToggleView && isPreviewable) && (
                     <Button
@@ -670,6 +672,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
                       className="h-8 gap-2"
                     >
                       <Code className="h-4 w-4" />
+                      <span className="hidden lg:inline">Code</span>
                     </Button>
                   )}
                   <ConsoleDropdown />
@@ -837,6 +840,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
                     className="gap-2 text-muted-foreground hover:text-foreground"
                   >
                     <Terminal className="h-4 w-4" />
+                    <span className="hidden lg:inline">Terminal</span>
                   </Button>
                 </div>
               )}
@@ -851,6 +855,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
                     className="gap-2 text-muted-foreground hover:text-foreground"
                   >
                     <Terminal className="h-4 w-4" />
+                    <span className="hidden lg:inline">Terminal</span>
                   </Button>
                   <GitStatusIndicator projectId={projectId} />
                 </div>

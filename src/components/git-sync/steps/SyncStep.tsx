@@ -253,14 +253,6 @@ export function SyncStep({ projectId, remoteUrl }: SyncStepProps) {
           <h3 className="font-semibold">{providerInfo?.name}</h3>
         </div>
         <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={handleOpenExternal}
-          >
-            <ExternalLink className="h-4 w-4" />
-          </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -296,6 +288,14 @@ export function SyncStep({ projectId, remoteUrl }: SyncStepProps) {
             ) : (
               <Copy className="h-4 w-4" />
             )}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleOpenExternal}
+            className="shrink-0 h-10"
+          >
+            <ExternalLink className="h-4 w-4" />
           </Button>
         </div>
       </div>

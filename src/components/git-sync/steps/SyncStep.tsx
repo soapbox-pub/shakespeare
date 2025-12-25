@@ -79,7 +79,10 @@ export function SyncStep({ projectId, remoteUrl }: SyncStepProps) {
       setIsSyncing(false);
       setCurrentOperation(null);
     }
-  }, [remoteUrl]);
+
+    // Invalidate git status to refresh UI
+    queryClient.invalidateQueries({ queryKey: ['git-status', projectId] });
+  }, [projectId, queryClient, remoteUrl]);
 
   const handleSync = async () => {
     await executeGitOperation('sync', async () => {
@@ -132,9 +135,6 @@ export function SyncStep({ projectId, remoteUrl }: SyncStepProps) {
         ref,
         force: true,
       });
-
-      // Invalidate git status to refresh UI
-      queryClient.invalidateQueries({ queryKey: ['git-status', projectId] });
     });
   };
 

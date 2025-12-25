@@ -362,32 +362,42 @@ export function SyncStep({ projectId, remoteUrl }: SyncStepProps) {
 
           <CollapsibleContent className="space-y-2">
             <div className="flex gap-2">
-              <Button
-                onClick={handlePull}
-                variant="outline"
-                disabled={isSyncing}
-                className="flex-1"
-              >
-                {currentOperation === 'pull' || currentOperation === 'force-pull' ? (
-                  <LoaderCircle className="h-4 w-4 animate-spin" />
-                ) : (
-                  <ArrowDown className="h-4 w-4" />
+              <div className="relative flex-1">
+                <Button
+                  onClick={handlePull}
+                  variant="outline"
+                  disabled={isSyncing}
+                  className="w-full"
+                >
+                  {currentOperation === 'pull' || currentOperation === 'force-pull' ? (
+                    <LoaderCircle className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <ArrowDown className="h-4 w-4" />
+                  )}
+                  Pull
+                </Button>
+                {commitsBehind > 0 && (
+                  <div className="absolute -top-1 -right-1 size-3 bg-yellow-500 rounded-full border-2 border-background" />
                 )}
-                Pull
-              </Button>
-              <Button
-                onClick={handlePush}
-                variant="outline"
-                disabled={isSyncing}
-                className="flex-1"
-              >
-                {currentOperation === 'push' || currentOperation === 'force-push' ? (
-                  <LoaderCircle className="h-4 w-4 animate-spin" />
-                ) : (
-                  <ArrowUp className="h-4 w-4" />
+              </div>
+              <div className="relative flex-1">
+                <Button
+                  onClick={handlePush}
+                  variant="outline"
+                  disabled={isSyncing}
+                  className="w-full"
+                >
+                  {currentOperation === 'push' || currentOperation === 'force-push' ? (
+                    <LoaderCircle className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <ArrowUp className="h-4 w-4" />
+                  )}
+                  Push
+                </Button>
+                {commitsAhead > 0 && (
+                  <div className="absolute -top-1 -right-1 size-3 bg-yellow-500 rounded-full border-2 border-background" />
                 )}
-                Push
-              </Button>
+              </div>
             </div>
           </CollapsibleContent>
         </div>

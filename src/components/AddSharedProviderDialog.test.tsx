@@ -2,10 +2,10 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { TestApp } from '@/test/TestApp';
-import { AddProviderDialog } from './AddProviderDialog';
+import { AddSharedProviderDialog } from './AddSharedProviderDialog';
 import type { AIProvider } from '@/contexts/AISettingsContext';
 
-describe('AddProviderDialog', () => {
+describe('AddSharedProviderDialog', () => {
   const mockProvider: AIProvider = {
     id: 'test-provider',
     name: 'Test Provider',
@@ -18,7 +18,7 @@ describe('AddProviderDialog', () => {
 
     render(
       <TestApp>
-        <AddProviderDialog
+        <AddSharedProviderDialog
           open={true}
           onOpenChange={onOpenChange}
           provider={mockProvider}
@@ -36,7 +36,7 @@ describe('AddProviderDialog', () => {
 
     render(
       <TestApp>
-        <AddProviderDialog
+        <AddSharedProviderDialog
           open={true}
           onOpenChange={onOpenChange}
           provider={mockProvider}
@@ -55,7 +55,7 @@ describe('AddProviderDialog', () => {
 
     render(
       <TestApp>
-        <AddProviderDialog
+        <AddSharedProviderDialog
           open={true}
           onOpenChange={onOpenChange}
           provider={mockProvider}
@@ -74,7 +74,7 @@ describe('AddProviderDialog', () => {
 
     render(
       <TestApp>
-        <AddProviderDialog
+        <AddSharedProviderDialog
           open={true}
           onOpenChange={onOpenChange}
           provider={mockProvider}
@@ -100,7 +100,7 @@ describe('AddProviderDialog', () => {
 
     render(
       <TestApp>
-        <AddProviderDialog
+        <AddSharedProviderDialog
           open={true}
           onOpenChange={onOpenChange}
           provider={openrouterProvider}
@@ -122,7 +122,7 @@ describe('AddProviderDialog', () => {
 
     render(
       <TestApp>
-        <AddProviderDialog
+        <AddSharedProviderDialog
           open={true}
           onOpenChange={onOpenChange}
           provider={customProvider}

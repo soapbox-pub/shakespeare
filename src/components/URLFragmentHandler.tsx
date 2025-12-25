@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { AddProviderDialog } from '@/components/AddProviderDialog';
+import { AddSharedProviderDialog } from '@/components/AddSharedProviderDialog';
 import type { AIProvider } from '@/contexts/AISettingsContext';
 import { AI_PROVIDER_PRESETS } from '@/lib/aiProviderPresets';
 
@@ -78,7 +78,7 @@ export function URLFragmentHandler() {
   }
 
   return (
-    <AddProviderDialog
+    <AddSharedProviderDialog
       open={dialogOpen}
       onOpenChange={handleDialogClose}
       provider={providerFromURL}

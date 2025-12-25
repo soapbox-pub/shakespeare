@@ -8,13 +8,13 @@ import { AI_PROVIDER_PRESETS } from '@/lib/aiProviderPresets';
 import { ExternalFavicon } from '@/components/ExternalFavicon';
 import type { AIProvider } from '@/contexts/AISettingsContext';
 
-interface AddProviderDialogProps {
+interface AddSharedProviderDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   provider: AIProvider;
 }
 
-export function AddProviderDialog({ open, onOpenChange, provider }: AddProviderDialogProps) {
+export function AddSharedProviderDialog({ open, onOpenChange, provider }: AddSharedProviderDialogProps) {
   const scrollableContentRef = useRef<HTMLDivElement>(null);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
 

@@ -3,9 +3,9 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { TestApp } from '@/test/TestApp';
 import { URLFragmentHandler } from './URLFragmentHandler';
 
-// Mock the AddProviderDialog component
-vi.mock('./AddProviderDialog', () => ({
-  AddProviderDialog: ({ open, provider }: { open: boolean; provider: { id: string; baseURL: string; apiKey?: string; nostr?: boolean; proxy?: boolean } }) => {
+// Mock the AddSharedProviderDialog component
+vi.mock('./AddSharedProviderDialog', () => ({
+  AddSharedProviderDialog: ({ open, provider }: { open: boolean; provider: { id: string; baseURL: string; apiKey?: string; nostr?: boolean; proxy?: boolean } }) => {
     if (!open) return null;
     return (
       <div data-testid="add-provider-dialog">

@@ -802,18 +802,22 @@ export class Git {
     }
 
     // Fetch from each clone URL
-    await Promise.allSettled(cloneUrls.map((url) => {
-      return Promise.race([
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Fetch from Nostr clone URL timed out')), 10_000)),
-        git.fetch({
-          ...options,
-          fs: this.fs,
-          http: this.httpNoProxy,
-          url,
-          remote,
-        }),
-      ])
-    }));
+    for (const url of cloneUrls) {
+      try {
+        await Promise.race([
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Fetch from Nostr clone URL timed out')), 10_000)),
+          git.fetch({
+            ...options,
+            fs: this.fs,
+            http: this.httpNoProxy,
+            url,
+            remote,
+          }),
+        ]);
+      } catch {
+        // Ignore fetch errors from individual clone URLs
+      }
+    }
 
     const result: FetchResult = {
       defaultBranch: null,

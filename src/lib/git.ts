@@ -800,8 +800,39 @@ export class Git {
     return result;
   }
 
-  private async nostrPull(nostrURI: NostrURI, options: Omit<Parameters<typeof git.pull>[0], 'fs' | 'http' | 'corsProxy'> & { remote: string; dir: string }): Promise<void> {
-    // TODO: implement Nostr pull
+  private async nostrPull(nostrURI: NostrURI, options: Omit<Parameters<typeof git.pull>[0], 'fs' | 'http' | 'corsProxy'> & { remote: string; dir: string; author: { name: string; email: string } }): Promise<void> {
+    // First, fetch the latest changes from Nostr
+    await this.nostrFetch(nostrURI, options);
+
+    // Get the current branch
+    const ref = options.ref || await git.currentBranch({
+      fs: this.fs,
+      dir: options.dir,
+    });
+
+    if (!ref) {
+      throw new Error('Not on a branch');
+    }
+
+    // Construct the remote branch ref
+    const remoteRef = options.remoteRef || await git.getConfig({
+      fs: this.fs,
+      dir: options.dir,
+      path: `branch.${ref}.merge`,
+    });
+
+    if (!remoteRef) {
+      throw new Error(`No remote ref configured for branch ${ref}`);
+    }
+
+    // Merge the remote branch into the current branch
+    await git.merge({
+      fs: this.fs,
+      dir: options.dir,
+      ours: ref,
+      theirs: remoteRef,
+      author: options.author,
+    });
   }
 
   private async nostrPush(nostrURI: NostrURI, options: Omit<Parameters<typeof git.push>[0], 'fs' | 'http' | 'onAuth' | 'corsProxy'>) {

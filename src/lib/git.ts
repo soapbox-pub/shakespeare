@@ -836,7 +836,99 @@ export class Git {
   }
 
   private async nostrPush(nostrURI: NostrURI, options: Omit<Parameters<typeof git.push>[0], 'fs' | 'http' | 'onAuth' | 'corsProxy'>) {
-    // TODO: implement Nostr push
+    if (!this.signer) {
+      throw new Error('Signer required for Nostr push');
+    }
+
+    const dir = options.dir || '.';
+
+    // Fetch the current repo events from Nostr
+    const { repo } = await this.fetchRepoEvents(nostrURI);
+
+    if (!repo) {
+      throw new Error('Repository not found on Nostr network');
+    }
+
+    const cloneUrls = repo.tags.find(([name]) => name === 'clone')?.slice(1) ?? [];
+
+    if (cloneUrls.length === 0) {
+      throw new Error('No clone URLs found in repository announcement');
+    }
+
+    // Collect all refs (HEAD and branches) to include in the state event
+    const refNames = await git.listRefs({
+      fs: this.fs,
+      dir,
+    });
+
+    const stateTags: string[][] = [
+      ['d', nostrURI.identifier],
+    ];
+
+    // Add HEAD ref
+    const headRef = await git.resolveRef({
+      fs: this.fs,
+      dir,
+      ref: 'HEAD',
+      depth: 2,
+    });
+
+    // Check if HEAD is a symbolic ref
+    if (headRef.startsWith('refs/')) {
+      stateTags.push(['HEAD', `ref: ${headRef}`]);
+    } else {
+      stateTags.push(['HEAD', headRef]);
+    }
+
+    // Add all branch refs as tags
+    for (const refName of refNames) {
+      if (refName.startsWith('refs/heads/') || refName.startsWith('refs/tags/')) {
+        const oid = await git.resolveRef({
+          fs: this.fs,
+          dir,
+          ref: refName,
+        });
+        stateTags.push([refName, oid]);
+      }
+    }
+
+    // Republish repo announcement event
+    await this.nostr.event(repo);
+
+    // Construct the state event (kind 30618)
+    const stateEvent = await this.signer.signEvent({
+      kind: 30618,
+      content: '',
+      tags: stateTags,
+      created_at: Math.floor(Date.now() / 1000),
+    });
+
+    // Publish the state event to Nostr
+    await this.nostr.event(stateEvent);
+
+    // Push to each clone URL
+    const pushResults = await Promise.allSettled(
+      cloneUrls.map((url) =>
+        Promise.race([
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Push to Nostr clone URL timed out')), 30_000)),
+          git.push({
+            ...options,
+            fs: this.fs,
+            http: this.httpNoProxy,
+            onAuth: this.onAuth,
+            url,
+            dir,
+          }),
+        ])
+      )
+    );
+
+    // Check if at least one push succeeded
+    const successfulPushes = pushResults.filter((result) => result.status === 'fulfilled');
+
+    if (successfulPushes.length === 0) {
+      throw new Error('Failed to push to any clone URLs');
+    }
   }
 
   /** Fetch NIP-34 repo announcement and state events from relays */

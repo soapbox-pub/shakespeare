@@ -786,18 +786,20 @@ export class Git {
 
     // Update refs based on fetched state
     for (const [name, val] of state?.tags ?? []) {
-      const symbolic = val.startsWith('ref: ');
-      const value = symbolic ? this.toRemoteRef(val.substring(5), remote) : val;
-      const ref = this.toRemoteRef(name, remote);
+      if (name === 'HEAD' || name.startsWith('refs/')) {
+        const symbolic = val.startsWith('ref: ');
+        const value = symbolic ? this.toRemoteRef(val.substring(5), remote) : val;
+        const ref = this.toRemoteRef(name, remote);
 
-      await git.writeRef({
-        fs: this.fs,
-        dir: options.dir,
-        ref,
-        value,
-        symbolic,
-        force: true,
-      });
+        await git.writeRef({
+          fs: this.fs,
+          dir: options.dir,
+          ref,
+          value,
+          symbolic,
+          force: true,
+        });
+      }
     }
 
     return result;

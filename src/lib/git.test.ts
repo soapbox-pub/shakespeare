@@ -301,6 +301,144 @@ describe('Git', () => {
           dir: '/nostr-repo',
         })).rejects.toThrow('No clone URLs found in repository announcement');
       });
+
+      it('should clone from Nostr with mock git server', async () => {
+        // Create a mock Git HTTP server
+        const mockServer = new MockGitHttpServer();
+        const mockRepo = createMockRepository();
+        mockServer.addRepository('https://git.example.com/user/repo', mockRepo);
+
+        // Create Nostr repository announcement (kind 30617) with clone URL
+        const repoEvent: NostrEvent = {
+          id: 'repo-event-id',
+          pubkey: testPubkey,
+          created_at: Math.floor(Date.now() / 1000),
+          kind: 30617,
+          tags: [
+            ['d', 'my-repo'],
+            ['clone', 'https://git.example.com/user/repo.git'],
+          ],
+          content: '',
+          sig: 'test-sig',
+        };
+
+        // Create Nostr repository state (kind 30618) with refs
+        // Use the actual commit SHA from the mock repository
+        const stateEvent: NostrEvent = {
+          id: 'state-event-id',
+          pubkey: testPubkey,
+          created_at: Math.floor(Date.now() / 1000),
+          kind: 30618,
+          tags: [
+            ['d', 'my-repo'],
+            ['HEAD', 'ref: refs/heads/main'],
+            ['refs/heads/main', '2e538da98e06b91e70268817b0fa3f01aeeb003e'],
+          ],
+          content: '',
+          sig: 'test-sig',
+        };
+
+        // Mock Nostr query to return the repo and state events
+        vi.mocked(nostr.group).mockReturnValue({
+          query: vi.fn(async () => [repoEvent, stateEvent]),
+        } as unknown as ReturnType<NPool['group']>);
+
+        // Create Git instance with the mock fetch function
+        const gitWithMock = new Git({
+          fs,
+          nostr,
+          signer,
+          systemAuthor: { name: 'Test User', email: 'test@example.com' },
+          relayList: [{ url: new URL('wss://relay.example.com'), read: true, write: true }],
+          fetch: mockServer.fetch,
+        });
+
+        // Clone the Nostr repository
+        await gitWithMock.clone({
+          url: `nostr://${testNpub}/my-repo`,
+          dir: '/nostr-repo',
+          singleBranch: true,
+          depth: 1,
+        });
+
+        // Verify the repository was cloned
+        const gitDirStat = await fs.stat('/nostr-repo/.git');
+        expect(gitDirStat.isDirectory()).toBe(true);
+
+        // Verify we can read the current branch
+        const currentBranch = await gitWithMock.currentBranch({ dir: '/nostr-repo' });
+        expect(currentBranch).toBe('main');
+
+        // Verify the Nostr query was called to fetch repo events
+        expect(nostr.group).toHaveBeenCalled();
+
+        // Verify that remote refs were set up based on the Nostr state
+        const remoteRefs = await gitWithMock.listBranches({ dir: '/nostr-repo', remote: 'origin' });
+        expect(remoteRefs).toContain('main');
+      });
+
+      it('should handle multiple clone URLs and try fallbacks', async () => {
+        // Create a mock Git HTTP server with only the second URL working
+        const mockServer = new MockGitHttpServer();
+        const mockRepo = createMockRepository();
+        mockServer.addRepository('https://git2.example.com/user/repo', mockRepo);
+
+        // Create Nostr repository announcement with multiple clone URLs
+        const repoEvent: NostrEvent = {
+          id: 'repo-event-id',
+          pubkey: testPubkey,
+          created_at: Math.floor(Date.now() / 1000),
+          kind: 30617,
+          tags: [
+            ['d', 'fallback-repo'],
+            ['clone', 'https://git1.example.com/user/repo.git', 'https://git2.example.com/user/repo.git'],
+          ],
+          content: '',
+          sig: 'test-sig',
+        };
+
+        const stateEvent: NostrEvent = {
+          id: 'state-event-id',
+          pubkey: testPubkey,
+          created_at: Math.floor(Date.now() / 1000),
+          kind: 30618,
+          tags: [
+            ['d', 'fallback-repo'],
+            ['HEAD', 'ref: refs/heads/main'],
+            ['refs/heads/main', '2e538da98e06b91e70268817b0fa3f01aeeb003e'],
+          ],
+          content: '',
+          sig: 'test-sig',
+        };
+
+        vi.mocked(nostr.group).mockReturnValue({
+          query: vi.fn(async () => [repoEvent, stateEvent]),
+        } as unknown as ReturnType<NPool['group']>);
+
+        const gitWithMock = new Git({
+          fs,
+          nostr,
+          signer,
+          systemAuthor: { name: 'Test User', email: 'test@example.com' },
+          relayList: [{ url: new URL('wss://relay.example.com'), read: true, write: true }],
+          fetch: mockServer.fetch,
+        });
+
+        // Clone should succeed using the second URL as fallback
+        await gitWithMock.clone({
+          url: `nostr://${testNpub}/fallback-repo`,
+          dir: '/nostr-repo-fallback',
+          singleBranch: true,
+          depth: 1,
+        });
+
+        // Verify the repository was cloned
+        const gitDirStat = await fs.stat('/nostr-repo-fallback/.git');
+        expect(gitDirStat.isDirectory()).toBe(true);
+
+        const currentBranch = await gitWithMock.currentBranch({ dir: '/nostr-repo-fallback' });
+        expect(currentBranch).toBe('main');
+      });
     });
 
     describe('nostr push', () => {

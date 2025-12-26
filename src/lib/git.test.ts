@@ -5,6 +5,7 @@ import type { NPool, NostrEvent } from '@nostrify/nostrify';
 import { NSecSigner } from '@nostrify/nostrify';
 import { nip19 } from 'nostr-tools';
 import { MockFS } from '@/test/MockFS';
+import { MockGitHttpServer, createMockRepository } from '@/test/MockGitHttpServer';
 
 /**
  * Mock Nostr pool
@@ -157,6 +158,60 @@ describe('Git', () => {
         await git.setRemoteURL({ dir: '/repo', remote: 'origin', url: 'https://github.com/user/new.git' });
         const newUrl = await git.getRemoteURL('/repo', 'origin');
         expect(newUrl).toBe('https://github.com/user/new.git');
+      });
+    });
+
+    describe('clone operations', () => {
+      it('should clone from mock HTTP server', async () => {
+        // Create a mock Git HTTP server
+        const mockServer = new MockGitHttpServer();
+        const mockRepo = createMockRepository();
+        mockServer.addRepository('https://example.com/test/repo', mockRepo);
+
+        // Create a Git instance with the mock fetch function
+        const gitWithMock = new Git({
+          fs,
+          nostr,
+          systemAuthor: { name: 'Test User', email: 'test@example.com' },
+          fetch: mockServer.fetch,
+        });
+
+        // Clone the repository
+        await gitWithMock.clone({
+          url: 'https://example.com/test/repo.git',
+          dir: '/cloned-repo',
+          singleBranch: true,
+          depth: 1,
+        });
+
+        // Verify the repository was cloned
+        const gitDirStat = await fs.stat('/cloned-repo/.git');
+        expect(gitDirStat.isDirectory()).toBe(true);
+
+        // Verify we can read the current branch
+        const currentBranch = await gitWithMock.currentBranch({ dir: '/cloned-repo' });
+        expect(currentBranch).toBe('main');
+
+        // Read and verify README content
+        const readmeContent = await fs.readFile('/cloned-repo/README.md', 'utf8');
+        expect(readmeContent).toContain('Test Repository');
+      });
+
+      it('should handle 404 for non-existent repository', async () => {
+        const mockServer = new MockGitHttpServer();
+
+        const gitWithMock = new Git({
+          fs,
+          nostr,
+          systemAuthor: { name: 'Test User', email: 'test@example.com' },
+          fetch: mockServer.fetch,
+        });
+
+        // Try to clone a non-existent repository
+        await expect(gitWithMock.clone({
+          url: 'https://example.com/nonexistent/repo.git',
+          dir: '/cloned-repo',
+        })).rejects.toThrow();
       });
     });
 

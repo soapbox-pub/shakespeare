@@ -640,9 +640,27 @@ export class Git {
     refs: Record<string, string>;
     HEAD?: string;
   }> {
-    // TODO: implement Nostr remote info retrieval
-  }
+    const capabilities = ['symrefs', 'fetch', 'push'];
+    const refs: Record<string, string> = {};
 
+    const { state } = await this.fetchRepoEvents(nostrURI);
+
+    if (!state) {
+      return { capabilities, refs };
+    }
+
+    for (const [name, value] of state.tags) {
+      if (name === 'HEAD' || name.startsWith('refs/')) {
+        refs[name] = value;
+      }
+    }
+
+    return {
+      capabilities,
+      refs,
+      HEAD: refs['HEAD'],
+    };
+  }
 
   private async nostrClone(nostrURI: NostrURI, options: Omit<Parameters<typeof git.clone>[0], 'fs' | 'http' | 'corsProxy'>): Promise<void> {
     // TODO: implement Nostr clone

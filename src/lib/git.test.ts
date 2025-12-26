@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Git } from './git';
 import type { JSRuntimeFS } from './JSRuntime';
 import type { NPool, NostrEvent } from '@nostrify/nostrify';
-import { NSecSigner } from '@nostrify/nostrify';
+import type { NostrSigner } from '@nostrify/nostrify';
 import { nip19 } from 'nostr-tools';
 import { MockFS } from '@/test/MockFS';
 import { MockGitHttpServer, createMockRepository } from '@/test/MockGitHttpServer';
@@ -24,12 +24,27 @@ const createMockNostr = (): NPool => {
 };
 
 /**
- * Create a test Nostr signer using NSecSigner
+ * Create a mock Nostr signer for testing
  */
 const createTestSigner = () => {
-  // Generate a random test nsec (32 bytes of zeros as Uint8Array)
-  const testSecretKey = new Uint8Array(32).fill(1);
-  return new NSecSigner(testSecretKey);
+  const testPubkey = '0'.repeat(64);
+  return {
+    getPublicKey: vi.fn(async () => testPubkey),
+    signEvent: vi.fn(async (event: Omit<NostrEvent, 'id' | 'pubkey' | 'sig'>) => ({
+      ...event,
+      id: 'test-event-id-' + Math.random().toString(36).slice(2),
+      pubkey: testPubkey,
+      sig: 'test-sig-' + Math.random().toString(36).slice(2),
+    })),
+    nip04: {
+      encrypt: vi.fn(async () => 'encrypted'),
+      decrypt: vi.fn(async () => 'decrypted'),
+    },
+    nip44: {
+      encrypt: vi.fn(async () => 'encrypted'),
+      decrypt: vi.fn(async () => 'decrypted'),
+    },
+  };
 };
 
 describe('Git', () => {
@@ -246,7 +261,7 @@ describe('Git', () => {
   describe('Nostr Git Operations', () => {
     const testPubkey = 'a'.repeat(64);
     const testNpub = nip19.npubEncode(testPubkey);
-    let signer: NSecSigner;
+    let signer: NostrSigner;
 
     beforeEach(() => {
       signer = createTestSigner();
@@ -569,6 +584,182 @@ describe('Git', () => {
           await git.addRemote({ dir: '/nostr-repo', remote: 'origin', url: `nostr://${testNpub}/test-repo` });
           await gitWithoutSigner.push({ dir: '/nostr-repo', remote: 'origin', ref: 'main' });
         }).rejects.toThrow('Signer required for Nostr push');
+      });
+
+      it('should publish state event with tags on push', async () => {
+        // Create a mock Git HTTP server
+        const mockServer = new MockGitHttpServer();
+        const mockRepo = createMockRepository();
+        mockServer.addRepository('https://git.example.com/user/repo', mockRepo);
+
+        // Create Nostr repository events
+        const repoEvent: NostrEvent = {
+          id: 'repo-event-id',
+          pubkey: testPubkey,
+          created_at: Math.floor(Date.now() / 1000),
+          kind: 30617,
+          tags: [
+            ['d', 'my-repo'],
+            ['clone', 'https://git.example.com/user/repo.git'],
+          ],
+          content: '',
+          sig: 'test-sig',
+        };
+
+        const stateEvent: NostrEvent = {
+          id: 'state-event-id',
+          pubkey: testPubkey,
+          created_at: Math.floor(Date.now() / 1000),
+          kind: 30618,
+          tags: [
+            ['d', 'my-repo'],
+            ['HEAD', 'ref: refs/heads/main'],
+            ['refs/heads/main', '2e538da98e06b91e70268817b0fa3f01aeeb003e'],
+          ],
+          content: '',
+          sig: 'test-sig',
+        };
+
+        vi.mocked(nostr.group).mockReturnValue({
+          query: vi.fn(async () => [repoEvent, stateEvent]),
+        } as unknown as ReturnType<NPool['group']>);
+
+        const gitWithMock = new Git({
+          fs,
+          nostr,
+          signer,
+          systemAuthor: { name: 'Test User', email: 'test@example.com' },
+          relayList: [{ url: new URL('wss://relay.example.com'), read: true, write: true }],
+          fetch: mockServer.fetch,
+        });
+
+        // Clone the repository first
+        await gitWithMock.clone({
+          url: `nostr://${testNpub}/my-repo`,
+          dir: '/tag-test-repo',
+          singleBranch: true,
+          depth: 1,
+        });
+
+        // Create a tag
+        await fs.mkdir('/tag-test-repo/.shakespeare');
+        await fs.writeFile('/tag-test-repo/.shakespeare/git.json', JSON.stringify({ name: 'Test', email: 'test@test.com' }));
+        await gitWithMock.tag({ dir: '/tag-test-repo', ref: 'v1.0.0' });
+
+        // Clear the mock to track new calls
+        vi.mocked(nostr.event).mockClear();
+
+        // Push to Nostr
+        try {
+          await gitWithMock.push({ dir: '/tag-test-repo', remote: 'origin' });
+        } catch {
+          // Expected to fail because mock server doesn't support push
+        }
+
+        // Find the state event (kind 30618)
+        const eventCalls = vi.mocked(nostr.event).mock.calls;
+        const publishedStateEvent = eventCalls.find(([event]) => event.kind === 30618)?.[0];
+        expect(publishedStateEvent).toBeDefined();
+
+        if (publishedStateEvent) {
+          // Verify the tag is included
+          const tagRef = publishedStateEvent.tags.find(([name]: string[]) => name === 'refs/tags/v1.0.0');
+          expect(tagRef).toBeDefined();
+          expect(tagRef![1]).toMatch(/^[0-9a-f]{40}$/);
+        }
+      });
+
+      it('should publish state event with correct HEAD format on push', async () => {
+        // Create a mock Git HTTP server that supports push
+        const mockServer = new MockGitHttpServer();
+        const mockRepo = createMockRepository();
+        mockServer.addRepository('https://git.example.com/user/repo', mockRepo);
+
+        // Create Nostr repository events
+        const repoEvent: NostrEvent = {
+          id: 'repo-event-id',
+          pubkey: testPubkey,
+          created_at: Math.floor(Date.now() / 1000),
+          kind: 30617,
+          tags: [
+            ['d', 'my-repo'],
+            ['clone', 'https://git.example.com/user/repo.git'],
+          ],
+          content: '',
+          sig: 'test-sig',
+        };
+
+        const stateEvent: NostrEvent = {
+          id: 'state-event-id',
+          pubkey: testPubkey,
+          created_at: Math.floor(Date.now() / 1000),
+          kind: 30618,
+          tags: [
+            ['d', 'my-repo'],
+            ['HEAD', 'ref: refs/heads/main'],
+            ['refs/heads/main', '2e538da98e06b91e70268817b0fa3f01aeeb003e'],
+          ],
+          content: '',
+          sig: 'test-sig',
+        };
+
+        vi.mocked(nostr.group).mockReturnValue({
+          query: vi.fn(async () => [repoEvent, stateEvent]),
+        } as unknown as ReturnType<NPool['group']>);
+
+        const gitWithMock = new Git({
+          fs,
+          nostr,
+          signer,
+          systemAuthor: { name: 'Test User', email: 'test@example.com' },
+          relayList: [{ url: new URL('wss://relay.example.com'), read: true, write: true }],
+          fetch: mockServer.fetch,
+        });
+
+        // Clone the repository first
+        await gitWithMock.clone({
+          url: `nostr://${testNpub}/my-repo`,
+          dir: '/push-test-repo',
+          singleBranch: true,
+          depth: 1,
+        });
+
+        // Make a local change
+        await fs.mkdir('/push-test-repo/.shakespeare');
+        await fs.writeFile('/push-test-repo/.shakespeare/git.json', JSON.stringify({ name: 'Test', email: 'test@test.com' }));
+        await fs.writeFile('/push-test-repo/new-file.txt', 'new content');
+        await gitWithMock.add({ dir: '/push-test-repo', filepath: 'new-file.txt' });
+        await gitWithMock.commit({ dir: '/push-test-repo', message: 'Add new file' });
+
+        // Clear the mock to track new calls
+        vi.mocked(nostr.event).mockClear();
+
+        // Push to Nostr (will fail on git push but state event should still be published)
+        try {
+          await gitWithMock.push({ dir: '/push-test-repo', remote: 'origin' });
+        } catch {
+          // Expected to fail because mock server doesn't support push
+        }
+
+        // Verify that the state event was published with correct format
+        const eventCalls = vi.mocked(nostr.event).mock.calls;
+        expect(eventCalls.length).toBeGreaterThanOrEqual(1);
+
+        // Find the state event (kind 30618)
+        const publishedStateEvent = eventCalls.find(([event]) => event.kind === 30618)?.[0];
+        expect(publishedStateEvent).toBeDefined();
+
+        if (publishedStateEvent) {
+          // Verify the HEAD tag format matches NIP-34 spec
+          const headTag = publishedStateEvent.tags.find(([name]: string[]) => name === 'HEAD');
+          expect(headTag).toBeDefined();
+          expect(headTag![1]).toMatch(/^ref: refs\/heads\//);
+
+          // Verify refs/heads/main tag exists with a commit SHA
+          const mainRefTag = publishedStateEvent.tags.find(([name]: string[]) => name === 'refs/heads/main');
+          expect(mainRefTag).toBeDefined();
+          expect(mainRefTag![1]).toMatch(/^[0-9a-f]{40}$/);
+        }
       });
     });
   });

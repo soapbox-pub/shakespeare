@@ -881,12 +881,6 @@ export class Git {
       throw new Error('No clone URLs found in repository announcement');
     }
 
-    // Collect all refs (HEAD and branches) to include in the state event
-    const refNames = await git.listRefs({
-      fs: this.fs,
-      dir,
-    });
-
     const stateTags: string[][] = [
       ['d', nostrURI.identifier],
     ];
@@ -906,16 +900,38 @@ export class Git {
       stateTags.push(['HEAD', headRef]);
     }
 
-    // Add all branch refs as tags
-    for (const refName of refNames) {
-      if (refName.startsWith('refs/heads/') || refName.startsWith('refs/tags/')) {
-        const oid = await git.resolveRef({
-          fs: this.fs,
-          dir,
-          ref: refName,
-        });
-        stateTags.push([refName, oid]);
-      }
+    // Collect all branch refs
+    const branchNames = await git.listRefs({
+      fs: this.fs,
+      dir,
+      filepath: 'refs/heads',
+    });
+
+    for (const branchName of branchNames) {
+      const refName = `refs/heads/${branchName}`;
+      const oid = await git.resolveRef({
+        fs: this.fs,
+        dir,
+        ref: refName,
+      });
+      stateTags.push([refName, oid]);
+    }
+
+    // Collect all tag refs
+    const tagNames = await git.listRefs({
+      fs: this.fs,
+      dir,
+      filepath: 'refs/tags',
+    });
+
+    for (const tagName of tagNames) {
+      const refName = `refs/tags/${tagName}`;
+      const oid = await git.resolveRef({
+        fs: this.fs,
+        dir,
+        ref: refName,
+      });
+      stateTags.push([refName, oid]);
     }
 
     // Republish repo announcement event

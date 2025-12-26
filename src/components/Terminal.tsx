@@ -8,7 +8,7 @@ import { useFS } from '@/hooks/useFS';
 import { useGit } from '@/hooks/useGit';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useAppContext } from '@/hooks/useAppContext';
-import { ansiToHtml, containsAnsiCodes } from '@/lib/ansiToHtml';
+import { stripAnsiCodes } from '@/lib/ansiToHtml';
 
 interface TerminalProps {
   cwd: string;
@@ -193,9 +193,7 @@ export function Terminal({ cwd, className }: TerminalProps) {
 
   const copyToClipboard = useCallback(async (content: string) => {
     try {
-      // Strip ANSI codes when copying to clipboard
-      const cleanContent = content.replace(/\u001b\[(?:\d+;)*\d+m/g, '');
-      await navigator.clipboard.writeText(cleanContent);
+      await navigator.clipboard.writeText(content);
     } catch (error) {
       console.error('Failed to copy to clipboard:', error);
     }
@@ -230,16 +228,14 @@ export function Terminal({ cwd, className }: TerminalProps) {
                       ${' '}
                     </span>
                   ) : null}
-                  {containsAnsiCodes(line.content)
-                    ? <span dangerouslySetInnerHTML={{ __html: ansiToHtml(line.content) }} />
-                    : line.content}
+                  {stripAnsiCodes(line.content)}
                 </pre>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={(e) => {
                     e.stopPropagation();
-                    copyToClipboard(line.content);
+                    copyToClipboard(stripAnsiCodes(line.content));
                   }}
                   className="absolute right-0 top-0 h-4 w-4 p-0 opacity-0 group-hover:opacity-100 transition-opacity text-gray-500 hover:text-white hover:bg-gray-700"
                 >

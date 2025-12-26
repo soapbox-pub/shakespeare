@@ -64,38 +64,38 @@ export class GitShowCommand implements GitSubcommand {
       if (tildeMatch) {
         const [, baseRef, steps] = tildeMatch;
         const numSteps = parseInt(steps, 10);
-        
+
         if (numSteps === 0) {
           // ~0 is the commit itself
           return this.resolveCommitRef(baseRef, cwd);
         }
-        
+
         // First resolve the base reference
         const baseCommit = await this.resolveCommitRef(baseRef, cwd);
         if (!baseCommit) {
           throw new Error(`Could not resolve base reference: ${baseRef}`);
         }
-        
+
         // Walk back N steps in history
         return this.walkBackNCommits(baseCommit, numSteps, cwd);
       }
-      
+
       // Handle HEAD^N syntax (Nth parent)
       const caretMatch = ref.match(/^(.+)\^(\d*)$/);
       if (caretMatch) {
         const [, baseRef, parentNum] = caretMatch;
         const parentIndex = parentNum ? parseInt(parentNum, 10) - 1 : 0; // Default to first parent
-        
+
         // First resolve the base reference
         const baseCommit = await this.resolveCommitRef(baseRef, cwd);
         if (!baseCommit) {
           throw new Error(`Could not resolve base reference: ${baseRef}`);
         }
-        
+
         // Get the specified parent
         return this.getNthParent(baseCommit, parentIndex, cwd);
       }
-      
+
       // Handle simple reference (direct resolution)
       try {
         return await this.git.resolveRef({
@@ -113,37 +113,37 @@ export class GitShowCommand implements GitSubcommand {
       return null;
     }
   }
-  
+
   /**
    * Walk back N commits from the given commit
    */
   private async  walkBackNCommits(startCommit: string, steps: number, cwd: string): Promise<string | null>  {
     try {
       let currentCommit = startCommit;
-      
+
       for (let i = 0; i < steps; i++) {
         // Get the commit object
         const commit = await this.git.readCommit({
           dir: cwd,
           oid: currentCommit,
         });
-        
+
         // Check if the commit has parents
         if (!commit.commit.parent || commit.commit.parent.length === 0) {
           throw new Error(`Commit ${currentCommit.substring(0, 7)} has no parent, cannot go back further`);
         }
-        
+
         // Move to the first parent
         currentCommit = commit.commit.parent[0];
       }
-      
+
       return currentCommit;
     } catch (error) {
       console.error('Error walking back commits:', error);
       return null;
     }
   }
-  
+
   /**
    * Get the Nth parent of the given commit
    */
@@ -154,17 +154,17 @@ export class GitShowCommand implements GitSubcommand {
         dir: cwd,
         oid: commit,
       });
-      
+
       // Check if the commit has parents
       if (!commitObj.commit.parent || commitObj.commit.parent.length === 0) {
         throw new Error(`Commit ${commit.substring(0, 7)} has no parents`);
       }
-      
+
       // Check if the requested parent index is valid
       if (parentIndex < 0 || parentIndex >= commitObj.commit.parent.length) {
         throw new Error(`Commit ${commit.substring(0, 7)} does not have a parent at index ${parentIndex + 1}`);
       }
-      
+
       // Return the specified parent
       return commitObj.commit.parent[parentIndex];
     } catch (error) {
@@ -215,7 +215,7 @@ export class GitShowCommand implements GitSubcommand {
         // If there's no parent, this is the first commit - show the entire tree
         if (!commit.commit.parent || commit.commit.parent.length === 0) {
           lines.push('(This is the initial commit)');
-          
+
           // Get the tree for this commit
           const tree = await this.git.readTree({
             dir: cwd,
@@ -232,18 +232,18 @@ export class GitShowCommand implements GitSubcommand {
         } else {
           // Get the parent commit to compare with
           const parentCommit = commit.commit.parent[0];
-          
+
           // Get the trees for both commits
           const parentTree = await this.git.readTree({
             dir: cwd,
             oid: parentCommit,
           });
-          
+
           const commitTree = await this.git.readTree({
             dir: cwd,
             oid: commit.oid,
           });
-          
+
           // Define types for tree entries
           interface TreeEntry {
             mode: string;
@@ -251,33 +251,33 @@ export class GitShowCommand implements GitSubcommand {
             oid: string;
             type?: string;
           }
-          
+
           // Compare the trees manually
           const parentFiles = new Map<string, TreeEntry>();
           const commitFiles = new Map<string, TreeEntry>();
-          
+
           // Populate the maps
           for (const entry of parentTree.tree) {
             parentFiles.set(entry.path, entry as TreeEntry);
           }
-          
+
           for (const entry of commitTree.tree) {
             commitFiles.set(entry.path, entry as TreeEntry);
           }
-          
+
           type ChangeType = 'add' | 'modify' | 'delete';
           interface Change {
             type: ChangeType;
             path: string;
           }
-          
+
           const changes: Change[] = [];
-          
+
           // Helper function to check if a path is a directory
           const isDirectory = (entry: TreeEntry): boolean => {
             return entry.mode === '040000';
           };
-          
+
           // Helper function to recursively list files in a directory
           const listFilesInDirectory = async (oid: string, prefix: string = ''): Promise<Map<string, TreeEntry>> => {
             const result = new Map<string, TreeEntry>();
@@ -286,11 +286,11 @@ export class GitShowCommand implements GitSubcommand {
                 dir: cwd,
                 oid,
               });
-              
+
               for (const entry of tree.tree) {
                 const entryWithType = entry as TreeEntry;
                 const path = prefix ? `${prefix}/${entry.path}` : entry.path;
-                
+
                 if (isDirectory(entryWithType)) {
                   // Recursively list files in subdirectory
                   const subFiles = await listFilesInDirectory(entry.oid, path);
@@ -308,7 +308,7 @@ export class GitShowCommand implements GitSubcommand {
             }
             return result;
           };
-          
+
           // Expand directory entries to include all files within them
           const expandDirectories = async (): Promise<void> => {
             // Process parent files
@@ -323,7 +323,7 @@ export class GitShowCommand implements GitSubcommand {
                 }
               }
             }
-            
+
             // Process commit files
             for (const [path, entry] of [...commitFiles.entries()]) {
               if (isDirectory(entry)) {
@@ -337,10 +337,10 @@ export class GitShowCommand implements GitSubcommand {
               }
             }
           };
-          
+
           // Expand directories to get all files
           await expandDirectories();
-          
+
           // Find added and modified files
           for (const [path, entry] of commitFiles.entries()) {
             const parentEntry = parentFiles.get(path);
@@ -350,14 +350,14 @@ export class GitShowCommand implements GitSubcommand {
               changes.push({ type: 'modify', path });
             }
           }
-          
+
           // Find deleted files
           for (const path of parentFiles.keys()) {
             if (!commitFiles.has(path)) {
               changes.push({ type: 'delete', path });
             }
           }
-          
+
           // Sort changes by type and path
           const filteredChanges = changes.sort((a, b) => {
             if (a.type !== b.type) {
@@ -367,67 +367,67 @@ export class GitShowCommand implements GitSubcommand {
             }
             return a.path.localeCompare(b.path);
           });
-          
+
           if (filteredChanges.length > 0) {
             // Group changes by type
             const added = filteredChanges.filter(c => c.type === 'add');
             const modified = filteredChanges.filter(c => c.type === 'modify');
             const deleted = filteredChanges.filter(c => c.type === 'delete');
-            
+
             lines.push('');
-            
+
             // Show summary
             const changeDetails: string[] = [];
             if (added.length > 0) changeDetails.push(`${added.length} file${added.length !== 1 ? 's' : ''} added`);
             if (modified.length > 0) changeDetails.push(`${modified.length} file${modified.length !== 1 ? 's' : ''} modified`);
             if (deleted.length > 0) changeDetails.push(`${deleted.length} file${deleted.length !== 1 ? 's' : ''} deleted`);
-            
-            lines.push(`\x1b[1mChanges: ${changeDetails.join(', ')}\x1b[0m`); // Bold summary line
+
+            lines.push(`Changes: ${changeDetails.join(', ')}`);
             lines.push('');
-            
+
             // List changed files
             if (added.length > 0) {
-              lines.push('\x1b[1mAdded files:\x1b[0m');
+              lines.push('Added files:');
               for (const change of added) {
-                lines.push(`  \x1b[32mnew file: ${change.path}\x1b[0m`); // Green for new files
+                lines.push(`  new file: ${change.path}`);
               }
               lines.push('');
             }
-             
+
             if (modified.length > 0) {
-              lines.push('\x1b[1mModified files:\x1b[0m');
+              lines.push('Modified files:');
               for (const change of modified) {
-                lines.push(`  \x1b[33mmodified: ${change.path}\x1b[0m`); // Yellow for modified files
+                lines.push(`  modified: ${change.path}`);
               }
               lines.push('');
             }
-             
+
             if (deleted.length > 0) {
-              lines.push('\x1b[1mDeleted files:\x1b[0m');
+              lines.push('Deleted files:');
               for (const change of deleted) {
-                lines.push(`  \x1b[31mdeleted: ${change.path}\x1b[0m`); // Red for deleted files
+                lines.push(`  deleted: ${change.path}`);
               }
               lines.push('');
             }
-            
+
             // Show actual diffs for modified files (up to 3 files to avoid excessive output)
             if (modified.length > 0) {
               lines.push('Diffs:');
               lines.push('');
-              
+
               // We've already expanded directories, so all entries are files now
               const filesToShow = modified.slice(0, 3); // Limit to 3 files
-              
+
               if (filesToShow.length === 0) {
                 lines.push('(Only directory structure changes, no file content to show)');
                 lines.push('');
               }
-              
+
               for (const change of filesToShow) {
-                lines.push(`\x1b[1mdiff --git a/${change.path} b/${change.path}\x1b[0m`); // Bold
-                lines.push(`\x1b[1;31m--- a/${change.path}\x1b[0m`); // Bold red
-                lines.push(`\x1b[1;32m+++ b/${change.path}\x1b[0m`); // Bold green
-                
+                lines.push(`diff --git a/${change.path} b/${change.path}`);
+                lines.push(`--- a/${change.path}`);
+                lines.push(`+++ b/${change.path}`)
+
                 try {
                   // Get file content from parent commit
                   let parentContent = '';
@@ -442,7 +442,7 @@ export class GitShowCommand implements GitSubcommand {
                     console.error(`Error reading parent blob for ${change.path}:`, e);
                     // File might not exist in parent
                   }
-                  
+
                   // Get file content from current commit
                   let currentContent = '';
                   try {
@@ -456,22 +456,22 @@ export class GitShowCommand implements GitSubcommand {
                     console.error(`Error reading current blob for ${change.path}:`, e);
                     // File might not exist in current commit
                   }
-                  
+
                   // Check if we have content to diff
                   if (parentContent === '' && currentContent === '') {
                     lines.push('(Unable to read file contents)');
                     lines.push('');
                     continue;
                   }
-                  
+
                   // Generate a unified diff
                   const parentLines = parentContent.split('\n');
                   const currentLines = currentContent.split('\n');
-                  
+
                   // Improved diff algorithm that generates unified diffs
                   const diffLines: string[] = [];
                   const contextSize = 3; // Number of context lines before and after changes
-                  
+
                   // Find changed regions (hunks)
                   const hunks: Array<{
                     startOld: number;
@@ -479,11 +479,11 @@ export class GitShowCommand implements GitSubcommand {
                     startNew: number;
                     endNew: number;
                   }> = [];
-                  
+
                   let oldIndex = 0;
                   let newIndex = 0;
                   let hunkStart: { old: number; new: number } | null = null;
-                  
+
                   // Use a simple LCS-based diff algorithm to find matching lines
                   const matches: boolean[] = [];
                   for (let i = 0; i < parentLines.length; i++) {
@@ -495,7 +495,7 @@ export class GitShowCommand implements GitSubcommand {
                       }
                     }
                   }
-                  
+
                   // Process the diff and identify hunks
                   while (oldIndex < parentLines.length || newIndex < currentLines.length) {
                     if (oldIndex < parentLines.length && newIndex < currentLines.length && parentLines[oldIndex] === currentLines[newIndex]) {
@@ -517,7 +517,7 @@ export class GitShowCommand implements GitSubcommand {
                       if (!hunkStart) {
                         hunkStart = { old: oldIndex, new: newIndex };
                       }
-                      
+
                       // Handle deletions and additions
                       if (oldIndex < parentLines.length && (!matches[oldIndex] || newIndex >= currentLines.length)) {
                         oldIndex++;
@@ -526,7 +526,7 @@ export class GitShowCommand implements GitSubcommand {
                       }
                     }
                   }
-                  
+
                   // Add the final hunk if there is one
                   if (hunkStart) {
                     hunks.push({
@@ -536,7 +536,7 @@ export class GitShowCommand implements GitSubcommand {
                       endNew: Math.min(currentLines.length, newIndex + contextSize)
                     });
                   }
-                  
+
                   // Merge overlapping hunks
                   for (let i = 0; i < hunks.length - 1; i++) {
                     if (hunks[i].endOld >= hunks[i + 1].startOld - 2 * contextSize) {
@@ -546,40 +546,40 @@ export class GitShowCommand implements GitSubcommand {
                       i--;
                     }
                   }
-                  
+
                   const foundDifference = hunks.length > 0;
-                  
+
                   // Generate the diff output for each hunk
                   for (const hunk of hunks) {
                     const oldSize = hunk.endOld - hunk.startOld;
                     const newSize = hunk.endNew - hunk.startNew;
-                    
+
                     // Add the hunk header with additional context
                     // Get a snippet of the surrounding code to provide context
                     const contextLine = hunk.startOld < parentLines.length ? parentLines[hunk.startOld] : hunk.startNew < currentLines.length ? currentLines[hunk.startNew] : '';
-                    
+
                     // Trim the context line to a reasonable length and remove leading whitespace
                     const trimmedContext = contextLine.trim().substring(0, 40) + (contextLine.length > 40 ? '...' : '');
-                    
+
                     // Add the hunk header with the context
-                    diffLines.push(`\x1b[36m@@ -${hunk.startOld + 1},${oldSize} +${hunk.startNew + 1},${newSize} @@ \x1b[1;36m${trimmedContext}\x1b[0m`);
-                    
+                    diffLines.push(`@@ -${hunk.startOld + 1},${oldSize} +${hunk.startNew + 1},${newSize} @@ ${trimmedContext}`);
+
                     // Process the hunk content with improved visual grouping
                     let oldLine = hunk.startOld;
                     let newLine = hunk.startNew;
-                    
+
                     // Track consecutive additions/deletions for better visual grouping
                     let inAdditionBlock = false;
                     let inDeletionBlock = false;
-                    
+
                     const addSeparator = () => {
                       if (inAdditionBlock || inDeletionBlock) {
-                        diffLines.push(`\x1b[90m~\x1b[0m`); // Gray separator
+                        diffLines.push(`~`);
                         inAdditionBlock = false;
                         inDeletionBlock = false;
                       }
                     };
-                    
+
                     while (oldLine < hunk.endOld || newLine < hunk.endNew) {
                       if (oldLine < hunk.endOld && newLine < hunk.endNew && parentLines[oldLine] === currentLines[newLine]) {
                         // Context line (unchanged)
@@ -594,26 +594,26 @@ export class GitShowCommand implements GitSubcommand {
                           deletions.push(parentLines[oldLine]);
                           oldLine++;
                         }
-                        
+
                         // Collect consecutive additions
                         const additions: string[] = [];
                         while (newLine < hunk.endNew && (oldLine >= hunk.endOld || parentLines[oldLine] !== currentLines[newLine])) {
                           additions.push(currentLines[newLine]);
                           newLine++;
                         }
-                        
+
                         // If we have both deletions and additions, it might be a modification
                         if (deletions.length > 0 && additions.length > 0) {
                           addSeparator();
-                          
+
                           // Output deletions
                           for (const line of deletions) {
-                            diffLines.push(`\x1b[31m-${line}\x1b[0m`);
+                            diffLines.push(`-${line}`);
                           }
-                          
+
                           // Output additions
                           for (const line of additions) {
-                            diffLines.push(`\x1b[32m+${line}\x1b[0m`);
+                            diffLines.push(`+${line}`);
                           }
                         } else {
                           // Handle pure deletions
@@ -622,28 +622,28 @@ export class GitShowCommand implements GitSubcommand {
                               addSeparator();
                             }
                             inDeletionBlock = true;
-                            
+
                             for (const line of deletions) {
-                              diffLines.push(`\x1b[31m-${line}\x1b[0m`);
+                              diffLines.push(`-${line}`);
                             }
                           }
-                          
+
                           // Handle pure additions
                           if (additions.length > 0) {
                             if (!inAdditionBlock && inDeletionBlock) {
                               addSeparator();
                             }
                             inAdditionBlock = true;
-                            
+
                             for (const line of additions) {
-                              diffLines.push(`\x1b[32m+${line}\x1b[0m`);
+                              diffLines.push(`+${line}`);
                             }
                           }
                         }
                       }
                     }
                   }
-                  
+
                   // Add the diff lines if we found changes
                   if (foundDifference && diffLines.length > 0) {
                     lines.push(...diffLines);
@@ -661,7 +661,7 @@ export class GitShowCommand implements GitSubcommand {
                   lines.push('');
                 }
               }
-              
+
               const remainingFiles = modified.length - filesToShow.length;
               if (remainingFiles > 0) {
                 lines.push(`... and ${remainingFiles} more modified files`);

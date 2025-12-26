@@ -40,7 +40,7 @@ describe('GitShowCommand', () => {
             throw new Error(`Reference ${ref} does not exist`);
         }
       }),
-      
+
       // Mock readCommit to return commit objects
       readCommit: vi.fn().mockImplementation(async ({ oid }) => {
         switch (oid) {
@@ -136,7 +136,7 @@ describe('GitShowCommand', () => {
             throw new Error(`Commit ${oid} not found`);
         }
       }),
-      
+
       // Mock log to return commit history
       log: vi.fn().mockImplementation(async ({ ref }) => {
         switch (ref) {
@@ -232,7 +232,7 @@ describe('GitShowCommand', () => {
             return [];
         }
       }),
-      
+
       // Mock readTree to return file trees
       readTree: vi.fn().mockImplementation(async ({ oid }) => {
         switch (oid) {
@@ -288,7 +288,7 @@ describe('GitShowCommand', () => {
             return { oid, tree: [] };
         }
       }),
-      
+
       // Mock readBlob to return file contents
       readBlob: vi.fn().mockImplementation(async ({ filepath, oid }) => {
         // Return different content based on blob ID or filepath
@@ -309,7 +309,7 @@ describe('GitShowCommand', () => {
         } else if (filepath === 'binary.bin') {
           return { blob: new TextEncoder().encode(binaryFileContent), oid: 'blob-binary' };
         }
-        
+
         // Default case
         return { blob: new TextEncoder().encode('default content'), oid: 'default-blob' };
       }),
@@ -324,7 +324,7 @@ describe('GitShowCommand', () => {
 
   it('should show basic commit information', async () => {
     const result = await showCommand.execute(['simple-commit'], mockPwd);
-    
+
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain('commit simple-commit');
     expect(result.stdout).toContain('Author: Test User');
@@ -333,10 +333,10 @@ describe('GitShowCommand', () => {
 
   it('should handle initial commits properly', async () => {
     const result = await showCommand.execute(['initial-commit'], mockPwd);
-    
+
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain('Initial commit');
-    
+
     // The implementation should detect this is an initial commit
     expect(result.stdout).toContain('initial commit');
   });
@@ -344,38 +344,38 @@ describe('GitShowCommand', () => {
   it('should resolve HEAD~1 correctly', async () => {
     // First, check that the implementation correctly resolves HEAD~1
     const result = await showCommand.execute(['HEAD~1'], mockPwd);
-    
+
     // Verify that resolveRef was called with HEAD
     expect(mockGit.resolveRef).toHaveBeenCalledWith({
       dir: mockPwd,
       ref: 'HEAD',
     });
-    
+
     // Verify that readCommit was called with the resolved HEAD commit
     expect(mockGit.readCommit).toHaveBeenCalledWith({
       dir: mockPwd,
       oid: 'merge-commit',
     });
-    
+
     // Check that the result contains the parent commit info
     expect(result.stdout).toContain('Simple changes');
   });
 
   it('should resolve HEAD^2 correctly', async () => {
     const result = await showCommand.execute(['HEAD^2'], mockPwd);
-    
+
     // Verify that resolveRef was called with HEAD
     expect(mockGit.resolveRef).toHaveBeenCalledWith({
       dir: mockPwd,
       ref: 'HEAD',
     });
-    
+
     // Verify that readCommit was called with the resolved HEAD commit
     expect(mockGit.readCommit).toHaveBeenCalledWith({
       dir: mockPwd,
       oid: 'merge-commit',
     });
-    
+
     // Check that the result contains the second parent commit info
     expect(result.stdout).toContain('Branch commit');
   });
@@ -383,10 +383,10 @@ describe('GitShowCommand', () => {
   it('should show file changes between commits', async () => {
     // This test verifies that the diff output includes file changes
     // We need to ensure our mocks provide the necessary data for the diff algorithm
-    
+
     // Reset the call counts
     vi.clearAllMocks();
-    
+
     // Force the readTree mock to return different trees for parent and current commit
     vi.mocked(mockGit.readTree!).mockImplementation(async ({ oid }) => {
       if (oid === 'simple-commit' || oid === 'simple-tree') {
@@ -408,33 +408,33 @@ describe('GitShowCommand', () => {
       }
       return { oid, tree: [] };
     });
-    
+
     // Execute the command
     const result = await showCommand.execute(['simple-commit'], mockPwd);
-    
+
     // Check that the command output contains the commit message
     expect(result.stdout).toContain('Simple changes');
-    
+
     // Verify that the necessary methods were called
     expect(mockGit.readTree).toHaveBeenCalled();
-    
+
     // Check that the output mentions the files that were changed
     expect(result.stdout).toContain('file1.txt');
     expect(result.stdout).toContain('file3.txt');
-    
+
     // Check for file status indicators
     expect(result.stdout).toContain('added');
     expect(result.stdout).toContain('modified');
   });
-  
+
   it('should show line-by-line diffs with proper formatting', async () => {
     // Reset the call counts
     vi.clearAllMocks();
-    
+
     // Set up specific file content for diffing
     const oldContent = 'line 1\nline 2\nline 3\nline 4\nline 5\n';
     const newContent = 'line 1\nmodified line 2\nline 3\nnew line\nline 5\n';
-    
+
     // Mock log to return a commit with a parent
     vi.mocked(mockGit.log!).mockImplementation(async ({ ref }) => {
       if (ref === 'diff-test-commit') {
@@ -462,7 +462,7 @@ describe('GitShowCommand', () => {
       }
       return [];
     });
-    
+
     // Mock readCommit for the parent commit
     vi.mocked(mockGit.readCommit!).mockImplementation(async ({ oid }) => {
       if (oid === 'diff-test-commit') {
@@ -512,7 +512,7 @@ describe('GitShowCommand', () => {
       }
       throw new Error(`Commit ${oid} not found`);
     });
-    
+
     // Force the readTree mock to return trees with different content
     vi.mocked(mockGit.readTree!).mockImplementation(async ({ oid }) => {
       if (oid === 'diff-test-tree') {
@@ -546,7 +546,7 @@ describe('GitShowCommand', () => {
       }
       return { oid, tree: [] };
     });
-    
+
     // Mock readBlob to return our test content
     vi.mocked(mockGit.readBlob!).mockImplementation(async ({ filepath, oid }) => {
       if (filepath === 'diff-test.txt') {
@@ -558,7 +558,7 @@ describe('GitShowCommand', () => {
       }
       return { blob: new TextEncoder().encode('default content'), oid: 'default-blob' };
     });
-    
+
     // Mock resolveRef to handle our test commit
     vi.mocked(mockGit.resolveRef!).mockImplementation(async ({ ref }) => {
       if (ref === 'diff-test-commit') {
@@ -566,46 +566,44 @@ describe('GitShowCommand', () => {
       }
       throw new Error(`Reference ${ref} does not exist`);
     });
-    
+
     // Execute the command
     const result = await showCommand.execute(['diff-test-commit'], mockPwd);
-    
+
     // Debug output
     console.log('Test output:', result.stdout);
-    
+
     // Check for unified diff format with hunk headers
     expect(result.stdout).toMatch(/@@ -\d+,\d+ \+\d+,\d+ @@/);
-    
+
     // Check for context lines (unchanged lines)
     expect(result.stdout).toContain(' line 1');
     expect(result.stdout).toContain(' line 3');
     expect(result.stdout).toContain(' line 5');
-    
-    // Check for removed lines (with - prefix and red color)
+
+    // Check for removed lines (with - prefix)
     expect(result.stdout).toContain('-line 2');
-    expect(result.stdout).toContain('\x1b[31m'); // Red color
-    
-    // Check for added lines (with + prefix and green color)
+
+    // Check for added lines (with + prefix)
     expect(result.stdout).toContain('+modified line 2');
     expect(result.stdout).toContain('+new line');
-    expect(result.stdout).toContain('\x1b[32m'); // Green color
-    
+
     // Verify that readBlob was called to get file contents for diffing
     expect(mockGit.readBlob).toHaveBeenCalled();
   });
 
   it('should return an error for invalid references', async () => {
     const result = await showCommand.execute(['non-existent-ref'], mockPwd);
-    
+
     expect(result.exitCode).not.toBe(0);
     expect(result.stderr).toContain('bad revision');
   });
 
   it('should return an error when not in a git repository', async () => {
     mockFS.stat = vi.fn().mockRejectedValue(new Error('Not a directory'));
-    
+
     const result = await showCommand.execute([], mockPwd);
-    
+
     expect(result.exitCode).not.toBe(0);
     expect(result.stderr).toContain('not a git repository');
   });

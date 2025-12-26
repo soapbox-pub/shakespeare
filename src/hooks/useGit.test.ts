@@ -93,7 +93,8 @@ describe('useGit', () => {
       fs: mockFS,
       nostr: mockNostr,
       corsProxy: 'https://cors.isomorphic-git.org',
-      ngitServers: ['git.shakespeare.diy', 'relay.ngit.dev'],
+      relayList: [{ url: new URL('wss://relay.test/'), read: true, write: true }],
+      graspList: [{ url: new URL('wss://git.shakespeare.diy/') }, { url: new URL('wss://relay.ngit.dev/') }],
       credentials: [],
       signer: undefined,
     });
@@ -109,7 +110,8 @@ describe('useGit', () => {
       fs: mockFS,
       nostr: mockNostr,
       corsProxy: 'https://custom-cors.example.com',
-      ngitServers: ['git.shakespeare.diy', 'relay.ngit.dev'],
+      relayList: [{ url: new URL('wss://relay.test/'), read: true, write: true }],
+      graspList: [{ url: new URL('wss://git.shakespeare.diy/') }, { url: new URL('wss://relay.ngit.dev/') }],
       credentials: [],
       signer: undefined,
     });
@@ -125,7 +127,8 @@ describe('useGit', () => {
       fs: mockFS,
       nostr: mockNostr,
       corsProxy: 'https://cors.isomorphic-git.org',
-      ngitServers: ['git.shakespeare.diy', 'relay.ngit.dev'],
+      relayList: [{ url: new URL('wss://relay.test/'), read: true, write: true }],
+      graspList: [{ url: new URL('wss://git.shakespeare.diy/') }, { url: new URL('wss://relay.ngit.dev/') }],
       credentials: [],
       signer: undefined,
     });

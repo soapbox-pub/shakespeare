@@ -12,7 +12,6 @@ import {
   Folder,
   Copy,
   ChevronDown,
-  Download,
   Trash2,
   Star,
 } from 'lucide-react';
@@ -26,7 +25,6 @@ interface ProjectTitleMenuProps {
   onNewChat: () => void;
   onGitHistory: () => void;
   onDuplicate: () => void;
-  onExport: () => void;
   onDelete: () => void;
   onProjectDetails: () => void;
   isAILoading: boolean;
@@ -40,7 +38,6 @@ export function ProjectTitleMenu({
   onNewChat,
   onGitHistory,
   onDuplicate,
-  onExport,
   onDelete,
   onProjectDetails,
   isAILoading,
@@ -128,15 +125,6 @@ export function ProjectTitleMenu({
         >
           <Copy className="h-4 w-4" />
           {t('duplicateProject')}
-        </DropdownMenuItem>
-
-        <DropdownMenuItem
-          onClick={onExport}
-          disabled={isAnyLoading}
-          className="gap-2"
-        >
-          <Download className="h-4 w-4" />
-          Export Project
         </DropdownMenuItem>
 
         <DropdownMenuItem

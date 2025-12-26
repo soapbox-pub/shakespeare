@@ -23,20 +23,28 @@ import {
   DollarSign,
   ExternalLink,
   FileCode,
+  Download,
+  Trash2,
 } from 'lucide-react';
 import { Skeleton } from './ui/skeleton';
+import { Separator } from './ui/separator';
 import { DotAI } from '@/lib/DotAI';
 import { LabelSelector } from '@/components/labels/LabelSelector';
+import { DeleteProjectDialog } from '@/components/DeleteProjectDialog';
 import { cn } from '@/lib/utils';
+import JSZip from 'jszip';
 
 interface ProjectDetailsDialogProps {
   project: Project;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onProjectDeleted?: () => void;
 }
 
-export function ProjectDetailsDialog({ project, open, onOpenChange }: ProjectDetailsDialogProps) {
+export function ProjectDetailsDialog({ project, open, onOpenChange, onProjectDeleted }: ProjectDetailsDialogProps) {
   const [isRenaming, setIsRenaming] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [newProjectName, setNewProjectName] = useState(project.id);
   const [totalCost, setTotalCost] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -126,6 +134,105 @@ export function ProjectDetailsDialog({ project, open, onOpenChange }: ProjectDet
       setNewProjectName(project.id); // Reset to original name
     } finally {
       setIsRenaming(false);
+    }
+  };
+
+  const handleDeleteProject = async () => {
+    setIsDeleting(true);
+    try {
+      await projectsManager.deleteProject(project.id);
+
+      // Invalidate the projects query to update the sidebar
+      await queryClient.invalidateQueries({ queryKey: ['projects'] });
+
+      toast({
+        title: "Project deleted",
+        description: `"${project.name}" has been permanently deleted.`,
+      });
+
+      // Close the dialog first
+      onOpenChange(false);
+
+      // Navigate back to home and notify parent
+      navigate('/');
+      if (onProjectDeleted) {
+        onProjectDeleted();
+      }
+    } catch (error) {
+      toast({
+        title: "Failed to delete project",
+        description: error instanceof Error ? error.message : "An unexpected error occurred",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleExportProject = async () => {
+    setIsExporting(true);
+    try {
+      const zip = new JSZip();
+      const projectPath = `${projectsPath}/${project.id}`;
+
+      // Recursive function to add files and directories to zip from a specific project
+      const addFolderToZip = async (dirPath: string, zipFolder: JSZip) => {
+        try {
+          const entries = await fs.readdir(dirPath, { withFileTypes: true });
+
+          for (const entry of entries) {
+            const fullPath = `${dirPath}/${entry.name}`;
+
+            if (entry.isDirectory()) {
+              // Create folder in zip and recursively add its contents
+              const folder = zipFolder.folder(entry.name);
+              if (folder) {
+                await addFolderToZip(fullPath, folder);
+              }
+            } else if (entry.isFile()) {
+              // Add file to zip
+              try {
+                const fileContent = await fs.readFile(fullPath);
+                zipFolder.file(entry.name, fileContent);
+              } catch (error) {
+                console.warn(`Failed to read file ${fullPath}:`, error);
+              }
+            }
+          }
+        } catch (error) {
+          console.warn(`Failed to read directory ${dirPath}:`, error);
+        }
+      };
+
+      // Start from the project directory
+      await addFolderToZip(projectPath, zip);
+
+      // Generate zip file
+      const content = await zip.generateAsync({ type: 'blob' });
+
+      // Create download link
+      const url = URL.createObjectURL(content);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${project.id}.zip`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: "Project exported successfully",
+        description: `"${project.name}" has been downloaded as a zip file.`,
+      });
+    } catch (error) {
+      console.error('Failed to export project:', error);
+      toast({
+        title: "Failed to export project",
+        description: error instanceof Error ? error.message : "An unexpected error occurred",
+        variant: "destructive",
+      });
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -223,6 +330,40 @@ export function ProjectDetailsDialog({ project, open, onOpenChange }: ProjectDet
 
           {/* Labels */}
           <LabelSelector projectId={project.id} />
+
+          <Separator />
+
+          {/* Export Project Button */}
+          <Button
+            onClick={handleExportProject}
+            disabled={isExporting || isDeleting || isRenaming}
+            className="w-full gap-2"
+            variant="outline"
+          >
+            {isExporting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4" />
+            )}
+            {isExporting ? 'Exporting...' : 'Export Project'}
+          </Button>
+
+          {/* Delete Project Button */}
+          <DeleteProjectDialog
+            projectName={project.name}
+            onDelete={handleDeleteProject}
+            isDeleting={isDeleting}
+            trigger={
+              <Button
+                variant="destructive"
+                className="w-full gap-2"
+                disabled={isExporting || isDeleting || isRenaming}
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete Project
+              </Button>
+            }
+          />
         </div>
       </DialogContent>
     </Dialog>

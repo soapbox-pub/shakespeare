@@ -58,7 +58,10 @@ export class Git {
     }
   }
 
-  private httpNoProxy = new GitHttp(undefined, this.customFetch);
+  // Get HTTP adapter without proxy
+  private get httpNoProxy(): HttpClient {
+    return new GitHttp(undefined, this.customFetch);
+  }
 
   // Get HTTP adapter for the given URL
   private httpForUrl(url: string | null | undefined): HttpClient {
@@ -682,6 +685,7 @@ export class Git {
     }
 
     // Try cloning in order until one succeeds
+    let cloneSucceeded = false;
     for (const url of cloneUrls) {
       try {
         await Promise.race([
@@ -692,33 +696,45 @@ export class Git {
             http: this.httpNoProxy,
             url,
           }),
-        ])
+        ]);
+        cloneSucceeded = true;
+        break;
       } catch {
         continue;
       }
     }
 
-    // Fetch from all clone URLs
-    await this.nostrFetch(nostrURI, {
-      ...options,
-      remote: options.remote || 'origin',
+    if (!cloneSucceeded) {
+      throw new Error('Failed to clone from any of the provided clone URLs');
+    }
+
+    // Update the remote URL to point to the Nostr URL instead of the HTTP clone URL
+    const remote = options.remote || 'origin';
+    await this.setRemoteURL({
+      dir: options.dir,
+      remote,
+      url: nostrURI.toString(),
     });
 
-    // Update refs based on fetched state
-    for (const [name, val] of state.tags) {
-      if (name === 'HEAD' || name.startsWith('refs/')) {
-        const symbolic = val.startsWith('ref: ');
-        const value = symbolic ? val.substring(5) : val;
+    // Fetch from all clone URLs to update remote tracking branches
+    await this.nostrFetch(nostrURI, {
+      ...options,
+      remote,
+    });
 
-        await git.writeRef({
-          fs: this.fs,
-          dir: options.dir,
-          ref: name,
-          value,
-          symbolic,
-          force: true,
-        });
-      }
+    // The clone already set up local refs correctly, but we need to ensure
+    // HEAD matches the Nostr state if it's a symbolic ref
+    const headTag = state.tags.find(([name]) => name === 'HEAD');
+    if (headTag && headTag[1].startsWith('ref: ')) {
+      const headTarget = headTag[1].substring(5);
+      await git.writeRef({
+        fs: this.fs,
+        dir: options.dir,
+        ref: 'HEAD',
+        value: headTarget,
+        symbolic: true,
+        force: true,
+      });
     }
   }
 
@@ -830,12 +846,17 @@ export class Git {
       throw new Error(`No remote ref configured for branch ${ref}`);
     }
 
-    // Merge the remote branch into the current branch
+    // Convert the remote ref to the remote tracking branch
+    // e.g., refs/heads/main -> refs/remotes/origin/main
+    const remote = options.remote || 'origin';
+    const remoteTrackingBranch = this.toRemoteRef(remoteRef, remote);
+
+    // Merge the remote tracking branch into the current branch
     await git.merge({
       fs: this.fs,
       dir: options.dir,
       ours: ref,
-      theirs: remoteRef,
+      theirs: remoteTrackingBranch,
       author: options.author,
     });
   }

@@ -441,6 +441,106 @@ describe('Git', () => {
       });
     });
 
+    describe('nostr pull', () => {
+      it('should pull from Nostr repository and merge remote tracking branch', async () => {
+        // Create a mock Git HTTP server
+        const mockServer = new MockGitHttpServer();
+        const mockRepo = createMockRepository();
+        mockServer.addRepository('https://git.example.com/user/repo', mockRepo);
+
+        // Create Nostr repository events
+        const repoEvent: NostrEvent = {
+          id: 'repo-event-id',
+          pubkey: testPubkey,
+          created_at: Math.floor(Date.now() / 1000),
+          kind: 30617,
+          tags: [
+            ['d', 'my-repo'],
+            ['clone', 'https://git.example.com/user/repo.git'],
+          ],
+          content: '',
+          sig: 'test-sig',
+        };
+
+        const stateEvent: NostrEvent = {
+          id: 'state-event-id',
+          pubkey: testPubkey,
+          created_at: Math.floor(Date.now() / 1000),
+          kind: 30618,
+          tags: [
+            ['d', 'my-repo'],
+            ['HEAD', 'ref: refs/heads/main'],
+            ['refs/heads/main', '2e538da98e06b91e70268817b0fa3f01aeeb003e'],
+          ],
+          content: '',
+          sig: 'test-sig',
+        };
+
+        vi.mocked(nostr.group).mockReturnValue({
+          query: vi.fn(async () => [repoEvent, stateEvent]),
+        } as unknown as ReturnType<NPool['group']>);
+
+        const gitWithMock = new Git({
+          fs,
+          nostr,
+          signer,
+          systemAuthor: { name: 'Test User', email: 'test@example.com' },
+          relayList: [{ url: new URL('wss://relay.example.com'), read: true, write: true }],
+          fetch: mockServer.fetch,
+        });
+
+        // Clone the repository first
+        await gitWithMock.clone({
+          url: `nostr://${testNpub}/my-repo`,
+          dir: '/nostr-repo',
+          singleBranch: true,
+          depth: 1,
+        });
+
+        // Set up tracking branch configuration
+        await gitWithMock.setConfig({
+          dir: '/nostr-repo',
+          path: 'branch.main.remote',
+          value: 'origin',
+        });
+        await gitWithMock.setConfig({
+          dir: '/nostr-repo',
+          path: 'branch.main.merge',
+          value: 'refs/heads/main',
+        });
+
+        // Verify README exists after clone
+        const readmeAfterClone = await fs.stat('/nostr-repo/README.md').then(() => true).catch(() => false);
+        expect(readmeAfterClone).toBe(true);
+
+        // Make a local change
+        await fs.mkdir('/nostr-repo/.shakespeare');
+        await fs.writeFile('/nostr-repo/.shakespeare/git.json', JSON.stringify({ name: 'Test', email: 'test@test.com' }));
+        await fs.writeFile('/nostr-repo/local.txt', 'local change');
+        await gitWithMock.add({ dir: '/nostr-repo', filepath: 'local.txt' });
+        await gitWithMock.commit({ dir: '/nostr-repo', message: 'Local commit' });
+
+        // Verify README still exists after local commit
+        const readmeAfterCommit = await fs.stat('/nostr-repo/README.md').then(() => true).catch(() => false);
+        expect(readmeAfterCommit).toBe(true);
+
+        // Pull should merge the remote tracking branch
+        await gitWithMock.pull({
+          dir: '/nostr-repo',
+        });
+
+        // Verify the repository state
+        const currentBranch = await gitWithMock.currentBranch({ dir: '/nostr-repo' });
+        expect(currentBranch).toBe('main');
+
+        // Verify both files exist (from remote and local)
+        const readmeExists = await fs.stat('/nostr-repo/README.md').then(() => true).catch(() => false);
+        const localExists = await fs.stat('/nostr-repo/local.txt').then(() => true).catch(() => false);
+        expect(readmeExists).toBe(true);
+        expect(localExists).toBe(true);
+      });
+    });
+
     describe('nostr push', () => {
       it('should require signer for Nostr push', async () => {
         const gitWithoutSigner = new Git({

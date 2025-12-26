@@ -18,7 +18,6 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
-import { useToast } from '@/hooks/useToast';
 import { useQueryClient } from '@tanstack/react-query';
 
 interface ProjectTitleMenuProps {
@@ -50,7 +49,6 @@ export function ProjectTitleMenu({
 }: ProjectTitleMenuProps) {
   const { t } = useTranslation();
   const [favorites, setFavorites] = useLocalStorage<string[]>('project-favorites', []);
-  const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const isFavorite = favorites.includes(projectId);
@@ -67,11 +65,6 @@ export function ProjectTitleMenu({
 
     // Invalidate the projects query to trigger a refetch with new sorting
     queryClient.invalidateQueries({ queryKey: ['projects'] });
-
-    toast({
-      title: isFavorite ? "Project Unfavorited" : "Project Favorited",
-      description: `"${projectName}" has been ${isFavorite ? 'removed from' : 'added to'} your favorites.`,
-    });
   };
 
   return (

@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Zap, Copy, Check, RefreshCw, EllipsisVertical, CloudOff, ExternalLink, ChevronDown, ArrowDown, ArrowUp, LoaderCircle } from 'lucide-react';
+import { Zap, Copy, Check, RefreshCw, EllipsisVertical, CloudOff, ExternalLink, ChevronDown, ArrowDown, ArrowUp, LoaderCircle, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,6 +14,7 @@ import { ExternalFavicon } from '@/components/ExternalFavicon';
 import { SyncStepError } from './SyncStepError';
 import { ForcePullDialog } from './ForcePullDialog';
 import { ForcePushDialog } from './ForcePushDialog';
+import { GitHistoryDialog } from '@/components/ai/GitHistoryDialog';
 import { useGitStatus } from '@/hooks/useGitStatus';
 import { useGitSettings } from '@/hooks/useGitSettings';
 import { useGit } from '@/hooks/useGit';
@@ -39,6 +40,7 @@ export function SyncStep({ projectId, remoteUrl }: SyncStepProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [showForcePullDialog, setShowForcePullDialog] = useState(false);
   const [showForcePushDialog, setShowForcePushDialog] = useState(false);
+  const [gitHistoryOpen, setGitHistoryOpen] = useState(false);
 
   const { data: gitStatus } = useGitStatus(projectId);
   const { settings } = useGitSettings();
@@ -260,6 +262,10 @@ export function SyncStep({ projectId, remoteUrl }: SyncStepProps) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setGitHistoryOpen(true)} className="gap-2">
+                <History className="h-4 w-4" />
+                Rollback
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={handleDisconnect} className="text-destructive gap-2">
                 <CloudOff className="h-4 w-4" />
                 Disconnect
@@ -410,6 +416,12 @@ export function SyncStep({ projectId, remoteUrl }: SyncStepProps) {
         onOpenChange={setShowForcePushDialog}
         onConfirm={handleForcePush}
         remoteName={remoteName}
+      />
+
+      <GitHistoryDialog
+        projectId={projectId}
+        open={gitHistoryOpen}
+        onOpenChange={setGitHistoryOpen}
       />
     </div>
   );

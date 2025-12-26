@@ -729,19 +729,33 @@ export class Git {
       remote,
     });
 
-    // The clone already set up local refs correctly, but we need to ensure
-    // HEAD matches the Nostr state if it's a symbolic ref
-    const headTag = state.tags.find(([name]) => name === 'HEAD');
-    if (headTag && headTag[1].startsWith('ref: ')) {
-      const headTarget = headTag[1].substring(5);
-      await git.writeRef({
-        fs: this.fs,
-        dir: options.dir,
-        ref: 'HEAD',
-        value: headTarget,
-        symbolic: true,
-        force: true,
-      });
+    // The NIP-34 state event is the source of truth for repository state
+    // Set local refs to match the state event
+    for (const [name, val] of state.tags) {
+      if (name === 'HEAD') {
+        // Handle HEAD specially - it can be symbolic or direct
+        const symbolic = val.startsWith('ref: ');
+        const value = symbolic ? val.substring(5) : val;
+        await git.writeRef({
+          fs: this.fs,
+          dir: options.dir,
+          ref: 'HEAD',
+          value,
+          symbolic,
+          force: true,
+        });
+      } else if (name.startsWith('refs/heads/')) {
+        // Set local branch refs to match state event
+        await git.writeRef({
+          fs: this.fs,
+          dir: options.dir,
+          ref: name,
+          value: val,
+          force: true,
+        });
+      }
+      // Note: We don't set refs/tags/ here as those are typically immutable
+      // and should come from the clone/fetch operations
     }
   }
 
@@ -876,7 +890,7 @@ export class Git {
     const dir = options.dir || '.';
 
     // Fetch the current repo events from Nostr
-    const { repo } = await this.fetchRepoEvents(nostrURI);
+    const { repo, state } = await this.fetchRepoEvents(nostrURI);
 
     if (!repo) {
       throw new Error('Repository not found on Nostr network');
@@ -893,18 +907,27 @@ export class Git {
     ];
 
     // Add HEAD ref
-    const headRef = await git.resolveRef({
-      fs: this.fs,
-      dir,
-      ref: 'HEAD',
-      depth: 2,
-    });
-
-    // Check if HEAD is a symbolic ref
-    if (headRef.startsWith('refs/')) {
-      stateTags.push(['HEAD', `ref: ${headRef}`]);
+    // If a HEAD is already defined in the state event, preserve it unchanged
+    // Otherwise, use the local repository's HEAD
+    const existingHeadTag = state?.tags.find(([name]) => name === 'HEAD');
+    if (existingHeadTag) {
+      // Preserve the existing HEAD from the state event
+      stateTags.push(existingHeadTag);
     } else {
-      stateTags.push(['HEAD', headRef]);
+      // No existing HEAD, use local HEAD
+      const headRef = await git.resolveRef({
+        fs: this.fs,
+        dir,
+        ref: 'HEAD',
+        depth: 2,
+      });
+
+      // Check if HEAD is a symbolic ref
+      if (headRef.startsWith('refs/')) {
+        stateTags.push(['HEAD', `ref: ${headRef}`]);
+      } else {
+        stateTags.push(['HEAD', headRef]);
+      }
     }
 
     // Collect all branch refs

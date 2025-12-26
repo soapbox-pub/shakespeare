@@ -918,6 +918,261 @@ describe('Git', () => {
           expect(mainRefTag![1]).toMatch(/^[0-9a-f]{40}$/);
         }
       });
+
+      it('should preserve existing HEAD from state event when pushing', async () => {
+        // Create a mock Git HTTP server
+        const mockServer = new MockGitHttpServer();
+        const mockRepo = createMockRepository();
+        mockServer.addRepository('https://git.example.com/user/repo', mockRepo);
+
+        // Create Nostr repository events with HEAD pointing to develop
+        const repoEvent: NostrEvent = {
+          id: 'repo-event-id',
+          pubkey: testPubkey,
+          created_at: Math.floor(Date.now() / 1000),
+          kind: 30617,
+          tags: [
+            ['d', 'my-repo'],
+            ['clone', 'https://git.example.com/user/repo.git'],
+          ],
+          content: '',
+          sig: 'test-sig',
+        };
+
+        // State event has HEAD pointing to develop, not main
+        // Use the actual commit SHA from the mock repository
+        const stateEvent: NostrEvent = {
+          id: 'state-event-id',
+          pubkey: testPubkey,
+          created_at: Math.floor(Date.now() / 1000),
+          kind: 30618,
+          tags: [
+            ['d', 'my-repo'],
+            ['HEAD', 'ref: refs/heads/develop'], // Different from local HEAD
+            ['refs/heads/main', '2e538da98e06b91e70268817b0fa3f01aeeb003e'],
+            ['refs/heads/develop', '2e538da98e06b91e70268817b0fa3f01aeeb003e'], // Use same commit as main for simplicity
+          ],
+          content: '',
+          sig: 'test-sig',
+        };
+
+        vi.mocked(nostr.group).mockReturnValue({
+          query: vi.fn(async () => [repoEvent, stateEvent]),
+        } as unknown as ReturnType<NPool['group']>);
+
+        const gitWithMock = new Git({
+          fs,
+          nostr,
+          signer,
+          systemAuthor: { name: 'Test User', email: 'test@example.com' },
+          relayList: [{ url: new URL('wss://relay.example.com'), read: true, write: true }],
+          fetch: mockServer.fetch,
+        });
+
+        // Clone the repository
+        // The NIP-34 state event says HEAD points to develop, so that's what we should get
+        await gitWithMock.clone({
+          url: `nostr://${testNpub}/my-repo`,
+          dir: '/preserve-head-repo',
+          singleBranch: true,
+          depth: 1,
+        });
+
+        // Verify local HEAD matches the NIP-34 state event (develop, not main)
+        const localHead = await gitWithMock.resolveRef({
+          dir: '/preserve-head-repo',
+          ref: 'HEAD',
+          depth: 2,
+        });
+        expect(localHead).toBe('refs/heads/develop');
+
+        // Now switch to main branch locally (simulating user changing branches)
+        await gitWithMock.checkout({ dir: '/preserve-head-repo', ref: 'main' });
+
+        // Verify we're now on main
+        const newLocalHead = await gitWithMock.resolveRef({
+          dir: '/preserve-head-repo',
+          ref: 'HEAD',
+          depth: 2,
+        });
+        expect(newLocalHead).toBe('refs/heads/main');
+
+        // Make a local change and commit
+        await fs.mkdir('/preserve-head-repo/.shakespeare');
+        await fs.writeFile('/preserve-head-repo/.shakespeare/git.json', JSON.stringify({ name: 'Test', email: 'test@test.com' }));
+        await fs.writeFile('/preserve-head-repo/test.txt', 'test content');
+        await gitWithMock.add({ dir: '/preserve-head-repo', filepath: 'test.txt' });
+        await gitWithMock.commit({ dir: '/preserve-head-repo', message: 'Test commit' });
+
+        // Clear the mock to track new calls
+        vi.mocked(nostr.event).mockClear();
+
+        // Push to Nostr
+        try {
+          await gitWithMock.push({ dir: '/preserve-head-repo', remote: 'origin' });
+        } catch {
+          // Expected to fail on actual git push
+        }
+
+        // Find the published state event
+        const eventCalls = vi.mocked(nostr.event).mock.calls;
+        const publishedStateEvent = eventCalls.find(([event]) => event.kind === 30618)?.[0];
+        expect(publishedStateEvent).toBeDefined();
+
+        if (publishedStateEvent) {
+          // HEAD should be preserved from the original state event (develop), not use local HEAD (main)
+          const headTag = publishedStateEvent.tags.find(([name]: string[]) => name === 'HEAD');
+          expect(headTag).toBeDefined();
+          expect(headTag![1]).toBe('ref: refs/heads/develop');
+        }
+      });
+
+      it('should use local HEAD when no state event exists', async () => {
+        // Create only repo event, no state event
+        const repoEvent: NostrEvent = {
+          id: 'repo-event-id',
+          pubkey: testPubkey,
+          created_at: Math.floor(Date.now() / 1000),
+          kind: 30617,
+          tags: [
+            ['d', 'new-repo'],
+            ['clone', 'https://git.example.com/user/repo.git'],
+          ],
+          content: '',
+          sig: 'test-sig',
+        };
+
+        // No state event initially
+        vi.mocked(nostr.group).mockReturnValue({
+          query: vi.fn(async () => [repoEvent]),
+        } as unknown as ReturnType<NPool['group']>);
+
+        const gitWithMock = new Git({
+          fs,
+          nostr,
+          signer,
+          systemAuthor: { name: 'Test User', email: 'test@example.com' },
+          relayList: [{ url: new URL('wss://relay.example.com'), read: true, write: true }],
+        });
+
+        // Initialize a local repository instead of cloning
+        await gitWithMock.init({ dir: '/new-repo', defaultBranch: 'main' });
+        await gitWithMock.addRemote({ dir: '/new-repo', remote: 'origin', url: `nostr://${testNpub}/new-repo` });
+
+        // Make a commit
+        await fs.mkdir('/new-repo/.shakespeare');
+        await fs.writeFile('/new-repo/.shakespeare/git.json', JSON.stringify({ name: 'Test', email: 'test@test.com' }));
+        await fs.writeFile('/new-repo/test.txt', 'test');
+        await gitWithMock.add({ dir: '/new-repo', filepath: 'test.txt' });
+        await gitWithMock.commit({ dir: '/new-repo', message: 'Test' });
+
+        // Clear the mock to track new calls
+        vi.mocked(nostr.event).mockClear();
+
+        // Push to Nostr
+        try {
+          await gitWithMock.push({ dir: '/new-repo', remote: 'origin' });
+        } catch {
+          // Expected to fail on actual git push
+        }
+
+        // Find the published state event
+        const eventCalls = vi.mocked(nostr.event).mock.calls;
+        const publishedStateEvent = eventCalls.find(([event]) => event.kind === 30618)?.[0];
+        expect(publishedStateEvent).toBeDefined();
+
+        if (publishedStateEvent) {
+          // HEAD should use local HEAD since no state event existed
+          const headTag = publishedStateEvent.tags.find(([name]: string[]) => name === 'HEAD');
+          expect(headTag).toBeDefined();
+          expect(headTag![1]).toBe('ref: refs/heads/main');
+        }
+      });
+
+      it('should use local HEAD when state event exists but has no HEAD tag', async () => {
+        // Create a mock Git HTTP server
+        const mockServer = new MockGitHttpServer();
+        const mockRepo = createMockRepository();
+        mockServer.addRepository('https://git.example.com/user/repo', mockRepo);
+
+        // Create repo and state event, but state has no HEAD tag
+        const repoEvent: NostrEvent = {
+          id: 'repo-event-id',
+          pubkey: testPubkey,
+          created_at: Math.floor(Date.now() / 1000),
+          kind: 30617,
+          tags: [
+            ['d', 'no-head-repo'],
+            ['clone', 'https://git.example.com/user/repo.git'],
+          ],
+          content: '',
+          sig: 'test-sig',
+        };
+
+        // State event without HEAD tag
+        const stateEvent: NostrEvent = {
+          id: 'state-event-id',
+          pubkey: testPubkey,
+          created_at: Math.floor(Date.now() / 1000),
+          kind: 30618,
+          tags: [
+            ['d', 'no-head-repo'],
+            ['refs/heads/main', '2e538da98e06b91e70268817b0fa3f01aeeb003e'],
+          ],
+          content: '',
+          sig: 'test-sig',
+        };
+
+        vi.mocked(nostr.group).mockReturnValue({
+          query: vi.fn(async () => [repoEvent, stateEvent]),
+        } as unknown as ReturnType<NPool['group']>);
+
+        const gitWithMock = new Git({
+          fs,
+          nostr,
+          signer,
+          systemAuthor: { name: 'Test User', email: 'test@example.com' },
+          relayList: [{ url: new URL('wss://relay.example.com'), read: true, write: true }],
+          fetch: mockServer.fetch,
+        });
+
+        // Clone the repository
+        await gitWithMock.clone({
+          url: `nostr://${testNpub}/no-head-repo`,
+          dir: '/no-head-repo',
+          singleBranch: true,
+          depth: 1,
+        });
+
+        // Make a local change
+        await fs.mkdir('/no-head-repo/.shakespeare');
+        await fs.writeFile('/no-head-repo/.shakespeare/git.json', JSON.stringify({ name: 'Test', email: 'test@test.com' }));
+        await fs.writeFile('/no-head-repo/test.txt', 'test');
+        await gitWithMock.add({ dir: '/no-head-repo', filepath: 'test.txt' });
+        await gitWithMock.commit({ dir: '/no-head-repo', message: 'Test' });
+
+        // Clear the mock to track new calls
+        vi.mocked(nostr.event).mockClear();
+
+        // Push to Nostr
+        try {
+          await gitWithMock.push({ dir: '/no-head-repo', remote: 'origin' });
+        } catch {
+          // Expected to fail on actual git push
+        }
+
+        // Find the published state event
+        const eventCalls = vi.mocked(nostr.event).mock.calls;
+        const publishedStateEvent = eventCalls.find(([event]) => event.kind === 30618)?.[0];
+        expect(publishedStateEvent).toBeDefined();
+
+        if (publishedStateEvent) {
+          // HEAD should use local HEAD since state event had no HEAD tag
+          const headTag = publishedStateEvent.tags.find(([name]: string[]) => name === 'HEAD');
+          expect(headTag).toBeDefined();
+          expect(headTag![1]).toBe('ref: refs/heads/main');
+        }
+      });
     });
   });
 });

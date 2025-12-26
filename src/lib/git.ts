@@ -663,7 +663,60 @@ export class Git {
   }
 
   private async nostrClone(nostrURI: NostrURI, options: Omit<Parameters<typeof git.clone>[0], 'fs' | 'http' | 'corsProxy'>): Promise<void> {
-    // TODO: implement Nostr clone
+    const { repo, state } = await this.fetchRepoEvents(nostrURI);
+
+    if (!repo) {
+      throw new Error('Repository not found on Nostr network');
+    }
+    if (!state) {
+      throw new Error('Repository state not found on Nostr network');
+    }
+
+    const cloneUrls = repo.tags.find(([name]) => name === 'clone')?.slice(1) ?? [];
+
+    if (cloneUrls.length === 0) {
+      throw new Error('No clone URLs found in repository announcement');
+    }
+
+    // Try cloning in order until one succeeds
+    for (const url of cloneUrls) {
+      try {
+        await Promise.race([
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Clone from Nostr clone URL timed out')), 10_000)),
+          git.clone({
+            ...options,
+            fs: this.fs,
+            http: this.httpNoProxy,
+            url,
+          }),
+        ])
+      } catch {
+        continue;
+      }
+    }
+
+    // Fetch from all clone URLs
+    await this.nostrFetch(nostrURI, {
+      ...options,
+      remote: options.remote || 'origin',
+    });
+
+    // Update refs based on fetched state
+    for (const [name, val] of state.tags) {
+      if (name === 'HEAD' || name.startsWith('refs/')) {
+        const symbolic = val.startsWith('ref: ');
+        const value = symbolic ? val.substring(5) : val;
+
+        await git.writeRef({
+          fs: this.fs,
+          dir: options.dir,
+          ref: name,
+          value,
+          symbolic,
+          force: true,
+        });
+      }
+    }
   }
 
   async setRemoteURL(options: { dir: string; remote: string; url: string }): Promise<void> {

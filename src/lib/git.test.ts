@@ -1089,7 +1089,7 @@ describe('Git', () => {
         }
       });
 
-      it('should use local HEAD when state event exists but has no HEAD tag', async () => {
+      it('should reject clone when state event exists but has no HEAD tag', async () => {
         // Create a mock Git HTTP server
         const mockServer = new MockGitHttpServer();
         const mockRepo = createMockRepository();
@@ -1109,7 +1109,7 @@ describe('Git', () => {
           sig: 'test-sig',
         };
 
-        // State event without HEAD tag
+        // State event without HEAD tag (malformed)
         const stateEvent: NostrEvent = {
           id: 'state-event-id',
           pubkey: testPubkey,
@@ -1136,42 +1136,15 @@ describe('Git', () => {
           fetch: mockServer.fetch,
         });
 
-        // Clone the repository
-        await gitWithMock.clone({
-          url: `nostr://${testNpub}/no-head-repo`,
-          dir: '/no-head-repo',
-          singleBranch: true,
-          depth: 1,
-        });
-
-        // Make a local change
-        await fs.mkdir('/no-head-repo/.shakespeare');
-        await fs.writeFile('/no-head-repo/.shakespeare/git.json', JSON.stringify({ name: 'Test', email: 'test@test.com' }));
-        await fs.writeFile('/no-head-repo/test.txt', 'test');
-        await gitWithMock.add({ dir: '/no-head-repo', filepath: 'test.txt' });
-        await gitWithMock.commit({ dir: '/no-head-repo', message: 'Test' });
-
-        // Clear the mock to track new calls
-        vi.mocked(nostr.event).mockClear();
-
-        // Push to Nostr
-        try {
-          await gitWithMock.push({ dir: '/no-head-repo', remote: 'origin' });
-        } catch {
-          // Expected to fail on actual git push
-        }
-
-        // Find the published state event
-        const eventCalls = vi.mocked(nostr.event).mock.calls;
-        const publishedStateEvent = eventCalls.find(([event]) => event.kind === 30618)?.[0];
-        expect(publishedStateEvent).toBeDefined();
-
-        if (publishedStateEvent) {
-          // HEAD should use local HEAD since state event had no HEAD tag
-          const headTag = publishedStateEvent.tags.find(([name]: string[]) => name === 'HEAD');
-          expect(headTag).toBeDefined();
-          expect(headTag![1]).toBe('ref: refs/heads/main');
-        }
+        // Attempt to clone the repository should fail
+        await expect(
+          gitWithMock.clone({
+            url: `nostr://${testNpub}/no-head-repo`,
+            dir: '/no-head-repo',
+            singleBranch: true,
+            depth: 1,
+          }),
+        ).rejects.toThrow('Repository HEAD not found in state event');
       });
     });
   });

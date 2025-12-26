@@ -685,78 +685,70 @@ export class Git {
       throw new Error('Repository state not found on Nostr network');
     }
 
-    const cloneUrls = repo.tags.find(([name]) => name === 'clone')?.slice(1) ?? [];
-
-    if (cloneUrls.length === 0) {
-      throw new Error('No clone URLs found in repository announcement');
+    const HEAD = state.tags.find(([name]) => name === 'HEAD')?.[1];
+    if (!HEAD) {
+      throw new Error('Repository HEAD not found in state event');
     }
 
-    // Try cloning in order until one succeeds
-    let cloneSucceeded = false;
-    for (const url of cloneUrls) {
-      try {
-        await Promise.race([
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Clone from Nostr clone URL timed out')), 10_000)),
-          git.clone({
-            ...options,
-            fs: this.fs,
-            http: this.httpNoProxy,
-            url,
-          }),
-        ]);
-        cloneSucceeded = true;
-        break;
-      } catch {
-        continue;
-      }
-    }
+    // Determine if HEAD is symbolic or direct
+    const headIsSymbolic = HEAD.startsWith('ref: ');
+    const headRef = headIsSymbolic ? HEAD.substring(5) : HEAD;
 
-    if (!cloneSucceeded) {
-      throw new Error('Failed to clone from any of the provided clone URLs');
-    }
+    // Initialize a new Git repository
+    await git.init({
+      fs: this.fs,
+      dir: options.dir,
+      defaultBranch: 'main',
+    });
 
-    // Update the remote URL to point to the Nostr URL instead of the HTTP clone URL
+    // Set the remote to the Nostr URI
     const remote = options.remote || 'origin';
-    await this.setRemoteURL({
+    await git.addRemote({
+      fs: this.fs,
       dir: options.dir,
       remote,
       url: nostrURI.toString(),
     });
 
-    // Fetch from all clone URLs to update remote tracking branches
+    // Fetch from clone URLs to get the repository objects
     await this.nostrFetch(nostrURI, {
       ...options,
       remote,
     });
 
     // The NIP-34 state event is the source of truth for repository state
-    // Set local refs to match the state event
-    for (const [name, val] of state.tags) {
-      if (name === 'HEAD') {
-        // Handle HEAD specially - it can be symbolic or direct
-        const symbolic = val.startsWith('ref: ');
-        const value = symbolic ? val.substring(5) : val;
-        await git.writeRef({
-          fs: this.fs,
-          dir: options.dir,
-          ref: 'HEAD',
-          value,
-          symbolic,
-          force: true,
-        });
-      } else if (name.startsWith('refs/heads/')) {
+    // Set local branch refs to match the state event
+    for (const [name, value] of state.tags) {
+      if (name.startsWith('refs/heads/')) {
         // Set local branch refs to match state event
         await git.writeRef({
           fs: this.fs,
           dir: options.dir,
           ref: name,
-          value: val,
+          value,
           force: true,
         });
       }
-      // Note: We don't set refs/tags/ here as those are typically immutable
-      // and should come from the clone/fetch operations
     }
+
+    // Checkout working directory if requested (extracts files from objects)
+    if (!options.noCheckout) {
+      await git.checkout({
+        fs: this.fs,
+        dir: options.dir,
+        ref: headRef,
+      });
+    }
+
+    // Set HEAD after checkout (checkout modifies HEAD, setting it to a commit SHA)
+    await git.writeRef({
+      fs: this.fs,
+      dir: options.dir,
+      ref: 'HEAD',
+      value: headRef,
+      symbolic: headIsSymbolic,
+      force: true,
+    });
   }
 
   async setRemoteURL(options: { dir: string; remote: string; url: string }): Promise<void> {
@@ -919,17 +911,22 @@ export class Git {
       stateTags.push(existingHeadTag);
     } else {
       // No existing HEAD, use local HEAD
-      const headRef = await git.resolveRef({
+      // Check if HEAD is symbolic (points to a branch) by checking currentBranch
+      const currentBranch = await git.currentBranch({
         fs: this.fs,
         dir,
-        ref: 'HEAD',
-        depth: 2,
       });
 
-      // Check if HEAD is a symbolic ref
-      if (headRef.startsWith('refs/')) {
-        stateTags.push(['HEAD', `ref: ${headRef}`]);
+      if (currentBranch) {
+        // Symbolic ref - HEAD points to a branch
+        stateTags.push(['HEAD', `ref: refs/heads/${currentBranch}`]);
       } else {
+        // Detached HEAD - use the commit SHA
+        const headRef = await git.resolveRef({
+          fs: this.fs,
+          dir,
+          ref: 'HEAD',
+        });
         stateTags.push(['HEAD', headRef]);
       }
     }

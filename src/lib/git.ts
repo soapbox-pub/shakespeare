@@ -16,6 +16,7 @@ export interface GitOptions {
   signer?: NostrSigner;
   credentials?: GitCredential[];
   corsProxy?: string;
+  fetch?: typeof globalThis.fetch;
 }
 
 /**
@@ -33,6 +34,7 @@ export class Git {
   private signer?: NostrSigner;
   private corsProxy?: string;
   private credentials?: GitCredential[];
+  private customFetch?: typeof globalThis.fetch;
 
   constructor(options: GitOptions) {
     this.fs = options.fs;
@@ -46,6 +48,7 @@ export class Git {
     };
     this.credentials = options.credentials;
     this.signer = options.signer;
+    this.customFetch = options.fetch;
   }
 
   // Shared onAuth method
@@ -55,20 +58,20 @@ export class Git {
     }
   }
 
-  private httpNoProxy = new GitHttp();
+  private httpNoProxy = new GitHttp(undefined, this.customFetch);
 
   // Get HTTP adapter for the given URL
-  private httpForUrl(url: string | null | undefined): GitHttp {
+  private httpForUrl(url: string | null | undefined): HttpClient {
     if (url?.startsWith('nostr://')) {
-      return new GitHttp();
+      return new GitHttp(undefined, this.customFetch);
     }
     if (this.credentials && url) {
       const cred = findCredentialsForRepo(url, this.credentials);
       if (cred && cred.proxy) {
-        return new GitHttp(this.corsProxy);
+        return new GitHttp(this.corsProxy, this.customFetch);
       }
     }
-    return new GitHttp();
+    return new GitHttp(undefined, this.customFetch);
   }
 
   // Repository initialization and configuration
@@ -980,9 +983,11 @@ export class Git {
 
 class GitHttp implements HttpClient {
   private proxy?: string;
+  private fetch: typeof globalThis.fetch;
 
-  constructor(proxy?: string) {
+  constructor(proxy?: string, fetch?: typeof globalThis.fetch) {
     this.proxy = proxy;
+    this.fetch = fetch ?? globalThis.fetch;
   }
 
   async request(request: GitHttpRequest): Promise<GitHttpResponse> {
@@ -1003,7 +1008,7 @@ class GitHttp implements HttpClient {
       init.body = new Blob([new Uint8Array(buffered)]);
     }
 
-    const response = await fetch(target, init);
+    const response = await this.fetch(target, init);
     const headers = Object.fromEntries(response.headers.entries());
     const body = response.body ? readableStreamToAsyncIterator(response.body) : undefined;
 

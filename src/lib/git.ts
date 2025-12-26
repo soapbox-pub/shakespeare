@@ -661,10 +661,17 @@ export class Git {
       }
     }
 
+    // Extract HEAD value - if it's a symbolic ref, extract the target
+    // Keep the raw value in refs['HEAD'], return extracted target in HEAD field
+    let headValue = refs['HEAD'];
+    if (headValue?.startsWith('ref: ')) {
+      headValue = headValue.substring(5); // Remove "ref: " prefix for the HEAD field
+    }
+
     return {
       capabilities,
       refs,
-      HEAD: refs['HEAD'],
+      HEAD: headValue,
     };
   }
 

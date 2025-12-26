@@ -456,6 +456,77 @@ describe('Git', () => {
       });
     });
 
+    describe('nostr fetch', () => {
+      it('should correctly set up remote tracking refs', async () => {
+        // Create a mock Git HTTP server
+        const mockServer = new MockGitHttpServer();
+        const mockRepo = createMockRepository();
+        mockServer.addRepository('https://git.example.com/user/repo', mockRepo);
+
+        // Create Nostr repository events
+        // Use the actual commit SHA from the mock repository
+        const repoEvent: NostrEvent = {
+          id: 'repo-event-id',
+          pubkey: testPubkey,
+          created_at: Math.floor(Date.now() / 1000),
+          kind: 30617,
+          tags: [
+            ['d', 'my-repo'],
+            ['clone', 'https://git.example.com/user/repo.git'],
+          ],
+          content: '',
+          sig: 'test-sig',
+        };
+
+        const stateEvent: NostrEvent = {
+          id: 'state-event-id',
+          pubkey: testPubkey,
+          created_at: Math.floor(Date.now() / 1000),
+          kind: 30618,
+          tags: [
+            ['d', 'my-repo'],
+            ['HEAD', 'ref: refs/heads/main'],
+            ['refs/heads/main', '2e538da98e06b91e70268817b0fa3f01aeeb003e'],
+          ],
+          content: '',
+          sig: 'test-sig',
+        };
+
+        vi.mocked(nostr.group).mockReturnValue({
+          query: vi.fn(async () => [repoEvent, stateEvent]),
+        } as unknown as ReturnType<NPool['group']>);
+
+        const gitWithMock = new Git({
+          fs,
+          nostr,
+          signer,
+          systemAuthor: { name: 'Test User', email: 'test@example.com' },
+          relayList: [{ url: new URL('wss://relay.example.com'), read: true, write: true }],
+          fetch: mockServer.fetch,
+        });
+
+        // Clone the repository first
+        await gitWithMock.clone({
+          url: `nostr://${testNpub}/my-repo`,
+          dir: '/fetch-test-repo',
+          singleBranch: true,
+          depth: 1,
+        });
+
+        // Verify remote tracking refs were set up correctly
+        const remoteBranches = await gitWithMock.listBranches({ dir: '/fetch-test-repo', remote: 'origin' });
+        expect(remoteBranches).toContain('main');
+
+        // Verify the remote HEAD is a symbolic ref pointing to the correct branch
+        const remoteHeadRef = await gitWithMock.resolveRef({
+          dir: '/fetch-test-repo',
+          ref: 'refs/remotes/origin/HEAD',
+          depth: 2,
+        });
+        expect(remoteHeadRef).toBe('refs/remotes/origin/main');
+      });
+    });
+
     describe('nostr pull', () => {
       it('should pull from Nostr repository and merge remote tracking branch', async () => {
         // Create a mock Git HTTP server
@@ -553,6 +624,92 @@ describe('Git', () => {
         const localExists = await fs.stat('/nostr-repo/local.txt').then(() => true).catch(() => false);
         expect(readmeExists).toBe(true);
         expect(localExists).toBe(true);
+      });
+    });
+
+    describe('getNostrRemoteInfo', () => {
+      it('should correctly parse symbolic HEAD reference', async () => {
+        const repoEvent: NostrEvent = {
+          id: 'repo-event-id',
+          pubkey: testPubkey,
+          created_at: Math.floor(Date.now() / 1000),
+          kind: 30617,
+          tags: [
+            ['d', 'test-repo'],
+            ['clone', 'https://git.example.com/user/repo.git'],
+          ],
+          content: '',
+          sig: 'test-sig',
+        };
+
+        const stateEvent: NostrEvent = {
+          id: 'state-event-id',
+          pubkey: testPubkey,
+          created_at: Math.floor(Date.now() / 1000),
+          kind: 30618,
+          tags: [
+            ['d', 'test-repo'],
+            ['HEAD', 'ref: refs/heads/main'],
+            ['refs/heads/main', 'abc123def456'],
+          ],
+          content: '',
+          sig: 'test-sig',
+        };
+
+        vi.mocked(nostr.group).mockReturnValue({
+          query: vi.fn(async () => [repoEvent, stateEvent]),
+        } as unknown as ReturnType<NPool['group']>);
+
+        const remoteInfo = await git.getRemoteInfo({
+          url: `nostr://${testNpub}/test-repo`,
+        });
+
+        // refs['HEAD'] should contain the raw symbolic ref value from NIP-34
+        expect(remoteInfo.refs?.HEAD).toBe('ref: refs/heads/main');
+        // The separate HEAD field should contain the extracted target
+        expect(remoteInfo.HEAD).toBe('refs/heads/main');
+        expect(remoteInfo.refs?.['refs/heads/main']).toBe('abc123def456');
+      });
+
+      it('should correctly parse direct HEAD reference (detached HEAD)', async () => {
+        const repoEvent: NostrEvent = {
+          id: 'repo-event-id',
+          pubkey: testPubkey,
+          created_at: Math.floor(Date.now() / 1000),
+          kind: 30617,
+          tags: [
+            ['d', 'test-repo'],
+            ['clone', 'https://git.example.com/user/repo.git'],
+          ],
+          content: '',
+          sig: 'test-sig',
+        };
+
+        const stateEvent: NostrEvent = {
+          id: 'state-event-id',
+          pubkey: testPubkey,
+          created_at: Math.floor(Date.now() / 1000),
+          kind: 30618,
+          tags: [
+            ['d', 'test-repo'],
+            ['HEAD', 'abc123def456'],
+            ['refs/heads/main', 'abc123def456'],
+          ],
+          content: '',
+          sig: 'test-sig',
+        };
+
+        vi.mocked(nostr.group).mockReturnValue({
+          query: vi.fn(async () => [repoEvent, stateEvent]),
+        } as unknown as ReturnType<NPool['group']>);
+
+        const remoteInfo = await git.getRemoteInfo({
+          url: `nostr://${testNpub}/test-repo`,
+        });
+
+        // HEAD should be the commit SHA
+        expect(remoteInfo.refs?.HEAD).toBe('abc123def456');
+        expect(remoteInfo.refs?.['refs/heads/main']).toBe('abc123def456');
       });
     });
 

@@ -798,8 +798,8 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
 
           {!isLoadingHistory && renderStreamingMessage()}
 
-          {/* Resume button - shown when not loading and finish reason is not "stop" or "length" */}
-          {!isLoadingHistory && !isLoading && lastFinishReason && lastFinishReason !== 'stop' && lastFinishReason !== 'length' && messages.length > 0 && (
+          {/* Resume button - shown when not loading and finish reason is not "stop" or "length" (or no finish reason) */}
+          {!isLoadingHistory && !isLoading && (!lastFinishReason || (lastFinishReason !== 'stop' && lastFinishReason !== 'length')) && messages.length > 0 && (
             <div className="flex justify-center py-4">
               <Button
                 onClick={() => startGeneration(providerModel)}

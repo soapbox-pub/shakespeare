@@ -551,7 +551,7 @@ export class SessionManager {
         };
 
         // Check if the assistant message is empty (no content, reasoning, or tool calls)
-        if (isEmptyMessage(assistantMessage)) {
+        if (isEmptyMessage(assistantMessage) && finishReason !== 'stop') {
           console.error('Empty assistant message detected', {
             projectId,
             providerModel,

@@ -64,7 +64,6 @@ const gitCredentialSchema = z.object({
   origin: z.string(),
   username: z.string(),
   password: z.string(),
-  proxy: z.boolean().optional(),
 });
 
 // Old format (map of origins to credentials)
@@ -282,13 +281,6 @@ export async function readGitSettings(fs: JSRuntimeFS, configPath = '/config'): 
       credentials = parsed.credentials;
     } else {
       credentials = convertCredentialsToNewFormat(parsed.credentials);
-    }
-
-    // Set default proxy settings if missing
-    for (const cred of credentials) {
-      if (!('proxy' in cred)) {
-        cred.proxy = ['https://github.com', 'https://gitlab.com'].includes(cred.origin);
-      }
     }
 
     return {

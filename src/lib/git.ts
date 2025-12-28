@@ -16,12 +16,13 @@ export interface GitOptions {
   signer?: NostrSigner;
   credentials?: GitCredential[];
   corsProxy?: string;
+  gitProxyOrigins?: string[];
   fetch?: typeof globalThis.fetch;
 }
 
 /**
  * Git class that wraps isomorphic-git and provides a cleaner interface.
- * Instantiate with an fs implementation, optional corsProxy string, and optional corsProxyRegex.
+ * Instantiate with an fs implementation, optional corsProxy string, and optional gitProxyOrigins list.
  * All methods have the same names as isomorphic-git but don't require
  * passing fs, http, and corsProxy each time.
  */
@@ -33,6 +34,7 @@ export class Git {
   private systemAuthor: { name: string; email: string };
   private signer?: NostrSigner;
   private corsProxy?: string;
+  private gitProxyOrigins: string[];
   private credentials?: GitCredential[];
   private customFetch?: typeof globalThis.fetch;
 
@@ -40,6 +42,7 @@ export class Git {
     this.fs = options.fs;
     this.nostr = options.nostr;
     this.corsProxy = options.corsProxy;
+    this.gitProxyOrigins = options.gitProxyOrigins ?? [];
     this.relayList = options.relayList;
     this.graspList = options.graspList;
     this.systemAuthor = options.systemAuthor ?? {
@@ -65,15 +68,22 @@ export class Git {
 
   // Get HTTP adapter for the given URL
   private httpForUrl(url: string | null | undefined): HttpClient {
-    if (url?.startsWith('nostr://')) {
+    if (!url || url.startsWith('nostr://')) {
       return new GitHttp(undefined, this.customFetch);
     }
-    if (this.credentials && url) {
-      const cred = findCredentialsForRepo(url, this.credentials);
-      if (cred && cred.proxy) {
+
+    // Check if the URL's origin is in the proxy origins list
+    try {
+      const urlObj = new URL(url);
+      const origin = urlObj.origin;
+
+      if (this.gitProxyOrigins.includes(origin)) {
         return new GitHttp(this.corsProxy, this.customFetch);
       }
+    } catch {
+      // Invalid URL, don't use proxy
     }
+
     return new GitHttp(undefined, this.customFetch);
   }
 

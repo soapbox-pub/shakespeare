@@ -43,6 +43,7 @@ const testConfig: AppConfig = {
   templates: [{ name: 'MKStack', description: 'Build Nostr clients with React.', url: 'https://gitlab.com/soapbox-pub/mkstack.git' }],
   esmUrl: 'https://esm.shakespeare.diy',
   corsProxy: 'https://proxy.shakespeare.diy/?url={href}',
+  gitProxyOrigins: ['https://github.com', 'https://gitlab.com'],
   faviconUrl: 'https://external-content.duckduckgo.com/ip3/{hostname}.ico',
   ngitWebUrl: 'https://nostrhub.io/{naddr}',
   previewDomain: 'local-shakespeare.dev',

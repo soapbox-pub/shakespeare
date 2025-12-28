@@ -6,7 +6,6 @@ export interface GitCredential {
   origin: string; // Full origin URL (e.g., "https://github.com")
   username: string;
   password: string;
-  proxy?: boolean; // Whether to use a proxy for this credential
 }
 
 export interface GitSettings {

@@ -38,6 +38,8 @@ export interface AppConfig {
   esmUrl: string;
   /** HTTP proxy used to bypass CORS for AI and Git operations */
   corsProxy: string;
+  /** Git origins that should use the CORS proxy (e.g., ["https://github.com", "https://gitlab.com"]) */
+  gitProxyOrigins: string[];
   /** Favicon URL template (e.g., "https://external-content.duckduckgo.com/ip3/{hostname}.ico") */
   faviconUrl: string;
   /** Nostr Git web URL template (e.g., "https://nostrhub.io/{naddr}") */

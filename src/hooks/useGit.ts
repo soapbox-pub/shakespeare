@@ -16,7 +16,7 @@ export function useGit(): { git: Git } {
   const { nostr } = useNostr();
   const { config } = useAppContext();
   const { settings } = useGitSettings();
-  const { corsProxy, relayMetadata, graspMetadata } = config;
+  const { corsProxy, gitProxyOrigins, relayMetadata, graspMetadata } = config;
 
   const relayList = useMemo(() => {
     // Extract hostnames from grasp relay URLs for backwards compatibility with Git class
@@ -45,12 +45,13 @@ export function useGit(): { git: Git } {
       fs,
       nostr,
       corsProxy,
+      gitProxyOrigins,
       relayList,
       graspList,
       credentials: settings.credentials,
       signer: user?.signer,
     });
-  }, [fs, nostr, corsProxy, relayList, graspList, settings.credentials, user?.signer]);
+  }, [fs, nostr, corsProxy, gitProxyOrigins, relayList, graspList, settings.credentials, user?.signer]);
 
   return { git };
 }

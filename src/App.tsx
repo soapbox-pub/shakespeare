@@ -132,6 +132,7 @@ const defaultConfig: AppConfig = {
   ],
   esmUrl: "https://esm.sh",
   corsProxy: "https://proxy.shakespeare.diy/?url={href}",
+  gitProxyOrigins: ["https://github.com", "https://gitlab.com"],
   faviconUrl: "https://favicon.shakespeare.diy/?url={href}",
   ngitWebUrl: "https://nostrhub.io/{naddr}",
   previewDomain: "local-shakespeare.dev",

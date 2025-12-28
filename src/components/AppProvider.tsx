@@ -45,6 +45,7 @@ const AppConfigSchema = z.object({
   templates: z.array(ProjectTemplateSchema),
   esmUrl: z.string().url(),
   corsProxy: z.string().url(),
+  gitProxyOrigins: z.array(z.string()),
   faviconUrl: z.string().url(),
   ngitWebUrl: z.string().url(),
   previewDomain: z.string().min(1),

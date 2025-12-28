@@ -24,7 +24,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Card, CardContent } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
@@ -49,7 +48,6 @@ interface PresetProvider {
   origin: string;
   username: string;
   tokenURL?: string;
-  proxy?: boolean;
 }
 
 const PRESET_PROVIDERS: PresetProvider[] = [
@@ -59,7 +57,6 @@ const PRESET_PROVIDERS: PresetProvider[] = [
     origin: "https://github.com",
     username: "git",
     tokenURL: "https://github.com/settings/tokens",
-    proxy: true,
   },
   {
     id: "gitlab",
@@ -67,7 +64,6 @@ const PRESET_PROVIDERS: PresetProvider[] = [
     origin: "https://gitlab.com",
     username: "git",
     tokenURL: "https://gitlab.com/-/user_settings/personal_access_tokens",
-    proxy: true,
   },
 ];
 
@@ -177,18 +173,6 @@ function SortableCredentialItem({ credential, onUpdate, onRemove, showDragHandle
               onChange={(e) => updateCredential({ password: e.target.value })}
             />
           </div>
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id={`credential-${credential.id}-proxy`}
-              checked={credential.proxy || false}
-              onCheckedChange={(checked) => updateCredential({
-                proxy: checked === true || undefined
-              })}
-            />
-            <Label htmlFor={`credential-${credential.id}-proxy`} className="cursor-pointer">
-              {t('useCorsProxy')}
-            </Label>
-          </div>
           <Button
             variant="destructive"
             size="sm"
@@ -211,7 +195,6 @@ export function GitSettings() {
   const [customOrigin, setCustomOrigin] = useState('');
   const [customUsername, setCustomUsername] = useState('');
   const [customPassword, setCustomPassword] = useState('');
-  const [customProxy, setCustomProxy] = useState(false);
   const [presetTokens, setPresetTokens] = useState<Record<string, string>>({});
   const [forceManualEntry, setForceManualEntry] = useState<Record<string, boolean>>({});
 
@@ -233,7 +216,6 @@ export function GitSettings() {
       origin: preset.origin,
       username: preset.username,
       password: token.trim(),
-      proxy: preset.proxy,
     };
 
     // Auto-save: Add credential immediately to persistent storage
@@ -255,7 +237,6 @@ export function GitSettings() {
       origin: customOrigin.trim(),
       username: customUsername.trim(),
       password: customPassword.trim(),
-      proxy: customProxy || undefined,
     };
 
     // Auto-save: Add credential immediately to persistent storage
@@ -265,7 +246,6 @@ export function GitSettings() {
     setCustomOrigin('');
     setCustomUsername('');
     setCustomPassword('');
-    setCustomProxy(false);
   };
 
   const handleRemoveCredential = (id: string) => {
@@ -558,16 +538,6 @@ export function GitSettings() {
                         value={customPassword}
                         onChange={(e) => setCustomPassword(e.target.value)}
                       />
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Checkbox
-                        id="custom-proxy"
-                        checked={customProxy}
-                        onCheckedChange={(checked) => setCustomProxy(checked === true)}
-                      />
-                      <Label htmlFor="custom-proxy" className="cursor-pointer">
-                        {t('useCorsProxy')}
-                      </Label>
                     </div>
                     <Button
                       onClick={handleAddCustomProvider}

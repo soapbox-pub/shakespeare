@@ -42,6 +42,7 @@ export interface SessionState {
   totalCost?: number; // Total cost in USD for this session
   lastInputTokens?: number; // Input tokens from the last AI request
   imagesNotSupported?: boolean; // Track if this session's model doesn't support images
+  lastFinishReason?: string | null; // Last finish reason from AI generation
 }
 
 export interface SessionManagerEvents {
@@ -53,6 +54,7 @@ export interface SessionManagerEvents {
   costUpdated: (projectId: string, totalCost: number) => void;
   contextUsageUpdated: (projectId: string, inputTokens: number) => void;
   fileChanged: (projectId: string, filePath: string) => void;
+  finishReasonChanged: (projectId: string, finishReason: string | null) => void;
 }
 
 /**
@@ -104,6 +106,7 @@ export class SessionManager {
   ): Promise<SessionState> {
     let messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [];
     let sessionName = DotAI.generateSessionName();
+    let lastFinishReason: string | null | undefined;
 
     // Try to load existing history
     try {
@@ -114,6 +117,9 @@ export class SessionManager {
         messages = lastSession.messages;
         sessionName = lastSession.sessionName;
       }
+
+      // Load last finish reason
+      lastFinishReason = await dotAI.readFinishReason();
     } catch (error) {
       console.warn('Failed to load session history:', error);
     }
@@ -127,6 +133,7 @@ export class SessionManager {
       lastActivity: new Date(),
       totalCost: 0,
       lastInputTokens: 0,
+      lastFinishReason,
       ...this.sessions.get(projectId),
       messages,
       sessionName,
@@ -629,6 +636,11 @@ export class SessionManager {
           }
         }
 
+        // Update and save the finish reason
+        session.lastFinishReason = finishReason;
+        this.emit('finishReasonChanged', projectId, finishReason);
+        await this.saveFinishReason(projectId, finishReason);
+
         // Check if we should stop
         if (finishReason === 'stop') {
           break;
@@ -685,9 +697,11 @@ export class SessionManager {
     session.lastActivity = new Date();
     session.totalCost = 0;
     session.lastInputTokens = 0;
+    session.lastFinishReason = null;
 
     this.emit('costUpdated', projectId, 0);
     this.emit('contextUsageUpdated', projectId, 0);
+    this.emit('finishReasonChanged', projectId, null);
   }
 
   /**
@@ -771,6 +785,19 @@ export class SessionManager {
       await dotAI.setHistory(session.sessionName, session.messages as OpenAI.Chat.Completions.ChatCompletionMessageParam[]);
     } catch (error) {
       console.warn('Failed to save session history:', error);
+    }
+  }
+
+  /**
+   * Save finish reason to file
+   */
+  private async saveFinishReason(projectId: string, finishReason: string | null): Promise<void> {
+    try {
+      const config = this.getConfig();
+      const dotAI = new DotAI(this.fs, `${config.fsPathProjects}/${projectId}`);
+      await dotAI.writeFinishReason(finishReason);
+    } catch (error) {
+      console.warn('Failed to save finish reason:', error);
     }
   }
 

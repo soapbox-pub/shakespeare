@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { OnboardingDialog } from '@/components/OnboardingDialog';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Play } from 'lucide-react';
 import { useAISettings } from '@/hooks/useAISettings';
 import { useFS } from '@/hooks/useFS';
 import { useFSPaths } from '@/hooks/useFSPaths';
@@ -291,6 +291,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     isLoadingHistory,
     totalCost,
     lastInputTokens,
+    lastFinishReason,
     addMessage,
     sendMessage,
     startGeneration,
@@ -796,6 +797,22 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
           })}
 
           {!isLoadingHistory && renderStreamingMessage()}
+
+          {/* Resume button - shown when not loading and finish reason is not "stop" or "length" */}
+          {!isLoadingHistory && !isLoading && lastFinishReason && lastFinishReason !== 'stop' && lastFinishReason !== 'length' && messages.length > 0 && (
+            <div className="flex justify-center py-4">
+              <Button
+                onClick={() => startGeneration(providerModel)}
+                variant="outline"
+                size="sm"
+                disabled={!providerModel.trim() || !isConfigured}
+                className="gap-2"
+              >
+                <Play className="h-4 w-4" />
+                {t('resume')}
+              </Button>
+            </div>
+          )}
 
           {/* Error Alert (Console or AI) - Don't show while assistant is loading */}
           {displayError && !isLoading && (

@@ -475,5 +475,6 @@
   "projectDuplicatedDescription": "An kwafi aikin cikin nasara.",
   "failedToDuplicateProject": "An kasa kwafin aikin",
   "newProjectName": "Sunan Sabon Aikin",
-  "duplicateProjectDescription": "Ƙirƙiri kwafin wannan aikin da sabon suna"
+  "duplicateProjectDescription": "Ƙirƙiri kwafin wannan aikin da sabon suna",
+  "resume": "Ci gaba"
 }

@@ -484,5 +484,6 @@
   "projectDuplicatedDescription": "项目已成功复制。",
   "failedToDuplicateProject": "复制项目失败",
   "newProjectName": "新项目名称",
-  "duplicateProjectDescription": "使用新名称创建此项目的副本"
+  "duplicateProjectDescription": "使用新名称创建此项目的副本",
+  "resume": "继续"
 }

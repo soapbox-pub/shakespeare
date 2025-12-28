@@ -358,4 +358,39 @@ export class DotAI {
       console.warn(`Failed to write .git/shakespeare/template.json file: ${error}`);
     }
   }
+
+  /**
+   * Read the last finish reason from .git/ai/FINISH_REASON file
+   * @returns The finish reason string, or null if file doesn't exist or is empty
+   */
+  async readFinishReason(): Promise<string | null> {
+    try {
+      const finishReasonPath = join(this.workingDir, ".git", "ai", "FINISH_REASON");
+      const content = await this.fs.readFile(finishReasonPath, "utf8");
+      const trimmed = content.trim();
+      return trimmed || null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Write the finish reason to .git/ai/FINISH_REASON file
+   * @param finishReason The finish reason string, or null to clear
+   */
+  async writeFinishReason(finishReason: string | null): Promise<void> {
+    const aiDir = join(this.workingDir, ".git", "ai");
+    const finishReasonPath = join(aiDir, "FINISH_REASON");
+
+    try {
+      // Ensure .git/ai directory exists
+      await this.fs.mkdir(aiDir, { recursive: true });
+
+      // Write the finish reason (empty string if null)
+      const content = finishReason ? finishReason.trim() + "\n" : "";
+      await this.fs.writeFile(finishReasonPath, content);
+    } catch (error) {
+      console.warn(`Failed to write .git/ai/FINISH_REASON file: ${error}`);
+    }
+  }
 }

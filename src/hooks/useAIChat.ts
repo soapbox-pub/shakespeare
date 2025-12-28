@@ -43,6 +43,7 @@ export function useAIChat({
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [totalCost, setTotalCost] = useState<number>(0);
   const [lastInputTokens, setLastInputTokens] = useState<number>(0);
+  const [lastFinishReason, setLastFinishReason] = useState<string | null>(null);
   const [isLoadingHistory, setIsLoadingHistory] = useState<boolean>(true);
 
   const initSession = useCallback(async () => {
@@ -56,6 +57,7 @@ export function useAIChat({
       setIsLoading(session.isLoading);
       setTotalCost(session.totalCost || 0);
       setLastInputTokens(session.lastInputTokens || 0);
+      setLastFinishReason(session.lastFinishReason ?? null);
     } finally {
       setIsLoadingHistory(false);
     }
@@ -115,6 +117,12 @@ export function useAIChat({
     }
   }, [projectId]);
 
+  useSessionSubscription('finishReasonChanged', (updatedProjectId: string, finishReason: string | null) => {
+    if (updatedProjectId === projectId) {
+      setLastFinishReason(finishReason);
+    }
+  }, [projectId]);
+
   // Actions
   const sendMessage = useCallback(async (
     content: string | Array<OpenAI.Chat.Completions.ChatCompletionContentPartText | OpenAI.Chat.Completions.ChatCompletionContentPartImage>,
@@ -161,6 +169,7 @@ export function useAIChat({
     setStreamingMessage(undefined);
     setTotalCost(0);
     setLastInputTokens(0);
+    setLastFinishReason(null);
   }, [projectId, sessionManager]);
 
   const clearMessages = useCallback(async () => {
@@ -175,6 +184,7 @@ export function useAIChat({
     isLoadingHistory,
     totalCost,
     lastInputTokens,
+    lastFinishReason,
     sendMessage,
     startGeneration,
     stopGeneration,

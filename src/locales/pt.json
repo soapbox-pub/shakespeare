@@ -484,5 +484,6 @@
   "projectDuplicatedDescription": "O projeto foi duplicado com sucesso.",
   "failedToDuplicateProject": "Falha ao duplicar projeto",
   "newProjectName": "Nome do Novo Projeto",
-  "duplicateProjectDescription": "Criar uma cópia deste projeto com um novo nome"
+  "duplicateProjectDescription": "Criar uma cópia deste projeto com um novo nome",
+  "resume": "Retomar"
 }

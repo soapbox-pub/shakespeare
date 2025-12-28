@@ -572,5 +572,6 @@
   "projectDuplicatedDescription": "Project has been duplicated successfully.",
   "failedToDuplicateProject": "Failed to duplicate project",
   "newProjectName": "New Project Name",
-  "duplicateProjectDescription": "Create a copy of this project with a new name"
+  "duplicateProjectDescription": "Create a copy of this project with a new name",
+  "resume": "Resume"
 }

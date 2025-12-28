@@ -224,6 +224,8 @@
   "gitEmail": "Git Email",
   "coAuthoredByShakespeare": "Co-authored by Shakespeare",
   "gitIdentityDescription": "If both name and email are configured, they will be used as the commit author. Otherwise, shakespeare.diy will be used. When co-author is enabled, Shakespeare will be added as a co-author.",
+  "corsProxyOrigins": "CORS Proxy Origins",
+  "corsProxyOriginsDescription": "Git repository origins that require CORS proxy for HTTP access. Add origins like https://github.com or https://gitlab.com to enable proxy for those hosts.",
   "aboutShakespeare": "About Shakespeare",
   "aboutShakespeareDescription": "Information about Shakespeare",
   "mirrors": "Mirrors",

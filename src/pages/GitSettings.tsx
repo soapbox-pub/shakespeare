@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Check, GitBranch, Trash2, ChevronDown, Plus, User, GripVertical } from 'lucide-react';
+import { Check, GitBranch, Trash2, ChevronDown, Plus, User, GripVertical, Globe, X } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -28,6 +28,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Card, CardContent } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Separator } from '@/components/ui/separator';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -36,6 +37,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useGitSettings } from '@/hooks/useGitSettings';
 import { useGitHubOAuth } from '@/hooks/useGitHubOAuth';
+import { useAppContext } from '@/hooks/useAppContext';
 import { SettingsPageLayout } from '@/components/SettingsPageLayout';
 import type { GitCredential } from '@/contexts/GitSettingsContext';
 import { PasswordInput } from '@/components/ui/password-input';
@@ -191,12 +193,15 @@ export function GitSettings() {
   const { t } = useTranslation();
   const { settings, addCredential, removeCredential, setCredentials, updateSettings, isInitialized } = useGitSettings();
   const { initiateOAuth, isLoading: isOAuthLoading, error: oauthError, isOAuthConfigured } = useGitHubOAuth();
+  const { config, updateConfig } = useAppContext();
   const [customName, setCustomName] = useState('');
   const [customOrigin, setCustomOrigin] = useState('');
   const [customUsername, setCustomUsername] = useState('');
   const [customPassword, setCustomPassword] = useState('');
   const [presetTokens, setPresetTokens] = useState<Record<string, string>>({});
   const [forceManualEntry, setForceManualEntry] = useState<Record<string, boolean>>({});
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [newProxyOrigin, setNewProxyOrigin] = useState('');
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -273,6 +278,37 @@ export function GitSettings() {
         setCredentials(newCredentials);
       }
     }
+  };
+
+  const handleAddProxyOrigin = () => {
+    if (!newProxyOrigin.trim()) return;
+
+    // Validate URL format
+    try {
+      const url = new URL(newProxyOrigin.trim());
+      const origin = url.origin;
+
+      // Check if origin already exists
+      if (config.gitProxyOrigins.includes(origin)) {
+        return;
+      }
+
+      updateConfig((current) => ({
+        ...current,
+        gitProxyOrigins: [...config.gitProxyOrigins, origin],
+      }));
+
+      setNewProxyOrigin('');
+    } catch {
+      // Invalid URL - don't add
+    }
+  };
+
+  const handleRemoveProxyOrigin = (origin: string) => {
+    updateConfig((current) => ({
+      ...current,
+      gitProxyOrigins: config.gitProxyOrigins.filter((o) => o !== origin),
+    }));
   };
 
   // Get list of configured origins
@@ -610,6 +646,89 @@ export function GitSettings() {
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
+          </div>
+
+          {/* Advanced Settings */}
+          <div className="space-y-4">
+            <Separator className="my-6" />
+            <button
+              type="button"
+              onClick={() => setShowAdvanced(!showAdvanced)}
+              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <span>{t('advanced')}</span>
+              <ChevronDown
+                className={`h-4 w-4 transition-transform ${showAdvanced ? 'rotate-180' : ''}`}
+              />
+            </button>
+
+            {showAdvanced && (
+              <div className="space-y-6">
+                {/* CORS Proxy Origins */}
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Globe className="h-5 w-5 text-primary" />
+                      <h3 className="text-lg font-semibold">{t('corsProxyOrigins')}</h3>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {t('corsProxyOriginsDescription')}
+                    </p>
+                  </div>
+
+                  {/* List of configured origins */}
+                  {config.gitProxyOrigins.length > 0 && (
+                    <div className="space-y-2">
+                      {config.gitProxyOrigins.map((origin) => (
+                        <div
+                          key={origin}
+                          className="flex items-center gap-2 p-3 border rounded-lg bg-muted/50"
+                        >
+                          <ExternalFavicon
+                            url={origin}
+                            size={16}
+                            fallback={<Globe size={16} />}
+                          />
+                          <span className="flex-1 text-sm font-mono">{origin}</span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRemoveProxyOrigin(origin)}
+                            className="h-8 w-8 p-0"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Add new origin */}
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="https://github.com"
+                      value={newProxyOrigin}
+                      onChange={(e) => setNewProxyOrigin(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          handleAddProxyOrigin();
+                        }
+                      }}
+                      className="flex-1"
+                    />
+                    <Button
+                      onClick={handleAddProxyOrigin}
+                      disabled={!newProxyOrigin.trim()}
+                      size="sm"
+                      className="gap-2"
+                    >
+                      <Plus className="h-4 w-4" />
+                      {t('add')}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </>
       )}

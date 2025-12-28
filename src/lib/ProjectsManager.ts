@@ -146,13 +146,12 @@ export class ProjectsManager {
       force: true,
     });
 
-    // Directly checkout the remote commit to update working directory
-    // This bypasses merge entirely and just makes the working directory
-    // match the remote commit exactly. Safe for templates.
+    // Checkout the branch (not the commit SHA) to update working directory
+    // This keeps the repository on the branch instead of entering detached HEAD state
     // Using force: true to overwrite any local changes
     await this.git.checkout({
       dir: templatePath,
-      ref: remoteOid,
+      ref: branchName,
       force: true,
     });
   }

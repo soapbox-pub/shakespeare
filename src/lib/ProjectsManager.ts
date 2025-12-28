@@ -114,11 +114,10 @@ export class ProjectsManager {
    * exactly match the remote.
    */
   private async forcePullTemplate(templatePath: string): Promise<void> {
-    // Fetch the latest changes from remote (shallow fetch for efficiency)
+    // Fetch the latest changes from remote
     const fetchResult = await this.git.fetch({
       dir: templatePath,
       singleBranch: true,
-      depth: 1,
     });
 
     // Get the current branch name (e.g., "refs/heads/main")

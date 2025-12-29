@@ -716,32 +716,24 @@ export class Git {
     });
 
     // Fetch from clone URLs to get the repository objects
+    // This creates remote tracking branches (refs/remotes/origin/*)
     await this.nostrFetch(nostrURI, {
       ...options,
       remote,
     });
 
-    // The NIP-34 state event is the source of truth for repository state
-    // Set local branch refs to match the state event
-    for (const [name, value] of state.tags) {
-      if (name.startsWith('refs/heads/')) {
-        // Set local branch refs to match state event
-        await git.writeRef({
-          fs: this.fs,
-          dir: options.dir,
-          ref: name,
-          value,
-          force: true,
-        });
-      }
-    }
-
     // Checkout working directory if requested (extracts files from objects)
+    // When checking out a branch name that doesn't exist locally but exists as a remote tracking branch,
+    // checkout will automatically create the local branch and set up tracking configuration
     if (!options.noCheckout) {
+      // Extract the branch name from the ref (e.g., "refs/heads/main" -> "main")
+      const checkoutRef = headRef.startsWith('refs/heads/') ? headRef.substring(11) : headRef;
+
       await git.checkout({
         fs: this.fs,
         dir: options.dir,
-        ref: headRef,
+        ref: checkoutRef,
+        remote, // This tells checkout which remote to track
       });
     }
 
@@ -862,11 +854,7 @@ export class Git {
       fs: this.fs,
       dir: options.dir,
       path: `branch.${ref}.merge`,
-    });
-
-    if (!remoteRef) {
-      throw new Error(`No remote ref configured for branch ${ref}`);
-    }
+    }) || `refs/heads/${ref}`;
 
     // Convert the remote ref to the remote tracking branch
     // e.g., refs/heads/main -> refs/remotes/origin/main

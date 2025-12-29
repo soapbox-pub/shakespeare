@@ -454,6 +454,79 @@ describe('Git', () => {
         const currentBranch = await gitWithMock.currentBranch({ dir: '/nostr-repo-fallback' });
         expect(currentBranch).toBe('main');
       });
+
+      it('should set up branch tracking configuration after clone', async () => {
+        // Create a mock Git HTTP server
+        const mockServer = new MockGitHttpServer();
+        const mockRepo = createMockRepository();
+        mockServer.addRepository('https://git.example.com/user/repo', mockRepo);
+
+        // Create Nostr repository events
+        const repoEvent: NostrEvent = {
+          id: 'repo-event-id',
+          pubkey: testPubkey,
+          created_at: Math.floor(Date.now() / 1000),
+          kind: 30617,
+          tags: [
+            ['d', 'tracking-test-repo'],
+            ['clone', 'https://git.example.com/user/repo.git'],
+          ],
+          content: '',
+          sig: 'test-sig',
+        };
+
+        const stateEvent: NostrEvent = {
+          id: 'state-event-id',
+          pubkey: testPubkey,
+          created_at: Math.floor(Date.now() / 1000),
+          kind: 30618,
+          tags: [
+            ['d', 'tracking-test-repo'],
+            ['HEAD', 'ref: refs/heads/main'],
+            ['refs/heads/main', '2e538da98e06b91e70268817b0fa3f01aeeb003e'],
+          ],
+          content: '',
+          sig: 'test-sig',
+        };
+
+        vi.mocked(nostr.group).mockReturnValue({
+          query: vi.fn(async () => [repoEvent, stateEvent]),
+        } as unknown as ReturnType<NPool['group']>);
+
+        const gitWithMock = new Git({
+          fs,
+          nostr,
+          signer,
+          systemAuthor: { name: 'Test User', email: 'test@example.com' },
+          relayList: [{ url: new URL('wss://relay.example.com'), read: true, write: true }],
+          fetch: mockServer.fetch,
+        });
+
+        // Clone the repository
+        await gitWithMock.clone({
+          url: `nostr://${testNpub}/tracking-test-repo`,
+          dir: '/tracking-test-repo',
+          singleBranch: true,
+          depth: 1,
+        });
+
+        // Verify branch tracking configuration was set up
+        const branchRemote = await gitWithMock.getConfig({
+          dir: '/tracking-test-repo',
+          path: 'branch.main.remote',
+        });
+        expect(branchRemote).toBe('origin');
+
+        const branchMerge = await gitWithMock.getConfig({
+          dir: '/tracking-test-repo',
+          path: 'branch.main.merge',
+        });
+        expect(branchMerge).toBe('refs/heads/main');
+
+        // Verify that pull works without needing explicit remoteRef parameter
+        // This is the real test - pull should work because tracking is configured
+        await expect(gitWithMock.pull({ dir: '/tracking-test-repo' })).resolves.not.toThrow();
+      });
     });
 
     describe('nostr fetch', () => {

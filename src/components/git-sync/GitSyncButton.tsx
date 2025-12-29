@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CloudUpload } from 'lucide-react';
+import { CloudUpload, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useGitStatus } from '@/hooks/useGitStatus';
@@ -17,15 +17,22 @@ export function GitSyncButton({ projectId, className }: GitSyncButtonProps) {
   const [open, setOpen] = useState(false);
 
   const { data: gitStatus, isLoading: isGitStatusLoading } = useGitStatus(projectId);
-  const { getError } = useGitSyncState();
+  const { getError, getState } = useGitSyncState();
   const { projectsPath } = useFSPaths();
 
   const dir = `${projectsPath}/${projectId}`;
   const hasError = !!getError(dir);
+  const gitSyncState = getState(dir);
+  const isGitActionOccurring = gitSyncState?.isActive ?? false;
 
   // Determine which indicator to show (only one at a time, in priority order)
   const renderIndicator = () => {
-    // Red indicator: error state - highest priority
+    // Spinner: git action occurring - highest priority
+    if (isGitActionOccurring) {
+      return <IndicatorSpinner />;
+    }
+
+    // Red indicator: error state - second priority
     if (hasError) {
       return <IndicatorDot color="red" />;
     }
@@ -37,7 +44,7 @@ export function GitSyncButton({ projectId, className }: GitSyncButtonProps) {
 
     const { remoteBranchExists, ahead, behind, totalCommits } = gitStatus;
 
-    // Yellow indicator: unsynced changes (ahead or behind remote) - second priority
+    // Yellow indicator: unsynced changes (ahead or behind remote) - third priority
     const hasUnsyncedChanges = hasRemote && remoteBranchExists && (ahead > 0 || behind > 0);
     if (hasUnsyncedChanges) {
       return <IndicatorDot color="yellow" />;
@@ -86,5 +93,11 @@ function IndicatorDot({ color }: { color: 'primary' | 'yellow' | 'red' }) {
         'bg-red-500': color === 'red',
       },
     )} />
+  );
+}
+
+function IndicatorSpinner() {
+  return (
+    <Loader2 className="absolute top-1 right-1 size-2.5 animate-spin text-blue-500" />
   );
 }

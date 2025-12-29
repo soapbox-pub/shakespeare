@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useGit } from './useGit';
 import { useGitSyncState } from './useGitSyncState';
+import { useProjectSessionStatus } from './useProjectSessionStatus';
 
 interface GitSyncResult {
   defaultBranch: string | null;
@@ -15,9 +16,21 @@ export function useGitSync(dir: string | undefined, remote = 'origin') {
   const queryClient = useQueryClient();
   const { startOperation, endOperation, setError } = useGitSyncState();
 
+  // Extract project ID from directory path
+  const projectId = dir?.split('/').pop() || '';
+  const { hasRunningSessions } = useProjectSessionStatus(projectId);
+
   const query = useQuery({
     queryKey: ['git-sync', dir],
     queryFn: async (): Promise<GitSyncResult> => {
+      // Don't sync if project is currently generating
+      if (hasRunningSessions) {
+        return {
+          defaultBranch: null,
+          fetchHead: null,
+          fetchHeadDescription: null,
+        };
+      }
       const remotes = await git.listRemotes({ dir });
       const hasOrigin = !!remotes.find(r => r.remote === remote);
 
@@ -127,7 +140,7 @@ export function useGitSync(dir: string | undefined, remote = 'origin') {
         };
       }
     },
-    enabled: !!dir,
+    enabled: !!dir && !hasRunningSessions, // Don't sync while project is generating
     refetchInterval: 60000, // Sync every 60 seconds
     staleTime: 30000, // Consider data stale after 30 seconds
     retry: false, // Don't retry on failure

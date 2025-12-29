@@ -1,8 +1,10 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Zap, Copy, Check, RefreshCw, EllipsisVertical, CloudOff, ExternalLink, ChevronDown, ArrowDown, ArrowUp, LoaderCircle, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,6 +43,8 @@ export function SyncStep({ projectId, remoteUrl }: SyncStepProps) {
   const [showForcePullDialog, setShowForcePullDialog] = useState(false);
   const [showForcePushDialog, setShowForcePushDialog] = useState(false);
   const [gitHistoryOpen, setGitHistoryOpen] = useState(false);
+  const [autosync, setAutosync] = useState<boolean>(false);
+  const [isLoadingAutosync, setIsLoadingAutosync] = useState(true);
 
   const { data: gitStatus } = useGitStatus(projectId);
   const { settings } = useGitSettings();
@@ -54,6 +58,45 @@ export function SyncStep({ projectId, remoteUrl }: SyncStepProps) {
   const hasRemoteChanges = gitStatus?.remoteBranchExists && ((gitStatus?.ahead ?? 0) > 0 || (gitStatus?.behind ?? 0) > 0);
   const commitsAhead = gitStatus?.ahead ?? 0;
   const commitsBehind = gitStatus?.behind ?? 0;
+
+  // Load autosync config on mount
+  useEffect(() => {
+    const loadAutosync = async () => {
+      try {
+        const value = await git.getConfig({
+          dir,
+          path: 'shakespeare.autosync',
+        });
+        setAutosync(value === 'true');
+      } catch {
+        // Config not set, default to false
+        setAutosync(false);
+      } finally {
+        setIsLoadingAutosync(false);
+      }
+    };
+
+    loadAutosync();
+  }, [git, dir]);
+
+  // Handler to toggle autosync
+  const handleAutosyncToggle = async (checked: boolean) => {
+    try {
+      await git.setConfig({
+        dir,
+        path: 'shakespeare.autosync',
+        value: String(checked),
+      });
+      setAutosync(checked);
+
+      // If enabling autosync, trigger an immediate sync
+      if (checked) {
+        queryClient.invalidateQueries({ queryKey: ['git-sync', dir] });
+      }
+    } catch (error) {
+      console.error('Failed to set autosync config:', error);
+    }
+  };
 
   // Generic git operation handler
   const executeGitOperation = useCallback(async (
@@ -304,6 +347,19 @@ export function SyncStep({ projectId, remoteUrl }: SyncStepProps) {
             <ExternalLink className="h-4 w-4" />
           </Button>
         </div>
+      </div>
+
+      <div className="flex items-center gap-1.5">
+        <Switch
+          id="autosync"
+          checked={autosync}
+          onCheckedChange={handleAutosyncToggle}
+          disabled={isLoadingAutosync}
+          className="scale-75"
+        />
+        <Label htmlFor="autosync" className="text-xs cursor-pointer font-normal text-muted-foreground">
+          Automatic sync
+        </Label>
       </div>
 
       {error && (

@@ -15,6 +15,7 @@ import { useAIChat } from '@/hooks/useAIChat';
 import { useProviderModels } from '@/hooks/useProviderModels';
 import { useSessionManager } from '@/hooks/useSessionManager';
 import { useMCPTools } from '@/hooks/useMCPTools';
+import { useQueryClient } from '@tanstack/react-query';
 import { AIMessageItem } from '@/components/AIMessageItem';
 import { ToolCallDisplay } from '@/components/ToolCallDisplay';
 import { TextEditorViewTool } from '@/lib/tools/TextEditorViewTool';
@@ -87,6 +88,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   const { models } = useProviderModels();
   const { config } = useAppContext();
   const { projectsPath, tmpPath, pluginsPath } = useFSPaths();
+  const queryClient = useQueryClient();
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const [scrolledProjects] = useState(() => new Set<string>());
@@ -159,13 +161,19 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     sessionManager.emit('fileChanged', projectId, filePath);
   }, [sessionManager, projectId]);
 
+  // Callback to trigger sync after git commits
+  const handleCommit = useCallback(() => {
+    // Invalidate the git-sync query to trigger an immediate sync
+    queryClient.invalidateQueries({ queryKey: ['git-sync', cwd] });
+  }, [queryClient, cwd]);
+
   // Fetch MCP tools
   const { tools: mcpOpenAITools, clients: mcpClients } = useMCPTools();
 
   // Separate built-in tools from MCP tools for clarity
   const builtInTools = useMemo(() => {
     const tools: Record<string, Tool<unknown>> = {
-      git_commit: new GitCommitTool(fs, cwd, git),
+      git_commit: new GitCommitTool(fs, cwd, git, { onCommit: handleCommit }),
       text_editor_view: new TextEditorViewTool(fs, cwd, { projectsPath }),
       text_editor_write: new TextEditorWriteTool(fs, cwd, { projectsPath, tmpPath, onFileChanged: handleFileChanged }),
       text_editor_str_replace: new TextEditorStrReplaceTool(fs, cwd, { projectsPath, tmpPath, onFileChanged: handleFileChanged }),
@@ -234,7 +242,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     }
 
     return tools;
-  }, [fs, git, cwd, user, projectsPath, tmpPath, pluginsPath, config.corsProxy, settings, aiSettings, models, handleFileChanged]);
+  }, [fs, git, cwd, user, projectsPath, tmpPath, pluginsPath, config.corsProxy, settings, aiSettings, models, handleFileChanged, handleCommit]);
 
   // MCP tools wrapped for execution
   const mcpToolWrappers = useMemo(() => createMCPTools(mcpClients), [mcpClients]);

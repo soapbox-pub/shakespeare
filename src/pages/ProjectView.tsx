@@ -26,7 +26,7 @@ import { useConsoleError } from '@/hooks/useConsoleError';
 import { useAutoBuild } from '@/hooks/useAutoBuild';
 import { useToast } from '@/hooks/useToast';
 import { useFSPaths } from '@/hooks/useFSPaths';
-import { useGitFetch } from '@/hooks/useGitFetch';
+import { useGitSync } from '@/hooks/useGitSync';
 import { useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { useProjectSessionStatus } from '@/hooks/useProjectSessionStatus';
@@ -62,8 +62,8 @@ export function ProjectView() {
   const { data: isPreviewable = false } = useIsProjectPreviewable(projectId!);
   const { hasRunningSessions } = useProjectSessionStatus(projectId || '');
 
-  // Automatically fetch from remote to keep git status updated
-  useGitFetch(projectId ? `${projectsPath}/${projectId}` : undefined);
+  // Automatically sync with remote to keep git status updated
+  useGitSync(projectId ? `${projectsPath}/${projectId}` : undefined);
 
   // Enable auto-build for previewable projects
   useAutoBuild({

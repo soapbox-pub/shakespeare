@@ -12,6 +12,7 @@ export class GitCommitTool implements Tool<GitCommitParams> {
   private fs: JSRuntimeFS;
   private git: Git;
   private cwd: string;
+  private onCommit?: () => void;
 
   readonly description = "Commit changes to git with a commit message. Automatically adds all unstaged files.";
 
@@ -19,10 +20,11 @@ export class GitCommitTool implements Tool<GitCommitParams> {
     message: z.string().describe('Commit message text'),
   });
 
-  constructor(fs: JSRuntimeFS, cwd: string, git: Git) {
+  constructor(fs: JSRuntimeFS, cwd: string, git: Git, options?: { onCommit?: () => void }) {
     this.fs = fs;
     this.git = git;
     this.cwd = cwd;
+    this.onCommit = options?.onCommit;
   }
 
   async execute(args: GitCommitParams): Promise<ToolResult> {
@@ -132,6 +134,11 @@ export class GitCommitTool implements Tool<GitCommitParams> {
       if (addedFiles > 0) details += `  • ${addedFiles} file${addedFiles !== 1 ? 's' : ''} added\n`;
       if (modifiedFiles > 0) details += `  • ${modifiedFiles} file${modifiedFiles !== 1 ? 's' : ''} modified\n`;
       if (deletedFiles > 0) details += `  • ${deletedFiles} file${deletedFiles !== 1 ? 's' : ''} deleted\n`;
+
+      // Trigger sync callback if provided
+      if (this.onCommit) {
+        this.onCommit();
+      }
 
       return { content: `${summary}\n\n${details}` };
     } catch (error) {

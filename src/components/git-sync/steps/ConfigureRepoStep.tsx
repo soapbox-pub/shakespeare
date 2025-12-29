@@ -193,6 +193,13 @@ export function ConfigureRepoStep({
         });
       }
 
+      // Enable autosync by default after successfully setting up the remote
+      await git.setConfig({
+        dir,
+        path: 'shakespeare.autosync',
+        value: 'true',
+      });
+
       // Refresh git status before showing success
       await refetchGitStatus();
       // Show success state

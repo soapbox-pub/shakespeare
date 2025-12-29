@@ -53,5 +53,6 @@ export function useGitAutosync(dir: string | undefined) {
     isLoading: query.isLoading,
     setAutosync: mutation.mutateAsync,
     isUpdating: mutation.isPending,
+    refetch: query.refetch,
   };
 }

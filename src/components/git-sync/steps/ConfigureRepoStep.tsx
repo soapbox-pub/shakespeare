@@ -18,6 +18,7 @@ import { nip19 } from 'nostr-tools';
 import type { ConfigureRepoStepProps } from '../types';
 import type { NostrEvent } from '@nostrify/nostrify';
 import { NostrURI } from '@/lib/NostrURI';
+import { useGitAutosync } from '@/hooks/useGitAutosync';
 
 export function ConfigureRepoStep({
   projectId,
@@ -33,7 +34,11 @@ export function ConfigureRepoStep({
   const { user } = useCurrentUser();
   const { git } = useGit();
   const { projectsPath } = useFSPaths();
+
+  const dir = `${projectsPath}/${projectId}`;
+
   const { data: gitStatus, refetch: refetchGitStatus } = useGitStatus(projectId);
+  const { refetch: refetchAutosync } = useGitAutosync(dir);
   const { nostr } = useNostr();
   const { mutateAsync: publishEvent } = useNostrPublish();
   const { fs } = useFS();
@@ -44,8 +49,6 @@ export function ConfigureRepoStep({
     setError(null);
 
     try {
-      const dir = `${projectsPath}/${projectId}`;
-
       if (selectedProvider.id === 'nostr') {
         if (!user) {
           throw new Error('User is not logged in');
@@ -201,6 +204,7 @@ export function ConfigureRepoStep({
       });
 
       // Refresh git status before showing success
+      await refetchAutosync();
       await refetchGitStatus();
       // Show success state
       onSuccess();

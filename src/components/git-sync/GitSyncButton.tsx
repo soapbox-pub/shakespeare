@@ -98,6 +98,6 @@ function IndicatorDot({ color }: { color: 'primary' | 'yellow' | 'red' }) {
 
 function IndicatorSpinner() {
   return (
-    <Loader2 className="absolute top-1 right-1 size-2.5 animate-spin text-blue-500" />
+    <Loader2 className="absolute top-1 right-1 size-2.5 animate-spin text-blue-600 dark:text-blue-400" />
   );
 }

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -19,6 +19,15 @@ import type { ConfigureRepoStepProps } from '../types';
 import type { NostrEvent } from '@nostrify/nostrify';
 import { NostrURI } from '@/lib/NostrURI';
 import { useGitAutosync } from '@/hooks/useGitAutosync';
+import { ArrowUp } from 'lucide-react';
+
+// Helper function to convert kebab-case to Title Case
+function kebabToTitleCase(str: string): string {
+  return str
+    .split('-')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
 
 export function ConfigureRepoStep({
   projectId,
@@ -28,6 +37,9 @@ export function ConfigureRepoStep({
   onClose,
 }: ConfigureRepoStepProps) {
   const [repositoryUrl, setRepositoryUrl] = useState('');
+  const [repoIdentifier, setRepoIdentifier] = useState(projectId);
+  const [repoName, setRepoName] = useState(kebabToTitleCase(projectId));
+  const [isRepoNameManuallyEdited, setIsRepoNameManuallyEdited] = useState(false);
   const [isPushing, setIsPushing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -44,6 +56,24 @@ export function ConfigureRepoStep({
   const { fs } = useFS();
   const { config } = useAppContext();
 
+  // Auto-update repo name when repo identifier changes (unless manually edited)
+  useEffect(() => {
+    if (!isRepoNameManuallyEdited) {
+      setRepoName(kebabToTitleCase(repoIdentifier));
+    }
+  }, [repoIdentifier, isRepoNameManuallyEdited]);
+
+  // Handler for repo identifier changes
+  const handleRepoIdentifierChange = (value: string) => {
+    setRepoIdentifier(value);
+  };
+
+  // Handler for repo name changes
+  const handleRepoNameChange = (value: string) => {
+    setRepoName(value);
+    setIsRepoNameManuallyEdited(true);
+  };
+
   const handlePushInitial = async () => {
     setIsPushing(true);
     setError(null);
@@ -56,7 +86,7 @@ export function ConfigureRepoStep({
 
         // Check if a NIP-34 repo announcement already exists for this project
         const existingRepos = await nostr.query(
-          [{ kinds: [30617], authors: [user.pubkey], '#d': [projectId], limit: 1 }],
+          [{ kinds: [30617], authors: [user.pubkey], '#d': [repoIdentifier], limit: 1 }],
           { signal: AbortSignal.timeout(5000) }
         );
 
@@ -70,7 +100,7 @@ export function ConfigureRepoStep({
             const relayUrl = new URL(graspRelay.url);
             relays.add(relayUrl.href);
 
-            const cloneUrl = new URL(`/${npub}/${projectId}.git`, `https://${relayUrl.host}`);
+            const cloneUrl = new URL(`/${npub}/${repoIdentifier}.git`, `https://${relayUrl.host}`);
 
             cloneUrls.add(cloneUrl.href);
           } catch {
@@ -99,7 +129,6 @@ export function ConfigureRepoStep({
           const existingEvent = existingRepos[0];
 
           // Extract existing data from the event
-          const name = existingEvent.tags.find(([tagName]) => tagName === 'name')?.[1];
           const description = existingEvent.tags.find(([tagName]) => tagName === 'description')?.[1];
           const webTag = existingEvent.tags.find(([tagName]) => tagName === 'web');
           const webUrls = webTag ? webTag.slice(1) : undefined;
@@ -111,8 +140,8 @@ export function ConfigureRepoStep({
 
           // Create updated repository announcement event with new clone URLs and relays
           const eventTemplate = createRepositoryAnnouncementEvent({
-            repoId: projectId,
-            name,
+            repoId: repoIdentifier,
+            name: repoName,
             description,
             webUrls,
             cloneUrls: [...cloneUrls].slice(0, 10), // Limit to first 10 clone URLs
@@ -139,8 +168,8 @@ export function ConfigureRepoStep({
 
           // Create the repository announcement event
           const eventTemplate = createRepositoryAnnouncementEvent({
-            repoId: projectId,
-            name: projectId,
+            repoId: repoIdentifier,
+            name: repoName,
             cloneUrls: [...cloneUrls],
             relays: [...relays],
             tTags,
@@ -156,7 +185,7 @@ export function ConfigureRepoStep({
         // Construct Nostr URI
         const nostrURI = new NostrURI({
           pubkey: repoEvent.pubkey,
-          identifier: projectId,
+          identifier: repoIdentifier,
           relay: [...relays][0],
         });
 
@@ -292,6 +321,27 @@ export function ConfigureRepoStep({
           Push your code to Nostr with one click. Your repository will be stored on public Nostr git <Link className="underline" to="/settings/nostr">servers</Link>.
         </p>
 
+        <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-2">
+            <Label htmlFor="repo-identifier">Repo Identifier <span className="text-destructive">*</span></Label>
+            <Input
+              id="repo-identifier"
+              placeholder="my-project"
+              value={repoIdentifier}
+              onChange={(e) => handleRepoIdentifierChange(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="repo-name">Repo Name</Label>
+            <Input
+              id="repo-name"
+              placeholder="My Project"
+              value={repoName}
+              onChange={(e) => handleRepoNameChange(e.target.value)}
+            />
+          </div>
+        </div>
+
         {error && (
           <Alert variant="destructive">
             <AlertDescription className="text-sm">{error}</AlertDescription>
@@ -304,14 +354,10 @@ export function ConfigureRepoStep({
             disabled={isPushing}
             className="flex-1"
           >
-            {isPushing ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2" />
-                Pushing...
-              </>
-            ) : (
-              'Push'
-            )}
+            {isPushing
+              ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2" />
+              : <ArrowUp className="h-4 w-4" />}
+            {isPushing ? 'Pushing...' : 'Push'}
           </Button>
         </div>
       </div>

@@ -967,7 +967,7 @@ export class Git {
     }
 
     // Republish repo announcement event
-    await this.nostr.event(repo);
+    await this.nostr.event(repo, { signal: AbortSignal.timeout(5000) });
 
     // Construct the state event (kind 30618)
     const stateEvent = await this.signer.signEvent({
@@ -978,13 +978,13 @@ export class Git {
     });
 
     // Publish the state event to Nostr
-    await this.nostr.event(stateEvent);
+    await this.nostr.event(stateEvent, { signal: AbortSignal.timeout(5000) });
 
     // Push to each clone URL
     const pushResults = await Promise.allSettled(
       cloneUrls.map((url) =>
         Promise.race([
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Push to Nostr clone URL timed out')), 30_000)),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Push to Nostr clone URL timed out')), 60_000)),
           git.push({
             ...options,
             fs: this.fs,

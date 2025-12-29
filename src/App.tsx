@@ -21,6 +21,7 @@ import { DeploySettingsProvider } from '@/components/DeploySettingsProvider';
 import { SessionManagerProvider } from '@/components/SessionManagerProvider';
 import { FSProvider } from '@/components/FSProvider';
 import { ConsoleErrorProvider } from '@/components/ConsoleErrorProvider';
+import { GitSyncProvider } from '@/components/GitSyncProvider';
 import { LightningFSAdapter } from '@/lib/LightningFSAdapter';
 import { ElectronFSAdapter } from '@/lib/ElectronFSAdapter';
 import { cleanupTmpDirectory } from '@/lib/tmpCleanup';
@@ -202,17 +203,19 @@ export function App() {
                       <AISettingsProvider>
                         <GitSettingsProvider>
                           <DeploySettingsProvider>
-                            <SessionManagerProvider>
-                              <TooltipProvider>
-                                <Toaster />
-                                <DynamicFavicon />
-                                <OfflineIndicator />
-                                <PWAUpdatePrompt />
-                                <Suspense>
-                                  <AppRouter />
-                                </Suspense>
-                              </TooltipProvider>
-                            </SessionManagerProvider>
+                            <GitSyncProvider>
+                              <SessionManagerProvider>
+                                <TooltipProvider>
+                                  <Toaster />
+                                  <DynamicFavicon />
+                                  <OfflineIndicator />
+                                  <PWAUpdatePrompt />
+                                  <Suspense>
+                                    <AppRouter />
+                                  </Suspense>
+                                </TooltipProvider>
+                              </SessionManagerProvider>
+                            </GitSyncProvider>
                           </DeploySettingsProvider>
                         </GitSettingsProvider>
                       </AISettingsProvider>

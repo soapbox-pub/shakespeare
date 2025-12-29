@@ -22,20 +22,16 @@ import { useGitSettings } from '@/hooks/useGitSettings';
 import { useGit } from '@/hooks/useGit';
 import { useFSPaths } from '@/hooks/useFSPaths';
 import { useAppContext } from '@/hooks/useAppContext';
+import { useGitSyncState } from '@/hooks/useGitSyncState';
 import type { SyncStepProps } from '../types';
 import { cn } from '@/lib/utils';
 import { NostrURI } from '@/lib/NostrURI';
 import { ngitWebUrl } from '@/lib/ngitWebUrl';
-import { useQueryClient } from '@tanstack/react-query';
 import { findCredentialsForRepo } from '@/lib/gitCredentials';
-
-type GitOperation = 'sync' | 'pull' | 'push' | 'force-pull' | 'force-push';
 
 export function SyncStep({ projectId, remoteUrl }: SyncStepProps) {
   const queryClient = useQueryClient();
 
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [currentOperation, setCurrentOperation] = useState<GitOperation | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const [copiedUrl, setCopiedUrl] = useState(false);
   const [syncSuccess, setSyncSuccess] = useState(false);
@@ -51,9 +47,15 @@ export function SyncStep({ projectId, remoteUrl }: SyncStepProps) {
   const { git } = useGit();
   const { projectsPath } = useFSPaths();
   const { config } = useAppContext();
+  const { getState, startOperation, endOperation } = useGitSyncState();
 
   const dir = `${projectsPath}/${projectId}`;
   const ref = gitStatus?.currentBranch || 'main';
+
+  // Get unified sync state
+  const syncState = getState(dir);
+  const isSyncing = syncState?.isActive || false;
+  const currentOperation = syncState?.operation || null;
 
   const hasRemoteChanges = gitStatus?.remoteBranchExists && ((gitStatus?.ahead ?? 0) > 0 || (gitStatus?.behind ?? 0) > 0);
   const commitsAhead = gitStatus?.ahead ?? 0;
@@ -100,13 +102,14 @@ export function SyncStep({ projectId, remoteUrl }: SyncStepProps) {
 
   // Generic git operation handler
   const executeGitOperation = useCallback(async (
-    operation: GitOperation,
+    operation: 'pull' | 'push' | 'force-pull' | 'force-push',
     action: () => Promise<void>
   ) => {
     if (!remoteUrl) return;
 
-    setIsSyncing(true);
-    setCurrentOperation(operation);
+    const gitOp = operation === 'force-pull' ? 'pull' : operation === 'force-push' ? 'push' : operation;
+
+    startOperation(dir, gitOp);
     setError(null);
     setSyncSuccess(false);
 
@@ -121,23 +124,42 @@ export function SyncStep({ projectId, remoteUrl }: SyncStepProps) {
       const message = err instanceof Error ? err : new Error(`Failed to ${operation}`);
       setError(message);
     } finally {
-      setIsSyncing(false);
-      setCurrentOperation(null);
+      endOperation(dir);
     }
 
     // Invalidate git status to refresh UI
     queryClient.invalidateQueries({ queryKey: ['git-status', projectId] });
-  }, [projectId, queryClient, remoteUrl]);
+  }, [projectId, queryClient, remoteUrl, dir, startOperation, endOperation]);
 
   const handleSync = async () => {
-    await executeGitOperation('sync', async () => {
+    if (!remoteUrl) return;
+
+    setError(null);
+    setSyncSuccess(false);
+
+    try {
       // Pull first to get latest changes
-      setCurrentOperation('pull');
+      startOperation(dir, 'pull');
       await git.pull({ dir, ref, singleBranch: true });
+      endOperation(dir);
+
       // Then push local changes
-      setCurrentOperation('push');
+      startOperation(dir, 'push');
       await git.push({ dir, remote: 'origin', ref });
-    });
+      endOperation(dir);
+
+      // Show success feedback
+      setSyncSuccess(true);
+      setTimeout(() => setSyncSuccess(false), 2500);
+    } catch (err) {
+      endOperation(dir);
+      console.warn(err);
+      const message = err instanceof Error ? err : new Error('Failed to sync');
+      setError(message);
+    }
+
+    // Invalidate git status to refresh UI
+    queryClient.invalidateQueries({ queryKey: ['git-status', projectId] });
   };
 
   const handlePull = async () => {
@@ -275,18 +297,14 @@ export function SyncStep({ projectId, remoteUrl }: SyncStepProps) {
     if (!isSyncing) return 'Sync';
 
     switch (currentOperation) {
+      case 'fetch':
+        return 'Fetching';
       case 'pull':
-        return 'Pull';
+        return 'Pulling';
       case 'push':
-        return 'Push';
-      case 'force-pull':
-        return 'Force Pull';
-      case 'force-push':
-        return 'Force Push';
-      case 'sync':
-        return 'Sync';
+        return 'Pushing';
       default:
-        return 'Sync';
+        return 'Syncing';
     }
   };
 
@@ -432,7 +450,7 @@ export function SyncStep({ projectId, remoteUrl }: SyncStepProps) {
                   disabled={isSyncing}
                   className="w-full"
                 >
-                  {currentOperation === 'pull' || currentOperation === 'force-pull' ? (
+                  {currentOperation === 'pull' ? (
                     <LoaderCircle className="h-4 w-4 animate-spin" />
                   ) : (
                     <ArrowDown className="h-4 w-4" />
@@ -447,7 +465,7 @@ export function SyncStep({ projectId, remoteUrl }: SyncStepProps) {
                   disabled={isSyncing}
                   className="w-full"
                 >
-                  {currentOperation === 'push' || currentOperation === 'force-push' ? (
+                  {currentOperation === 'push' ? (
                     <LoaderCircle className="h-4 w-4 animate-spin" />
                   ) : (
                     <ArrowUp className="h-4 w-4" />

@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useGit } from './useGit';
+import { useGitSyncState } from './useGitSyncState';
 
 interface GitSyncResult {
   defaultBranch: string | null;
@@ -12,6 +13,7 @@ interface GitSyncResult {
 export function useGitSync(dir: string | undefined, remote = 'origin') {
   const { git } = useGit();
   const queryClient = useQueryClient();
+  const { startOperation, endOperation } = useGitSyncState();
 
   const query = useQuery({
     queryKey: ['git-sync', dir],
@@ -35,10 +37,12 @@ export function useGitSync(dir: string | undefined, remote = 'origin') {
         });
 
         // Always fetch to update remote tracking
+        startOperation(dir, 'fetch');
         const fetchResult = await git.fetch({
           dir,
           remote,
         });
+        endOperation(dir);
 
         let didPull = false;
         let didPush = false;
@@ -48,17 +52,20 @@ export function useGitSync(dir: string | undefined, remote = 'origin') {
           try {
             // Get current branch
             const currentBranch = await git.currentBranch({ dir });
-            
+
             if (currentBranch) {
               // Pull changes from remote
               try {
-                await git.pull({ 
-                  dir, 
+                startOperation(dir, 'pull');
+                await git.pull({
+                  dir,
                   ref: currentBranch,
                   singleBranch: true,
                 });
                 didPull = true;
+                endOperation(dir);
               } catch (pullError) {
+                endOperation(dir);
                 // Pull might fail if there are conflicts or diverged branches
                 // Don't throw - just log and continue
                 console.warn('Auto-pull failed:', pullError);
@@ -66,13 +73,16 @@ export function useGitSync(dir: string | undefined, remote = 'origin') {
 
               // Push local changes to remote
               try {
-                await git.push({ 
-                  dir, 
-                  remote, 
+                startOperation(dir, 'push');
+                await git.push({
+                  dir,
+                  remote,
                   ref: currentBranch,
                 });
                 didPush = true;
+                endOperation(dir);
               } catch (pushError) {
+                endOperation(dir);
                 // Push might fail if there are conflicts or no changes
                 // Don't throw - just log and continue
                 console.warn('Auto-push failed:', pushError);
@@ -97,6 +107,7 @@ export function useGitSync(dir: string | undefined, remote = 'origin') {
           didPush,
         };
       } catch (error) {
+        endOperation(dir);
         // Fetch/sync failed, but don't throw - just log and return null
         console.warn('Git sync failed:', error);
         return {

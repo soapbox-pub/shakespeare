@@ -61,11 +61,6 @@ export class Git {
     }
   }
 
-  // Get HTTP adapter without proxy
-  private get httpNoProxy(): HttpClient {
-    return new GitHttp(undefined, this.customFetch);
-  }
-
   // Get HTTP adapter for the given URL
   private httpForUrl(url: string | null | undefined): HttpClient {
     if (!url || url.startsWith('nostr://')) {
@@ -811,7 +806,7 @@ export class Git {
           git.fetch({
             ...options,
             fs: this.fs,
-            http: this.httpNoProxy,
+            http: this.httpForUrl(url),
             url,
             remote,
           }),
@@ -997,7 +992,7 @@ export class Git {
           git.push({
             ...options,
             fs: this.fs,
-            http: this.httpNoProxy,
+            http: this.httpForUrl(url),
             onAuth: this.onAuth,
             url,
             dir,

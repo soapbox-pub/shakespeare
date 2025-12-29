@@ -45,7 +45,7 @@ export function SyncStep({ projectId, remoteUrl }: SyncStepProps) {
   const { git } = useGit();
   const { projectsPath } = useFSPaths();
   const { config } = useAppContext();
-  const { getState, getError, startOperation, endOperation, setError: setGlobalError } = useGitSyncState();
+  const gitSync = useGitSyncState();
 
   const dir = `${projectsPath}/${projectId}`;
   const ref = gitStatus?.currentBranch || 'main';
@@ -54,30 +54,26 @@ export function SyncStep({ projectId, remoteUrl }: SyncStepProps) {
   const { autosync, isLoading: isLoadingAutosync, setAutosync } = useGitAutosync(dir);
 
   // Get unified sync state and error
-  const syncState = getState(dir);
+  const syncState = gitSync.getState(dir);
   const isSyncing = syncState?.isActive || false;
   const currentOperation = syncState?.operation || null;
-  const error = getError(dir) || null;
-
-  // Helper to set error for this directory
-  const setError = useCallback((err: Error | null) => {
-    setGlobalError(dir, err);
-  }, [dir, setGlobalError]);
+  const error = gitSync.getError(dir) || null;
 
   const hasRemoteChanges = gitStatus?.remoteBranchExists && ((gitStatus?.ahead ?? 0) > 0 || (gitStatus?.behind ?? 0) > 0);
   const commitsAhead = gitStatus?.ahead ?? 0;
   const commitsBehind = gitStatus?.behind ?? 0;
 
-  // Generic git operation handler
+  // Helper to set error for this directory
+  const setError = useCallback((err: Error | null) => {
+    gitSync.setError(dir, err);
+  }, [dir, gitSync]);
+
+  // Generic git operation handler with success feedback
   const executeGitOperation = useCallback(async (
-    operation: 'pull' | 'push' | 'force-pull' | 'force-push',
     action: () => Promise<void>
   ) => {
     if (!remoteUrl) return;
 
-    const gitOp = operation === 'force-pull' ? 'pull' : operation === 'force-push' ? 'push' : operation;
-
-    startOperation(dir, gitOp);
     setError(null);
     setSyncSuccess(false);
 
@@ -87,98 +83,30 @@ export function SyncStep({ projectId, remoteUrl }: SyncStepProps) {
       // Show success feedback
       setSyncSuccess(true);
       setTimeout(() => setSyncSuccess(false), 2500);
-
-      // Clear error on success
-      endOperation(dir);
     } catch (err) {
       console.warn(err);
-      const message = err instanceof Error ? err : new Error(`Failed to ${operation}`);
-      endOperation(dir, message);
-      setError(message);
+      // Error is already set by the provider
     }
-
-    // Invalidate git status to refresh UI
-    queryClient.invalidateQueries({ queryKey: ['git-status', projectId] });
-  }, [projectId, queryClient, remoteUrl, dir, startOperation, endOperation, setError]);
+  }, [remoteUrl, setError]);
 
   const handleSync = async () => {
-    if (!remoteUrl) return;
-
-    setError(null);
-    setSyncSuccess(false);
-
-    try {
-      // Pull first to get latest changes
-      startOperation(dir, 'pull');
-      await git.pull({ dir, ref, singleBranch: true });
-      endOperation(dir);
-
-      // Then push local changes
-      startOperation(dir, 'push');
-      await git.push({ dir, remote: 'origin', ref });
-      endOperation(dir);
-
-      // Show success feedback
-      setSyncSuccess(true);
-      setTimeout(() => setSyncSuccess(false), 2500);
-    } catch (err) {
-      console.warn(err);
-      const message = err instanceof Error ? err : new Error('Failed to sync');
-      endOperation(dir, message);
-      setError(message);
-    }
-
-    // Invalidate git status to refresh UI
-    queryClient.invalidateQueries({ queryKey: ['git-status', projectId] });
+    await executeGitOperation(() => gitSync.sync(dir, ref));
   };
 
   const handlePull = async () => {
-    await executeGitOperation('pull', async () => {
-      await git.pull({ dir, ref, singleBranch: true });
-    });
+    await executeGitOperation(() => gitSync.pull(dir, ref));
   };
 
   const handlePush = async () => {
-    await executeGitOperation('push', async () => {
-      await git.push({ dir, remote: 'origin', ref });
-    });
+    await executeGitOperation(() => gitSync.push(dir, ref));
   };
 
   const handleForcePull = async () => {
-    await executeGitOperation('force-pull', async () => {
-      // Step 1: Fetch latest changes from remote
-      await git.fetch({
-        dir,
-        remote: 'origin',
-        ref,
-        singleBranch: true,
-      });
-
-      // Step 2: Get the remote commit SHA
-      const remoteRef = `refs/remotes/origin/${ref}`;
-      const remoteSha = await git.resolveRef({ dir, ref: remoteRef });
-
-      // Step 3: Force update the current branch to point to remote
-      await git.writeRef({
-        dir,
-        ref: `refs/heads/${ref}`,
-        value: remoteSha,
-        force: true,
-      });
-
-      // Step 4: Force checkout all files (overwrite local changes)
-      await git.checkout({
-        dir,
-        ref,
-        force: true,
-      });
-    });
+    await executeGitOperation(() => gitSync.forcePull(dir, ref));
   };
 
   const handleForcePush = async () => {
-    await executeGitOperation('force-push', async () => {
-      await git.push({ dir, remote: 'origin', ref, force: true });
-    });
+    await executeGitOperation(() => gitSync.forcePush(dir, ref));
   };
 
   // Temporary feedback state helper

@@ -115,7 +115,7 @@ export const ChatInput = memo(function ChatInput({
                 : t('selectModelFirst')
           }
           className="flex-1 resize-none border-0 bg-transparent px-4 py-3 text-sm focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground"
-          disabled={isLoadingSettings || isLoading || (isConfigured && !providerModel.trim())}
+          disabled={isLoadingSettings || (isConfigured && !providerModel.trim())}
           rows={1}
           aria-label="Chat message input"
           style={{
@@ -136,7 +136,7 @@ export const ChatInput = memo(function ChatInput({
             onFileSelect={handleFileSelect}
             onFileRemove={handleFileRemove}
             selectedFiles={attachedFiles}
-            disabled={isLoadingSettings || isLoading}
+            disabled={isLoadingSettings}
             multiple={true}
           />
 
@@ -185,7 +185,7 @@ export const ChatInput = memo(function ChatInput({
             <ModelSelector
               value={providerModel}
               onChange={onProviderModelChange}
-              disabled={isLoadingSettings || isLoading}
+              disabled={isLoadingSettings}
               placeholder={t('chooseModel')}
               open={isModelSelectorOpen}
               onOpenChange={onModelSelectorOpenChange}

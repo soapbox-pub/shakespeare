@@ -157,7 +157,9 @@ export function SyncStepError({ error, onDismiss, onForcePull, onForcePush, onPu
   return (
     <Alert variant="destructive">
       <div className="flex items-start justify-between gap-2">
-        <AlertDescription className="text-sm flex-1">{error.message}</AlertDescription>
+        <AlertDescription className="text-sm flex-1 whitespace-pre overflow-x-auto">
+          {error.message}
+        </AlertDescription>
         {renderDismissButton()}
       </div>
     </Alert>

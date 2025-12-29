@@ -885,7 +885,15 @@ export class Git {
       throw new Error('Repository not found on Nostr network');
     }
 
-    const cloneUrls = repo.tags.find(([name]) => name === 'clone')?.slice(1) ?? [];
+    const cloneUrls = (repo.tags.find(([name]) => name === 'clone')?.slice(1) ?? [])
+      .map((url) => {
+        try {
+          return new URL(url);
+        } catch {
+          return null;
+        }
+      })
+      .filter((url): url is URL => url !== null);
 
     if (cloneUrls.length === 0) {
       throw new Error('No clone URLs found in repository announcement');
@@ -980,9 +988,9 @@ export class Git {
           git.push({
             ...options,
             fs: this.fs,
-            http: this.httpForUrl(url),
+            http: this.httpForUrl(url.href),
             onAuth: this.onAuth,
-            url,
+            url: url.href,
             dir,
           }),
         ])
@@ -999,9 +1007,9 @@ export class Git {
         if (result.status === 'rejected') {
           const error = result.reason;
           const errorMessage = error instanceof Error ? error.message : String(error);
-          return `  - ${url}: ${errorMessage}`;
+          return `  - ${url.host}: ${errorMessage}`;
         }
-        return `  - ${url}: Unknown error`;
+        return `  - ${url.host}: Unknown error`;
       }).join('\n');
 
       throw new Error(`Failed to push to any clone URLs:\n${errorDetails}`);

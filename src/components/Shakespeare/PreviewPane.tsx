@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { FolderOpen, ArrowLeft, Bug, Copy, Check, Loader2, Code, X, Terminal, Expand, Shrink, Hammer } from 'lucide-react';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { GitStatusIndicator } from '@/components/GitStatusIndicator';
+import { BranchSwitcher } from '@/components/BranchSwitcher';
 import { BrowserAddressBar } from '@/components/ui/browser-address-bar';
 import { type DeviceMode } from '@/components/ui/device-toggle';
 import {
@@ -730,8 +731,24 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
         <TabsContent value="code" className="h-full mt-0">
           {isMobile ? (
             <div className="h-full flex flex-col min-h-0">
+              {/* Mobile Code view header */}
+              <div className="h-12 px-4 border-b flex items-center bg-gradient-to-r from-muted/20 to-background flex-shrink-0">
+                <BranchSwitcher projectId={projectId} />
+                <div className="flex-1" />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setMobileCodeView(mobileCodeView === 'terminal' ? 'explorer' : 'terminal')}
+                  className="gap-2 text-muted-foreground hover:text-foreground"
+                >
+                  <Terminal className="h-4 w-4" />
+                  <span className="hidden sm:inline">Terminal</span>
+                </Button>
+                <GitStatusIndicator projectId={projectId} />
+              </div>
+
               {mobileCodeView === 'explorer' ? (
-                <div className="flex-1 relative min-h-0">
+                <div className="flex-1 min-h-0">
                   <ScrollArea className="h-full">
                     <ScrollBar orientation="horizontal" />
                     <div className="min-w-max">
@@ -742,35 +759,11 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
                       />
                     </div>
                   </ScrollArea>
-                  {/* Floating Terminal Button */}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setMobileCodeView('terminal')}
-                    className="fixed right-4 bottom-14 mb-safe z-20 size-12 p-0 rounded-full shadow-lg bg-background border-2"
-                  >
-                    <Terminal className="h-6 w-6" />
-                  </Button>
                 </div>
               ) : mobileCodeView === 'terminal' ? (
-                <>
-                  <div className="h-12 px-3 flex items-center gap-2 bg-black text-purple-400 flex-shrink-0">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setMobileCodeView('explorer')}
-                      className="p-1 hover:bg-transparent hover:text-white"
-                    >
-                      <ArrowLeft className="h-4 w-4" />
-                    </Button>
-                    <h3 className="font-semibold">
-                      Terminal
-                    </h3>
-                  </div>
-                  <div className="flex-1 min-h-0">
-                    <TerminalComponent cwd={`${projectsPath}/${projectId}`} />
-                  </div>
-                </>
+                <div className="flex-1 min-h-0">
+                  <TerminalComponent cwd={`${projectsPath}/${projectId}`} />
+                </div>
               ) : (
                 <>
                   <div className="p-3 border-b bg-gradient-to-r from-primary/5 to-accent/5 flex items-center gap-2">
@@ -822,7 +815,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
             <div className="h-full flex flex-col">
               {/* Code view header with back button */}
               {!isMobile && onToggleView && isPreviewable && (
-                <div className="h-12 px-4 border-b flex items-center bg-gradient-to-r from-muted/20 to-background">
+                <div className="h-12 px-4 border-b flex items-center bg-gradient-to-r from-muted/20 to-background gap-3">
                   <Button
                     variant="ghost"
                     size="sm"
@@ -833,6 +826,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
                     {t('backToPreview')}
                   </Button>
                   <div className="flex-1" />
+                  <BranchSwitcher projectId={projectId} />
                   <Button
                     variant="ghost"
                     size="sm"
@@ -842,12 +836,14 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
                     <Terminal className="h-4 w-4" />
                     <span className="hidden lg:inline">Terminal</span>
                   </Button>
+                  <GitStatusIndicator projectId={projectId} />
                 </div>
               )}
               {/* Code view header without back button for non-previewable projects */}
               {!isMobile && !isPreviewable && (
                 <div className="h-12 px-4 border-b flex items-center bg-gradient-to-r from-muted/20 to-background">
                   <div className="flex-1" />
+                  <BranchSwitcher projectId={projectId} />
                   <Button
                     variant="ghost"
                     size="sm"

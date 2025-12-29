@@ -20,7 +20,6 @@ import { DuplicateProjectDialog } from '@/components/DuplicateProjectDialog';
 import { GitStatusIndicator } from '@/components/GitStatusIndicator';
 import { GitSyncButton } from '@/components/git-sync';
 import { DeployButton } from '@/components/deploy/DeployButton';
-import { BranchSwitcher } from '@/components/BranchSwitcher';
 import { useBuildProject } from '@/hooks/useBuildProject';
 import { useIsProjectPreviewable } from '@/hooks/useIsProjectPreviewable';
 import { useConsoleError } from '@/hooks/useConsoleError';
@@ -227,10 +226,6 @@ export function ProjectView() {
             <div className="flex items-center gap-2">
               {project ? (
                 <>
-                  <BranchSwitcher
-                    projectId={project.id}
-                    className="h-8 w-8"
-                  />
                   <GitSyncButton
                     projectId={project.id}
                     className="h-8 w-8"
@@ -243,7 +238,6 @@ export function ProjectView() {
                 </>
               ) : (
                 <>
-                  <Skeleton className="h-8 w-8 rounded" />
                   <Skeleton className="h-8 w-8 rounded" />
                   <Skeleton className="h-8 w-8 rounded" />
                 </>
@@ -459,11 +453,10 @@ export function ProjectView() {
                       </div>
                     </div>
 
-                    {/* Right side - Branch, Deploy and Sync buttons */}
+                    {/* Right side - Deploy and Sync buttons */}
                     <div className="flex items-center gap-2">
                       {project ? (
                         <>
-                          <BranchSwitcher projectId={project.id} />
                           <GitSyncButton
                             projectId={project.id}
                             className="h-8 w-8"
@@ -476,7 +469,6 @@ export function ProjectView() {
                         </>
                       ) : (
                         <>
-                          <Skeleton className="h-8 w-8 rounded" />
                           <Skeleton className="h-8 w-8 rounded" />
                           <Skeleton className="h-8 w-8 rounded" />
                         </>

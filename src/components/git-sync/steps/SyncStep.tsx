@@ -33,7 +33,6 @@ import { findCredentialsForRepo } from '@/lib/gitCredentials';
 export function SyncStep({ projectId, remoteUrl }: SyncStepProps) {
   const queryClient = useQueryClient();
 
-  const [error, setError] = useState<Error | null>(null);
   const [copiedUrl, setCopiedUrl] = useState(false);
   const [syncSuccess, setSyncSuccess] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -46,7 +45,7 @@ export function SyncStep({ projectId, remoteUrl }: SyncStepProps) {
   const { git } = useGit();
   const { projectsPath } = useFSPaths();
   const { config } = useAppContext();
-  const { getState, startOperation, endOperation } = useGitSyncState();
+  const { getState, getError, startOperation, endOperation, setError: setGlobalError } = useGitSyncState();
 
   const dir = `${projectsPath}/${projectId}`;
   const ref = gitStatus?.currentBranch || 'main';
@@ -54,10 +53,16 @@ export function SyncStep({ projectId, remoteUrl }: SyncStepProps) {
   // Use the new hook for autosync state
   const { autosync, isLoading: isLoadingAutosync, setAutosync } = useGitAutosync(dir);
 
-  // Get unified sync state
+  // Get unified sync state and error
   const syncState = getState(dir);
   const isSyncing = syncState?.isActive || false;
   const currentOperation = syncState?.operation || null;
+  const error = getError(dir) || null;
+
+  // Helper to set error for this directory
+  const setError = useCallback((err: Error | null) => {
+    setGlobalError(dir, err);
+  }, [dir, setGlobalError]);
 
   const hasRemoteChanges = gitStatus?.remoteBranchExists && ((gitStatus?.ahead ?? 0) > 0 || (gitStatus?.behind ?? 0) > 0);
   const commitsAhead = gitStatus?.ahead ?? 0;
@@ -82,17 +87,19 @@ export function SyncStep({ projectId, remoteUrl }: SyncStepProps) {
       // Show success feedback
       setSyncSuccess(true);
       setTimeout(() => setSyncSuccess(false), 2500);
+
+      // Clear error on success
+      endOperation(dir);
     } catch (err) {
       console.warn(err);
       const message = err instanceof Error ? err : new Error(`Failed to ${operation}`);
+      endOperation(dir, message);
       setError(message);
-    } finally {
-      endOperation(dir);
     }
 
     // Invalidate git status to refresh UI
     queryClient.invalidateQueries({ queryKey: ['git-status', projectId] });
-  }, [projectId, queryClient, remoteUrl, dir, startOperation, endOperation]);
+  }, [projectId, queryClient, remoteUrl, dir, startOperation, endOperation, setError]);
 
   const handleSync = async () => {
     if (!remoteUrl) return;
@@ -115,9 +122,9 @@ export function SyncStep({ projectId, remoteUrl }: SyncStepProps) {
       setSyncSuccess(true);
       setTimeout(() => setSyncSuccess(false), 2500);
     } catch (err) {
-      endOperation(dir);
       console.warn(err);
       const message = err instanceof Error ? err : new Error('Failed to sync');
+      endOperation(dir, message);
       setError(message);
     }
 
@@ -199,6 +206,8 @@ export function SyncStep({ projectId, remoteUrl }: SyncStepProps) {
 
     try {
       await git.deleteRemote({ dir, remote: 'origin' });
+      // Clear any errors when disconnecting
+      setError(null);
       queryClient.invalidateQueries({ queryKey: ['git-status', projectId] });
     } catch (err) {
       const message = err instanceof Error ? err : new Error('Failed to disconnect');

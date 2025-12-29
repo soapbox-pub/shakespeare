@@ -13,7 +13,7 @@ interface GitSyncResult {
 export function useGitSync(dir: string | undefined, remote = 'origin') {
   const { git } = useGit();
   const queryClient = useQueryClient();
-  const { startOperation, endOperation } = useGitSyncState();
+  const { startOperation, endOperation, setError } = useGitSyncState();
 
   const query = useQuery({
     queryKey: ['git-sync', dir],
@@ -65,7 +65,9 @@ export function useGitSync(dir: string | undefined, remote = 'origin') {
                 didPull = true;
                 endOperation(dir);
               } catch (pullError) {
-                endOperation(dir);
+                const error = pullError instanceof Error ? pullError : new Error('Auto-pull failed');
+                endOperation(dir, error);
+                setError(dir, error);
                 // Pull might fail if there are conflicts or diverged branches
                 // Don't throw - just log and continue
                 console.warn('Auto-pull failed:', pullError);
@@ -81,8 +83,12 @@ export function useGitSync(dir: string | undefined, remote = 'origin') {
                 });
                 didPush = true;
                 endOperation(dir);
+                // Clear any previous errors on successful push
+                setError(dir, null);
               } catch (pushError) {
-                endOperation(dir);
+                const error = pushError instanceof Error ? pushError : new Error('Auto-push failed');
+                endOperation(dir, error);
+                setError(dir, error);
                 // Push might fail if there are conflicts or no changes
                 // Don't throw - just log and continue
                 console.warn('Auto-push failed:', pushError);
@@ -97,6 +103,8 @@ export function useGitSync(dir: string | undefined, remote = 'origin') {
               }
             }
           } catch (error) {
+            const err = error instanceof Error ? error : new Error('Auto-sync failed');
+            setError(dir, err);
             console.warn('Auto-sync failed:', error);
           }
         }
@@ -107,7 +115,9 @@ export function useGitSync(dir: string | undefined, remote = 'origin') {
           didPush,
         };
       } catch (error) {
-        endOperation(dir);
+        const err = error instanceof Error ? error : new Error('Git sync failed');
+        endOperation(dir, err);
+        setError(dir, err);
         // Fetch/sync failed, but don't throw - just log and return null
         console.warn('Git sync failed:', error);
         return {

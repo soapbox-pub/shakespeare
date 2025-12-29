@@ -969,13 +969,20 @@ export class Git {
     // Republish repo announcement event
     await this.nostr.event(repo, { signal: AbortSignal.timeout(5000) });
 
-    // Construct the state event (kind 30618)
-    const stateEvent = await this.signer.signEvent({
-      kind: 30618,
-      content: '',
-      tags: stateTags,
-      created_at: Math.floor(Date.now() / 1000),
-    });
+    // If the new state matches the existing state, avoid an unnecessary signing operation
+    let stateEvent: NostrEvent;
+    if (state && this.areTagsEqual(state.tags, stateTags)) {
+      // Tags are identical, republish the existing state event
+      stateEvent = state;
+    } else {
+      // Tags have changed, sign a new state event
+      stateEvent = await this.signer.signEvent({
+        kind: 30618,
+        content: '',
+        tags: stateTags,
+        created_at: Math.floor(Date.now() / 1000),
+      });
+    }
 
     // Publish the state event to Nostr
     await this.nostr.event(stateEvent, { signal: AbortSignal.timeout(5000) });
@@ -1014,6 +1021,16 @@ export class Git {
 
       throw new Error(`Failed to push to any clone URLs:\n${errorDetails}`);
     }
+  }
+
+  /** Compare two tag arrays for equality by sorting and stringifying */
+  private areTagsEqual(tags1: string[][], tags2: string[][]): boolean {
+    // Sort both tag arrays for comparison
+    const sorted1 = [...tags1].sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)));
+    const sorted2 = [...tags2].sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)));
+
+    // Compare stringified versions
+    return JSON.stringify(sorted1) === JSON.stringify(sorted2);
   }
 
   /** Fetch NIP-34 repo announcement and state events from relays */

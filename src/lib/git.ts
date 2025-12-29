@@ -993,7 +993,18 @@ export class Git {
     const successfulPushes = pushResults.filter((result) => result.status === 'fulfilled');
 
     if (successfulPushes.length === 0) {
-      throw new Error('Failed to push to any clone URLs');
+      // Build detailed error message with breakdown for each URL
+      const errorDetails = cloneUrls.map((url, index) => {
+        const result = pushResults[index];
+        if (result.status === 'rejected') {
+          const error = result.reason;
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          return `  - ${url}: ${errorMessage}`;
+        }
+        return `  - ${url}: Unknown error`;
+      }).join('\n');
+
+      throw new Error(`Failed to push to any clone URLs:\n${errorDetails}`);
     }
   }
 

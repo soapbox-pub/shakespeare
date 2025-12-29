@@ -180,7 +180,7 @@ export function BranchSwitcher({ projectId, className }: BranchSwitcherProps) {
             ) : (
               <GitBranch className="h-4 w-4" />
             )}
-            <span className="hidden sm:inline max-w-[120px] truncate">{currentBranch}</span>
+            <span className=" max-w-[120px] truncate">{currentBranch}</span>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">

@@ -27,6 +27,7 @@ import { useAutoBuild } from '@/hooks/useAutoBuild';
 import { useToast } from '@/hooks/useToast';
 import { useFSPaths } from '@/hooks/useFSPaths';
 import { useGitSync } from '@/hooks/useGitSync';
+import { useGitAutosync } from '@/hooks/useGitAutosync';
 import { useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { useProjectSessionStatus } from '@/hooks/useProjectSessionStatus';
@@ -64,6 +65,9 @@ export function ProjectView() {
 
   // Automatically sync with remote to keep git status updated
   useGitSync(projectId ? `${projectsPath}/${projectId}` : undefined);
+
+  // Load autosync state at the top level to prevent jarring toggle shifts
+  useGitAutosync(projectId ? `${projectsPath}/${projectId}` : undefined);
 
   // Enable auto-build for previewable projects
   useAutoBuild({

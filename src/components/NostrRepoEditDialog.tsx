@@ -13,11 +13,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { useNostr } from '@nostrify/react';
-import { useQuery } from '@tanstack/react-query';
 import { useNostrPublish } from '@/hooks/useNostrPublish';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useAppContext } from '@/hooks/useAppContext';
+import { useNostrRepo } from '@/hooks/useNostrRepo';
 import { createRepositoryAnnouncementEvent } from '@/lib/announceRepository';
 import { nip19 } from 'nostr-tools';
 
@@ -48,25 +47,12 @@ export function NostrRepoEditDialog({
   const [error, setError] = useState<string | null>(null);
 
   const { user } = useCurrentUser();
-  const { nostr } = useNostr();
   const { mutateAsync: publishEvent } = useNostrPublish();
   const { config } = useAppContext();
 
   // Load existing repository data with react-query
-  const { data: existingEvent, isLoading } = useQuery({
-    queryKey: ['nostr-repo', user?.pubkey, repoIdentifier],
-    queryFn: async () => {
-      if (!user) return null;
-
-      const events = await nostr.query(
-        [{ kinds: [30617], authors: [user.pubkey], '#d': [repoIdentifier], limit: 1 }],
-        { signal: AbortSignal.timeout(5000) }
-      );
-
-      return events.length > 0 ? events[0] : null;
-    },
-    enabled: !!user && !!repoIdentifier,
-    staleTime: 30000, // Cache for 30 seconds
+  const { data: existingEvent, isLoading } = useNostrRepo({
+    repoIdentifier,
   });
 
   // Update form fields when event data loads

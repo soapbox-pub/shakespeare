@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Zap, Copy, Check, RefreshCw, EllipsisVertical, CloudOff, ExternalLink, ChevronDown, ArrowDown, ArrowUp, LoaderCircle, History, Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,6 +25,7 @@ import { useFSPaths } from '@/hooks/useFSPaths';
 import { useAppContext } from '@/hooks/useAppContext';
 import { useGitSyncState } from '@/hooks/useGitSyncState';
 import { useGitAutosync } from '@/hooks/useGitAutosync';
+import { useNostrRepo } from '@/hooks/useNostrRepo';
 import type { SyncStepProps } from '../types';
 import { cn } from '@/lib/utils';
 import { NostrURI } from '@/lib/NostrURI';
@@ -211,6 +212,22 @@ export function SyncStep({ projectId, remoteUrl }: SyncStepProps) {
     }
   }, [remoteUrl]);
 
+  // Warm up the Nostr repo query if this is a Nostr URI
+  // This prefetches the data so it's ready when the edit dialog opens
+  useNostrRepo({
+    repoIdentifier: repoIdentifier || '',
+    enabled: !!repoIdentifier && remoteUrl?.protocol === 'nostr:',
+  });
+
+  // Extract and set repo identifier on mount if it's a Nostr URI
+  useEffect(() => {
+    if (remoteUrl?.protocol === 'nostr:') {
+      getRepoIdentifier().then(id => {
+        if (id) setRepoIdentifier(id);
+      });
+    }
+  }, [remoteUrl, getRepoIdentifier]);
+
   // Get the button label based on current operation
   const getButtonLabel = (): string => {
     if (!isSyncing) return 'Sync';
@@ -227,10 +244,8 @@ export function SyncStep({ projectId, remoteUrl }: SyncStepProps) {
     }
   };
 
-  const handleEditRepo = async () => {
-    const repoId = await getRepoIdentifier();
-    if (repoId) {
-      setRepoIdentifier(repoId);
+  const handleEditRepo = () => {
+    if (repoIdentifier) {
       setEditRepoOpen(true);
     }
   };

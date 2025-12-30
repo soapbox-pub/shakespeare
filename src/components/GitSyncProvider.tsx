@@ -148,12 +148,14 @@ export function GitSyncProvider({ children }: { children: ReactNode }) {
   // Git operation: sync (pull then push)
   const sync = useCallback(async (dir: string, ref: string, remote = 'origin'): Promise<void> => {
     return withOperationLock(dir, 'pull', async () => {
+      const cache = {};
+
       // Pull first
-      await git.pull({ dir, ref, singleBranch: true });
+      await git.pull({ dir, ref, singleBranch: true, cache });
 
       // Then push (update operation type)
       startOperation(dir, 'push');
-      await git.push({ dir, remote, ref });
+      await git.push({ dir, remote, ref, cache });
 
       invalidateGitStatus(dir);
     });
@@ -162,12 +164,15 @@ export function GitSyncProvider({ children }: { children: ReactNode }) {
   // Git operation: force pull
   const forcePull = useCallback(async (dir: string, ref: string, remote = 'origin'): Promise<void> => {
     return withOperationLock(dir, 'pull', async () => {
+      const cache = {};
+
       // Step 1: Fetch latest changes from remote
       await git.fetch({
         dir,
         remote,
         ref,
         singleBranch: true,
+        cache,
       });
 
       // Step 2: Get the remote commit SHA
@@ -187,6 +192,7 @@ export function GitSyncProvider({ children }: { children: ReactNode }) {
         dir,
         ref,
         force: true,
+        cache,
       });
 
       invalidateGitStatus(dir);

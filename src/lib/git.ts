@@ -95,7 +95,10 @@ export class Git {
     if (options.url.startsWith('nostr://')) {
       const nostrURI = await NostrURI.parse(options.url);
       // Try cloning from Nostr
-      return this.nostrClone(nostrURI, options);
+      return this.nostrClone(nostrURI, {
+        ...options,
+        cache: options.cache || {},
+      });
     }
 
     // Regular Git URL
@@ -248,7 +251,12 @@ export class Git {
 
     if (remoteUrl && remoteUrl.startsWith('nostr://')) {
       const nostrURI = await NostrURI.parse(remoteUrl);
-      return this.nostrFetch(nostrURI, { ...options, remote, dir });
+      return this.nostrFetch(nostrURI, {
+        ...options,
+        cache: options.cache || {},
+        remote,
+        dir,
+      });
     }
 
     // Regular Git fetch
@@ -270,7 +278,13 @@ export class Git {
 
     if (remoteUrl && remoteUrl.startsWith('nostr://')) {
       const nostrURI = await NostrURI.parse(remoteUrl);
-      return this.nostrPull(nostrURI, { ...options, author, remote, dir });
+      return this.nostrPull(nostrURI, {
+        ...options,
+        cache: options.cache || {},
+        author,
+        remote,
+        dir,
+      });
     }
 
     // Regular Git pull
@@ -291,7 +305,12 @@ export class Git {
 
     if (remoteUrl && remoteUrl.startsWith('nostr://')) {
       const nostrURI = await NostrURI.parse(remoteUrl);
-      return this.nostrPush(nostrURI, { ...options, remote, dir: dir });
+      return this.nostrPush(nostrURI, {
+        ...options,
+        cache: options.cache || {},
+        remote,
+        dir,
+      });
     }
 
     return git.push({
@@ -734,6 +753,7 @@ export class Git {
         dir: options.dir,
         ref: checkoutRef,
         remote, // This tells checkout which remote to track
+        cache: options.cache,
       });
     }
 
@@ -868,6 +888,7 @@ export class Git {
       ours: ref,
       theirs: remoteTrackingBranch,
       author: options.author,
+      cache: options.cache,
     });
   }
 

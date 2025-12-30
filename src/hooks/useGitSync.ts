@@ -48,20 +48,18 @@ export function useGitSync(dir: string | undefined, remote = 'origin') {
           path: 'shakespeare.autosync',
         });
 
-        // Always fetch to update remote tracking
-        const fetchResult = await gitSync.fetch(dir, remote);
-
         let didPull = false;
         let didPush = false;
 
         // If autosync is enabled, perform pull and push
+        // (pull does fetch internally, so no separate fetch needed)
         if (autosync === 'true') {
           try {
             // Get current branch
             const currentBranch = await git.currentBranch({ dir });
 
             if (currentBranch) {
-              // Pull changes from remote
+              // Pull changes from remote (this does fetch internally)
               try {
                 await gitSync.pull(dir, currentBranch, remote);
                 didPull = true;
@@ -89,13 +87,24 @@ export function useGitSync(dir: string | undefined, remote = 'origin') {
             // Error getting current branch or other unexpected error
             console.warn('Auto-sync failed:', error);
           }
-        }
 
-        return {
-          ...fetchResult,
-          didPull,
-          didPush,
-        };
+          // Return result without fetch data since pull already fetched
+          return {
+            defaultBranch: null,
+            fetchHead: null,
+            fetchHeadDescription: null,
+            didPull,
+            didPush,
+          };
+        } else {
+          // Only fetch when autosync is not enabled (since pull isn't being called)
+          const fetchResult = await gitSync.fetch(dir, remote);
+          return {
+            ...fetchResult,
+            didPull,
+            didPush,
+          };
+        }
       } catch (error) {
         // Fetch/sync failed, but don't throw - just log and return null
         // Error is already set by the provider

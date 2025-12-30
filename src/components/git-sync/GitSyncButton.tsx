@@ -51,7 +51,7 @@ export function GitSyncButton({ projectId, className }: GitSyncButtonProps) {
     }
 
     // Purple indicator: no remote configured, but has commits - lowest priority
-    const needsRemote = !hasRemote && totalCommits >= 2;
+    const needsRemote = !hasRemote && totalCommits > 1;
     if (needsRemote) {
       return <IndicatorDot color="primary" />;
     }

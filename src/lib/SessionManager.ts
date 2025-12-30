@@ -297,13 +297,14 @@ export class SessionManager {
           baseURL: provider.baseURL,
         };
 
-        // Get imageModel from settings
+        const cwd = `${config.fsPathProjects}/${projectId}`;
+        const commits = await this.git.log({ dir: cwd });
         const settings = this.getSettings();
 
         const systemPrompt = await makeSystemPrompt({
-          cwd: `${config.fsPathProjects}/${projectId}`,
+          cwd,
           fs: this.fs,
-          mode: "agent",
+          mode: commits.length > 1 ? "agent" : "init",
           tools: Object.values(session.tools),
           config,
           defaultConfig,

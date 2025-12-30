@@ -522,6 +522,15 @@ export class ProjectsManager {
         remote: fork ? 'upstream' : undefined, // Use 'upstream' for forks, otherwise defaults to 'origin'
       });
 
+      if (!fork) {
+        // Set up 'shakespeare.autosync' config for non-forked repositories
+        await this.git.setConfig({
+          dir: projectPath,
+          path: 'shakespeare.autosync',
+          value: 'true',
+        });
+      }
+
       // Get filesystem stats for timestamps
       const stats = await this.fs.stat(projectPath);
       const timestamp = stats.mtimeMs ? new Date(stats.mtimeMs) : new Date();

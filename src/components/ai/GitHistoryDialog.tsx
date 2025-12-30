@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -40,6 +40,7 @@ export function GitHistoryDialog({ projectId, open: controlledOpen, onOpenChange
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [internalOpen, setInternalOpen] = useState(false);
+  const gitCache = useRef<object>({});
 
   // Use controlled or internal state
   const isOpen = controlledOpen !== undefined ? controlledOpen : internalOpen;
@@ -72,6 +73,7 @@ export function GitHistoryDialog({ projectId, open: controlledOpen, onOpenChange
       const gitLog = await git.log({
         dir: projectPath,
         depth: 50, // Limit to last 50 commits
+        cache: gitCache.current,
       });
 
       setCommits(gitLog);
@@ -110,6 +112,7 @@ export function GitHistoryDialog({ projectId, open: controlledOpen, onOpenChange
       const allCommits = await git.log({
         dir: projectPath,
         depth: 1000,
+        cache: gitCache.current,
       });
 
       // Find the index of target commit and current HEAD
@@ -142,12 +145,14 @@ export function GitHistoryDialog({ projectId, open: controlledOpen, onOpenChange
       const targetFiles = await git.listFiles({
         dir: projectPath,
         ref: targetCommit.oid,
+        cache: gitCache.current,
       });
 
       // Get current files to know what to remove
       const currentFiles = await git.listFiles({
         dir: projectPath,
         ref: 'HEAD',
+        cache: gitCache.current,
       });
 
       // Remove files that don't exist in target commit
@@ -158,6 +163,7 @@ export function GitHistoryDialog({ projectId, open: controlledOpen, onOpenChange
             await git.remove({
               dir: projectPath,
               filepath,
+              cache: gitCache.current,
             });
           } catch (err) {
             // File might not exist, continue
@@ -173,6 +179,7 @@ export function GitHistoryDialog({ projectId, open: controlledOpen, onOpenChange
             dir: projectPath,
             oid: targetCommit.oid,
             filepath,
+            cache: gitCache.current,
           });
 
           // Ensure directory exists
@@ -188,6 +195,7 @@ export function GitHistoryDialog({ projectId, open: controlledOpen, onOpenChange
           await git.add({
             dir: projectPath,
             filepath,
+            cache: gitCache.current,
           });
         } catch (err) {
           console.error(`Failed to restore ${filepath}:`, err);
@@ -209,6 +217,7 @@ ${commitsToRevert.map(c => {
       await git.commit({
         dir: projectPath,
         message: revertMessage,
+        cache: gitCache.current,
       });
 
       toast({
@@ -250,11 +259,13 @@ ${commitsToRevert.map(c => {
       const headFiles = await git.listFiles({
         dir: projectPath,
         ref: 'HEAD',
+        cache: gitCache.current,
       });
 
       // Get current files in working directory
       const currentFiles = await git.listFiles({
         dir: projectPath,
+        cache: gitCache.current,
       });
 
       // Remove files that don't exist in HEAD (equivalent to git clean -fd for tracked files)
@@ -275,6 +286,7 @@ ${commitsToRevert.map(c => {
             dir: projectPath,
             oid: headCommit,
             filepath,
+            cache: gitCache.current,
           });
 
           // Ensure directory exists
@@ -294,6 +306,7 @@ ${commitsToRevert.map(c => {
       // Get git status to find untracked files
       const status = await git.statusMatrix({
         dir: projectPath,
+        cache: gitCache.current,
       });
 
       const untrackedFiles = status

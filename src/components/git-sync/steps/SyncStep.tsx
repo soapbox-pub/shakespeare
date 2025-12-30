@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Zap, Copy, Check, RefreshCw, EllipsisVertical, CloudOff, ExternalLink, ChevronDown, ArrowDown, ArrowUp, LoaderCircle, History } from 'lucide-react';
+import { Zap, Copy, Check, RefreshCw, EllipsisVertical, CloudOff, ExternalLink, ChevronDown, ArrowDown, ArrowUp, LoaderCircle, History, Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,6 +17,7 @@ import { SyncStepError } from './SyncStepError';
 import { ForcePullDialog } from './ForcePullDialog';
 import { ForcePushDialog } from './ForcePushDialog';
 import { GitHistoryDialog } from '@/components/ai/GitHistoryDialog';
+import { NostrRepoEditDialog } from '@/components/NostrRepoEditDialog';
 import { useGitStatus } from '@/hooks/useGitStatus';
 import { useGitSettings } from '@/hooks/useGitSettings';
 import { useGit } from '@/hooks/useGit';
@@ -39,6 +40,8 @@ export function SyncStep({ projectId, remoteUrl }: SyncStepProps) {
   const [showForcePullDialog, setShowForcePullDialog] = useState(false);
   const [showForcePushDialog, setShowForcePushDialog] = useState(false);
   const [gitHistoryOpen, setGitHistoryOpen] = useState(false);
+  const [editRepoOpen, setEditRepoOpen] = useState(false);
+  const [repoIdentifier, setRepoIdentifier] = useState<string | null>(null);
 
   const { data: gitStatus } = useGitStatus(projectId);
   const { settings } = useGitSettings();
@@ -177,6 +180,7 @@ export function SyncStep({ projectId, remoteUrl }: SyncStepProps) {
       return {
         name: 'Nostr Git',
         icon: <Zap className="size-4" />,
+        isNostr: true,
       };
     }
 
@@ -186,11 +190,26 @@ export function SyncStep({ projectId, remoteUrl }: SyncStepProps) {
     return {
       name: matchedCredential? matchedCredential.name : remoteUrl.hostname,
       icon: <ExternalFavicon url={remoteUrl} size={16} />,
+      isNostr: false,
     };
   }, [remoteUrl, settings.credentials]);
 
   const providerInfo = getProviderInfo();
   const remoteName = providerInfo?.name ?? 'the remote';
+
+  // Extract repo identifier from Nostr URI if applicable
+  const getRepoIdentifier = useCallback(async (): Promise<string | null> => {
+    if (!remoteUrl || remoteUrl.protocol !== 'nostr:') {
+      return null;
+    }
+
+    try {
+      const nostrUri = await NostrURI.parse(remoteUrl.href);
+      return nostrUri.identifier;
+    } catch {
+      return null;
+    }
+  }, [remoteUrl]);
 
   // Get the button label based on current operation
   const getButtonLabel = (): string => {
@@ -208,6 +227,19 @@ export function SyncStep({ projectId, remoteUrl }: SyncStepProps) {
     }
   };
 
+  const handleEditRepo = async () => {
+    const repoId = await getRepoIdentifier();
+    if (repoId) {
+      setRepoIdentifier(repoId);
+      setEditRepoOpen(true);
+    }
+  };
+
+  const handleRepoEditSuccess = () => {
+    // Refresh git status after successful edit
+    queryClient.invalidateQueries({ queryKey: ['git-status', projectId] });
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -223,6 +255,12 @@ export function SyncStep({ projectId, remoteUrl }: SyncStepProps) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              {providerInfo?.isNostr && (
+                <DropdownMenuItem onClick={handleEditRepo} className="gap-2">
+                  <Edit className="h-4 w-4" />
+                  Edit Repository
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem onClick={() => setGitHistoryOpen(true)} className="gap-2">
                 <History className="h-4 w-4" />
                 Rollback
@@ -397,6 +435,15 @@ export function SyncStep({ projectId, remoteUrl }: SyncStepProps) {
         open={gitHistoryOpen}
         onOpenChange={setGitHistoryOpen}
       />
+
+      {repoIdentifier && (
+        <NostrRepoEditDialog
+          open={editRepoOpen}
+          onOpenChange={setEditRepoOpen}
+          repoIdentifier={repoIdentifier}
+          onSuccess={handleRepoEditSuccess}
+        />
+      )}
     </div>
   );
 }

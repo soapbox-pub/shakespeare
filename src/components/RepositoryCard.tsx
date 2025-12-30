@@ -2,7 +2,13 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { GitBranch, Loader2 } from 'lucide-react';
+import { GitBranch, Loader2, EllipsisVertical, Edit } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import type { Repository } from '@/hooks/useUserRepositories';
 import { useAuthor } from '@/hooks/useAuthor';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -15,6 +21,8 @@ import { useTranslation } from 'react-i18next';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useGitSettings } from '@/hooks/useGitSettings';
 import { detectFork } from '@/lib/detectFork';
+import { NostrRepoEditDialog } from '@/components/NostrRepoEditDialog';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface RepositoryCardProps {
   repo: Repository;
@@ -28,10 +36,13 @@ export function RepositoryCard({ repo }: RepositoryCardProps) {
   const projectsManager = useProjectsManager();
   const { toast } = useToast();
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const [isCloning, setIsCloning] = useState(false);
+  const [editRepoOpen, setEditRepoOpen] = useState(false);
 
   const displayName = authorData?.metadata?.name || genUserName(repo.pubkey);
   const profileImage = authorData?.metadata?.picture;
+  const isOwnRepo = user?.pubkey === repo.pubkey;
 
   // Construct Nostr clone URL
   const nostrURI = new NostrURI({
@@ -93,14 +104,40 @@ export function RepositoryCard({ repo }: RepositoryCardProps) {
     }
   };
 
+  const handleRepoEditSuccess = () => {
+    // Refresh repositories list after successful edit
+    queryClient.invalidateQueries({ queryKey: ['nostr', 'user-repositories', user?.pubkey] });
+  };
+
   return (
     <Card className="h-full flex flex-col hover:shadow-lg transition-shadow">
       <CardContent className="p-6 flex flex-col flex-1">
-        {/* Header with name and author */}
+        {/* Header with name and menu */}
+        <div className="mb-4 flex items-start justify-between">
+          <div className="flex-1 min-w-0">
+            <h3 className="font-semibold text-lg leading-tight mb-2 truncate">
+              {repo.name}
+            </h3>
+          </div>
+          {isOwnRepo && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8 -mt-1 -mr-2 shrink-0">
+                  <EllipsisVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setEditRepoOpen(true)} className="gap-2">
+                  <Edit className="h-4 w-4" />
+                  Edit Repository
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
+
+        {/* Author */}
         <div className="mb-4">
-          <h3 className="font-semibold text-lg leading-tight mb-2 truncate">
-            {repo.name}
-          </h3>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Avatar className="h-4 w-4">
               {profileImage && (
@@ -168,6 +205,13 @@ export function RepositoryCard({ repo }: RepositoryCardProps) {
           </Button>
         </div>
       </CardContent>
+
+      <NostrRepoEditDialog
+        open={editRepoOpen}
+        onOpenChange={setEditRepoOpen}
+        repoIdentifier={repo.repoId}
+        onSuccess={handleRepoEditSuccess}
+      />
     </Card>
   );
 }

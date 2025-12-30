@@ -14,6 +14,7 @@ import DeploySettings from "./pages/DeploySettings";
 import SystemSettings from "./pages/SystemSettings";
 import StorageSettings from "./pages/StorageSettings";
 import AboutSettings from "./pages/AboutSettings";
+import BadgesSettings from "./pages/BadgesSettings";
 
 import GitHubOAuth from "./pages/GitHubOAuth";
 import NetlifyOAuth from "./pages/NetlifyOAuth";
@@ -51,6 +52,7 @@ export function AppRouter() {
           <Route path="system" element={<SystemSettings />} />
           <Route path="storage" element={<StorageSettings />} />
           <Route path="about" element={<AboutSettings />} />
+          <Route path="badges" element={<BadgesSettings />} />
         </Route>
         <Route path="/project/:projectId" element={<ProjectView />} />
         {/* NIP-19 route for npub1, note1, naddr1, nevent1, nprofile1 */}

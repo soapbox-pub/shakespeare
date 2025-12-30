@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { CloudUpload, Loader2 } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { CloudUpload, Loader2, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useGitStatus } from '@/hooks/useGitStatus';
@@ -15,6 +15,7 @@ interface GitSyncButtonProps {
 
 export function GitSyncButton({ projectId, className }: GitSyncButtonProps) {
   const [open, setOpen] = useState(false);
+  const [syncSuccess, setSyncSuccess] = useState(false);
 
   const { data: gitStatus, isLoading: isGitStatusLoading } = useGitStatus(projectId);
   const { getError, getState } = useGitSyncState();
@@ -24,10 +25,27 @@ export function GitSyncButton({ projectId, className }: GitSyncButtonProps) {
   const hasError = !!getError(dir);
   const gitSyncState = getState(dir);
   const isGitActionOccurring = gitSyncState?.isActive ?? false;
+  const prevIsGitActionOccurring = useRef(isGitActionOccurring);
+
+  // Detect when a git action completes successfully
+  useEffect(() => {
+    // If we were syncing and now we're not, and there's no error, show success
+    if (prevIsGitActionOccurring.current && !isGitActionOccurring && !hasError) {
+      setSyncSuccess(true);
+      const timer = setTimeout(() => setSyncSuccess(false), 2500);
+      return () => clearTimeout(timer);
+    }
+    prevIsGitActionOccurring.current = isGitActionOccurring;
+  }, [isGitActionOccurring, hasError]);
 
   // Determine which indicator to show (only one at a time, in priority order)
   const renderIndicator = () => {
-    // Spinner: git action occurring - highest priority
+    // Checkmark: sync just completed successfully - highest priority
+    if (syncSuccess) {
+      return <IndicatorCheck />;
+    }
+
+    // Spinner: git action occurring - second priority
     if (isGitActionOccurring) {
       return <IndicatorSpinner />;
     }
@@ -99,5 +117,11 @@ function IndicatorDot({ color }: { color: 'primary' | 'yellow' | 'red' }) {
 function IndicatorSpinner() {
   return (
     <Loader2 className="absolute top-1 right-1 size-2.5 animate-spin text-blue-600 dark:text-blue-400" />
+  );
+}
+
+function IndicatorCheck() {
+  return (
+    <Check className="absolute top-1 right-1 size-2.5 text-green-600 dark:text-green-400" />
   );
 }

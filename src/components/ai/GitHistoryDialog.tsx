@@ -11,6 +11,7 @@ import { useFS } from '@/hooks/useFS';
 import { useToast } from '@/hooks/useToast';
 import { useGitStatus } from '@/hooks/useGitStatus';
 import { formatRelativeTime } from '@/lib/utils';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface GitCommit {
   oid: string;
@@ -41,6 +42,7 @@ export function GitHistoryDialog({ projectId, open: controlledOpen, onOpenChange
   const [error, setError] = useState<string | null>(null);
   const [internalOpen, setInternalOpen] = useState(false);
   const gitCache = useRef<object>({});
+  const queryClient = useQueryClient();
 
   // Use controlled or internal state
   const isOpen = controlledOpen !== undefined ? controlledOpen : internalOpen;
@@ -88,11 +90,10 @@ export function GitHistoryDialog({ projectId, open: controlledOpen, onOpenChange
   const rollbackToCommit = useCallback(async (targetCommit: GitCommit) => {
     if (!fs) return;
 
+    const projectPath = `${projectsPath}/${projectId}`;
     setIsRollingBack(targetCommit.oid);
 
     try {
-      const projectPath = `${projectsPath}/${projectId}`;
-
       // Get the current HEAD commit
       const currentCommit = await git.resolveRef({
         dir: projectPath,
@@ -237,18 +238,18 @@ ${commitsToRevert.map(c => {
         variant: "destructive",
       });
     } finally {
+      queryClient.invalidateQueries({ queryKey: ['git-sync', projectPath] })
       setIsRollingBack(null);
     }
-  }, [git, fs, projectId, toast, navigate, setIsOpen, projectsPath]);
+  }, [fs, projectsPath, projectId, git, toast, setIsOpen, navigate, queryClient]);
 
   const resetToHead = useCallback(async () => {
     if (!fs) return;
 
+    const projectPath = `${projectsPath}/${projectId}`;
     setIsRollingBack('HEAD');
 
     try {
-      const projectPath = `${projectsPath}/${projectId}`;
-
       // Get the current HEAD commit
       const headCommit = await git.resolveRef({
         dir: projectPath,
@@ -340,9 +341,10 @@ ${commitsToRevert.map(c => {
         variant: "destructive",
       });
     } finally {
+      queryClient.invalidateQueries({ queryKey: ['git-sync', projectPath] })
       setIsRollingBack(null);
     }
-  }, [git, fs, projectId, toast, navigate, setIsOpen, projectsPath]);
+  }, [fs, projectsPath, projectId, git, toast, setIsOpen, navigate, queryClient]);
 
   useEffect(() => {
     if (isOpen) {

@@ -108,8 +108,8 @@ export function useGitSync(dir: string | undefined, remote = 'origin') {
       }
     },
     enabled: !!dir && !hasRunningSessions, // Don't sync while project is generating
-    refetchInterval: 60000, // Sync every 60 seconds
-    staleTime: 30000, // Consider data stale after 30 seconds
+    refetchInterval: 5 * 60 * 1000, // Sync every 5 minutes
+    staleTime: 1 * 60 * 1000, // Consider data stale after 1 minute
     retry: false, // Don't retry on failure
   });
 

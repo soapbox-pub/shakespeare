@@ -17,6 +17,7 @@ import { AddProviderTile } from '@/components/AddProviderTile';
 import { GitCredentialConfigDialog } from '@/components/GitCredentialConfigDialog';
 import { AddGitCredentialDialog } from '@/components/AddGitCredentialDialog';
 import { AddCustomGitCredentialDialog } from '@/components/AddCustomGitCredentialDialog';
+import { Separator } from '@/components/ui/separator';
 
 interface PresetProvider {
   id: string;
@@ -329,6 +330,8 @@ export function GitSettings() {
                     </div>
                   </div>
                 </div>
+
+                <Separator />
 
                 {/* CORS Proxy Origins */}
                 <div className="space-y-4">

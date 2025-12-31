@@ -48,16 +48,16 @@ export const getSettingsCategories = (t: (key: string) => string): SettingsCateg
         href: '/settings/git',
       },
       {
-        id: 'nostr',
-        icon: Wifi,
-        title: t('nostrSettings'),
-        href: '/settings/nostr',
-      },
-      {
         id: 'deploy',
         icon: Rocket,
         title: t('deploySettings'),
         href: '/settings/deploy',
+      },
+      {
+        id: 'nostr',
+        icon: Wifi,
+        title: t('nostrSettings'),
+        href: '/settings/nostr',
       },
     ],
   },

@@ -258,346 +258,438 @@ export function SystemSettings() {
       titleKey="systemSettings"
       descriptionKey="systemSettingsDescription"
     >
-
-      <div className="space-y-3 max-w-xl">
-        {/* Service Worker Configuration */}
-        <Accordion type="single" collapsible className="w-full">
-          <AccordionItem value="service-worker">
-            <AccordionTrigger className="px-4 py-3 hover:no-underline">
-              <div className="flex items-center gap-2">
-                <Cog className="h-4 w-4 text-muted-foreground" />
-                <h4 className="text-sm font-medium">{t('serviceWorker')}</h4>
-              </div>
-            </AccordionTrigger>
-            <AccordionContent className="px-4 pb-4">
-              <div className="py-1 space-y-4">
-                {serviceWorkerRegistration ? (
-                  <>
-                    {/* Service Worker Status */}
-                    <div className="space-y-2">
-                      <div className="text-sm space-y-1">
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">{t('serviceWorkerStatus')}</span>
-                          <span className="font-medium capitalize">{swState || 'Unknown'}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">{t('serviceWorkerScope')}</span>
-                          <span className="font-mono text-xs">{serviceWorkerRegistration.scope}</span>
-                        </div>
-                        {serviceWorkerRegistration.active && (
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">{t('serviceWorkerScriptUrl')}</span>
-                            <span className="font-mono text-xs truncate max-w-[200px]" title={serviceWorkerRegistration.active.scriptURL}>
-                              {serviceWorkerRegistration.active.scriptURL.split('/').pop()}
-                            </span>
-                          </div>
-                        )}
+      {/* Service Worker Configuration */}
+      <Accordion type="single" collapsible className="w-full">
+        <AccordionItem value="service-worker">
+          <AccordionTrigger className="px-4 py-3 hover:no-underline">
+            <div className="flex items-center gap-2">
+              <Cog className="h-4 w-4 text-muted-foreground" />
+              <h4 className="text-sm font-medium">{t('serviceWorker')}</h4>
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="px-4 pb-4">
+            <div className="py-1 space-y-4">
+              {serviceWorkerRegistration ? (
+                <>
+                  {/* Service Worker Status */}
+                  <div className="space-y-2">
+                    <div className="text-sm space-y-1">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">{t('serviceWorkerStatus')}</span>
+                        <span className="font-medium capitalize">{swState || 'Unknown'}</span>
                       </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">{t('serviceWorkerScope')}</span>
+                        <span className="font-mono text-xs">{serviceWorkerRegistration.scope}</span>
+                      </div>
+                      {serviceWorkerRegistration.active && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">{t('serviceWorkerScriptUrl')}</span>
+                          <span className="font-mono text-xs truncate max-w-[200px]" title={serviceWorkerRegistration.active.scriptURL}>
+                            {serviceWorkerRegistration.active.scriptURL.split('/').pop()}
+                          </span>
+                        </div>
+                      )}
                     </div>
-
-                    {/* Service Worker Controls */}
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <Button
-                        onClick={handleUpdateSW}
-                        disabled={isUpdatingSW}
-                        variant="outline"
-                        size="sm"
-                        className="w-full sm:w-auto"
-                      >
-                        {isUpdatingSW ? (
-                          <>
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            {t('serviceWorkerUpdating')}
-                          </>
-                        ) : (
-                          <>
-                            <RefreshCw className="h-4 w-4" />
-                            {t('serviceWorkerUpdate')}
-                          </>
-                        )}
-                      </Button>
-                      <Button
-                        onClick={handleClearCache}
-                        disabled={isClearingCache}
-                        variant="outline"
-                        size="sm"
-                        className="w-full sm:w-auto"
-                      >
-                        {isClearingCache ? (
-                          <>
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            {t('serviceWorkerClearing')}
-                          </>
-                        ) : (
-                          <>
-                            <Trash2 className="h-4 w-4" />
-                            {t('serviceWorkerClearCache')}
-                          </>
-                        )}
-                      </Button>
-                      <Button
-                        onClick={handleUnregisterSW}
-                        disabled={isUnregisteringSW}
-                        variant="destructive"
-                        size="sm"
-                        className="w-full sm:w-auto"
-                      >
-                        {isUnregisteringSW ? (
-                          <>
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            {t('serviceWorkerUnregistering')}
-                          </>
-                        ) : (
-                          <>
-                            <XCircle className="h-4 w-4" />
-                            {t('serviceWorkerUnregister')}
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  </>
-                ) : (
-                  <div className="text-sm text-muted-foreground">
-                    {t('serviceWorkerNotRegistered')}
                   </div>
-                )}
-              </div>
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
 
-        {/* CORS Proxy Configuration */}
-        <Accordion type="single" collapsible className="w-full">
-          <AccordionItem value="cors-proxy">
-            <AccordionTrigger className="px-4 py-3 hover:no-underline">
-              <div className="flex items-center gap-2">
-                <Globe className="h-4 w-4 text-muted-foreground" />
-                <h4 className="text-sm font-medium">{t('corsProxy')}</h4>
+                  {/* Service Worker Controls */}
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Button
+                      onClick={handleUpdateSW}
+                      disabled={isUpdatingSW}
+                      variant="outline"
+                      size="sm"
+                      className="w-full sm:w-auto"
+                    >
+                      {isUpdatingSW ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          {t('serviceWorkerUpdating')}
+                        </>
+                      ) : (
+                        <>
+                          <RefreshCw className="h-4 w-4" />
+                          {t('serviceWorkerUpdate')}
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      onClick={handleClearCache}
+                      disabled={isClearingCache}
+                      variant="outline"
+                      size="sm"
+                      className="w-full sm:w-auto"
+                    >
+                      {isClearingCache ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          {t('serviceWorkerClearing')}
+                        </>
+                      ) : (
+                        <>
+                          <Trash2 className="h-4 w-4" />
+                          {t('serviceWorkerClearCache')}
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      onClick={handleUnregisterSW}
+                      disabled={isUnregisteringSW}
+                      variant="destructive"
+                      size="sm"
+                      className="w-full sm:w-auto"
+                    >
+                      {isUnregisteringSW ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          {t('serviceWorkerUnregistering')}
+                        </>
+                      ) : (
+                        <>
+                          <XCircle className="h-4 w-4" />
+                          {t('serviceWorkerUnregister')}
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <div className="text-sm text-muted-foreground">
+                  {t('serviceWorkerNotRegistered')}
+                </div>
+              )}
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+
+      {/* CORS Proxy Configuration */}
+      <Accordion type="single" collapsible className="w-full">
+        <AccordionItem value="cors-proxy">
+          <AccordionTrigger className="px-4 py-3 hover:no-underline">
+            <div className="flex items-center gap-2">
+              <Globe className="h-4 w-4 text-muted-foreground" />
+              <h4 className="text-sm font-medium">{t('corsProxy')}</h4>
+              {isModified.corsProxy && (
+                <div className="h-2 w-2 rounded-full bg-yellow-500" title={t('modified')} />
+              )}
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="px-4 pb-4">
+            <div className="py-1 space-y-2">
+              <div className="flex gap-2">
+                <Input
+                  id="cors-proxy"
+                  type="url"
+                  placeholder="https://proxy.shakespeare.diy/?url={href}"
+                  value={corsProxyInput}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setCorsProxyInput(value);
+                    updateConfig((current) => ({
+                      ...current,
+                      corsProxy: value,
+                    }));
+                  }}
+                  className="flex-1"
+                />
                 {isModified.corsProxy && (
-                  <div className="h-2 w-2 rounded-full bg-yellow-500" title={t('modified')} />
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={restoreCorsProxy}
+                    title={t('restoreToDefault')}
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                  </Button>
                 )}
               </div>
-            </AccordionTrigger>
-            <AccordionContent className="px-4 pb-4">
-              <div className="py-1 space-y-2">
-                <div className="flex gap-2">
-                  <Input
-                    id="cors-proxy"
-                    type="url"
-                    placeholder="https://proxy.shakespeare.diy/?url={href}"
-                    value={corsProxyInput}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      setCorsProxyInput(value);
-                      updateConfig((current) => ({
-                        ...current,
-                        corsProxy: value,
-                      }));
-                    }}
-                    className="flex-1"
-                  />
-                  {isModified.corsProxy && (
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={restoreCorsProxy}
-                      title={t('restoreToDefault')}
-                    >
-                      <RotateCcw className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {t('corsProxyDescription')}
-                </p>
-              </div>
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
+              <p className="text-xs text-muted-foreground">
+                {t('corsProxyDescription')}
+              </p>
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
 
-        {/* Favicon URL Configuration */}
-        <Accordion type="single" collapsible className="w-full">
-          <AccordionItem value="favicon-url">
-            <AccordionTrigger className="px-4 py-3 hover:no-underline">
-              <div className="flex items-center gap-2">
-                <Image className="h-4 w-4 text-muted-foreground" />
-                <h4 className="text-sm font-medium">{t('faviconUrl')}</h4>
+      {/* Favicon URL Configuration */}
+      <Accordion type="single" collapsible className="w-full">
+        <AccordionItem value="favicon-url">
+          <AccordionTrigger className="px-4 py-3 hover:no-underline">
+            <div className="flex items-center gap-2">
+              <Image className="h-4 w-4 text-muted-foreground" />
+              <h4 className="text-sm font-medium">{t('faviconUrl')}</h4>
+              {isModified.faviconUrl && (
+                <div className="h-2 w-2 rounded-full bg-yellow-500" title={t('modified')} />
+              )}
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="px-4 pb-4">
+            <div className="py-1 space-y-2">
+              <div className="flex gap-2">
+                <Input
+                  id="favicon-url"
+                  type="url"
+                  placeholder="https://favicon.shakespeare.diy/?url={href}"
+                  value={faviconUrlInput}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setFaviconUrlInput(value);
+                    updateConfig((current) => ({
+                      ...current,
+                      faviconUrl: value,
+                    }));
+                  }}
+                  className="flex-1"
+                />
                 {isModified.faviconUrl && (
-                  <div className="h-2 w-2 rounded-full bg-yellow-500" title={t('modified')} />
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={restoreFaviconUrl}
+                    title={t('restoreToDefault')}
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                  </Button>
                 )}
               </div>
-            </AccordionTrigger>
-            <AccordionContent className="px-4 pb-4">
-              <div className="py-1 space-y-2">
-                <div className="flex gap-2">
-                  <Input
-                    id="favicon-url"
-                    type="url"
-                    placeholder="https://favicon.shakespeare.diy/?url={href}"
-                    value={faviconUrlInput}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      setFaviconUrlInput(value);
-                      updateConfig((current) => ({
-                        ...current,
-                        faviconUrl: value,
-                      }));
-                    }}
-                    className="flex-1"
-                  />
-                  {isModified.faviconUrl && (
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={restoreFaviconUrl}
-                      title={t('restoreToDefault')}
-                    >
-                      <RotateCcw className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {t('faviconUrlDescription')}
-                </p>
-              </div>
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
+              <p className="text-xs text-muted-foreground">
+                {t('faviconUrlDescription')}
+              </p>
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
 
-        {/* Nostr Git Web URL Configuration */}
-        <Accordion type="single" collapsible className="w-full">
-          <AccordionItem value="ngit-web-url">
-            <AccordionTrigger className="px-4 py-3 hover:no-underline">
-              <div className="flex items-center gap-2">
-                <GitBranch className="h-4 w-4 text-muted-foreground" />
-                <h4 className="text-sm font-medium">{t('ngitWebUrl')}</h4>
+      {/* Nostr Git Web URL Configuration */}
+      <Accordion type="single" collapsible className="w-full">
+        <AccordionItem value="ngit-web-url">
+          <AccordionTrigger className="px-4 py-3 hover:no-underline">
+            <div className="flex items-center gap-2">
+              <GitBranch className="h-4 w-4 text-muted-foreground" />
+              <h4 className="text-sm font-medium">{t('ngitWebUrl')}</h4>
+              {isModified.ngitWebUrl && (
+                <div className="h-2 w-2 rounded-full bg-yellow-500" title={t('modified')} />
+              )}
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="px-4 pb-4">
+            <div className="py-1 space-y-2">
+              <div className="flex gap-2">
+                <Input
+                  id="ngit-web-url"
+                  type="url"
+                  placeholder="https://nostrhub.io/{naddr}"
+                  value={ngitWebUrlInput}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setNgitWebUrlInput(value);
+                    updateConfig((current) => ({
+                      ...current,
+                      ngitWebUrl: value,
+                    }));
+                  }}
+                  className="flex-1"
+                />
                 {isModified.ngitWebUrl && (
-                  <div className="h-2 w-2 rounded-full bg-yellow-500" title={t('modified')} />
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={restoreNgitWebUrl}
+                    title={t('restoreToDefault')}
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                  </Button>
                 )}
               </div>
-            </AccordionTrigger>
-            <AccordionContent className="px-4 pb-4">
-              <div className="py-1 space-y-2">
-                <div className="flex gap-2">
-                  <Input
-                    id="ngit-web-url"
-                    type="url"
-                    placeholder="https://nostrhub.io/{naddr}"
-                    value={ngitWebUrlInput}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      setNgitWebUrlInput(value);
-                      updateConfig((current) => ({
-                        ...current,
-                        ngitWebUrl: value,
-                      }));
-                    }}
-                    className="flex-1"
-                  />
-                  {isModified.ngitWebUrl && (
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={restoreNgitWebUrl}
-                      title={t('restoreToDefault')}
-                    >
-                      <RotateCcw className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {t('ngitWebUrlDescription')}
-                </p>
-              </div>
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
+              <p className="text-xs text-muted-foreground">
+                {t('ngitWebUrlDescription')}
+              </p>
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
 
-        {/* JavaScript CDN Configuration */}
-        <Accordion type="single" collapsible className="w-full">
-          <AccordionItem value="esm-url">
-            <AccordionTrigger className="px-4 py-3 hover:no-underline">
-              <div className="flex items-center gap-2">
-                <Code className="h-4 w-4 text-muted-foreground" />
-                <h4 className="text-sm font-medium">{t('esmUrl')}</h4>
+      {/* JavaScript CDN Configuration */}
+      <Accordion type="single" collapsible className="w-full">
+        <AccordionItem value="esm-url">
+          <AccordionTrigger className="px-4 py-3 hover:no-underline">
+            <div className="flex items-center gap-2">
+              <Code className="h-4 w-4 text-muted-foreground" />
+              <h4 className="text-sm font-medium">{t('esmUrl')}</h4>
+              {isModified.esmUrl && (
+                <div className="h-2 w-2 rounded-full bg-yellow-500" title={t('modified')} />
+              )}
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="px-4 pb-4">
+            <div className="py-1 space-y-2">
+              <div className="flex gap-2">
+                <Input
+                  id="esm-url"
+                  type="url"
+                  placeholder="https://esm.sh"
+                  value={esmUrlInput}
+                  onChange={(e) => {
+                    // Strip trailing slash on save.
+                    const value = e.target.value;
+                    setEsmUrlInput(value);
+                    updateConfig((current) => ({
+                      ...current,
+                      esmUrl: value.replace(/\/+$/, ''),
+                    }));
+                  }}
+                  className="flex-1"
+                />
                 {isModified.esmUrl && (
-                  <div className="h-2 w-2 rounded-full bg-yellow-500" title={t('modified')} />
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={restoreEsmUrl}
+                    title={t('restoreToDefault')}
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                  </Button>
                 )}
               </div>
-            </AccordionTrigger>
-            <AccordionContent className="px-4 pb-4">
-              <div className="py-1 space-y-2">
-                <div className="flex gap-2">
-                  <Input
-                    id="esm-url"
-                    type="url"
-                    placeholder="https://esm.sh"
-                    value={esmUrlInput}
-                    onChange={(e) => {
-                      // Strip trailing slash on save.
-                      const value = e.target.value;
-                      setEsmUrlInput(value);
-                      updateConfig((current) => ({
-                        ...current,
-                        esmUrl: value.replace(/\/+$/, ''),
-                      }));
-                    }}
-                    className="flex-1"
-                  />
-                  {isModified.esmUrl && (
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={restoreEsmUrl}
-                      title={t('restoreToDefault')}
-                    >
-                      <RotateCcw className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {t('esmUrlDescription')}
-                </p>
-              </div>
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
+              <p className="text-xs text-muted-foreground">
+                {t('esmUrlDescription')}
+              </p>
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
 
-        {/* Preview Domain Configuration */}
-        <Accordion type="single" collapsible className="w-full">
-          <AccordionItem value="preview-domain">
-            <AccordionTrigger className="px-4 py-3 hover:no-underline">
-              <div className="flex items-center gap-2">
-                <Monitor className="h-4 w-4 text-muted-foreground" />
-                <h4 className="text-sm font-medium">{t('previewDomain')}</h4>
+      {/* Preview Domain Configuration */}
+      <Accordion type="single" collapsible className="w-full">
+        <AccordionItem value="preview-domain">
+          <AccordionTrigger className="px-4 py-3 hover:no-underline">
+            <div className="flex items-center gap-2">
+              <Monitor className="h-4 w-4 text-muted-foreground" />
+              <h4 className="text-sm font-medium">{t('previewDomain')}</h4>
+              {isModified.previewDomain && (
+                <div className="h-2 w-2 rounded-full bg-yellow-500" title={t('modified')} />
+              )}
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="px-4 pb-4">
+            <div className="py-1 space-y-2">
+              <div className="flex gap-2">
+                <Input
+                  id="preview-domain"
+                  type="text"
+                  placeholder="local-shakespeare.dev"
+                  value={previewDomainInput}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setPreviewDomainInput(value);
+                    updateConfig((current) => ({
+                      ...current,
+                      previewDomain: value,
+                    }));
+                  }}
+                  className="flex-1"
+                />
                 {isModified.previewDomain && (
-                  <div className="h-2 w-2 rounded-full bg-yellow-500" title={t('modified')} />
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={restorePreviewDomain}
+                    title={t('restoreToDefault')}
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                  </Button>
                 )}
               </div>
-            </AccordionTrigger>
-            <AccordionContent className="px-4 pb-4">
-              <div className="py-1 space-y-2">
-                <div className="flex gap-2">
-                  <Input
-                    id="preview-domain"
-                    type="text"
-                    placeholder="local-shakespeare.dev"
-                    value={previewDomainInput}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      setPreviewDomainInput(value);
+              <p className="text-xs text-muted-foreground">
+                {t('previewDomainDescription')}
+              </p>
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+
+      {/* Showcase Configuration */}
+      <Accordion type="single" collapsible className="w-full">
+        <AccordionItem value="showcase">
+          <AccordionTrigger className="px-4 py-3 hover:no-underline">
+            <div className="flex items-center gap-2">
+              <Award className="h-4 w-4 text-muted-foreground" />
+              <h4 className="text-sm font-medium">{t('showcase')}</h4>
+              {(isModified.showcaseEnabled || isModified.showcaseModerator) && (
+                <div className="h-2 w-2 rounded-full bg-yellow-500" title={t('modified')} />
+              )}
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="px-4 pb-4">
+            <div className="py-1 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="showcase-enabled" className="text-sm font-medium">
+                    {t('showcaseEnabled')}
+                  </Label>
+                  {isModified.showcaseEnabled && (
+                    <div className="h-2 w-2 rounded-full bg-yellow-500" title={t('modified')} />
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id="showcase-enabled"
+                    checked={config.showcaseEnabled}
+                    onCheckedChange={(checked) => {
                       updateConfig((current) => ({
                         ...current,
-                        previewDomain: value,
+                        showcaseEnabled: checked,
+                      }));
+                    }}
+                  />
+                  {isModified.showcaseEnabled && (
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={restoreShowcaseEnabled}
+                      title={t('restoreToDefault')}
+                    >
+                      <RotateCcw className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {t('showcaseEnabledDescription')}
+              </p>
+
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="showcase-moderator" className="text-sm font-medium">
+                    {t('showcaseModerator')}
+                  </Label>
+                  {isModified.showcaseModerator && (
+                    <div className="h-2 w-2 rounded-full bg-yellow-500" title={t('modified')} />
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    id="showcase-moderator"
+                    type="text"
+                    placeholder="npub1..."
+                    value={showcaseModeratorInput}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setShowcaseModeratorInput(value);
+                      updateConfig((current) => ({
+                        ...current,
+                        showcaseModerator: value,
                       }));
                     }}
                     className="flex-1"
                   />
-                  {isModified.previewDomain && (
+                  {isModified.showcaseModerator && (
                     <Button
                       variant="outline"
                       size="icon"
-                      onClick={restorePreviewDomain}
+                      onClick={restoreShowcaseModerator}
                       title={t('restoreToDefault')}
                     >
                       <RotateCcw className="h-4 w-4" />
@@ -605,143 +697,107 @@ export function SystemSettings() {
                   )}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {t('previewDomainDescription')}
+                  {t('showcaseModeratorDescription')}
                 </p>
               </div>
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
 
-        {/* Showcase Configuration */}
-        <Accordion type="single" collapsible className="w-full">
-          <AccordionItem value="showcase">
-            <AccordionTrigger className="px-4 py-3 hover:no-underline">
-              <div className="flex items-center gap-2">
-                <Award className="h-4 w-4 text-muted-foreground" />
-                <h4 className="text-sm font-medium">{t('showcase')}</h4>
-                {(isModified.showcaseEnabled || isModified.showcaseModerator) && (
-                  <div className="h-2 w-2 rounded-full bg-yellow-500" title={t('modified')} />
-                )}
-              </div>
-            </AccordionTrigger>
-            <AccordionContent className="px-4 pb-4">
-              <div className="py-1 space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Label htmlFor="showcase-enabled" className="text-sm font-medium">
-                      {t('showcaseEnabled')}
-                    </Label>
-                    {isModified.showcaseEnabled && (
-                      <div className="h-2 w-2 rounded-full bg-yellow-500" title={t('modified')} />
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      id="showcase-enabled"
-                      checked={config.showcaseEnabled}
-                      onCheckedChange={(checked) => {
-                        updateConfig((current) => ({
-                          ...current,
-                          showcaseEnabled: checked,
-                        }));
-                      }}
-                    />
-                    {isModified.showcaseEnabled && (
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={restoreShowcaseEnabled}
-                        title={t('restoreToDefault')}
-                      >
-                        <RotateCcw className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {t('showcaseEnabledDescription')}
-                </p>
-
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Label htmlFor="showcase-moderator" className="text-sm font-medium">
-                      {t('showcaseModerator')}
-                    </Label>
-                    {isModified.showcaseModerator && (
-                      <div className="h-2 w-2 rounded-full bg-yellow-500" title={t('modified')} />
-                    )}
-                  </div>
-                  <div className="flex gap-2">
-                    <Input
-                      id="showcase-moderator"
-                      type="text"
-                      placeholder="npub1..."
-                      value={showcaseModeratorInput}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        setShowcaseModeratorInput(value);
-                        updateConfig((current) => ({
-                          ...current,
-                          showcaseModerator: value,
-                        }));
-                      }}
-                      className="flex-1"
-                    />
-                    {isModified.showcaseModerator && (
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={restoreShowcaseModerator}
-                        title={t('restoreToDefault')}
-                      >
-                        <RotateCcw className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {t('showcaseModeratorDescription')}
-                  </p>
-                </div>
-              </div>
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
-
-        {/* Sentry DSN Configuration */}
-        <Accordion type="single" collapsible className="w-full">
-          <AccordionItem value="sentry-dsn">
-            <AccordionTrigger className="px-4 py-3 hover:no-underline">
-              <div className="flex items-center gap-2">
-                <Bug className="h-4 w-4 text-muted-foreground" />
-                <h4 className="text-sm font-medium">{t('sentryDsn')}</h4>
+      {/* Sentry DSN Configuration */}
+      <Accordion type="single" collapsible className="w-full">
+        <AccordionItem value="sentry-dsn">
+          <AccordionTrigger className="px-4 py-3 hover:no-underline">
+            <div className="flex items-center gap-2">
+              <Bug className="h-4 w-4 text-muted-foreground" />
+              <h4 className="text-sm font-medium">{t('sentryDsn')}</h4>
+              {isModified.sentryDsn && (
+                <div className="h-2 w-2 rounded-full bg-yellow-500" title={t('modified')} />
+              )}
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="px-4 pb-4">
+            <div className="py-1 space-y-2">
+              <div className="flex gap-2">
+                <Input
+                  id="sentry-dsn"
+                  type="text"
+                  placeholder="https://..."
+                  value={sentryDsnInput}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setSentryDsnInput(value);
+                    updateConfig((current) => ({
+                      ...current,
+                      sentryDsn: value,
+                    }));
+                  }}
+                  className="flex-1"
+                />
                 {isModified.sentryDsn && (
-                  <div className="h-2 w-2 rounded-full bg-yellow-500" title={t('modified')} />
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={restoreSentryDsn}
+                    title={t('restoreToDefault')}
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                  </Button>
                 )}
               </div>
-            </AccordionTrigger>
-            <AccordionContent className="px-4 pb-4">
-              <div className="py-1 space-y-2">
+              <p className="text-xs text-muted-foreground">
+                {t('sentryDsnDescription')}
+              </p>
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+
+      {/* Filesystem Paths Configuration */}
+      <Accordion type="single" collapsible className="w-full">
+        <AccordionItem value="filesystem-paths">
+          <AccordionTrigger className="px-4 py-3 hover:no-underline">
+            <div className="flex items-center gap-2">
+              <FolderTree className="h-4 w-4 text-muted-foreground" />
+              <h4 className="text-sm font-medium">{t('filesystemPaths')}</h4>
+              {(isModified.fsPathProjects || isModified.fsPathConfig || isModified.fsPathTmp || isModified.fsPathPlugins || isModified.fsPathTemplates) && (
+                <div className="h-2 w-2 rounded-full bg-yellow-500" title={t('modified')} />
+              )}
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="px-4 pb-4">
+            <div className="py-1 space-y-4">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="fs-path-projects" className="text-sm font-medium">
+                    {t('projectsDirectory')}
+                  </Label>
+                  {isModified.fsPathProjects && (
+                    <div className="h-2 w-2 rounded-full bg-yellow-500" title={t('modified')} />
+                  )}
+                </div>
                 <div className="flex gap-2">
                   <Input
-                    id="sentry-dsn"
+                    id="fs-path-projects"
                     type="text"
-                    placeholder="https://..."
-                    value={sentryDsnInput}
+                    placeholder="/projects"
+                    value={fsPathProjectsInput}
                     onChange={(e) => {
                       const value = e.target.value;
-                      setSentryDsnInput(value);
+                      setFsPathProjectsInput(value);
                       updateConfig((current) => ({
                         ...current,
-                        sentryDsn: value,
+                        fsPathProjects: value,
                       }));
                     }}
                     className="flex-1"
                   />
-                  {isModified.sentryDsn && (
+                  {isModified.fsPathProjects && (
                     <Button
                       variant="outline"
                       size="icon"
-                      onClick={restoreSentryDsn}
+                      onClick={restoreFsPathProjects}
                       title={t('restoreToDefault')}
                     >
                       <RotateCcw className="h-4 w-4" />
@@ -749,253 +805,194 @@ export function SystemSettings() {
                   )}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {t('sentryDsnDescription')}
+                  {t('projectsDirectoryDescription')}
                 </p>
               </div>
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
 
-        {/* Filesystem Paths Configuration */}
-        <Accordion type="single" collapsible className="w-full">
-          <AccordionItem value="filesystem-paths">
-            <AccordionTrigger className="px-4 py-3 hover:no-underline">
-              <div className="flex items-center gap-2">
-                <FolderTree className="h-4 w-4 text-muted-foreground" />
-                <h4 className="text-sm font-medium">{t('filesystemPaths')}</h4>
-                {(isModified.fsPathProjects || isModified.fsPathConfig || isModified.fsPathTmp || isModified.fsPathPlugins || isModified.fsPathTemplates) && (
-                  <div className="h-2 w-2 rounded-full bg-yellow-500" title={t('modified')} />
-                )}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="fs-path-config" className="text-sm font-medium">
+                    {t('configDirectory')}
+                  </Label>
+                  {isModified.fsPathConfig && (
+                    <div className="h-2 w-2 rounded-full bg-yellow-500" title={t('modified')} />
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    id="fs-path-config"
+                    type="text"
+                    placeholder="/config"
+                    value={fsPathConfigInput}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setFsPathConfigInput(value);
+                      updateConfig((current) => ({
+                        ...current,
+                        fsPathConfig: value,
+                      }));
+                    }}
+                    className="flex-1"
+                  />
+                  {isModified.fsPathConfig && (
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={restoreFsPathConfig}
+                      title={t('restoreToDefault')}
+                    >
+                      <RotateCcw className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {t('configDirectoryDescription')}
+                </p>
               </div>
-            </AccordionTrigger>
-            <AccordionContent className="px-4 pb-4">
-              <div className="py-1 space-y-4">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Label htmlFor="fs-path-projects" className="text-sm font-medium">
-                      {t('projectsDirectory')}
-                    </Label>
-                    {isModified.fsPathProjects && (
-                      <div className="h-2 w-2 rounded-full bg-yellow-500" title={t('modified')} />
-                    )}
-                  </div>
-                  <div className="flex gap-2">
-                    <Input
-                      id="fs-path-projects"
-                      type="text"
-                      placeholder="/projects"
-                      value={fsPathProjectsInput}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        setFsPathProjectsInput(value);
-                        updateConfig((current) => ({
-                          ...current,
-                          fsPathProjects: value,
-                        }));
-                      }}
-                      className="flex-1"
-                    />
-                    {isModified.fsPathProjects && (
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={restoreFsPathProjects}
-                        title={t('restoreToDefault')}
-                      >
-                        <RotateCcw className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {t('projectsDirectoryDescription')}
-                  </p>
-                </div>
 
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Label htmlFor="fs-path-config" className="text-sm font-medium">
-                      {t('configDirectory')}
-                    </Label>
-                    {isModified.fsPathConfig && (
-                      <div className="h-2 w-2 rounded-full bg-yellow-500" title={t('modified')} />
-                    )}
-                  </div>
-                  <div className="flex gap-2">
-                    <Input
-                      id="fs-path-config"
-                      type="text"
-                      placeholder="/config"
-                      value={fsPathConfigInput}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        setFsPathConfigInput(value);
-                        updateConfig((current) => ({
-                          ...current,
-                          fsPathConfig: value,
-                        }));
-                      }}
-                      className="flex-1"
-                    />
-                    {isModified.fsPathConfig && (
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={restoreFsPathConfig}
-                        title={t('restoreToDefault')}
-                      >
-                        <RotateCcw className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {t('configDirectoryDescription')}
-                  </p>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="fs-path-tmp" className="text-sm font-medium">
+                    {t('temporaryDirectory')}
+                  </Label>
+                  {isModified.fsPathTmp && (
+                    <div className="h-2 w-2 rounded-full bg-yellow-500" title={t('modified')} />
+                  )}
                 </div>
-
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Label htmlFor="fs-path-tmp" className="text-sm font-medium">
-                      {t('temporaryDirectory')}
-                    </Label>
-                    {isModified.fsPathTmp && (
-                      <div className="h-2 w-2 rounded-full bg-yellow-500" title={t('modified')} />
-                    )}
-                  </div>
-                  <div className="flex gap-2">
-                    <Input
-                      id="fs-path-tmp"
-                      type="text"
-                      placeholder="/tmp"
-                      value={fsPathTmpInput}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        setFsPathTmpInput(value);
-                        updateConfig((current) => ({
-                          ...current,
-                          fsPathTmp: value,
-                        }));
-                      }}
-                      className="flex-1"
-                    />
-                    {isModified.fsPathTmp && (
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={restoreFsPathTmp}
-                        title={t('restoreToDefault')}
-                      >
-                        <RotateCcw className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {t('temporaryDirectoryDescription')}
-                  </p>
+                <div className="flex gap-2">
+                  <Input
+                    id="fs-path-tmp"
+                    type="text"
+                    placeholder="/tmp"
+                    value={fsPathTmpInput}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setFsPathTmpInput(value);
+                      updateConfig((current) => ({
+                        ...current,
+                        fsPathTmp: value,
+                      }));
+                    }}
+                    className="flex-1"
+                  />
+                  {isModified.fsPathTmp && (
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={restoreFsPathTmp}
+                      title={t('restoreToDefault')}
+                    >
+                      <RotateCcw className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
-
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Label htmlFor="fs-path-plugins" className="text-sm font-medium">
-                      {t('pluginsDirectory')}
-                    </Label>
-                    {isModified.fsPathPlugins && (
-                      <div className="h-2 w-2 rounded-full bg-yellow-500" title={t('modified')} />
-                    )}
-                  </div>
-                  <div className="flex gap-2">
-                    <Input
-                      id="fs-path-plugins"
-                      type="text"
-                      placeholder="/plugins"
-                      value={fsPathPluginsInput}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        setFsPathPluginsInput(value);
-                        updateConfig((current) => ({
-                          ...current,
-                          fsPathPlugins: value,
-                        }));
-                      }}
-                      className="flex-1"
-                    />
-                    {isModified.fsPathPlugins && (
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={restoreFsPathPlugins}
-                        title={t('restoreToDefault')}
-                      >
-                        <RotateCcw className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {t('pluginsDirectoryDescription')}
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Label htmlFor="fs-path-templates" className="text-sm font-medium">
-                      {t('templatesDirectory')}
-                    </Label>
-                    {isModified.fsPathTemplates && (
-                      <div className="h-2 w-2 rounded-full bg-yellow-500" title={t('modified')} />
-                    )}
-                  </div>
-                  <div className="flex gap-2">
-                    <Input
-                      id="fs-path-templates"
-                      type="text"
-                      placeholder="/templates"
-                      value={fsPathTemplatesInput}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        setFsPathTemplatesInput(value);
-                        updateConfig((current) => ({
-                          ...current,
-                          fsPathTemplates: value,
-                        }));
-                      }}
-                      className="flex-1"
-                    />
-                    {isModified.fsPathTemplates && (
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={restoreFsPathTemplates}
-                        title={t('restoreToDefault')}
-                      >
-                        <RotateCcw className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {t('templatesDirectoryDescription')}
-                  </p>
-                </div>
+                <p className="text-xs text-muted-foreground">
+                  {t('temporaryDirectoryDescription')}
+                </p>
               </div>
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
 
-        {/* Terminal */}
-        <Accordion type="single" collapsible className="w-full">
-          <AccordionItem value="terminal">
-            <AccordionTrigger className="px-4 py-3 hover:no-underline">
-              <div className="flex items-center gap-2">
-                <TerminalIcon className="h-4 w-4 text-muted-foreground" />
-                <h4 className="text-sm font-medium">{t('terminal')}</h4>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="fs-path-plugins" className="text-sm font-medium">
+                    {t('pluginsDirectory')}
+                  </Label>
+                  {isModified.fsPathPlugins && (
+                    <div className="h-2 w-2 rounded-full bg-yellow-500" title={t('modified')} />
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    id="fs-path-plugins"
+                    type="text"
+                    placeholder="/plugins"
+                    value={fsPathPluginsInput}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setFsPathPluginsInput(value);
+                      updateConfig((current) => ({
+                        ...current,
+                        fsPathPlugins: value,
+                      }));
+                    }}
+                    className="flex-1"
+                  />
+                  {isModified.fsPathPlugins && (
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={restoreFsPathPlugins}
+                      title={t('restoreToDefault')}
+                    >
+                      <RotateCcw className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {t('pluginsDirectoryDescription')}
+                </p>
               </div>
-            </AccordionTrigger>
-            <AccordionContent className="px-0 pb-0">
-              <div className="h-[500px]">
-                <Terminal cwd="/" />
+
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="fs-path-templates" className="text-sm font-medium">
+                    {t('templatesDirectory')}
+                  </Label>
+                  {isModified.fsPathTemplates && (
+                    <div className="h-2 w-2 rounded-full bg-yellow-500" title={t('modified')} />
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    id="fs-path-templates"
+                    type="text"
+                    placeholder="/templates"
+                    value={fsPathTemplatesInput}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setFsPathTemplatesInput(value);
+                      updateConfig((current) => ({
+                        ...current,
+                        fsPathTemplates: value,
+                      }));
+                    }}
+                    className="flex-1"
+                  />
+                  {isModified.fsPathTemplates && (
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={restoreFsPathTemplates}
+                      title={t('restoreToDefault')}
+                    >
+                      <RotateCcw className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {t('templatesDirectoryDescription')}
+                </p>
               </div>
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
-      </div>
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+
+      {/* Terminal */}
+      <Accordion type="single" collapsible className="w-full">
+        <AccordionItem value="terminal">
+          <AccordionTrigger className="px-4 py-3 hover:no-underline">
+            <div className="flex items-center gap-2">
+              <TerminalIcon className="h-4 w-4 text-muted-foreground" />
+              <h4 className="text-sm font-medium">{t('terminal')}</h4>
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="px-0 pb-0">
+            <div className="h-[500px]">
+              <Terminal cwd="/" />
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
     </SettingsPageLayout>
   );
 }

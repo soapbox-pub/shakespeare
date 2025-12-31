@@ -106,7 +106,6 @@ export function NostrSettings() {
         icon={Wifi}
         titleKey="nostrSettings"
         descriptionKey="nostrSettingsDescription"
-        className="space-y-6 max-w-xl"
       >
         {/* Account Management */}
         <div className="space-y-4">

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { useNavigate } from 'react-router-dom';
 import type { ReactNode } from 'react';
+import { cn } from '@/lib/utils';
 
 interface SettingsPageLayoutProps {
   /** The icon component to display next to the title */
@@ -27,7 +28,7 @@ export function SettingsPageLayout({
   titleKey,
   descriptionKey,
   children,
-  className = 'space-y-6',
+  className,
 }: SettingsPageLayoutProps) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
@@ -70,7 +71,7 @@ export function SettingsPageLayout({
         </div>
       )}
 
-      <div className={className}>
+      <div className={cn('space-y-6 max-w-xl', className)}>
         {children}
       </div>
     </div>

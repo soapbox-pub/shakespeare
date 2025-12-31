@@ -51,7 +51,6 @@ export function AISettings() {
   // Dialog state
   const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null);
   const [configDialogOpen, setConfigDialogOpen] = useState(false);
-  const [configDialogTab, setConfigDialogTab] = useState<'credits' | 'edit'>('edit');
   const [selectedPreset, setSelectedPreset] = useState<PresetProvider | null>(null);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [customProviderDialogOpen, setCustomProviderDialogOpen] = useState(false);
@@ -209,7 +208,6 @@ export function AISettings() {
                             provider={provider}
                             onOpenDialog={() => {
                               setSelectedProviderId(provider.id);
-                              setConfigDialogTab('credits');
                               setConfigDialogOpen(true);
                             }}
                           />
@@ -232,7 +230,6 @@ export function AISettings() {
                 provider={provider}
                 onUpdate={handleSetProvider}
                 onRemove={() => handleRemoveProvider(provider.id)}
-                initialTab={configDialogTab}
               />
             );
           })()}

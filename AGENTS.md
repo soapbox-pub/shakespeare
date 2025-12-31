@@ -1299,6 +1299,7 @@ When users specify color schemes:
 - Follow shadcn/ui patterns for component variants
 - Implement responsive design with Tailwind breakpoints
 - Add hover and focus states for interactive elements
+- **Use `hover:bg-muted` for hover states on clickable cards/buttons** - provides subtle, accessible feedback without overpowering the design (avoid `hover:bg-accent` or `hover:bg-secondary` which can be too strong)
 
 ## Writing Tests vs Running Tests
 

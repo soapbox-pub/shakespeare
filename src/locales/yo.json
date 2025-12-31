@@ -474,5 +474,8 @@
   "failedToDuplicateProject": "O kuna lati ṣe ẹda iṣẹ akanṣe",
   "newProjectName": "Orukọ Iṣẹ Akanṣe Tuntun",
   "duplicateProjectDescription": "Ṣẹda ẹda ti iṣẹ akanṣe yii pẹlu orukọ tuntun",
-  "resume": "Tẹsiwaju"
+  "resume": "Tẹsiwaju",
+  "badges": "Àmì-ẹ̀yẹ",
+  "badgesDescription": "Wo ati ṣakoso àmì-ẹ̀yẹ àti àwọn àṣeyọrí rẹ",
+  "noBadgesFound": "Ko ri àmì-ẹ̀yẹ"
 }

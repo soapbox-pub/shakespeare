@@ -474,5 +474,8 @@
   "failedToDuplicateProject": "Ọ dara ada imepụta ọrụ",
   "newProjectName": "Aha Ọrụ Ọhụrụ",
   "duplicateProjectDescription": "Mepụta oyiri nke ọrụ a na aha ọhụrụ",
-  "resume": "Gaa n'ihu"
+  "resume": "Gaa n'ihu",
+  "badges": "Baajị",
+  "badgesDescription": "Lelee ma jikwaa baajị na mmeri gị",
+  "noBadgesFound": "Achọtaghị baajị"
 }

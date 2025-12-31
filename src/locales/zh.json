@@ -486,5 +486,8 @@
   "failedToDuplicateProject": "复制项目失败",
   "newProjectName": "新项目名称",
   "duplicateProjectDescription": "使用新名称创建此项目的副本",
-  "resume": "继续"
+  "resume": "继续",
+  "badges": "徽章",
+  "badgesDescription": "查看和管理您获得的徽章和成就",
+  "noBadgesFound": "未找到徽章"
 }

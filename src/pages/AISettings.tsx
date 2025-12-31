@@ -302,7 +302,7 @@ export function AISettings() {
                     <ModelInput
                       value={settings.imageModel || ''}
                       onChange={(value) => updateSettings({ imageModel: value || undefined })}
-                      className="flex-1"
+                      className="flex-1 bg-muted/50"
                       modelFilter={imageModelFilter}
                     />
                     {settings.imageModel && (

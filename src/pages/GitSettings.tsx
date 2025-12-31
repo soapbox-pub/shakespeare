@@ -436,10 +436,11 @@ export function GitSettings() {
                     <Button
                       onClick={handleAddProxyOrigin}
                       disabled={!newProxyOrigin.trim()}
+                      variant="outline"
                       size="sm"
-                      className="gap-2"
+                      className="h-10 shrink-0"
                     >
-                      <Plus className="h-4 w-4" />
+                      <Plus className="h-4 w-4 mr-2" />
                       {t('add')}
                     </Button>
                   </div>

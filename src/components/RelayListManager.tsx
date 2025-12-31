@@ -273,7 +273,7 @@ export function RelayListManager() {
           className="h-10 shrink-0"
         >
           <Plus className="h-4 w-4 mr-2" />
-          {t('addRelay')}
+          {t('add')}
         </Button>
       </div>
 

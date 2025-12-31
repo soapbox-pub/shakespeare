@@ -357,6 +357,7 @@
   "startBuilding": "开始构建",
   "continueButton": "继续",
   "credits": "积分",
+  "availableCredits": "可用积分",
   "back": "返回",
   "buyCredits": "购买积分",
   "amountUSD": "金额（美元）",

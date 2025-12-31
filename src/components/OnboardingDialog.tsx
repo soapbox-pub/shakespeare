@@ -15,7 +15,7 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useLoginActions } from '@/hooks/useLoginActions';
 import { useProviderModels } from '@/hooks/useProviderModels';
 import { useAICredits } from '@/hooks/useAICredits';
-import { CreditsDialog } from '@/components/CreditsDialog';
+import { AIProviderConfigDialog } from '@/components/AIProviderConfigDialog';
 import { OnboardingCreditsBadge } from '@/components/OnboardingCreditsBadge';
 import { ShakespeareLogo } from '@/components/ShakespeareLogo';
 import { ModelPricing } from '@/components/ModelPricing';
@@ -726,7 +726,7 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
 
       {/* Credits Dialog */}
       {showCreditsDialog && selectedModel && selectedProvider && (
-        <CreditsDialog
+        <AIProviderConfigDialog
           open={showCreditsDialog}
           onOpenChange={(open) => {
             if (!open) {
@@ -739,6 +739,9 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
             baseURL: selectedProvider.baseURL,
             nostr: selectedProvider.nostr || undefined,
           }}
+          onUpdate={() => {}}
+          onRemove={() => {}}
+          initialTab="credits"
         />
       )}
     </>

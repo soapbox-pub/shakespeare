@@ -6,7 +6,7 @@ import { QuillySVG } from '@/components/ui/QuillySVG';
 import { useAISettings } from '@/hooks/useAISettings';
 import { parseProviderModel } from '@/lib/parseProviderModel';
 import { useAICredits } from '@/hooks/useAICredits';
-import { CreditsDialog } from './CreditsDialog';
+import { AIProviderConfigDialog } from './AIProviderConfigDialog';
 import { ProjectPreviewConsoleError } from '@/lib/consoleMessages';
 import { useState } from 'react';
 import { MalformedToolCallError } from '@/lib/errors/MalformedToolCallError';
@@ -279,10 +279,13 @@ function QuillyCreditsButton({ provider }: QuillyCreditsButtonProps) {
       <button className="text-primary underline" onClick={() => setShowCreditsDialog(true)}>
         {credits.data ? `Add credits (${credits.data.amount.toFixed(2)} remaining)` : 'Add credits'}
       </button>
-      <CreditsDialog
+      <AIProviderConfigDialog
         open={showCreditsDialog}
         onOpenChange={setShowCreditsDialog}
         provider={provider}
+        onUpdate={() => {}}
+        onRemove={() => {}}
+        initialTab="credits"
       />
     </>
   );

@@ -23,9 +23,9 @@ vi.mock('react-router-dom', () => ({
   useNavigate: () => vi.fn()
 }));
 
-// Mock CreditsDialog to avoid NostrProvider dependency
-vi.mock('./CreditsDialog', () => ({
-  CreditsDialog: () => null
+// Mock AIProviderConfigDialog to avoid NostrProvider dependency
+vi.mock('./AIProviderConfigDialog', () => ({
+  AIProviderConfigDialog: () => null
 }));
 
 describe('Quilly', () => {

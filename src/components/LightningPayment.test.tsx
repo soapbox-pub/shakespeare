@@ -1,7 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { TestApp } from '@/test/TestApp';
 import type { AIProvider } from '@/contexts/AISettingsContext';
+
+// Mock useAICredits to return credits data
+vi.mock('@/hooks/useAICredits', () => ({
+  useAICredits: () => ({
+    data: { amount: 10.50 },
+    error: null,
+    isLoading: false,
+  }),
+}));
 
 // Mock QRCode
 vi.mock('qrcode', () => ({
@@ -17,7 +26,7 @@ const mockWebLN = {
 };
 
 // We need to import the component after mocking
-const { CreditsDialog } = await import('./CreditsDialog');
+const { AIProviderConfigDialog } = await import('./AIProviderConfigDialog');
 
 const mockProvider: AIProvider = {
   id: 'test-provider',
@@ -40,16 +49,21 @@ describe('Lightning Payment', () => {
   it('shows QR code for Lightning payment', async () => {
     render(
       <TestApp>
-        <CreditsDialog
+        <AIProviderConfigDialog
           open={true}
           onOpenChange={() => {}}
           provider={mockProvider}
+          onUpdate={() => {}}
+          onRemove={() => {}}
+          initialTab="credits"
         />
       </TestApp>
     );
 
-    // Should show the normal form initially
-    expect(screen.getByText('Amount (USD)')).toBeInTheDocument();
+    // Should show the Credits tab with Buy Credits accordion
+    await waitFor(() => {
+      expect(screen.getByText('Buy Credits')).toBeInTheDocument();
+    });
   });
 
   it('shows WebLN button when available', async () => {
@@ -61,30 +75,40 @@ describe('Lightning Payment', () => {
 
     render(
       <TestApp>
-        <CreditsDialog
+        <AIProviderConfigDialog
           open={true}
           onOpenChange={() => {}}
           provider={mockProvider}
+          onUpdate={() => {}}
+          onRemove={() => {}}
+          initialTab="credits"
         />
       </TestApp>
     );
 
-    // Should show the normal form initially
-    expect(screen.getByText('Amount (USD)')).toBeInTheDocument();
+    // Should show the Credits tab with Buy Credits accordion
+    await waitFor(() => {
+      expect(screen.getByText('Buy Credits')).toBeInTheDocument();
+    });
   });
 
   it('displays copy invoice button', async () => {
     render(
       <TestApp>
-        <CreditsDialog
+        <AIProviderConfigDialog
           open={true}
           onOpenChange={() => {}}
           provider={mockProvider}
+          onUpdate={() => {}}
+          onRemove={() => {}}
+          initialTab="credits"
         />
       </TestApp>
     );
 
-    // Should show the normal form initially
-    expect(screen.getByText('Payment Method')).toBeInTheDocument();
+    // Should show the Credits tab with Buy Credits accordion
+    await waitFor(() => {
+      expect(screen.getByText('Buy Credits')).toBeInTheDocument();
+    });
   });
 });

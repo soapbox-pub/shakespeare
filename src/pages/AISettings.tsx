@@ -4,7 +4,6 @@ import { Bot, ChevronDown, RotateCcw, FileText, Edit, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { CreditsDialog } from '@/components/CreditsDialog';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ProviderTile } from '@/components/ProviderTile';
@@ -30,13 +29,13 @@ export function AISettings() {
   const { settings, updateSettings, setProvider, removeProvider, isLoading } = useAISettings();
   const { user } = useCurrentUser();
   const { config, defaultConfig, updateConfig } = useAppContext();
-  const [activeCreditsDialog, setActiveCreditsDialog] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [systemPromptInput, setSystemPromptInput] = useState(config.systemPrompt || defaultSystemPrompt);
 
   // Dialog state
   const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null);
   const [configDialogOpen, setConfigDialogOpen] = useState(false);
+  const [configDialogTab, setConfigDialogTab] = useState<'credits' | 'edit'>('edit');
   const [selectedPreset, setSelectedPreset] = useState<PresetProvider | null>(null);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [customProviderDialogOpen, setCustomProviderDialogOpen] = useState(false);
@@ -162,7 +161,11 @@ export function AISettings() {
                     badge={
                       <CreditsBadge
                         provider={provider}
-                        onOpenDialog={() => setActiveCreditsDialog(provider.id)}
+                        onOpenDialog={() => {
+                          setSelectedProviderId(provider.id);
+                          setConfigDialogTab('credits');
+                          setConfigDialogOpen(true);
+                        }}
                       />
                     }
                   />
@@ -181,7 +184,7 @@ export function AISettings() {
                 provider={provider}
                 onUpdate={handleSetProvider}
                 onRemove={() => handleRemoveProvider(provider.id)}
-                onOpenCreditsDialog={() => setActiveCreditsDialog(provider.id)}
+                initialTab={configDialogTab}
               />
             );
           })()}
@@ -342,21 +345,7 @@ export function AISettings() {
         </>
       )}
 
-      {/* Render credits dialog */}
-      {activeCreditsDialog && (() => {
-        const provider = settings.providers.find(p => p.id === activeCreditsDialog);
-        return provider && (
-          <CreditsDialog
-            open={true}
-            onOpenChange={(open) => {
-              if (!open) {
-                setActiveCreditsDialog(null);
-              }
-            }}
-            provider={provider}
-          />
-        );
-      })()}
+
     </SettingsPageLayout>
   );
 }

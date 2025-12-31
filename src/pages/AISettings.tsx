@@ -350,7 +350,7 @@ export function AISettings() {
                       <AccordionTrigger className="px-4 py-3 hover:no-underline">
                         <div className="flex items-center gap-2">
                           <Edit className="h-4 w-4" />
-                          <span className="font-medium">{t('systemPrompt')}</span>
+                          <span className="text-sm font-medium">{t('systemPrompt')}</span>
                         </div>
                       </AccordionTrigger>
                       <AccordionContent className="px-4 pb-4">

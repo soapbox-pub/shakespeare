@@ -41,7 +41,6 @@ interface AIProviderConfigDialogProps {
   provider: AIProvider;
   onUpdate: (provider: AIProvider) => void;
   onRemove: () => void;
-  initialTab?: 'credits' | 'edit';
 }
 
 interface Payment {
@@ -339,7 +338,6 @@ export function AIProviderConfigDialog({
   provider,
   onUpdate,
   onRemove,
-  initialTab = 'credits',
 }: AIProviderConfigDialogProps) {
   const { t } = useTranslation();
   const { user } = useCurrentUser();
@@ -378,12 +376,12 @@ export function AIProviderConfigDialog({
     if (open && !isLoadingCredits) {
       // Default to 'credits' tab if credits are supported, otherwise 'edit'
       if (supportsCredits) {
-        setActiveTab(initialTab || 'credits');
+        setActiveTab('credits');
       } else {
         setActiveTab('edit');
       }
     }
-  }, [open, supportsCredits, isLoadingCredits, initialTab]);
+  }, [open, supportsCredits, isLoadingCredits]);
 
   // Query for payment preview (to get fee information)
   const { data: paymentPreview, isLoading: isLoadingPreview } = useQuery({

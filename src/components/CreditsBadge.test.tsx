@@ -30,7 +30,8 @@ describe('CreditsBadge', () => {
       </TestApp>
     );
 
-    expect(screen.getByText('$10.50')).toBeInTheDocument();
+    // Credits are formatted as whole dollars (10.50 rounds to $11)
+    expect(screen.getByText('$11')).toBeInTheDocument();
   });
 
   it('calls onOpenDialog when badge is clicked', () => {
@@ -45,7 +46,7 @@ describe('CreditsBadge', () => {
       </TestApp>
     );
 
-    const badge = screen.getByText('$10.50');
+    const badge = screen.getByText('$11');
     fireEvent.click(badge);
 
     expect(mockCallback).toHaveBeenCalled();
@@ -58,7 +59,7 @@ describe('CreditsBadge', () => {
       </TestApp>
     );
 
-    const badge = screen.getByText('$10.50');
+    const badge = screen.getByText('$11');
     expect(badge).toHaveClass('cursor-pointer');
     expect(badge).toHaveClass('hover:bg-secondary/80');
   });

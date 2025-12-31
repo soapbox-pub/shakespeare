@@ -38,7 +38,6 @@ describe('AIProviderConfigDialog - Credits Tab', () => {
           provider={mockProvider}
           onUpdate={() => {}}
           onRemove={() => {}}
-          initialTab="credits"
         />
       </TestApp>
     );
@@ -77,7 +76,6 @@ describe('AIProviderConfigDialog - Credits Tab', () => {
           provider={mockProvider}
           onUpdate={() => {}}
           onRemove={() => {}}
-          initialTab="credits"
         />
       </TestApp>
     );
@@ -101,18 +99,20 @@ describe('AIProviderConfigDialog - Credits Tab', () => {
           provider={mockProvider}
           onUpdate={() => {}}
           onRemove={() => {}}
-          initialTab="credits"
         />
       </TestApp>
     );
 
     // Wait for the Buy Credits accordion to be visible
-    // The "add" accordion defaults to being open
     await waitFor(() => {
       expect(screen.getByText('Buy Credits')).toBeInTheDocument();
     });
 
-    // The preset buttons should be visible since the accordion defaults to open
+    // Click the accordion to expand it (accordions default to closed)
+    const buyCreditsButton = screen.getByText('Buy Credits');
+    buyCreditsButton.click();
+
+    // Now the preset buttons should be visible
     await waitFor(() => {
       expect(screen.getByText('$5')).toBeInTheDocument();
       expect(screen.getByText('$10')).toBeInTheDocument();
@@ -145,7 +145,6 @@ describe('AIProviderConfigDialog - Credits Tab', () => {
           provider={mockProvider}
           onUpdate={() => {}}
           onRemove={() => {}}
-          initialTab="credits"
         />
       </TestApp>
     );

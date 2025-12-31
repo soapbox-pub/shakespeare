@@ -1540,7 +1540,7 @@ export function AIProviderConfigDialog({
                 </TabsContent>
                 <TabsContent value="edit" className="flex-1 overflow-y-auto mt-0">
                   {renderEditContent()}
-                  <DialogFooter className="gap-2 sm:gap-0 mt-4">
+                  <DialogFooter className="gap-2 mt-4">
                     <Button
                       variant="destructive"
                       onClick={handleDelete}
@@ -1563,7 +1563,7 @@ export function AIProviderConfigDialog({
         ) : (
           <>
             {renderEditContent()}
-            <DialogFooter className="gap-2 sm:gap-0">
+            <DialogFooter className="gap-2">
               <Button
                 variant="destructive"
                 onClick={handleDelete}

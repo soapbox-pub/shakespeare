@@ -561,5 +561,8 @@
   "failedToDuplicateProject": "Failed to duplicate project",
   "newProjectName": "New Project Name",
   "duplicateProjectDescription": "Create a copy of this project with a new name",
-  "resume": "Resume"
+  "resume": "Resume",
+  "badges": "Badges",
+  "badgesDescription": "View and manage your earned badges and achievements",
+  "noBadgesFound": "No badges found"
 }

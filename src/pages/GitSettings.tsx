@@ -7,7 +7,6 @@ import { Label } from '@/components/ui/label';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Separator } from '@/components/ui/separator';
 import { useGitSettings } from '@/hooks/useGitSettings';
 import { useGitHubOAuth } from '@/hooks/useGitHubOAuth';
 import { useAppContext } from '@/hooks/useAppContext';
@@ -319,7 +318,6 @@ export function GitSettings() {
 
           {/* Advanced Settings */}
           <div className="space-y-4">
-            <Separator className="my-6" />
             <button
               type="button"
               onClick={() => setShowAdvanced(!showAdvanced)}

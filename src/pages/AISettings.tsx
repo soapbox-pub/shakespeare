@@ -228,7 +228,6 @@ export function AISettings() {
 
           {/* Advanced Settings */}
           <div className="space-y-4">
-            <Separator className="my-6" />
             <button
               type="button"
               onClick={() => setShowAdvanced(!showAdvanced)}

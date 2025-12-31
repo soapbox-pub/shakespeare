@@ -486,5 +486,8 @@
   "failedToDuplicateProject": "Falha ao duplicar projeto",
   "newProjectName": "Nome do Novo Projeto",
   "duplicateProjectDescription": "Criar uma cópia deste projeto com um novo nome",
-  "resume": "Retomar"
+  "resume": "Retomar",
+  "badges": "Distintivos",
+  "badgesDescription": "Visualizar e gerenciar seus distintivos e conquistas",
+  "noBadgesFound": "Nenhum distintivo encontrado"
 }

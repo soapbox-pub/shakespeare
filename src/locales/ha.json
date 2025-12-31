@@ -477,5 +477,8 @@
   "failedToDuplicateProject": "An kasa kwafin aikin",
   "newProjectName": "Sunan Sabon Aikin",
   "duplicateProjectDescription": "Ƙirƙiri kwafin wannan aikin da sabon suna",
-  "resume": "Ci gaba"
+  "resume": "Ci gaba",
+  "badges": "Tambari",
+  "badgesDescription": "Duba da sarrafa tambarin da kuka samu da nasarorin",
+  "noBadgesFound": "Ba a sami tambari ba"
 }

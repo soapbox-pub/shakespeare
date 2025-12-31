@@ -151,29 +151,29 @@ export function GitSettings() {
           {/* Loading skeleton for configured credentials */}
           <div className="space-y-3">
             <Skeleton className="h-4 w-40" />
-            <div className="space-y-2">
-              <Skeleton className="h-16 w-full rounded-lg" />
-              <Skeleton className="h-16 w-full rounded-lg" />
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-3">
+              <Skeleton className="h-[120px] w-full rounded-lg" />
+              <Skeleton className="h-[120px] w-full rounded-lg" />
             </div>
           </div>
 
           {/* Loading skeleton for add provider section */}
           <div className="space-y-3">
             <Skeleton className="h-4 w-32" />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <Skeleton className="h-32 w-full rounded-lg" />
-              <Skeleton className="h-32 w-full rounded-lg" />
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-3">
+              <Skeleton className="h-[120px] w-full rounded-lg" />
+              <Skeleton className="h-[120px] w-full rounded-lg" />
+              <Skeleton className="h-[120px] w-full rounded-lg" />
             </div>
-          </div>
-
-          {/* Loading skeleton for custom provider */}
-          <div className="space-y-3">
-            <Skeleton className="h-16 w-full rounded-lg" />
           </div>
 
           {/* Loading skeleton for git identity */}
           <div className="space-y-3">
-            <Skeleton className="h-16 w-full rounded-lg" />
+            <Skeleton className="h-4 w-32" />
+            <div className="space-y-2">
+              <Skeleton className="h-10 w-full rounded-lg" />
+              <Skeleton className="h-10 w-full rounded-lg" />
+            </div>
           </div>
         </>
       ) : (

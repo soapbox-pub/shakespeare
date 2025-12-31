@@ -180,46 +180,86 @@ export function GitSettings() {
       ) : (
         <>
           {/* Configured Credentials */}
-          <div className="space-y-3">
-            <h4 className="text-sm font-medium">{t('configuredCredentials')}</h4>
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-3">
-              {settings.credentials.map((credential) => {
-                const preset = PRESET_PROVIDERS.find(p => p.origin === credential.origin);
-                const isCustom = !preset;
+          {settings.credentials.length > 0 && (
+            <div className="space-y-3">
+              <h4 className="text-sm font-medium">{t('configuredCredentials')}</h4>
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-3">
+                {settings.credentials.map((credential) => {
+                  const preset = PRESET_PROVIDERS.find(p => p.origin === credential.origin);
+                  const isCustom = !preset;
 
-                return (
-                  <ProviderTile
-                    key={credential.id}
-                    iconUrl={credential.origin}
-                    icon={<GitBranch size={32} />}
-                    name={credential.name}
-                    onClick={() => handleOpenCredentialDialog(credential.id)}
-                    badge={isCustom ? <span className="text-xs px-1.5 py-0.5 bg-muted rounded">{t('custom')}</span> : undefined}
-                  />
-                );
-              })}
+                  return (
+                    <ProviderTile
+                      key={credential.id}
+                      iconUrl={credential.origin}
+                      icon={<GitBranch size={32} />}
+                      name={credential.name}
+                      onClick={() => handleOpenCredentialDialog(credential.id)}
+                      badge={isCustom ? <span className="text-xs px-1.5 py-0.5 bg-muted rounded">{t('custom')}</span> : undefined}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Credential Config Dialog */}
+          {selectedCredentialId !== null && (() => {
+            const credential = settings.credentials.find(c => c.id === selectedCredentialId);
+            const preset = credential && PRESET_PROVIDERS.find(p => p.origin === credential.origin);
+            const isCustom = credential && !preset;
+
+            return credential && (
+              <GitCredentialConfigDialog
+                open={configDialogOpen}
+                onOpenChange={setConfigDialogOpen}
+                credential={credential}
+                onUpdate={handleUpdateCredential}
+                onRemove={() => handleRemoveCredential(credential.id)}
+                isCustom={isCustom}
+              />
+            );
+          })()}
+
+          {/* Available Preset Providers */}
+          <div className="space-y-3">
+            <h4 className="text-sm font-medium">{t('addProvider')}</h4>
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-3">
+              {availablePresets.map((preset) => (
+                <ProviderTile
+                  key={preset.id}
+                  iconUrl={preset.origin}
+                  icon={<GitBranch size={32} />}
+                  name={preset.name}
+                  onClick={() => handleOpenAddDialog(preset)}
+                />
+              ))}
 
               {/* Add Custom Credential Tile */}
               <AddProviderTile onClick={() => setCustomCredentialDialogOpen(true)} />
             </div>
 
-            {/* Credential Config Dialog */}
-            {selectedCredentialId !== null && (() => {
-              const credential = settings.credentials.find(c => c.id === selectedCredentialId);
-              const preset = credential && PRESET_PROVIDERS.find(p => p.origin === credential.origin);
-              const isCustom = credential && !preset;
-
-              return credential && (
-                <GitCredentialConfigDialog
-                  open={configDialogOpen}
-                  onOpenChange={setConfigDialogOpen}
-                  credential={credential}
-                  onUpdate={handleUpdateCredential}
-                  onRemove={() => handleRemoveCredential(credential.id)}
-                  isCustom={isCustom}
-                />
-              );
-            })()}
+            {/* Add Preset Credential Dialog */}
+            {selectedPreset && (
+              <AddGitCredentialDialog
+                open={addDialogOpen}
+                onOpenChange={setAddDialogOpen}
+                preset={selectedPreset}
+                oauthHook={
+                  selectedPreset.id === 'github' ? {
+                    initiateOAuth,
+                    isLoading: isOAuthLoading,
+                    error: oauthError,
+                    isOAuthConfigured,
+                  } : null
+                }
+                forceManualEntry={forceManualEntry[selectedPreset.id] || false}
+                onSetForceManualEntry={(force) =>
+                  setForceManualEntry(prev => ({ ...prev, [selectedPreset.id]: force }))
+                }
+                onAdd={(token) => handleAddPresetProvider(selectedPreset, token)}
+              />
+            )}
 
             {/* Add Custom Credential Dialog */}
             <AddCustomGitCredentialDialog
@@ -229,46 +269,6 @@ export function GitSettings() {
               existingOrigins={settings.credentials.map(c => c.origin)}
             />
           </div>
-
-          {/* Available Preset Providers */}
-          {availablePresets.length > 0 && (
-            <div className="space-y-3">
-              <h4 className="text-sm font-medium">{t('addProvider')}</h4>
-              <div className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-3">
-                {availablePresets.map((preset) => (
-                  <ProviderTile
-                    key={preset.id}
-                    iconUrl={preset.origin}
-                    icon={<GitBranch size={32} />}
-                    name={preset.name}
-                    onClick={() => handleOpenAddDialog(preset)}
-                  />
-                ))}
-              </div>
-
-              {/* Add Preset Credential Dialog */}
-              {selectedPreset && (
-                <AddGitCredentialDialog
-                  open={addDialogOpen}
-                  onOpenChange={setAddDialogOpen}
-                  preset={selectedPreset}
-                  oauthHook={
-                    selectedPreset.id === 'github' ? {
-                      initiateOAuth,
-                      isLoading: isOAuthLoading,
-                      error: oauthError,
-                      isOAuthConfigured,
-                    } : null
-                  }
-                  forceManualEntry={forceManualEntry[selectedPreset.id] || false}
-                  onSetForceManualEntry={(force) =>
-                    setForceManualEntry(prev => ({ ...prev, [selectedPreset.id]: force }))
-                  }
-                  onAdd={(token) => handleAddPresetProvider(selectedPreset, token)}
-                />
-              )}
-            </div>
-          )}
 
           {/* Git Identity */}
           <div className="space-y-3">

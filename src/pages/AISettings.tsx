@@ -150,22 +150,55 @@ export function AISettings() {
       ) : (
         <>
           {/* Configured Providers */}
+          {settings.providers.length > 0 && (
+            <div className="space-y-3">
+              <h4 className="text-sm font-medium">{t('configuredProviders')}</h4>
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-3">
+                {settings.providers.map((provider) => (
+                  <ProviderTile
+                    key={provider.id}
+                    iconUrl={provider.baseURL}
+                    icon={<Bot size={32} />}
+                    name={provider.name}
+                    onClick={() => handleOpenProviderDialog(provider.id)}
+                    badge={
+                      <CreditsBadge
+                        provider={provider}
+                        onOpenDialog={() => setActiveCreditsDialog(provider.id)}
+                      />
+                    }
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Provider Config Dialog */}
+          {selectedProviderId !== null && (() => {
+            const provider = settings.providers.find(p => p.id === selectedProviderId);
+            return provider && (
+              <AIProviderConfigDialog
+                open={configDialogOpen}
+                onOpenChange={setConfigDialogOpen}
+                provider={provider}
+                onUpdate={handleSetProvider}
+                onRemove={() => handleRemoveProvider(provider.id)}
+                onOpenCreditsDialog={() => setActiveCreditsDialog(provider.id)}
+              />
+            );
+          })()}
+
+          {/* Available Preset Providers */}
           <div className="space-y-3">
-            <h4 className="text-sm font-medium">{t('configuredProviders')}</h4>
+            <h4 className="text-sm font-medium">{t('addProvider')}</h4>
             <div className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-3">
-              {settings.providers.map((provider) => (
+              {availablePresets.map((preset) => (
                 <ProviderTile
-                  key={provider.id}
-                  iconUrl={provider.baseURL}
+                  key={preset.id}
+                  iconUrl={preset.baseURL}
                   icon={<Bot size={32} />}
-                  name={provider.name}
-                  onClick={() => handleOpenProviderDialog(provider.id)}
-                  badge={
-                    <CreditsBadge
-                      provider={provider}
-                      onOpenDialog={() => setActiveCreditsDialog(provider.id)}
-                    />
-                  }
+                  name={preset.name}
+                  onClick={() => handleOpenAddDialog(preset)}
                 />
               ))}
 
@@ -173,20 +206,16 @@ export function AISettings() {
               <AddProviderTile onClick={() => setCustomProviderDialogOpen(true)} />
             </div>
 
-            {/* Provider Config Dialog */}
-            {selectedProviderId !== null && (() => {
-              const provider = settings.providers.find(p => p.id === selectedProviderId);
-              return provider && (
-                <AIProviderConfigDialog
-                  open={configDialogOpen}
-                  onOpenChange={setConfigDialogOpen}
-                  provider={provider}
-                  onUpdate={handleSetProvider}
-                  onRemove={() => handleRemoveProvider(provider.id)}
-                  onOpenCreditsDialog={() => setActiveCreditsDialog(provider.id)}
-                />
-              );
-            })()}
+            {/* Add Preset Provider Dialog */}
+            {selectedPreset && (
+              <AddAIProviderDialog
+                open={addDialogOpen}
+                onOpenChange={setAddDialogOpen}
+                preset={selectedPreset}
+                isLoggedIntoNostr={!!user}
+                onAdd={(apiKey) => handleAddPresetProvider(selectedPreset, apiKey)}
+              />
+            )}
 
             {/* Add Custom Provider Dialog */}
             <AddCustomAIProviderDialog
@@ -196,35 +225,6 @@ export function AISettings() {
               existingIds={settings.providers.map(p => p.id)}
             />
           </div>
-
-          {/* Available Preset Providers */}
-          {availablePresets.length > 0 && (
-            <div className="space-y-3">
-              <h4 className="text-sm font-medium">{t('addProvider')}</h4>
-              <div className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-3">
-                {availablePresets.map((preset) => (
-                  <ProviderTile
-                    key={preset.id}
-                    iconUrl={preset.baseURL}
-                    icon={<Bot size={32} />}
-                    name={preset.name}
-                    onClick={() => handleOpenAddDialog(preset)}
-                  />
-                ))}
-              </div>
-
-              {/* Add Preset Provider Dialog */}
-              {selectedPreset && (
-                <AddAIProviderDialog
-                  open={addDialogOpen}
-                  onOpenChange={setAddDialogOpen}
-                  preset={selectedPreset}
-                  isLoggedIntoNostr={!!user}
-                  onAdd={(apiKey) => handleAddPresetProvider(selectedPreset, apiKey)}
-                />
-              )}
-            </div>
-          )}
 
           {/* Advanced Settings */}
           <div className="space-y-4">

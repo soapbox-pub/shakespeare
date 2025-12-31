@@ -401,35 +401,72 @@ export function DeploySettings() {
       ) : (
         <>
           {/* Configured Providers */}
-          <div className="space-y-3">
-            <h4 className="text-sm font-medium">{t('configuredProviders')}</h4>
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-3">
-              {settings.providers.map((provider, index) => {
-                const preset = PRESET_PROVIDERS.find(p => p.type === provider.type);
+          {settings.providers.length > 0 && (
+            <div className="space-y-3">
+              <h4 className="text-sm font-medium">{t('configuredProviders')}</h4>
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-3">
+                {settings.providers.map((provider, index) => {
+                  const preset = PRESET_PROVIDERS.find(p => p.type === provider.type);
 
-                return (
-                  <ProviderTile
-                    key={provider.id}
-                    provider={provider}
-                    preset={preset}
-                    onClick={() => handleOpenProviderDialog(index)}
-                  />
-                );
-              })}
+                  return (
+                    <ProviderTile
+                      key={provider.id}
+                      provider={provider}
+                      preset={preset}
+                      onClick={() => handleOpenProviderDialog(index)}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Provider Config Dialog */}
+          {selectedProviderIndex !== null && (
+            <ProviderConfigDialog
+              open={dialogOpen}
+              onOpenChange={setDialogOpen}
+              provider={settings.providers[selectedProviderIndex]}
+              preset={PRESET_PROVIDERS.find(p => p.type === settings.providers[selectedProviderIndex].type)}
+              onUpdate={(updatedProvider) => handleUpdateProvider(selectedProviderIndex, updatedProvider)}
+              onRemove={() => handleRemoveProvider(selectedProviderIndex)}
+            />
+          )}
+
+          {/* Available Preset Providers */}
+          <div className="space-y-3">
+            <h4 className="text-sm font-medium">{t('addProvider')}</h4>
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-3">
+              {availablePresets.map((preset) => (
+                <PresetProviderTile
+                  key={preset.id}
+                  preset={preset}
+                  onClick={() => handleOpenAddDialog(preset)}
+                />
+              ))}
 
               {/* Add Custom Provider Tile */}
               <AddProviderTile onClick={() => setCustomProviderDialogOpen(true)} />
             </div>
 
-            {/* Provider Config Dialog */}
-            {selectedProviderIndex !== null && (
-              <ProviderConfigDialog
-                open={dialogOpen}
-                onOpenChange={setDialogOpen}
-                provider={settings.providers[selectedProviderIndex]}
-                preset={PRESET_PROVIDERS.find(p => p.type === settings.providers[selectedProviderIndex].type)}
-                onUpdate={(updatedProvider) => handleUpdateProvider(selectedProviderIndex, updatedProvider)}
-                onRemove={() => handleRemoveProvider(selectedProviderIndex)}
+            {/* Add Preset Provider Dialog */}
+            {selectedPreset && (
+              <AddProviderDialog
+                open={addDialogOpen}
+                onOpenChange={setAddDialogOpen}
+                preset={selectedPreset}
+                isLoggedIntoNostr={!!user}
+                oauthHook={
+                  selectedPreset.type === 'netlify' ? netlifyOAuth :
+                  selectedPreset.type === 'vercel' ? vercelOAuth : null
+                }
+                forceManualEntry={forceManualEntry[selectedPreset.id] || false}
+                onSetForceManualEntry={(force) =>
+                  setForceManualEntry(prev => ({ ...prev, [selectedPreset.id]: force }))
+                }
+                onAdd={(apiKey, accountId, organizationId) =>
+                  handleAddPresetProvider(selectedPreset, apiKey, accountId, organizationId)
+                }
               />
             )}
 
@@ -440,43 +477,6 @@ export function DeploySettings() {
               onAdd={handleAddCustomProvider}
             />
           </div>
-
-          {/* Available Preset Providers */}
-          {availablePresets.length > 0 && (
-            <div className="space-y-3">
-              <h4 className="text-sm font-medium">{t('addProvider')}</h4>
-              <div className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-3">
-                {availablePresets.map((preset) => (
-                  <PresetProviderTile
-                    key={preset.id}
-                    preset={preset}
-                    onClick={() => handleOpenAddDialog(preset)}
-                  />
-                ))}
-              </div>
-
-              {/* Add Preset Provider Dialog */}
-              {selectedPreset && (
-                <AddProviderDialog
-                  open={addDialogOpen}
-                  onOpenChange={setAddDialogOpen}
-                  preset={selectedPreset}
-                  isLoggedIntoNostr={!!user}
-                  oauthHook={
-                    selectedPreset.type === 'netlify' ? netlifyOAuth :
-                    selectedPreset.type === 'vercel' ? vercelOAuth : null
-                  }
-                  forceManualEntry={forceManualEntry[selectedPreset.id] || false}
-                  onSetForceManualEntry={(force) =>
-                    setForceManualEntry(prev => ({ ...prev, [selectedPreset.id]: force }))
-                  }
-                  onAdd={(apiKey, accountId, organizationId) =>
-                    handleAddPresetProvider(selectedPreset, apiKey, accountId, organizationId)
-                  }
-                />
-              )}
-            </div>
-          )}
 
 
         </>

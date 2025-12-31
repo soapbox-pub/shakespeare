@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Rocket, Plus } from 'lucide-react';
+import { Rocket, Plus, GripVertical } from 'lucide-react';
 import { SettingsPageLayout } from '@/components/SettingsPageLayout';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useDeploySettings } from '@/hooks/useDeploySettings';
@@ -12,6 +12,23 @@ import { ExternalFavicon } from '@/components/ExternalFavicon';
 import { ProviderConfigDialog } from '@/components/ProviderConfigDialog';
 import { AddProviderDialog } from '@/components/AddProviderDialog';
 import { AddCustomProviderDialog } from '@/components/AddCustomProviderDialog';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  rectSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface PresetProvider {
   id: string;
@@ -32,29 +49,54 @@ interface ProviderTileProps {
   provider: DeployProvider;
   preset?: PresetProvider;
   onClick: () => void;
+  id: string;
 }
 
-function ProviderTile({ provider, onClick }: ProviderTileProps) {
+function ProviderTile({ provider, onClick, id }: ProviderTileProps) {
   const url = getProviderUrl(provider);
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
 
   return (
-    <button
-      onClick={onClick}
-      className="flex flex-col items-center justify-center gap-2 p-4 rounded-lg border bg-card hover:bg-muted transition-colors text-center min-h-[100px]"
-    >
-      {url ? (
-        <ExternalFavicon
-          url={url}
-          size={32}
-          fallback={<Rocket size={32} />}
-        />
-      ) : (
-        <Rocket size={32} />
-      )}
-      <span className="text-sm font-medium line-clamp-2 overflow-hidden max-w-full text-ellipsis">
-        {provider.name}
-      </span>
-    </button>
+    <div ref={setNodeRef} style={style} className="relative group">
+      <button
+        onClick={onClick}
+        className="flex flex-col items-center justify-center gap-2 p-4 rounded-lg border bg-card hover:bg-muted transition-colors text-center h-[120px] w-full"
+      >
+        {url ? (
+          <ExternalFavicon
+            url={url}
+            size={32}
+            fallback={<Rocket size={32} />}
+          />
+        ) : (
+          <Rocket size={32} />
+        )}
+        <span className="text-sm font-medium line-clamp-2 overflow-hidden max-w-full text-ellipsis">
+          {provider.name}
+        </span>
+      </button>
+      <div
+        {...attributes}
+        {...listeners}
+        className="absolute top-1 right-1 p-1 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity bg-background/80 rounded hover:bg-muted"
+        title="Drag to reorder"
+      >
+        <GripVertical size={16} className="text-muted-foreground" />
+      </div>
+    </div>
   );
 }
 
@@ -248,6 +290,26 @@ export function DeploySettings() {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [customProviderDialogOpen, setCustomProviderDialogOpen] = useState(false);
 
+  // Drag and drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = settings.providers.findIndex((p) => p.id === active.id);
+      const newIndex = settings.providers.findIndex((p) => p.id === over.id);
+
+      const newProviders = arrayMove(settings.providers, oldIndex, newIndex);
+      setProviders(newProviders);
+    }
+  };
+
   const handleOpenProviderDialog = (index: number) => {
     setSelectedProviderIndex(index);
     setDialogOpen(true);
@@ -402,20 +464,32 @@ export function DeploySettings() {
           {settings.providers.length > 0 && (
             <div className="space-y-3">
               <h4 className="text-sm font-medium">{t('configuredProviders')}</h4>
-              <div className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-3">
-                {settings.providers.map((provider, index) => {
-                  const preset = PRESET_PROVIDERS.find(p => p.type === provider.type);
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext
+                  items={settings.providers.map((p) => p.id)}
+                  strategy={rectSortingStrategy}
+                >
+                  <div className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-3">
+                    {settings.providers.map((provider, index) => {
+                      const preset = PRESET_PROVIDERS.find(p => p.type === provider.type);
 
-                  return (
-                    <ProviderTile
-                      key={provider.id}
-                      provider={provider}
-                      preset={preset}
-                      onClick={() => handleOpenProviderDialog(index)}
-                    />
-                  );
-                })}
-              </div>
+                      return (
+                        <ProviderTile
+                          key={provider.id}
+                          id={provider.id}
+                          provider={provider}
+                          preset={preset}
+                          onClick={() => handleOpenProviderDialog(index)}
+                        />
+                      );
+                    })}
+                  </div>
+                </SortableContext>
+              </DndContext>
             </div>
           )}
 

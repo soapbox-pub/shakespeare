@@ -741,7 +741,6 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
           }}
           onUpdate={() => {}}
           onRemove={() => {}}
-          initialTab="credits"
         />
       )}
     </>

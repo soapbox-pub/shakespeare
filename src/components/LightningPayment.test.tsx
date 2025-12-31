@@ -55,7 +55,6 @@ describe('Lightning Payment', () => {
           provider={mockProvider}
           onUpdate={() => {}}
           onRemove={() => {}}
-          initialTab="credits"
         />
       </TestApp>
     );
@@ -81,7 +80,6 @@ describe('Lightning Payment', () => {
           provider={mockProvider}
           onUpdate={() => {}}
           onRemove={() => {}}
-          initialTab="credits"
         />
       </TestApp>
     );
@@ -101,7 +99,6 @@ describe('Lightning Payment', () => {
           provider={mockProvider}
           onUpdate={() => {}}
           onRemove={() => {}}
-          initialTab="credits"
         />
       </TestApp>
     );

@@ -1,8 +1,21 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { MockFS } from '@/test/MockFS';
 import { Git } from '@/lib/git';
 import { GitLogCommand } from './log';
-import { NPool } from '@nostrify/nostrify';
+import type { NPool, NostrEvent } from '@nostrify/nostrify';
+
+const createMockNostr = (): NPool => {
+  const events: NostrEvent[] = [];
+  return {
+    req: vi.fn(),
+    query: vi.fn(async () => events),
+    event: vi.fn(async (event: NostrEvent) => { events.push(event); }),
+    group: vi.fn().mockReturnValue({ query: vi.fn(async () => events) }),
+    relay: vi.fn(),
+    relays: new Map(),
+    close: vi.fn(),
+  } as unknown as NPool;
+};
 
 describe('GitLogCommand', () => {
   let fs: MockFS;
@@ -13,7 +26,7 @@ describe('GitLogCommand', () => {
     fs = new MockFS();
     git = new Git({
       fs,
-      nostr: new NPool(),
+      nostr: createMockNostr(),
     });
     logCommand = new GitLogCommand({ git, fs });
 

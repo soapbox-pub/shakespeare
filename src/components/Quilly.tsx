@@ -285,7 +285,6 @@ function QuillyCreditsButton({ provider }: QuillyCreditsButtonProps) {
         provider={provider}
         onUpdate={() => {}}
         onRemove={() => {}}
-        initialTab="credits"
       />
     </>
   );

@@ -17,6 +17,8 @@ interface SettingsPageLayoutProps {
   children: ReactNode;
   /** Optional className for the content container */
   className?: string;
+  /** Optional element to render next to the title */
+  titleSuffix?: ReactNode;
 }
 
 /**
@@ -28,7 +30,8 @@ export function SettingsPageLayout({
   titleKey,
   descriptionKey,
   children,
-  className,
+  className = 'space-y-6',
+  titleSuffix,
 }: SettingsPageLayoutProps) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
@@ -48,9 +51,10 @@ export function SettingsPageLayout({
             {t('backToSettings')}
           </Button>
           <div className="space-y-2">
-            <h1 className="text-2xl font-bold flex items-center gap-3">
+            <h1 className="text-2xl font-bold flex flex-wrap items-center gap-3">
               <Icon className="h-6 w-6 text-primary" />
               {t(titleKey)}
+              {titleSuffix}
             </h1>
             <p className="text-muted-foreground">
               {t(descriptionKey)}
@@ -61,9 +65,10 @@ export function SettingsPageLayout({
 
       {!isMobile && (
         <div className="space-y-2">
-          <h1 className="text-2xl font-bold flex items-center gap-3">
+          <h1 className="text-2xl font-bold flex flex-wrap items-center gap-3">
             <Icon className="h-6 w-6 text-primary" />
             {t(titleKey)}
+            {titleSuffix}
           </h1>
           <p className="text-muted-foreground">
             {t(descriptionKey)}

@@ -4,7 +4,6 @@ import { GitBranch, ChevronDown, Plus, User, Globe, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useGitSettings } from '@/hooks/useGitSettings';
@@ -269,53 +268,6 @@ export function GitSettings() {
             />
           </div>
 
-          {/* Git Identity */}
-          <div className="space-y-3">
-            <Accordion type="single" collapsible className="w-full">
-              <AccordionItem value="git-identity">
-                <AccordionTrigger className="px-4 py-3 hover:no-underline">
-                  <div className="flex items-center gap-2">
-                    <User className="h-4 w-4" />
-                    <h4 className="text-sm font-medium">{t('gitIdentity')}</h4>
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent className="px-4 pb-4">
-                  <div className="space-y-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="git-name">{t('name')}</Label>
-                      <Input
-                        id="git-name"
-                        placeholder="Your Name"
-                        value={settings.name || ''}
-                        onChange={(e) => updateSettings({ name: e.target.value })}
-                      />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="git-email">{t('email')}</Label>
-                      <Input
-                        id="git-email"
-                        type="email"
-                        placeholder="your.email@example.com"
-                        value={settings.email || ''}
-                        onChange={(e) => updateSettings({ email: e.target.value })}
-                      />
-                    </div>
-                    <div className="flex items-center justify-between space-x-2">
-                      <Label htmlFor="co-author" className="flex-1 cursor-pointer">
-                        {t('coAuthoredByShakespeare')}
-                      </Label>
-                      <Switch
-                        id="co-author"
-                        checked={settings.coAuthorEnabled ?? true}
-                        onCheckedChange={(checked) => updateSettings({ coAuthorEnabled: checked })}
-                      />
-                    </div>
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          </div>
-
           {/* Advanced Settings */}
           <div className="space-y-4">
             <button
@@ -331,6 +283,53 @@ export function GitSettings() {
 
             {showAdvanced && (
               <div className="space-y-6">
+                {/* Git Identity */}
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <User className="h-5 w-5 text-primary" />
+                      <h3 className="text-lg font-semibold">{t('gitIdentity')}</h3>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="grid gap-2">
+                        <Label htmlFor="git-name">{t('name')}</Label>
+                        <Input
+                          id="git-name"
+                          placeholder="Your Name"
+                          value={settings.name || ''}
+                          onChange={(e) => updateSettings({ name: e.target.value })}
+                          className="bg-muted/50"
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="git-email">{t('email')}</Label>
+                        <Input
+                          id="git-email"
+                          type="email"
+                          placeholder="your.email@example.com"
+                          value={settings.email || ''}
+                          onChange={(e) => updateSettings({ email: e.target.value })}
+                          className="bg-muted/50"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Switch
+                        id="co-author"
+                        checked={settings.coAuthorEnabled ?? true}
+                        onCheckedChange={(checked) => updateSettings({ coAuthorEnabled: checked })}
+                        className="scale-75"
+                      />
+                      <Label htmlFor="co-author" className="text-xs cursor-pointer font-normal text-muted-foreground">
+                        {t('coAuthoredByShakespeare')}
+                      </Label>
+                    </div>
+                  </div>
+                </div>
+
                 {/* CORS Proxy Origins */}
                 <div className="space-y-4">
                   <div className="space-y-2">

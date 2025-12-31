@@ -7,6 +7,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ProviderTile } from '@/components/ProviderTile';
+import { DraggableProviderTile } from '@/components/DraggableProviderTile';
 import { AddProviderTile } from '@/components/AddProviderTile';
 import { AIProviderConfigDialog } from '@/components/AIProviderConfigDialog';
 import { AddAIProviderDialog } from '@/components/AddAIProviderDialog';
@@ -23,10 +24,25 @@ import { PluginsSection } from '@/components/PluginsSection';
 import { ProjectTemplatesSection } from '@/components/ProjectTemplatesSection';
 import { defaultSystemPrompt } from '@/lib/system';
 import { ModelInput } from '@/components/ModelInput';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  rectSortingStrategy,
+} from '@dnd-kit/sortable';
 
 export function AISettings() {
   const { t } = useTranslation();
-  const { settings, updateSettings, setProvider, removeProvider, isLoading } = useAISettings();
+  const { settings, updateSettings, setProvider, removeProvider, setProviders, isLoading } = useAISettings();
   const { user } = useCurrentUser();
   const { config, defaultConfig, updateConfig } = useAppContext();
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -39,6 +55,26 @@ export function AISettings() {
   const [selectedPreset, setSelectedPreset] = useState<PresetProvider | null>(null);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [customProviderDialogOpen, setCustomProviderDialogOpen] = useState(false);
+
+  // Drag and drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = settings.providers.findIndex((p) => p.id === active.id);
+      const newIndex = settings.providers.findIndex((p) => p.id === over.id);
+
+      const newProviders = arrayMove(settings.providers, oldIndex, newIndex);
+      setProviders(newProviders);
+    }
+  };
 
   // Check if system prompt differs from default
   const isSystemPromptModified = useMemo(() =>
@@ -150,27 +186,39 @@ export function AISettings() {
           {settings.providers.length > 0 && (
             <div className="space-y-3">
               <h4 className="text-sm font-medium">{t('configuredProviders')}</h4>
-              <div className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-3">
-                {settings.providers.map((provider) => (
-                  <ProviderTile
-                    key={provider.id}
-                    iconUrl={provider.baseURL}
-                    icon={<Bot size={32} />}
-                    name={provider.name}
-                    onClick={() => handleOpenProviderDialog(provider.id)}
-                    badge={
-                      <CreditsBadge
-                        provider={provider}
-                        onOpenDialog={() => {
-                          setSelectedProviderId(provider.id);
-                          setConfigDialogTab('credits');
-                          setConfigDialogOpen(true);
-                        }}
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext
+                  items={settings.providers.map((p) => p.id)}
+                  strategy={rectSortingStrategy}
+                >
+                  <div className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-3">
+                    {settings.providers.map((provider) => (
+                      <DraggableProviderTile
+                        key={provider.id}
+                        id={provider.id}
+                        iconUrl={provider.baseURL}
+                        icon={<Bot size={32} />}
+                        name={provider.name}
+                        onClick={() => handleOpenProviderDialog(provider.id)}
+                        badge={
+                          <CreditsBadge
+                            provider={provider}
+                            onOpenDialog={() => {
+                              setSelectedProviderId(provider.id);
+                              setConfigDialogTab('credits');
+                              setConfigDialogOpen(true);
+                            }}
+                          />
+                        }
                       />
-                    }
-                  />
-                ))}
-              </div>
+                    ))}
+                  </div>
+                </SortableContext>
+              </DndContext>
             </div>
           )}
 

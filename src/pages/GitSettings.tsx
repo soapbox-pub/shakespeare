@@ -13,11 +13,27 @@ import { SettingsPageLayout } from '@/components/SettingsPageLayout';
 import type { GitCredential } from '@/contexts/GitSettingsContext';
 import { ExternalFavicon } from '@/components/ExternalFavicon';
 import { ProviderTile } from '@/components/ProviderTile';
+import { DraggableProviderTile } from '@/components/DraggableProviderTile';
 import { AddProviderTile } from '@/components/AddProviderTile';
 import { GitCredentialConfigDialog } from '@/components/GitCredentialConfigDialog';
 import { AddGitCredentialDialog } from '@/components/AddGitCredentialDialog';
 import { AddCustomGitCredentialDialog } from '@/components/AddCustomGitCredentialDialog';
 import { Separator } from '@/components/ui/separator';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  rectSortingStrategy,
+} from '@dnd-kit/sortable';
 
 interface PresetProvider {
   id: string;
@@ -59,6 +75,26 @@ export function GitSettings() {
   const [selectedPreset, setSelectedPreset] = useState<PresetProvider | null>(null);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [customCredentialDialogOpen, setCustomCredentialDialogOpen] = useState(false);
+
+  // Drag and drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = settings.credentials.findIndex((c) => c.id === active.id);
+      const newIndex = settings.credentials.findIndex((c) => c.id === over.id);
+
+      const newCredentials = arrayMove(settings.credentials, oldIndex, newIndex);
+      setCredentials(newCredentials);
+    }
+  };
 
   const handleOpenCredentialDialog = (credentialId: string) => {
     setSelectedCredentialId(credentialId);
@@ -182,23 +218,35 @@ export function GitSettings() {
           {settings.credentials.length > 0 && (
             <div className="space-y-3">
               <h4 className="text-sm font-medium">{t('configuredCredentials')}</h4>
-              <div className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-3">
-                {settings.credentials.map((credential) => {
-                  const preset = PRESET_PROVIDERS.find(p => p.origin === credential.origin);
-                  const isCustom = !preset;
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext
+                  items={settings.credentials.map((c) => c.id)}
+                  strategy={rectSortingStrategy}
+                >
+                  <div className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-3">
+                    {settings.credentials.map((credential) => {
+                      const preset = PRESET_PROVIDERS.find(p => p.origin === credential.origin);
+                      const isCustom = !preset;
 
-                  return (
-                    <ProviderTile
-                      key={credential.id}
-                      iconUrl={credential.origin}
-                      icon={<GitBranch size={32} />}
-                      name={credential.name}
-                      onClick={() => handleOpenCredentialDialog(credential.id)}
-                      badge={isCustom ? <span className="text-xs px-1.5 py-0.5 bg-muted rounded">{t('custom')}</span> : undefined}
-                    />
-                  );
-                })}
-              </div>
+                      return (
+                        <DraggableProviderTile
+                          key={credential.id}
+                          id={credential.id}
+                          iconUrl={credential.origin}
+                          icon={<GitBranch size={32} />}
+                          name={credential.name}
+                          onClick={() => handleOpenCredentialDialog(credential.id)}
+                          badge={isCustom ? <span className="text-xs px-1.5 py-0.5 bg-muted rounded">{t('custom')}</span> : undefined}
+                        />
+                      );
+                    })}
+                  </div>
+                </SortableContext>
+              </DndContext>
             </div>
           )}
 

@@ -14,7 +14,7 @@ export function ProviderTile({ icon, iconUrl, name, onClick, badge }: ProviderTi
   return (
     <button
       onClick={onClick}
-      className="flex flex-col items-center justify-center gap-2 p-4 rounded-lg border bg-card hover:bg-muted transition-colors text-center min-h-[100px] relative"
+      className="flex flex-col items-center justify-center gap-2 p-4 rounded-lg border bg-card hover:bg-muted transition-colors text-center h-[120px] relative"
     >
       {iconUrl ? (
         <ExternalFavicon

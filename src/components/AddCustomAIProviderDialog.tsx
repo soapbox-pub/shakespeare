@@ -21,18 +21,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import type { AIProvider } from '@/contexts/AISettingsContext';
 
 interface AddCustomAIProviderDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onAdd: (provider: {
-    id: string;
-    name: string;
-    baseURL: string;
-    apiKey?: string;
-    nostr?: boolean;
-    proxy?: boolean;
-  }) => void;
+  onAdd: (provider: AIProvider) => void;
   existingIds: string[];
 }
 
@@ -62,7 +56,7 @@ export function AddCustomAIProviderDialog({
   const handleAdd = () => {
     if (!customProviderName.trim() || !customProviderId.trim() || !customBaseURL.trim()) return;
 
-    const provider: any = {
+    const provider: AIProvider = {
       id: customProviderId.trim(),
       name: customProviderName.trim(),
       baseURL: customBaseURL.trim(),

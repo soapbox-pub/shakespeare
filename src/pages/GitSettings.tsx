@@ -84,10 +84,10 @@ export function GitSettings() {
     addCredential(newCredential);
   };
 
-  const handleAddCustomCredential = (credential: any) => {
+  const handleAddCustomCredential = (credential: Omit<GitCredential, 'id'>) => {
     const newCredential: GitCredential = {
-      id: crypto.randomUUID(),
       ...credential,
+      id: crypto.randomUUID(),
     };
 
     addCredential(newCredential);

@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Rocket, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { ExternalInput } from '@/components/ui/external-input';
 import {
   Dialog,
@@ -52,21 +51,6 @@ interface AddProviderDialogProps {
   forceManualEntry: boolean;
   onSetForceManualEntry: (force: boolean) => void;
   onAdd: (apiKey: string, accountId?: string, organizationId?: string) => void;
-}
-
-/**
- * Normalize a URL string to ensure it has a protocol
- * @param url - The URL string to normalize
- * @returns A fully-qualified URL string
- */
-function normalizeUrl(url: string): string {
-  // If it already has a protocol, return as-is
-  if (/^https?:\/\//i.test(url)) {
-    return url;
-  }
-
-  // Add https:// prefix
-  return `https://${url}`;
 }
 
 function getProviderUrl(preset: PresetProvider): string | null {

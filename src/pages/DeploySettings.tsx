@@ -34,7 +34,7 @@ interface ProviderTileProps {
   onClick: () => void;
 }
 
-function ProviderTile({ provider, preset, onClick }: ProviderTileProps) {
+function ProviderTile({ provider, onClick }: ProviderTileProps) {
   const url = getProviderUrl(provider);
 
   return (
@@ -344,11 +344,11 @@ export function DeploySettings() {
     setProviders([...settings.providers, newProvider]);
   };
 
-  const handleAddCustomProvider = (provider: any) => {
+  const handleAddCustomProvider = (provider: Omit<DeployProvider, 'id'>) => {
     const newProvider: DeployProvider = {
       id: generateCustomProviderId(provider.type),
       ...provider,
-    };
+    } as DeployProvider;
 
     setProviders([...settings.providers, newProvider]);
   };
@@ -458,7 +458,7 @@ export function DeploySettings() {
                 isLoggedIntoNostr={!!user}
                 oauthHook={
                   selectedPreset.type === 'netlify' ? netlifyOAuth :
-                  selectedPreset.type === 'vercel' ? vercelOAuth : null
+                    selectedPreset.type === 'vercel' ? vercelOAuth : null
                 }
                 forceManualEntry={forceManualEntry[selectedPreset.id] || false}
                 onSetForceManualEntry={(force) =>

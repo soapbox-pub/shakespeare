@@ -85,9 +85,8 @@ export function AISettings() {
     setProvider(newProvider);
   };
 
-  const handleAddCustomProvider = (provider: any) => {
-    const newProvider: AIProvider = provider;
-    setProvider(newProvider);
+  const handleAddCustomProvider = (provider: AIProvider) => {
+    setProvider(provider);
   };
 
   const handleRemoveProvider = (id: string) => {

@@ -21,24 +21,28 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import type {
+  ShakespeareDeployProvider,
+  NetlifyProvider,
+  VercelProvider,
+  NsiteProvider,
+  CloudflareProvider,
+  DenoDeployProvider,
+} from '@/contexts/DeploySettingsContext';
+
+// Type for provider without the 'id' field (will be generated)
+type DeployProviderInput =
+  | Omit<ShakespeareDeployProvider, 'id'>
+  | Omit<NetlifyProvider, 'id'>
+  | Omit<VercelProvider, 'id'>
+  | Omit<NsiteProvider, 'id'>
+  | Omit<CloudflareProvider, 'id'>
+  | Omit<DenoDeployProvider, 'id'>;
 
 interface AddCustomProviderDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onAdd: (provider: {
-    type: 'shakespeare' | 'netlify' | 'vercel' | 'nsite' | 'cloudflare' | 'deno';
-    name: string;
-    apiKey?: string;
-    accountId?: string;
-    organizationId?: string;
-    baseURL?: string;
-    baseDomain?: string;
-    host?: string;
-    proxy?: boolean;
-    gateway?: string;
-    relayUrls?: string[];
-    blossomServers?: string[];
-  }) => void;
+  onAdd: (provider: DeployProviderInput) => void;
 }
 
 export function AddCustomProviderDialog({
@@ -63,43 +67,74 @@ export function AddCustomProviderDialog({
   const handleAdd = () => {
     if (!customProviderType || !customName.trim()) return;
 
-    const provider: any = {
-      type: customProviderType,
-      name: customName.trim(),
-    };
+    // Build provider object based on type
+    let provider: DeployProviderInput;
 
     if (customProviderType === 'shakespeare') {
-      if (customHost?.trim()) provider.host = customHost.trim();
-      if (customProxy) provider.proxy = true;
+      provider = {
+        type: 'shakespeare',
+        name: customName.trim(),
+        ...(customHost?.trim() && { host: customHost.trim() }),
+        ...(customProxy && { proxy: true }),
+      };
     } else if (customProviderType === 'nsite') {
-      provider.gateway = customGateway.trim() || 'nsite.lol';
-      provider.relayUrls = customRelayUrls.trim()
-        ? customRelayUrls.split(',').map(s => s.trim()).filter(Boolean)
-        : ['wss://relay.nostr.band'];
-      provider.blossomServers = customBlossomServers.trim()
-        ? customBlossomServers.split(',').map(s => s.trim()).filter(Boolean)
-        : ['https://blossom.primal.net/'];
-    } else {
+      provider = {
+        type: 'nsite',
+        name: customName.trim(),
+        gateway: customGateway.trim() || 'nsite.lol',
+        relayUrls: customRelayUrls.trim()
+          ? customRelayUrls.split(',').map(s => s.trim()).filter(Boolean)
+          : ['wss://relay.nostr.band'],
+        blossomServers: customBlossomServers.trim()
+          ? customBlossomServers.split(',').map(s => s.trim()).filter(Boolean)
+          : ['https://blossom.primal.net/'],
+      };
+    } else if (customProviderType === 'netlify') {
       if (!customApiKey.trim()) return;
-      provider.apiKey = customApiKey.trim();
-      
-      if (customProviderType === 'cloudflare') {
-        if (!customAccountId.trim()) return;
-        provider.accountId = customAccountId.trim();
-      }
-      
-      if (customProviderType === 'deno') {
-        if (!customOrganizationId.trim()) return;
-        provider.organizationId = customOrganizationId.trim();
-      }
-      
-      if (customBaseURL?.trim()) provider.baseURL = customBaseURL.trim();
-      if (customBaseDomain?.trim()) provider.baseDomain = customBaseDomain.trim();
-      if (customProxy) provider.proxy = true;
+      provider = {
+        type: 'netlify',
+        name: customName.trim(),
+        apiKey: customApiKey.trim(),
+        ...(customBaseURL?.trim() && { baseURL: customBaseURL.trim() }),
+        ...(customProxy && { proxy: true }),
+      };
+    } else if (customProviderType === 'vercel') {
+      if (!customApiKey.trim()) return;
+      provider = {
+        type: 'vercel',
+        name: customName.trim(),
+        apiKey: customApiKey.trim(),
+        ...(customBaseURL?.trim() && { baseURL: customBaseURL.trim() }),
+        ...(customProxy && { proxy: true }),
+      };
+    } else if (customProviderType === 'cloudflare') {
+      if (!customApiKey.trim() || !customAccountId.trim()) return;
+      provider = {
+        type: 'cloudflare',
+        name: customName.trim(),
+        apiKey: customApiKey.trim(),
+        accountId: customAccountId.trim(),
+        ...(customBaseURL?.trim() && { baseURL: customBaseURL.trim() }),
+        ...(customBaseDomain?.trim() && { baseDomain: customBaseDomain.trim() }),
+        ...(customProxy && { proxy: true }),
+      };
+    } else if (customProviderType === 'deno') {
+      if (!customApiKey.trim() || !customOrganizationId.trim()) return;
+      provider = {
+        type: 'deno',
+        name: customName.trim(),
+        apiKey: customApiKey.trim(),
+        organizationId: customOrganizationId.trim(),
+        ...(customBaseURL?.trim() && { baseURL: customBaseURL.trim() }),
+        ...(customBaseDomain?.trim() && { baseDomain: customBaseDomain.trim() }),
+        ...(customProxy && { proxy: true }),
+      };
+    } else {
+      return; // Unknown type
     }
 
     onAdd(provider);
-    
+
     // Reset form
     setCustomProviderType('');
     setCustomName('');
@@ -113,13 +148,13 @@ export function AddCustomProviderDialog({
     setCustomGateway('');
     setCustomRelayUrls('');
     setCustomBlossomServers('');
-    
+
     onOpenChange(false);
   };
 
   const isValid = customProviderType && customName.trim() &&
-    (customProviderType === 'shakespeare' || customProviderType === 'nsite' || 
-      (customApiKey.trim() && 
+    (customProviderType === 'shakespeare' || customProviderType === 'nsite' ||
+      (customApiKey.trim() &&
         (customProviderType !== 'cloudflare' || customAccountId.trim()) &&
         (customProviderType !== 'deno' || customOrganizationId.trim())));
 

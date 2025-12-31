@@ -1,4 +1,4 @@
-import { Award } from "lucide-react";
+import { Award, Lock } from "lucide-react";
 import { useTranslation } from 'react-i18next';
 import { SettingsPageLayout } from '@/components/SettingsPageLayout';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,12 +6,22 @@ import { useNostr } from '@nostrify/react';
 import { useQuery } from '@tanstack/react-query';
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { BadgeAwardModal } from '@/components/BadgeAwardModal';
 import { cn } from '@/lib/utils';
+import { useState } from 'react';
 import type { NostrEvent } from '@nostrify/nostrify';
 
 const BADGE_ISSUER_PUBKEY = "804a5a94d972d2218d2cc8712881e6f00df09fe7a1a269ccbf916e5c8c17efcc";
 
-function BadgeCard({ event, awarded }: { event: NostrEvent; awarded: boolean }) {
+function BadgeCard({ 
+  event, 
+  awarded, 
+  onClick 
+}: { 
+  event: NostrEvent; 
+  awarded: boolean;
+  onClick?: () => void;
+}) {
   const dTag = event.tags.find(([t]) => t === "d")?.[1];
   const nameTag = event.tags.find(([t]) => t === "name")?.[1];
   const descriptionTag = event.tags.find(([t]) => t === "description")?.[1];
@@ -23,24 +33,36 @@ function BadgeCard({ event, awarded }: { event: NostrEvent; awarded: boolean }) 
   const imageUrl = imageTag || (thumbTags.length > 0 ? thumbTags[thumbTags.length - 1]?.[1] : null);
 
   return (
-    <Card className={cn(
-      "transition-all bg-transparent border-none shadow-none",
-      awarded ? "" : "opacity-50 grayscale"
-    )}>
+    <Card 
+      className={cn(
+        "transition-all bg-transparent border-none shadow-none",
+        awarded ? "cursor-pointer hover:scale-105" : ""
+      )}
+      onClick={awarded ? onClick : undefined}
+    >
       <CardHeader className="text-center space-y-4 p-0">
-        {imageUrl && (
-          <div className="flex justify-center">
+        <div className="flex justify-center">
+          {imageUrl ? (
             <img
               src={imageUrl}
               alt={badgeName}
-              className="w-32 h-32 rounded-lg object-cover"
+              className={cn(
+                "w-32 h-32 rounded-lg object-cover",
+                awarded ? "" : "opacity-50 grayscale blur-md"
+              )}
             />
-          </div>
-        )}
+          ) : null}
+        </div>
         <div className="space-y-2">
-          <CardTitle className={cn("text-lg", awarded ? "" : "text-muted-foreground")}>
-            {badgeName}
-          </CardTitle>
+          {awarded ? (
+            <CardTitle className="text-lg">
+              {badgeName}
+            </CardTitle>
+          ) : (
+            <div className="flex items-center justify-center">
+              <Lock className="h-5 w-5 text-muted-foreground" />
+            </div>
+          )}
           {description && (
             <p className={cn("text-sm", awarded ? "text-muted-foreground" : "text-muted-foreground/70")}>
               {description}
@@ -57,6 +79,7 @@ export function BadgesSettings() {
   const { nostr } = useNostr();
   const { user } = useCurrentUser();
   const userPubkey = user?.pubkey;
+  const [selectedBadge, setSelectedBadge] = useState<NostrEvent | null>(null);
 
   const { data: badgeDefinitions, isLoading: isLoadingDefinitions } = useQuery({
     queryKey: ['badge-definitions', BADGE_ISSUER_PUBKEY],
@@ -117,6 +140,10 @@ export function BadgesSettings() {
       titleKey="badges"
       descriptionKey="badgesDescription"
     >
+      <BadgeAwardModal 
+        badgeDefinition={selectedBadge} 
+        onClose={() => setSelectedBadge(null)} 
+      />
       <div className="space-y-4">
         {isLoading ? (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -142,6 +169,7 @@ export function BadgesSettings() {
                 key={event.id} 
                 event={event} 
                 awarded={isBadgeAwarded(event)}
+                onClick={isBadgeAwarded(event) ? () => setSelectedBadge(event) : undefined}
               />
             ))}
           </div>

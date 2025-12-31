@@ -28,6 +28,7 @@ import { DynamicFavicon } from '@/components/DynamicFavicon';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { PWAUpdatePrompt } from '@/components/PWAUpdatePrompt';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { BadgeAwardNotification } from '@/components/BadgeAwardNotification';
 
 import AppRouter from './AppRouter';
 
@@ -152,6 +153,7 @@ export function App() {
                                   <DynamicFavicon />
                                   <OfflineIndicator />
                                   <PWAUpdatePrompt />
+                                  <BadgeAwardNotification />
                                   <Suspense>
                                     <AppRouter />
                                   </Suspense>

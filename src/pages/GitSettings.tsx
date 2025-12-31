@@ -1,48 +1,24 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Check, GitBranch, Trash2, ChevronDown, Plus, User, GripVertical, Globe, X } from 'lucide-react';
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from '@dnd-kit/core';
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
-import {
-  useSortable,
-} from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
+import { GitBranch, ChevronDown, Plus, User, Globe, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Card, CardContent } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { useGitSettings } from '@/hooks/useGitSettings';
 import { useGitHubOAuth } from '@/hooks/useGitHubOAuth';
 import { useAppContext } from '@/hooks/useAppContext';
 import { SettingsPageLayout } from '@/components/SettingsPageLayout';
 import type { GitCredential } from '@/contexts/GitSettingsContext';
-import { PasswordInput } from '@/components/ui/password-input';
-import { ExternalInput } from '@/components/ui/external-input';
 import { ExternalFavicon } from '@/components/ExternalFavicon';
+import { ProviderTile } from '@/components/ProviderTile';
+import { AddProviderTile } from '@/components/AddProviderTile';
+import { GitCredentialConfigDialog } from '@/components/GitCredentialConfigDialog';
+import { AddGitCredentialDialog } from '@/components/AddGitCredentialDialog';
+import { AddCustomGitCredentialDialog } from '@/components/AddCustomGitCredentialDialog';
 
 interface PresetProvider {
   id: string;
@@ -69,151 +45,34 @@ const PRESET_PROVIDERS: PresetProvider[] = [
   },
 ];
 
-interface SortableCredentialItemProps {
-  credential: GitCredential;
-  onUpdate: (updatedCredential: GitCredential) => void;
-  onRemove: (id: string) => void;
-  showDragHandle: boolean;
-}
-
-function SortableCredentialItem({ credential, onUpdate, onRemove, showDragHandle }: SortableCredentialItemProps) {
-  const { t } = useTranslation();
-  const preset = PRESET_PROVIDERS.find(p => p.origin === credential.origin);
-  const isCustom = !preset;
-
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: credential.id });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  };
-
-  const updateCredential = (updates: Partial<GitCredential>) => {
-    onUpdate({ ...credential, ...updates });
-  };
-
-  return (
-    <AccordionItem
-      ref={setNodeRef}
-      style={style}
-      value={credential.id}
-      className="border rounded-lg"
-    >
-      <AccordionTrigger className="px-4 py-3 hover:no-underline">
-        <div className="flex items-center gap-2 w-full mr-3">
-          {showDragHandle && (
-            <div
-              {...attributes}
-              {...listeners}
-              className="cursor-grab active:cursor-grabbing p-1 -ml-1 text-muted-foreground hover:text-foreground"
-            >
-              <GripVertical className="h-4 w-4" />
-            </div>
-          )}
-          <ExternalFavicon
-            url={credential.origin}
-            size={16}
-            fallback={<GitBranch size={16} />}
-          />
-          <span className="font-medium">
-            {credential.name}
-          </span>
-          {isCustom && <Badge variant="outline">{t('custom')}</Badge>}
-        </div>
-      </AccordionTrigger>
-      <AccordionContent className="px-4 pb-4">
-        <div className="space-y-3">
-          <div className="grid gap-2">
-            <Label htmlFor={`credential-${credential.id}-name`}>
-              {t('name')} <span className="text-destructive">*</span>
-            </Label>
-            <Input
-              id={`credential-${credential.id}-name`}
-              placeholder="GitHub"
-              value={credential.name}
-              onChange={(e) => updateCredential({ name: e.target.value })}
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor={`credential-${credential.id}-origin`}>
-              {t('origin')} <span className="text-destructive">*</span>
-            </Label>
-            <Input
-              id={`credential-${credential.id}-origin`}
-              placeholder="https://github.com"
-              value={credential.origin}
-              onChange={(e) => updateCredential({ origin: e.target.value })}
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor={`credential-${credential.id}-username`}>
-              {t('username')} <span className="text-destructive">*</span>
-            </Label>
-            <Input
-              id={`credential-${credential.id}-username`}
-              placeholder="git"
-              value={credential.username}
-              onChange={(e) => updateCredential({ username: e.target.value })}
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor={`credential-${credential.id}-password`}>
-              {t('password')} <span className="text-destructive">*</span>
-            </Label>
-            <PasswordInput
-              id={`credential-${credential.id}-password`}
-              placeholder={t('enterPassword')}
-              value={credential.password}
-              onChange={(e) => updateCredential({ password: e.target.value })}
-            />
-          </div>
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={() => onRemove(credential.id)}
-          >
-            <Trash2 className="h-4 w-4 mr-2" />
-            {t('delete')}
-          </Button>
-        </div>
-      </AccordionContent>
-    </AccordionItem>
-  );
-}
-
 export function GitSettings() {
   const { t } = useTranslation();
   const { settings, addCredential, removeCredential, setCredentials, updateSettings, isInitialized } = useGitSettings();
   const { initiateOAuth, isLoading: isOAuthLoading, error: oauthError, isOAuthConfigured } = useGitHubOAuth();
   const { config, updateConfig } = useAppContext();
-  const [customName, setCustomName] = useState('');
-  const [customOrigin, setCustomOrigin] = useState('');
-  const [customUsername, setCustomUsername] = useState('');
-  const [customPassword, setCustomPassword] = useState('');
-  const [presetTokens, setPresetTokens] = useState<Record<string, string>>({});
   const [forceManualEntry, setForceManualEntry] = useState<Record<string, boolean>>({});
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [newProxyOrigin, setNewProxyOrigin] = useState('');
 
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
+  // Dialog state
+  const [selectedCredentialId, setSelectedCredentialId] = useState<string | null>(null);
+  const [configDialogOpen, setConfigDialogOpen] = useState(false);
+  const [selectedPreset, setSelectedPreset] = useState<PresetProvider | null>(null);
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [customCredentialDialogOpen, setCustomCredentialDialogOpen] = useState(false);
 
-  const handleAddPresetProvider = (preset: PresetProvider) => {
-    const token = presetTokens[preset.id] as string | undefined;
+  const handleOpenCredentialDialog = (credentialId: string) => {
+    setSelectedCredentialId(credentialId);
+    setConfigDialogOpen(true);
+  };
 
-    if (!token?.trim()) return;
+  const handleOpenAddDialog = (preset: PresetProvider) => {
+    setSelectedPreset(preset);
+    setAddDialogOpen(true);
+  };
+
+  const handleAddPresetProvider = (preset: PresetProvider, token: string) => {
+    if (!token.trim()) return;
 
     const newCredential: GitCredential = {
       id: crypto.randomUUID(),
@@ -223,61 +82,28 @@ export function GitSettings() {
       password: token.trim(),
     };
 
-    // Auto-save: Add credential immediately to persistent storage
     addCredential(newCredential);
-
-    // Clear the token input for this preset
-    setPresetTokens(prev => ({
-      ...prev,
-      [preset.id]: '',
-    }));
   };
 
-  const handleAddCustomProvider = () => {
-    if (!customName.trim() || !customOrigin.trim() || !customUsername.trim() || !customPassword.trim()) return;
-
+  const handleAddCustomCredential = (credential: any) => {
     const newCredential: GitCredential = {
       id: crypto.randomUUID(),
-      name: customName.trim(),
-      origin: customOrigin.trim(),
-      username: customUsername.trim(),
-      password: customPassword.trim(),
+      ...credential,
     };
 
-    // Auto-save: Add credential immediately to persistent storage
     addCredential(newCredential);
-
-    setCustomName('');
-    setCustomOrigin('');
-    setCustomUsername('');
-    setCustomPassword('');
   };
 
   const handleRemoveCredential = (id: string) => {
-    // Auto-save: Remove credential immediately from persistent storage
     removeCredential(id);
+    setConfigDialogOpen(false);
   };
 
   const handleUpdateCredential = (updatedCredential: GitCredential) => {
-    // Auto-save: Update credential immediately in persistent storage
     const updatedCredentials = settings.credentials.map((cred) =>
       cred.id === updatedCredential.id ? updatedCredential : cred
     );
     setCredentials(updatedCredentials);
-  };
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-
-    if (active.id !== over?.id) {
-      const oldIndex = settings.credentials.findIndex((cred) => cred.id === active.id);
-      const newIndex = settings.credentials.findIndex((cred) => cred.id === over?.id);
-
-      if (oldIndex !== -1 && newIndex !== -1) {
-        const newCredentials = arrayMove(settings.credentials, oldIndex, newIndex);
-        setCredentials(newCredentials);
-      }
-    }
   };
 
   const handleAddProxyOrigin = () => {
@@ -354,252 +180,95 @@ export function GitSettings() {
       ) : (
         <>
           {/* Configured Credentials */}
-          {settings.credentials.length > 0 && (
-            <div className="space-y-3">
-              <h4 className="text-sm font-medium">{t('configuredCredentials')}</h4>
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragEnd={handleDragEnd}
-              >
-                <SortableContext
-                  items={settings.credentials.map((cred) => cred.id)}
-                  strategy={verticalListSortingStrategy}
-                >
-                  <Accordion type="multiple" className="w-full space-y-2">
-                    {settings.credentials.map((credential) => (
-                      <SortableCredentialItem
-                        key={credential.id}
-                        credential={credential}
-                        onUpdate={handleUpdateCredential}
-                        onRemove={handleRemoveCredential}
-                        showDragHandle={settings.credentials.length > 1}
-                      />
-                    ))}
-                  </Accordion>
-                </SortableContext>
-              </DndContext>
+          <div className="space-y-3">
+            <h4 className="text-sm font-medium">{t('configuredCredentials')}</h4>
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-3">
+              {settings.credentials.map((credential) => {
+                const preset = PRESET_PROVIDERS.find(p => p.origin === credential.origin);
+                const isCustom = !preset;
+
+                return (
+                  <ProviderTile
+                    key={credential.id}
+                    iconUrl={credential.origin}
+                    icon={<GitBranch size={32} />}
+                    name={credential.name}
+                    onClick={() => handleOpenCredentialDialog(credential.id)}
+                    badge={isCustom ? <span className="text-xs px-1.5 py-0.5 bg-muted rounded">{t('custom')}</span> : undefined}
+                  />
+                );
+              })}
+
+              {/* Add Custom Credential Tile */}
+              <AddProviderTile onClick={() => setCustomCredentialDialogOpen(true)} />
             </div>
-          )}
+
+            {/* Credential Config Dialog */}
+            {selectedCredentialId !== null && (() => {
+              const credential = settings.credentials.find(c => c.id === selectedCredentialId);
+              const preset = credential && PRESET_PROVIDERS.find(p => p.origin === credential.origin);
+              const isCustom = credential && !preset;
+
+              return credential && (
+                <GitCredentialConfigDialog
+                  open={configDialogOpen}
+                  onOpenChange={setConfigDialogOpen}
+                  credential={credential}
+                  onUpdate={handleUpdateCredential}
+                  onRemove={() => handleRemoveCredential(credential.id)}
+                  isCustom={isCustom}
+                />
+              );
+            })()}
+
+            {/* Add Custom Credential Dialog */}
+            <AddCustomGitCredentialDialog
+              open={customCredentialDialogOpen}
+              onOpenChange={setCustomCredentialDialogOpen}
+              onAdd={handleAddCustomCredential}
+              existingOrigins={settings.credentials.map(c => c.origin)}
+            />
+          </div>
 
           {/* Available Preset Providers */}
           {availablePresets.length > 0 && (
             <div className="space-y-3">
               <h4 className="text-sm font-medium">{t('addProvider')}</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-3">
                 {availablePresets.map((preset) => (
-                  <Card key={preset.id}>
-                    <CardContent className="p-4 space-y-3">
-                      <div className="flex items-center gap-2">
-                        <ExternalFavicon
-                          url={preset.origin}
-                          size={16}
-                          fallback={<GitBranch size={16} />}
-                        />
-                        <h5 className="font-medium">{preset.name}</h5>
-                      </div>
-
-                      {preset.id === 'github' ? (
-                      // Special rendering for GitHub - OAuth button if configured, otherwise token input
-                        isOAuthConfigured && !forceManualEntry[preset.id] ? (
-                          <div className="space-y-3">
-                            <div className="flex gap-0">
-                              <Button
-                                onClick={initiateOAuth}
-                                disabled={isOAuthLoading}
-                                className="flex-1 rounded-r-none gap-2"
-                                variant="default"
-                              >
-                                {isOAuthLoading ? (
-                                  <>
-                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                                  Connecting...
-                                  </>
-                                ) : (
-                                  <>
-                                    <ExternalFavicon
-                                      url="https://github.com"
-                                      size={16}
-                                      fallback={<GitBranch size={16} />}
-                                    />
-                                    <span className="truncate text-ellipsis overflow-hidden">
-                                    Connect to GitHub
-                                    </span>
-                                  </>
-                                )}
-                              </Button>
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button
-                                    variant="default"
-                                    className="rounded-l-none border-l border-primary-foreground/20 px-2"
-                                    disabled={isOAuthLoading}
-                                  >
-                                    <ChevronDown className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem
-                                    onClick={() => setForceManualEntry(prev => ({ ...prev, [preset.id]: true }))}
-                                  >
-                                  Enter API key
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </div>
-                            {oauthError && (
-                              <p className="text-sm text-destructive">
-                                {oauthError}
-                              </p>
-                            )}
-                          </div>
-                        ) : (
-                          <div className="flex gap-2">
-                            <ExternalInput
-                              type="password"
-                              className="flex-1"
-                              placeholder={t('enterToken')}
-                              value={presetTokens[preset.id] || ''}
-                              onChange={(e) => setPresetTokens(prev => ({
-                                ...prev,
-                                [preset.id]: e.target.value,
-                              }))}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter' && presetTokens[preset.id]?.trim()) {
-                                  handleAddPresetProvider(preset);
-                                }
-                              }}
-                              url={preset.tokenURL}
-                              urlTitle="Get Token"
-                            />
-                            <Button
-                              onClick={() => handleAddPresetProvider(preset)}
-                              disabled={!presetTokens[preset.id]?.trim()}
-                              size="sm"
-                              className="h-10"
-                            >
-                              {t('add')}
-                            </Button>
-                          </div>
-                        )
-                      ) : (
-                      // Standard rendering for other providers
-                        <div className="flex gap-2">
-                          <ExternalInput
-                            type="password"
-                            className="flex-1"
-                            placeholder={t('enterToken')}
-                            value={presetTokens[preset.id] || ''}
-                            onChange={(e) => setPresetTokens(prev => ({
-                              ...prev,
-                              [preset.id]: e.target.value,
-                            }))}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter' && presetTokens[preset.id]?.trim()) {
-                                handleAddPresetProvider(preset);
-                              }
-                            }}
-                            url={preset.tokenURL}
-                            urlTitle="Get Token"
-                          />
-                          <Button
-                            onClick={() => handleAddPresetProvider(preset)}
-                            disabled={!presetTokens[preset.id]?.trim()}
-                            size="sm"
-                            className="h-10"
-                          >
-                            {t('add')}
-                          </Button>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
+                  <ProviderTile
+                    key={preset.id}
+                    iconUrl={preset.origin}
+                    icon={<GitBranch size={32} />}
+                    name={preset.name}
+                    onClick={() => handleOpenAddDialog(preset)}
+                  />
                 ))}
               </div>
+
+              {/* Add Preset Credential Dialog */}
+              {selectedPreset && (
+                <AddGitCredentialDialog
+                  open={addDialogOpen}
+                  onOpenChange={setAddDialogOpen}
+                  preset={selectedPreset}
+                  oauthHook={
+                    selectedPreset.id === 'github' ? {
+                      initiateOAuth,
+                      isLoading: isOAuthLoading,
+                      error: oauthError,
+                      isOAuthConfigured,
+                    } : null
+                  }
+                  forceManualEntry={forceManualEntry[selectedPreset.id] || false}
+                  onSetForceManualEntry={(force) =>
+                    setForceManualEntry(prev => ({ ...prev, [selectedPreset.id]: force }))
+                  }
+                  onAdd={(token) => handleAddPresetProvider(selectedPreset, token)}
+                />
+              )}
             </div>
           )}
-
-          {/* Custom Provider */}
-          <div className="space-y-3">
-            <Accordion type="single" collapsible className="w-full">
-              <AccordionItem value="custom-provider">
-                <AccordionTrigger className="px-4 py-3 hover:no-underline">
-                  <div className="flex items-center gap-2">
-                    <Plus className="h-4 w-4" />
-                    <h4 className="text-sm font-medium">{t('addCustomProvider')}</h4>
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent className="px-4 pb-4">
-                  <div className="space-y-3">
-                    <div className="grid gap-2">
-                      <Label htmlFor="custom-name">
-                        {t('name')} <span className="text-destructive">*</span>
-                      </Label>
-                      <Input
-                        id="custom-name"
-                        placeholder="My Git Server"
-                        value={customName}
-                        onChange={(e) => setCustomName(e.target.value)}
-                      />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="custom-origin">
-                        {t('origin')} <span className="text-destructive">*</span>
-                      </Label>
-                      <Input
-                        id="custom-origin"
-                        placeholder="https://git.example.com"
-                        value={customOrigin}
-                        onChange={(e) => setCustomOrigin(e.target.value)}
-                      />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="custom-username">
-                        {t('username')} <span className="text-destructive">*</span>
-                      </Label>
-                      <Input
-                        id="custom-username"
-                        placeholder="git"
-                        value={customUsername}
-                        onChange={(e) => setCustomUsername(e.target.value)}
-                      />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="custom-password">
-                        {t('password')} <span className="text-destructive">*</span>
-                      </Label>
-                      <PasswordInput
-                        id="custom-password"
-                        placeholder={t('enterPassword')}
-                        value={customPassword}
-                        onChange={(e) => setCustomPassword(e.target.value)}
-                      />
-                    </div>
-                    <Button
-                      onClick={handleAddCustomProvider}
-                      disabled={
-                        !customName.trim() ||
-                        !customOrigin.trim() ||
-                        !customUsername.trim() ||
-                        !customPassword.trim() ||
-                        customOrigin.trim() in settings.credentials
-                      }
-                      size="sm"
-                      className="gap-2"
-                    >
-                      <Check className="h-4 w-4" />
-                      {t('addCustomProviderButton')}
-                    </Button>
-                    {customOrigin.trim() in settings.credentials && (
-                      <p className="text-sm text-destructive">
-                        {t('credentialsExist')}
-                      </p>
-                    )}
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          </div>
 
           {/* Git Identity */}
           <div className="space-y-3">

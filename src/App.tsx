@@ -23,7 +23,6 @@ import { FSProvider } from '@/components/FSProvider';
 import { ConsoleErrorProvider } from '@/components/ConsoleErrorProvider';
 import { GitSyncProvider } from '@/components/GitSyncProvider';
 import { LightningFSAdapter } from '@/lib/LightningFSAdapter';
-import { ElectronFSAdapter } from '@/lib/ElectronFSAdapter';
 import { cleanupTmpDirectory } from '@/lib/tmpCleanup';
 import { DynamicFavicon } from '@/components/DynamicFavicon';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
@@ -47,55 +46,6 @@ const queryClient = new QueryClient({
     },
   },
 });
-
-// Get OS-specific default paths for Electron
-function getElectronDefaultPaths(): { fsPathProjects: string; fsPathConfig: string; fsPathTmp: string; fsPathPlugins: string; fsPathTemplates: string } {
-  if (!globalThis.electron) {
-    // Browser defaults - use virtual filesystem paths
-    return {
-      fsPathProjects: "/projects",
-      fsPathConfig: "/config",
-      fsPathTmp: "/tmp",
-      fsPathPlugins: "/plugins",
-      fsPathTemplates: "/templates",
-    };
-  }
-
-  // Electron defaults - use OS-specific paths
-  // Note: The ~ will be expanded by the Electron main process
-  const platform = navigator.platform.toLowerCase();
-
-  if (platform.includes('win')) {
-    // Windows
-    return {
-      fsPathProjects: "~/Documents/Projects",
-      fsPathConfig: "~/AppData/Local/shakespeare",
-      fsPathTmp: "~/AppData/Local/Temp/shakespeare",
-      fsPathPlugins: "~/AppData/Local/shakespeare/plugins",
-      fsPathTemplates: "~/AppData/Local/shakespeare/templates",
-    };
-  } else if (platform.includes('mac')) {
-    // macOS
-    return {
-      fsPathProjects: "~/Projects",
-      fsPathConfig: "~/Library/Application Support/shakespeare",
-      fsPathTmp: "/tmp/shakespeare",
-      fsPathPlugins: "~/Library/Application Support/shakespeare/plugins",
-      fsPathTemplates: "~/Library/Application Support/shakespeare/templates",
-    };
-  } else {
-    // Linux and other Unix-like systems
-    return {
-      fsPathProjects: "~/Projects",
-      fsPathConfig: "~/.config/shakespeare",
-      fsPathTmp: "/tmp/shakespeare",
-      fsPathPlugins: "~/.config/shakespeare/plugins",
-      fsPathTemplates: "~/.config/shakespeare/templates",
-    };
-  }
-}
-
-const electronPaths = getElectronDefaultPaths();
 
 const defaultConfig: AppConfig = {
   theme: "system",
@@ -139,21 +89,18 @@ const defaultConfig: AppConfig = {
   previewDomain: "local-shakespeare.dev",
   showcaseEnabled: true,
   showcaseModerator: "npub1jvnpg4c6ljadf5t6ry0w9q0rnm4mksde87kglkrc993z46c39axsgq89sc",
-  fsPathProjects: electronPaths.fsPathProjects,
-  fsPathConfig: electronPaths.fsPathConfig,
-  fsPathTmp: electronPaths.fsPathTmp,
-  fsPathPlugins: electronPaths.fsPathPlugins,
-  fsPathTemplates: electronPaths.fsPathTemplates,
+  fsPathProjects: "/projects",
+  fsPathConfig: "/config",
+  fsPathTmp: "/tmp",
+  fsPathPlugins: "/plugins",
+  fsPathTemplates: "/templates",
   sentryDsn: import.meta.env.VITE_SENTRY_DSN || "",
   sentryEnabled: true,
 };
 
-// Initialize filesystem adapter based on environment
-// In Electron, use Electron filesystem at ~/shakespeare
-// In browser, use LightningFS (IndexedDB-backed virtual filesystem)
-const fs = globalThis.electron
-  ? new ElectronFSAdapter()
-  : new LightningFSAdapter(new LightningFS('shakespeare-fs').promises);
+// Initialize filesystem adapter
+// Use LightningFS (IndexedDB-backed virtual filesystem)
+const fs = new LightningFSAdapter(new LightningFS('shakespeare-fs').promises);
 
 // Component to handle filesystem initialization and cleanup on startup
 // Ensures tmp directory exists and removes files older than 1 hour

@@ -90,13 +90,6 @@ export function AppProvider(props: AppProviderProps) {
   // Merge default config with stored config
   const config = { ...defaultConfig, ...rawConfig };
 
-  // Expand filesystem paths
-  config.fsPathConfig = expandPath(config.fsPathConfig);
-  config.fsPathProjects = expandPath(config.fsPathProjects);
-  config.fsPathTmp = expandPath(config.fsPathTmp);
-  config.fsPathPlugins = expandPath(config.fsPathPlugins);
-  config.fsPathTemplates = expandPath(config.fsPathTemplates);
-
   const appContextValue: AppContextType = {
     config,
     defaultConfig,
@@ -164,18 +157,4 @@ function useApplyLanguage(language?: string): void {
   useEffect(() => {
     i18n.changeLanguage(language ?? navigator.language);
   }, [language]);
-}
-
-/** Expand FS paths with the user's home directory, if available. */
-function expandPath(path: string): string {
-  const homedir = window.electron?.homedir;
-  if (!homedir) {
-    return path;
-  } else if (path.startsWith('~/')) {
-    return homedir + path.slice(1);
-  } else if (path === '~') {
-    return homedir;
-  } else {
-    return path;
-  }
 }

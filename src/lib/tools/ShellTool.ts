@@ -3,7 +3,6 @@ import type { Tool, ToolResult } from "./Tool";
 import type { JSRuntimeFS } from "../JSRuntime";
 import type { ShellCommand } from "../commands/ShellCommand";
 import { Git } from "../git";
-import { stripAnsiCodes } from "../ansiToHtml";
 import type { NostrSigner } from "@nostrify/nostrify";
 import {
   CatCommand,
@@ -330,12 +329,6 @@ export class ShellTool implements Tool<ShellToolParams> {
       return { content: "Error: Empty command" };
     }
 
-    // Check if running in Electron - if so, use real shell execution
-    if (window.electron?.shell) {
-      const content = await this.executeRealShell(commandStr);
-      return { content };
-    }
-
     // Parse compound commands
     const commands = this.parseCompoundCommand(commandStr);
 
@@ -352,48 +345,6 @@ export class ShellTool implements Tool<ShellToolParams> {
     // Execute compound commands
     const content = await this.executeCompoundCommands(commands);
     return { content };
-  }
-
-  /**
-   * Execute command using real shell in Electron
-   */
-  private async executeRealShell(commandStr: string): Promise<string> {
-    if (!window.electron?.shell) {
-      throw new Error('Real shell execution is only available in Electron');
-    }
-
-    try {
-      // In Electron, use the full cwd path (with ~ if present)
-      // The Electron main process will expand ~ to the home directory
-      const result = await window.electron.shell.exec(commandStr, this.cwd);
-
-      // Strip ANSI codes from output (color codes, cursor movements, etc.)
-      // This is important for AI consumption and consistent output
-      const cleanStdout = result.stdout ? stripAnsiCodes(result.stdout) : '';
-      const cleanStderr = result.stderr ? stripAnsiCodes(result.stderr) : '';
-
-      // Format output
-      let output = '';
-
-      if (cleanStdout) {
-        output += cleanStdout;
-      }
-
-      if (cleanStderr) {
-        if (output) output += '\n';
-        output += cleanStderr;
-      }
-
-      // Add exit code info for non-zero exits
-      if (result.exitCode !== 0) {
-        if (output) output += '\n';
-        output += `Exit code: ${result.exitCode}`;
-      }
-
-      return output || '(no output)';
-    } catch (error) {
-      return `Error: ${error instanceof Error ? error.message : 'Unknown error'}`;
-    }
   }
 
   /**

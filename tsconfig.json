@@ -27,5 +27,5 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src", "electron/electron.d.ts"]
+  "include": ["src"]
 }

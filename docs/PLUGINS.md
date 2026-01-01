@@ -174,9 +174,6 @@ When called, it:
 Plugins are stored in the configured plugins directory:
 
 - **Browser**: `/plugins` (IndexedDB via LightningFS)
-- **Electron (Windows)**: `~/AppData/Local/shakespeare/plugins`
-- **Electron (macOS)**: `~/Library/Application Support/shakespeare/plugins`
-- **Electron (Linux)**: `~/.config/shakespeare/plugins`
 
 ## System Prompt Integration
 
@@ -250,8 +247,7 @@ When designing web interfaces, follow these principles:
 
 Configure in **Settings > System > Filesystem Paths**:
 
-- Default browser: `/plugins`
-- Default Electron: OS-specific (see Storage section)
+- Default: `/plugins`
 - Custom: Any absolute path
 
 Changes take effect immediately.

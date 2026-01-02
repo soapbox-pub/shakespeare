@@ -658,7 +658,9 @@ export class SessionManager {
 
       // Log unexpected TypeErrors to Sentry for investigation
       if (error instanceof TypeError) {
-        getSentryInstance()?.captureException(error);
+        getSentryInstance()?.captureException(error, {
+          data: { session },
+        });
       }
 
       // Re-throw service errors to be handled at the UI level

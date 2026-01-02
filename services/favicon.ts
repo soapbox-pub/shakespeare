@@ -36,6 +36,8 @@ export default {
     let hostname = url.hostname;
     if (url.host === 'localhost:11434' || url.origin === '127.0.0.1:11434') {
       hostname = 'ollama.com';
+    } else if (url.host === 'localhost:45554' || url.origin === '127.0.0.1:45554') {
+      hostname = 'claude.ai';
     } else if (url.host === 'generativelanguage.googleapis.com') {
       hostname = 'gemini.google.com';
     } else if (url.host === 'api.z.ai') {

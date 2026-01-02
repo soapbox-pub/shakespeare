@@ -15,6 +15,7 @@ import { isEmptyMessage } from './isEmptyMessage';
 import { Git } from './git';
 import type { NPool } from '@nostrify/nostrify';
 import type { AppConfig } from '@/contexts/AppContext';
+import { getSentryInstance } from './sentry';
 
 export type AIMessage = OpenAI.Chat.Completions.ChatCompletionMessageParam | {
   role: 'assistant';
@@ -653,6 +654,11 @@ export class SessionManager {
       // Handle user cancellation
       if (error instanceof OpenAI.APIUserAbortError || error?.name === 'AbortError') {
         return; // User cancelled
+      }
+
+      // Log unexpected TypeErrors to Sentry for investigation
+      if (error instanceof TypeError) {
+        getSentryInstance()?.captureException(error);
       }
 
       // Re-throw service errors to be handled at the UI level

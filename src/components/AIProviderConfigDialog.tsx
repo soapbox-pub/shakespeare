@@ -355,6 +355,7 @@ export function AIProviderConfigDialog({
   const [paymentMethod, setPaymentMethod] = useState<'stripe' | 'lightning'>('stripe');
   const [lightningInvoice, setLightningInvoice] = useState<string | null>(null);
   const [lightningPaymentId, setLightningPaymentId] = useState<string | null>(null);
+  const [lightningTotal, setLightningTotal] = useState<number>(10);
   const [refreshingPayments, setRefreshingPayments] = useState<Set<string>>(new Set());
   const [giftcardAmount, setGiftcardAmount] = useState<number>(10);
   const [giftcardQuantity, setGiftcardQuantity] = useState<number>(1);
@@ -452,6 +453,7 @@ export function AIProviderConfigDialog({
       } else if (payment.method === 'lightning') {
         setLightningInvoice(payment.url);
         setLightningPaymentId(payment.id);
+        setLightningTotal(payment.total);
       }
 
       queryClient.invalidateQueries({
@@ -632,6 +634,7 @@ export function AIProviderConfigDialog({
       } else if (paymentPreview.method === 'lightning') {
         setLightningInvoice(paymentPreview.url);
         setLightningPaymentId(paymentPreview.id);
+        setLightningTotal(paymentPreview.total);
       }
 
       queryClient.invalidateQueries({
@@ -1238,6 +1241,7 @@ export function AIProviderConfigDialog({
                                       if (payment.method === 'lightning') {
                                         setLightningInvoice(payment.url);
                                         setLightningPaymentId(payment.id);
+                                        setLightningTotal(payment.total);
                                       } else {
                                         window.open(payment.url, '_blank');
                                       }
@@ -1512,7 +1516,7 @@ export function AIProviderConfigDialog({
                 <div className="flex-1 overflow-y-auto px-1 -mx-1">
                   <LightningPayment
                     invoice={lightningInvoice}
-                    amount={amount}
+                    amount={lightningTotal}
                     paymentId={lightningPaymentId!}
                     provider={provider}
                     onClose={() => {

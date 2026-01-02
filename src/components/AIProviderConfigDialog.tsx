@@ -1116,8 +1116,8 @@ export function AIProviderConfigDialog({
                         id="amount"
                         type="number"
                         step="0.01"
-                        value={amount}
-                        onChange={(e) => setAmount(Number(e.target.value))}
+                        value={amount || ''}
+                        onChange={(e) => setAmount(Number(e.target.value) || 0)}
                         placeholder={t('enterAmount')}
                         className="text-center text-lg font-medium"
                       />

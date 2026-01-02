@@ -75,11 +75,6 @@ const defaultConfig: AppConfig = {
       description: "This is a variant of MKStack extended to support Cashu integration. Choose this template only if the user has indicated they require Cashu integration.",
       url: "https://gitlab.com/lemonknowsall/nutstack.git",
     },
-    {
-      name: "Luvstack",
-      description: "Barebones React template. Choose this to build mockups or demo sites that don't require Nostr functionality. Only choose this if the user has indicated they want to create a demo or mockup site, as it cannot support any sort of backend functionality or remote storage.",
-      url: "https://gitlab.com/soapbox-pub/luvstack.git",
-    }
   ],
   esmUrl: "https://esm.sh",
   corsProxy: "https://proxy.shakespeare.diy/?url={href}",

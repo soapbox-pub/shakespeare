@@ -1065,27 +1065,6 @@ export function AIProviderConfigDialog({
   );
 
   const renderCreditsContent = () => {
-    if (lightningInvoice && lightningPaymentId) {
-      return (
-        <div className="flex-1 overflow-y-auto px-1 -mx-1">
-          <LightningPayment
-            invoice={lightningInvoice}
-            amount={amount}
-            paymentId={lightningPaymentId}
-            provider={provider}
-            onClose={() => {
-              setLightningInvoice(null);
-              setLightningPaymentId(null);
-            }}
-            onPaymentCompleted={() => {
-              setLightningInvoice(null);
-              setLightningPaymentId(null);
-            }}
-          />
-        </div>
-      );
-    }
-
     return (
       <div className="flex-1 overflow-y-auto overflow-x-hidden">
         {/* Credits Balance Display */}
@@ -1520,14 +1499,32 @@ export function AIProviderConfigDialog({
         {supportsCredits ? (
           <>
             {lightningInvoice ? (
-              <div className="flex items-center gap-2 pb-4">
-                <button
-                  onClick={() => setLightningInvoice(null)}
-                  className="flex items-center gap-2 hover:opacity-70 transition-opacity"
-                >
-                  <ArrowLeft className="h-5 w-5" />
-                  {t('back')}
-                </button>
+              <div className="flex-1 flex flex-col overflow-hidden">
+                <div className="flex items-center gap-2 pb-4 flex-shrink-0">
+                  <button
+                    onClick={() => setLightningInvoice(null)}
+                    className="flex items-center gap-2 hover:opacity-70 transition-opacity"
+                  >
+                    <ArrowLeft className="h-5 w-5" />
+                    {t('back')}
+                  </button>
+                </div>
+                <div className="flex-1 overflow-y-auto px-1 -mx-1">
+                  <LightningPayment
+                    invoice={lightningInvoice}
+                    amount={amount}
+                    paymentId={lightningPaymentId!}
+                    provider={provider}
+                    onClose={() => {
+                      setLightningInvoice(null);
+                      setLightningPaymentId(null);
+                    }}
+                    onPaymentCompleted={() => {
+                      setLightningInvoice(null);
+                      setLightningPaymentId(null);
+                    }}
+                  />
+                </div>
               </div>
             ) : (
               <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">

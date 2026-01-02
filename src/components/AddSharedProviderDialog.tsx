@@ -32,7 +32,6 @@ export function AddSharedProviderDialog({ open, onOpenChange, provider }: AddSha
   const preset = AI_PROVIDER_PRESETS.find(
     p => p.id === provider.id && p.baseURL === provider.baseURL
   );
-  const providerName = preset?.name || provider.id;
 
   const handleAddProvider = () => {
     setProvider(provider);
@@ -69,7 +68,7 @@ export function AddSharedProviderDialog({ open, onOpenChange, provider }: AddSha
                 <div className="space-y-2">
                   <h2 className="text-2xl font-bold">Already Configured</h2>
                   <p className="text-muted-foreground max-w-md mx-auto">
-                    You already have {providerName} configured with the same settings.
+                    You already have {provider.name} configured with the same settings.
                   </p>
                 </div>
                 <Button onClick={() => onOpenChange(false)} className="gap-2">
@@ -164,9 +163,9 @@ export function AddSharedProviderDialog({ open, onOpenChange, provider }: AddSha
                   />
                 </div>
                 <div className="text-center space-y-2">
-                  <h2 className="text-2xl font-bold">{providerName}</h2>
+                  <h2 className="text-2xl font-bold">{provider.name}</h2>
                   <p className="text-muted-foreground max-w-md mx-auto">
-                    Add {providerName} to your configuration?
+                    Add {provider.name} to your configuration?
                   </p>
                 </div>
 
@@ -183,7 +182,7 @@ export function AddSharedProviderDialog({ open, onOpenChange, provider }: AddSha
                         htmlFor="agree-provider-terms"
                         className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
                       >
-                        I agree to {providerName}'s{' '}
+                        I agree to {provider.name}'s{' '}
                         <a
                           href={preset.tosURL}
                           target="_blank"

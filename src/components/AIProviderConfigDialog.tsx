@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import QRCode from 'qrcode';
 import { Trash2, Bot, CreditCard, Zap, ExternalLink, RefreshCw, Check, X, Clock, AlertCircle, Copy, RotateCcw, ArrowLeft, Gift, Plus, History, DollarSign, Printer, Download } from 'lucide-react';
@@ -352,11 +352,13 @@ export function AIProviderConfigDialog({
 
   // Credits state
   const [amount, setAmount] = useState<number>(10);
+  const [debouncedAmount, setDebouncedAmount] = useState<number>(10);
   const [paymentMethod, setPaymentMethod] = useState<'stripe' | 'lightning'>('stripe');
   const [lightningInvoice, setLightningInvoice] = useState<string | null>(null);
   const [lightningPaymentId, setLightningPaymentId] = useState<string | null>(null);
   const [lightningTotal, setLightningTotal] = useState<number>(10);
   const [refreshingPayments, setRefreshingPayments] = useState<Set<string>>(new Set());
+  const amountDebounceTimer = useRef<NodeJS.Timeout | null>(null);
   const [giftcardAmount, setGiftcardAmount] = useState<number>(10);
   const [giftcardQuantity, setGiftcardQuantity] = useState<number>(1);
   const [redeemCode, setRedeemCode] = useState<string>('');
@@ -384,13 +386,30 @@ export function AIProviderConfigDialog({
     }
   }, [open, supportsCredits, isLoadingCredits]);
 
+  // Debounce amount changes to avoid excessive API calls
+  useEffect(() => {
+    if (amountDebounceTimer.current) {
+      clearTimeout(amountDebounceTimer.current);
+    }
+
+    amountDebounceTimer.current = setTimeout(() => {
+      setDebouncedAmount(amount);
+    }, 500); // Wait 500ms after user stops typing
+
+    return () => {
+      if (amountDebounceTimer.current) {
+        clearTimeout(amountDebounceTimer.current);
+      }
+    };
+  }, [amount]);
+
   // Query for payment preview (to get fee information)
   const { data: paymentPreview, isLoading: isLoadingPreview } = useQuery({
-    queryKey: ['ai-payment-preview', provider.nostr ? user?.pubkey ?? '' : '', provider.id, amount, paymentMethod],
+    queryKey: ['ai-payment-preview', provider.nostr ? user?.pubkey ?? '' : '', provider.id, debouncedAmount, paymentMethod],
     queryFn: async (): Promise<Payment> => {
       const ai = createAIClient(provider, user, config.corsProxy);
       const request: AddCreditsRequest = {
-        amount,
+        amount: debouncedAmount,
         method: paymentMethod,
       };
 
@@ -402,7 +421,7 @@ export function AIProviderConfigDialog({
         body: request,
       }) as Payment;
     },
-    enabled: open && supportsCredits && amount > 0,
+    enabled: open && supportsCredits && debouncedAmount > 0,
     retry: false,
     refetchOnWindowFocus: false,
     staleTime: Infinity,

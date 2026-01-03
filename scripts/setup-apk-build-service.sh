@@ -666,7 +666,8 @@ export async function buildAPK(buildId, zipBuffer, config, builds, timeout) {
     build.progress = 20;
     log('Installing Capacitor dependencies (this may take a minute)...');
     // Use Capacitor 5.x for Java 17 compatibility (Capacitor 6+ requires Java 21)
-    await execAsync('npm install @capacitor/cli@5 @capacitor/core@5 @capacitor/android@5 --loglevel=error', {
+    // Include secure-storage plugin for Android Keystore protection of sensitive data (nsec)
+    await execAsync('npm install @capacitor/cli@5 @capacitor/core@5 @capacitor/android@5 capacitor-secure-storage-plugin@0.9.0 --loglevel=error', {
       cwd: buildDir,
       timeout: 180000
     });
@@ -708,6 +709,10 @@ export async function buildAPK(buildId, zipBuffer, config, builds, timeout) {
       cwd: buildDir,
       timeout: 120000
     });
+
+    // Inject secure storage shim to protect Nostr keys (nsec) using Android Keystore
+    build.progress = 52;
+    await injectSecureStorageShim(buildDir, log);
 
     // Update app icon - use provided icon or auto-detect from project
     build.progress = 55;
@@ -900,6 +905,130 @@ async function updateAppIconFromFile(buildDir, iconFilePath) {
     await fs.writeFile(iconPath, resized);
     await fs.writeFile(roundIconPath, resized);
     await fs.writeFile(foregroundPath, resized);
+  }
+}
+
+/**
+ * Inject secure storage shim into index.html to protect sensitive Nostr data (nsec).
+ * This intercepts localStorage operations for 'nostr:*' keys and redirects them
+ * to Capacitor's SecureStorage plugin, which uses Android Keystore for encryption.
+ */
+async function injectSecureStorageShim(buildDir, log) {
+  const indexPath = path.join(buildDir, 'android/app/src/main/assets/public/index.html');
+
+  try {
+    let html = await fs.readFile(indexPath, 'utf8');
+
+    // The shim script that intercepts localStorage for nostr:* keys
+    const shimScript = `
+<script>
+(function() {
+  // Cache for synchronous reads (SecureStorage is async)
+  var secureCache = new Map();
+  var plugin = null;
+  var initialized = false;
+
+  // Store original localStorage methods
+  var originalGetItem = localStorage.getItem.bind(localStorage);
+  var originalSetItem = localStorage.setItem.bind(localStorage);
+  var originalRemoveItem = localStorage.removeItem.bind(localStorage);
+
+  // Try to get the plugin (may not be available immediately)
+  function getPlugin() {
+    if (plugin) return plugin;
+    if (typeof Capacitor !== 'undefined' && Capacitor.Plugins && Capacitor.Plugins.SecureStoragePlugin) {
+      plugin = Capacitor.Plugins.SecureStoragePlugin;
+    }
+    return plugin;
+  }
+
+  // Initialize cache from SecureStorage on startup
+  async function initCache() {
+    if (initialized) return;
+    var p = getPlugin();
+    if (!p) return;
+
+    try {
+      var result = await p.keys();
+      var keys = result.value || [];
+      for (var i = 0; i < keys.length; i++) {
+        var key = keys[i];
+        if (key.startsWith('nostr:')) {
+          var data = await p.get({ key: key });
+          secureCache.set(key, data.value);
+        }
+      }
+      initialized = true;
+      console.log('[SecureStorage] Loaded ' + secureCache.size + ' keys from Android Keystore');
+    } catch (e) {
+      console.warn('[SecureStorage] Failed to initialize cache:', e);
+    }
+  }
+
+  // Proxy localStorage.getItem
+  localStorage.getItem = function(key) {
+    if (typeof key === 'string' && key.startsWith('nostr:')) {
+      return secureCache.get(key) || null;
+    }
+    return originalGetItem(key);
+  };
+
+  // Proxy localStorage.setItem
+  localStorage.setItem = function(key, value) {
+    if (typeof key === 'string' && key.startsWith('nostr:')) {
+      secureCache.set(key, value);
+      var p = getPlugin();
+      if (p) {
+        p.set({ key: key, value: value }).catch(function(e) {
+          console.error('[SecureStorage] Failed to store:', key, e);
+        });
+      }
+      return;
+    }
+    return originalSetItem(key, value);
+  };
+
+  // Proxy localStorage.removeItem
+  localStorage.removeItem = function(key) {
+    if (typeof key === 'string' && key.startsWith('nostr:')) {
+      secureCache.delete(key);
+      var p = getPlugin();
+      if (p) {
+        p.remove({ key: key }).catch(function(e) {
+          console.error('[SecureStorage] Failed to remove:', key, e);
+        });
+      }
+      return;
+    }
+    return originalRemoveItem(key);
+  };
+
+  // Initialize when Capacitor is ready
+  if (typeof Capacitor !== 'undefined') {
+    initCache();
+  }
+  document.addEventListener('deviceready', initCache);
+  window.addEventListener('load', function() {
+    setTimeout(initCache, 100);
+  });
+
+  console.log('[SecureStorage] Nostr key protection shim installed');
+})();
+</script>`;
+
+    // Inject the shim script right after <head> tag so it runs before any app code
+    if (html.includes('<head>')) {
+      html = html.replace('<head>', '<head>' + shimScript);
+      await fs.writeFile(indexPath, html, 'utf8');
+      log('Secure storage shim injected for Nostr key protection');
+      return true;
+    } else {
+      log('Warning: Could not find <head> tag to inject secure storage shim');
+      return false;
+    }
+  } catch (error) {
+    log(`Warning: Failed to inject secure storage shim: ${error.message}`);
+    return false;
   }
 }
 

@@ -26,9 +26,9 @@ describe('AddSharedProviderDialog', () => {
       </TestApp>
     );
 
-    // Provider name is used as the heading (fallback to id since it's not in presets)
-    expect(screen.getByRole('heading', { name: 'test-provider' })).toBeInTheDocument();
-    expect(screen.getByText(/Add test-provider to your configuration/i)).toBeInTheDocument();
+    // Provider name is displayed in the heading
+    expect(screen.getByRole('heading', { name: 'Test Provider' })).toBeInTheDocument();
+    expect(screen.getByText(/Add Test Provider to your configuration/i)).toBeInTheDocument();
   });
 
   it('shows add provider button for new provider', () => {
@@ -112,7 +112,7 @@ describe('AddSharedProviderDialog', () => {
     expect(screen.getByText(/Add OpenRouter to your configuration/i)).toBeInTheDocument();
   });
 
-  it('uses provider id as fallback name when not in presets', () => {
+  it('uses provider name when not in presets', () => {
     const onOpenChange = vi.fn();
     const customProvider: AIProvider = {
       id: 'my-custom-provider',
@@ -130,7 +130,7 @@ describe('AddSharedProviderDialog', () => {
       </TestApp>
     );
 
-    // Should use the id as the name since it's not in presets
-    expect(screen.getByText(/Add my-custom-provider to your configuration/i)).toBeInTheDocument();
+    // Should use the provider name even when not in presets
+    expect(screen.getByText(/Add My Custom Provider to your configuration/i)).toBeInTheDocument();
   });
 });

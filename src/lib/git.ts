@@ -1107,7 +1107,7 @@ class GitHttp implements HttpClient {
 
   constructor(proxy?: string, fetch?: typeof globalThis.fetch) {
     this.proxy = proxy;
-    this.fetch = fetch ?? globalThis.fetch;
+    this.fetch = fetch ?? globalThis.fetch.bind(globalThis);
   }
 
   async request(request: GitHttpRequest): Promise<GitHttpResponse> {

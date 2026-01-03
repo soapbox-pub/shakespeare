@@ -69,7 +69,7 @@ function getProviderUrl(preset: PresetProvider): string | null {
     case 'nsite':
       return null;
     case 'apkbuilder':
-      return null;
+      return 'https://android.com';
     default:
       return null;
   }

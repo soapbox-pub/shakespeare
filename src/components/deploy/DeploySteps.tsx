@@ -71,7 +71,8 @@ function getProviderUrl(provider: DeployProvider): string | null {
       return null;
 
     case 'apkbuilder':
-      return null; // No favicon for custom build server
+      // Use Android's favicon
+      return 'https://android.com';
 
     default:
       return null;
@@ -588,12 +589,14 @@ export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProp
           <Alert>
             <Rocket className="h-4 w-4" />
             <AlertDescription>
-              Your project has been successfully deployed!
+              {selectedProvider?.type === 'apkbuilder'
+                ? 'Your project has been successfully built!'
+                : 'Your project has been successfully deployed!'}
             </AlertDescription>
           </Alert>
 
           <div className="space-y-2">
-            <Label>Deployed URL</Label>
+            <Label>{selectedProvider?.type === 'apkbuilder' ? 'Download URL' : 'Deployed URL'}</Label>
             <div className="flex gap-2">
               <Input
                 value={deployResult.url}

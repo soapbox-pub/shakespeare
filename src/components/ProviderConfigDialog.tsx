@@ -99,11 +99,8 @@ function getProviderUrl(provider: DeployProvider | PresetProvider): string | nul
       return null;
 
     case 'apkbuilder':
-      // APK Builder - check for custom buildServerUrl
-      if ('buildServerUrl' in provider && provider.buildServerUrl) {
-        return provider.buildServerUrl;
-      }
-      return null;
+      // Use Android's favicon
+      return 'https://android.com';
 
     default:
       return null;

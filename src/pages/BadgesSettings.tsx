@@ -37,10 +37,10 @@ function BadgeCard({
 
   const formattedDate = unlockDate 
     ? new Date(unlockDate * 1000).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-      })
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    })
     : null;
 
   return (

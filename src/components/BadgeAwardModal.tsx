@@ -1,10 +1,10 @@
+import { useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Award } from "lucide-react";
 import type { NostrEvent } from '@nostrify/nostrify';
 import { useNostr } from '@nostrify/react';
 import { useQuery } from '@tanstack/react-query';
 import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from '@/lib/utils';
 
 const BADGE_ISSUER_PUBKEY = "804a5a94d972d2218d2cc8712881e6f00df09fe7a1a269ccbf916e5c8c17efcc";
 
@@ -16,6 +16,7 @@ interface BadgeAwardModalProps {
 
 export function BadgeAwardModal({ award, badgeDefinition: providedBadgeDefinition, onClose }: BadgeAwardModalProps) {
   const { nostr } = useNostr();
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // If we have a badge definition directly, use it
   // Otherwise, extract from award event
@@ -52,6 +53,24 @@ export function BadgeAwardModal({ award, badgeDefinition: providedBadgeDefinitio
 
   const badgeDefinition = providedBadgeDefinition || fetchedBadgeDefinition;
   const isModalOpen = !!award || !!providedBadgeDefinition;
+
+  // Play sound when badge is awarded (only when award is present, not just viewing badge definition)
+  useEffect(() => {
+    if (award && badgeDefinition && isModalOpen && !isLoading) {
+      // Create audio element if it doesn't exist
+      if (!audioRef.current) {
+        audioRef.current = new Audio('/badgeAwarded.mp3');
+        audioRef.current.volume = 0.5; // Set volume to 50%
+      }
+      
+      // Reset to beginning and play the sound
+      audioRef.current.currentTime = 0;
+      audioRef.current.play().catch((error) => {
+        // Silently handle autoplay restrictions
+        console.debug('Audio playback failed:', error);
+      });
+    }
+  }, [award, badgeDefinition, isModalOpen, isLoading]);
 
   // Return null after all hooks if we don't have a badge definition
   if (!badgeDefinition) return null;
@@ -100,7 +119,6 @@ export function BadgeAwardModal({ award, badgeDefinition: providedBadgeDefinitio
 
               {/* Title */}
               <div className="text-center space-y-[min(1vw,0.75rem)] w-full px-4">
-                {award && <h2 className="text-[clamp(1.5rem,6vw,1.875rem)] font-bold">Badge Awarded!</h2>}
                 <p className="text-[clamp(1.25rem,5vw,1.5rem)] font-semibold">{badgeName}</p>
                 {description && (
                   <p className="text-[clamp(0.875rem,3vw,1rem)] text-muted-foreground max-w-md mx-auto">

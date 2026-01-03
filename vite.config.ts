@@ -29,7 +29,7 @@ export default defineConfig(() => ({
   plugins: [
     react(),
     VitePWA({
-      includeAssets: ['shakespeare.svg', 'shakespeare-192x192.png', 'shakespeare-512x512.png', 'sine.mp3'],
+      includeAssets: ['shakespeare.svg', 'shakespeare-192x192.png', 'shakespeare-512x512.png', 'sine.mp3', 'badgeAwarded.mp3'],
       manifest: false, // Use existing manifest.webmanifest from public folder
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,wasm,mp3}'],

@@ -129,6 +129,12 @@ const denoDeployProviderSchema = baseDeployProviderSchema.extend({
   baseDomain: z.string().optional(),
 });
 
+const apkBuilderProviderSchema = baseDeployProviderSchema.extend({
+  type: z.literal('apkbuilder'),
+  buildServerUrl: z.string().url(),
+  apiKey: z.string(),
+});
+
 const deployProviderSchema: z.ZodType<DeployProvider> = z.discriminatedUnion('type', [
   shakespeareDeployProviderSchema,
   netlifyProviderSchema,
@@ -136,6 +142,7 @@ const deployProviderSchema: z.ZodType<DeployProvider> = z.discriminatedUnion('ty
   nsiteProviderSchema,
   cloudflareProviderSchema,
   denoDeployProviderSchema,
+  apkBuilderProviderSchema,
 ]);
 
 const deploySettingsSchema = z.object({

@@ -50,7 +50,14 @@ export interface DenoDeployProvider extends BaseDeployProvider {
   proxy?: boolean;
 }
 
-export type DeployProvider = ShakespeareDeployProvider | NetlifyProvider | VercelProvider | NsiteProvider | CloudflareProvider | DenoDeployProvider;
+export interface APKBuilderProvider extends BaseDeployProvider {
+  type: 'apkbuilder';
+  buildServerUrl: string;
+  apiKey: string;
+  proxy?: boolean;
+}
+
+export type DeployProvider = ShakespeareDeployProvider | NetlifyProvider | VercelProvider | NsiteProvider | CloudflareProvider | DenoDeployProvider | APKBuilderProvider;
 
 export interface DeploySettings {
   providers: DeployProvider[];

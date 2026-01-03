@@ -32,7 +32,7 @@ import { CSS } from '@dnd-kit/utilities';
 
 interface PresetProvider {
   id: string;
-  type: 'shakespeare' | 'netlify' | 'vercel' | 'nsite' | 'cloudflare' | 'deno';
+  type: 'shakespeare' | 'netlify' | 'vercel' | 'nsite' | 'cloudflare' | 'deno' | 'apkbuilder';
   name: string;
   description: string;
   requiresNostr?: boolean;
@@ -42,6 +42,7 @@ interface PresetProvider {
   accountIdURL?: string;
   organizationIdLabel?: string;
   organizationIdURL?: string;
+  buildServerUrlLabel?: string;
   proxy?: boolean;
 }
 
@@ -201,6 +202,15 @@ const PRESET_PROVIDERS: PresetProvider[] = [
     organizationIdURL: 'https://dash.deno.com/orgs',
     proxy: true,
   },
+  {
+    id: 'apkbuilder',
+    type: 'apkbuilder',
+    name: 'APK Builder',
+    description: 'Build Android APKs from your web app',
+    buildServerUrlLabel: 'Build Server URL',
+    apiKeyLabel: 'API Key',
+    proxy: true,
+  },
 ];
 
 // Helper function to generate custom provider ID
@@ -267,6 +277,13 @@ function getProviderUrl(provider: DeployProvider | PresetProvider): string | nul
       // nsite uses Rocket icon fallback
       return null;
 
+    case 'apkbuilder':
+      // For APK Builder, check for custom buildServerUrl
+      if ('buildServerUrl' in provider && provider.buildServerUrl) {
+        return provider.buildServerUrl;
+      }
+      return null;
+
     default:
       return null;
   }
@@ -320,7 +337,7 @@ export function DeploySettings() {
     setAddDialogOpen(true);
   };
 
-  const handleAddPresetProvider = (preset: PresetProvider, apiKey: string, accountId?: string, organizationId?: string) => {
+  const handleAddPresetProvider = (preset: PresetProvider, apiKey: string, accountId?: string, organizationId?: string, buildServerUrl?: string) => {
     // For Shakespeare, just check if user is logged in
     if (preset.requiresNostr && !user) {
       return;
@@ -397,6 +414,18 @@ export function DeploySettings() {
         type: 'deno',
         apiKey: apiKey.trim(),
         organizationId: organizationId.trim(),
+        ...(preset.proxy && { proxy: true }),
+      };
+    } else if (preset.type === 'apkbuilder') {
+      if (!buildServerUrl?.trim() || !apiKey?.trim()) {
+        return;
+      }
+      newProvider = {
+        id: preset.id,
+        name: preset.name,
+        type: 'apkbuilder',
+        buildServerUrl: buildServerUrl.trim(),
+        apiKey: apiKey.trim(),
         ...(preset.proxy && { proxy: true }),
       };
     } else {
@@ -536,8 +565,8 @@ export function DeploySettings() {
                 onSetForceManualEntry={(force) =>
                   setForceManualEntry(prev => ({ ...prev, [selectedPreset.id]: force }))
                 }
-                onAdd={(apiKey, accountId, organizationId) =>
-                  handleAddPresetProvider(selectedPreset, apiKey, accountId, organizationId)
+                onAdd={(apiKey, accountId, organizationId, buildServerUrl) =>
+                  handleAddPresetProvider(selectedPreset, apiKey, accountId, organizationId, buildServerUrl)
                 }
               />
             )}

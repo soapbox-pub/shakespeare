@@ -52,6 +52,15 @@ const denoDeployProjectConfigSchema = z.object({
   }),
 });
 
+const apkBuilderProjectConfigSchema = z.object({
+  type: z.literal('apkbuilder'),
+  url: z.string(),
+  data: z.object({
+    appName: z.string(),
+    packageId: z.string(),
+  }),
+});
+
 const projectProviderConfigSchema = z.discriminatedUnion('type', [
   shakespeareProjectConfigSchema,
   nsiteProjectConfigSchema,
@@ -59,6 +68,7 @@ const projectProviderConfigSchema = z.discriminatedUnion('type', [
   vercelProjectConfigSchema,
   cloudflareProjectConfigSchema,
   denoDeployProjectConfigSchema,
+  apkBuilderProjectConfigSchema,
 ]);
 
 const projectDeploySettingsSchema = z.object({
@@ -72,6 +82,7 @@ export type NetlifyProjectConfig = z.infer<typeof netlifyProjectConfigSchema>;
 export type VercelProjectConfig = z.infer<typeof vercelProjectConfigSchema>;
 export type CloudflareProjectConfig = z.infer<typeof cloudflareProjectConfigSchema>;
 export type DenoDeployProjectConfig = z.infer<typeof denoDeployProjectConfigSchema>;
+export type APKBuilderProjectConfig = z.infer<typeof apkBuilderProjectConfigSchema>;
 export type ProjectProviderConfig = z.infer<typeof projectProviderConfigSchema>;
 export type ProjectDeploySettings = z.infer<typeof projectDeploySettingsSchema>;
 

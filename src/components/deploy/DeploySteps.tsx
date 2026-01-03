@@ -21,6 +21,7 @@ import { VercelDeployForm } from '@/components/deploy/VercelDeployForm';
 import { NsiteDeployForm } from '@/components/deploy/NsiteDeployForm';
 import { CloudflareDeployForm } from '@/components/deploy/CloudflareDeployForm';
 import { DenoDeployForm } from '@/components/deploy/DenoDeployForm';
+import { APKBuilderDeployForm } from '@/components/deploy/APKBuilderDeployForm';
 import { cn } from '@/lib/utils';
 import { DeployAdapter } from '@/lib/deploy/types';
 import { ShakespeareAdapter } from '@/lib/deploy/ShakespeareAdapter';
@@ -29,6 +30,7 @@ import { NetlifyAdapter } from '@/lib/deploy/NetlifyAdapter';
 import { VercelAdapter } from '@/lib/deploy/VercelAdapter';
 import { CloudflareAdapter } from '@/lib/deploy/CloudflareAdapter';
 import { DenoDeployAdapter } from '@/lib/deploy/DenoDeployAdapter';
+import { APKBuilderAdapter } from '@/lib/deploy/APKBuilderAdapter';
 
 /**
  * Helper function to get provider URL for favicon
@@ -67,6 +69,9 @@ function getProviderUrl(provider: DeployProvider): string | null {
 
     case 'nsite':
       return null;
+
+    case 'apkbuilder':
+      return null; // No favicon for custom build server
 
     default:
       return null;
@@ -124,6 +129,11 @@ interface DenoDeployFormData {
   projectName: string;
 }
 
+interface APKBuilderFormData {
+  appName: string;
+  packageId: string;
+}
+
 export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProps) {
   const { t } = useTranslation();
   const { settings } = useDeploySettings();
@@ -160,6 +170,10 @@ export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProp
   });
   const [denoDeployForm, setDenoDeployForm] = useState<DenoDeployFormData>({
     projectName: projectName || projectId,
+  });
+  const [apkBuilderForm, setApkBuilderForm] = useState<APKBuilderFormData>({
+    appName: projectName || projectId,
+    packageId: '',
   });
 
   // Load project settings when component mounts
@@ -284,6 +298,29 @@ export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProp
           projectName: denoDeployForm.projectName || undefined,
           corsProxy: denoProvider.proxy ? config.corsProxy : undefined,
         });
+      } else if (selectedProvider.type === 'apkbuilder') {
+        const apkBuilderProvider = selectedProvider;
+        if (!apkBuilderProvider.buildServerUrl) {
+          throw new Error('APK Builder server URL is required');
+        }
+        if (!apkBuilderProvider.apiKey) {
+          throw new Error('APK Builder API key is required');
+        }
+        if (!apkBuilderForm.appName) {
+          throw new Error('App name is required');
+        }
+        if (!apkBuilderForm.packageId) {
+          throw new Error('Package ID is required');
+        }
+
+        adapter = new APKBuilderAdapter({
+          fs,
+          buildServerUrl: apkBuilderProvider.buildServerUrl,
+          apiKey: apkBuilderProvider.apiKey,
+          appName: apkBuilderForm.appName,
+          packageId: apkBuilderForm.packageId,
+          corsProxy: apkBuilderProvider.proxy ? config.corsProxy : undefined,
+        });
       } else {
         throw new Error('Unknown provider type');
       }
@@ -343,6 +380,15 @@ export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProp
             projectName: denoDeployForm.projectName || undefined,
           },
         });
+      } else if (selectedProvider.type === 'apkbuilder') {
+        await updateProjectSettings(selectedProviderId, {
+          type: 'apkbuilder',
+          url: result.url,
+          data: {
+            appName: apkBuilderForm.appName,
+            packageId: apkBuilderForm.packageId,
+          },
+        });
       }
 
       setDeployResult(result);
@@ -364,6 +410,7 @@ export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProp
     setVercelForm({ projectName: projectName || projectId, teamId: '' });
     setCloudflareForm({ projectName: projectName || projectId });
     setDenoDeployForm({ projectName: projectName || projectId });
+    setApkBuilderForm({ appName: projectName || projectId, packageId: '' });
     onClose();
   };
 
@@ -393,6 +440,10 @@ export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProp
 
   const handleDenoDeployProjectChange = useCallback((projectName: string) => {
     setDenoDeployForm({ projectName });
+  }, []);
+
+  const handleApkBuilderConfigChange = useCallback((appName: string, packageId: string) => {
+    setApkBuilderForm({ appName, packageId });
   }, []);
 
   const renderProviderFields = () => {
@@ -496,6 +547,26 @@ export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProp
           savedProjectName={savedProjectName}
           onProjectChange={handleDenoDeployProjectChange}
           corsProxy={denoProvider.proxy ? config.corsProxy : undefined}
+        />
+      );
+    }
+
+    if (selectedProvider.type === 'apkbuilder') {
+      const apkBuilderProvider = selectedProvider;
+      const savedConfig = projectSettings.providers[selectedProviderId];
+      const savedAppName = savedConfig?.type === 'apkbuilder' ? savedConfig.data.appName : undefined;
+      const savedPackageId = savedConfig?.type === 'apkbuilder' ? savedConfig.data.packageId : undefined;
+
+      return (
+        <APKBuilderDeployForm
+          buildServerUrl={apkBuilderProvider.buildServerUrl}
+          apiKey={apkBuilderProvider.apiKey}
+          projectId={projectId}
+          projectName={projectName}
+          savedAppName={savedAppName}
+          savedPackageId={savedPackageId}
+          onConfigChange={handleApkBuilderConfigChange}
+          corsProxy={apkBuilderProvider.proxy ? config.corsProxy : undefined}
         />
       );
     }
@@ -673,7 +744,8 @@ export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProp
                     (selectedProvider.type === 'nsite' && !nsiteForm.nsec) ||
                     (selectedProvider.type === 'netlify' && !netlifyForm.siteId && !netlifyForm.siteName) ||
                     (selectedProvider.type === 'cloudflare' && !cloudflareForm.projectName) ||
-                    (selectedProvider.type === 'deno' && !denoDeployForm.projectName)
+                    (selectedProvider.type === 'deno' && !denoDeployForm.projectName) ||
+                    (selectedProvider.type === 'apkbuilder' && (!apkBuilderForm.appName || !apkBuilderForm.packageId))
                   }
                   className="w-full"
                 >

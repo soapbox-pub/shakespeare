@@ -22,7 +22,7 @@ import { Link } from 'react-router-dom';
 
 interface PresetProvider {
   id: string;
-  type: 'shakespeare' | 'netlify' | 'vercel' | 'nsite' | 'cloudflare' | 'deno';
+  type: 'shakespeare' | 'netlify' | 'vercel' | 'nsite' | 'cloudflare' | 'deno' | 'apkbuilder';
   name: string;
   description: string;
   requiresNostr?: boolean;
@@ -32,6 +32,7 @@ interface PresetProvider {
   accountIdURL?: string;
   organizationIdLabel?: string;
   organizationIdURL?: string;
+  buildServerUrlLabel?: string;
   proxy?: boolean;
 }
 
@@ -50,7 +51,7 @@ interface AddProviderDialogProps {
   oauthHook: OAuthHook | null;
   forceManualEntry: boolean;
   onSetForceManualEntry: (force: boolean) => void;
-  onAdd: (apiKey: string, accountId?: string, organizationId?: string) => void;
+  onAdd: (apiKey: string, accountId?: string, organizationId?: string, buildServerUrl?: string) => void;
 }
 
 function getProviderUrl(preset: PresetProvider): string | null {
@@ -66,6 +67,8 @@ function getProviderUrl(preset: PresetProvider): string | null {
     case 'deno':
       return 'https://deno.com';
     case 'nsite':
+      return null;
+    case 'apkbuilder':
       return null;
     default:
       return null;
@@ -86,6 +89,7 @@ export function AddProviderDialog({
   const [apiKey, setApiKey] = useState('');
   const [accountId, setAccountId] = useState('');
   const [organizationId, setOrganizationId] = useState('');
+  const [buildServerUrl, setBuildServerUrl] = useState('');
 
   const showNostrLoginRequired = preset.requiresNostr && !isLoggedIntoNostr;
   const isOAuthConfigured = oauthHook?.isOAuthConfigured ?? false;
@@ -93,10 +97,11 @@ export function AddProviderDialog({
   const oauthError = oauthHook?.error ?? null;
 
   const handleAdd = () => {
-    onAdd(apiKey, accountId, organizationId);
+    onAdd(apiKey, accountId, organizationId, buildServerUrl);
     setApiKey('');
     setAccountId('');
     setOrganizationId('');
+    setBuildServerUrl('');
     onOpenChange(false);
   };
 
@@ -225,6 +230,19 @@ export function AddProviderDialog({
                       urlTitle="Find ID"
                     />
                   )}
+                  {preset.type === 'apkbuilder' && (
+                    <ExternalInput
+                      type="text"
+                      placeholder={preset.buildServerUrlLabel || 'Build Server URL'}
+                      value={buildServerUrl}
+                      onChange={(e) => setBuildServerUrl(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && apiKey.trim() && buildServerUrl.trim()) {
+                          handleAdd();
+                        }
+                      }}
+                    />
+                  )}
                   <ExternalInput
                     type="password"
                     placeholder={preset.apiKeyLabel || t('enterApiKey')}
@@ -257,7 +275,8 @@ export function AddProviderDialog({
                 (preset.requiresNostr && !isLoggedIntoNostr) ||
                 (!preset.requiresNostr && preset.type !== 'nsite' && !apiKey.trim()) ||
                 (preset.type === 'cloudflare' && !accountId.trim()) ||
-                (preset.type === 'deno' && !organizationId.trim())
+                (preset.type === 'deno' && !organizationId.trim()) ||
+                (preset.type === 'apkbuilder' && !buildServerUrl.trim())
               }
             >
               {t('add')}

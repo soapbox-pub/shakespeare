@@ -74,3 +74,25 @@ export interface DenoDeployConfig {
   projectName?: string;
   corsProxy?: string;
 }
+
+export interface APKBuilderDeployConfig {
+  fs: JSRuntimeFS;
+  /** URL of the APK build server */
+  buildServerUrl: string;
+  /** API key for the build server */
+  apiKey: string;
+  /** Display name of the Android app */
+  appName: string;
+  /** Android package ID (e.g., com.example.myapp) */
+  packageId: string;
+  /** Optional CORS proxy */
+  corsProxy?: string;
+  /** Optional progress callback */
+  onProgress?: (status: {
+    id: string;
+    status: 'queued' | 'building' | 'complete' | 'failed' | 'cancelled';
+    progress: number;
+    error?: string;
+    logs?: string[];
+  }) => void;
+}

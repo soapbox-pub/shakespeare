@@ -35,7 +35,8 @@ import {
   UnzipCommand,
   WcCommand,
   WhoamiCommand,
-  WhichCommand
+  WhichCommand,
+  ZipCommand
 } from "../commands";
 
 interface ShellToolParams {
@@ -98,6 +99,7 @@ export class ShellTool implements Tool<ShellToolParams> {
     this.registerCommand(new TrCommand(fs));
     this.registerCommand(new UniqCommand(fs));
     this.registerCommand(new UnzipCommand(fs));
+    this.registerCommand(new ZipCommand(fs));
     this.registerCommand(new WcCommand(fs));
     this.registerCommand(new WhoamiCommand());
 

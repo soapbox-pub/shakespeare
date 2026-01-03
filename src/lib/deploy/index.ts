@@ -5,3 +5,4 @@ export * from './VercelAdapter';
 export * from './NsiteAdapter';
 export * from './CloudflareAdapter';
 export * from './DenoDeployAdapter';
+export * from './APKBuilderAdapter';

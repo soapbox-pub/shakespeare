@@ -19,7 +19,7 @@ import { ExternalFavicon } from '@/components/ExternalFavicon';
 
 interface PresetProvider {
   id: string;
-  type: 'shakespeare' | 'netlify' | 'vercel' | 'nsite' | 'cloudflare' | 'deno';
+  type: 'shakespeare' | 'netlify' | 'vercel' | 'nsite' | 'cloudflare' | 'deno' | 'apkbuilder';
   name: string;
   description: string;
   requiresNostr?: boolean;
@@ -29,6 +29,7 @@ interface PresetProvider {
   accountIdURL?: string;
   organizationIdLabel?: string;
   organizationIdURL?: string;
+  buildServerUrlLabel?: string;
   proxy?: boolean;
 }
 
@@ -95,6 +96,13 @@ function getProviderUrl(provider: DeployProvider | PresetProvider): string | nul
 
     case 'nsite':
       // nsite uses Rocket icon fallback
+      return null;
+
+    case 'apkbuilder':
+      // APK Builder - check for custom buildServerUrl
+      if ('buildServerUrl' in provider && provider.buildServerUrl) {
+        return provider.buildServerUrl;
+      }
       return null;
 
     default:
@@ -181,6 +189,44 @@ export function ProviderConfigDialog({
                   value={localProvider.host || ''}
                   onChange={(e) => setLocalProvider({ ...localProvider, host: e.target.value })}
                 />
+              </div>
+            </>
+          ) : localProvider.type === 'apkbuilder' ? (
+            <>
+              <div className="grid gap-2">
+                <Label htmlFor="provider-buildServerUrl">
+                  {preset?.buildServerUrlLabel || 'Build Server URL'} <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="provider-buildServerUrl"
+                  placeholder="https://apk-builder.example.com"
+                  value={localProvider.buildServerUrl || ''}
+                  onChange={(e) => setLocalProvider({ ...localProvider, buildServerUrl: e.target.value })}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="provider-apiKey">
+                  {preset?.apiKeyLabel || 'API Key'} <span className="text-destructive">*</span>
+                </Label>
+                <PasswordInput
+                  id="provider-apiKey"
+                  placeholder="Enter API Key"
+                  value={localProvider.apiKey}
+                  onChange={(e) => setLocalProvider({ ...localProvider, apiKey: e.target.value })}
+                />
+              </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="provider-proxy"
+                  checked={localProvider.proxy || false}
+                  onCheckedChange={(checked) => setLocalProvider({ ...localProvider, proxy: checked === true })}
+                />
+                <Label
+                  htmlFor="provider-proxy"
+                  className="text-sm font-normal cursor-pointer"
+                >
+                  Use CORS Proxy
+                </Label>
               </div>
             </>
           ) : localProvider.type === 'nsite' ? (

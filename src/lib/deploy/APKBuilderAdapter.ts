@@ -108,10 +108,11 @@ export class APKBuilderAdapter implements DeployAdapter {
       }
 
       if (status.status === 'complete') {
-        const downloadUrl = `${this.buildServerUrl}/api/build/${buildId}/download?apiKey=${encodeURIComponent(this.apiKey)}`;
+        // Fetch APK with header auth and create blob URL
+        const apkBlobUrl = await this.downloadApk(buildId);
 
         return {
-          url: downloadUrl,
+          url: apkBlobUrl,
           metadata: {
             buildId,
             type: 'apk',
@@ -135,6 +136,25 @@ export class APKBuilderAdapter implements DeployAdapter {
     }
 
     throw new Error('APK build timed out after 10 minutes');
+  }
+
+  private async downloadApk(buildId: string): Promise<string> {
+    const url = `${this.buildServerUrl}/api/build/${buildId}/download`;
+    const targetUrl = this.corsProxy ? proxyUrl(this.corsProxy, url) : url;
+
+    const response = await fetch(targetUrl, {
+      method: 'GET',
+      headers: {
+        'X-API-Key': this.apiKey,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to download APK: ${response.status} ${response.statusText}`);
+    }
+
+    const blob = await response.blob();
+    return URL.createObjectURL(blob);
   }
 
   private async getStatus(buildId: string): Promise<APKBuildStatus> {

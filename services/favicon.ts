@@ -24,8 +24,13 @@ export default {
       return new Response('Invalid url parameter', { status: 400 });
     }
 
+    let hostname = url.hostname;
+
+    // Strip `ai.` and `api.` subdomains for a better chance at finding a favicon
+    hostname = hostname.replace(/^(ai\.|api\.)/, '');
+
     // GitHub hack: neutral color for light/dark mode
-    if (url.hostname === 'github.com') {
+    if (hostname === 'github.com') {
       const svg = await (await fetch('https://github.githubassets.com/favicons/favicon.svg')).text();
       return new Response(svg.replaceAll('#24292E', '#808080'), {
         headers: { 'Content-Type': 'image/svg+xml' },
@@ -33,19 +38,15 @@ export default {
     }
     
     // AI-provider-specific hacks
-    let hostname = url.hostname;
     if (url.host === 'localhost:11434' || url.origin === '127.0.0.1:11434') {
       hostname = 'ollama.com';
     } else if (url.host === 'localhost:45554' || url.origin === '127.0.0.1:45554') {
       hostname = 'claude.ai';
     } else if (url.host === 'generativelanguage.googleapis.com') {
       hostname = 'gemini.google.com';
-    } else if (url.host === 'api.z.ai') {
+    } else if (url.host === 'z.ai') {
       hostname = 'docs.z.ai';
     }
-
-    // Strip `ai.` and `api.` subdomains for a better chance at finding a favicon
-    hostname = hostname.replace(/^(ai\.|api\.)/, '');
 
     // Fetch the favicon from DuckDuckGo's service
     return fetch(`https://external-content.duckduckgo.com/ip3/${hostname}.ico`);

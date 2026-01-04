@@ -22,16 +22,7 @@ export default {
 
     const headers = new Headers(request.headers);
     headers.set('user-agent', 'Shakespeare Proxy <https://proxy.shakespeare.diy/>');
-
-    // Remove forbidden browser headers that cause issues with some services
     headers.delete('origin');
-    headers.delete('referer');
-
-    for (const header of headers.keys()) {
-      if (header.startsWith('sec-')) {
-        headers.delete(header);
-      }
-    }
 
     const targetResponse = await fetch(target, {
       method: request.method,

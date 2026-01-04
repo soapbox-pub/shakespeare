@@ -30,4 +30,3 @@ export { WcCommand } from './wc';
 export { WhoamiCommand } from './whoami';
 export { WhichCommand } from './which';
 export { UnzipCommand } from './unzip';
-export { ZipCommand } from './zip';

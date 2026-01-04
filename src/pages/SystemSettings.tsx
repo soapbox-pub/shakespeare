@@ -257,6 +257,7 @@ export function SystemSettings() {
       icon={Settings}
       titleKey="systemSettings"
       descriptionKey="systemSettingsDescription"
+      className="space-y-2"
     >
       {/* Service Worker Configuration */}
       <Accordion type="single" collapsible className="w-full">
@@ -767,7 +768,7 @@ export function SystemSettings() {
             </div>
           </AccordionTrigger>
           <AccordionContent className="px-4 pb-4">
-            <div className="py-1 space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-1">
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <Label htmlFor="fs-path-projects" className="text-sm font-medium">
@@ -804,9 +805,6 @@ export function SystemSettings() {
                     </Button>
                   )}
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  {t('projectsDirectoryDescription')}
-                </p>
               </div>
 
               <div className="space-y-2">
@@ -845,9 +843,6 @@ export function SystemSettings() {
                     </Button>
                   )}
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  {t('configDirectoryDescription')}
-                </p>
               </div>
 
               <div className="space-y-2">
@@ -886,9 +881,6 @@ export function SystemSettings() {
                     </Button>
                   )}
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  {t('temporaryDirectoryDescription')}
-                </p>
               </div>
 
               <div className="space-y-2">
@@ -927,9 +919,6 @@ export function SystemSettings() {
                     </Button>
                   )}
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  {t('pluginsDirectoryDescription')}
-                </p>
               </div>
 
               <div className="space-y-2">
@@ -968,9 +957,6 @@ export function SystemSettings() {
                     </Button>
                   )}
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  {t('templatesDirectoryDescription')}
-                </p>
               </div>
             </div>
           </AccordionContent>

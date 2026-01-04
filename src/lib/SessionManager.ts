@@ -508,12 +508,12 @@ export class SessionManager {
               accumulatedToolCalls.set(index, toolCall);
             }
 
-            if (session.streamingMessage) {
+            if (session.streamingMessage && accumulatedToolCalls.size > 0) {
               const sortedToolCalls = [...accumulatedToolCalls.entries()]
                 .sort((a, b) => a[0] - b[0])
                 .map(entry => entry[1]);
 
-              session.streamingMessage.tool_calls = sortedToolCalls.length > 0 ? sortedToolCalls : undefined;
+              session.streamingMessage.tool_calls = sortedToolCalls;
               this.emit('streamingUpdate', projectId, session.streamingMessage.content, session.streamingMessage.reasoning_content, session.streamingMessage.tool_calls);
             }
           }

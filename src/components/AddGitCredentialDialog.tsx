@@ -84,8 +84,8 @@ export function AddGitCredentialDialog({
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          {preset.id === 'github' && isOAuthConfigured && !forceManualEntry ? (
-            // Special rendering for GitHub OAuth
+          {isOAuthConfigured && !forceManualEntry ? (
+            // Show OAuth button if OAuth is configured and not forced to manual
             <div className="space-y-3">
               <div className="flex gap-0">
                 <Button
@@ -101,7 +101,7 @@ export function AddGitCredentialDialog({
                     </>
                   ) : (
                     <span className="truncate text-ellipsis overflow-hidden">
-                      Connect to GitHub
+                      Connect to {preset.name}
                     </span>
                   )}
                 </Button>
@@ -117,7 +117,7 @@ export function AddGitCredentialDialog({
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem onClick={() => onSetForceManualEntry(true)}>
-                      Enter API key
+                      Enter token manually
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -129,7 +129,7 @@ export function AddGitCredentialDialog({
               )}
             </div>
           ) : (
-            // Standard token input
+            // Show manual token input
             <ExternalInput
               type="password"
               placeholder={t('enterToken')}
@@ -146,7 +146,7 @@ export function AddGitCredentialDialog({
           )}
         </div>
 
-        {!(preset.id === 'github' && isOAuthConfigured && !forceManualEntry) && (
+        {!(isOAuthConfigured && !forceManualEntry) && (
           <DialogFooter>
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               {t('cancel')}

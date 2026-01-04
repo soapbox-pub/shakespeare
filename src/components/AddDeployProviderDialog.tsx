@@ -28,7 +28,7 @@ interface OAuthHook {
   initiateOAuth: () => void;
 }
 
-interface AddProviderDialogProps {
+interface AddDeployProviderDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   preset: PresetDeployProvider;
@@ -39,7 +39,7 @@ interface AddProviderDialogProps {
   onAdd: (apiKey: string, accountId?: string, organizationId?: string) => void;
 }
 
-export function AddProviderDialog({
+export function AddDeployProviderDialog({
   open,
   onOpenChange,
   preset,
@@ -48,7 +48,7 @@ export function AddProviderDialog({
   forceManualEntry,
   onSetForceManualEntry,
   onAdd,
-}: AddProviderDialogProps) {
+}: AddDeployProviderDialogProps) {
   const { t } = useTranslation();
   const [apiKey, setApiKey] = useState('');
   const [accountId, setAccountId] = useState('');

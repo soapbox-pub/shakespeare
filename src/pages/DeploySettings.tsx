@@ -12,7 +12,7 @@ import type { PresetDeployProvider } from '@/lib/deploy/types';
 import { PRESET_DEPLOY_PROVIDERS } from '@/lib/deployProviderPresets';
 import { ExternalFavicon } from '@/components/ExternalFavicon';
 import { ProviderConfigDialog } from '@/components/ProviderConfigDialog';
-import { AddProviderDialog } from '@/components/AddProviderDialog';
+import { AddDeployProviderDialog } from '@/components/AddDeployProviderDialog';
 import { AddCustomProviderDialog } from '@/components/AddCustomProviderDialog';
 import {
   DndContext,
@@ -384,7 +384,7 @@ export function DeploySettings() {
 
             {/* Add Preset Provider Dialog */}
             {selectedPreset && (
-              <AddProviderDialog
+              <AddDeployProviderDialog
                 open={addDialogOpen}
                 onOpenChange={setAddDialogOpen}
                 preset={selectedPreset}

@@ -34,7 +34,7 @@ function zipalign(data: Uint8Array, alignment: number): Uint8Array {
   if (eocdOffset === -1) throw new Error('Invalid ZIP: EOCD not found');
 
   const cdOffset = view.getUint32(eocdOffset + 16, true);
-  const cdSize = view.getUint32(eocdOffset + 12, true);
+  const _cdSize = view.getUint32(eocdOffset + 12, true);
   const entryCount = view.getUint16(eocdOffset + 10, true);
 
   // Parse central directory to get file entries
@@ -89,8 +89,8 @@ function zipalign(data: Uint8Array, alignment: number): Uint8Array {
 
     const localNameLength = view.getUint16(localPos + 26, true);
     const localExtraLength = view.getUint16(localPos + 28, true);
-    const headerSize = 30 + localNameLength + localExtraLength;
-    const dataOffset = localPos + headerSize;
+    const _headerSize = 30 + localNameLength + localExtraLength;
+    const _dataOffset = localPos + _headerSize;
 
     const nameBytes = data.slice(localPos + 30, localPos + 30 + localNameLength);
     const name = new TextDecoder().decode(nameBytes);
@@ -117,7 +117,7 @@ function zipalign(data: Uint8Array, alignment: number): Uint8Array {
   }
 
   // Calculate new central directory offset
-  const newCdOffset = currentOffset;
+  const _newCdOffset = currentOffset;
 
   // Build new ZIP
   const cdEntrySize = pos - cdOffset; // Total size of central directory entries
@@ -213,7 +213,7 @@ function applyV2Signature(apk: Uint8Array, key: SigningKey): Uint8Array {
   if (eocdOffset === -1) throw new Error('Invalid ZIP: EOCD not found');
 
   const cdOffset = view.getUint32(eocdOffset + 16, true);
-  const cdSize = view.getUint32(eocdOffset + 12, true);
+  const _cdSize = view.getUint32(eocdOffset + 12, true);
 
   // Section 1: ZIP entries (before CD)
   const zipEntries = apk.slice(0, cdOffset);

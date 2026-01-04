@@ -271,21 +271,21 @@ export function AddProviderDialog({
                     </>
                   )}
                   {preset.type !== 'apkbuilder' && (
-                  <ExternalInput
-                    type="password"
-                    placeholder={preset.apiKeyLabel || t('enterApiKey')}
-                    value={apiKey}
-                    onChange={(e) => setApiKey(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && apiKey.trim() &&
-                        (preset.type !== 'cloudflare' || accountId.trim()) &&
-                        (preset.type !== 'deno' || organizationId.trim())) {
-                        handleAdd();
-                      }
-                    }}
-                    url={preset.apiKeyURL}
-                    urlTitle="Get Key"
-                  />
+                    <ExternalInput
+                      type="password"
+                      placeholder={preset.apiKeyLabel || t('enterApiKey')}
+                      value={apiKey}
+                      onChange={(e) => setApiKey(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && apiKey.trim() &&
+                          (preset.type !== 'cloudflare' || accountId.trim()) &&
+                          (preset.type !== 'deno' || organizationId.trim())) {
+                          handleAdd();
+                        }
+                      }}
+                      url={preset.apiKeyURL}
+                      urlTitle="Get Key"
+                    />
                   )}
                 </>
               )}

@@ -100,16 +100,9 @@ export function AddGitCredentialDialog({
                       Connecting...
                     </>
                   ) : (
-                    <>
-                      <ExternalFavicon
-                        url="https://github.com"
-                        size={16}
-                        fallback={<GitBranch size={16} />}
-                      />
-                      <span className="truncate text-ellipsis overflow-hidden">
-                        Connect to GitHub
-                      </span>
-                    </>
+                    <span className="truncate text-ellipsis overflow-hidden">
+                      Connect to GitHub
+                    </span>
                   )}
                 </Button>
                 <DropdownMenu>

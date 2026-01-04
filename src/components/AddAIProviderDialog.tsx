@@ -119,16 +119,9 @@ export function AddAIProviderDialog({
                       Connecting...
                     </>
                   ) : (
-                    <>
-                      <ExternalFavicon
-                        url={preset.baseURL}
-                        size={16}
-                        fallback={<Bot size={16} />}
-                      />
-                      <span className="truncate text-ellipsis overflow-hidden">
-                        Connect to {preset.name}
-                      </span>
-                    </>
+                    <span className="truncate text-ellipsis overflow-hidden">
+                      Connect to {preset.name}
+                    </span>
                   )}
                 </Button>
                 <DropdownMenu>

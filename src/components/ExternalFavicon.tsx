@@ -30,8 +30,13 @@ export function ExternalFavicon({
   const faviconSrc = useMemo(() => {
     if (!url) return;
     try {
+      const parsedUrl = new URL(url);
+
+      // Strip `ai.` and `api.` subdomains for a better chance at finding a favicon
+      parsedUrl.hostname = parsedUrl.hostname.replace(/^(ai\.|api\.)/, '');
+
       // Normalize the URL to ensure it has a protocol
-      return faviconUrl(config.faviconUrl, url);
+      return faviconUrl(config.faviconUrl, parsedUrl);
     } catch {
       return;
     }

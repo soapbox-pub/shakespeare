@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
-import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { CheckCircle, XCircle, Loader2, Shield, Bug } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { proxyUrl } from '@/lib/proxyUrl';
+import { cn } from '@/lib/utils';
+import type { APKBuildType } from '@/lib/deploy/types';
 
 interface APKBuilderDeployFormProps {
   buildServerUrl: string;
@@ -12,7 +14,8 @@ interface APKBuilderDeployFormProps {
   projectName?: string;
   savedAppName?: string;
   savedPackageId?: string;
-  onConfigChange: (appName: string, packageId: string) => void;
+  savedBuildType?: APKBuildType;
+  onConfigChange: (appName: string, packageId: string, buildType: APKBuildType) => void;
   corsProxy?: string;
 }
 
@@ -32,11 +35,13 @@ export function APKBuilderDeployForm({
   projectName,
   savedAppName,
   savedPackageId,
+  savedBuildType,
   onConfigChange,
   corsProxy,
 }: APKBuilderDeployFormProps) {
   const [appName, setAppName] = useState(savedAppName || projectName || projectId);
   const [packageId, setPackageId] = useState(savedPackageId || '');
+  const [buildType, setBuildType] = useState<APKBuildType>(savedBuildType || 'debug');
   const [packageIdError, setPackageIdError] = useState<string | null>(null);
   const [serverHealth, setServerHealth] = useState<ServerHealth | null>(null);
   const [isCheckingServer, setIsCheckingServer] = useState(true);
@@ -104,9 +109,9 @@ export function APKBuilderDeployForm({
   // Notify parent of config changes
   useEffect(() => {
     if (appName && packageId && !packageIdError) {
-      onConfigChange(appName, packageId);
+      onConfigChange(appName, packageId, buildType);
     }
-  }, [appName, packageId, packageIdError, onConfigChange]);
+  }, [appName, packageId, packageIdError, buildType, onConfigChange]);
 
   return (
     <div className="space-y-4">
@@ -181,18 +186,77 @@ export function APKBuilderDeployForm({
         )}
       </div>
 
+      {/* Build Type Toggle */}
+      <div className="space-y-2">
+        <Label>Build Type</Label>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setBuildType('debug')}
+            className={cn(
+              "inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all",
+              "border-2 hover:scale-105 active:scale-95",
+              buildType === 'debug'
+                ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                : "bg-background text-foreground border-border hover:border-primary/50"
+            )}
+          >
+            <Bug className="h-3.5 w-3.5" />
+            <span>Debug</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setBuildType('release')}
+            className={cn(
+              "inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all",
+              "border-2 hover:scale-105 active:scale-95",
+              buildType === 'release'
+                ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                : "bg-background text-foreground border-border hover:border-primary/50"
+            )}
+          >
+            <Shield className="h-3.5 w-3.5" />
+            <span>Release</span>
+          </button>
+        </div>
+      </div>
+
       {/* Build Info */}
       <div className="rounded-lg bg-muted/50 p-3 space-y-1">
-        <p className="text-xs text-muted-foreground">
-          <strong>Build type:</strong> Debug APK (sideloading)
-        </p>
+        {buildType === 'debug' ? (
+          <>
+            <p className="text-xs text-muted-foreground">
+              <strong>Build type:</strong> Debug APK (for testing/sideloading)
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Uses debug signing key. Install via USB or file transfer.
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="text-xs text-muted-foreground">
+              <strong>Build type:</strong> Release APK (unsigned)
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Server builds unsigned APK. Signing will be done in your browser.
+            </p>
+          </>
+        )}
         <p className="text-xs text-muted-foreground">
           <strong>Output:</strong> Downloadable .apk file
         </p>
-        <p className="text-xs text-muted-foreground">
-          App icon will be auto-detected from your project
-        </p>
       </div>
+
+      {/* Release Signing Info */}
+      {buildType === 'release' && (
+        <Alert>
+          <Shield className="h-4 w-4" />
+          <AlertDescription className="text-xs">
+            Release builds require signing. You'll be prompted to configure your signing key after the build completes.
+            Your signing key never leaves your browser.
+          </AlertDescription>
+        </Alert>
+      )}
     </div>
   );
 }

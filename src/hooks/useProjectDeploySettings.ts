@@ -58,6 +58,7 @@ const apkBuilderProjectConfigSchema = z.object({
   data: z.object({
     appName: z.string(),
     packageId: z.string(),
+    buildType: z.enum(['debug', 'release']).optional(),
   }),
 });
 

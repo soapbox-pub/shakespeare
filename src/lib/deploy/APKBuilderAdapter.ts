@@ -1,6 +1,6 @@
 import JSZip from 'jszip';
 import type { JSRuntimeFS } from '../JSRuntime';
-import type { DeployAdapter, DeployOptions, DeployResult, APKBuilderDeployConfig } from './types';
+import type { DeployAdapter, DeployOptions, DeployResult, APKBuilderDeployConfig, APKBuildType } from './types';
 import { proxyUrl } from '../proxyUrl';
 
 interface APKBuildStatus {
@@ -22,6 +22,7 @@ export class APKBuilderAdapter implements DeployAdapter {
   private apiKey: string;
   private appName: string;
   private packageId: string;
+  private buildType: APKBuildType;
   private corsProxy?: string;
   private onProgress?: (status: APKBuildStatus) => void;
 
@@ -31,6 +32,7 @@ export class APKBuilderAdapter implements DeployAdapter {
     this.apiKey = config.apiKey;
     this.appName = config.appName;
     this.packageId = config.packageId;
+    this.buildType = config.buildType || 'debug';
     this.corsProxy = config.corsProxy;
     this.onProgress = config.onProgress;
   }
@@ -73,6 +75,7 @@ export class APKBuilderAdapter implements DeployAdapter {
     formData.append('config', JSON.stringify({
       appName: this.appName,
       packageId: this.packageId,
+      buildType: this.buildType,
     }));
 
     const response = await fetch(targetUrl, {
@@ -114,6 +117,7 @@ export class APKBuilderAdapter implements DeployAdapter {
             type: 'apk',
             appName: this.appName,
             packageId: this.packageId,
+            buildType: this.buildType,
             apkSize: status.apkSize,
           },
         };

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Rocket, ExternalLink, AlertCircle, Settings, Cloud } from 'lucide-react';
+import { Rocket, ExternalLink, AlertCircle, Settings, Cloud, Shield, Download, CheckCircle } from 'lucide-react';
 import { ExternalFavicon } from '@/components/ExternalFavicon';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,6 +15,7 @@ import { useAppContext } from '@/hooks/useAppContext';
 import { useNostr } from '@nostrify/react';
 import { Link } from 'react-router-dom';
 import type { DeployProvider } from '@/contexts/DeploySettingsContext';
+import type { APKBuildType } from '@/lib/deploy/types';
 import { ShakespeareDeployForm } from '@/components/deploy/ShakespeareDeployForm';
 import { NetlifyDeployForm } from '@/components/deploy/NetlifyDeployForm';
 import { VercelDeployForm } from '@/components/deploy/VercelDeployForm';
@@ -22,6 +23,7 @@ import { NsiteDeployForm } from '@/components/deploy/NsiteDeployForm';
 import { CloudflareDeployForm } from '@/components/deploy/CloudflareDeployForm';
 import { DenoDeployForm } from '@/components/deploy/DenoDeployForm';
 import { APKBuilderDeployForm } from '@/components/deploy/APKBuilderDeployForm';
+import { APKSigner } from '@/components/deploy/APKSigner';
 import { cn } from '@/lib/utils';
 import { DeployAdapter } from '@/lib/deploy/types';
 import { ShakespeareAdapter } from '@/lib/deploy/ShakespeareAdapter';
@@ -133,6 +135,7 @@ interface DenoDeployFormData {
 interface APKBuilderFormData {
   appName: string;
   packageId: string;
+  buildType: APKBuildType;
 }
 
 export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProps) {
@@ -148,6 +151,7 @@ export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProp
   const [selectedProviderId, setSelectedProviderId] = useState<string>('');
   const [isDeploying, setIsDeploying] = useState(false);
   const [deployResult, setDeployResult] = useState<{ url: string } | null>(null);
+  const [signedApkBlob, setSignedApkBlob] = useState<Blob | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isShakespeareFormValid, setIsShakespeareFormValid] = useState(true);
 
@@ -175,6 +179,7 @@ export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProp
   const [apkBuilderForm, setApkBuilderForm] = useState<APKBuilderFormData>({
     appName: projectName || projectId,
     packageId: '',
+    buildType: 'debug',
   });
 
   // Load project settings when component mounts
@@ -320,6 +325,7 @@ export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProp
           apiKey: apkBuilderProvider.apiKey,
           appName: apkBuilderForm.appName,
           packageId: apkBuilderForm.packageId,
+          buildType: apkBuilderForm.buildType,
           corsProxy: apkBuilderProvider.proxy ? config.corsProxy : undefined,
         });
       } else {
@@ -388,6 +394,7 @@ export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProp
           data: {
             appName: apkBuilderForm.appName,
             packageId: apkBuilderForm.packageId,
+            buildType: apkBuilderForm.buildType,
           },
         });
       }
@@ -403,6 +410,7 @@ export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProp
   const handleClose = () => {
     setSelectedProviderId('');
     setDeployResult(null);
+    setSignedApkBlob(null);
     setError(null);
     // Reset forms
     setShakespeareForm({ subdomain: projectId });
@@ -411,9 +419,26 @@ export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProp
     setVercelForm({ projectName: projectName || projectId, teamId: '' });
     setCloudflareForm({ projectName: projectName || projectId });
     setDenoDeployForm({ projectName: projectName || projectId });
-    setApkBuilderForm({ appName: projectName || projectId, packageId: '' });
+    setApkBuilderForm({ appName: projectName || projectId, packageId: '', buildType: 'debug' });
     onClose();
   };
+
+  const handleSigningComplete = useCallback((blob: Blob) => {
+    setSignedApkBlob(blob);
+  }, []);
+
+  const handleDownloadSignedApk = useCallback(() => {
+    if (!signedApkBlob) return;
+
+    const url = URL.createObjectURL(signedApkBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${apkBuilderForm.appName.replace(/[^a-zA-Z0-9]/g, '_')}_signed.apk`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, [signedApkBlob, apkBuilderForm.appName]);
 
   const handleShakespeareSubdomainChange = useCallback((subdomain: string) => {
     setShakespeareForm({ subdomain });
@@ -443,8 +468,8 @@ export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProp
     setDenoDeployForm({ projectName });
   }, []);
 
-  const handleApkBuilderConfigChange = useCallback((appName: string, packageId: string) => {
-    setApkBuilderForm({ appName, packageId });
+  const handleApkBuilderConfigChange = useCallback((appName: string, packageId: string, buildType: APKBuildType) => {
+    setApkBuilderForm({ appName, packageId, buildType });
   }, []);
 
   const renderProviderFields = () => {
@@ -557,6 +582,7 @@ export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProp
       const savedConfig = projectSettings.providers[selectedProviderId];
       const savedAppName = savedConfig?.type === 'apkbuilder' ? savedConfig.data.appName : undefined;
       const savedPackageId = savedConfig?.type === 'apkbuilder' ? savedConfig.data.packageId : undefined;
+      const savedBuildType = savedConfig?.type === 'apkbuilder' ? savedConfig.data.buildType : undefined;
 
       return (
         <APKBuilderDeployForm
@@ -566,6 +592,7 @@ export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProp
           projectName={projectName}
           savedAppName={savedAppName}
           savedPackageId={savedPackageId}
+          savedBuildType={savedBuildType}
           onConfigChange={handleApkBuilderConfigChange}
           corsProxy={apkBuilderProvider.proxy ? config.corsProxy : undefined}
         />
@@ -586,38 +613,124 @@ export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProp
 
       {deployResult ? (
         <div className="space-y-4">
-          <Alert>
-            <Rocket className="h-4 w-4" />
-            <AlertDescription>
-              {selectedProvider?.type === 'apkbuilder'
-                ? 'Your project has been successfully built!'
-                : 'Your project has been successfully deployed!'}
-            </AlertDescription>
-          </Alert>
+          {/* Release APK signing flow */}
+          {selectedProvider?.type === 'apkbuilder' && apkBuilderForm.buildType === 'release' ? (
+            <>
+              {/* Step indicator */}
+              <div className="flex items-center gap-2 text-sm">
+                <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-medium">
+                  <CheckCircle className="h-3 w-3" />
+                </div>
+                <span className="text-muted-foreground line-through">Build</span>
+                <div className="flex-1 h-px bg-border" />
+                <div className={cn(
+                  "flex items-center justify-center w-6 h-6 rounded-full text-xs font-medium",
+                  signedApkBlob
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-primary text-primary-foreground"
+                )}>
+                  {signedApkBlob ? <CheckCircle className="h-3 w-3" /> : '2'}
+                </div>
+                <span className={signedApkBlob ? "text-muted-foreground line-through" : "font-medium"}>Sign</span>
+                <div className="flex-1 h-px bg-border" />
+                <div className={cn(
+                  "flex items-center justify-center w-6 h-6 rounded-full text-xs font-medium",
+                  signedApkBlob
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground"
+                )}>
+                  3
+                </div>
+                <span className={signedApkBlob ? "font-medium" : "text-muted-foreground"}>Download</span>
+              </div>
 
-          <div className="space-y-2">
-            <Label>{selectedProvider?.type === 'apkbuilder' ? 'Download URL' : 'Deployed URL'}</Label>
-            <div className="flex gap-2">
-              <Input
-                value={deployResult.url}
-                readOnly
-                className="flex-1"
-              />
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => window.open(deployResult.url, '_blank')}
-              >
-                <ExternalLink className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
+              {signedApkBlob ? (
+                /* Signing complete - show download */
+                <>
+                  <Alert>
+                    <CheckCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      APK signed successfully! Download your release-ready APK.
+                    </AlertDescription>
+                  </Alert>
 
-          <div className="flex justify-end gap-2">
-            <Button onClick={handleClose}>
-              {t('close')}
-            </Button>
-          </div>
+                  <div className="rounded-lg border p-4 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium text-sm">{apkBuilderForm.appName}_signed.apk</p>
+                        <p className="text-xs text-muted-foreground">
+                          {(signedApkBlob.size / 1024 / 1024).toFixed(2)} MB
+                        </p>
+                      </div>
+                      <Button onClick={handleDownloadSignedApk}>
+                        <Download className="h-4 w-4 mr-2" />
+                        Download APK
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-2">
+                    <Button onClick={handleClose}>
+                      {t('close')}
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                /* Show signing UI */
+                <>
+                  <Alert>
+                    <Shield className="h-4 w-4" />
+                    <AlertDescription>
+                      Release APK built! Sign it with your keystore to install on devices.
+                    </AlertDescription>
+                  </Alert>
+
+                  <APKSigner
+                    unsignedApkUrl={deployResult.url}
+                    appName={apkBuilderForm.appName}
+                    onComplete={handleSigningComplete}
+                    onCancel={handleClose}
+                  />
+                </>
+              )}
+            </>
+          ) : (
+            /* Standard success UI for debug APK and other providers */
+            <>
+              <Alert>
+                <Rocket className="h-4 w-4" />
+                <AlertDescription>
+                  {selectedProvider?.type === 'apkbuilder'
+                    ? 'Your project has been successfully built!'
+                    : 'Your project has been successfully deployed!'}
+                </AlertDescription>
+              </Alert>
+
+              <div className="space-y-2">
+                <Label>{selectedProvider?.type === 'apkbuilder' ? 'Download URL' : 'Deployed URL'}</Label>
+                <div className="flex gap-2">
+                  <Input
+                    value={deployResult.url}
+                    readOnly
+                    className="flex-1"
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => window.open(deployResult.url, '_blank')}
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <Button onClick={handleClose}>
+                  {t('close')}
+                </Button>
+              </div>
+            </>
+          )}
         </div>
       ) : (
         <div className="space-y-4">

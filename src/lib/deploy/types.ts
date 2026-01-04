@@ -75,6 +75,21 @@ export interface DenoDeployConfig {
   corsProxy?: string;
 }
 
+/** Build type for APK */
+export type APKBuildType = 'debug' | 'release';
+
+/** Keystore configuration for release builds */
+export interface KeystoreConfig {
+  /** Keystore data as base64 */
+  keystoreBase64: string;
+  /** Keystore password */
+  keystorePassword: string;
+  /** Key alias */
+  keyAlias: string;
+  /** Key password */
+  keyPassword: string;
+}
+
 export interface APKBuilderDeployConfig {
   fs: JSRuntimeFS;
   /** URL of the APK build server */
@@ -85,6 +100,10 @@ export interface APKBuilderDeployConfig {
   appName: string;
   /** Android package ID (e.g., com.example.myapp) */
   packageId: string;
+  /** Build type: debug (default) or release */
+  buildType?: APKBuildType;
+  /** Keystore configuration for release builds (browser-based signing) */
+  keystoreConfig?: KeystoreConfig;
   /** Optional CORS proxy */
   corsProxy?: string;
   /** Optional progress callback */

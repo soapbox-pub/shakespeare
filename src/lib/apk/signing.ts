@@ -302,9 +302,6 @@ function applyV2Signature(apk: Uint8Array, key: SigningKey): Uint8Array {
   // (which is the original cdOffset, where we'll insert the signing block)
   // The actual file's EOCD will point to real CD, but digest uses signing block offset
   const eocdForDigest = new Uint8Array(eocd);
-  const originalEocdOffset = view.getUint32(eocdOffset + 16, true);
-  console.log('[v2 Sign] Original EOCD CD offset:', originalEocdOffset);
-  console.log('[v2 Sign] cdOffset (signing block start):', cdOffset);
   // cdOffset is where signing block will be inserted, so EOCD offset = cdOffset for digest
   new DataView(eocdForDigest.buffer).setUint32(16, cdOffset, true);
 
@@ -479,10 +476,8 @@ function applyV2Signature(apk: Uint8Array, key: SigningKey): Uint8Array {
   signingBlock.set(MAGIC, sbPos);
 
   // Verify size calculation matches actual size
-  console.log('[v2 Sign] Predicted signing block size:', signingBlockTotalSize);
-  console.log('[v2 Sign] Actual signing block size:', signingBlock.length);
   if (signingBlockTotalSize !== signingBlock.length) {
-    console.error('[v2 Sign] SIZE MISMATCH! Digest will be invalid.');
+    throw new Error('V2 signing block size mismatch - digest will be invalid');
   }
 
   // Update EOCD with new CD offset (after signing block)
@@ -536,12 +531,8 @@ function getPublicKeyDer(cert: forge.pki.Certificate): Uint8Array {
 export async function signApk(options: SigningOptions): Promise<Blob> {
   const { key, apkData } = options;
 
-  console.log('[APK Sign] Starting signing process...');
-
   // Load the APK (ZIP file)
-  console.log('[APK Sign] Loading ZIP...');
   const zip = await JSZip.loadAsync(apkData);
-  console.log('[APK Sign] ZIP loaded, files:', Object.keys(zip.files).length);
 
   // Remove any existing signatures
   zip.remove('META-INF/MANIFEST.MF');
@@ -557,30 +548,22 @@ export async function signApk(options: SigningOptions): Promise<Blob> {
   for (const file of metaInfFiles) {
     zip.remove(file);
   }
-  console.log('[APK Sign] Removed existing signatures');
 
   // Create MANIFEST.MF
-  console.log('[APK Sign] Creating manifest...');
   const manifest = await createManifest(zip);
-  console.log('[APK Sign] Manifest created, length:', manifest.length);
   zip.file('META-INF/MANIFEST.MF', manifest, { compression: 'DEFLATE' });
 
   // Create CERT.SF (signature file)
-  console.log('[APK Sign] Creating signature file...');
   const signatureFile = createSignatureFile(manifest);
-  console.log('[APK Sign] Signature file created, length:', signatureFile.length);
   zip.file('META-INF/CERT.SF', signatureFile, { compression: 'DEFLATE' });
 
   // Create CERT.RSA (PKCS#7 signature block)
-  console.log('[APK Sign] Creating signature block...');
   const signatureBlock = createSignatureBlock(signatureFile, key);
-  console.log('[APK Sign] Signature block created, length:', signatureBlock.length);
   zip.file('META-INF/CERT.RSA', signatureBlock, { compression: 'DEFLATE' });
 
   // Generate the signed APK
   // Don't use global compression - preserve original compression settings
   // This is critical for resources.arsc which must be STORE (uncompressed) on Android 11+
-  console.log('[APK Sign] Generating signed APK...');
   const signedApkRaw = await zip.generateAsync({
     type: 'arraybuffer',
     // Use per-file compression to preserve original settings
@@ -589,14 +572,11 @@ export async function signApk(options: SigningOptions): Promise<Blob> {
 
   // Apply zipalign to ensure 4-byte alignment for uncompressed files
   // This is required for Android 11+ (API 30+)
-  console.log('[APK Sign] Applying zipalign...');
   const alignedApk = zipalign(new Uint8Array(signedApkRaw), 4);
 
   // Apply APK Signature Scheme v2
   // This is required for Android 7.0+ and mandatory for Android 11+
-  console.log('[APK Sign] Applying v2 signature...');
   const v2SignedApk = applyV2Signature(alignedApk, key);
-  console.log('[APK Sign] Done!');
 
   return new Blob([v2SignedApk], { type: 'application/vnd.android.package-archive' });
 }
@@ -605,7 +585,6 @@ export async function signApk(options: SigningOptions): Promise<Blob> {
  * Create MANIFEST.MF with SHA-256 digests of all files
  */
 async function createManifest(zip: JSZip): Promise<string> {
-  console.log('[Manifest] Starting...');
   const lines: string[] = [
     'Manifest-Version: 1.0',
     'Created-By: Shakespeare APK Signer',
@@ -617,13 +596,7 @@ async function createManifest(zip: JSZip): Promise<string> {
     .filter(name => !zip.files[name].dir && !name.startsWith('META-INF/'))
     .sort();
 
-  console.log('[Manifest] Processing', files.length, 'files');
-
-  for (let i = 0; i < files.length; i++) {
-    const fileName = files[i];
-    if (i % 50 === 0) {
-      console.log('[Manifest] Processing file', i, '/', files.length, fileName);
-    }
+  for (const fileName of files) {
     const file = zip.files[fileName];
     const content = await file.async('uint8array');
     const digest = sha256Base64(content);
@@ -633,7 +606,6 @@ async function createManifest(zip: JSZip): Promise<string> {
     lines.push('');
   }
 
-  console.log('[Manifest] Done, lines:', lines.length);
   return lines.join('\r\n');
 }
 
@@ -676,54 +648,36 @@ function createSignatureFile(manifest: string): string {
 function createSignatureBlock(signatureFile: string, key: SigningKey): Uint8Array {
   const { privateKey, certificate } = key;
 
-  console.log('[Signature Block] Starting...');
-
   // Create SHA-256 digest of the signature file
-  console.log('[Signature Block] Creating digest...');
   const md = forge.md.sha256.create();
   md.update(signatureFile, 'utf8');
-  console.log('[Signature Block] Digest created');
 
   // Sign the digest directly with RSA
   // Type assertion needed due to node-forge type definition issues
-  console.log('[Signature Block] Signing with RSA...');
   const rsaPrivateKey = privateKey as unknown as forge.pki.rsa.PrivateKey;
   const signature = rsaPrivateKey.sign(md);
-  console.log('[Signature Block] Signature created, length:', signature.length);
 
   // Build PKCS#7 SignedData structure manually
   // This avoids the recursion issues in forge.pkcs7
   // Use PEM->DER conversion to avoid certificateToAsn1 recursion issues
-  console.log('[Signature Block] Converting certificate to PEM...');
   const certPem = forge.pki.certificateToPem(certificate);
-  console.log('[Signature Block] PEM created, length:', certPem.length);
 
   const certDerBase64 = certPem
     .replace(/-----BEGIN CERTIFICATE-----/, '')
     .replace(/-----END CERTIFICATE-----/, '')
     .replace(/\r?\n/g, '');
-  console.log('[Signature Block] DER base64 extracted, length:', certDerBase64.length);
 
   const certDer = forge.util.decode64(certDerBase64);
-  console.log('[Signature Block] DER decoded, length:', certDer.length);
 
-  console.log('[Signature Block] Parsing DER to ASN1...');
   const certAsn1 = forge.asn1.fromDer(certDer);
-  console.log('[Signature Block] Certificate ASN1 created');
 
-  console.log('[Signature Block] Building signerInfo...');
-  console.log('[Signature Block] issuer attributes:', certificate.issuer.attributes.length);
-  console.log('[Signature Block] serialNumber:', certificate.serialNumber);
-
-  // Build issuer DN ASN.1 separately to debug
-  console.log('[Signature Block] Building issuer DN...');
+  // Build issuer DN ASN.1
   let issuerAsn1;
   if (certificate.issuer.attributes.length > 0) {
     issuerAsn1 = forge.pki.distinguishedNameToAsn1(certificate.issuer);
   } else {
     issuerAsn1 = forge.asn1.create(forge.asn1.Class.UNIVERSAL, forge.asn1.Type.SEQUENCE, true, []);
   }
-  console.log('[Signature Block] Issuer DN built');
 
   const signerInfo = forge.asn1.create(forge.asn1.Class.UNIVERSAL, forge.asn1.Type.SEQUENCE, true, [
     // version
@@ -752,9 +706,7 @@ function createSignatureBlock(signatureFile: string, key: SigningKey): Uint8Arra
     // encryptedDigest (the signature)
     forge.asn1.create(forge.asn1.Class.UNIVERSAL, forge.asn1.Type.OCTETSTRING, false, signature),
   ]);
-  console.log('[Signature Block] signerInfo created');
 
-  console.log('[Signature Block] Building signedData...');
   const signedData = forge.asn1.create(forge.asn1.Class.UNIVERSAL, forge.asn1.Type.SEQUENCE, true, [
     // version
     forge.asn1.create(forge.asn1.Class.UNIVERSAL, forge.asn1.Type.INTEGER, false,
@@ -777,10 +729,8 @@ function createSignatureBlock(signatureFile: string, key: SigningKey): Uint8Arra
     // signerInfos
     forge.asn1.create(forge.asn1.Class.UNIVERSAL, forge.asn1.Type.SET, true, [signerInfo]),
   ]);
-  console.log('[Signature Block] signedData created');
 
   // Wrap in ContentInfo
-  console.log('[Signature Block] Building contentInfo...');
   const contentInfo = forge.asn1.create(forge.asn1.Class.UNIVERSAL, forge.asn1.Type.SEQUENCE, true, [
     // contentType (signedData)
     forge.asn1.create(forge.asn1.Class.UNIVERSAL, forge.asn1.Type.OID, false,
@@ -788,11 +738,8 @@ function createSignatureBlock(signatureFile: string, key: SigningKey): Uint8Arra
     // content
     forge.asn1.create(forge.asn1.Class.CONTEXT_SPECIFIC, 0, true, [signedData]),
   ]);
-  console.log('[Signature Block] contentInfo created');
 
-  console.log('[Signature Block] Converting to DER...');
   const der = forge.asn1.toDer(contentInfo);
-  console.log('[Signature Block] DER conversion complete');
 
   return new Uint8Array(forge.util.binary.raw.decode(der.getBytes()));
 }

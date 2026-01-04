@@ -443,6 +443,8 @@ export function DeploySettings() {
 
   const handleRemoveProvider = (index: number) => {
     removeProvider(index);
+    setDialogOpen(false);
+    setSelectedProviderIndex(null);
   };
 
   const handleUpdateProvider = (index: number, provider: DeployProvider) => {

@@ -115,3 +115,20 @@ export interface APKBuilderDeployConfig {
     logs?: string[];
   }) => void;
 }
+
+export interface PresetDeployProvider {
+  id: string;
+  type: 'shakespeare' | 'netlify' | 'vercel' | 'nsite' | 'cloudflare' | 'deno' | 'apkbuilder';
+  name: string;
+  description: string;
+  baseURL?: string;
+  requiresNostr?: boolean;
+  apiKeyLabel?: string;
+  apiKeyURL?: string;
+  accountIdLabel?: string;
+  accountIdURL?: string;
+  organizationIdLabel?: string;
+  organizationIdURL?: string;
+  buildServerUrlLabel?: string;
+  proxy?: boolean;
+}

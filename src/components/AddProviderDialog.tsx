@@ -19,21 +19,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { ExternalFavicon } from '@/components/ExternalFavicon';
 import { Link } from 'react-router-dom';
-
-interface PresetProvider {
-  id: string;
-  type: 'shakespeare' | 'netlify' | 'vercel' | 'nsite' | 'cloudflare' | 'deno';
-  name: string;
-  description: string;
-  requiresNostr?: boolean;
-  apiKeyLabel?: string;
-  apiKeyURL?: string;
-  accountIdLabel?: string;
-  accountIdURL?: string;
-  organizationIdLabel?: string;
-  organizationIdURL?: string;
-  proxy?: boolean;
-}
+import type { PresetDeployProvider } from '@/lib/deploy/types';
 
 interface OAuthHook {
   isOAuthConfigured: boolean;
@@ -45,31 +31,12 @@ interface OAuthHook {
 interface AddProviderDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  preset: PresetProvider;
+  preset: PresetDeployProvider;
   isLoggedIntoNostr: boolean;
   oauthHook: OAuthHook | null;
   forceManualEntry: boolean;
   onSetForceManualEntry: (force: boolean) => void;
   onAdd: (apiKey: string, accountId?: string, organizationId?: string) => void;
-}
-
-function getProviderUrl(preset: PresetProvider): string | null {
-  switch (preset.type) {
-    case 'shakespeare':
-      return 'https://shakespeare.diy';
-    case 'netlify':
-      return 'https://netlify.com';
-    case 'vercel':
-      return 'https://vercel.com';
-    case 'cloudflare':
-      return 'https://cloudflare.com';
-    case 'deno':
-      return 'https://deno.com';
-    case 'nsite':
-      return null;
-    default:
-      return null;
-  }
 }
 
 export function AddProviderDialog({
@@ -100,22 +67,16 @@ export function AddProviderDialog({
     onOpenChange(false);
   };
 
-  const url = getProviderUrl(preset);
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <div className="flex items-center gap-2">
-            {url ? (
-              <ExternalFavicon
-                url={url}
-                size={20}
-                fallback={<Rocket size={20} />}
-              />
-            ) : (
-              <Rocket size={20} />
-            )}
+            <ExternalFavicon
+              url={preset.baseURL}
+              size={20}
+              fallback={<Rocket size={20} />}
+            />
             <DialogTitle>{preset.name}</DialogTitle>
           </div>
           <DialogDescription>
@@ -152,15 +113,11 @@ export function AddProviderDialog({
                     </>
                   ) : (
                     <>
-                      {url ? (
-                        <ExternalFavicon
-                          url={url}
-                          size={16}
-                          fallback={<Rocket size={16} />}
-                        />
-                      ) : (
-                        <Rocket size={16} />
-                      )}
+                      <ExternalFavicon
+                        url={preset.baseURL}
+                        size={16}
+                        fallback={<Rocket size={16} />}
+                      />
                       <span className="truncate text-ellipsis overflow-hidden">
                         Connect to {preset.name}
                       </span>

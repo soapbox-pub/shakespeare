@@ -74,3 +74,19 @@ export interface DenoDeployConfig {
   projectName?: string;
   corsProxy?: string;
 }
+
+export interface PresetDeployProvider {
+  id: string;
+  type: 'shakespeare' | 'netlify' | 'vercel' | 'nsite' | 'cloudflare' | 'deno';
+  name: string;
+  description: string;
+  baseURL?: string;
+  requiresNostr?: boolean;
+  apiKeyLabel?: string;
+  apiKeyURL?: string;
+  accountIdLabel?: string;
+  accountIdURL?: string;
+  organizationIdLabel?: string;
+  organizationIdURL?: string;
+  proxy?: boolean;
+}

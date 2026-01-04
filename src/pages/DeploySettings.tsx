@@ -8,6 +8,8 @@ import { useNetlifyOAuth } from '@/hooks/useNetlifyOAuth';
 import { useVercelOAuth } from '@/hooks/useVercelOAuth';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import type { DeployProvider } from '@/contexts/DeploySettingsContext';
+import type { PresetDeployProvider } from '@/lib/deploy/types';
+import { PRESET_DEPLOY_PROVIDERS } from '@/lib/deployProviderPresets';
 import { ExternalFavicon } from '@/components/ExternalFavicon';
 import { ProviderConfigDialog } from '@/components/ProviderConfigDialog';
 import { AddProviderDialog } from '@/components/AddProviderDialog';
@@ -30,30 +32,17 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-interface PresetProvider {
-  id: string;
-  type: 'shakespeare' | 'netlify' | 'vercel' | 'nsite' | 'cloudflare' | 'deno';
-  name: string;
-  description: string;
-  requiresNostr?: boolean;
-  apiKeyLabel?: string;
-  apiKeyURL?: string;
-  accountIdLabel?: string;
-  accountIdURL?: string;
-  organizationIdLabel?: string;
-  organizationIdURL?: string;
-  proxy?: boolean;
-}
-
 interface ProviderTileProps {
   provider: DeployProvider;
-  preset?: PresetProvider;
+  preset?: PresetDeployProvider;
   onClick: () => void;
   id: string;
 }
 
-function ProviderTile({ provider, onClick, id }: ProviderTileProps) {
-  const url = getProviderUrl(provider);
+function ProviderTile({ provider, preset, onClick, id }: ProviderTileProps) {
+  // Use baseURL from configured provider, falling back to preset baseURL
+  const baseURL = ('baseURL' in provider && provider.baseURL) || preset?.baseURL;
+
   const {
     attributes,
     listeners,
@@ -75,15 +64,11 @@ function ProviderTile({ provider, onClick, id }: ProviderTileProps) {
         onClick={onClick}
         className="flex flex-col items-center justify-center gap-2 p-4 rounded-lg border bg-card hover:bg-muted transition-colors text-center h-[120px] w-full"
       >
-        {url ? (
-          <ExternalFavicon
-            url={url}
-            size={32}
-            fallback={<Rocket size={32} />}
-          />
-        ) : (
-          <Rocket size={32} />
-        )}
+        <ExternalFavicon
+          url={baseURL}
+          size={32}
+          fallback={<Rocket size={32} />}
+        />
         <span className="text-sm font-medium line-clamp-2 overflow-hidden max-w-full text-ellipsis">
           {provider.name}
         </span>
@@ -119,27 +104,21 @@ function AddProviderTile({ onClick }: AddProviderTileProps) {
 }
 
 interface PresetProviderTileProps {
-  preset: PresetProvider;
+  preset: PresetDeployProvider;
   onClick: () => void;
 }
 
 function PresetProviderTile({ preset, onClick }: PresetProviderTileProps) {
-  const url = getProviderUrl(preset);
-
   return (
     <button
       onClick={onClick}
       className="flex flex-col items-center justify-center gap-2 p-4 rounded-lg border bg-card hover:bg-muted transition-colors text-center min-h-[100px]"
     >
-      {url ? (
-        <ExternalFavicon
-          url={url}
-          size={32}
-          fallback={<Rocket size={32} />}
-        />
-      ) : (
-        <Rocket size={32} />
-      )}
+      <ExternalFavicon
+        url={preset.baseURL}
+        size={32}
+        fallback={<Rocket size={32} />}
+      />
       <span className="text-sm font-medium line-clamp-2 overflow-hidden max-w-full text-ellipsis">
         {preset.name}
       </span>
@@ -147,129 +126,11 @@ function PresetProviderTile({ preset, onClick }: PresetProviderTileProps) {
   );
 }
 
-const PRESET_PROVIDERS: PresetProvider[] = [
-  {
-    id: 'shakespeare',
-    type: 'shakespeare',
-    name: 'Shakespeare Deploy',
-    description: 'Deploy to Shakespeare hosting with Nostr authentication',
-    requiresNostr: true,
-  },
-  {
-    id: 'nsite',
-    type: 'nsite',
-    name: 'nsite',
-    description: 'Deploy to Nostr as a static website',
-  },
-  {
-    id: 'netlify',
-    type: 'netlify',
-    name: 'Netlify',
-    description: 'Deploy to Netlify',
-    apiKeyLabel: 'Personal Access Token',
-    apiKeyURL: 'https://app.netlify.com/user/applications#personal-access-tokens',
-    proxy: true,
-  },
-  {
-    id: 'vercel',
-    type: 'vercel',
-    name: 'Vercel',
-    description: 'Deploy to Vercel',
-    apiKeyLabel: 'Access Token',
-    apiKeyURL: 'https://vercel.com/account/tokens',
-    proxy: true,
-  },
-  {
-    id: 'cloudflare',
-    type: 'cloudflare',
-    name: 'Cloudflare',
-    description: 'Deploy to Cloudflare Workers',
-    apiKeyLabel: 'API Token',
-    apiKeyURL: 'https://dash.cloudflare.com/profile/api-tokens',
-    accountIdLabel: 'Account ID',
-    accountIdURL: 'https://developers.cloudflare.com/fundamentals/account/find-account-and-zone-ids/',
-    proxy: true,
-  },
-  {
-    id: 'deno',
-    type: 'deno',
-    name: 'Deno Deploy',
-    description: 'Deploy to Deno Deploy',
-    apiKeyLabel: 'Access Token',
-    apiKeyURL: 'https://dash.deno.com/account#access-tokens',
-    organizationIdLabel: 'Organization ID',
-    organizationIdURL: 'https://dash.deno.com/orgs',
-    proxy: true,
-  },
-];
-
 // Helper function to generate custom provider ID
 function generateCustomProviderId(type: string): string {
   const uuid = crypto.randomUUID();
   const randomSegment = uuid.split('-')[0];
   return `${type}-${randomSegment}`;
-}
-
-/**
- * Normalize a URL string to ensure it has a protocol
- * @param url - The URL string to normalize
- * @returns A fully-qualified URL string
- */
-function normalizeUrl(url: string): string {
-  // If it already has a protocol, return as-is
-  if (/^https?:\/\//i.test(url)) {
-    return url;
-  }
-
-  // Add https:// prefix
-  return `https://${url}`;
-}
-
-
-function getProviderUrl(provider: DeployProvider | PresetProvider): string | null {
-  switch (provider.type) {
-    case 'shakespeare':
-      // For Shakespeare providers, check for custom host first, then use default
-      if ('host' in provider && provider.host) {
-        return normalizeUrl(provider.host);
-      }
-      return 'https://shakespeare.diy';
-
-    case 'netlify':
-      // For Netlify providers, check for custom baseURL first, then use default
-      if ('baseURL' in provider && provider.baseURL) {
-        return provider.baseURL;
-      }
-      return 'https://netlify.com';
-
-    case 'vercel':
-      // For Vercel providers, check for custom baseURL first, then use default
-      if ('baseURL' in provider && provider.baseURL) {
-        return provider.baseURL;
-      }
-      return 'https://vercel.com';
-
-    case 'cloudflare':
-      // For Cloudflare providers, check for custom baseURL first, then use default
-      if ('baseURL' in provider && provider.baseURL) {
-        return provider.baseURL;
-      }
-      return 'https://cloudflare.com';
-
-    case 'deno':
-      // For Deno Deploy providers, check for custom baseURL first, then use default
-      if ('baseURL' in provider && provider.baseURL) {
-        return provider.baseURL;
-      }
-      return 'https://deno.com';
-
-    case 'nsite':
-      // nsite uses Rocket icon fallback
-      return null;
-
-    default:
-      return null;
-  }
 }
 
 export function DeploySettings() {
@@ -286,7 +147,7 @@ export function DeploySettings() {
   // Dialog state
   const [selectedProviderIndex, setSelectedProviderIndex] = useState<number | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [selectedPreset, setSelectedPreset] = useState<PresetProvider | null>(null);
+  const [selectedPreset, setSelectedPreset] = useState<PresetDeployProvider | null>(null);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [customProviderDialogOpen, setCustomProviderDialogOpen] = useState(false);
 
@@ -315,12 +176,12 @@ export function DeploySettings() {
     setDialogOpen(true);
   };
 
-  const handleOpenAddDialog = (preset: PresetProvider) => {
+  const handleOpenAddDialog = (preset: PresetDeployProvider) => {
     setSelectedPreset(preset);
     setAddDialogOpen(true);
   };
 
-  const handleAddPresetProvider = (preset: PresetProvider, apiKey: string, accountId?: string, organizationId?: string) => {
+  const handleAddPresetProvider = (preset: PresetDeployProvider, apiKey: string, accountId?: string, organizationId?: string) => {
     // For Shakespeare, just check if user is logged in
     if (preset.requiresNostr && !user) {
       return;
@@ -426,7 +287,7 @@ export function DeploySettings() {
   };
 
   const configuredProviderIds = settings.providers.map(p => p.id);
-  const availablePresets = PRESET_PROVIDERS.filter(preset => !configuredProviderIds.includes(preset.id));
+  const availablePresets = PRESET_DEPLOY_PROVIDERS.filter(preset => !configuredProviderIds.includes(preset.id));
 
   return (
     <SettingsPageLayout
@@ -475,7 +336,7 @@ export function DeploySettings() {
                 >
                   <div className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-3">
                     {settings.providers.map((provider, index) => {
-                      const preset = PRESET_PROVIDERS.find(p => p.type === provider.type);
+                      const preset = PRESET_DEPLOY_PROVIDERS.find(p => p.type === provider.type);
 
                       return (
                         <ProviderTile
@@ -499,7 +360,7 @@ export function DeploySettings() {
               open={dialogOpen}
               onOpenChange={setDialogOpen}
               provider={settings.providers[selectedProviderIndex]}
-              preset={PRESET_PROVIDERS.find(p => p.type === settings.providers[selectedProviderIndex].type)}
+              preset={PRESET_DEPLOY_PROVIDERS.find(p => p.type === settings.providers[selectedProviderIndex].type)}
               onUpdate={(updatedProvider) => handleUpdateProvider(selectedProviderIndex, updatedProvider)}
               onRemove={() => handleRemoveProvider(selectedProviderIndex)}
             />

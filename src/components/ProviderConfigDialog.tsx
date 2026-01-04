@@ -15,28 +15,14 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import type { DeployProvider } from '@/contexts/DeploySettingsContext';
+import type { PresetDeployProvider } from '@/lib/deploy/types';
 import { ExternalFavicon } from '@/components/ExternalFavicon';
-
-interface PresetProvider {
-  id: string;
-  type: 'shakespeare' | 'netlify' | 'vercel' | 'nsite' | 'cloudflare' | 'deno';
-  name: string;
-  description: string;
-  requiresNostr?: boolean;
-  apiKeyLabel?: string;
-  apiKeyURL?: string;
-  accountIdLabel?: string;
-  accountIdURL?: string;
-  organizationIdLabel?: string;
-  organizationIdURL?: string;
-  proxy?: boolean;
-}
 
 interface ProviderConfigDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   provider: DeployProvider;
-  preset?: PresetProvider;
+  preset?: PresetDeployProvider;
   onUpdate: (provider: DeployProvider) => void;
   onRemove: () => void;
 }
@@ -54,52 +40,6 @@ function normalizeUrl(url: string): string {
 
   // Add https:// prefix
   return `https://${url}`;
-}
-
-function getProviderUrl(provider: DeployProvider | PresetProvider): string | null {
-  switch (provider.type) {
-    case 'shakespeare':
-      // For Shakespeare providers, check for custom host first, then use default
-      if ('host' in provider && provider.host) {
-        return normalizeUrl(provider.host);
-      }
-      return 'https://shakespeare.diy';
-
-    case 'netlify':
-      // For Netlify providers, check for custom baseURL first, then use default
-      if ('baseURL' in provider && provider.baseURL) {
-        return provider.baseURL;
-      }
-      return 'https://netlify.com';
-
-    case 'vercel':
-      // For Vercel providers, check for custom baseURL first, then use default
-      if ('baseURL' in provider && provider.baseURL) {
-        return provider.baseURL;
-      }
-      return 'https://vercel.com';
-
-    case 'cloudflare':
-      // For Cloudflare providers, check for custom baseURL first, then use default
-      if ('baseURL' in provider && provider.baseURL) {
-        return provider.baseURL;
-      }
-      return 'https://cloudflare.com';
-
-    case 'deno':
-      // For Deno Deploy providers, check for custom baseURL first, then use default
-      if ('baseURL' in provider && provider.baseURL) {
-        return provider.baseURL;
-      }
-      return 'https://deno.com';
-
-    case 'nsite':
-      // nsite uses Rocket icon fallback
-      return null;
-
-    default:
-      return null;
-  }
 }
 
 export function ProviderConfigDialog({
@@ -130,22 +70,24 @@ export function ProviderConfigDialog({
     onOpenChange(false);
   };
 
-  const url = getProviderUrl(localProvider);
+  // Use baseURL from configured provider, falling back to preset baseURL
+  const baseURL = ('baseURL' in localProvider && localProvider.baseURL) || preset?.baseURL;
+
+  // For Shakespeare, special handling for host field
+  const shakespeareUrl = localProvider.type === 'shakespeare' && 'host' in localProvider && localProvider.host
+    ? normalizeUrl(localProvider.host)
+    : undefined;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <div className="flex items-center gap-2">
-            {url ? (
-              <ExternalFavicon
-                url={url}
-                size={20}
-                fallback={<Rocket size={20} />}
-              />
-            ) : (
-              <Rocket size={20} />
-            )}
+            <ExternalFavicon
+              url={shakespeareUrl || baseURL}
+              size={20}
+              fallback={<Rocket size={20} />}
+            />
             <DialogTitle>{localProvider.name}</DialogTitle>
           </div>
           <DialogDescription>

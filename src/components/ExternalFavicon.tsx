@@ -5,7 +5,7 @@ import { ReactNode, useMemo } from 'react';
 
 interface ExternalFaviconProps {
   /** The URL to fetch the favicon for */
-  url: string | URL;
+  url: string | URL | undefined;
   /** Size of the favicon in pixels */
   size?: number;
   /** Fallback element to display if favicon fails to load */
@@ -28,6 +28,7 @@ export function ExternalFavicon({
 
   // Generate the favicon URL using the configured template
   const faviconSrc = useMemo(() => {
+    if (!url) return;
     try {
       // Normalize the URL to ensure it has a protocol
       return faviconUrl(config.faviconUrl, url);

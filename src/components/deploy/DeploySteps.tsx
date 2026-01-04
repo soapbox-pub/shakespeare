@@ -15,6 +15,8 @@ import { useAppContext } from '@/hooks/useAppContext';
 import { useNostr } from '@nostrify/react';
 import { Link } from 'react-router-dom';
 import type { DeployProvider } from '@/contexts/DeploySettingsContext';
+import type { PresetDeployProvider } from '@/lib/deploy/types';
+import { PRESET_DEPLOY_PROVIDERS } from '@/lib/deployProviderPresets';
 import { ShakespeareDeployForm } from '@/components/deploy/ShakespeareDeployForm';
 import { NetlifyDeployForm } from '@/components/deploy/NetlifyDeployForm';
 import { VercelDeployForm } from '@/components/deploy/VercelDeployForm';
@@ -31,53 +33,28 @@ import { CloudflareAdapter } from '@/lib/deploy/CloudflareAdapter';
 import { DenoDeployAdapter } from '@/lib/deploy/DenoDeployAdapter';
 
 /**
- * Helper function to get provider URL for favicon
+ * Normalize a URL string to ensure it has a protocol
  */
-function getProviderUrl(provider: DeployProvider): string | null {
-  switch (provider.type) {
-    case 'shakespeare':
-      if (provider.host) {
-        return `https://${provider.host}`;
-      }
-      return 'https://shakespeare.diy';
-
-    case 'netlify':
-      if (provider.baseURL) {
-        return provider.baseURL;
-      }
-      return 'https://netlify.com';
-
-    case 'vercel':
-      if (provider.baseURL) {
-        return provider.baseURL;
-      }
-      return 'https://vercel.com';
-
-    case 'cloudflare':
-      if (provider.baseURL) {
-        return provider.baseURL;
-      }
-      return 'https://cloudflare.com';
-
-    case 'deno':
-      if (provider.baseURL) {
-        return provider.baseURL;
-      }
-      return 'https://deno.com';
-
-    case 'nsite':
-      return null;
-
-    default:
-      return null;
+function normalizeUrl(url: string): string {
+  if (/^https?:\/\//i.test(url)) {
+    return url;
   }
+  return `https://${url}`;
 }
 
 /**
  * Render provider icon using favicon or fallback
  */
-function renderProviderIcon(provider: DeployProvider, size = 14) {
-  const url = getProviderUrl(provider);
+function renderProviderIcon(provider: DeployProvider, preset: PresetDeployProvider | undefined, size = 14) {
+  // Use baseURL from configured provider, falling back to preset baseURL
+  const baseURL = ('baseURL' in provider && provider.baseURL) || preset?.baseURL;
+
+  // For Shakespeare, special handling for host field
+  const shakespeareUrl = provider.type === 'shakespeare' && 'host' in provider && provider.host
+    ? normalizeUrl(provider.host)
+    : undefined;
+
+  const url = shakespeareUrl || baseURL;
 
   if (url) {
     return (
@@ -589,23 +566,26 @@ export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProp
               <div className="space-y-2">
                 <Label>Select Provider</Label>
                 <div className="flex flex-wrap gap-2">
-                  {settings.providers.map((provider) => (
-                    <button
-                      key={provider.id}
-                      type="button"
-                      onClick={() => setSelectedProviderId(provider.id)}
-                      className={cn(
-                        "inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all",
-                        "border-2 hover:scale-105 active:scale-95",
-                        selectedProviderId === provider.id
-                          ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                          : "bg-background text-foreground border-border hover:border-primary/50"
-                      )}
-                    >
-                      {renderProviderIcon(provider, 14)}
-                      <span>{provider.name}</span>
-                    </button>
-                  ))}
+                  {settings.providers.map((provider) => {
+                    const preset = PRESET_DEPLOY_PROVIDERS.find(p => p.type === provider.type);
+                    return (
+                      <button
+                        key={provider.id}
+                        type="button"
+                        onClick={() => setSelectedProviderId(provider.id)}
+                        className={cn(
+                          "inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all",
+                          "border-2 hover:scale-105 active:scale-95",
+                          selectedProviderId === provider.id
+                            ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                            : "bg-background text-foreground border-border hover:border-primary/50"
+                        )}
+                      >
+                        {renderProviderIcon(provider, preset, 14)}
+                        <span>{provider.name}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 

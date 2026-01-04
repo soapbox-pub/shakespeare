@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import QRCode from 'qrcode';
 import { Trash2, Bot, CreditCard, Zap, ExternalLink, RefreshCw, Check, X, Clock, AlertCircle, Copy, RotateCcw, ArrowLeft, Gift, Plus, History, DollarSign, Printer, Download } from 'lucide-react';
@@ -352,10 +352,13 @@ export function AIProviderConfigDialog({
 
   // Credits state
   const [amount, setAmount] = useState<number>(10);
+  const [debouncedAmount, setDebouncedAmount] = useState<number>(10);
   const [paymentMethod, setPaymentMethod] = useState<'stripe' | 'lightning'>('stripe');
   const [lightningInvoice, setLightningInvoice] = useState<string | null>(null);
   const [lightningPaymentId, setLightningPaymentId] = useState<string | null>(null);
+  const [lightningTotal, setLightningTotal] = useState<number>(10);
   const [refreshingPayments, setRefreshingPayments] = useState<Set<string>>(new Set());
+  const amountDebounceTimer = useRef<NodeJS.Timeout | null>(null);
   const [giftcardAmount, setGiftcardAmount] = useState<number>(10);
   const [giftcardQuantity, setGiftcardQuantity] = useState<number>(1);
   const [redeemCode, setRedeemCode] = useState<string>('');
@@ -383,13 +386,30 @@ export function AIProviderConfigDialog({
     }
   }, [open, supportsCredits, isLoadingCredits]);
 
+  // Debounce amount changes to avoid excessive API calls
+  useEffect(() => {
+    if (amountDebounceTimer.current) {
+      clearTimeout(amountDebounceTimer.current);
+    }
+
+    amountDebounceTimer.current = setTimeout(() => {
+      setDebouncedAmount(amount);
+    }, 500); // Wait 500ms after user stops typing
+
+    return () => {
+      if (amountDebounceTimer.current) {
+        clearTimeout(amountDebounceTimer.current);
+      }
+    };
+  }, [amount]);
+
   // Query for payment preview (to get fee information)
   const { data: paymentPreview, isLoading: isLoadingPreview } = useQuery({
-    queryKey: ['ai-payment-preview', provider.nostr ? user?.pubkey ?? '' : '', provider.id, amount, paymentMethod],
+    queryKey: ['ai-payment-preview', provider.nostr ? user?.pubkey ?? '' : '', provider.id, debouncedAmount, paymentMethod],
     queryFn: async (): Promise<Payment> => {
       const ai = createAIClient(provider, user, config.corsProxy);
       const request: AddCreditsRequest = {
-        amount,
+        amount: debouncedAmount,
         method: paymentMethod,
       };
 
@@ -401,7 +421,7 @@ export function AIProviderConfigDialog({
         body: request,
       }) as Payment;
     },
-    enabled: open && supportsCredits && amount > 0,
+    enabled: open && supportsCredits && debouncedAmount > 0,
     retry: false,
     refetchOnWindowFocus: false,
     staleTime: Infinity,
@@ -452,6 +472,7 @@ export function AIProviderConfigDialog({
       } else if (payment.method === 'lightning') {
         setLightningInvoice(payment.url);
         setLightningPaymentId(payment.id);
+        setLightningTotal(payment.total);
       }
 
       queryClient.invalidateQueries({
@@ -632,6 +653,7 @@ export function AIProviderConfigDialog({
       } else if (paymentPreview.method === 'lightning') {
         setLightningInvoice(paymentPreview.url);
         setLightningPaymentId(paymentPreview.id);
+        setLightningTotal(paymentPreview.total);
       }
 
       queryClient.invalidateQueries({
@@ -1094,8 +1116,8 @@ export function AIProviderConfigDialog({
                         id="amount"
                         type="number"
                         step="0.01"
-                        value={amount}
-                        onChange={(e) => setAmount(Number(e.target.value))}
+                        value={amount || ''}
+                        onChange={(e) => setAmount(Number(e.target.value) || 0)}
                         placeholder={t('enterAmount')}
                         className="text-center text-lg font-medium"
                       />
@@ -1238,6 +1260,7 @@ export function AIProviderConfigDialog({
                                       if (payment.method === 'lightning') {
                                         setLightningInvoice(payment.url);
                                         setLightningPaymentId(payment.id);
+                                        setLightningTotal(payment.total);
                                       } else {
                                         window.open(payment.url, '_blank');
                                       }
@@ -1512,7 +1535,7 @@ export function AIProviderConfigDialog({
                 <div className="flex-1 overflow-y-auto px-1 -mx-1">
                   <LightningPayment
                     invoice={lightningInvoice}
-                    amount={amount}
+                    amount={lightningTotal}
                     paymentId={lightningPaymentId!}
                     provider={provider}
                     onClose={() => {

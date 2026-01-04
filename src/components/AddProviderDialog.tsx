@@ -20,6 +20,7 @@ import {
 import { ExternalFavicon } from '@/components/ExternalFavicon';
 import { Link } from 'react-router-dom';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useAppContext } from '@/hooks/useAppContext';
 import { requestBuildServerApiKey } from '@/lib/nip98';
 
 interface PresetProvider {
@@ -89,6 +90,7 @@ export function AddProviderDialog({
 }: AddProviderDialogProps) {
   const { t } = useTranslation();
   const { user } = useCurrentUser();
+  const { config } = useAppContext();
   const [apiKey, setApiKey] = useState('');
   const [accountId, setAccountId] = useState('');
   const [organizationId, setOrganizationId] = useState('');
@@ -124,7 +126,7 @@ export function AddProviderDialog({
       const result = await requestBuildServerApiKey(
         user.signer,
         buildServerUrl.trim(),
-        preset.proxy ? 'https://corsproxy.io/?' : undefined
+        preset.proxy ? config.corsProxy : undefined
       );
       setApiKey(result.apiKey);
     } catch (error) {

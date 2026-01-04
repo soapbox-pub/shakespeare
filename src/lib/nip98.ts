@@ -3,6 +3,7 @@
  * Creates signed events for HTTP authentication
  */
 import type { NostrSigner, NostrEvent } from '@nostrify/nostrify';
+import { proxyUrl } from './proxyUrl';
 
 /**
  * Create a NIP-98 auth event for HTTP requests
@@ -86,7 +87,7 @@ export async function requestBuildServerApiKey(
 
   // Make the request (use CORS proxy if provided)
   const targetUrl = corsProxy
-    ? `${corsProxy}/${authUrl.replace(/^https?:\/\//, '')}`
+    ? proxyUrl(corsProxy, authUrl)
     : authUrl;
 
   const response = await fetch(targetUrl, {

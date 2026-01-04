@@ -16,6 +16,7 @@ import { CreditsBadge } from '@/components/CreditsBadge';
 import { useAISettings } from '@/hooks/useAISettings';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useAppContext } from '@/hooks/useAppContext';
+import { useOpenRouterOAuth } from '@/hooks/useOpenRouterOAuth';
 import { SettingsPageLayout } from '@/components/SettingsPageLayout';
 import type { AIProvider } from '@/contexts/AISettingsContext';
 import { AI_PROVIDER_PRESETS, type PresetProvider } from '@/lib/aiProviderPresets';
@@ -45,6 +46,7 @@ export function AISettings() {
   const { settings, updateSettings, setProvider, removeProvider, setProviders, isLoading } = useAISettings();
   const { user } = useCurrentUser();
   const { config, defaultConfig, updateConfig } = useAppContext();
+  const openRouterOAuth = useOpenRouterOAuth();
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [systemPromptInput, setSystemPromptInput] = useState(config.systemPrompt || defaultSystemPrompt);
 
@@ -54,6 +56,7 @@ export function AISettings() {
   const [selectedPreset, setSelectedPreset] = useState<PresetProvider | null>(null);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [customProviderDialogOpen, setCustomProviderDialogOpen] = useState(false);
+  const [forceManualEntry, setForceManualEntry] = useState(false);
 
   // Drag and drop sensors
   const sensors = useSensors(
@@ -256,9 +259,18 @@ export function AISettings() {
             {selectedPreset && (
               <AddAIProviderDialog
                 open={addDialogOpen}
-                onOpenChange={setAddDialogOpen}
+                onOpenChange={(open) => {
+                  setAddDialogOpen(open);
+                  if (!open) {
+                    // Reset force manual entry when dialog closes
+                    setForceManualEntry(false);
+                  }
+                }}
                 preset={selectedPreset}
                 isLoggedIntoNostr={!!user}
+                oauthHook={selectedPreset.id === 'openrouter' ? openRouterOAuth : null}
+                forceManualEntry={forceManualEntry}
+                onSetForceManualEntry={setForceManualEntry}
                 onAdd={(apiKey) => handleAddPresetProvider(selectedPreset, apiKey)}
               />
             )}

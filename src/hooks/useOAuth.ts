@@ -3,7 +3,7 @@ import { useAppContext } from './useAppContext';
 import { proxyUrl } from '@/lib/proxyUrl';
 
 export interface OAuthConfig {
-  provider: 'github' | 'netlify' | 'vercel';
+  provider: 'github' | 'netlify' | 'vercel' | 'openrouter';
   clientId: string;
   clientSecret: string;
   authorizeUrl: string;

@@ -15,6 +15,7 @@ The OAuth system consists of three main components:
 - **GitHub** - Git repository hosting (with PKCE support)
 - **Netlify** - Static site deployment
 - **Vercel** - Static site deployment
+- **OpenRouter** - AI model routing (with PKCE support)
 
 ## File Structure
 
@@ -24,11 +25,13 @@ src/
 │   ├── useOAuth.ts              # Generic OAuth hook (core logic)
 │   ├── useGitHubOAuth.ts        # GitHub-specific configuration
 │   ├── useNetlifyOAuth.ts       # Netlify-specific configuration
-│   └── useVercelOAuth.ts        # Vercel-specific configuration
+│   ├── useVercelOAuth.ts        # Vercel-specific configuration
+│   └── useOpenRouterOAuth.ts    # OpenRouter-specific configuration
 ├── pages/
 │   ├── GitHubOAuth.tsx          # GitHub OAuth callback page
 │   ├── NetlifyOAuth.tsx         # Netlify OAuth callback page
-│   └── VercelOAuth.tsx          # Vercel OAuth callback page
+│   ├── VercelOAuth.tsx          # Vercel OAuth callback page
+│   └── OpenRouterOAuth.tsx      # OpenRouter OAuth callback page
 └── AppRouter.tsx                # Routes for OAuth callbacks
 ```
 
@@ -190,6 +193,7 @@ const config: OAuthConfig = {
 - ✅ GitHub - Supports PKCE (enabled)
 - ❌ Netlify - Doesn't support PKCE (disabled)
 - ❌ Vercel - Doesn't support PKCE (disabled)
+- ✅ OpenRouter - Requires PKCE (enabled)
 
 ### Scope Parameter
 
@@ -199,6 +203,42 @@ The `scope` parameter is optional in the OAuth configuration. Some providers (li
 - ✅ GitHub - Uses scopes (e.g., `repo workflow`)
 - ❌ Netlify - No scope parameter (permissions set in app settings)
 - ✅ Vercel - Uses scopes (e.g., `deployments:write projects:read`)
+- ❌ OpenRouter - No scope parameter (uses PKCE for authorization)
+
+### OpenRouter Custom OAuth Implementation
+
+OpenRouter uses a custom OAuth flow that differs from the standard OAuth 2.0 specification. Instead of using the generic `useOAuth` hook, it has a dedicated `useOpenRouterOAuth` hook with the following key differences:
+
+1. **No Client Credentials**: OpenRouter doesn't require client ID or client secret - it uses PKCE only
+2. **Authorization URL**: Uses `callback_url` parameter instead of `redirect_uri`
+3. **Token Exchange**: Posts to `/api/v1/auth/keys` with a simplified request body
+4. **Response Format**: Returns `{ key }` instead of standard `{ access_token }`
+5. **PKCE Required**: Must use PKCE with S256 code challenge method
+6. **No User Info**: Doesn't provide a user info endpoint after authentication
+7. **No Environment Variables**: No configuration needed - works out of the box
+
+**Authorization URL Format:**
+```
+https://openrouter.ai/auth?callback_url=<REDIRECT_URI>&code_challenge=<CHALLENGE>&code_challenge_method=S256
+```
+
+**Token Exchange Request:**
+```json
+{
+  "code": "<CODE_FROM_QUERY_PARAM>",
+  "code_verifier": "<CODE_VERIFIER>",
+  "code_challenge_method": "S256"
+}
+```
+
+**Token Exchange Response:**
+```json
+{
+  "key": "sk-or-v1-..."
+}
+```
+
+This custom implementation is fully contained in `useOpenRouterOAuth.ts` and doesn't rely on the generic OAuth hook. Unlike other providers, OpenRouter's OAuth doesn't require any environment variables or application registration - it works immediately without configuration.
 
 ## Adding a New OAuth Provider
 

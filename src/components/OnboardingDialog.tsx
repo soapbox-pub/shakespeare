@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { generateSecretKey } from 'nostr-tools';
 import { nip19 } from 'nostr-tools';
-import { Bot, Check, Sparkles, ArrowRight, ArrowLeft, ExternalLink, Search, Coins } from 'lucide-react';
+import { Bot, Check, Sparkles, ArrowRight, ArrowLeft, Search, Coins } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -9,7 +9,7 @@ import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
-import { PasswordInput } from '@/components/ui/password-input';
+import { ExternalInput } from '@/components/ui/external-input';
 import { useAISettings } from '@/hooks/useAISettings';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useLoginActions } from '@/hooks/useLoginActions';
@@ -465,37 +465,28 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
                 {/* API Key Input Section */}
                 {selectedProvider && selectedProvider.apiKeysURL && !selectedProvider.nostr && (
                   <div className="space-y-3 max-w-md mx-auto">
-                    <div className="text-center">
-                      <h3 className="text-lg font-semibold">
+                    <h3 className="flex justify-center text-lg font-semibold gap-2">
+                      <ExternalFavicon
+                        url={selectedProvider.baseURL}
+                        size={16}
+                        fallback={<Bot size={16} />}
+                      />
+                      <span>
                         {selectedProvider.id === 'routstr' ? t('enterCashuToken') : t('enterApiKey')}
-                      </h3>
-                      <p className="text-sm text-muted-foreground">
-                        {selectedProvider.id === 'routstr' ? (
-                          t('requiresCashuToken', { providerName: selectedProvider.name })
-                        ) : (
-                          <>
-                            {selectedProvider.name} {t('requiresAnApiKey')}{' '}
-                            {selectedProvider.apiKeysURL ? (
-                              <a className="text-foreground underline" href={selectedProvider.apiKeysURL} target="_blank">
-                                {t('apiKey')}
-                                <ExternalLink className="inline-block h-4 w-4 ml-1" />
-                              </a>
-                            ) : (
-                              t('apiKey')
-                            )}
-                          </>
-                        )}
-                      </p>
-                    </div>
-                    <PasswordInput
+                      </span>
+                    </h3>
+                    <ExternalInput
+                      type="password"
                       placeholder={selectedProvider.id === 'routstr' ? t('enterCashuToken') : t('enterApiKey')}
                       value={providerApiKey}
                       onChange={(e) => setProviderApiKey(e.target.value)}
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter' && providerApiKey.trim()) {
+                        if (e.key === 'Enter' && providerApiKey.trim() && agreedToProviderTerms) {
                           handleContinueFromProviderSelection();
                         }
                       }}
+                      url={selectedProvider.apiKeysURL}
+                      urlTitle="Get Key"
                     />
                   </div>
                 )}

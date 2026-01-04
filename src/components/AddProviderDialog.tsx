@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Rocket, ChevronDown } from 'lucide-react';
+import { Rocket, ChevronDown, Key, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ExternalInput } from '@/components/ui/external-input';
 import {
@@ -19,6 +19,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { ExternalFavicon } from '@/components/ExternalFavicon';
 import { Link } from 'react-router-dom';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { requestBuildServerApiKey } from '@/lib/nip98';
 
 interface PresetProvider {
   id: string;
@@ -86,10 +88,13 @@ export function AddProviderDialog({
   onAdd,
 }: AddProviderDialogProps) {
   const { t } = useTranslation();
+  const { user } = useCurrentUser();
   const [apiKey, setApiKey] = useState('');
   const [accountId, setAccountId] = useState('');
   const [organizationId, setOrganizationId] = useState('');
   const [buildServerUrl, setBuildServerUrl] = useState('');
+  const [isGettingApiKey, setIsGettingApiKey] = useState(false);
+  const [apiKeyError, setApiKeyError] = useState<string | null>(null);
 
   const showNostrLoginRequired = preset.requiresNostr && !isLoggedIntoNostr;
   const isOAuthConfigured = oauthHook?.isOAuthConfigured ?? false;
@@ -102,7 +107,31 @@ export function AddProviderDialog({
     setAccountId('');
     setOrganizationId('');
     setBuildServerUrl('');
+    setApiKeyError(null);
     onOpenChange(false);
+  };
+
+  const handleGetApiKey = async () => {
+    if (!buildServerUrl.trim() || !user?.signer) {
+      setApiKeyError('Build server URL and Nostr login required');
+      return;
+    }
+
+    setIsGettingApiKey(true);
+    setApiKeyError(null);
+
+    try {
+      const result = await requestBuildServerApiKey(
+        user.signer,
+        buildServerUrl.trim(),
+        preset.proxy ? 'https://corsproxy.io/?' : undefined
+      );
+      setApiKey(result.apiKey);
+    } catch (error) {
+      setApiKeyError(error instanceof Error ? error.message : 'Failed to get API key');
+    } finally {
+      setIsGettingApiKey(false);
+    }
   };
 
   const url = getProviderUrl(preset);
@@ -231,18 +260,61 @@ export function AddProviderDialog({
                     />
                   )}
                   {preset.type === 'apkbuilder' && (
-                    <ExternalInput
-                      type="text"
-                      placeholder={preset.buildServerUrlLabel || 'Build Server URL'}
-                      value={buildServerUrl}
-                      onChange={(e) => setBuildServerUrl(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && apiKey.trim() && buildServerUrl.trim()) {
-                          handleAdd();
-                        }
-                      }}
-                    />
+                    <>
+                      <ExternalInput
+                        type="text"
+                        placeholder={preset.buildServerUrlLabel || 'Build Server URL'}
+                        value={buildServerUrl}
+                        onChange={(e) => {
+                          setBuildServerUrl(e.target.value);
+                          setApiKeyError(null);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && apiKey.trim() && buildServerUrl.trim()) {
+                            handleAdd();
+                          }
+                        }}
+                      />
+                      <div className="flex gap-2">
+                        <ExternalInput
+                          type="password"
+                          placeholder={preset.apiKeyLabel || 'API Key'}
+                          value={apiKey}
+                          onChange={(e) => setApiKey(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && apiKey.trim() && buildServerUrl.trim()) {
+                              handleAdd();
+                            }
+                          }}
+                          className="flex-1"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={handleGetApiKey}
+                          disabled={!buildServerUrl.trim() || !user?.signer || isGettingApiKey}
+                          className="shrink-0"
+                          title={!user?.signer ? 'Login to Nostr first' : 'Get API key using Nostr authentication'}
+                        >
+                          {isGettingApiKey ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Key className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
+                      {apiKeyError && (
+                        <p className="text-xs text-destructive">{apiKeyError}</p>
+                      )}
+                      {!user?.signer && buildServerUrl.trim() && (
+                        <p className="text-xs text-muted-foreground">
+                          <Link to="/settings/nostr" className="underline">Login to Nostr</Link> to get an API key automatically
+                        </p>
+                      )}
+                    </>
                   )}
+                  {preset.type !== 'apkbuilder' && (
                   <ExternalInput
                     type="password"
                     placeholder={preset.apiKeyLabel || t('enterApiKey')}
@@ -258,6 +330,7 @@ export function AddProviderDialog({
                     url={preset.apiKeyURL}
                     urlTitle="Get Key"
                   />
+                  )}
                 </>
               )}
             </div>

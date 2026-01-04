@@ -450,7 +450,7 @@ export class SessionManager {
 
         let accumulatedContent = '';
         let accumulatedReasoningContent = '';
-        const accumulatedToolCalls: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[] = [];
+        const accumulatedToolCalls: Map<number, OpenAI.Chat.Completions.ChatCompletionMessageFunctionToolCall> = new Map();
         let finishReason: string | null = null;
 
         // Process the stream
@@ -491,20 +491,29 @@ export class SessionManager {
               const toolCallDelta = delta.tool_calls[i];
               const index = toolCallDelta.index ?? i; // Fix for Gemini models
 
-              accumulatedToolCalls[index] ??= {
-                id: '',
-                type: 'function',
-                function: { name: '', arguments: '' }
-              };
+              let toolCall = accumulatedToolCalls.get(index);
 
-              const toolCall = accumulatedToolCalls[index] as OpenAI.Chat.Completions.ChatCompletionMessageFunctionToolCall;
+              if (!toolCall) {
+                toolCall = {
+                  id: '',
+                  type: 'function',
+                  function: { name: '', arguments: '' },
+                };
+              }
+
               if (toolCallDelta.id) toolCall.id = toolCallDelta.id;
               if (toolCallDelta.function?.name) toolCall.function.name = toolCallDelta.function.name;
               if (toolCallDelta.function?.arguments) toolCall.function.arguments += toolCallDelta.function.arguments;
+
+              accumulatedToolCalls.set(index, toolCall);
             }
 
             if (session.streamingMessage) {
-              session.streamingMessage.tool_calls = accumulatedToolCalls.length > 0 ? accumulatedToolCalls : undefined;
+              const sortedToolCalls = [...accumulatedToolCalls.entries()]
+                .sort((a, b) => a[0] - b[0])
+                .map(entry => entry[1]);
+
+              session.streamingMessage.tool_calls = sortedToolCalls.length > 0 ? sortedToolCalls : undefined;
               this.emit('streamingUpdate', projectId, session.streamingMessage.content, session.streamingMessage.reasoning_content, session.streamingMessage.tool_calls);
             }
           }
@@ -528,7 +537,7 @@ export class SessionManager {
         }
 
         // Fix tool calls with empty arguments or names
-        for (const toolCall of accumulatedToolCalls) {
+        for (const toolCall of accumulatedToolCalls.values()) {
           if (toolCall.type === 'function') {
             toolCall.function.arguments = toolCall.function.arguments || '{}';
 
@@ -549,7 +558,7 @@ export class SessionManager {
           role: 'assistant',
           content: accumulatedContent,
           ...(accumulatedReasoningContent && { reasoning_content: accumulatedReasoningContent }),
-          ...(accumulatedToolCalls.length > 0 && { tool_calls: accumulatedToolCalls })
+          ...(accumulatedToolCalls.size > 0 && { tool_calls: [...accumulatedToolCalls.values()] })
         };
 
         // Check if the assistant message is empty (no content, reasoning, or tool calls)
@@ -575,8 +584,8 @@ export class SessionManager {
         }
 
         // Handle tool calls
-        if (accumulatedToolCalls?.length) {
-          for (const toolCall of accumulatedToolCalls) {
+        if (accumulatedToolCalls?.size) {
+          for (const toolCall of accumulatedToolCalls.values()) {
             if (toolCall.type !== 'function') continue;
 
             const functionToolCall = toolCall as OpenAI.Chat.Completions.ChatCompletionMessageFunctionToolCall;

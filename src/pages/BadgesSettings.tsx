@@ -14,8 +14,10 @@ import { cn } from '@/lib/utils';
 import { useState, useMemo } from 'react';
 import type { NostrEvent } from '@nostrify/nostrify';
 import { createAIClient } from '@/lib/ai-client';
+import { nip19 } from 'nostr-tools';
 
-const BADGE_ISSUER_PUBKEY = "804a5a94d972d2218d2cc8712881e6f00df09fe7a1a269ccbf916e5c8c17efcc";
+const BADGE_ISSUER_NPUB = "npub1e0u5dfurw3dmd0n5lul873c5g3p89et6x372sa35spajcxjh4f6svcvahk";
+const BADGE_ISSUER_PUBKEY = nip19.decode(BADGE_ISSUER_NPUB).data as string;
 
 // Badge sync response from the server
 interface BadgeSyncResponse {

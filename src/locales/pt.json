@@ -489,5 +489,8 @@
   "resume": "Retomar",
   "badges": "Distintivos",
   "badgesDescription": "Visualizar e gerenciar seus distintivos e conquistas",
-  "noBadgesFound": "Nenhum distintivo encontrado"
+  "noBadgesFound": "Nenhum distintivo encontrado",
+  "tokenProgress": "Tokens",
+  "imageProgress": "Imagens",
+  "nextBadgeAt": "Próximo distintivo em {{milestone}}"
 }

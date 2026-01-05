@@ -477,5 +477,8 @@
   "resume": "Tẹsiwaju",
   "badges": "Àmì-ẹ̀yẹ",
   "badgesDescription": "Wo ati ṣakoso àmì-ẹ̀yẹ àti àwọn àṣeyọrí rẹ",
-  "noBadgesFound": "Ko ri àmì-ẹ̀yẹ"
+  "noBadgesFound": "Ko ri àmì-ẹ̀yẹ",
+  "tokenProgress": "Àwọn tókẹ̀n",
+  "imageProgress": "Àwọn àwòrán",
+  "nextBadgeAt": "Àmì-ẹ̀yẹ tó kàn ní {{milestone}}"
 }

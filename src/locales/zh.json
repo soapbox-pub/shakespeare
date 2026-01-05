@@ -489,5 +489,8 @@
   "resume": "继续",
   "badges": "徽章",
   "badgesDescription": "查看和管理您获得的徽章和成就",
-  "noBadgesFound": "未找到徽章"
+  "noBadgesFound": "未找到徽章",
+  "tokenProgress": "代币",
+  "imageProgress": "图片",
+  "nextBadgeAt": "下一个徽章需要 {{milestone}}"
 }

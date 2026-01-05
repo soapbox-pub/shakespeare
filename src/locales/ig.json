@@ -477,5 +477,8 @@
   "resume": "Gaa n'ihu",
   "badges": "Baajị",
   "badgesDescription": "Lelee ma jikwaa baajị na mmeri gị",
-  "noBadgesFound": "Achọtaghị baajị"
+  "noBadgesFound": "Achọtaghị baajị",
+  "tokenProgress": "Tokens",
+  "imageProgress": "Foto",
+  "nextBadgeAt": "Baajị ọzọ na {{milestone}}"
 }

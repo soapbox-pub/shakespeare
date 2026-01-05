@@ -480,5 +480,8 @@
   "resume": "Ci gaba",
   "badges": "Tambari",
   "badgesDescription": "Duba da sarrafa tambarin da kuka samu da nasarorin",
-  "noBadgesFound": "Ba a sami tambari ba"
+  "noBadgesFound": "Ba a sami tambari ba",
+  "tokenProgress": "Tokens",
+  "imageProgress": "Hotuna",
+  "nextBadgeAt": "Tambari na gaba a {{milestone}}"
 }

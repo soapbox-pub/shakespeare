@@ -564,5 +564,8 @@
   "resume": "Resume",
   "badges": "Badges",
   "badgesDescription": "View and manage your earned badges and achievements",
-  "noBadgesFound": "No badges found"
+  "noBadgesFound": "No badges found",
+  "tokenProgress": "Tokens",
+  "imageProgress": "Images",
+  "nextBadgeAt": "Next badge at {{milestone}}"
 }

@@ -2,8 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNostr } from '@nostrify/react';
 import { useCurrentUser } from './useCurrentUser';
 import type { NostrEvent } from '@nostrify/nostrify';
-
-const BADGE_ISSUER_PUBKEY = "804a5a94d972d2218d2cc8712881e6f00df09fe7a1a269ccbf916e5c8c17efcc";
+import { BADGE_ISSUER_PUBKEY } from '@/pages/BadgesSettings';
 
 export function useBadgeAwardNotifications() {
   const { nostr } = useNostr();

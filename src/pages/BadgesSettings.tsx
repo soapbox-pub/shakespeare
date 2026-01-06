@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { SettingsPageLayout } from '@/components/SettingsPageLayout';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
 import { useNostr } from '@nostrify/react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Skeleton } from "@/components/ui/skeleton";
@@ -16,25 +17,28 @@ import type { NostrEvent } from '@nostrify/nostrify';
 import { createAIClient } from '@/lib/ai-client';
 import { nip19 } from 'nostr-tools';
 
-const BADGE_ISSUER_NPUB = "npub1e0u5dfurw3dmd0n5lul873c5g3p89et6x372sa35spajcxjh4f6svcvahk";
-const BADGE_ISSUER_PUBKEY = nip19.decode(BADGE_ISSUER_NPUB).data as string;
+export const BADGE_ISSUER_NPUB = "npub1e0u5dfurw3dmd0n5lul873c5g3p89et6x372sa35spajcxjh4f6svcvahk";
+export const BADGE_ISSUER_PUBKEY = nip19.decode(BADGE_ISSUER_NPUB).data as string;
 
 // Badge sync response from the server
 interface BadgeSyncResponse {
   object: 'badge_sync';
   synced: string[];
   stats: {
+    generation_count: number;
     total_tokens: number;
     image_count: number;
     has_lightning_payment: boolean;
     giftcards_sent: number;
     max_giftcard_amount: number;
   };
+  milestones?: {
+    tokenMilestones: Array<{ threshold: number; type: 'generation' | 'tokens'; creditReward?: number }>;
+    imageMilestones: Array<{ count: number; creditReward?: number }>;
+    giftcardMilestones: Array<{ threshold: number; type: 'count' | 'amount'; creditReward?: number }>;
+  };
 }
 
-// Milestones for progress tracking
-const TOKEN_MILESTONES = [100_000, 1_000_000, 1_000_000_000, 10_000_000_000];
-const IMAGE_MILESTONES = [1, 10, 100, 1_000];
 
 function formatNumber(num: number): string {
   if (num >= 1_000_000_000) return `${(num / 1_000_000_000).toFixed(1)}B`;
@@ -43,27 +47,77 @@ function formatNumber(num: number): string {
   return num.toString();
 }
 
-function getNextMilestone(current: number, milestones: number[]): number | null {
-  for (const milestone of milestones) {
-    if (current < milestone) return milestone;
+interface TokenMilestone {
+  threshold: number;
+  type: 'generation' | 'tokens';
+  creditReward?: number;
+}
+
+interface TokenProgressResult {
+  progress: number;
+  current: number;
+  next: number;
+  type: 'generation' | 'tokens';
+}
+
+function getTokenMilestoneProgress(
+  generationCount: number,
+  totalTokens: number,
+  milestones: TokenMilestone[]
+): TokenProgressResult | null {
+  // Find the first uncompleted milestone
+  for (let i = 0; i < milestones.length; i++) {
+    const milestone = milestones[i];
+    const currentValue = milestone.type === 'generation' ? generationCount : totalTokens;
+    
+    if (currentValue < milestone.threshold) {
+      // This is the next milestone to achieve
+      const prevMilestone = i > 0 ? milestones[i - 1] : null;
+      const prevThreshold = prevMilestone 
+        ? (prevMilestone.type === milestone.type ? prevMilestone.threshold : 0)
+        : 0;
+      
+      const range = milestone.threshold - prevThreshold;
+      const progressInRange = currentValue - prevThreshold;
+      const progress = Math.min(100, Math.max(0, (progressInRange / range) * 100));
+      
+      return {
+        progress,
+        current: currentValue,
+        next: milestone.threshold,
+        type: milestone.type,
+      };
+    }
   }
+  
+  // All milestones achieved
   return null;
 }
 
-function getMilestoneProgress(current: number, milestones: number[]): { progress: number; current: number; next: number | null } {
-  const next = getNextMilestone(current, milestones);
-  if (!next) {
-    // All milestones achieved
-    return { progress: 100, current, next: null };
+function getImageMilestoneProgress(
+  imageCount: number,
+  milestones: number[]
+): { progress: number; current: number; next: number } | null {
+  // Find the first uncompleted milestone
+  for (let i = 0; i < milestones.length; i++) {
+    const milestone = milestones[i];
+    
+    if (imageCount < milestone) {
+      const prevThreshold = i > 0 ? milestones[i - 1] : 0;
+      const range = milestone - prevThreshold;
+      const progressInRange = imageCount - prevThreshold;
+      const progress = Math.min(100, Math.max(0, (progressInRange / range) * 100));
+      
+      return { progress, current: imageCount, next: milestone };
+    }
   }
   
-  // Find the previous milestone (or 0 if none)
-  const prevMilestone = milestones.filter(m => m <= current).pop() ?? 0;
-  const range = next - prevMilestone;
-  const progressInRange = current - prevMilestone;
-  const progress = Math.min(100, (progressInRange / range) * 100);
-  
-  return { progress, current, next };
+  // All milestones achieved
+  return null;
+}
+
+function isCreditMilestone(milestone: number | null, creditMilestones: number[]): boolean {
+  return milestone !== null && creditMilestones.includes(milestone);
 }
 
 function BadgeCard({ 
@@ -192,8 +246,29 @@ export function BadgesSettings() {
 
   // Get stats from sync response
   const stats = syncData?.stats;
-  const tokenProgress = stats ? getMilestoneProgress(stats.total_tokens, TOKEN_MILESTONES) : null;
-  const imageProgress = stats ? getMilestoneProgress(stats.image_count, IMAGE_MILESTONES) : null;
+  
+  // Get milestones from server (no fallbacks - if server doesn't provide, use empty arrays)
+  const tokenMilestones = useMemo((): TokenMilestone[] => {
+    return syncData?.milestones?.tokenMilestones || [];
+  }, [syncData?.milestones]);
+  
+  const imageMilestones = useMemo(() => {
+    return syncData?.milestones?.imageMilestones.map(m => m.count) || [];
+  }, [syncData?.milestones]);
+  
+  // Get credit milestones (thresholds with credit rewards)
+  const creditMilestones = useMemo(() => {
+    return syncData?.milestones?.tokenMilestones
+      .filter(m => m.creditReward !== undefined)
+      .map(m => m.threshold) || [];
+  }, [syncData?.milestones]);
+  
+  const tokenProgress = stats 
+    ? getTokenMilestoneProgress(stats.generation_count, stats.total_tokens, tokenMilestones) 
+    : null;
+  const imageProgress = stats 
+    ? getImageMilestoneProgress(stats.image_count, imageMilestones) 
+    : null;
 
   const { data: badgeDefinitions, isLoading: isLoadingDefinitions } = useQuery({
     queryKey: ['badge-definitions', BADGE_ISSUER_PUBKEY],
@@ -323,15 +398,38 @@ export function BadgesSettings() {
 
       {/* Progress Tracking Section */}
       {stats && (() => {
-        const progressItems = [
-          tokenProgress?.next && { type: 'token', progress: tokenProgress },
-          imageProgress?.next && { type: 'image', progress: imageProgress },
-        ].filter(Boolean) as Array<{ type: 'token' | 'image'; progress: { progress: number; current: number; next: number } }>;
+        type ProgressItem = 
+          | { category: 'token'; progress: TokenProgressResult }
+          | { category: 'image'; progress: { progress: number; current: number; next: number } };
+        
+        const progressItems: ProgressItem[] = [];
+        if (tokenProgress) {
+          progressItems.push({ category: 'token', progress: tokenProgress });
+        }
+        if (imageProgress) {
+          progressItems.push({ category: 'image', progress: imageProgress });
+        }
 
         if (progressItems.length === 0) return null;
 
         const currentIndex = progressIndex % progressItems.length;
         const current = progressItems[currentIndex];
+
+        // Format progress display based on milestone type
+        const formatProgress = () => {
+          if (current.category === 'token') {
+            const tokenProg = current.progress as TokenProgressResult;
+            const next = tokenProg.next ?? 0;
+            // For generation-based milestones, show simple numbers
+            if (tokenProg.type === 'generation') {
+              return `${tokenProg.current} / ${next}`;
+            }
+            // For token-based milestones, format large numbers
+            return `${formatNumber(tokenProg.current)} / ${formatNumber(next)}`;
+          }
+          // Image progress - simple numbers
+          return `${current.progress.current} / ${current.progress.next}`;
+        };
 
         return (
           <Card 
@@ -342,19 +440,29 @@ export function BadgesSettings() {
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-medium">
-                    {current.type === 'token' ? t('tokenProgress') : t('imageProgress')}
+                    {current.category === 'token' ? t('tokenProgress') : t('imageProgress')}
                   </span>
-                  <span className="text-xs text-muted-foreground">
-                    {current.type === 'token' 
-                      ? `${formatNumber(current.progress.current)} / ${formatNumber(current.progress.next)}`
-                      : `${current.progress.current} / ${current.progress.next}`
-                    }
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">
+                      {formatProgress()}
+                    </span>
+                    {current.category === 'token' && current.progress.next && isCreditMilestone(current.progress.next, creditMilestones) && (() => {
+                      const milestone = syncData?.milestones?.tokenMilestones.find(m => m.threshold === current.progress.next);
+                      const creditAmount = milestone?.creditReward ?? 0;
+                      // Only show badge if credit amount is greater than 0
+                      if (creditAmount <= 0) return null;
+                      return (
+                        <Badge variant="default" className="text-xs">
+                          ${creditAmount} Credit
+                        </Badge>
+                      );
+                    })()}
+                  </div>
                 </div>
                 <Progress value={current.progress.progress} className="h-2" />
                 <div className="flex justify-between items-center">
                   <p className="text-xs text-muted-foreground">
-                    {t('nextBadgeAt', { milestone: formatNumber(current.progress.next) })}
+                    {t('nextBadgeAt', { milestone: formatNumber(current.progress.next ?? 0) })}
                   </p>
                   {progressItems.length > 1 && (
                     <div className="flex gap-1">

@@ -68,6 +68,7 @@ export function createAIClient(provider: AIProvider, user?: NUser, corsProxy?: s
       // https://openrouter.ai/docs/guides/best-practices/prompt-caching#anthropic-claude
       if (body.model.startsWith("anthropic/")) {
         // First normalize the message history to use content blocks
+        body.messages = structuredClone(body.messages);
         body.messages = body.messages.map((m) => {
           if (m.role !== "function" && typeof m.content === "string") {
             return { ...m, content: [{ type: "text", text: m.content }] };

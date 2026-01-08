@@ -58,10 +58,34 @@ export function createAIClient(provider: AIProvider, user?: NUser, corsProxy?: s
     = openai.chat.completions.create.bind(openai.chat.completions);
 
   openai.chat.completions.create = ((...[body, options]: Parameters<typeof createCompletion>) => {
-    // OpenRouter usage accounting
-    // https://openrouter.ai/docs/use-cases/usage-accounting
-    if (provider.id === 'openrouter') {
+    // OpenRouter-specific hacks
+    if (provider.id === "openrouter" || provider.baseURL === "https://openrouter.ai/api/v1") {
+      // Usage accounting field to get token usage and cost per request
+      // https://openrouter.ai/docs/use-cases/usage-accounting
       (body as { usage?: { include?: boolean } }).usage = { include: true };
+
+      // Prompt caching for Claude models
+      // https://openrouter.ai/docs/guides/best-practices/prompt-caching#anthropic-claude
+      if (body.model.startsWith("anthropic/")) {
+        // First normalize the message history to use content blocks
+        body.messages = body.messages.map((m) => {
+          if (m.role !== "function" && typeof m.content === "string") {
+            return { ...m, content: [{ type: "text", text: m.content }] };
+          } else {
+            return m;
+          }
+        });
+
+        const systemMessage = body.messages.find((m) => m.role === "system");
+        const lastMessage = body.messages.findLast((m) => m.role !== "system");
+
+        if (systemMessage) {
+          addCacheControl(systemMessage);
+        }
+        if (lastMessage) {
+          addCacheControl(lastMessage);
+        }
+      }
     }
 
     return createCompletion(body, options);
@@ -69,3 +93,14 @@ export function createAIClient(provider: AIProvider, user?: NUser, corsProxy?: s
 
   return openai;
 }
+
+/** Mutate msg to add an Anthropic `cache_control` property to its last text block */
+function addCacheControl(msg: OpenAI.Chat.Completions.ChatCompletionMessageParam) {
+  if (Array.isArray(msg.content)) {
+    const lastTextBlock = msg.content.findLast((b) => b.type === "text");
+    if (lastTextBlock) {
+      (lastTextBlock as { cache_control?: { type: "ephemeral" } })
+        .cache_control = { type: "ephemeral" };
+    }
+  }
+};

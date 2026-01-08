@@ -28,6 +28,18 @@ export function GitSyncButton({ projectId, className }: GitSyncButtonProps) {
   const gitSyncState = getState(dir);
   const isGitActionOccurring = gitSyncState?.isActive ?? false;
   const prevIsGitActionOccurring = useRef(isGitActionOccurring);
+  const prevProjectId = useRef(projectId);
+
+  // Reset state when projectId changes
+  useEffect(() => {
+    if (prevProjectId.current !== projectId) {
+      setSyncSuccess(false);
+      setShowWarningPopover(false);
+      warningDismissed.current = false;
+      prevIsGitActionOccurring.current = isGitActionOccurring;
+      prevProjectId.current = projectId;
+    }
+  }, [projectId, isGitActionOccurring]);
 
   // Detect when a git action completes successfully
   useEffect(() => {

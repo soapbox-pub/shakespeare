@@ -59,12 +59,12 @@ export function GitSyncButton({ projectId, className }: GitSyncButtonProps) {
 
   // Show warning popover when purple indicator is visible (only if not dismissed)
   useEffect(() => {
-    if (needsRemote && !warningDismissed.current) {
+    if (needsRemote && !warningDismissed.current && gitStatus.totalCommits > 1) {
       setShowWarningPopover(true);
     } else {
       setShowWarningPopover(false);
     }
-  }, [needsRemote]);
+  }, [gitStatus?.totalCommits, needsRemote]);
 
   // Handle button click - dismiss warning popover permanently
   const handleButtonClick = () => {
@@ -106,6 +106,7 @@ export function GitSyncButton({ projectId, className }: GitSyncButtonProps) {
     }
 
     // Purple indicator: no remote configured, but has commits - lowest priority
+    const needsRemote = !hasRemote && totalCommits > 1;
     if (needsRemote) {
       return <IndicatorDot color="primary" />;
     }

@@ -147,7 +147,7 @@ export function GitSyncButton({ projectId, className }: GitSyncButtonProps) {
         <PopoverContent
           side="bottom"
           align="center"
-          className="w-80 pointer-events-none"
+          className="w-80 pointer-events-none z-40"
           onOpenAutoFocus={(e) => e.preventDefault()}
           onInteractOutside={(e) => e.preventDefault()}
         >

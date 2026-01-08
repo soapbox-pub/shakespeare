@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { CloudUpload, Loader2, Check } from 'lucide-react';
+import { CloudUpload, Loader2, Check, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useGitStatus } from '@/hooks/useGitStatus';
@@ -16,6 +16,8 @@ interface GitSyncButtonProps {
 export function GitSyncButton({ projectId, className }: GitSyncButtonProps) {
   const [open, setOpen] = useState(false);
   const [syncSuccess, setSyncSuccess] = useState(false);
+  const [showWarningPopover, setShowWarningPopover] = useState(false);
+  const warningDismissed = useRef(false);
 
   const { data: gitStatus, isLoading: isGitStatusLoading } = useGitStatus(projectId);
   const { getError, getState } = useGitSyncState();
@@ -37,6 +39,29 @@ export function GitSyncButton({ projectId, className }: GitSyncButtonProps) {
     }
     prevIsGitActionOccurring.current = isGitActionOccurring;
   }, [isGitActionOccurring, hasError]);
+
+  // Check if we need to show the warning popover
+  const needsRemote = !isGitStatusLoading && gitStatus &&
+    !gitStatus.remotes.find(r => r.name === 'origin') &&
+    gitStatus.totalCommits > 1;
+
+  // Show warning popover when purple indicator is visible (only if not dismissed)
+  useEffect(() => {
+    if (needsRemote && !warningDismissed.current) {
+      setShowWarningPopover(true);
+    } else {
+      setShowWarningPopover(false);
+    }
+  }, [needsRemote]);
+
+  // Handle button click - dismiss warning popover permanently
+  const handleButtonClick = () => {
+    if (showWarningPopover) {
+      warningDismissed.current = true;
+      setShowWarningPopover(false);
+    }
+    setOpen(true);
+  };
 
   // Determine which indicator to show (only one at a time, in priority order)
   const renderIndicator = () => {
@@ -69,7 +94,6 @@ export function GitSyncButton({ projectId, className }: GitSyncButtonProps) {
     }
 
     // Purple indicator: no remote configured, but has commits - lowest priority
-    const needsRemote = !hasRemote && totalCommits > 1;
     if (needsRemote) {
       return <IndicatorDot color="primary" />;
     }
@@ -78,26 +102,54 @@ export function GitSyncButton({ projectId, className }: GitSyncButtonProps) {
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="ghost"
-          size="sm"
-          className={cn("size-8 p-0 group relative", className)}
-          aria-label="Sync with Git"
+    <>
+      {/* Warning popover - shown when purple indicator is visible */}
+      <Popover open={showWarningPopover} modal={false}>
+        <PopoverTrigger asChild>
+          <div className="relative">
+            {/* Main Git Sync popover */}
+            <Popover open={open} onOpenChange={setOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={cn("size-8 p-0 group relative", className)}
+                  aria-label="Sync with Git"
+                  onClick={handleButtonClick}
+                >
+                  <CloudUpload className={cn("size-5 group-hover:text-foreground", open ? "text-foreground" : "text-muted-foreground")} />
+                  {renderIndicator()}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent
+                align="start"
+                className="w-96"
+                onOpenAutoFocus={(e) => e.preventDefault()}
+              >
+                <GitSyncSteps projectId={projectId} onClose={() => setOpen(false)} />
+              </PopoverContent>
+            </Popover>
+          </div>
+        </PopoverTrigger>
+        <PopoverContent
+          side="bottom"
+          align="center"
+          className="w-80 pointer-events-none"
+          onOpenAutoFocus={(e) => e.preventDefault()}
+          onInteractOutside={(e) => e.preventDefault()}
         >
-          <CloudUpload className={cn("size-5 group-hover:text-foreground", open ? "text-foreground" : "text-muted-foreground")} />
-          {renderIndicator()}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent
-        align="start"
-        className="w-96"
-        onOpenAutoFocus={(e) => e.preventDefault()}
-      >
-        <GitSyncSteps projectId={projectId} onClose={() => setOpen(false)} />
-      </PopoverContent>
-    </Popover>
+          <div className="space-y-2 pointer-events-auto">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="size-5 text-primary shrink-0" />
+              <h4 className="font-semibold text-sm">Your project files are not safe</h4>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Your project files are stored in your browser session and could be deleted. Sync with git to back up your project.
+            </p>
+          </div>
+        </PopoverContent>
+      </Popover>
+    </>
   );
 }
 

@@ -151,7 +151,7 @@ export function GitSyncButton({ projectId, className }: GitSyncButtonProps) {
           onOpenAutoFocus={(e) => e.preventDefault()}
           onInteractOutside={(e) => e.preventDefault()}
         >
-          <div className="space-y-2 pointer-events-auto">
+          <div className="space-y-3 pointer-events-auto">
             <div className="flex items-center gap-2">
               <AlertTriangle className="size-5 text-primary shrink-0" />
               <h4 className="font-semibold text-sm">Your project files are not safe</h4>
@@ -159,6 +159,13 @@ export function GitSyncButton({ projectId, className }: GitSyncButtonProps) {
             <p className="text-sm text-muted-foreground">
               Your project files are stored in your browser session and could be deleted. Sync with git to back up your project.
             </p>
+            <Button
+              onClick={handleButtonClick}
+              className="w-full"
+              size="sm"
+            >
+              Continue
+            </Button>
           </div>
         </PopoverContent>
       </Popover>

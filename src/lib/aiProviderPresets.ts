@@ -24,6 +24,14 @@ export const AI_PROVIDER_PRESETS: PresetProvider[] = [
     tosURL: "https://openrouter.ai/terms",
   },
   {
+    id: "opencode",
+    name: "OpenCode Zen",
+    baseURL: "https://opencode.ai/zen/v1",
+    apiKeysURL: "https://opencode.ai/auth",
+    tosURL: "https://opencode.ai/legal/terms-of-service",
+    proxy: true,
+  },
+  {
     id: "ppq",
     name: "PayPerQ",
     baseURL: "https://api.ppq.ai",

@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Plus, Folder, GitBranch, Loader2, ChevronDown, ChevronRight, Star, Columns2, X, Settings, HelpCircle, Search, Tag, Folders } from 'lucide-react';
+import { Plus, Folder, GitBranch, Loader2, ChevronDown, ChevronRight, Star, Columns2, X, Settings, HelpCircle, Search, Tag, Folders, Compass } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
@@ -366,6 +366,13 @@ export function ProjectSidebar({
                     >
                       <GitBranch className="h-4 w-4" />
                       {t('importRepository')}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => navigateAndClose('/explore')}
+                      className="flex items-center gap-2 w-full"
+                    >
+                      <Compass className="h-4 w-4" />
+                      {t('exploreApps')}
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => setLabelsDialogOpen(true)}

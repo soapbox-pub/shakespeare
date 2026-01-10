@@ -11,6 +11,7 @@ import NostrSettings from "./pages/NostrSettings";
 import AISettings from "./pages/AISettings";
 import GitSettings from "./pages/GitSettings";
 import DeploySettings from "./pages/DeploySettings";
+import WalletSettings from "./pages/WalletSettings";
 import SystemSettings from "./pages/SystemSettings";
 import StorageSettings from "./pages/StorageSettings";
 import AboutSettings from "./pages/AboutSettings";
@@ -48,6 +49,7 @@ export function AppRouter() {
           <Route path="ai" element={<AISettings />} />
           <Route path="git" element={<GitSettings />} />
           <Route path="deploy" element={<DeploySettings />} />
+          <Route path="wallet" element={<WalletSettings />} />
           <Route path="system" element={<SystemSettings />} />
           <Route path="storage" element={<StorageSettings />} />
           <Route path="about" element={<AboutSettings />} />

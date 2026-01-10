@@ -205,79 +205,81 @@ export default function Clone() {
 
   return (
     <AppLayout title={t('importRepository')}>
-      <div className="max-w-2xl mx-auto">
-        <div className="text-center mb-8">
-          <div className="text-4xl mb-4">
-            <GitBranch className="h-12 w-12 mx-auto text-primary" />
-          </div>
-          <h1 className="text-3xl font-bold mb-3 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-            {t('importRepository')}
-          </h1>
-          <p className="text-lg text-muted-foreground">
-            {t('cloneGitRepository')}
-          </p>
-        </div>
-
-        <div className="space-y-2">
-          <Input
-            id="repo-url"
-            type="text"
-            placeholder="https://github.com/username/repository.git"
-            value={repoUrl}
-            onChange={(e) => {
-              setRepoUrl(e.target.value);
-              setError(null); // Clear error when user types
-            }}
-            onKeyDown={handleKeyDown}
-            disabled={isCloning}
-          />
-
-          {error && (
-            <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-md">
-              <AlertCircle className="h-4 w-4 text-destructive flex-shrink-0" />
-              <p className="text-sm text-destructive">{error}</p>
+      <div className="min-h-[calc(100vh-12rem)] flex items-center justify-center">
+        <div className="max-w-2xl mx-auto w-full">
+          <div className="text-center mb-8">
+            <div className="text-4xl mb-4">
+              <GitBranch className="h-12 w-12 mx-auto text-primary" />
             </div>
-          )}
+            <h1 className="text-3xl font-bold mb-3 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+              {t('importRepository')}
+            </h1>
+            <p className="text-lg text-muted-foreground">
+              {t('cloneGitRepository')}
+            </p>
+          </div>
 
-          <Button
-            onClick={() => handleClone()}
-            disabled={!repoUrl.trim() || isCloning}
-            className="w-full focus-ring bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80 shadow-lg"
-            size="lg"
-          >
-            {isCloning ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                {t('cloningRepository')}
-              </>
-            ) : (
-              <>
-                <GitBranch className="mr-2 h-4 w-4" />
-                {t('importRepository')}
-              </>
+          <div className="space-y-2">
+            <Input
+              id="repo-url"
+              type="text"
+              placeholder="https://github.com/username/repository.git"
+              value={repoUrl}
+              onChange={(e) => {
+                setRepoUrl(e.target.value);
+                setError(null); // Clear error when user types
+              }}
+              onKeyDown={handleKeyDown}
+              disabled={isCloning}
+            />
+
+            {error && (
+              <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-md">
+                <AlertCircle className="h-4 w-4 text-destructive flex-shrink-0" />
+                <p className="text-sm text-destructive">{error}</p>
+              </div>
             )}
-          </Button>
-        </div>
 
-        {/* Import ZIP File Link */}
-        <div className="mt-8 text-center">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary hover:bg-transparent">
-                <MoreHorizontal className="h-5 w-5" />
-                <span className="sr-only">More options</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="center">
-              <DropdownMenuItem
-                className="flex items-center gap-2 w-full"
-                onClick={() => setIsZipDialogOpen(true)}
-              >
-                <FileArchive className="h-4 w-4" />
-                Import ZIP File
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+            <Button
+              onClick={() => handleClone()}
+              disabled={!repoUrl.trim() || isCloning}
+              className="w-full focus-ring bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80 shadow-lg"
+              size="lg"
+            >
+              {isCloning ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  {t('cloningRepository')}
+                </>
+              ) : (
+                <>
+                  <GitBranch className="mr-2 h-4 w-4" />
+                  {t('importRepository')}
+                </>
+              )}
+            </Button>
+          </div>
+
+          {/* Import ZIP File Link */}
+          <div className="mt-8 text-center">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary hover:bg-transparent">
+                  <MoreHorizontal className="h-5 w-5" />
+                  <span className="sr-only">More options</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="center">
+                <DropdownMenuItem
+                  className="flex items-center gap-2 w-full"
+                  onClick={() => setIsZipDialogOpen(true)}
+                >
+                  <FileArchive className="h-4 w-4" />
+                  Import ZIP File
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </div>
 

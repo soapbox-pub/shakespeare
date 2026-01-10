@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useDeferredValue } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AppLayout } from '@/components/AppLayout';
 import { Input } from '@/components/ui/input';
@@ -29,6 +29,9 @@ export default function Explore() {
   const [activeTab, setActiveTab] = useState<'my-projects' | 'follows'>('follows');
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Defer search query to prevent blocking UI on every keystroke
+  const deferredSearchQuery = useDeferredValue(searchQuery);
+
   // Get unique pubkeys from all repositories
   const allRepos = useMemo(() => [...repositories, ...followedRepositories], [repositories, followedRepositories]);
   const uniquePubkeys = useMemo(() => {
@@ -37,10 +40,25 @@ export default function Explore() {
     return Array.from(pubkeys);
   }, [allRepos]);
 
+  // Pre-compute npubs once to avoid expensive encoding on every search
+  const npubMap = useMemo(() => {
+    const map = new Map<string, string>();
+    allRepos.forEach(repo => {
+      if (!map.has(repo.pubkey)) {
+        try {
+          map.set(repo.pubkey, nip19.npubEncode(repo.pubkey));
+        } catch {
+          // ignore encoding failures
+        }
+      }
+    });
+    return map;
+  }, [allRepos]);
+
   // Fetch author metadata for all unique pubkeys
   const { nostr } = useNostr();
   const { data: authorMetadataMap = new Map<string, NostrMetadata>() } = useQuery({
-    queryKey: ['repository-authors', uniquePubkeys.sort().join(',')],
+    queryKey: ['repository-authors', uniquePubkeys],
     queryFn: async () => {
       if (uniquePubkeys.length === 0) return new Map<string, NostrMetadata>();
 
@@ -69,8 +87,13 @@ export default function Explore() {
     description: t('exploreRepositories'),
   });
 
-  // Filter repositories based on search query
-  const filterRepositories = useCallback((repos: Repository[], query: string): Repository[] => {
+  // Filter repositories based on search query - stable function with no dependencies
+  const filterRepositories = (
+    repos: Repository[],
+    query: string,
+    metadata: Map<string, NostrMetadata>,
+    npubs: Map<string, string>
+  ): Repository[] => {
     if (!query.trim()) {
       return repos;
     }
@@ -98,35 +121,31 @@ export default function Explore() {
         return true;
       }
 
-      // Filter by npub (bech32 encoded pubkey)
-      try {
-        const npub = nip19.npubEncode(repo.pubkey);
-        if (npub.toLowerCase().includes(lowerQuery)) {
-          return true;
-        }
-      } catch {
-        // If encoding fails, skip npub search
+      // Filter by npub (pre-computed)
+      const npub = npubs.get(repo.pubkey);
+      if (npub?.toLowerCase().includes(lowerQuery)) {
+        return true;
       }
 
       // Filter by author name
-      const authorMetadata = authorMetadataMap.get(repo.pubkey);
+      const authorMetadata = metadata.get(repo.pubkey);
       if (authorMetadata?.name?.toLowerCase().includes(lowerQuery)) {
         return true;
       }
 
       return false;
     });
-  }, [authorMetadataMap]);
+  };
 
-  // Filtered repositories for "My Projects" tab
+  // Filtered repositories for "My Projects" tab - uses deferred query
   const filteredMyRepositories = useMemo(() => {
-    return filterRepositories(repositories, searchQuery);
-  }, [repositories, searchQuery, filterRepositories]);
+    return filterRepositories(repositories, deferredSearchQuery, authorMetadataMap, npubMap);
+  }, [repositories, deferredSearchQuery, authorMetadataMap, npubMap]);
 
-  // Filtered repositories for "Follows" tab
+  // Filtered repositories for "Follows" tab - uses deferred query
   const filteredFollowedRepositories = useMemo(() => {
-    return filterRepositories(followedRepositories, searchQuery);
-  }, [followedRepositories, searchQuery, filterRepositories]);
+    return filterRepositories(followedRepositories, deferredSearchQuery, authorMetadataMap, npubMap);
+  }, [followedRepositories, deferredSearchQuery, authorMetadataMap, npubMap]);
 
   if (!user) {
     return (
@@ -213,7 +232,11 @@ export default function Explore() {
             ) : filteredMyRepositories.length > 0 ? (
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredMyRepositories.map((repo) => (
-                  <RepositoryCard key={repo.id} repo={repo} />
+                  <RepositoryCard
+                    key={repo.id}
+                    repo={repo}
+                    authorMetadata={authorMetadataMap.get(repo.pubkey)}
+                  />
                 ))}
               </div>
             ) : searchQuery.trim() ? (
@@ -279,7 +302,11 @@ export default function Explore() {
             ) : filteredFollowedRepositories.length > 0 ? (
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredFollowedRepositories.map((repo) => (
-                  <RepositoryCard key={repo.id} repo={repo} />
+                  <RepositoryCard
+                    key={repo.id}
+                    repo={repo}
+                    authorMetadata={authorMetadataMap.get(repo.pubkey)}
+                  />
                 ))}
               </div>
             ) : searchQuery.trim() ? (

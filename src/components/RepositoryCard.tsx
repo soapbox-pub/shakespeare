@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect, memo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -34,13 +34,19 @@ import { useOGImage } from '@/hooks/useOGImage';
 import { ZapDialog } from '@/components/ZapDialog';
 import { Zap } from 'lucide-react';
 import type { Event } from 'nostr-tools';
+import type { NostrMetadata } from '@nostrify/nostrify';
 
 interface RepositoryCardProps {
   repo: Repository;
+  /** Pre-fetched author metadata to avoid individual fetches */
+  authorMetadata?: NostrMetadata;
 }
 
-export function RepositoryCard({ repo }: RepositoryCardProps) {
-  const { data: authorData } = useAuthor(repo.pubkey);
+function RepositoryCardInner({ repo, authorMetadata: preloadedMetadata }: RepositoryCardProps) {
+  // Only fetch author data if not preloaded
+  const { data: authorData } = useAuthor(preloadedMetadata ? undefined : repo.pubkey);
+  const metadata = preloadedMetadata ?? authorData?.metadata;
+  
   const { user } = useCurrentUser();
   const { settings: gitSettings } = useGitSettings();
   const navigate = useNavigate();
@@ -52,16 +58,37 @@ export function RepositoryCard({ repo }: RepositoryCardProps) {
   const [editRepoOpen, setEditRepoOpen] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [eventViewerOpen, setEventViewerOpen] = useState(false);
+  const [isInViewport, setIsInViewport] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
 
-  const displayName = authorData?.metadata?.name || genUserName(repo.pubkey);
-  const profileImage = authorData?.metadata?.picture;
+  // Lazy load OG images - only fetch when card is in viewport
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsInViewport(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: '100px' } // Start loading slightly before visible
+    );
+
+    if (cardRef.current) {
+      observer.observe(cardRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, []);
+
+  const displayName = metadata?.name || genUserName(repo.pubkey);
+  const profileImage = metadata?.picture;
   const isOwnRepo = user?.pubkey === repo.pubkey;
-  const hasLightning = !!(authorData?.metadata?.lud16 || authorData?.metadata?.lud06);
+  const hasLightning = !!(metadata?.lud16 || metadata?.lud06);
   const canZap = user && !isOwnRepo && hasLightning;
 
-  // Get OG metadata from first web URL
+  // Get OG metadata from first web URL - only when in viewport
   const firstWebUrl = repo.webUrls?.[0];
-  const { data: ogMetadata } = useOGImage(firstWebUrl);
+  const { data: ogMetadata } = useOGImage(isInViewport ? firstWebUrl : undefined);
   const ogImageUrl = ogMetadata?.image ?? null;
   const ogDescription = ogMetadata?.description ?? null;
 
@@ -134,7 +161,7 @@ export function RepositoryCard({ repo }: RepositoryCardProps) {
   const hasValidImage = ogImageUrl && !imageError;
 
   return (
-    <Card className="h-full flex flex-col hover:shadow-lg transition-shadow">
+    <Card ref={cardRef} className="h-full flex flex-col hover:shadow-lg transition-shadow">
       {/* Preview Image or Placeholder */}
       {hasValidImage && firstWebUrl ? (
         <a
@@ -305,3 +332,6 @@ export function RepositoryCard({ repo }: RepositoryCardProps) {
     </Card>
   );
 }
+
+// Memoize to prevent re-renders when parent re-renders with same props
+export const RepositoryCard = memo(RepositoryCardInner);

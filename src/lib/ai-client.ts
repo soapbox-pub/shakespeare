@@ -78,13 +78,14 @@ export function createAIClient(provider: AIProvider, user?: NUser, corsProxy?: s
         });
 
         const systemMessage = body.messages.find((m) => m.role === "system");
-        const lastMessage = body.messages.findLast((m) => m.role !== "system");
+        const nonSystemMessages = body.messages.filter((m) => m.role !== "system");
+        const lastTwoMessages = nonSystemMessages.slice(-2);
 
         if (systemMessage) {
           addCacheControl(systemMessage);
         }
-        if (lastMessage) {
-          addCacheControl(lastMessage);
+        for (const msg of lastTwoMessages) {
+          addCacheControl(msg);
         }
       }
     }

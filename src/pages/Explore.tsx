@@ -26,7 +26,7 @@ export default function Explore() {
   const { data: repositories = [], isLoading: isLoadingRepos } = useUserRepositories(user?.pubkey);
   const { data: contacts = [] } = useContacts(user?.pubkey);
   const { data: followedRepositories = [], isLoading: isLoadingFollowedRepos } = useFollowedRepositories(contacts);
-  const [activeTab, setActiveTab] = useState<'my-projects' | 'follows'>('my-projects');
+  const [activeTab, setActiveTab] = useState<'my-projects' | 'follows'>('follows');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Get unique pubkeys from all repositories

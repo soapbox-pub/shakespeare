@@ -13,7 +13,7 @@ export function useFollowedRepositories(followedPubkeys: string[] = []) {
   const { nostr } = useNostr();
 
   return useQuery({
-    queryKey: ['nostr', 'followed-repositories', followedPubkeys.sort().join(',')],
+    queryKey: ['nostr', 'followed-repositories', followedPubkeys],
     queryFn: async (): Promise<Repository[]> => {
       if (followedPubkeys.length === 0) {
         return [];

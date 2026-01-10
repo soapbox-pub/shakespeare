@@ -50,10 +50,19 @@ export function useFollowedRepositories(followedPubkeys: string[] = []) {
 
           const name = event.tags.find(tag => tag[0] === 'name')?.[1] || dTag;
           const description = event.tags.find(tag => tag[0] === 'description')?.[1] || '';
-          const webUrls = event.tags.filter(tag => tag[0] === 'web').map(tag => tag[1]).filter(Boolean);
-          const cloneUrls = event.tags.filter(tag => tag[0] === 'clone').map(tag => tag[1]).filter(Boolean);
-          const relays = event.tags.filter(tag => tag[0] === 'relays').map(tag => tag[1]).filter(Boolean);
-          const maintainers = event.tags.filter(tag => tag[0] === 'maintainers').map(tag => tag[1]).filter(Boolean);
+          
+          // Extract multi-value tags correctly (all values are in a single tag per NIP-34)
+          const webTag = event.tags.find(tag => tag[0] === 'web');
+          const webUrls = webTag ? webTag.slice(1).filter(Boolean) : [];
+          
+          const cloneTag = event.tags.find(tag => tag[0] === 'clone');
+          const cloneUrls = cloneTag ? cloneTag.slice(1).filter(Boolean) : [];
+          
+          const relaysTag = event.tags.find(tag => tag[0] === 'relays');
+          const relays = relaysTag ? relaysTag.slice(1).filter(Boolean) : [];
+          
+          const maintainersTag = event.tags.find(tag => tag[0] === 'maintainers');
+          const maintainers = maintainersTag ? maintainersTag.slice(1).filter(Boolean) : [];
           const repoTags = event.tags.filter(tag => tag[0] === 't' && tag[1] !== 'personal-fork').map(tag => tag[1]);
           const earliestUniqueCommit = event.tags.find(tag => tag[0] === 'r' && tag[2] === 'euc')?.[1];
           const isPersonalFork = event.tags.some(tag => tag[0] === 't' && tag[1] === 'personal-fork');

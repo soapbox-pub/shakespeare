@@ -2,13 +2,20 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { GitBranch, Loader2, EllipsisVertical, Edit } from 'lucide-react';
+import { GitBranch, Loader2, EllipsisVertical, Edit, Code, ExternalLink } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import type { Repository } from '@/hooks/useUserRepositories';
 import { useAuthor } from '@/hooks/useAuthor';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -23,6 +30,7 @@ import { useGitSettings } from '@/hooks/useGitSettings';
 import { detectFork } from '@/lib/detectFork';
 import { NostrRepoEditDialog } from '@/components/NostrRepoEditDialog';
 import { useQueryClient } from '@tanstack/react-query';
+import { useOGImage } from '@/hooks/useOGImage';
 
 interface RepositoryCardProps {
   repo: Repository;
@@ -39,10 +47,18 @@ export function RepositoryCard({ repo }: RepositoryCardProps) {
   const queryClient = useQueryClient();
   const [isCloning, setIsCloning] = useState(false);
   const [editRepoOpen, setEditRepoOpen] = useState(false);
+  const [imageError, setImageError] = useState(false);
+  const [eventViewerOpen, setEventViewerOpen] = useState(false);
 
   const displayName = authorData?.metadata?.name || genUserName(repo.pubkey);
   const profileImage = authorData?.metadata?.picture;
   const isOwnRepo = user?.pubkey === repo.pubkey;
+
+  // Get OG metadata from first web URL
+  const firstWebUrl = repo.webUrls?.[0];
+  const { data: ogMetadata } = useOGImage(firstWebUrl);
+  const ogImageUrl = ogMetadata?.image ?? null;
+  const ogDescription = ogMetadata?.description ?? null;
 
   // Construct Nostr clone URL
   const nostrURI = new NostrURI({
@@ -109,8 +125,31 @@ export function RepositoryCard({ repo }: RepositoryCardProps) {
     queryClient.invalidateQueries({ queryKey: ['nostr', 'user-repositories', user?.pubkey] });
   };
 
+  // Check if we have a valid OG image to show
+  const hasValidImage = ogImageUrl && !imageError;
+
   return (
     <Card className="h-full flex flex-col hover:shadow-lg transition-shadow">
+      {/* Preview Image or Placeholder */}
+      {hasValidImage && firstWebUrl ? (
+        <a
+          href={firstWebUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block aspect-video bg-muted overflow-hidden rounded-t-lg cursor-pointer hover:opacity-90 transition-opacity"
+        >
+          <img
+            src={ogImageUrl}
+            alt={`${repo.name} preview`}
+            className="w-full h-full object-cover"
+            onError={() => setImageError(true)}
+          />
+        </a>
+      ) : (
+        <div className="aspect-video bg-gradient-to-br from-primary to-accent rounded-t-lg flex items-center justify-center">
+          <Code className="h-12 w-12 text-white" />
+        </div>
+      )}
       <CardContent className="p-6 flex flex-col flex-1">
         {/* Header with name and menu */}
         <div className="mb-4 flex items-start justify-between">
@@ -119,42 +158,57 @@ export function RepositoryCard({ repo }: RepositoryCardProps) {
               {repo.name}
             </h3>
           </div>
-          {isOwnRepo && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 -mt-1 -mr-2 shrink-0">
-                  <EllipsisVertical className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setEditRepoOpen(true)} className="gap-2">
-                  <Edit className="h-4 w-4" />
-                  Edit Repository
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8 -mt-1 -mr-2 shrink-0">
+                <EllipsisVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {firstWebUrl && (
+                <DropdownMenuItem asChild className="gap-2">
+                  <a href={firstWebUrl} target="_blank" rel="noopener noreferrer">
+                    <ExternalLink className="h-4 w-4" />
+                    Open Website
+                  </a>
                 </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
+              )}
+              <DropdownMenuItem onClick={() => setEventViewerOpen(true)} className="gap-2">
+                <Code className="h-4 w-4" />
+                View Event
+              </DropdownMenuItem>
+              {isOwnRepo && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setEditRepoOpen(true)} className="gap-2">
+                    <Edit className="h-4 w-4" />
+                    Edit Repository
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         {/* Author */}
         <div className="mb-4">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Avatar className="h-4 w-4">
+          <div className="flex items-center gap-3 text-sm text-muted-foreground">
+            <Avatar className="h-8 w-8">
               {profileImage && (
                 <AvatarImage src={profileImage} alt={displayName} />
               )}
-              <AvatarFallback className="text-[8px]">
+              <AvatarFallback className="text-xs">
                 {displayName.slice(0, 2).toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <span className="truncate">{displayName}</span>
+            <span className="truncate font-medium">{displayName}</span>
           </div>
         </div>
 
         {/* Description */}
-        {repo.description && (
+        {(repo.description || ogDescription) && (
           <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
-            {repo.description}
+            {repo.description || ogDescription}
           </p>
         )}
 
@@ -212,6 +266,28 @@ export function RepositoryCard({ repo }: RepositoryCardProps) {
         repoIdentifier={repo.repoId}
         onSuccess={handleRepoEditSuccess}
       />
+
+      {/* Event Viewer Dialog */}
+      <Dialog open={eventViewerOpen} onOpenChange={setEventViewerOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Repository Event</DialogTitle>
+          </DialogHeader>
+          <div className="overflow-y-auto flex-1 min-h-0">
+            <pre className="text-xs p-4 rounded-lg overflow-x-auto">
+              {JSON.stringify({
+                id: repo.id,
+                pubkey: repo.pubkey,
+                created_at: repo.created_at,
+                kind: repo.kind,
+                tags: repo.tags,
+                content: repo.content,
+                sig: repo.sig,
+              }, null, 2)}
+            </pre>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

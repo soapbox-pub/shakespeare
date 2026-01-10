@@ -31,6 +31,9 @@ import { detectFork } from '@/lib/detectFork';
 import { NostrRepoEditDialog } from '@/components/NostrRepoEditDialog';
 import { useQueryClient } from '@tanstack/react-query';
 import { useOGImage } from '@/hooks/useOGImage';
+import { ZapDialog } from '@/components/ZapDialog';
+import { Zap } from 'lucide-react';
+import type { Event } from 'nostr-tools';
 
 interface RepositoryCardProps {
   repo: Repository;
@@ -53,6 +56,8 @@ export function RepositoryCard({ repo }: RepositoryCardProps) {
   const displayName = authorData?.metadata?.name || genUserName(repo.pubkey);
   const profileImage = authorData?.metadata?.picture;
   const isOwnRepo = user?.pubkey === repo.pubkey;
+  const hasLightning = !!(authorData?.metadata?.lud16 || authorData?.metadata?.lud06);
+  const canZap = user && !isOwnRepo && hasLightning;
 
   // Get OG metadata from first web URL
   const firstWebUrl = repo.webUrls?.[0];
@@ -158,12 +163,20 @@ export function RepositoryCard({ repo }: RepositoryCardProps) {
               {repo.name}
             </h3>
           </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8 -mt-1 -mr-2 shrink-0">
-                <EllipsisVertical className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
+          <div className="flex items-center -mt-1 -mr-2 shrink-0">
+            {canZap && (
+              <ZapDialog target={repo as unknown as Event}>
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-amber-500 hover:text-amber-600 hover:bg-amber-500/10">
+                  <Zap className="h-4 w-4" />
+                </Button>
+              </ZapDialog>
+            )}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <EllipsisVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               {firstWebUrl && (
                 <DropdownMenuItem asChild className="gap-2">
@@ -187,7 +200,8 @@ export function RepositoryCard({ repo }: RepositoryCardProps) {
                 </>
               )}
             </DropdownMenuContent>
-          </DropdownMenu>
+            </DropdownMenu>
+          </div>
         </div>
 
         {/* Author */}

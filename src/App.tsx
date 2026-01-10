@@ -28,6 +28,7 @@ import { DynamicFavicon } from '@/components/DynamicFavicon';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { PWAUpdatePrompt } from '@/components/PWAUpdatePrompt';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { NWCProvider } from '@/contexts/NWCContext';
 
 import AppRouter from './AppRouter';
 
@@ -142,6 +143,7 @@ export function App() {
                   <NostrLoginProvider storageKey='nostr:login'>
                     <NostrProvider>
                       <NostrSync />
+                      <NWCProvider>
                       <AISettingsProvider>
                         <GitSettingsProvider>
                           <DeploySettingsProvider>
@@ -161,6 +163,7 @@ export function App() {
                           </DeploySettingsProvider>
                         </GitSettingsProvider>
                       </AISettingsProvider>
+                      </NWCProvider>
                     </NostrProvider>
                   </NostrLoginProvider>
                 </ConsoleErrorProvider>

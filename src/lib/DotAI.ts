@@ -216,6 +216,83 @@ export class DotAI {
   }
 
   /**
+   * Parse timestamp from session name (format: YYYY-MM-DDTHH-MM-SSZ-suffix)
+   */
+  static parseSessionTimestamp(sessionName: string): Date {
+    // Session name format: 2024-01-10T12-30-45Z-abc
+    // Need to convert back to ISO format: 2024-01-10T12:30:45Z
+    const match = sessionName.match(/^(\d{4}-\d{2}-\d{2})T(\d{2})-(\d{2})-(\d{2})Z/);
+    if (match) {
+      const [, date, hour, min, sec] = match;
+      return new Date(`${date}T${hour}:${min}:${sec}Z`);
+    }
+    // Fallback to current time if parsing fails
+    return new Date();
+  }
+
+  /**
+   * Read all session histories sorted chronologically
+   * @returns Array of session histories with messages and timestamps
+   */
+  async readAllSessionHistories(): Promise<Array<{
+    sessionName: string;
+    timestamp: Date;
+    messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[];
+  }>> {
+    const sessions: Array<{
+      sessionName: string;
+      timestamp: Date;
+      messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[];
+    }> = [];
+
+    try {
+      if (!(await this.historyDirExists())) {
+        return sessions;
+      }
+
+      const files = await this.fs.readdir(this.historyDir);
+      const sessionFiles = files
+        .filter(file => file.endsWith('.jsonl'))
+        .sort(); // Chronological order (oldest first)
+
+      for (const file of sessionFiles) {
+        const sessionPath = join(this.historyDir, file);
+        const sessionName = file.replace('.jsonl', '');
+
+        try {
+          const content = await this.fs.readFile(sessionPath, 'utf8');
+          const lines = content.trim().split('\n').filter(line => line.trim());
+          const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [];
+
+          for (const line of lines) {
+            try {
+              const message = JSON.parse(line) as OpenAI.Chat.Completions.ChatCompletionMessageParam;
+              messages.push(message);
+            } catch {
+              // Skip malformed lines
+            }
+          }
+
+          // Only include sessions with messages
+          if (messages.length > 0) {
+            sessions.push({
+              sessionName,
+              timestamp: DotAI.parseSessionTimestamp(sessionName),
+              messages,
+            });
+          }
+        } catch {
+          // Skip unreadable files
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to read all session histories:', error);
+    }
+
+    return sessions;
+  }
+
+  /**
    * Read the most recent session history
    * @returns Object containing messages array and session name, or null if no history found
    */

@@ -47,11 +47,12 @@ import OpenAI from 'openai';
 import { useGit } from '@/hooks/useGit';
 import { Quilly } from '@/components/Quilly';
 import { ShakespeareLogo } from '@/components/ShakespeareLogo';
+import { SessionDivider } from '@/components/SessionDivider';
 import { ChatInput } from '@/components/Shakespeare/ChatInput';
 import { buildMessageContent } from '@/lib/buildMessageContent';
 import { DotAI } from '@/lib/DotAI';
 import { parseProviderModel } from '@/lib/parseProviderModel';
-import { AIMessage } from '@/lib/SessionManager';
+import { AIMessage, SessionBoundary } from '@/lib/SessionManager';
 
 // Clean interfaces now handled by proper hooks
 
@@ -294,6 +295,8 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
 
   const {
     messages,
+    displayMessages,
+    sessionBoundaries,
     streamingMessage,
     isLoading: internalIsLoading,
     isLoadingHistory,
@@ -318,7 +321,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     const checkTemplateInfo = async () => {
       try {
         // Only check if we have at least 1 message
-        if (messages.length === 0) {
+        if (displayMessages.length === 0) {
           setShowTemplateInfo(false);
           return;
         }
@@ -357,7 +360,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     };
 
     checkTemplateInfo();
-  }, [fs, projectsPath, projectId, messages.length]);
+  }, [fs, projectsPath, projectId, displayMessages.length]);
 
   // Handle console error help requests
   const handleConsoleErrorHelp = useCallback(async () => {
@@ -757,7 +760,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
           )}
 
           {/* Empty state when no messages and not loading */}
-          {!isLoadingHistory && messages.length === 0 && !streamingMessage && !isLoading && (
+          {!isLoadingHistory && displayMessages.length === 0 && !streamingMessage && !isLoading && (
             <div className="flex-1 flex items-center justify-center min-h-[400px]">
               <div className="text-center space-y-4 max-w-md mx-auto">
                 <div className="mb-6">
@@ -781,13 +784,22 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
             </div>
           )}
 
-          {!isLoadingHistory && messages.map((message, index) => {
+          {!isLoadingHistory && displayMessages.map((message, index) => {
+            // Check if there's a session boundary at this index
+            const boundary = sessionBoundaries.find((b: SessionBoundary) => b.index === index);
+            
+            // Determine if this message is from an older session (before the last boundary)
+            const lastBoundaryIndex = sessionBoundaries.length > 0 
+              ? sessionBoundaries[sessionBoundaries.length - 1].index 
+              : -1;
+            const isOlderSession = lastBoundaryIndex > 0 && index < lastBoundaryIndex;
+            
             // Find the corresponding tool call for tool messages
             let toolCall: OpenAI.Chat.Completions.ChatCompletionMessageToolCall | undefined = undefined;
             if (message.role === 'tool') {
               // Look backwards to find the assistant message with matching tool call
               for (let i = index - 1; i >= 0; i--) {
-                const prevMessage = messages[i];
+                const prevMessage = displayMessages[i];
                 if (prevMessage.role === 'assistant' && 'tool_calls' in prevMessage && prevMessage.tool_calls) {
                   toolCall = prevMessage.tool_calls.find(tc => tc.id === message.tool_call_id);
                   if (toolCall) break;
@@ -796,13 +808,26 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
             }
 
             return (
-              <AIMessageItem
+              <div 
                 key={`${index}-${message.role}-${typeof message.content === 'string' ? message.content.slice(0, 50) : 'content'}`}
-                message={message}
-                toolCall={toolCall}
-              />
+                className={isOlderSession ? 'opacity-65' : ''}
+              >
+                {boundary && <SessionDivider />}
+                <AIMessageItem
+                  message={message}
+                  toolCall={toolCall}
+                />
+              </div>
             );
           })}
+
+          {/* Trailing session divider - shown immediately when "New Chat" is clicked */}
+          {!isLoadingHistory && (() => {
+            const trailingBoundary = sessionBoundaries.find(
+              (b: SessionBoundary) => b.index === displayMessages.length
+            );
+            return trailingBoundary ? <SessionDivider key="trailing-divider" /> : null;
+          })()}
 
           {!isLoadingHistory && renderStreamingMessage()}
 

@@ -216,32 +216,15 @@ export class DotAI {
   }
 
   /**
-   * Parse timestamp from session name (format: YYYY-MM-DDTHH-MM-SSZ-suffix)
-   */
-  static parseSessionTimestamp(sessionName: string): Date {
-    // Session name format: 2024-01-10T12-30-45Z-abc
-    // Need to convert back to ISO format: 2024-01-10T12:30:45Z
-    const match = sessionName.match(/^(\d{4}-\d{2}-\d{2})T(\d{2})-(\d{2})-(\d{2})Z/);
-    if (match) {
-      const [, date, hour, min, sec] = match;
-      return new Date(`${date}T${hour}:${min}:${sec}Z`);
-    }
-    // Fallback to current time if parsing fails
-    return new Date();
-  }
-
-  /**
-   * Read all session histories sorted chronologically
-   * @returns Array of session histories with messages and timestamps
+   * Read all session histories sorted chronologically by filename
+   * @returns Array of session histories with messages
    */
   async readAllSessionHistories(): Promise<Array<{
     sessionName: string;
-    timestamp: Date;
     messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[];
   }>> {
     const sessions: Array<{
       sessionName: string;
-      timestamp: Date;
       messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[];
     }> = [];
 
@@ -253,7 +236,7 @@ export class DotAI {
       const files = await this.fs.readdir(this.historyDir);
       const sessionFiles = files
         .filter(file => file.endsWith('.jsonl'))
-        .sort(); // Chronological order (oldest first)
+        .sort(); // Chronological order (oldest first) - filenames contain timestamps
 
       for (const file of sessionFiles) {
         const sessionPath = join(this.historyDir, file);
@@ -277,7 +260,6 @@ export class DotAI {
           if (messages.length > 0) {
             sessions.push({
               sessionName,
-              timestamp: DotAI.parseSessionTimestamp(sessionName),
               messages,
             });
           }

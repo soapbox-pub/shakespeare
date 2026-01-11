@@ -115,7 +115,7 @@ export function ProjectTitleMenu({
           className="gap-2"
         >
           <MessageSquarePlus className="h-4 w-4" />
-          New Chat
+          {t('newChat')}
         </DropdownMenuItem>
 
         <DropdownMenuItem

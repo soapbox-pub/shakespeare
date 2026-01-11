@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useSessionManager } from '@/hooks/useSessionManager';
 import { useSessionSubscription } from '@/hooks/useSessionSubscription';
 import { useAISettings } from '@/hooks/useAISettings';
-import type { AIMessage, SessionBoundary } from '@/lib/SessionManager';
+import type { AIMessage, DisplayMessage } from '@/lib/SessionManager';
 import type OpenAI from 'openai';
 import type { Tool } from '@/lib/tools/Tool';
 
@@ -39,8 +39,8 @@ export function useAIChat({
 
   // Split session state into individual variables for efficient updates
   const [messages, setMessages] = useState<AIMessage[]>([]);
-  const [displayMessages, setDisplayMessages] = useState<AIMessage[]>([]);
-  const [sessionBoundaries, setSessionBoundaries] = useState<SessionBoundary[]>([]);
+  const [displayMessages, setDisplayMessages] = useState<DisplayMessage[]>([]);
+  const [sessionName, setSessionName] = useState<string>('');
   const [streamingMessage, setStreamingMessage] = useState<StreamingMessage | undefined>(undefined);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [totalCost, setTotalCost] = useState<number>(0);
@@ -56,7 +56,7 @@ export function useAIChat({
       // Initialize individual state variables from existing session
       setMessages([...session.messages]);
       setDisplayMessages([...session.displayMessages]);
-      setSessionBoundaries([...session.sessionBoundaries]);
+      setSessionName(session.sessionName);
       setStreamingMessage(session.streamingMessage ? { ...session.streamingMessage } : undefined);
       setIsLoading(session.isLoading);
       setTotalCost(session.totalCost || 0);
@@ -127,15 +127,9 @@ export function useAIChat({
     }
   }, [projectId]);
 
-  useSessionSubscription('displayMessageAdded', (updatedProjectId: string, message: AIMessage) => {
+  useSessionSubscription('displayMessageAdded', (updatedProjectId: string, message: DisplayMessage) => {
     if (updatedProjectId === projectId) {
       setDisplayMessages(prev => [...prev, message]);
-    }
-  }, [projectId]);
-
-  useSessionSubscription('sessionBoundaryAdded', (updatedProjectId: string, boundary: SessionBoundary) => {
-    if (updatedProjectId === projectId) {
-      setSessionBoundaries(prev => [...prev, boundary]);
     }
   }, [projectId]);
 
@@ -180,6 +174,12 @@ export function useAIChat({
   const startNewSession = useCallback(async () => {
     await sessionManager.startNewSession(projectId);
 
+    // Get the updated session to retrieve the new session name
+    const session = sessionManager.getSession(projectId);
+    if (session) {
+      setSessionName(session.sessionName);
+    }
+
     // Reset only AI prompt state (not display state which is handled via events)
     setMessages([]);
     setStreamingMessage(undefined);
@@ -196,7 +196,7 @@ export function useAIChat({
   return {
     messages,
     displayMessages,
-    sessionBoundaries,
+    sessionName,
     streamingMessage,
     isLoading,
     isLoadingHistory,

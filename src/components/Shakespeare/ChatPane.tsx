@@ -52,7 +52,7 @@ import { ChatInput } from '@/components/Shakespeare/ChatInput';
 import { buildMessageContent } from '@/lib/buildMessageContent';
 import { DotAI } from '@/lib/DotAI';
 import { parseProviderModel } from '@/lib/parseProviderModel';
-import { AIMessage, SessionBoundary } from '@/lib/SessionManager';
+import { AIMessage, DisplayMessage } from '@/lib/SessionManager';
 
 // Clean interfaces now handled by proper hooks
 
@@ -296,7 +296,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   const {
     messages,
     displayMessages,
-    sessionBoundaries,
+    sessionName,
     streamingMessage,
     isLoading: internalIsLoading,
     isLoadingHistory,
@@ -785,14 +785,18 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
           )}
 
           {!isLoadingHistory && displayMessages.map((message, index) => {
-            // Check if there's a session boundary at this index
-            const boundary = sessionBoundaries.find((b: SessionBoundary) => b.index === index);
+            // Get the current and last session IDs to derive boundaries
+            const currentSessionId = (message as DisplayMessage)._sessionId;
+            const prevSessionId = index > 0 ? (displayMessages[index - 1] as DisplayMessage)._sessionId : undefined;
+            const lastSessionId = displayMessages.length > 0 
+              ? (displayMessages[displayMessages.length - 1] as DisplayMessage)._sessionId 
+              : undefined;
             
-            // Determine if this message is from an older session (before the last boundary)
-            const lastBoundaryIndex = sessionBoundaries.length > 0 
-              ? sessionBoundaries[sessionBoundaries.length - 1].index 
-              : -1;
-            const isOlderSession = lastBoundaryIndex > 0 && index < lastBoundaryIndex;
+            // Show divider when session changes (not on first message)
+            const showDivider = index > 0 && currentSessionId !== prevSessionId;
+            
+            // Determine if this message is from an older session
+            const isOlderSession = currentSessionId !== lastSessionId;
             
             // Find the corresponding tool call for tool messages
             let toolCall: OpenAI.Chat.Completions.ChatCompletionMessageToolCall | undefined = undefined;
@@ -812,7 +816,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
                 key={`${index}-${message.role}-${typeof message.content === 'string' ? message.content.slice(0, 50) : 'content'}`}
                 className={isOlderSession ? 'opacity-65' : ''}
               >
-                {boundary && <SessionDivider />}
+                {showDivider && <SessionDivider />}
                 <AIMessageItem
                   message={message}
                   toolCall={toolCall}
@@ -821,12 +825,12 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
             );
           })}
 
-          {/* Trailing session divider - shown immediately when "New Chat" is clicked */}
-          {!isLoadingHistory && (() => {
-            const trailingBoundary = sessionBoundaries.find(
-              (b: SessionBoundary) => b.index === displayMessages.length
-            );
-            return trailingBoundary ? <SessionDivider key="trailing-divider" /> : null;
+          {/* Trailing session divider - shown when New Chat is clicked before sending a message */}
+          {!isLoadingHistory && displayMessages.length > 0 && (() => {
+            const lastSessionId = (displayMessages[displayMessages.length - 1] as DisplayMessage)._sessionId;
+            return sessionName && lastSessionId && sessionName !== lastSessionId ? (
+              <SessionDivider key="trailing-divider" />
+            ) : null;
           })()}
 
           {!isLoadingHistory && renderStreamingMessage()}

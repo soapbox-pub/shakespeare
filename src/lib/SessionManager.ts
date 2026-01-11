@@ -24,12 +24,10 @@ export type AIMessage = OpenAI.Chat.Completions.ChatCompletionMessageParam | {
   tool_calls?: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[];
 };
 
-/** Marks where a new chat session begins in the display messages */
-export interface SessionBoundary {
-  index: number;       // Index in displayMessages where this session starts
-  timestamp: Date;     // When the session was created
-  sessionName: string; // The session name
-}
+/** AIMessage with session tracking for UI display */
+export type DisplayMessage = AIMessage & {
+  _sessionId?: string; // Session identifier for grouping messages in UI
+};
 
 export interface SessionState {
   projectId: string;
@@ -37,8 +35,7 @@ export interface SessionState {
   customTools: Record<string, Tool<unknown>>;
   maxSteps?: number;
   messages: AIMessage[];                  // Current session messages (sent to AI)
-  displayMessages: AIMessage[];           // All messages from all sessions (for UI)
-  sessionBoundaries: SessionBoundary[];   // Where new sessions start in displayMessages
+  displayMessages: DisplayMessage[];      // All messages from all sessions (for UI, with _sessionId)
   streamingMessage?: {
     role: 'assistant';
     content: string;
@@ -59,8 +56,7 @@ export interface SessionManagerEvents {
   sessionCreated: (projectId: string) => void;
   sessionDeleted: (projectId: string) => void;
   messageAdded: (projectId: string, message: AIMessage) => void;
-  displayMessageAdded: (projectId: string, message: AIMessage) => void;
-  sessionBoundaryAdded: (projectId: string, boundary: SessionBoundary) => void;
+  displayMessageAdded: (projectId: string, message: DisplayMessage) => void;
   streamingUpdate: (projectId: string, content: string, reasoningContent?: string, toolCalls?: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[]) => void;
   loadingChanged: (projectId: string, isLoading: boolean) => void;
   costUpdated: (projectId: string, totalCost: number) => void;
@@ -117,8 +113,7 @@ export class SessionManager {
     maxSteps?: number
   ): Promise<SessionState> {
     const messages: AIMessage[] = [];
-    const displayMessages: AIMessage[] = [];
-    const sessionBoundaries: SessionBoundary[] = [];
+    const displayMessages: DisplayMessage[] = [];
     let sessionName = DotAI.generateSessionName();
     let lastFinishReason: string | null | undefined;
 
@@ -131,19 +126,15 @@ export class SessionManager {
       const allSessions = await dotAI.readAllSessionHistories();
       
       if (allSessions.length > 0) {
-        // Build displayMessages and sessionBoundaries from all sessions
+        // Build displayMessages with _sessionId annotations
         for (const session of allSessions) {
-          // Add boundary marker at the start of each session (except the first)
-          if (displayMessages.length > 0) {
-            sessionBoundaries.push({
-              index: displayMessages.length,
-              timestamp: session.timestamp,
-              sessionName: session.sessionName,
+          // Add all messages from this session with _sessionId annotation
+          for (const msg of session.messages) {
+            displayMessages.push({
+              ...msg as AIMessage,
+              _sessionId: session.sessionName,
             });
           }
-          
-          // Add all messages from this session to displayMessages
-          displayMessages.push(...session.messages as AIMessage[]);
         }
         
         // Current session messages come from the last session
@@ -171,7 +162,6 @@ export class SessionManager {
       ...this.sessions.get(projectId),
       messages,
       displayMessages,
-      sessionBoundaries,
       sessionName,
     };
 
@@ -185,7 +175,6 @@ export class SessionManager {
     if (!this.sessions.has(projectId)) {
       session.messages = messages;
       session.displayMessages = displayMessages;
-      session.sessionBoundaries = sessionBoundaries;
       session.sessionName = sessionName;
     }
 
@@ -232,14 +221,15 @@ export class SessionManager {
     // Add to current session messages (for AI prompts)
     session.messages.push(message);
     
-    // Also add to display messages (for UI)
-    session.displayMessages.push(message);
+    // Also add to display messages with session ID annotation (for UI)
+    const displayMessage: DisplayMessage = { ...message, _sessionId: session.sessionName };
+    session.displayMessages.push(displayMessage);
     
     session.lastActivity = new Date();
 
     await this.saveSessionHistory(projectId);
     this.emit('messageAdded', projectId, message);
-    this.emit('displayMessageAdded', projectId, message);
+    this.emit('displayMessageAdded', projectId, displayMessage);
   }
 
   /**
@@ -755,20 +745,8 @@ export class SessionManager {
 
     this.stopGeneration(projectId);
 
-    // Generate new session name and timestamp
+    // Generate new session name - new messages will automatically get this _sessionId
     const newSessionName = DotAI.generateSessionName();
-    const newTimestamp = DotAI.parseSessionTimestamp(newSessionName);
-    
-    // Add boundary marker if there are existing display messages
-    if (session.displayMessages.length > 0) {
-      const boundary: SessionBoundary = {
-        index: session.displayMessages.length,
-        timestamp: newTimestamp,
-        sessionName: newSessionName,
-      };
-      session.sessionBoundaries.push(boundary);
-      this.emit('sessionBoundaryAdded', projectId, boundary);
-    }
 
     // Clear only the AI prompt messages (not display messages)
     session.messages = [];

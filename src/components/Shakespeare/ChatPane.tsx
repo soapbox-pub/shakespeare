@@ -795,18 +795,15 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
           )}
 
           {!isLoadingHistory && displayMessages.map((message, index) => {
-            // Get the current and last session IDs to derive boundaries
-            const currentSessionId = (message as DisplayMessage)._sessionId;
-            const prevSessionId = index > 0 ? (displayMessages[index - 1] as DisplayMessage)._sessionId : undefined;
-            const lastSessionId = displayMessages.length > 0 
-              ? (displayMessages[displayMessages.length - 1] as DisplayMessage)._sessionId 
-              : undefined;
+            // Get the current message's session ID and compare to previous
+            const currentSessionId = (message as DisplayMessage).sessionId;
+            const prevSessionId = index > 0 ? (displayMessages[index - 1] as DisplayMessage).sessionId : undefined;
             
             // Show divider when session changes (not on first message)
             const showDivider = index > 0 && currentSessionId !== prevSessionId;
             
-            // Determine if this message is from an older session
-            const isOlderSession = currentSessionId !== lastSessionId;
+            // Dim messages from older sessions (compare against current active session)
+            const isOlderSession = currentSessionId !== sessionName;
             
             // Find the corresponding tool call for tool messages
             let toolCall: OpenAI.Chat.Completions.ChatCompletionMessageToolCall | undefined = undefined;
@@ -837,7 +834,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
 
           {/* Trailing session divider - shown when New Chat is clicked before sending a message */}
           {!isLoadingHistory && displayMessages.length > 0 && (() => {
-            const lastSessionId = (displayMessages[displayMessages.length - 1] as DisplayMessage)._sessionId;
+            const lastSessionId = (displayMessages[displayMessages.length - 1] as DisplayMessage).sessionId;
             return sessionName && lastSessionId && sessionName !== lastSessionId ? (
               <SessionDivider key="trailing-divider" />
             ) : null;

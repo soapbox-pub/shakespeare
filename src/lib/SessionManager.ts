@@ -26,7 +26,7 @@ export type AIMessage = OpenAI.Chat.Completions.ChatCompletionMessageParam | {
 
 /** AIMessage with session tracking for UI display */
 export type DisplayMessage = AIMessage & {
-  _sessionId?: string; // Session identifier for grouping messages in UI
+  sessionId?: string; // Session identifier for grouping messages in UI
 };
 
 export interface SessionState {
@@ -35,7 +35,7 @@ export interface SessionState {
   customTools: Record<string, Tool<unknown>>;
   maxSteps?: number;
   messages: AIMessage[];                  // Current session messages (sent to AI)
-  displayMessages: DisplayMessage[];      // All messages from all sessions (for UI, with _sessionId)
+  displayMessages: DisplayMessage[];      // All messages from all sessions (for UI, with sessionId)
   streamingMessage?: {
     role: 'assistant';
     content: string;
@@ -126,13 +126,13 @@ export class SessionManager {
       const allSessions = await dotAI.readAllSessionHistories();
       
       if (allSessions.length > 0) {
-        // Build displayMessages with _sessionId annotations
+        // Build displayMessages with sessionId annotations
         for (const session of allSessions) {
-          // Add all messages from this session with _sessionId annotation
+          // Add all messages from this session with sessionId annotation
           for (const msg of session.messages) {
             displayMessages.push({
               ...msg as AIMessage,
-              _sessionId: session.sessionName,
+              sessionId: session.sessionName,
             });
           }
         }
@@ -222,7 +222,7 @@ export class SessionManager {
     session.messages.push(message);
     
     // Also add to display messages with session ID annotation (for UI)
-    const displayMessage: DisplayMessage = { ...message, _sessionId: session.sessionName };
+    const displayMessage: DisplayMessage = { ...message, sessionId: session.sessionName };
     session.displayMessages.push(displayMessage);
     
     session.lastActivity = new Date();
@@ -745,7 +745,7 @@ export class SessionManager {
 
     this.stopGeneration(projectId);
 
-    // Generate new session name - new messages will automatically get this _sessionId
+    // Generate new session name - new messages will automatically get this sessionId
     const newSessionName = DotAI.generateSessionName();
 
     // Clear only the AI prompt messages (not display messages)

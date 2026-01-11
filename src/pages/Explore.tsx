@@ -236,6 +236,7 @@ export default function Explore() {
                     key={repo.id}
                     repo={repo}
                     authorMetadata={authorMetadataMap.get(repo.pubkey)}
+                    onTagClick={(tag) => setSearchQuery(tag)}
                   />
                 ))}
               </div>
@@ -306,6 +307,7 @@ export default function Explore() {
                     key={repo.id}
                     repo={repo}
                     authorMetadata={authorMetadataMap.get(repo.pubkey)}
+                    onTagClick={(tag) => setSearchQuery(tag)}
                   />
                 ))}
               </div>

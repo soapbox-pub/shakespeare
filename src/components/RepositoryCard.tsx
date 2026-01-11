@@ -36,13 +36,38 @@ import { Zap } from 'lucide-react';
 import type { Event } from 'nostr-tools';
 import type { NostrMetadata } from '@nostrify/nostrify';
 
+/**
+ * Formats a Unix timestamp to a relative time string (e.g., "1 hr.", "4 days", "3 wk.", "10 mo.", "5 yr.")
+ */
+function formatRelativeTime(timestamp: number): string {
+  const now = Math.floor(Date.now() / 1000);
+  const diff = now - timestamp;
+
+  const minutes = Math.floor(diff / 60);
+  const hours = Math.floor(diff / 3600);
+  const days = Math.floor(diff / 86400);
+  const weeks = Math.floor(diff / 604800);
+  const months = Math.floor(diff / 2592000); // ~30 days
+  const years = Math.floor(diff / 31536000); // ~365 days
+
+  if (years > 0) return `${years} yr.`;
+  if (months > 0) return `${months} mo.`;
+  if (weeks > 0) return `${weeks} wk.`;
+  if (days > 0) return `${days} days`;
+  if (hours > 0) return `${hours} hr.`;
+  if (minutes > 0) return `${minutes} min.`;
+  return 'just now';
+}
+
 interface RepositoryCardProps {
   repo: Repository;
   /** Pre-fetched author metadata to avoid individual fetches */
   authorMetadata?: NostrMetadata;
+  /** Callback when a tag is clicked - receives the tag value */
+  onTagClick?: (tag: string) => void;
 }
 
-function RepositoryCardInner({ repo, authorMetadata: preloadedMetadata }: RepositoryCardProps) {
+function RepositoryCardInner({ repo, authorMetadata: preloadedMetadata, onTagClick }: RepositoryCardProps) {
   // Only fetch author data if not preloaded
   const { data: authorData } = useAuthor(preloadedMetadata ? undefined : repo.pubkey);
   const metadata = preloadedMetadata ?? authorData?.metadata;
@@ -186,9 +211,14 @@ function RepositoryCardInner({ repo, authorMetadata: preloadedMetadata }: Reposi
         {/* Header with name and menu */}
         <div className="mb-4 flex items-start justify-between">
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-lg leading-tight mb-2 truncate">
-              {repo.name}
-            </h3>
+            <div className="flex items-end gap-2 mb-2">
+              <h3 className="font-semibold text-lg leading-tight truncate">
+                {repo.name}
+              </h3>
+              <span className="text-sm text-muted-foreground shrink-0">
+                {formatRelativeTime(repo.created_at)}
+              </span>
+            </div>
           </div>
           <div className="flex items-center -mt-1 -mr-2 shrink-0">
             {canZap && (
@@ -233,8 +263,8 @@ function RepositoryCardInner({ repo, authorMetadata: preloadedMetadata }: Reposi
 
         {/* Author */}
         <div className="mb-4">
-          <div className="flex items-center gap-3 text-sm text-muted-foreground">
-            <Avatar className="h-8 w-8">
+          <div className="flex items-center gap-3 text-sm">
+            <Avatar className="h-10 w-10">
               {profileImage && (
                 <AvatarImage src={profileImage} alt={displayName} />
               )}
@@ -242,7 +272,20 @@ function RepositoryCardInner({ repo, authorMetadata: preloadedMetadata }: Reposi
                 {displayName.slice(0, 2).toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <span className="truncate font-medium">{displayName}</span>
+            <div className="flex items-center gap-2 min-w-0 flex-1">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onTagClick?.(displayName);
+                }}
+                className="truncate font-medium text-base text-foreground hover:text-primary hover:underline transition-colors text-left"
+              >
+                {displayName}
+              </button>
+              {metadata?.nip05 && (
+                <span className="text-sm text-muted-foreground shrink-0">{metadata.nip05}</span>
+              )}
+            </div>
           </div>
         </div>
 
@@ -257,14 +300,21 @@ function RepositoryCardInner({ repo, authorMetadata: preloadedMetadata }: Reposi
         {repo.repoTags.length > 0 && (
           <div className="flex flex-wrap gap-1 mb-4">
             {repo.repoTags.slice(0, 3).map((tag, index) => (
-              <Badge key={index} variant="secondary" className="text-xs">
-                {tag}
-              </Badge>
+              <button
+                key={index}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onTagClick?.(tag);
+                }}
+                className="text-sm text-primary hover:text-primary/80 hover:underline transition-colors font-medium"
+              >
+                #{tag}
+              </button>
             ))}
             {repo.repoTags.length > 3 && (
-              <Badge variant="secondary" className="text-xs">
+              <span className="text-sm text-muted-foreground">
                 +{repo.repoTags.length - 3}
-              </Badge>
+              </span>
             )}
           </div>
         )}

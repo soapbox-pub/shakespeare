@@ -439,7 +439,11 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   // Function to scroll to bottom
   const scrollToBottom = useCallback(() => {
     if (scrollAreaRef.current) {
-      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+      requestAnimationFrame(() => {
+        if (scrollAreaRef.current) {
+          scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+        }
+      });
     }
   }, []);
 
@@ -492,17 +496,20 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
 
   useEffect(() => {
     if (scrollAreaRef.current && (messages || streamingMessage)) {
-      // Check if user was already at or near the bottom (within 100px threshold)
-      const threshold = 100;
       const container = scrollAreaRef.current;
+      const lastMessage = messages[messages.length - 1];
+      const isUserMessage = lastMessage?.role === 'user';
+      
+      // Check if user was already near the bottom (within 100px threshold)
+      const threshold = 100;
       const isNearBottom = container.scrollTop + container.clientHeight >= container.scrollHeight - threshold;
 
-      // Only auto-scroll if user was already near the bottom
-      if (isNearBottom) {
-        container.scrollTop = container.scrollHeight;
+      // Scroll to bottom if user sent a message or was already near the bottom
+      if (isUserMessage || isNearBottom) {
+        scrollToBottom();
       }
     }
-  }, [messages, streamingMessage, isLoading]);
+  }, [messages, streamingMessage, isLoading, scrollToBottom]);
 
   // Scroll to bottom when first visiting a project (including page refresh)
   useEffect(() => {
@@ -580,8 +587,11 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     // Add model to recently used when sending a message
     addRecentlyUsedModel(modelToUse);
 
+    // Scroll to bottom when user sends a message
+    scrollToBottom();
+
     await sendMessage(messageContent, modelToUse);
-  }, [addRecentlyUsedModel, fs, isConfigured, isLoading, providerModel, sendMessage, tmpPath]);
+  }, [addRecentlyUsedModel, fs, isConfigured, isLoading, providerModel, sendMessage, tmpPath, scrollToBottom]);
 
   // Handle textarea focus - show onboarding if not configured
   const handleTextareaFocus = useCallback(() => {

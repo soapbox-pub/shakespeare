@@ -36,6 +36,8 @@ export interface SessionState {
   maxSteps?: number;
   messages: AIMessage[];                  // Current session messages (sent to AI)
   displayMessages: DisplayMessage[];      // All messages from all sessions (for UI, with sessionId)
+  availableSessionNames: string[];        // All session names (for lazy loading)
+  loadedSessionCount: number;             // How many sessions loaded from the end
   streamingMessage?: {
     role: 'assistant';
     content: string;
@@ -43,6 +45,7 @@ export interface SessionState {
     tool_calls?: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[];
   };
   isLoading: boolean;
+  isLoadingMoreHistory: boolean;          // Loading older sessions
   sessionName: string;
   lastActivity: Date;
   abortController?: AbortController;
@@ -57,8 +60,10 @@ export interface SessionManagerEvents {
   sessionDeleted: (projectId: string) => void;
   messageAdded: (projectId: string, message: AIMessage) => void;
   displayMessageAdded: (projectId: string, message: DisplayMessage) => void;
+  displayMessagesPrepended: (projectId: string, messages: DisplayMessage[]) => void;
   streamingUpdate: (projectId: string, content: string, reasoningContent?: string, toolCalls?: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[]) => void;
   loadingChanged: (projectId: string, isLoading: boolean) => void;
+  loadingMoreHistoryChanged: (projectId: string, isLoading: boolean) => void;
   costUpdated: (projectId: string, totalCost: number) => void;
   contextUsageUpdated: (projectId: string, inputTokens: number) => void;
   fileChanged: (projectId: string, filePath: string) => void;
@@ -104,7 +109,7 @@ export class SessionManager {
   }
 
   /**
-   * Create a new session for a project
+   * Create a new session for a project (lazy loading - only loads most recent session)
    */
   async loadSession(
     projectId: string,
@@ -115,32 +120,36 @@ export class SessionManager {
     const messages: AIMessage[] = [];
     const displayMessages: DisplayMessage[] = [];
     let sessionName = DotAI.generateSessionName();
+    let availableSessionNames: string[] = [];
+    let loadedSessionCount = 0;
     let lastFinishReason: string | null | undefined;
 
-    // Try to load existing history
+    // Try to load existing history (lazy - only load last session)
     try {
       const config = this.getConfig();
       const dotAI = new DotAI(this.fs, `${config.fsPathProjects}/${projectId}`);
       
-      // Load all session histories for display
-      const allSessions = await dotAI.readAllSessionHistories();
+      // Get all available session names (fast - no content loading)
+      availableSessionNames = await dotAI.listSessionNames();
       
-      if (allSessions.length > 0) {
-        // Build displayMessages with sessionId annotations
-        for (const session of allSessions) {
-          // Add all messages from this session with sessionId annotation
-          for (const msg of session.messages) {
+      if (availableSessionNames.length > 0) {
+        // Only load the most recent session
+        const lastSessionName = availableSessionNames[availableSessionNames.length - 1];
+        const lastSessionMessages = await dotAI.readSessionHistory(lastSessionName);
+        
+        if (lastSessionMessages.length > 0) {
+          // Add messages with sessionId annotation
+          for (const msg of lastSessionMessages) {
             displayMessages.push({
               ...msg as AIMessage,
-              sessionId: session.sessionName,
+              sessionId: lastSessionName,
             });
           }
+          
+          messages.push(...lastSessionMessages as AIMessage[]);
+          sessionName = lastSessionName;
+          loadedSessionCount = 1;
         }
-        
-        // Current session messages come from the last session
-        const lastSession = allSessions[allSessions.length - 1];
-        messages.push(...lastSession.messages as AIMessage[]);
-        sessionName = lastSession.sessionName;
       }
 
       // Load last finish reason
@@ -155,6 +164,7 @@ export class SessionManager {
       customTools,
       maxSteps,
       isLoading: false,
+      isLoadingMoreHistory: false,
       lastActivity: new Date(),
       totalCost: 0,
       lastInputTokens: 0,
@@ -162,6 +172,8 @@ export class SessionManager {
       ...this.sessions.get(projectId),
       messages,
       displayMessages,
+      availableSessionNames,
+      loadedSessionCount,
       sessionName,
     };
 
@@ -175,6 +187,8 @@ export class SessionManager {
     if (!this.sessions.has(projectId)) {
       session.messages = messages;
       session.displayMessages = displayMessages;
+      session.availableSessionNames = availableSessionNames;
+      session.loadedSessionCount = loadedSessionCount;
       session.sessionName = sessionName;
     }
 
@@ -230,6 +244,57 @@ export class SessionManager {
     await this.saveSessionHistory(projectId);
     this.emit('messageAdded', projectId, message);
     this.emit('displayMessageAdded', projectId, displayMessage);
+  }
+
+  /**
+   * Check if there are more historical sessions to load
+   */
+  hasMoreHistory(projectId: string): boolean {
+    const session = this.sessions.get(projectId);
+    if (!session) return false;
+    return session.loadedSessionCount < session.availableSessionNames.length;
+  }
+
+  /**
+   * Load the next older session and prepend to displayMessages
+   */
+  async loadOlderSession(projectId: string): Promise<void> {
+    const session = this.sessions.get(projectId);
+    if (!session || !this.hasMoreHistory(projectId) || session.isLoadingMoreHistory) return;
+
+    session.isLoadingMoreHistory = true;
+    this.emit('loadingMoreHistoryChanged', projectId, true);
+
+    try {
+      const config = this.getConfig();
+      const dotAI = new DotAI(this.fs, `${config.fsPathProjects}/${projectId}`);
+
+      // Get the next older session (counting from the end)
+      const nextIndex = session.availableSessionNames.length - session.loadedSessionCount - 1;
+      if (nextIndex < 0) return;
+
+      const olderSessionName = session.availableSessionNames[nextIndex];
+      const olderMessages = await dotAI.readSessionHistory(olderSessionName);
+
+      if (olderMessages.length > 0) {
+        // Create display messages with sessionId
+        const newDisplayMessages: DisplayMessage[] = olderMessages.map(msg => ({
+          ...msg as AIMessage,
+          sessionId: olderSessionName,
+        }));
+
+        // Prepend to displayMessages
+        session.displayMessages = [...newDisplayMessages, ...session.displayMessages];
+        session.loadedSessionCount++;
+
+        this.emit('displayMessagesPrepended', projectId, newDisplayMessages);
+      }
+    } catch (error) {
+      console.warn('Failed to load older session:', error);
+    } finally {
+      session.isLoadingMoreHistory = false;
+      this.emit('loadingMoreHistoryChanged', projectId, false);
+    }
   }
 
   /**

@@ -47,6 +47,8 @@ export function useAIChat({
   const [lastInputTokens, setLastInputTokens] = useState<number>(0);
   const [lastFinishReason, setLastFinishReason] = useState<string | null>(null);
   const [isLoadingHistory, setIsLoadingHistory] = useState<boolean>(true);
+  const [hasMoreHistory, setHasMoreHistory] = useState<boolean>(false);
+  const [isLoadingMoreHistory, setIsLoadingMoreHistory] = useState<boolean>(false);
 
   const initSession = useCallback(async () => {
     setIsLoadingHistory(true);
@@ -62,6 +64,8 @@ export function useAIChat({
       setTotalCost(session.totalCost || 0);
       setLastInputTokens(session.lastInputTokens || 0);
       setLastFinishReason(session.lastFinishReason ?? null);
+      setHasMoreHistory(sessionManager.hasMoreHistory(projectId));
+      setIsLoadingMoreHistory(session.isLoadingMoreHistory || false);
     } finally {
       setIsLoadingHistory(false);
     }
@@ -133,6 +137,19 @@ export function useAIChat({
     }
   }, [projectId]);
 
+  useSessionSubscription('displayMessagesPrepended', (updatedProjectId: string, newMessages: DisplayMessage[]) => {
+    if (updatedProjectId === projectId) {
+      setDisplayMessages(prev => [...newMessages, ...prev]);
+      setHasMoreHistory(sessionManager.hasMoreHistory(projectId));
+    }
+  }, [projectId, sessionManager]);
+
+  useSessionSubscription('loadingMoreHistoryChanged', (updatedProjectId: string, loading: boolean) => {
+    if (updatedProjectId === projectId) {
+      setIsLoadingMoreHistory(loading);
+    }
+  }, [projectId]);
+
   // Actions
   const sendMessage = useCallback(async (
     content: string | Array<OpenAI.Chat.Completions.ChatCompletionContentPartText | OpenAI.Chat.Completions.ChatCompletionContentPartImage>,
@@ -193,6 +210,10 @@ export function useAIChat({
     await startNewSession();
   }, [startNewSession]);
 
+  const loadMoreHistory = useCallback(async () => {
+    await sessionManager.loadOlderSession(projectId);
+  }, [projectId, sessionManager]);
+
   return {
     messages,
     displayMessages,
@@ -200,6 +221,8 @@ export function useAIChat({
     streamingMessage,
     isLoading,
     isLoadingHistory,
+    hasMoreHistory,
+    isLoadingMoreHistory,
     totalCost,
     lastInputTokens,
     lastFinishReason,
@@ -209,6 +232,7 @@ export function useAIChat({
     clearMessages,
     startNewSession,
     addMessage,
+    loadMoreHistory,
     isConfigured,
     projectId
   };

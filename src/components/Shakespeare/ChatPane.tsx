@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { OnboardingDialog } from '@/components/OnboardingDialog';
-import { ChevronDown, Play } from 'lucide-react';
+import { ChevronDown, ChevronUp, Play } from 'lucide-react';
 import { useAISettings } from '@/hooks/useAISettings';
 import { useFS } from '@/hooks/useFS';
 import { useFSPaths } from '@/hooks/useFSPaths';
@@ -300,6 +300,8 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     streamingMessage,
     isLoading: internalIsLoading,
     isLoadingHistory,
+    hasMoreHistory,
+    isLoadingMoreHistory,
     totalCost,
     lastInputTokens,
     lastFinishReason,
@@ -308,6 +310,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     startGeneration,
     stopGeneration,
     startNewSession: internalStartNewSession,
+    loadMoreHistory,
   } = useAIChat({
     projectId,
     tools,
@@ -791,6 +794,32 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
                   </div>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Load older messages button */}
+          {!isLoadingHistory && hasMoreHistory && (
+            <div className="flex justify-center py-3">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={async () => {
+                  const container = scrollAreaRef.current;
+                  const oldScrollHeight = container?.scrollHeight || 0;
+                  await loadMoreHistory();
+                  // Preserve scroll position after prepending content
+                  if (container) {
+                    requestAnimationFrame(() => {
+                      container.scrollTop += container.scrollHeight - oldScrollHeight;
+                    });
+                  }
+                }}
+                disabled={isLoadingMoreHistory}
+                className="gap-2 text-muted-foreground"
+              >
+                <ChevronUp className="h-4 w-4" />
+                {isLoadingMoreHistory ? t('loading') : t('loadOlderMessages', 'Load older messages')}
+              </Button>
             </div>
           )}
 

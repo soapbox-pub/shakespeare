@@ -216,125 +216,50 @@ export class DotAI {
   }
 
   /**
-   * Read all session histories sorted chronologically by filename
-   * @returns Array of session histories with messages
+   * List all session names sorted chronologically (oldest first)
+   * Fast operation - does not load message content
+   * @returns Array of session names (filenames without .jsonl extension)
    */
-  async readAllSessionHistories(): Promise<Array<{
-    sessionName: string;
-    messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[];
-  }>> {
-    const sessions: Array<{
-      sessionName: string;
-      messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[];
-    }> = [];
-
+  async listSessionNames(): Promise<string[]> {
     try {
       if (!(await this.historyDirExists())) {
-        return sessions;
+        return [];
       }
 
       const files = await this.fs.readdir(this.historyDir);
-      const sessionFiles = files
+      return files
         .filter(file => file.endsWith('.jsonl'))
+        .map(file => file.replace('.jsonl', ''))
         .sort(); // Chronological order (oldest first) - filenames contain timestamps
-
-      for (const file of sessionFiles) {
-        const sessionPath = join(this.historyDir, file);
-        const sessionName = file.replace('.jsonl', '');
-
-        try {
-          const content = await this.fs.readFile(sessionPath, 'utf8');
-          const lines = content.trim().split('\n').filter(line => line.trim());
-          const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [];
-
-          for (const line of lines) {
-            try {
-              const message = JSON.parse(line) as OpenAI.Chat.Completions.ChatCompletionMessageParam;
-              messages.push(message);
-            } catch {
-              // Skip malformed lines
-            }
-          }
-
-          // Only include sessions with messages
-          if (messages.length > 0) {
-            sessions.push({
-              sessionName,
-              messages,
-            });
-          }
-        } catch {
-          // Skip unreadable files
-        }
-      }
-    } catch (error) {
-      console.warn('Failed to read all session histories:', error);
+    } catch {
+      return [];
     }
-
-    return sessions;
   }
 
   /**
-   * Read the most recent session history
-   * @returns Object containing messages array and session name, or null if no history found
+   * Read messages for a single session
+   * @param sessionName The session name (filename without .jsonl)
+   * @returns Array of messages, or empty array if session not found
    */
-  async readLastSessionHistory(): Promise<{
-    messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[];
-    sessionName: string;
-  } | null> {
+  async readSessionHistory(sessionName: string): Promise<OpenAI.Chat.Completions.ChatCompletionMessageParam[]> {
     try {
-      // Check if history directory exists
-      if (!(await this.historyDirExists())) {
-        return null;
-      }
+      const sessionPath = join(this.historyDir, sessionName + '.jsonl');
+      const content = await this.fs.readFile(sessionPath, 'utf8');
+      const lines = content.trim().split('\n').filter(line => line.trim());
+      const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [];
 
-      // Find the most recent session file
-      try {
-        const files = await this.fs.readdir(this.historyDir);
-        const sessionFiles = files
-          .filter(file => file.endsWith('.jsonl'))
-          .sort()
-          .reverse(); // Most recent first
-
-        if (sessionFiles.length === 0) {
-          return null;
-        }
-
-        const latestSessionFile = sessionFiles[0];
-        const sessionPath = join(this.historyDir, latestSessionFile);
-
+      for (const line of lines) {
         try {
-          const content = await this.fs.readFile(sessionPath, 'utf8');
-          const lines = content.trim().split('\n').filter(line => line.trim());
-          const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [];
-
-          for (const line of lines) {
-            try {
-              const message = JSON.parse(line) as OpenAI.Chat.Completions.ChatCompletionMessageParam;
-              messages.push(message);
-            } catch (parseError) {
-              console.warn('Failed to parse message from history:', parseError);
-            }
-          }
-
-          // Return session name without .jsonl extension
-          const sessionName = latestSessionFile.replace('.jsonl', '');
-
-          return {
-            messages,
-            sessionName
-          };
-        } catch (readError) {
-          console.warn('Failed to read session file:', readError);
-          return null;
+          const message = JSON.parse(line) as OpenAI.Chat.Completions.ChatCompletionMessageParam;
+          messages.push(message);
+        } catch {
+          // Skip malformed lines
         }
-      } catch (readdirError) {
-        console.warn('Failed to read history directory:', readdirError);
-        return null;
       }
-    } catch (error) {
-      console.warn('Failed to read last session history:', error);
-      return null;
+
+      return messages;
+    } catch {
+      return [];
     }
   }
 

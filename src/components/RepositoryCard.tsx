@@ -35,29 +35,7 @@ import { ZapDialog } from '@/components/ZapDialog';
 import { Zap } from 'lucide-react';
 import type { Event } from 'nostr-tools';
 import type { NostrMetadata } from '@nostrify/nostrify';
-
-/**
- * Formats a Unix timestamp to a relative time string (e.g., "1 hr.", "4 days", "3 wk.", "10 mo.", "5 yr.")
- */
-function formatRelativeTime(timestamp: number): string {
-  const now = Math.floor(Date.now() / 1000);
-  const diff = now - timestamp;
-
-  const minutes = Math.floor(diff / 60);
-  const hours = Math.floor(diff / 3600);
-  const days = Math.floor(diff / 86400);
-  const weeks = Math.floor(diff / 604800);
-  const months = Math.floor(diff / 2592000); // ~30 days
-  const years = Math.floor(diff / 31536000); // ~365 days
-
-  if (years > 0) return `${years} yr.`;
-  if (months > 0) return `${months} mo.`;
-  if (weeks > 0) return `${weeks} wk.`;
-  if (days > 0) return `${days} days`;
-  if (hours > 0) return `${hours} hr.`;
-  if (minutes > 0) return `${minutes} min.`;
-  return 'just now';
-}
+import { formatRelativeTime } from '@/lib/utils';
 
 interface RepositoryCardProps {
   repo: Repository;

@@ -53,7 +53,7 @@ export function NetlifyDeployForm({
 
     try {
       const url = `${baseURL}/sites`;
-      const targetUrl = corsProxy ? proxyUrl(corsProxy, url) : url;
+      const targetUrl = corsProxy ? proxyUrl({ template: corsProxy, url }) : url;
 
       const response = await fetch(targetUrl, {
         headers: {

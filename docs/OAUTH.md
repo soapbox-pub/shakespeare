@@ -284,7 +284,7 @@ export function useNewProviderOAuth() {
     redirectUri: window.location.origin + '/oauth/newprovider',
     usePKCE: false, // Set to true if provider supports PKCE
     getUserInfo: async (accessToken: string, corsProxy: string) => {
-      const userUrl = proxyUrl(corsProxy, 'https://api.provider.com/user');
+      const userUrl = proxyUrl({ template: corsProxy, url: 'https://api.provider.com/user' });
       const userResponse = await fetch(userUrl, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,

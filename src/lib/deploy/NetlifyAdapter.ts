@@ -89,7 +89,7 @@ export class NetlifyAdapter implements DeployAdapter {
 
   private async createSite(name: string): Promise<NetlifySite> {
     const url = `${this.baseURL}/sites`;
-    const targetUrl = this.corsProxy ? proxyUrl(this.corsProxy, url) : url;
+    const targetUrl = this.corsProxy ? proxyUrl({ template: this.corsProxy, url }) : url;
 
     const response = await fetch(targetUrl, {
       method: 'POST',
@@ -113,7 +113,7 @@ export class NetlifyAdapter implements DeployAdapter {
 
   private async getSite(siteId: string): Promise<NetlifySite> {
     const url = `${this.baseURL}/sites/${siteId}`;
-    const targetUrl = this.corsProxy ? proxyUrl(this.corsProxy, url) : url;
+    const targetUrl = this.corsProxy ? proxyUrl({ template: this.corsProxy, url }) : url;
 
     const response = await fetch(targetUrl, {
       method: 'GET',
@@ -132,7 +132,7 @@ export class NetlifyAdapter implements DeployAdapter {
 
   private async triggerDeploy(siteId: string, zipBlob: Blob): Promise<NetlifyBuildResponse> {
     const url = `${this.baseURL}/sites/${siteId}/deploys`;
-    const targetUrl = this.corsProxy ? proxyUrl(this.corsProxy, url) : url;
+    const targetUrl = this.corsProxy ? proxyUrl({ template: this.corsProxy, url }) : url;
 
     const response = await fetch(targetUrl, {
       method: 'POST',

@@ -34,7 +34,7 @@ export function useVercelOAuth() {
     redirectUri: window.location.origin + '/oauth/vercel',
     usePKCE: false, // Vercel doesn't require PKCE
     getUserInfo: async (accessToken: string, corsProxy: string) => {
-      const userUrl = proxyUrl(corsProxy, 'https://api.vercel.com/v2/user');
+      const userUrl = proxyUrl({ template: corsProxy, url: 'https://api.vercel.com/v2/user' });
       const userResponse = await fetch(userUrl, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,

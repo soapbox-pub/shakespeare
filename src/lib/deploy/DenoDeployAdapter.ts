@@ -96,7 +96,7 @@ export class DenoDeployAdapter implements DeployAdapter {
 
   private async findProject(projectName: string): Promise<Project | null> {
     const url = `${this.baseURL}/organizations/${this.organizationId}/projects?q=${encodeURIComponent(projectName)}`;
-    const targetUrl = this.corsProxy ? proxyUrl(this.corsProxy, url) : url;
+    const targetUrl = this.corsProxy ? proxyUrl({ template: this.corsProxy, url }) : url;
 
     const response = await fetch(targetUrl, {
       method: 'GET',
@@ -116,7 +116,7 @@ export class DenoDeployAdapter implements DeployAdapter {
 
   private async createProject(projectName: string): Promise<Project> {
     const url = `${this.baseURL}/organizations/${this.organizationId}/projects`;
-    const targetUrl = this.corsProxy ? proxyUrl(this.corsProxy, url) : url;
+    const targetUrl = this.corsProxy ? proxyUrl({ template: this.corsProxy, url }) : url;
 
     const response = await fetch(targetUrl, {
       method: 'POST',
@@ -143,7 +143,7 @@ export class DenoDeployAdapter implements DeployAdapter {
     domain: string
   ): Promise<Deployment> {
     const url = `${this.baseURL}/projects/${projectId}/deployments`;
-    const targetUrl = this.corsProxy ? proxyUrl(this.corsProxy, url) : url;
+    const targetUrl = this.corsProxy ? proxyUrl({ template: this.corsProxy, url }) : url;
 
     // Create a minimal server script that serves static files
     // For static sites, we use a simple file server entry point

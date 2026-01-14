@@ -30,7 +30,7 @@ export function useGitHubOAuth() {
     redirectUri: window.location.origin + '/oauth/github',
     usePKCE: true, // GitHub supports PKCE
     getUserInfo: async (accessToken: string, corsProxy: string) => {
-      const userUrl = proxyUrl(corsProxy, 'https://api.github.com/user');
+      const userUrl = proxyUrl({ template: corsProxy, url: 'https://api.github.com/user' });
       const userResponse = await fetch(userUrl, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,

@@ -1115,7 +1115,7 @@ class GitHttp implements HttpClient {
     const url = new URL(request.url);
 
     const target = this.proxy
-      ? proxyUrl(this.proxy, url)
+      ? proxyUrl({ template: this.proxy, url })
       : url.href;
 
     const init: RequestInit = {

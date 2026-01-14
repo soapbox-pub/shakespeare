@@ -1,8 +1,13 @@
 import UriTemplate from 'uri-templates';
 
-export function proxyUrl(template: string, url: string | URL): string {
-  const u = new URL(url);
-  return UriTemplate(template).fill({
+export interface ProxyUrlOpts {
+  template: string;
+  url: string | URL;
+}
+
+export function proxyUrl(opts: ProxyUrlOpts): string {
+  const u = new URL(opts.url);
+  return UriTemplate(opts.template).fill({
     href: u.href,
     origin: u.origin,
     protocol: u.protocol,

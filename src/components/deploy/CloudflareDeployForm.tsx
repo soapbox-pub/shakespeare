@@ -63,10 +63,10 @@ export function CloudflareDeployForm({
       const workersUrl = `${baseURL}/accounts/${accountId}/workers/scripts`;
 
       const [subdomainResponse, workersResponse] = await Promise.all([
-        fetch(corsProxy ? proxyUrl(corsProxy, subdomainUrl) : subdomainUrl, {
+        fetch(corsProxy ? proxyUrl({ template: corsProxy, url: subdomainUrl }) : subdomainUrl, {
           headers: { 'Authorization': `Bearer ${apiKey}` },
         }),
-        fetch(corsProxy ? proxyUrl(corsProxy, workersUrl) : workersUrl, {
+        fetch(corsProxy ? proxyUrl({ template: corsProxy, url: workersUrl }) : workersUrl, {
           headers: { 'Authorization': `Bearer ${apiKey}` },
         }),
       ]);

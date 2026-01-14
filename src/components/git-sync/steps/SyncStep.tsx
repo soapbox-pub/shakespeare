@@ -154,7 +154,7 @@ export function SyncStep({ projectId, remoteUrl }: SyncStepProps) {
 
     if (url.protocol === 'nostr:') {
       const nostrUri = await NostrURI.parse(url.href);
-      return ngitWebUrl(config.ngitWebUrl, nostrUri);
+      return ngitWebUrl({ template: config.ngitWebUrl, nostrURI: nostrUri });
     }
 
     return null;

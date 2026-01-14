@@ -2,20 +2,26 @@ import UriTemplate from 'uri-templates';
 import { nip19 } from 'nostr-tools';
 import { NostrURI } from './NostrURI';
 
+export interface NgitWebUrlOpts {
+  template: string;
+  nostrURI: NostrURI;
+}
+
 /**
  * Generate a Nostr Git web URL from a template and Nostr URI
- * @param template - URL template with placeholders like {naddr}, {npub}, {pubkey}, {identifier}
- * @param nostrURI - The Nostr URI containing pubkey, identifier, and optional relay
+ * @param opts - Options object
+ * @param opts.template - URL template with placeholders like {naddr}, {npub}, {pubkey}, {identifier}
+ * @param opts.nostrURI - The Nostr URI containing pubkey, identifier, and optional relay
  * @returns The hydrated web URL
  */
-export function ngitWebUrl(template: string, nostrURI: NostrURI): string {
-  const naddr = nostrURI.toNaddr();
-  const npub = nip19.npubEncode(nostrURI.pubkey);
+export function ngitWebUrl(opts: NgitWebUrlOpts): string {
+  const naddr = opts.nostrURI.toNaddr();
+  const npub = nip19.npubEncode(opts.nostrURI.pubkey);
 
-  return UriTemplate(template).fill({
+  return UriTemplate(opts.template).fill({
     naddr,
     npub,
-    pubkey: nostrURI.pubkey,
-    identifier: nostrURI.identifier,
+    pubkey: opts.nostrURI.pubkey,
+    identifier: opts.nostrURI.identifier,
   });
 }

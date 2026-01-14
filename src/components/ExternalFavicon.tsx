@@ -36,7 +36,7 @@ export function ExternalFavicon({
       parsedUrl.hostname = parsedUrl.hostname.replace(/^(ai\.|api\.)/, '');
 
       // Normalize the URL to ensure it has a protocol
-      return faviconUrl(config.faviconUrl, parsedUrl);
+      return faviconUrl({ template: config.faviconUrl, url: parsedUrl });
     } catch {
       return;
     }

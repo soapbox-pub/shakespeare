@@ -66,7 +66,7 @@ export class CurlCommand implements ShellCommand {
 
       // Proxy the URL through configured CorsProxy
       const originalUrl = url.toString();
-      const proxiedUrl = proxyUrl(this.corsProxy, originalUrl);
+      const proxiedUrl = proxyUrl({ template: this.corsProxy, url: originalUrl });
 
       // Prepare request
       const requestInit: RequestInit = {

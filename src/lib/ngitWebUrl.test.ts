@@ -9,7 +9,7 @@ describe('ngitWebUrl', () => {
     const identifier = 'my-repo';
     const nostrURI = new NostrURI({ pubkey, identifier });
 
-    const result = ngitWebUrl(template, nostrURI);
+    const result = ngitWebUrl({ template, nostrURI });
 
     expect(result).toMatch(/^https:\/\/nostrhub\.io\/naddr1/);
   });
@@ -20,7 +20,7 @@ describe('ngitWebUrl', () => {
     const identifier = 'my-repo';
     const nostrURI = new NostrURI({ pubkey, identifier });
 
-    const result = ngitWebUrl(template, nostrURI);
+    const result = ngitWebUrl({ template, nostrURI });
 
     expect(result).toMatch(/^https:\/\/example\.com\/npub1/);
   });
@@ -31,7 +31,7 @@ describe('ngitWebUrl', () => {
     const identifier = 'my-repo';
     const nostrURI = new NostrURI({ pubkey, identifier });
 
-    const result = ngitWebUrl(template, nostrURI);
+    const result = ngitWebUrl({ template, nostrURI });
 
     expect(result).toBe(`https://example.com/${pubkey}`);
   });
@@ -42,7 +42,7 @@ describe('ngitWebUrl', () => {
     const identifier = 'my-repo';
     const nostrURI = new NostrURI({ pubkey, identifier });
 
-    const result = ngitWebUrl(template, nostrURI);
+    const result = ngitWebUrl({ template, nostrURI });
 
     expect(result).toBe('https://example.com/my-repo');
   });
@@ -53,7 +53,7 @@ describe('ngitWebUrl', () => {
     const identifier = 'my-repo';
     const nostrURI = new NostrURI({ pubkey, identifier });
 
-    const result = ngitWebUrl(template, nostrURI);
+    const result = ngitWebUrl({ template, nostrURI });
 
     expect(result).toMatch(/^https:\/\/example\.com\/npub1[^/]+\/my-repo$/);
   });
@@ -65,7 +65,7 @@ describe('ngitWebUrl', () => {
     const relay = 'wss://relay.example.com/';
     const nostrURI = new NostrURI({ pubkey, identifier, relay });
 
-    const result = ngitWebUrl(template, nostrURI);
+    const result = ngitWebUrl({ template, nostrURI });
 
     // The naddr should be longer when it includes relay information
     expect(result).toMatch(/^https:\/\/nostrhub\.io\/naddr1/);

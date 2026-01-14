@@ -140,7 +140,7 @@ export class CloudflareAdapter implements DeployAdapter {
 
   private async getWorkersSubdomain(): Promise<string> {
     const url = `${this.baseURL}/accounts/${this.accountId}/workers/subdomain`;
-    const targetUrl = this.corsProxy ? proxyUrl(this.corsProxy, url) : url;
+    const targetUrl = this.corsProxy ? proxyUrl({ template: this.corsProxy, url }) : url;
 
     const response = await fetch(targetUrl, {
       method: 'GET',
@@ -160,7 +160,7 @@ export class CloudflareAdapter implements DeployAdapter {
 
   private async enableWorkersDevSubdomain(scriptName: string): Promise<void> {
     const url = `${this.baseURL}/accounts/${this.accountId}/workers/scripts/${scriptName}/subdomain`;
-    const targetUrl = this.corsProxy ? proxyUrl(this.corsProxy, url) : url;
+    const targetUrl = this.corsProxy ? proxyUrl({ template: this.corsProxy, url }) : url;
 
     const response = await fetch(targetUrl, {
       method: 'POST',
@@ -185,7 +185,7 @@ export class CloudflareAdapter implements DeployAdapter {
     manifest: AssetManifest
   ): Promise<InitializeAssetsResponse> {
     const url = `${this.baseURL}/accounts/${this.accountId}/workers/scripts/${scriptName}/assets-upload-session`;
-    const targetUrl = this.corsProxy ? proxyUrl(this.corsProxy, url) : url;
+    const targetUrl = this.corsProxy ? proxyUrl({ template: this.corsProxy, url }) : url;
 
     const response = await fetch(targetUrl, {
       method: 'POST',
@@ -211,7 +211,7 @@ export class CloudflareAdapter implements DeployAdapter {
     hashToFile: Map<string, { path: string; info: FileInfo }>
   ): Promise<UploadResponse> {
     const url = `${this.baseURL}/accounts/${this.accountId}/workers/assets/upload?base64=true`;
-    const targetUrl = this.corsProxy ? proxyUrl(this.corsProxy, url) : url;
+    const targetUrl = this.corsProxy ? proxyUrl({ template: this.corsProxy, url }) : url;
 
     const formData = new FormData();
 
@@ -251,7 +251,7 @@ export class CloudflareAdapter implements DeployAdapter {
 
   private async deployWorker(scriptName: string, assetsJwt: string): Promise<WorkerScript> {
     const url = `${this.baseURL}/accounts/${this.accountId}/workers/scripts/${scriptName}`;
-    const targetUrl = this.corsProxy ? proxyUrl(this.corsProxy, url) : url;
+    const targetUrl = this.corsProxy ? proxyUrl({ template: this.corsProxy, url }) : url;
 
     // Create a minimal worker script that serves static assets
     // This is an assets-only worker - Cloudflare will automatically serve the uploaded assets

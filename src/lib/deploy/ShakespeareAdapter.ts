@@ -72,7 +72,7 @@ export class ShakespeareAdapter implements DeployAdapter {
 
     // Apply proxy if configured
     if (this.corsProxy) {
-      request = new Request(proxyUrl(this.corsProxy, request.url), request);
+      request = new Request(proxyUrl({ template: this.corsProxy, url: request.url }), request);
     }
 
     // Deploy

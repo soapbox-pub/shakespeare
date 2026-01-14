@@ -47,7 +47,7 @@ export function createAIClient(provider: AIProvider, user?: NUser, corsProxy?: s
 
       // If proxy is enabled and we have a CORS proxy URL, modify the request URL
       if (provider.proxy && corsProxy) {
-        request = new Request(proxyUrl(corsProxy, request.url), request);
+        request = new Request(proxyUrl({ template: corsProxy, url: request.url }), request);
       }
 
       return fetch(request);

@@ -56,7 +56,7 @@ export function DenoDeployForm({
 
     try {
       const url = `${baseURL}/organizations/${organizationId}/projects?limit=100`;
-      const targetUrl = corsProxy ? proxyUrl(corsProxy, url) : url;
+      const targetUrl = corsProxy ? proxyUrl({ template: corsProxy, url }) : url;
 
       const response = await fetch(targetUrl, {
         headers: { 'Authorization': `Bearer ${apiKey}` },

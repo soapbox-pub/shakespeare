@@ -169,7 +169,7 @@ export function useOAuth(config: OAuthConfig) {
       }
 
       // Exchange code for access token
-      const tokenUrl = proxyUrl(corsProxy, config.tokenUrl);
+      const tokenUrl = proxyUrl({ template: corsProxy, url: config.tokenUrl });
       const tokenResponse = await fetch(tokenUrl, {
         method: 'POST',
         headers: {

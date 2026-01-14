@@ -137,7 +137,7 @@ export class GenerateImageTool implements Tool<GenerateImageParams> {
           }
         } else if (firstImage.url) {
           // Fetch the image from the URL
-          const imageUrl = this.corsProxy ? proxyUrl(this.corsProxy, firstImage.url) : firstImage.url;
+          const imageUrl = this.corsProxy ? proxyUrl({ template: this.corsProxy, url: firstImage.url }) : firstImage.url;
           const imageResponse = await fetch(imageUrl);
 
           if (!imageResponse.ok) {

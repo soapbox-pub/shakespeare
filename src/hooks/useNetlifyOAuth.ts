@@ -30,7 +30,7 @@ export function useNetlifyOAuth() {
     redirectUri: window.location.origin + '/oauth/netlify',
     usePKCE: false, // Netlify doesn't support PKCE
     getUserInfo: async (accessToken: string, corsProxy: string) => {
-      const userUrl = proxyUrl(corsProxy, 'https://api.netlify.com/api/v1/user');
+      const userUrl = proxyUrl({ template: corsProxy, url: 'https://api.netlify.com/api/v1/user' });
       const userResponse = await fetch(userUrl, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,

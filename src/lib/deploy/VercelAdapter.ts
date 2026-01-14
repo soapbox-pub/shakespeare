@@ -68,7 +68,7 @@ export class VercelAdapter implements DeployAdapter {
     }
 
     // Apply proxy if configured
-    const targetUrl = this.corsProxy ? proxyUrl(this.corsProxy, apiUrl) : apiUrl;
+    const targetUrl = this.corsProxy ? proxyUrl({ template: this.corsProxy, url: apiUrl }) : apiUrl;
 
     // Deploy to Vercel
     const response = await fetch(targetUrl, {

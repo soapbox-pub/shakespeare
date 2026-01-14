@@ -17,19 +17,19 @@ export const AI_PROVIDER_PRESETS: PresetProvider[] = [
     nostr: true,
   },
   {
-    id: "openrouter",
-    name: "OpenRouter",
-    baseURL: "https://openrouter.ai/api/v1",
-    apiKeysURL: "https://openrouter.ai/settings/keys",
-    tosURL: "https://openrouter.ai/terms",
-  },
-  {
     id: "opencode",
     name: "OpenCode Zen",
     baseURL: "https://opencode.ai/zen/v1",
     apiKeysURL: "https://opencode.ai/auth",
     tosURL: "https://opencode.ai/legal/terms-of-service",
     proxy: true,
+  },
+  {
+    id: "openrouter",
+    name: "OpenRouter",
+    baseURL: "https://openrouter.ai/api/v1",
+    apiKeysURL: "https://openrouter.ai/settings/keys",
+    tosURL: "https://openrouter.ai/terms",
   },
   {
     id: "ppq",

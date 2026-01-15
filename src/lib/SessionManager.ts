@@ -721,12 +721,49 @@ export class SessionManager {
   }
 
   /**
+   * Check if content exceeds size/line limits
+   */
+  private exceedsLimits(content: string): boolean {
+    const MAX_SIZE_BYTES = 50 * 1024; // 50 KiB
+    const MAX_LINES = 2000;
+
+    const sizeBytes = new Blob([content]).size;
+    const lineCount = content.split('\n').length;
+
+    return sizeBytes > MAX_SIZE_BYTES || lineCount > MAX_LINES;
+  }
+
+  /**
+   * Save content to tmpDir and return the file path
+   */
+  private async saveToTmpFile(projectId: string, content: string, toolCallId: string): Promise<string> {
+    const config = this.getConfig();
+    const timestamp = Date.now();
+    const filename = `tool-output-${toolCallId}-${timestamp}.txt`;
+    const filepath = `${config.fsPathTmp}/${filename}`;
+
+    await this.fs.writeFile(filepath, content, 'utf8');
+    return filepath;
+  }
+
+  /**
    * Helper to add tool messages and update conversation
    */
   private async addToolMessage(projectId: string, toolCallId: string, content: string): Promise<void> {
+    let finalContent = content;
+
+    // Check if content exceeds limits
+    if (this.exceedsLimits(content)) {
+      // Save full content to tmp file
+      const filepath = await this.saveToTmpFile(projectId, content, toolCallId);
+
+      // Create placeholder message
+      finalContent = `The tool call succeeded but the output was truncated. Full output saved to: ${filepath}\nUse grep to search it for specific content, or text_editor_view with start_line/end_line to view specific sections.`;
+    }
+
     const toolMessage: AIMessage = {
       role: 'tool',
-      content,
+      content: finalContent,
       tool_call_id: toolCallId
     };
 

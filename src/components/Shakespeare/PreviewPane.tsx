@@ -503,6 +503,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
   const ConsoleDropdown = () => {
     const [isOpen, setIsOpen] = useState(false);
     const [copiedMessageIndex, setCopiedMessageIndex] = useState<number | null>(null);
+    const [copiedAll, setCopiedAll] = useState(false);
 
     const messages = isOpen ? getConsoleMessages() : [];
 
@@ -513,6 +514,17 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
         setTimeout(() => setCopiedMessageIndex(null), 2000);
       } catch (error) {
         console.error('Failed to copy message to clipboard:', error);
+      }
+    };
+
+    const copyAllMessagesToClipboard = async () => {
+      try {
+        const allMessages = messages.map(msg => msg.message).join('\n');
+        await navigator.clipboard.writeText(allMessages);
+        setCopiedAll(true);
+        setTimeout(() => setCopiedAll(false), 2000);
+      } catch (error) {
+        console.error('Failed to copy all messages to clipboard:', error);
       }
     };
 
@@ -589,13 +601,35 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
             </div>
           </div>
 
-          {/* Close button */}
-          <button
-            onClick={() => setIsOpen(false)}
-            className="absolute top-2 right-2 h-8 w-8 p-0 bg-muted/50 hover:bg-muted/70 rounded-md z-10 flex items-center justify-center border"
-          >
-            <X className="h-5 w-5 text-muted-foreground" />
-          </button>
+          {/* Action buttons */}
+          <div className="absolute top-2 right-2 flex items-center gap-2 z-10">
+            {messageCount > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={copyAllMessagesToClipboard}
+                className="h-8 px-2 bg-muted/50 hover:bg-muted/70 rounded-md border text-xs"
+              >
+                {copiedAll ? (
+                  <>
+                    <Check className="h-3 w-3 mr-1.5 text-success" />
+                    {t('copied')}
+                  </>
+                ) : (
+                  <>
+                    <Copy className="h-3 w-3 mr-1.5" />
+                    {t('copyAll')}
+                  </>
+                )}
+              </Button>
+            )}
+            <button
+              onClick={() => setIsOpen(false)}
+              className="h-8 w-8 p-0 bg-muted/50 hover:bg-muted/70 rounded-md flex items-center justify-center border"
+            >
+              <X className="h-5 w-5 text-muted-foreground" />
+            </button>
+          </div>
         </PopoverContent>
       </Popover>
     );

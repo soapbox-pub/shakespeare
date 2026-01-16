@@ -1,4 +1,4 @@
-import { BrowserRouter, HashRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, HashRouter, Route, Routes, Navigate } from "react-router-dom";
 import { ScrollToTop } from "./components/ScrollToTop";
 import { SessionMonitor } from "./components/SessionMonitor";
 import { URLFragmentHandler } from "./components/URLFragmentHandler";
@@ -42,7 +42,7 @@ export function AppRouter() {
         <Route path="/oauth/vercel" element={<VercelOAuth />} />
         <Route path="/oauth/openrouter" element={<OpenRouterOAuth />} />
         <Route path="/settings" element={<SettingsLayout />}>
-          <Route index element={<Settings />} />
+          <Route index element={<Navigate to="/settings/preferences" replace />} />
           <Route path="preferences" element={<Preferences />} />
           <Route path="nostr" element={<NostrSettings />} />
           <Route path="ai" element={<AISettings />} />

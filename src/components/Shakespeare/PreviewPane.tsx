@@ -525,6 +525,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
             variant="ghost"
             size="sm"
             className="h-8 gap-2 relative"
+            title={t('logsButtonTooltip')}
           >
             <Bug className="h-4 w-4" />
             <span className="hidden lg:inline">Logs</span>
@@ -656,7 +657,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
                     })}
                     disabled={isBuildLoading}
                     className="h-8 gap-2"
-                    title="Build project"
+                    title={t('buildButtonTooltip')}
                   >
                     {isBuildLoading ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -671,6 +672,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
                       size="sm"
                       onClick={onToggleView}
                       className="h-8 gap-2"
+                      title={t('codeButtonTooltip')}
                     >
                       <Code className="h-4 w-4" />
                       <span className="hidden lg:inline">Code</span>

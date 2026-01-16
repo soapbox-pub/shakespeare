@@ -327,6 +327,7 @@ export function ProjectSidebar({
                   className="h-8 w-8 p-0 hover:bg-primary/10 -mr-2"
                   onClick={handleToggleSidebar}
                   aria-label={(onClose && isMobile) ? t('closeSidebar') : t('collapseSidebar')}
+                  title={(onClose && isMobile) ? t('closeSidebar') : t('hidePaneButtonTooltip')}
                 >
                   {(onClose && isMobile) ? (
                     <X className="h-4 w-4 text-primary/60 hover:text-primary" />

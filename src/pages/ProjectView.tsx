@@ -11,7 +11,7 @@ import { DeleteProjectDialog } from '@/components/DeleteProjectDialog';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, MessageSquare, Eye, Code, Menu, Loader2 } from 'lucide-react';
+import { ArrowLeft, MessageSquare, Eye, Code, Menu, Loader2, MessageSquarePlus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { ProjectTitleMenu } from '@/components/ProjectTitleMenu';
@@ -212,7 +212,6 @@ export function ProjectView() {
                   <ProjectTitleMenu
                     projectId={project.id}
                     projectName={project.name}
-                    onNewChat={handleNewChat}
                     onGitHistory={() => setGitHistoryOpen(true)}
                     onDuplicate={() => setDuplicateDialogOpen(true)}
                     onDelete={() => setDeleteDialogOpen(true)}
@@ -230,6 +229,16 @@ export function ProjectView() {
             <div className="flex items-center gap-4 px-3">
               {project ? (
                 <>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleNewChat}
+                    disabled={isAILoading}
+                    className="size-8 p-0 group"
+                    title={t('newChat')}
+                  >
+                    <MessageSquarePlus className="size-5 group-hover:text-foreground text-muted-foreground" />
+                  </Button>
                   <GitSyncButton
                     projectId={project.id}
                     className="h-8 w-8"
@@ -242,6 +251,7 @@ export function ProjectView() {
                 </>
               ) : (
                 <>
+                  <Skeleton className="h-8 w-8 rounded" />
                   <Skeleton className="h-8 w-8 rounded" />
                   <Skeleton className="h-8 w-8 rounded" />
                 </>
@@ -442,7 +452,6 @@ export function ProjectView() {
                           <ProjectTitleMenu
                             projectId={project.id}
                             projectName={project.name}
-                            onNewChat={handleNewChat}
                             onGitHistory={() => setGitHistoryOpen(true)}
                             onDuplicate={() => setDuplicateDialogOpen(true)}
                             onDelete={() => setDeleteDialogOpen(true)}
@@ -457,10 +466,20 @@ export function ProjectView() {
                       </div>
                     </div>
 
-                    {/* Right side - Deploy and Sync buttons */}
+                    {/* Right side - New Chat, Deploy and Sync buttons */}
                     <div className="flex items-center gap-2">
                       {project ? (
                         <>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleNewChat}
+                            disabled={isAILoading}
+                            className="size-8 p-0 group"
+                            title={t('newChat')}
+                          >
+                            <MessageSquarePlus className="size-5 group-hover:text-foreground text-muted-foreground" />
+                          </Button>
                           <GitSyncButton
                             projectId={project.id}
                             className="h-8 w-8"
@@ -473,6 +492,7 @@ export function ProjectView() {
                         </>
                       ) : (
                         <>
+                          <Skeleton className="h-8 w-8 rounded" />
                           <Skeleton className="h-8 w-8 rounded" />
                           <Skeleton className="h-8 w-8 rounded" />
                         </>

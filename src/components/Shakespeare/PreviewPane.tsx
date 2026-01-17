@@ -636,7 +636,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
 
               {/* Content area */}
               <div className="flex-1 bg-muted/30 min-h-0 overflow-hidden">
-                <ResizablePanelGroup direction="horizontal" className="h-full">
+                <ResizablePanelGroup direction="vertical" className="h-full">
                   <ResizablePanel 
                     ref={iframePanelRef}
                     defaultSize={isLogsOpen ? 60 : 100} 
@@ -685,7 +685,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
                     collapsedSize={0}
                   >
                     {/* Logs Panel */}
-                    <div className="h-full flex flex-col bg-background border-l overflow-hidden min-h-0 w-full min-w-0">
+                    <div className="h-full flex flex-col bg-background border-t overflow-hidden min-h-0 w-full min-w-0">
                       {/* Logs Header */}
                       <div className="h-12 px-4 border-b flex items-center justify-between flex-shrink-0">
                         <div className="flex items-center gap-2">

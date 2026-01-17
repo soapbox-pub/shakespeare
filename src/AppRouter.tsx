@@ -5,7 +5,6 @@ import { URLFragmentHandler } from "./components/URLFragmentHandler";
 
 import Index from "./pages/Index";
 import Clone from "./pages/Clone";
-import Settings from "./pages/Settings";
 import Preferences from "./pages/Preferences";
 import NostrSettings from "./pages/NostrSettings";
 import AISettings from "./pages/AISettings";

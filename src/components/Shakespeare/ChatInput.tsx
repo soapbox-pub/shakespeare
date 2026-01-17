@@ -89,6 +89,21 @@ export const ChatInput = memo(function ChatInput({
     setInput(e.target.value);
   }, []);
 
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Call parent's drop handler for visual state management
+    onDrop(e);
+    
+    // Extract files from the drop event
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length === 0) return;
+
+    // Add all files without validation
+    setAttachedFiles(prev => [...prev, ...files]);
+  }, [onDrop]);
+
   return (
     <div className="border-t p-4">
       {/* Chat Input Container */}
@@ -99,7 +114,7 @@ export const ChatInput = memo(function ChatInput({
         onDragEnter={onDragEnter}
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
-        onDrop={onDrop}
+        onDrop={handleDrop}
       >
         <Textarea
           value={input}

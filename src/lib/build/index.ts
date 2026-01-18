@@ -130,7 +130,7 @@ async function bundle(
     assetNames: "[name]-[hash]",
     plugins: [
       shakespearePlugin({ esmUrl }),
-      fsPlugin({ fs, cwd: projectPath, tsconfig }),
+      fsPlugin({ fs, cwd: projectPath, tsconfig, packageJson }),
       esmPlugin({ packageJson, packageLock, target, esmUrl }),
     ],
     define: {

@@ -260,6 +260,19 @@ export function esmPlugin(options: EsmPluginOptions): Plugin {
           // not a URL; continue
         }
 
+        // Check if this is a file: dependency
+        const allDeps = {
+          ...packageJson.dependencies,
+          ...packageJson.devDependencies,
+          ...packageJson.peerDependencies,
+        };
+        const depVersion = allDeps[packageName];
+        
+        if (depVersion && depVersion.startsWith("file:")) {
+          // Let fsPlugin handle file: dependencies
+          return;
+        }
+
         // Determine importer lock path (breadcrumb)
         const importerLockPath = getImporterLockPath(args.importer);
 

@@ -535,4 +535,63 @@ react@^18.0.0:
     // Verify tsconfig.json was attempted to be read
     expect(mockFS.readFile).toHaveBeenCalledWith('/test/project/tsconfig.json', 'utf8');
   });
+
+  it('should support file: dependencies in package.json', async () => {
+    const packageJsonWithFileDeps = JSON.stringify({
+      name: "test-project",
+      dependencies: {
+        "@bitchat/capacitor-ble-mesh": "file:./capacitor-bitchat-mesh",
+        "react": "^18.2.0"
+      }
+    });
+
+    // Mock required files
+    vi.mocked(mockFS.readFile)
+      .mockImplementation(async (path: string) => {
+        if (path.endsWith('package.json')) {
+          return packageJsonWithFileDeps;
+        }
+        if (path.endsWith('index.html')) {
+          return '<html><head></head><body><script src="/src/main.tsx"></script></body></html>';
+        }
+        if (path.endsWith('package-lock.json')) {
+          return '{"dependencies": {}}';
+        }
+        throw new Error(`File not found: ${path}`);
+      });
+
+    // Mock stat to indicate no public directory
+    vi.mocked(mockFS.stat)
+      .mockImplementation(async (path: string) => {
+        if (path === '/test/project/public') {
+          throw new Error('Directory not found');
+        }
+        return { isDirectory: () => false, isFile: () => true };
+      });
+
+    // Mock additional filesystem operations for buildProject
+    vi.mocked(mockFS.readdir).mockImplementation(async (path: string) => {
+      if (path === '/test/project/dist') {
+        return [];
+      }
+      return [];
+    });
+
+    vi.mocked(mockFS.mkdir).mockResolvedValue(undefined);
+    vi.mocked(mockFS.writeFile).mockResolvedValue(undefined);
+
+    const result = await buildProject({
+      fs: mockFS,
+      projectPath: '/test/project',
+      domParser: mockDOMParser,
+      esmUrl: 'https://esm.shakespeare.diy',
+    });
+
+    // Should successfully build with file: dependencies
+    expect(result.files['stdin-abc123.js']).toEqual(new Uint8Array([1, 2, 3]));
+    expect(result.files['index.html']).toBeDefined();
+
+    // Verify package.json was read
+    expect(mockFS.readFile).toHaveBeenCalledWith('/test/project/package.json', 'utf8');
+  });
 });

@@ -31,6 +31,7 @@
     "@mozilla/readability": "^0.6.0",
     "@nostrify/nostrify": "^0.48.2",
     "@nostrify/react": "^0.2.20",
+    "@opensecret/react": "^1.5.4",
     "@radix-ui/react-accordion": "^1.2.0",
     "@radix-ui/react-alert-dialog": "^1.1.1",
     "@radix-ui/react-aspect-ratio": "^1.1.0",

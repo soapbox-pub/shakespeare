@@ -12,16 +12,20 @@ import { proxyUrl } from './proxyUrl';
  * If the provider has proxy enabled, requests will be proxied through the corsProxy.
  */
 export function createAIClient(provider: AIProvider, user?: NUser, corsProxy?: string): OpenAI {
-  const baseConfig: ConstructorParameters<typeof OpenAI>[0] = {
+  const openai = new OpenAI({
     baseURL: provider.baseURL,
     apiKey: provider.apiKey ?? '',
     dangerouslyAllowBrowser: true,
-  };
 
-  const openai = new OpenAI({
-    ...baseConfig,
     fetch: async (input, init) => {
       let request = new Request(input, init);
+
+      // OpenSecret auth
+      // https://docs.opensecret.cloud/docs/maple-ai/
+      if (provider.openSecret) {
+        const { createCustomFetch } = await import('@opensecret/react');
+        return createCustomFetch({ apiKey: provider.apiKey, apiUrl: provider.openSecret })(input, init);
+      }
 
       // Add OpenRouter headers
       // https://openrouter.ai/docs/app-attribution

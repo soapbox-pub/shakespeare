@@ -118,6 +118,9 @@ export function AISettings() {
     if (typeof preset.proxy === 'boolean') {
       newProvider.proxy = preset.proxy;
     }
+    if (preset.openSecret) {
+      newProvider.openSecret = preset.openSecret;
+    }
 
     setProvider(newProvider);
   };

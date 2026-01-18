@@ -7,6 +7,7 @@ export interface AIProvider {
   apiKey?: string;
   nostr?: boolean;
   proxy?: boolean;
+  openSecret?: string;
 }
 
 export interface MCPServer {

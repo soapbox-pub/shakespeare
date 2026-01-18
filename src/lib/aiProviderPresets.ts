@@ -6,6 +6,7 @@ export interface PresetProvider {
   nostr?: boolean;
   tosURL?: string;
   proxy?: boolean;
+  openSecret?: string;
 }
 
 export const AI_PROVIDER_PRESETS: PresetProvider[] = [
@@ -23,6 +24,14 @@ export const AI_PROVIDER_PRESETS: PresetProvider[] = [
     apiKeysURL: "https://opencode.ai/auth",
     tosURL: "https://opencode.ai/legal/terms-of-service",
     proxy: true,
+  },
+  {
+    id: "maple",
+    name: "Maple AI",
+    baseURL: "https://enclave.trymaple.ai/v1",
+    apiKeysURL: "https://trymaple.ai/",
+    tosURL: "https://opensecret.cloud/terms",
+    openSecret: "https://enclave.trymaple.ai",
   },
   {
     id: "openrouter",

@@ -33,7 +33,7 @@ export function ExternalFavicon({
       const parsedUrl = new URL(url);
 
       // Strip `ai.` and `api.` subdomains for a better chance at finding a favicon
-      parsedUrl.hostname = parsedUrl.hostname.replace(/^(ai\.|api\.)/, '');
+      parsedUrl.hostname = parsedUrl.hostname.replace(/^(ai\.|api\.|enclave\.)/, '');
 
       // Normalize the URL to ensure it has a protocol
       return faviconUrl({ template: config.faviconUrl, url: parsedUrl });

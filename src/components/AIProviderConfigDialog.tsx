@@ -1041,12 +1041,31 @@ export function AIProviderConfigDialog({
       <div className="grid gap-2">
         <Label htmlFor="provider-auth">{t('authentication')}</Label>
         <Select
-          value={localProvider.nostr ? 'nostr' : 'api-key'}
-          onValueChange={(value: 'api-key' | 'nostr') => setLocalProvider({
-            ...localProvider,
-            nostr: value === 'nostr' || undefined,
-            apiKey: value === 'nostr' ? undefined : localProvider.apiKey
-          })}
+          value={localProvider.nostr ? 'nostr' : localProvider.openSecret ? 'opensecret' : 'api-key'}
+          onValueChange={(value: 'api-key' | 'nostr' | 'opensecret') => {
+            if (value === 'nostr') {
+              setLocalProvider({
+                ...localProvider,
+                nostr: true,
+                openSecret: undefined,
+                apiKey: undefined
+              });
+            } else if (value === 'opensecret') {
+              setLocalProvider({
+                ...localProvider,
+                nostr: undefined,
+                openSecret: localProvider.openSecret,
+                apiKey: localProvider.apiKey
+              });
+            } else {
+              setLocalProvider({
+                ...localProvider,
+                nostr: undefined,
+                openSecret: undefined,
+                apiKey: localProvider.apiKey
+              });
+            }
+          }}
         >
           <SelectTrigger>
             <SelectValue />
@@ -1054,9 +1073,24 @@ export function AIProviderConfigDialog({
           <SelectContent>
             <SelectItem value="api-key">{t('apiKey')}</SelectItem>
             <SelectItem value="nostr">Nostr</SelectItem>
+            <SelectItem value="opensecret">OpenSecret</SelectItem>
           </SelectContent>
         </Select>
       </div>
+
+      {localProvider.openSecret && (
+        <div className="grid gap-2">
+          <Label htmlFor="provider-opensecret-url">
+            OpenSecret API URL <span className="text-destructive">*</span>
+          </Label>
+          <Input
+            id="provider-opensecret-url"
+            placeholder="https://enclave.trymaple.ai"
+            value={localProvider.openSecret || ''}
+            onChange={(e) => setLocalProvider({ ...localProvider, openSecret: e.target.value })}
+          />
+        </div>
+      )}
 
       {!localProvider.nostr && (
         <div className="grid gap-2">

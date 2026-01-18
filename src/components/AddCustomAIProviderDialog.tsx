@@ -50,7 +50,8 @@ export function AddCustomAIProviderDialog({
   const [customIdManuallyEdited, setCustomIdManuallyEdited] = useState(false);
   const [customBaseURL, setCustomBaseURL] = useState('');
   const [customApiKey, setCustomApiKey] = useState('');
-  const [customAuthMethod, setCustomAuthMethod] = useState<'api-key' | 'nostr'>('api-key');
+  const [customAuthMethod, setCustomAuthMethod] = useState<'api-key' | 'nostr' | 'opensecret'>('api-key');
+  const [customOpenSecretUrl, setCustomOpenSecretUrl] = useState('');
   const [customProxy, setCustomProxy] = useState(false);
 
   const handleAdd = () => {
@@ -66,6 +67,11 @@ export function AddCustomAIProviderDialog({
       provider.apiKey = customApiKey.trim();
     } else if (customAuthMethod === 'nostr') {
       provider.nostr = true;
+    } else if (customAuthMethod === 'opensecret') {
+      provider.openSecret = customOpenSecretUrl.trim();
+      if (customApiKey.trim()) {
+        provider.apiKey = customApiKey.trim();
+      }
     }
 
     if (customProxy) {
@@ -81,6 +87,7 @@ export function AddCustomAIProviderDialog({
     setCustomBaseURL('');
     setCustomApiKey('');
     setCustomAuthMethod('api-key');
+    setCustomOpenSecretUrl('');
     setCustomProxy(false);
 
     onOpenChange(false);
@@ -89,6 +96,7 @@ export function AddCustomAIProviderDialog({
   const isValid = customProviderName.trim() &&
     customProviderId.trim() &&
     customBaseURL.trim() &&
+    (customAuthMethod !== 'opensecret' || customOpenSecretUrl.trim()) &&
     !existingIds.includes(customProviderId.trim());
 
   const idExists = existingIds.includes(customProviderId.trim());
@@ -156,7 +164,7 @@ export function AddCustomAIProviderDialog({
             <Label htmlFor="custom-auth">{t('authentication')}</Label>
             <Select
               value={customAuthMethod}
-              onValueChange={(value: 'api-key' | 'nostr') => {
+              onValueChange={(value: 'api-key' | 'nostr' | 'opensecret') => {
                 setCustomAuthMethod(value);
                 if (value === 'nostr') {
                   setCustomApiKey(''); // Clear API key when switching to Nostr auth
@@ -169,11 +177,26 @@ export function AddCustomAIProviderDialog({
               <SelectContent>
                 <SelectItem value="api-key">{t('apiKey')}</SelectItem>
                 <SelectItem value="nostr">Nostr</SelectItem>
+                <SelectItem value="opensecret">OpenSecret</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          {customAuthMethod === 'api-key' && (
+          {customAuthMethod === 'opensecret' && (
+            <div className="grid gap-2">
+              <Label htmlFor="custom-opensecret-url">
+                OpenSecret API URL <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="custom-opensecret-url"
+                placeholder="https://enclave.trymaple.ai"
+                value={customOpenSecretUrl}
+                onChange={(e) => setCustomOpenSecretUrl(e.target.value)}
+              />
+            </div>
+          )}
+
+          {(customAuthMethod === 'api-key' || customAuthMethod === 'opensecret') && (
             <div className="grid gap-2">
               <Label htmlFor="custom-apikey">{t('apiKey')}</Label>
               <PasswordInput

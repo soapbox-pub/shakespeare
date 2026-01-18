@@ -37,6 +37,7 @@ const aiProviderSchema = z.object({
   apiKey: z.string().optional(),
   nostr: z.boolean().optional(),
   proxy: z.boolean().optional(),
+  openSecret: z.string().url().optional(),
 });
 
 const providerModelSchema = z.string().regex(

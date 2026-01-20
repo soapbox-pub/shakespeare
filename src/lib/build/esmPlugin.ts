@@ -226,6 +226,11 @@ export function esmPlugin(options: EsmPluginOptions): Plugin {
               path: `${esmUrl}/${moduleName}?target=${target ?? "esnext"}`,
               namespace: "esm",
             };
+          case "crypto":
+            return {
+              path: `${esmUrl}/crypto-browserify?target=${target ?? "esnext"}`,
+              namespace: "esm",
+            };
           default:
             return {
               errors: [{ text: `Module not found: ${args.path}` }],

@@ -99,11 +99,6 @@ export function fsPlugin(options: FsPluginOptions): Plugin {
           return;
         }
 
-        // Security: prevent accessing files outside the project directory
-        if (resolved.startsWith("/") && !resolved.startsWith(cwd)) {
-          throw new Error(`Access to files outside the project directory is not allowed: ${resolved}`);
-        }
-
         // Vite query parameters https://vite.dev/guide/assets
         const [cleaned, query] = resolved.split("?");
 
@@ -174,7 +169,7 @@ async function tryFileVariants(
       const packageJson = JSON.parse(packageJsonText);
       
       // Check for various entry point fields
-      const entryPoint = packageJson.exports?.['.'] 
+      const entryPoint = packageJson.exports?.['.']
         || packageJson.module 
         || packageJson.main 
         || 'index.js';

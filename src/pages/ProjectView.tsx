@@ -31,6 +31,9 @@ import { useGitAutosync } from '@/hooks/useGitAutosync';
 import { useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { useProjectSessionStatus } from '@/hooks/useProjectSessionStatus';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { FloatingChatWidget } from '@/components/Shakespeare/FloatingChatWidget';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 export function ProjectView() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -58,6 +61,16 @@ export function ProjectView() {
   const queryClient = useQueryClient();
 
   const [isSidebarVisible, setIsSidebarVisible] = useState(!isMobile);
+
+  // Floating chat state
+  const [isFloatingChatEnabled, setIsFloatingChatEnabled] = useLocalStorage(
+    'shk:floatingChatEnabled',
+    false
+  );
+  const [isFloatingChatMinimized, setIsFloatingChatMinimized] = useLocalStorage(
+    'shk:floatingChatMinimized',
+    false
+  );
 
   const build = useBuildProject(projectId!);
   const { data: isPreviewable = false } = useIsProjectPreviewable(projectId!);
@@ -227,7 +240,7 @@ export function ProjectView() {
               </div>
             </div>
 
-            <div className="flex items-center gap-4 px-3">
+            <div className="flex items-center gap-2 px-3">
               {project ? (
                 <>
                   <GitSyncButton
@@ -239,6 +252,24 @@ export function ProjectView() {
                     projectName={project.name}
                     disabled={isAnyLoading}
                   />
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => {
+                          setIsFloatingChatEnabled(true);
+                          setIsFloatingChatMinimized(false);
+                        }}
+                        aria-label="Floating chat"
+                        aria-pressed={isFloatingChatEnabled}
+                      >
+                        <MessageSquare className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Floating chat</TooltipContent>
+                  </Tooltip>
                 </>
               ) : (
                 <>
@@ -389,6 +420,23 @@ export function ProjectView() {
             />
           </>
         )}
+
+        {/* Floating Chat Widget - Mobile */}
+        {isFloatingChatEnabled && project && (
+          <FloatingChatWidget
+            projectId={project.id}
+            isMinimized={isFloatingChatMinimized}
+            onToggleMinimize={() => setIsFloatingChatMinimized(!isFloatingChatMinimized)}
+            onClose={() => setIsFloatingChatEnabled(false)}
+            onNewChat={handleNewChat}
+            onFirstInteraction={handleFirstInteraction}
+            onLoadingChange={handleAILoadingChange}
+            isLoading={isAILoading}
+            isBuildLoading={build.isPending}
+            consoleError={consoleError}
+            onDismissConsoleError={handleDismissConsoleError}
+          />
+        )}
       </div>
     );
   }
@@ -415,122 +463,174 @@ export function ProjectView() {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden bg-background">
         <div className="flex-1 overflow-hidden">
-          <ResizablePanelGroup direction="horizontal" className="h-full">
-            {/* Chat Panel */}
-            <ResizablePanel defaultSize={35} minSize={25}>
-              <div className="h-full flex flex-col">
-                {/* Chat Header */}
-                <div className="h-12 px-4 border-b flex-shrink-0">
-                  <div className="flex items-center justify-between h-12">
-                    {/* Left side - Sidebar toggle (when collapsed) */}
-                    <div className="flex items-center gap-3 overflow-hidden">
-                      {!isSidebarVisible && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setIsSidebarVisible(true)}
-                          className="h-8 w-8 p-0"
-                          aria-label="Open sidebar"
-                        >
-                          <Menu className="h-4 w-4" />
-                        </Button>
-                      )}
+          {isFloatingChatEnabled ? (
+            // Full-width preview/code when floating chat is enabled
+            <div className="h-full">
+              {project ? (
+                <PreviewPane
+                  projectId={project.id}
+                  activeTab={isPreviewable ? activeTab : 'code'}
+                  onToggleView={isPreviewable ? () => setActiveTab(activeTab === 'preview' ? 'code' : 'preview') : undefined}
+                  isPreviewable={isPreviewable}
+                />
+              ) : (
+                <div className="h-full p-4 space-y-4">
+                  <Skeleton className="h-8 w-32" />
+                  <Skeleton className="h-full w-full" />
+                </div>
+              )}
+            </div>
+          ) : (
+            // Original resizable panel layout
+            <ResizablePanelGroup direction="horizontal" className="h-full">
+              {/* Chat Panel */}
+              <ResizablePanel defaultSize={35} minSize={25}>
+                <div className="h-full flex flex-col">
+                  {/* Chat Header */}
+                  <div className="h-12 px-4 border-b flex-shrink-0">
+                    <div className="flex items-center justify-between h-12">
+                      {/* Left side - Sidebar toggle (when collapsed) */}
+                      <div className="flex items-center gap-3 overflow-hidden">
+                        {!isSidebarVisible && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setIsSidebarVisible(true)}
+                            className="h-8 w-8 p-0"
+                            aria-label="Open sidebar"
+                          >
+                            <Menu className="h-4 w-4" />
+                          </Button>
+                        )}
 
-                      {/* Project title */}
-                      <div className="flex flex-1 min-w-0 truncate">
+                        {/* Project title */}
+                        <div className="flex flex-1 min-w-0 truncate">
+                          {project ? (
+                            <ProjectTitleMenu
+                              projectId={project.id}
+                              projectName={project.name}
+                              onNewChat={handleNewChat}
+                              onGitHistory={() => setGitHistoryOpen(true)}
+                              onDuplicate={() => setDuplicateDialogOpen(true)}
+                              onDelete={() => setDeleteDialogOpen(true)}
+                              onProjectDetails={() => setIsProjectDetailsOpen(true)}
+                              isAILoading={isAILoading}
+                              isAnyLoading={isAnyLoading || isDeleting}
+                              className="text-lg"
+                            />
+                          ) : (
+                            <Skeleton className="h-6 w-40" />
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Right side - Deploy and Sync buttons */}
+                      <div className="flex items-center gap-2">
                         {project ? (
-                          <ProjectTitleMenu
-                            projectId={project.id}
-                            projectName={project.name}
-                            onNewChat={handleNewChat}
-                            onGitHistory={() => setGitHistoryOpen(true)}
-                            onDuplicate={() => setDuplicateDialogOpen(true)}
-                            onDelete={() => setDeleteDialogOpen(true)}
-                            onProjectDetails={() => setIsProjectDetailsOpen(true)}
-                            isAILoading={isAILoading}
-                            isAnyLoading={isAnyLoading || isDeleting}
-                            className="text-lg"
-                          />
+                          <>
+                            <GitSyncButton
+                              projectId={project.id}
+                              className="h-8 w-8"
+                            />
+                            <DeployButton
+                              projectId={project.id}
+                              projectName={project.name}
+                              disabled={isAnyLoading}
+                            />
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={() => setIsFloatingChatEnabled(true)}
+                                  aria-label="Floating chat"
+                                  aria-pressed={isFloatingChatEnabled}
+                                >
+                                  <MessageSquare className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Floating chat</TooltipContent>
+                            </Tooltip>
+                          </>
                         ) : (
-                          <Skeleton className="h-6 w-40" />
+                          <>
+                            <Skeleton className="h-8 w-8 rounded" />
+                            <Skeleton className="h-8 w-8 rounded" />
+                          </>
                         )}
                       </div>
                     </div>
+                  </div>
 
-                    {/* Right side - Deploy and Sync buttons */}
-                    <div className="flex items-center gap-2">
-                      {project ? (
-                        <>
-                          <GitSyncButton
-                            projectId={project.id}
-                            className="h-8 w-8"
-                          />
-                          <DeployButton
-                            projectId={project.id}
-                            projectName={project.name}
-                            disabled={isAnyLoading}
-                          />
-                        </>
-                      ) : (
-                        <>
-                          <Skeleton className="h-8 w-8 rounded" />
-                          <Skeleton className="h-8 w-8 rounded" />
-                        </>
-                      )}
-                    </div>
+                  {/* Chat Content */}
+                  <div className="flex-1 overflow-hidden">
+                    {project ? (
+                      <ChatPane
+                        ref={chatPaneRef}
+                        projectId={project.id}
+                        onNewChat={handleNewChat}
+                        onFirstInteraction={handleFirstInteraction}
+                        onLoadingChange={handleAILoadingChange}
+                        isLoading={isAILoading}
+                        isBuildLoading={build.isPending}
+                        consoleError={consoleError}
+                        onDismissConsoleError={handleDismissConsoleError}
+                      />
+                    ) : (
+                      <div className="h-full p-4 space-y-4">
+                        <Skeleton className="h-12 w-full" />
+                        <Skeleton className="h-8 w-3/4" />
+                        <Skeleton className="h-8 w-1/2" />
+                        <Skeleton className="h-32 w-full" />
+                      </div>
+                    )}
                   </div>
                 </div>
+              </ResizablePanel>
 
-                {/* Chat Content */}
-                <div className="flex-1 overflow-hidden">
+              {/* Resizable Handle */}
+              <ResizableHandle withHandle />
+
+              {/* Preview/Code Panel */}
+              <ResizablePanel defaultSize={65} minSize={30}>
+                <div className="h-full">
                   {project ? (
-                    <ChatPane
-                      ref={chatPaneRef}
+                    <PreviewPane
                       projectId={project.id}
-                      onNewChat={handleNewChat}
-                      onFirstInteraction={handleFirstInteraction}
-                      onLoadingChange={handleAILoadingChange}
-                      isLoading={isAILoading}
-                      isBuildLoading={build.isPending}
-                      consoleError={consoleError}
-                      onDismissConsoleError={handleDismissConsoleError}
+                      activeTab={isPreviewable ? activeTab : 'code'}
+                      onToggleView={isPreviewable ? () => setActiveTab(activeTab === 'preview' ? 'code' : 'preview') : undefined}
+                      isPreviewable={isPreviewable}
                     />
                   ) : (
                     <div className="h-full p-4 space-y-4">
-                      <Skeleton className="h-12 w-full" />
-                      <Skeleton className="h-8 w-3/4" />
-                      <Skeleton className="h-8 w-1/2" />
-                      <Skeleton className="h-32 w-full" />
+                      <Skeleton className="h-8 w-32" />
+                      <Skeleton className="h-full w-full" />
                     </div>
                   )}
                 </div>
-              </div>
-            </ResizablePanel>
-
-            {/* Resizable Handle */}
-            <ResizableHandle withHandle />
-
-            {/* Preview/Code Panel */}
-            <ResizablePanel defaultSize={65} minSize={30}>
-              <div className="h-full">
-                {project ? (
-                  <PreviewPane
-                    projectId={project.id}
-                    activeTab={isPreviewable ? activeTab : 'code'}
-                    onToggleView={isPreviewable ? () => setActiveTab(activeTab === 'preview' ? 'code' : 'preview') : undefined}
-                    isPreviewable={isPreviewable}
-                  />
-                ) : (
-                  <div className="h-full p-4 space-y-4">
-                    <Skeleton className="h-8 w-32" />
-                    <Skeleton className="h-full w-full" />
-                  </div>
-                )}
-              </div>
-            </ResizablePanel>
-          </ResizablePanelGroup>
+              </ResizablePanel>
+            </ResizablePanelGroup>
+          )}
         </div>
       </div>
+
+      {/* Floating Chat Widget - Desktop */}
+      {isFloatingChatEnabled && project && (
+        <FloatingChatWidget
+          projectId={project.id}
+          isMinimized={isFloatingChatMinimized}
+          onToggleMinimize={() => setIsFloatingChatMinimized(!isFloatingChatMinimized)}
+          onClose={() => setIsFloatingChatEnabled(false)}
+          onNewChat={handleNewChat}
+          onFirstInteraction={handleFirstInteraction}
+          onLoadingChange={handleAILoadingChange}
+          isLoading={isAILoading}
+          isBuildLoading={build.isPending}
+          consoleError={consoleError}
+          onDismissConsoleError={handleDismissConsoleError}
+        />
+      )}
 
       {/* Dialogs */}
       {project && (

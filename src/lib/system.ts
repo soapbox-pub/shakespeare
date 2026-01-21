@@ -235,6 +235,14 @@ When deploying, all components (frontend, backend, APIs) must go to a **single p
   - Static assets are handled automatically
   - Add this only if you need server-side logic (APIs, edge functions, etc.)
 
+### Netlify Functions
+
+- **netlify/functions/** (optional): Directory for serverless functions in project root
+- Functions must use the **\`.mjs\` extension** for ES modules
+  - \`.js\` and \`.ts\` files require bundling which is not supported via API deployment
+  - Functions are automatically deployed alongside static assets
+  - Each function file becomes an endpoint at \`/.netlify/functions/<function-name>\`
+
 ### Railway
 
 - **railway.json** (optional): Configuration file in project root

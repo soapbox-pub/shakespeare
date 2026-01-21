@@ -307,6 +307,173 @@ Content`
       const skills = await getProjectSkills(fs, projectPath);
       expect(skills).toEqual([]);
     });
+
+    it('should check .agents/skills first', async () => {
+      const projectPath = '/projects/myproject';
+      const agentsSkillPath = `${projectPath}/.agents/skills/agent-skill`;
+      const regularSkillPath = `${projectPath}/skills/regular-skill`;
+
+      // Create skill in .agents/skills
+      await fs.mkdir(agentsSkillPath, { recursive: true });
+      await fs.writeFile(
+        `${agentsSkillPath}/SKILL.md`,
+        `---
+name: agent-skill
+description: Skill from .agents/skills
+---
+
+Content`
+      );
+
+      // Create skill in skills directory (should be ignored)
+      await fs.mkdir(regularSkillPath, { recursive: true });
+      await fs.writeFile(
+        `${regularSkillPath}/SKILL.md`,
+        `---
+name: regular-skill
+description: Skill from skills directory
+---
+
+Content`
+      );
+
+      const skills = await getProjectSkills(fs, projectPath);
+
+      expect(skills).toHaveLength(1);
+      expect(skills[0].name).toBe('agent-skill');
+      expect(skills[0].description).toBe('Skill from .agents/skills');
+    });
+
+    it('should check .opencode/skills second', async () => {
+      const projectPath = '/projects/myproject';
+      const opencodeSkillPath = `${projectPath}/.opencode/skills/opencode-skill`;
+      const regularSkillPath = `${projectPath}/skills/regular-skill`;
+
+      // Create skill in .opencode/skills
+      await fs.mkdir(opencodeSkillPath, { recursive: true });
+      await fs.writeFile(
+        `${opencodeSkillPath}/SKILL.md`,
+        `---
+name: opencode-skill
+description: Skill from .opencode/skills
+---
+
+Content`
+      );
+
+      // Create skill in skills directory (should be ignored)
+      await fs.mkdir(regularSkillPath, { recursive: true });
+      await fs.writeFile(
+        `${regularSkillPath}/SKILL.md`,
+        `---
+name: regular-skill
+description: Skill from skills directory
+---
+
+Content`
+      );
+
+      const skills = await getProjectSkills(fs, projectPath);
+
+      expect(skills).toHaveLength(1);
+      expect(skills[0].name).toBe('opencode-skill');
+      expect(skills[0].description).toBe('Skill from .opencode/skills');
+    });
+
+    it('should check .claude/skills third', async () => {
+      const projectPath = '/projects/myproject';
+      const claudeSkillPath = `${projectPath}/.claude/skills/claude-skill`;
+      const regularSkillPath = `${projectPath}/skills/regular-skill`;
+
+      // Create skill in .claude/skills
+      await fs.mkdir(claudeSkillPath, { recursive: true });
+      await fs.writeFile(
+        `${claudeSkillPath}/SKILL.md`,
+        `---
+name: claude-skill
+description: Skill from .claude/skills
+---
+
+Content`
+      );
+
+      // Create skill in skills directory (should be ignored)
+      await fs.mkdir(regularSkillPath, { recursive: true });
+      await fs.writeFile(
+        `${regularSkillPath}/SKILL.md`,
+        `---
+name: regular-skill
+description: Skill from skills directory
+---
+
+Content`
+      );
+
+      const skills = await getProjectSkills(fs, projectPath);
+
+      expect(skills).toHaveLength(1);
+      expect(skills[0].name).toBe('claude-skill');
+      expect(skills[0].description).toBe('Skill from .claude/skills');
+    });
+
+    it('should fall back to skills directory if no other directories exist', async () => {
+      const projectPath = '/projects/myproject';
+      const regularSkillPath = `${projectPath}/skills/regular-skill`;
+
+      // Create skill in skills directory only
+      await fs.mkdir(regularSkillPath, { recursive: true });
+      await fs.writeFile(
+        `${regularSkillPath}/SKILL.md`,
+        `---
+name: regular-skill
+description: Skill from skills directory
+---
+
+Content`
+      );
+
+      const skills = await getProjectSkills(fs, projectPath);
+
+      expect(skills).toHaveLength(1);
+      expect(skills[0].name).toBe('regular-skill');
+      expect(skills[0].description).toBe('Skill from skills directory');
+    });
+
+    it('should prioritize .agents/skills over .opencode/skills', async () => {
+      const projectPath = '/projects/myproject';
+      const agentsSkillPath = `${projectPath}/.agents/skills/agent-skill`;
+      const opencodeSkillPath = `${projectPath}/.opencode/skills/opencode-skill`;
+
+      // Create skill in .agents/skills
+      await fs.mkdir(agentsSkillPath, { recursive: true });
+      await fs.writeFile(
+        `${agentsSkillPath}/SKILL.md`,
+        `---
+name: agent-skill
+description: Skill from .agents/skills
+---
+
+Content`
+      );
+
+      // Create skill in .opencode/skills (should be ignored)
+      await fs.mkdir(opencodeSkillPath, { recursive: true });
+      await fs.writeFile(
+        `${opencodeSkillPath}/SKILL.md`,
+        `---
+name: opencode-skill
+description: Skill from .opencode/skills
+---
+
+Content`
+      );
+
+      const skills = await getProjectSkills(fs, projectPath);
+
+      expect(skills).toHaveLength(1);
+      expect(skills[0].name).toBe('agent-skill');
+      expect(skills[0].description).toBe('Skill from .agents/skills');
+    });
   });
 
   describe('getAllSkills', () => {

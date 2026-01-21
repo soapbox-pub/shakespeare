@@ -97,12 +97,34 @@ export function getSkillsFromPlugin(
 
 /**
  * Get all skills from a project's skills directory
+ * Checks for skills in order: .agents/skills, .opencode/skills, .claude/skills, skills
  */
 export async function getProjectSkills(
   fs: JSRuntimeFS,
   projectPath: string
 ): Promise<Skill[]> {
-  return getSkillsFromDirectory(fs, join(projectPath, 'skills'), 'project');
+  const skillsPaths = [
+    join(projectPath, '.agents', 'skills'),
+    join(projectPath, '.opencode', 'skills'),
+    join(projectPath, '.claude', 'skills'),
+    join(projectPath, 'skills'),
+  ];
+
+  // Try each path in order and return skills from the first one that exists
+  for (const skillsPath of skillsPaths) {
+    try {
+      const stat = await fs.stat(skillsPath);
+      if (stat.isDirectory()) {
+        return getSkillsFromDirectory(fs, skillsPath, 'project');
+      }
+    } catch {
+      // Directory doesn't exist, try next one
+      continue;
+    }
+  }
+
+  // No skills directory found
+  return [];
 }
 
 /**

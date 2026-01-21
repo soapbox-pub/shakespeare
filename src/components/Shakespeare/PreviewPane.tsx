@@ -177,19 +177,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
     }
   }, [projectId, projectsManager]);
 
-  // Legacy refresh function for build completion events
-  const refreshIframeLegacy = useCallback(() => {
-    if (iframeRef.current) {
-      // Force reload the iframe by updating its src
-      iframeRef.current.src = '/';
-      // Use a small timeout to ensure the src is cleared before setting it back
-      setTimeout(() => {
-        if (iframeRef.current) {
-          iframeRef.current.src = `https://${projectId}.${previewDomain}/`;
-        }
-      }, 10);
-    }
-  }, [projectId, previewDomain]);
+
 
   const sendResponse = useCallback((message: JSONRPCResponse) => {
     if (iframeRef.current?.contentWindow) {
@@ -464,13 +452,13 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
         console.log('Build completed for project, refreshing preview');
         // Check for built project and refresh iframe
         checkForBuiltProject();
-        refreshIframeLegacy();
+        refreshIframe();
       }
     };
 
     window.addEventListener('buildComplete', handleBuildComplete as EventListener);
     return () => window.removeEventListener('buildComplete', handleBuildComplete as EventListener);
-  }, [projectId, checkForBuiltProject, refreshIframeLegacy]);
+  }, [projectId, checkForBuiltProject, refreshIframe]);
 
   const handleFileSelect = (filePath: string) => {
     setSelectedFile(filePath);

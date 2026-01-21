@@ -1,6 +1,8 @@
 import type { JSRuntimeFS } from '../JSRuntime';
 import type { DeployAdapter, DeployOptions, DeployResult, CloudflareDeployConfig } from './types';
 import { proxyUrl } from '../proxyUrl';
+import { parse as parseJsonc } from 'jsonc-parser';
+import { join } from 'path-browserify';
 
 interface AssetManifest {
   [path: string]: { hash: string; size: number };
@@ -22,6 +24,16 @@ interface WorkerScript {
   modified_on: string;
   created_on: string;
   has_assets: boolean;
+}
+
+interface WranglerConfig {
+  compatibility_date?: string;
+  main?: string;
+  assets?: {
+    directory?: string;
+    html_handling?: 'auto-trailing-slash' | 'force-trailing-slash' | 'drop-trailing-slash' | 'none';
+    not_found_handling?: 'single-page-application' | '404-page' | 'none';
+  };
 }
 
 interface FileInfo {
@@ -62,6 +74,9 @@ export class CloudflareAdapter implements DeployAdapter {
 
   async deploy(options: DeployOptions): Promise<DeployResult> {
     const { projectId, projectPath } = options;
+
+    // Try to read wrangler.jsonc configuration
+    const wranglerConfig = await this.readWranglerConfig(projectPath);
 
     // Check if dist directory exists and contains index.html
     const distPath = `${projectPath}/dist`;
@@ -115,7 +130,7 @@ export class CloudflareAdapter implements DeployAdapter {
     }
 
     // Step 4: Deploy the worker with assets
-    const deployment = await this.deployWorker(scriptName, completionJwt);
+    const deployment = await this.deployWorker(scriptName, completionJwt, projectPath, wranglerConfig);
 
     // Step 5: Enable the workers.dev subdomain for this script
     await this.enableWorkersDevSubdomain(scriptName);
@@ -249,37 +264,48 @@ export class CloudflareAdapter implements DeployAdapter {
     return data.result || {};
   }
 
-  private async deployWorker(scriptName: string, assetsJwt: string): Promise<WorkerScript> {
+  private async deployWorker(
+    scriptName: string,
+    assetsJwt: string,
+    projectPath: string,
+    wranglerConfig?: WranglerConfig
+  ): Promise<WorkerScript> {
     const url = `${this.baseURL}/accounts/${this.accountId}/workers/scripts/${scriptName}`;
     const targetUrl = this.corsProxy ? proxyUrl({ template: this.corsProxy, url }) : url;
 
-    // Create a minimal worker script that serves static assets
-    // This is an assets-only worker - Cloudflare will automatically serve the uploaded assets
-    const workerScript = `
-export default {
-  async fetch(request, env) {
+    // Determine the main module name from wrangler.jsonc or defaults
+    const mainModuleName = wranglerConfig?.main || '_worker.js';
+
+    // Try to read custom worker script from project, fall back to default
+    let workerScript: string;
+    try {
+      workerScript = await this.fs.readFile(join(projectPath, mainModuleName), 'utf8');
+    } catch {
+      // Fallback to default worker script if custom script not found
+      workerScript = `export default {
+  async fetch(request) {
     // This worker only serves static assets
     // The assets are automatically served by Cloudflare's asset handler
     return new Response('Not Found', { status: 404 });
   }
-};
-`;
+};`;
+    }
 
     const formData = new FormData();
 
     // Add the worker script as the main module
     const scriptBlob = new Blob([workerScript], { type: 'application/javascript+module' });
-    formData.append('worker.js', scriptBlob, 'worker.js');
+    formData.append(mainModuleName, scriptBlob, mainModuleName);
 
     // Add metadata with assets configuration
     const metadata = {
-      main_module: 'worker.js',
-      compatibility_date: new Date().toISOString().split('T')[0],
+      main_module: mainModuleName,
+      compatibility_date: wranglerConfig?.compatibility_date || new Date().toISOString().split('T')[0],
       assets: {
         jwt: assetsJwt,
         config: {
-          html_handling: 'auto-trailing-slash',
-          not_found_handling: 'single-page-application',
+          html_handling: wranglerConfig?.assets?.html_handling || 'auto-trailing-slash',
+          not_found_handling: wranglerConfig?.assets?.not_found_handling || 'single-page-application',
         },
       },
     };
@@ -301,6 +327,27 @@ export default {
 
     const data = await response.json();
     return data.result;
+  }
+
+  private async readWranglerConfig(projectPath: string): Promise<WranglerConfig | undefined> {
+    // Try wrangler.jsonc first, then wrangler.json
+    const configPaths = [
+      join(projectPath, 'wrangler.jsonc'),
+      join(projectPath, 'wrangler.json'),
+    ];
+
+    for (const configPath of configPaths) {
+      try {
+        const configContent = await this.fs.readFile(configPath, 'utf8');
+        // Parse JSONC (JSON with comments) using jsonc-parser
+        return parseJsonc(configContent) as WranglerConfig;
+      } catch {
+        // Continue to next path
+      }
+    }
+
+    // No wrangler config found, return undefined
+    return undefined;
   }
 
   private async collectFiles(

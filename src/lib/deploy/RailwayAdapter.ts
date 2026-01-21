@@ -116,7 +116,7 @@ export class RailwayAdapter implements DeployAdapter {
     let activeServiceId = this.serviceId;
 
     if (!activeServiceId) {
-      const service = await this.createService(activeProjectId, 'web');
+      const service = await this.createService(activeProjectId, projectId);
       activeServiceId = service.id;
     }
 
@@ -131,15 +131,25 @@ export class RailwayAdapter implements DeployAdapter {
       tarball
     );
 
+    // Step 6: Wait for deployment to complete
+    await this.waitForDeployment(deployment.deploymentId);
+
+    // Step 7: Check for existing domains and create one if needed
+    const domain = await this.ensureServiceDomain(
+      activeProjectId,
+      activeEnvironmentId,
+      activeServiceId
+    );
+
     return {
-      url: deployment.url,
+      url: domain ? `https://${domain}` : deployment.url,
       metadata: {
         deploymentId: deployment.deploymentId,
         projectId: activeProjectId,
         environmentId: activeEnvironmentId,
         serviceId: activeServiceId,
         provider: 'railway',
-        deploymentDomain: deployment.deploymentDomain,
+        deploymentDomain: domain || deployment.deploymentDomain,
       },
     };
   }
@@ -490,5 +500,128 @@ export class RailwayAdapter implements DeployAdapter {
     }
 
     return response.json();
+  }
+
+  private async ensureServiceDomain(
+    projectId: string,
+    environmentId: string,
+    serviceId: string
+  ): Promise<string | null> {
+    try {
+      // First, check if a domain already exists
+      const domainsQuery = `
+        query Domains($environmentId: String!, $projectId: String!, $serviceId: String!) {
+          domains(environmentId: $environmentId, projectId: $projectId, serviceId: $serviceId) {
+            serviceDomains {
+              id
+              domain
+            }
+            customDomains {
+              id
+              domain
+            }
+          }
+        }
+      `;
+
+      const domainsResult = await this.graphqlRequest<{
+        domains: {
+          serviceDomains: Array<{ id: string; domain: string }>;
+          customDomains: Array<{ id: string; domain: string }>;
+        };
+      }>(domainsQuery, {
+        environmentId,
+        projectId,
+        serviceId,
+      });
+
+      // If a domain already exists, return it
+      if (domainsResult.domains.serviceDomains.length > 0) {
+        return domainsResult.domains.serviceDomains[0].domain;
+      }
+      if (domainsResult.domains.customDomains.length > 0) {
+        return domainsResult.domains.customDomains[0].domain;
+      }
+
+      // No domain exists, create a Railway-provided domain
+      const createDomainMutation = `
+        mutation ServiceDomainCreate($environmentId: String!, $serviceId: String!) {
+          serviceDomainCreate(input: { environmentId: $environmentId, serviceId: $serviceId }) {
+            id
+            domain
+          }
+        }
+      `;
+
+      const createResult = await this.graphqlRequest<{
+        serviceDomainCreate: {
+          id: string;
+          domain: string;
+        };
+      }>(createDomainMutation, {
+        environmentId,
+        serviceId,
+      });
+
+      return createResult.serviceDomainCreate.domain;
+    } catch (error) {
+      console.warn('Failed to create/get service domain:', error);
+      // Return null to fall back to the dashboard URL
+      return null;
+    }
+  }
+
+  private async waitForDeployment(deploymentId: string): Promise<void> {
+    const query = `
+      query Deployment($id: String!) {
+        deployment(id: $id) {
+          id
+          status
+        }
+      }
+    `;
+
+    const maxAttempts = 180; // 15 minutes max (5 second intervals)
+    let attempts = 0;
+
+    while (attempts < maxAttempts) {
+      attempts++;
+
+      try {
+        const result = await this.graphqlRequest<{
+          deployment: {
+            id: string;
+            status: string;
+          };
+        }>(query, { id: deploymentId });
+
+        const status = result.deployment.status;
+
+        if (status === 'SUCCESS') {
+          return; // Deployment successful
+        }
+
+        if (status === 'FAILED') {
+          throw new Error('Deployment failed. Check the Railway dashboard for build logs.');
+        }
+
+        if (status === 'CRASHED') {
+          throw new Error('Deployment crashed. Check the Railway dashboard for logs.');
+        }
+
+        // Status is BUILDING, DEPLOYING, or other in-progress state
+        // Wait 5 seconds before checking again
+        await new Promise(resolve => setTimeout(resolve, 5000));
+      } catch (error) {
+        // If it's our thrown error, re-throw it
+        if (error instanceof Error && (error.message.includes('failed') || error.message.includes('crashed'))) {
+          throw error;
+        }
+        // Otherwise, wait and retry
+        await new Promise(resolve => setTimeout(resolve, 5000));
+      }
+    }
+
+    throw new Error('Deployment timed out after 15 minutes. Check the Railway dashboard for status.');
   }
 }

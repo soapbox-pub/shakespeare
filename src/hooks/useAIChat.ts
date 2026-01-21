@@ -46,8 +46,10 @@ export function useAIChat({
   const [lastFinishReason, setLastFinishReason] = useState<string | null>(null);
   const [isLoadingHistory, setIsLoadingHistory] = useState<boolean>(true);
 
-  const initSession = useCallback(async () => {
-    setIsLoadingHistory(true);
+  const initSession = useCallback(async (showLoading = true) => {
+    if (showLoading) {
+      setIsLoadingHistory(true);
+    }
     try {
       // Load or update session
       const session = await sessionManager.loadSession(projectId, tools, customTools, maxSteps);
@@ -59,7 +61,9 @@ export function useAIChat({
       setLastInputTokens(session.lastInputTokens || 0);
       setLastFinishReason(session.lastFinishReason ?? null);
     } finally {
-      setIsLoadingHistory(false);
+      if (showLoading) {
+        setIsLoadingHistory(false);
+      }
     }
   }, [sessionManager, projectId, tools, customTools, maxSteps]);
 
@@ -129,7 +133,8 @@ export function useAIChat({
     providerModel: string
   ) => {
     try {
-      await initSession();
+      // Ensure session is loaded (without showing loading state)
+      await initSession(false);
       await sessionManager.sendMessage(projectId, content, providerModel);
     } catch (error) {
       if (onAIError && error instanceof Error) {
@@ -142,7 +147,8 @@ export function useAIChat({
 
   const startGeneration = useCallback(async (providerModel: string) => {
     try {
-      await initSession();
+      // Ensure session is loaded (without showing loading state)
+      await initSession(false);
       await sessionManager.startGeneration(projectId, providerModel);
     } catch (error) {
       if (onAIError && error instanceof Error) {

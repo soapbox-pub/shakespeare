@@ -91,7 +91,8 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   const queryClient = useQueryClient();
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
-  const [scrolledProjects] = useState(() => new Set<string>());
+  const scrolledProjectsRef = useRef(new Set<string>());
+  const shouldScrollToBottomRef = useRef(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [isStuck, setIsStuck] = useState(false);
   const [aiError, setAIError] = useState<Error | null>(null);
@@ -489,30 +490,46 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
 
   useEffect(() => {
     if (scrollAreaRef.current && (messages || streamingMessage)) {
-      // Check if user was already at or near the bottom (within 100px threshold)
       const threshold = 100;
       const container = scrollAreaRef.current;
       const isNearBottom = container.scrollTop + container.clientHeight >= container.scrollHeight - threshold;
 
-      // Only auto-scroll if user was already near the bottom
-      if (isNearBottom) {
-        container.scrollTop = container.scrollHeight;
+      // Auto-scroll if:
+      // 1. User just sent a message (shouldScrollToBottomRef is true), OR
+      // 2. User was already near the bottom
+      if (shouldScrollToBottomRef.current || isNearBottom) {
+        // Double requestAnimationFrame ensures scroll happens after layout and paint
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            if (scrollAreaRef.current) {
+              scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+            }
+          });
+        });
+        shouldScrollToBottomRef.current = false; // Reset the flag
       }
     }
   }, [messages, streamingMessage, isLoading]);
 
+  // Remove project from scrolled set when loading starts (so it can scroll again after loading)
+  useEffect(() => {
+    if (isLoadingHistory) {
+      scrolledProjectsRef.current.delete(projectId);
+    }
+  }, [projectId, isLoadingHistory]);
+
   // Scroll to bottom when first visiting a project (including page refresh)
   useEffect(() => {
-    if (projectId && !scrolledProjects.has(projectId)) {
-      // Small delay to ensure messages have loaded
-      const timer = setTimeout(() => {
-        scrollToBottom();
-        scrolledProjects.add(projectId);
-      }, 100);
-
-      return () => clearTimeout(timer);
+    if (projectId && !scrolledProjectsRef.current.has(projectId) && !isLoadingHistory && messages.length > 0) {
+      // Use double RAF to ensure DOM is fully rendered after isLoadingHistory becomes false
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          scrollToBottom();
+          scrolledProjectsRef.current.add(projectId);
+        });
+      });
     }
-  }, [projectId, scrolledProjects, scrollToBottom]);
+  }, [projectId, isLoadingHistory, messages.length, scrollToBottom]);
 
   // Drag and drop handlers
   const handleDragEnter = useCallback((e: React.DragEvent) => {
@@ -576,6 +593,9 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
 
     // Add model to recently used when sending a message
     addRecentlyUsedModel(modelToUse);
+
+    // Mark that we should scroll to bottom when the message is added
+    shouldScrollToBottomRef.current = true;
 
     await sendMessage(messageContent, modelToUse);
   }, [addRecentlyUsedModel, fs, isConfigured, isLoading, providerModel, sendMessage, tmpPath]);

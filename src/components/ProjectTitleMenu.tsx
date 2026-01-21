@@ -109,7 +109,7 @@ export function ProjectTitleMenu({
 
         <DropdownMenuItem
           onClick={onNewChat}
-          disabled={isAILoading}
+          disabled={isAnyLoading}
           className="gap-2"
         >
           <MessageSquarePlus className="h-4 w-4" />

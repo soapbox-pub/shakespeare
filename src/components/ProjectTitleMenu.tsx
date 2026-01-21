@@ -7,6 +7,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
+  MessageSquarePlus,
   History,
   Folder,
   Copy,
@@ -21,6 +22,7 @@ import { useQueryClient } from '@tanstack/react-query';
 interface ProjectTitleMenuProps {
   projectId: string;
   projectName: string;
+  onNewChat: () => void;
   onGitHistory: () => void;
   onDuplicate: () => void;
   onDelete: () => void;
@@ -32,6 +34,7 @@ interface ProjectTitleMenuProps {
 export function ProjectTitleMenu({
   projectId,
   projectName,
+  onNewChat,
   onGitHistory,
   onDuplicate,
   onDelete,
@@ -102,6 +105,15 @@ export function ProjectTitleMenu({
         >
           <History className="h-4 w-4" />
           Rollback
+        </DropdownMenuItem>
+
+        <DropdownMenuItem
+          onClick={onNewChat}
+          disabled={isAILoading}
+          className="gap-2"
+        >
+          <MessageSquarePlus className="h-4 w-4" />
+          New Chat
         </DropdownMenuItem>
 
         <DropdownMenuItem

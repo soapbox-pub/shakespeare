@@ -212,6 +212,8 @@ export function ProviderConfigDialog({
                       setLocalProvider({ ...localProvider, apiKey: e.target.value });
                     } else if (localProvider.type === 'deno') {
                       setLocalProvider({ ...localProvider, apiKey: e.target.value });
+                    } else if (localProvider.type === 'railway') {
+                      setLocalProvider({ ...localProvider, apiKey: e.target.value });
                     }
                   }}
                 />
@@ -227,7 +229,8 @@ export function ProviderConfigDialog({
                       localProvider.type === 'vercel' ? 'https://api.vercel.com' :
                         localProvider.type === 'cloudflare' ? 'https://api.cloudflare.com/client/v4' :
                           localProvider.type === 'deno' ? 'https://api.deno.com/v1' :
-                            'Base URL'
+                            localProvider.type === 'railway' ? 'https://backboard.railway.app/graphql/v2' :
+                              'Base URL'
                   }
                   value={localProvider.baseURL || ''}
                   onChange={(e) => {
@@ -238,6 +241,8 @@ export function ProviderConfigDialog({
                     } else if (localProvider.type === 'cloudflare') {
                       setLocalProvider({ ...localProvider, baseURL: e.target.value });
                     } else if (localProvider.type === 'deno') {
+                      setLocalProvider({ ...localProvider, baseURL: e.target.value });
+                    } else if (localProvider.type === 'railway') {
                       setLocalProvider({ ...localProvider, baseURL: e.target.value });
                     }
                   }}

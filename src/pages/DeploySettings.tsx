@@ -286,6 +286,7 @@ export function DeploySettings() {
 
   const handleRemoveProvider = (index: number) => {
     removeProvider(index);
+    setSelectedProviderIndex(null);
   };
 
   const handleUpdateProvider = (index: number, provider: DeployProvider) => {
@@ -363,7 +364,7 @@ export function DeploySettings() {
           )}
 
           {/* Provider Config Dialog */}
-          {selectedProviderIndex !== null && (
+          {selectedProviderIndex !== null && settings.providers[selectedProviderIndex] && (
             <ProviderConfigDialog
               open={dialogOpen}
               onOpenChange={setDialogOpen}

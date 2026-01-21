@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { getSettingsCategories } from '@/lib/settingsItems';
@@ -41,6 +41,9 @@ export function Settings() {
       </div>
     );
   }
+
+  // On desktop, redirect to preferences
+  return <Navigate to="/settings/preferences" replace />;
 }
 
 export default Settings;

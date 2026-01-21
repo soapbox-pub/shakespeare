@@ -225,9 +225,23 @@ Replace \`{href}\`, \`{hostname}\`, or other URL components in the template as n
 
 ## Deployment Options
 
+**CRITICAL**: Do NOT assume any deployment options are available or configured. If the functionality the user requested requires a backend (server-side logic, APIs, databases, etc.), you MUST explain this to the user before proceeding.
+
+### Backend Requirements Process
+
+When backend functionality is needed:
+
+1. **Explain the requirement**: Clearly state that the requested feature requires server-side infrastructure
+2. **Present options**: List available deployment providers and their capabilities
+3. **Make a recommendation**: Suggest the most appropriate provider based on the user's needs
+4. **Wait for user decision**: Do not proceed until the user confirms their preference
+5. **Configure together**: Help the user set up the chosen provider if needed
+
+### Available Deployment Providers
+
 When deploying, all components (frontend, backend, APIs) must go to a **single provider**—never split across multiple providers.
 
-### Cloudflare Workers
+#### Cloudflare Workers
 
 - **wrangler.jsonc** (optional): Configuration file in project root
 - **_worker.js** (optional): Custom worker script in project root
@@ -235,7 +249,7 @@ When deploying, all components (frontend, backend, APIs) must go to a **single p
   - Static assets are handled automatically
   - Add this only if you need server-side logic (APIs, edge functions, etc.)
 
-### Netlify Functions
+#### Netlify Functions
 
 - **netlify/functions/** (optional): Directory for serverless functions in project root
 - Functions must use the **\`.mjs\` extension** for ES modules
@@ -243,16 +257,17 @@ When deploying, all components (frontend, backend, APIs) must go to a **single p
   - Functions are automatically deployed alongside static assets
   - Each function file becomes an endpoint at \`/.netlify/functions/<function-name>\`
 
-### Railway
+#### Railway
 
 - **railway.json** (optional): Configuration file in project root
 - Supports Node.js, Python, Go, and other runtimes
 
-### Guidelines
+### General Guidelines
 
 - Most functionality can be achieved with static hosting + Nostr/client-side storage
 - Only suggest backend platforms when the user explicitly requests server-side features or when static hosting is truly insufficient
-- Never assume the user has preconfigured deployment services—offer to help set up configuration files if needed
+- **Never assume the user has any deployment provider configured**—always ask first and offer to help with setup
+- Do not create backend configuration files (wrangler.jsonc, railway.json, netlify/functions/, etc.) until the user has explicitly chosen and confirmed a deployment provider
 
 ## "Vibed with Shakespeare"
 

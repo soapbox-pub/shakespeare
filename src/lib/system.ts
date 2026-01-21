@@ -5,7 +5,7 @@ import OpenAI from "openai";
 import { nip19 } from "nostr-tools";
 import nunjucks from "nunjucks";
 import { JSRuntimeFS } from "./JSRuntime";
-import { getAllSkills } from "./plugins";
+import { getAllSkills } from "./skills";
 import type { AppConfig } from "@/contexts/AppContext";
 
 export interface ModelInfo {

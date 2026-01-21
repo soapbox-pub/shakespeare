@@ -1,7 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useFS } from './useFS';
 import { useFSPaths } from './useFSPaths';
-import { getPlugins, getPluginSkills, deletePlugin as deletePluginFn } from '@/lib/plugins';
+import { getPlugins, deletePlugin as deletePluginFn } from '@/lib/plugins';
+import { getPluginSkills } from '@/lib/skills';
 import { useGit } from './useGit';
 import { join } from 'path-browserify';
 

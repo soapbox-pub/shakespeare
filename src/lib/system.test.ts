@@ -6,8 +6,8 @@ import { NostrMetadata } from '@nostrify/nostrify';
 import { AppConfig } from '@/contexts/AppContext';
 import OpenAI from 'openai';
 
-// Mock the plugins module
-vi.mock('./plugins', () => ({
+// Mock the skills module
+vi.mock('./skills', () => ({
   getAllSkills: vi.fn(),
 }));
 
@@ -16,7 +16,7 @@ vi.mock('path-browserify', () => ({
   join: (...args: string[]) => args.join('/').replace(/\/+/g, '/'),
 }));
 
-import { getAllSkills } from './plugins';
+import { getAllSkills } from './skills';
 
 // Test configuration
 const testConfig: AppConfig = {

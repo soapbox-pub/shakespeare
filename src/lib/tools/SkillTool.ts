@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { Tool, ToolResult } from './Tool';
 import type { JSRuntimeFS } from '../JSRuntime';
-import { findSkill, readSkillContent } from '../plugins';
+import { findSkill, readSkillContent } from '../skills';
 
 interface SkillParams {
   name: string;

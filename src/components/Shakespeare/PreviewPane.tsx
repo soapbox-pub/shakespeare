@@ -10,7 +10,7 @@ import { useBuildProject } from '@/hooks/useBuildProject';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { FolderOpen, ArrowLeft, Bug, Copy, Check, Loader2, Code, X, Terminal, Expand, Shrink, Hammer } from 'lucide-react';
+import { FolderOpen, ArrowLeft, Bug, Copy, Check, Loader2, Code, X, Terminal, Expand, Shrink, Hammer, RefreshCw } from 'lucide-react';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { GitStatusIndicator } from '@/components/GitStatusIndicator';
 import { BranchSwitcher } from '@/components/BranchSwitcher';
@@ -74,6 +74,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
   const [desktopCodeView, setDesktopCodeView] = useState<'files' | 'terminal'>('files');
   const isMobile = useIsMobile();
   const [hasBuiltProject, setHasBuiltProject] = useState(false);
+  const [buildError, setBuildError] = useState<string | null>(null);
   const [currentPath, setCurrentPath] = useState('/');
   const [navigationHistory, setNavigationHistory] = useState<string[]>(['/']);
   const [historyIndex, setHistoryIndex] = useState(0);
@@ -428,6 +429,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
     setFileContent('');
     setMobileCodeView('explorer');
     setDesktopCodeView('files');
+    setBuildError(null);
 
     // Reset navigation history and state
     setCurrentPath('/');
@@ -490,6 +492,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
 
   const [copiedMessageIndex, setCopiedMessageIndex] = useState<number | null>(null);
   const [copiedAll, setCopiedAll] = useState(false);
+  const [copiedBuildError, setCopiedBuildError] = useState(false);
 
   const messages = isLogsOpen ? getConsoleMessages() : [];
 
@@ -651,12 +654,87 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
                           />
                         </div>
                       ) : (
-                        <div className="h-full w-full flex items-center justify-center bg-muted">
-                          <div className="text-center">
-                            <h3 className="text-lg font-semibold mb-2">{t('projectPreview')}</h3>
-                            <p className="text-muted-foreground">
-                              {t('buildProjectToSeePreview')}
-                            </p>
+                        <div className="h-full w-full flex items-center justify-center bg-muted p-4">
+                          <div className="text-center space-y-4 max-w-2xl w-full">
+                            <div>
+                              <h3 className="text-lg font-semibold mb-2">{t('projectPreview')}</h3>
+                              <p className="text-muted-foreground">
+                                {t('buildProjectToSeePreview')}
+                              </p>
+                            </div>
+                            {buildError && (
+                              <div className="bg-destructive/10 border border-destructive/20 rounded-lg overflow-hidden text-left">
+                                <div className="px-4 py-2 bg-destructive/20 border-b border-destructive/20 flex items-center justify-between">
+                                  <p className="font-semibold text-destructive text-sm">Build Failed</p>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={async () => {
+                                      try {
+                                        await navigator.clipboard.writeText(buildError);
+                                        setCopiedBuildError(true);
+                                        setTimeout(() => setCopiedBuildError(false), 2000);
+                                      } catch (error) {
+                                        console.error('Failed to copy error to clipboard:', error);
+                                      }
+                                    }}
+                                    className="h-7 px-2 text-xs hover:bg-destructive/10"
+                                  >
+                                    {copiedBuildError ? (
+                                      <>
+                                        <Check className="h-3 w-3 mr-1.5" />
+                                        Copied
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Copy className="h-3 w-3 mr-1.5" />
+                                        Copy
+                                      </>
+                                    )}
+                                  </Button>
+                                </div>
+                                <ScrollArea className="max-h-48">
+                                  <div className="overflow-x-auto">
+                                    <pre className="p-4 text-xs font-mono text-destructive whitespace-pre leading-relaxed">{buildError}</pre>
+                                  </div>
+                                  <ScrollBar orientation="horizontal" />
+                                </ScrollArea>
+                              </div>
+                            )}
+                            <Button
+                              variant="outline"
+                              onClick={() => {
+                                setBuildError(null);
+                                buildProject(undefined, {
+                                  onSuccess: () => {
+                                    setBuildError(null);
+                                  },
+                                  onError: (error) => {
+                                    console.error('Build failed:', error);
+                                    setBuildError(error instanceof Error ? error.message : String(error));
+                                  }
+                                });
+                              }}
+                              disabled={isBuildLoading}
+                              className="gap-2"
+                            >
+                              {isBuildLoading ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                  Building...
+                                </>
+                              ) : buildError ? (
+                                <>
+                                  <RefreshCw className="h-4 w-4" />
+                                  Retry
+                                </>
+                              ) : (
+                                <>
+                                  <Hammer className="h-4 w-4" />
+                                  Build
+                                </>
+                              )}
+                            </Button>
                           </div>
                         </div>
                       )}

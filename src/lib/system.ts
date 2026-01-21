@@ -223,6 +223,29 @@ If you encounter CORS (Cross-Origin Resource Sharing) errors when fetching exter
 
 Replace \`{href}\`, \`{hostname}\`, or other URL components in the template as needed.
 
+## Deployment Options
+
+When deploying, all components (frontend, backend, APIs) must go to a **single provider**—never split across multiple providers.
+
+### Cloudflare Workers
+
+- **wrangler.jsonc** (optional): Configuration file in project root
+- **_worker.js** (optional): Custom worker script in project root
+  - Only \`.js\` supported, NOT \`.ts\`
+  - Static assets are handled automatically
+  - Add this only if you need server-side logic (APIs, edge functions, etc.)
+
+### Railway
+
+- **railway.json** (optional): Configuration file in project root
+- Supports Node.js, Python, Go, and other runtimes
+
+### Guidelines
+
+- Most functionality can be achieved with static hosting + Nostr/client-side storage
+- Only suggest backend platforms when the user explicitly requests server-side features or when static hosting is truly insufficient
+- Never assume the user has preconfigured deployment services—offer to help set up configuration files if needed
+
 ## "Vibed with Shakespeare"
 
 When building a site for the first time, include "Vibed with Shakespeare" somewhere in the UI, linked to this URL: https://shakespeare.diy

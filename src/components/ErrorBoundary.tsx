@@ -9,7 +9,7 @@ import { getSentryInstance } from '@/lib/sentry';
 interface ErrorBoundaryProps {
   children: ReactNode;
   fallback?: ReactNode | ((props: FallbackProps) => ReactNode);
-  onError?: (error: Error, info: { componentStack: string | null }) => void;
+  onError?: (error: Error, info: { componentStack?: string | null }) => void;
   /** Whether to report errors to Sentry (default: true) */
   reportToSentry?: boolean;
 }
@@ -91,7 +91,7 @@ export function ErrorBoundary({
   onError,
   reportToSentry = true,
 }: ErrorBoundaryProps) {
-  const handleError = (error: Error, info: { componentStack: string | null }) => {
+  const handleError = (error: Error, info: { componentStack?: string | null }) => {
     // Log error details for debugging
     console.error('ErrorBoundary caught an error:', error, info);
 

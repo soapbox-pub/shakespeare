@@ -80,7 +80,7 @@ export class MkdirCommand implements ShellCommand {
                 // Create the directory
                 await this.fs.mkdir(absolutePath);
               } else {
-                return createErrorResult(`${this.name}: ${dirPath}: ${error.message}`);
+                return createErrorResult(`${this.name}: ${dirPath}: ${error instanceof Error ? error.message : String(error)}`);
               }
             }
           }

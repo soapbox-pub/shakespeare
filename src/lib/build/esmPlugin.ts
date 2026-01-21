@@ -158,7 +158,7 @@ export function esmPlugin(options: EsmPluginOptions): Plugin {
       let current: string | undefined = base;
       while (current && current.length) {
         // Remove the last package from the path (handling scoped packages like @scope/name)
-        const next = current.replace(/\/node_modules\/(@[^/]+\/)?[^/]+$/, "");
+        const next: string = current.replace(/\/node_modules\/(@[^/]+\/)?[^/]+$/, "");
         if (next === current) break;
         current = next;
         const candidate = `${current}/node_modules/${name}`;

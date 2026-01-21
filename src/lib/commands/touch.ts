@@ -73,7 +73,7 @@ export class TouchCommand implements ShellCommand {
               await this.fs.writeFile(absolutePath, '', 'utf8');
             } else {
               // Other error (permission, etc.)
-              return createErrorResult(`${this.name}: ${filePath}: ${error.message}`);
+              return createErrorResult(`${this.name}: ${filePath}: ${error instanceof Error ? error.message : String(error)}`);
             }
           }
 

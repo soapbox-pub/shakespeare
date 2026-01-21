@@ -1173,7 +1173,7 @@ export function AIProviderConfigDialog({
 
                   <div className="space-y-3">
                     <Label className="text-sm font-medium">{t('paymentMethod')}</Label>
-                    <Tabs value={paymentMethod} onValueChange={(value: 'stripe' | 'lightning') => setPaymentMethod(value)} className="w-full">
+                    <Tabs value={paymentMethod} onValueChange={(value) => setPaymentMethod(value as 'stripe' | 'lightning')} className="w-full">
                       <TabsList className="grid w-full grid-cols-2">
                         <TabsTrigger value="stripe" className="flex items-center gap-2">
                           <CreditCard className="h-4 w-4" />

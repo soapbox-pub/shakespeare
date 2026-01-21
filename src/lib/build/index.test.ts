@@ -130,7 +130,7 @@ describe('buildProject', () => {
       });
 
     vi.mocked(mockFS.readdir)
-      .mockImplementation(async (path: string, _options?: { withFileTypes: true }) => {
+      .mockImplementation(async (path: string, _options?: { withFileTypes?: boolean }) => {
         if (path === '/test/project/public') {
           return [
             { name: 'favicon.ico', isDirectory: () => false, isFile: () => true },

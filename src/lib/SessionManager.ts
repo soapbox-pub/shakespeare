@@ -661,7 +661,7 @@ export class SessionManager {
       console.error('AI generation error:', error);
 
       // Handle user cancellation
-      if (error instanceof OpenAI.APIUserAbortError || error?.name === 'AbortError') {
+      if (error instanceof OpenAI.APIUserAbortError || (error instanceof Error && error.name === 'AbortError')) {
         return; // User cancelled
       }
 

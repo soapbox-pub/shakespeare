@@ -217,7 +217,6 @@ export function ProjectView() {
                     onDuplicate={() => setDuplicateDialogOpen(true)}
                     onDelete={() => setDeleteDialogOpen(true)}
                     onProjectDetails={() => setIsProjectDetailsOpen(true)}
-                    isAILoading={isAILoading}
                     isAnyLoading={isAnyLoading || isDeleting}
                     className="text-base"
                   />
@@ -447,7 +446,6 @@ export function ProjectView() {
                             onDuplicate={() => setDuplicateDialogOpen(true)}
                             onDelete={() => setDeleteDialogOpen(true)}
                             onProjectDetails={() => setIsProjectDetailsOpen(true)}
-                            isAILoading={isAILoading}
                             isAnyLoading={isAnyLoading || isDeleting}
                             className="text-lg"
                           />

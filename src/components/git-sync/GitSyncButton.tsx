@@ -7,6 +7,7 @@ import { useGitSyncState } from '@/hooks/useGitSyncState';
 import { useFSPaths } from '@/hooks/useFSPaths';
 import { cn } from '@/lib/utils';
 import { GitSyncSteps } from './GitSyncSteps';
+import { useTranslation } from 'react-i18next';
 
 interface GitSyncButtonProps {
   projectId: string;
@@ -18,6 +19,7 @@ export function GitSyncButton({ projectId, className }: GitSyncButtonProps) {
   const [syncSuccess, setSyncSuccess] = useState(false);
   const [showWarningPopover, setShowWarningPopover] = useState(false);
   const warningDismissed = useRef(false);
+  const { t } = useTranslation();
 
   const { data: gitStatus, isLoading: isGitStatusLoading } = useGitStatus(projectId);
   const { getError, getState } = useGitSyncState();
@@ -129,6 +131,7 @@ export function GitSyncButton({ projectId, className }: GitSyncButtonProps) {
                   className={cn("size-8 p-0 group relative", className)}
                   aria-label="Sync with Git"
                   onClick={handleButtonClick}
+                  title={t('cloudSyncButtonTooltip')}
                 >
                   <CloudUpload className={cn("size-5 group-hover:text-foreground", open ? "text-foreground" : "text-muted-foreground")} />
                   {renderIndicator()}

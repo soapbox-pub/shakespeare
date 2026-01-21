@@ -16,11 +16,8 @@ import { GitStatusIndicator } from '@/components/GitStatusIndicator';
 import { BranchSwitcher } from '@/components/BranchSwitcher';
 import { BrowserAddressBar } from '@/components/ui/browser-address-bar';
 import { type DeviceMode } from '@/components/ui/device-toggle';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
+import type { ImperativePanelHandle } from 'react-resizable-panels';
 import { cn } from '@/lib/utils';
 import { FileTree } from './FileTree';
 import { FileEditor } from './FileEditor';
@@ -83,8 +80,11 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
 
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [deviceMode, setDeviceMode] = useState<DeviceMode>('laptop');
+  const [isLogsOpen, setIsLogsOpen] = useState(false);
   const previewContainerRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const iframePanelRef = useRef<ImperativePanelHandle>(null);
+  const logsPanelRef = useRef<ImperativePanelHandle>(null);
   const { fs } = useFS();
   const { projectsPath } = useFSPaths();
   const projectsManager = useProjectsManager();
@@ -488,105 +488,46 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
     }
   };
 
-  const ConsoleDropdown = () => {
-    const [isOpen, setIsOpen] = useState(false);
-    const [copiedMessageIndex, setCopiedMessageIndex] = useState<number | null>(null);
+  const [copiedMessageIndex, setCopiedMessageIndex] = useState<number | null>(null);
+  const [copiedAll, setCopiedAll] = useState(false);
 
-    const messages = isOpen ? getConsoleMessages() : [];
+  const messages = isLogsOpen ? getConsoleMessages() : [];
 
-    const copyMessageToClipboard = async (msg: ConsoleMessage, index: number) => {
-      try {
-        await navigator.clipboard.writeText(msg.message);
-        setCopiedMessageIndex(index);
-        setTimeout(() => setCopiedMessageIndex(null), 2000);
-      } catch (error) {
-        console.error('Failed to copy message to clipboard:', error);
-      }
-    };
-
-    const messageCount = messages.length;
-
-    return (
-      <Popover open={isOpen} onOpenChange={setIsOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 gap-2 relative"
-          >
-            <Bug className="h-4 w-4" />
-            <span className="hidden lg:inline">Logs</span>
-            {hasConsoleErrors && (
-              <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full border-2 border-background bg-red-500" />
-            )}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent
-          align="end"
-          className="w-[calc(100vw-1rem)] max-w-[480px] max-h-[512px] overflow-hidden shadow-lg border rounded-lg bg-background p-0 z-[9999]"
-          sideOffset={4}
-        >
-
-          {/* Messages */}
-          <div className="h-[60vh] max-h-[512px] w-full bg-background text-foreground font-mono text-xs relative overflow-y-auto overflow-x-hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-            <div className="py-2 px-1 space-y-0">
-              {messageCount === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <p className="text-sm text-muted-foreground font-medium">No console messages</p>
-                  <p className="text-xs text-muted-foreground mt-1">Messages from your project will appear here</p>
-                </div>
-              ) : (
-                messages.map((msg, index) => (
-                  <div
-                    key={index}
-                    className="group relative py-0.5 px-1 hover:bg-muted/50 transition-colors duration-150 rounded cursor-pointer"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      copyMessageToClipboard(msg, index);
-                    }}
-                  >
-                    <div className={cn(
-                      "text-xs font-mono leading-tight whitespace-pre-wrap break-words",
-                      msg.level === 'error' ? "text-destructive" :
-                        msg.level === 'warn' ? "text-warning" :
-                          msg.level === 'info' ? "text-primary" :
-                            "text-muted-foreground"
-                    )}>
-                      {msg.message}
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        copyMessageToClipboard(msg, index);
-                      }}
-                      className="h-3 w-3 p-0 opacity-0 group-hover:opacity-100 transition-all duration-200 absolute right-1 top-1 hover:bg-muted/70 text-muted-foreground hover:text-foreground bg-background/80 rounded border"
-                    >
-                      {copiedMessageIndex === index ? (
-                        <Check className="h-2 w-2 text-success" />
-                      ) : (
-                        <Copy className="h-2 w-2" />
-                      )}
-                    </Button>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          {/* Close button */}
-          <button
-            onClick={() => setIsOpen(false)}
-            className="absolute top-2 right-2 h-8 w-8 p-0 bg-muted/50 hover:bg-muted/70 rounded-md z-10 flex items-center justify-center border"
-          >
-            <X className="h-5 w-5 text-muted-foreground" />
-          </button>
-        </PopoverContent>
-      </Popover>
-    );
+  const copyMessageToClipboard = async (msg: ConsoleMessage, index: number) => {
+    try {
+      await navigator.clipboard.writeText(msg.message);
+      setCopiedMessageIndex(index);
+      setTimeout(() => setCopiedMessageIndex(null), 2000);
+    } catch (error) {
+      console.error('Failed to copy message to clipboard:', error);
+    }
   };
+
+  const copyAllMessagesToClipboard = async () => {
+    try {
+      const allMessages = messages.map(msg => msg.message).join('\n');
+      await navigator.clipboard.writeText(allMessages);
+      setCopiedAll(true);
+      setTimeout(() => setCopiedAll(false), 2000);
+    } catch (error) {
+      console.error('Failed to copy all messages to clipboard:', error);
+    }
+  };
+
+  const messageCount = messages.length;
+
+  // Programmatically resize panels when isLogsOpen changes
+  useEffect(() => {
+    if (isLogsOpen) {
+      // Open logs panel to 40% and resize iframe to 60%
+      logsPanelRef.current?.resize(40);
+      iframePanelRef.current?.resize(60);
+    } else {
+      // Close logs panel and expand iframe to 100%
+      logsPanelRef.current?.resize(0);
+      iframePanelRef.current?.resize(100);
+    }
+  }, [isLogsOpen]);
 
   return (
     <div className="h-full">
@@ -644,7 +585,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
                     })}
                     disabled={isBuildLoading}
                     className="h-8 gap-2"
-                    title="Build project"
+                    title={t('buildButtonTooltip')}
                   >
                     {isBuildLoading ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -659,45 +600,174 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
                       size="sm"
                       onClick={onToggleView}
                       className="h-8 gap-2"
+                      title={t('codeButtonTooltip')}
                     >
                       <Code className="h-4 w-4" />
                       <span className="hidden lg:inline">Code</span>
                     </Button>
                   )}
-                  <ConsoleDropdown />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsLogsOpen(!isLogsOpen)}
+                    className={cn("h-8 gap-2 relative", isLogsOpen && "bg-muted")}
+                    title={t('logsButtonTooltip')}
+                  >
+                    <Bug className="h-4 w-4" />
+                    <span className="hidden lg:inline">Logs</span>
+                    {hasConsoleErrors && (
+                      <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full border-2 border-background bg-red-500" />
+                    )}
+                  </Button>
                 </div>
               </div>
 
               {/* Content area */}
-              <div className="flex-1 flex items-center justify-center bg-muted/30">
-                {hasBuiltProject ? (
-                  <div
-                    className={cn(
-                      "h-full transition-all duration-300 ease-in-out bg-background",
-                      deviceMode === 'laptop' && "w-full",
-                      deviceMode === 'tablet' && "w-full max-w-3xl shadow-lg",
-                      deviceMode === 'phone' && "w-full max-w-sm shadow-lg"
-                    )}
+              <div className="flex-1 bg-muted/30 min-h-0 overflow-hidden">
+                <ResizablePanelGroup direction="vertical" className="h-full">
+                  <ResizablePanel 
+                    ref={iframePanelRef}
+                    defaultSize={isLogsOpen ? 60 : 100} 
+                    minSize={30} 
+                    className="min-h-0"
                   >
-                    <iframe
-                      key={projectId}
-                      ref={iframeRef}
-                      src={`https://${projectId}.${previewDomain}/`}
-                      className="w-full h-full border-0"
-                      title="Project Preview"
-                      sandbox="allow-scripts allow-same-origin allow-forms"
-                    />
-                  </div>
-                ) : (
-                  <div className="h-full w-full flex items-center justify-center bg-muted">
-                    <div className="text-center">
-                      <h3 className="text-lg font-semibold mb-2">{t('projectPreview')}</h3>
-                      <p className="text-muted-foreground">
-                        {t('buildProjectToSeePreview')}
-                      </p>
+                    <div className="h-full flex items-center justify-center min-h-0">
+                      {hasBuiltProject ? (
+                        <div
+                          className={cn(
+                            "h-full transition-all duration-300 ease-in-out bg-background",
+                            deviceMode === 'laptop' && "w-full",
+                            deviceMode === 'tablet' && "w-full max-w-3xl shadow-lg",
+                            deviceMode === 'phone' && "w-full max-w-sm shadow-lg"
+                          )}
+                        >
+                          <iframe
+                            key={projectId}
+                            ref={iframeRef}
+                            src={`https://${projectId}.${previewDomain}/`}
+                            className="w-full h-full border-0"
+                            title="Project Preview"
+                            sandbox="allow-scripts allow-same-origin allow-forms"
+                          />
+                        </div>
+                      ) : (
+                        <div className="h-full w-full flex items-center justify-center bg-muted">
+                          <div className="text-center">
+                            <h3 className="text-lg font-semibold mb-2">{t('projectPreview')}</h3>
+                            <p className="text-muted-foreground">
+                              {t('buildProjectToSeePreview')}
+                            </p>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                )}
+                  </ResizablePanel>
+                  <ResizableHandle withHandle className={cn(!isLogsOpen && "hidden")} />
+                  <ResizablePanel 
+                    ref={logsPanelRef}
+                    defaultSize={isLogsOpen ? 40 : 0} 
+                    minSize={0} 
+                    maxSize={isLogsOpen ? undefined : 0}
+                    className="min-h-0 min-w-0"
+                    collapsible
+                    collapsedSize={0}
+                  >
+                    {/* Logs Panel */}
+                    <div className="h-full flex flex-col bg-background border-t overflow-hidden min-h-0 w-full min-w-0">
+                      {/* Logs Header */}
+                      <div className="h-12 px-4 border-b flex items-center justify-between flex-shrink-0">
+                        <div className="flex items-center gap-2">
+                          {hasConsoleErrors && (
+                            <span className="h-2 w-2 rounded-full bg-red-500" />
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {messageCount > 0 && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={copyAllMessagesToClipboard}
+                              className="h-7 px-2 text-xs"
+                            >
+                              {copiedAll ? (
+                                <>
+                                  <Check className="h-3 w-3 mr-1.5 text-success" />
+                                  {t('copied')}
+                                </>
+                              ) : (
+                                <>
+                                  <Copy className="h-3 w-3 mr-1.5" />
+                                  {t('copyAll')}
+                                </>
+                              )}
+                            </Button>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setIsLogsOpen(false)}
+                            className="h-7 w-7 p-0"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                      {/* Logs Content */}
+                      <div className="flex-1 min-h-0 overflow-hidden w-full">
+                        <ScrollArea className="h-full w-full">
+                          <div className="p-2 space-y-0 w-full min-w-0 max-w-full">
+                            {messageCount === 0 ? (
+                              <div className="flex flex-col items-center justify-center py-12 text-center">
+                                <p className="text-sm text-muted-foreground font-medium">No console messages</p>
+                                <p className="text-xs text-muted-foreground mt-1">Messages from your project will appear here</p>
+                              </div>
+                            ) : (
+                              messages.map((msg, index) => (
+                                <div
+                                  key={index}
+                                  className="group relative py-0.5 px-1 hover:bg-muted/50 transition-colors duration-150 rounded cursor-pointer w-full max-w-full"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    copyMessageToClipboard(msg, index);
+                                  }}
+                                >
+                                  <div 
+                                    className={cn(
+                                      "text-xs font-mono leading-tight whitespace-pre-wrap break-words w-full min-w-0 max-w-full",
+                                      msg.level === 'error' ? "text-destructive" :
+                                        msg.level === 'warn' ? "text-warning" :
+                                          msg.level === 'info' ? "text-primary" :
+                                            "text-muted-foreground"
+                                    )}
+                                    style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}
+                                  >
+                                    {msg.message}
+                                  </div>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      copyMessageToClipboard(msg, index);
+                                    }}
+                                    className="h-3 w-3 p-0 opacity-0 group-hover:opacity-100 transition-all duration-200 absolute right-1 top-1 hover:bg-muted/70 text-muted-foreground hover:text-foreground bg-background/80 rounded border"
+                                  >
+                                    {copiedMessageIndex === index ? (
+                                      <Check className="h-2 w-2 text-success" />
+                                    ) : (
+                                      <Copy className="h-2 w-2" />
+                                    )}
+                                  </Button>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        </ScrollArea>
+                      </div>
+                    </div>
+                  </ResizablePanel>
+                </ResizablePanelGroup>
               </div>
 
               {/* Build loading overlay */}

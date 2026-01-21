@@ -27,7 +27,6 @@ interface ProjectTitleMenuProps {
   onDuplicate: () => void;
   onDelete: () => void;
   onProjectDetails: () => void;
-  isAILoading: boolean;
   isAnyLoading: boolean;
   className?: string;
 }
@@ -40,7 +39,6 @@ export function ProjectTitleMenu({
   onDuplicate,
   onDelete,
   onProjectDetails,
-  isAILoading,
   isAnyLoading,
   className = '',
 }: ProjectTitleMenuProps) {
@@ -111,7 +109,7 @@ export function ProjectTitleMenu({
 
         <DropdownMenuItem
           onClick={onNewChat}
-          disabled={isAILoading}
+          disabled={isAnyLoading}
           className="gap-2"
         >
           <MessageSquarePlus className="h-4 w-4" />

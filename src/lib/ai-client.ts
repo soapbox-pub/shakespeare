@@ -18,14 +18,14 @@ export function createAIClient(provider: AIProvider, user?: NUser, corsProxy?: s
     dangerouslyAllowBrowser: true,
 
     fetch: async (input, init) => {
-      let request = new Request(input, init);
-
       // OpenSecret auth
       // https://docs.opensecret.cloud/docs/maple-ai/
       if (provider.openSecret) {
         const { createCustomFetch } = await import('@opensecret/react');
         return createCustomFetch({ apiKey: provider.apiKey, apiUrl: provider.openSecret })(input, init);
       }
+
+      let request = new Request(input, init);
 
       // Add OpenRouter headers
       // https://openrouter.ai/docs/app-attribution

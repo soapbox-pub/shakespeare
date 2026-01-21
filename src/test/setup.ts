@@ -1,6 +1,39 @@
 import '@testing-library/jest-dom';
 import { vi } from 'vitest';
 
+// Mock localStorage for Node.js 25 compatibility
+// Node.js 25 provides a localStorage object but it's incomplete without --localstorage-file
+// We override it with a proper mock that implements the full Storage interface
+class LocalStorageMock implements Storage {
+  private store: Map<string, string> = new Map();
+
+  clear(): void {
+    this.store.clear();
+  }
+
+  getItem(key: string): string | null {
+    return this.store.get(key) ?? null;
+  }
+
+  setItem(key: string, value: string): void {
+    this.store.set(key, value);
+  }
+
+  removeItem(key: string): void {
+    this.store.delete(key);
+  }
+
+  get length(): number {
+    return this.store.size;
+  }
+
+  key(index: number): string | null {
+    return Array.from(this.store.keys())[index] ?? null;
+  }
+}
+
+global.localStorage = new LocalStorageMock();
+
 // Mock CSS imports
 vi.mock('*.css', () => ({}));
 vi.mock('*.scss', () => ({}));

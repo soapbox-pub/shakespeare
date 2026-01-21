@@ -1,4 +1,4 @@
-import { BrowserRouter, HashRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { ScrollToTop } from "./components/ScrollToTop";
 import { SessionMonitor } from "./components/SessionMonitor";
 import { URLFragmentHandler } from "./components/URLFragmentHandler";
@@ -25,11 +25,8 @@ import { ProjectView } from "./pages/ProjectView";
 import { SettingsLayout } from "./components/SettingsLayout";
 
 export function AppRouter() {
-  // Use HashRouter in Electron, BrowserRouter in web
-  const Router = globalThis.electron ? HashRouter : BrowserRouter;
-
   return (
-    <Router>
+    <BrowserRouter>
       <ScrollToTop />
       <SessionMonitor />
       <URLFragmentHandler />
@@ -58,7 +55,7 @@ export function AppRouter() {
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
       </Routes>
-    </Router>
+    </BrowserRouter>
   );
 }
 export default AppRouter;

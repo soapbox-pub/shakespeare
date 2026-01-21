@@ -23,6 +23,7 @@ import { VercelDeployForm } from '@/components/deploy/VercelDeployForm';
 import { NsiteDeployForm } from '@/components/deploy/NsiteDeployForm';
 import { CloudflareDeployForm } from '@/components/deploy/CloudflareDeployForm';
 import { DenoDeployForm } from '@/components/deploy/DenoDeployForm';
+import { RailwayDeployForm } from '@/components/deploy/RailwayDeployForm';
 import { cn } from '@/lib/utils';
 import { DeployAdapter } from '@/lib/deploy/types';
 import { ShakespeareAdapter } from '@/lib/deploy/ShakespeareAdapter';
@@ -31,6 +32,7 @@ import { NetlifyAdapter } from '@/lib/deploy/NetlifyAdapter';
 import { VercelAdapter } from '@/lib/deploy/VercelAdapter';
 import { CloudflareAdapter } from '@/lib/deploy/CloudflareAdapter';
 import { DenoDeployAdapter } from '@/lib/deploy/DenoDeployAdapter';
+import { RailwayAdapter } from '@/lib/deploy/RailwayAdapter';
 
 /**
  * Normalize a URL string to ensure it has a protocol
@@ -101,6 +103,14 @@ interface DenoDeployFormData {
   projectName: string;
 }
 
+interface RailwayFormData {
+  workspaceId: string;
+  projectId: string;
+  environmentId: string;
+  serviceId: string;
+  projectName?: string;
+}
+
 export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProps) {
   const { t } = useTranslation();
   const { settings } = useDeploySettings();
@@ -136,6 +146,13 @@ export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProp
     projectName: projectName || projectId,
   });
   const [denoDeployForm, setDenoDeployForm] = useState<DenoDeployFormData>({
+    projectName: projectName || projectId,
+  });
+  const [railwayForm, setRailwayForm] = useState<RailwayFormData>({
+    workspaceId: '',
+    projectId: '',
+    environmentId: '',
+    serviceId: '',
     projectName: projectName || projectId,
   });
 
@@ -261,6 +278,23 @@ export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProp
           projectName: denoDeployForm.projectName || undefined,
           corsProxy: denoProvider.proxy ? config.corsProxy : undefined,
         });
+      } else if (selectedProvider.type === 'railway') {
+        const railwayProvider = selectedProvider;
+        if (!railwayProvider.apiKey) {
+          throw new Error('Railway API token is required');
+        }
+
+        adapter = new RailwayAdapter({
+          fs,
+          apiKey: railwayProvider.apiKey,
+          baseURL: railwayProvider.baseURL,
+          workspaceId: railwayForm.workspaceId || undefined,
+          projectId: railwayForm.projectId || undefined,
+          environmentId: railwayForm.environmentId || undefined,
+          serviceId: railwayForm.serviceId || undefined,
+          projectName: railwayForm.projectName || undefined,
+          corsProxy: railwayProvider.proxy ? config.corsProxy : undefined,
+        });
       } else {
         throw new Error('Unknown provider type');
       }
@@ -320,6 +354,17 @@ export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProp
             projectName: denoDeployForm.projectName || undefined,
           },
         });
+      } else if (selectedProvider.type === 'railway') {
+        await updateProjectSettings(selectedProviderId, {
+          type: 'railway',
+          url: result.url,
+          data: {
+            workspaceId: railwayForm.workspaceId || undefined,
+            projectId: result.metadata?.projectId as string | undefined,
+            environmentId: result.metadata?.environmentId as string | undefined,
+            serviceId: result.metadata?.serviceId as string | undefined,
+          },
+        });
       }
 
       setDeployResult(result);
@@ -341,6 +386,7 @@ export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProp
     setVercelForm({ projectName: projectName || projectId, teamId: '' });
     setCloudflareForm({ projectName: projectName || projectId });
     setDenoDeployForm({ projectName: projectName || projectId });
+    setRailwayForm({ workspaceId: '', projectId: '', environmentId: '', serviceId: '', projectName: projectName || projectId });
     onClose();
   };
 
@@ -370,6 +416,16 @@ export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProp
 
   const handleDenoDeployProjectChange = useCallback((projectName: string) => {
     setDenoDeployForm({ projectName });
+  }, []);
+
+  const handleRailwayConfigChange = useCallback((config: {
+    workspaceId: string;
+    projectId: string;
+    environmentId: string;
+    serviceId: string;
+    projectName?: string;
+  }) => {
+    setRailwayForm(config);
   }, []);
 
   const renderProviderFields = () => {
@@ -473,6 +529,30 @@ export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProp
           savedProjectName={savedProjectName}
           onProjectChange={handleDenoDeployProjectChange}
           corsProxy={denoProvider.proxy ? config.corsProxy : undefined}
+        />
+      );
+    }
+
+    if (selectedProvider.type === 'railway') {
+      const railwayProvider = selectedProvider;
+      const savedConfig = projectSettings.providers[selectedProviderId];
+      const savedWorkspaceId = savedConfig?.type === 'railway' ? savedConfig.data.workspaceId : undefined;
+      const savedProjectId = savedConfig?.type === 'railway' ? savedConfig.data.projectId : undefined;
+      const savedEnvironmentId = savedConfig?.type === 'railway' ? savedConfig.data.environmentId : undefined;
+      const savedServiceId = savedConfig?.type === 'railway' ? savedConfig.data.serviceId : undefined;
+
+      return (
+        <RailwayDeployForm
+          apiKey={railwayProvider.apiKey}
+          baseURL={railwayProvider.baseURL}
+          projectId={projectId}
+          projectName={projectName}
+          savedWorkspaceId={savedWorkspaceId}
+          savedProjectId={savedProjectId}
+          savedEnvironmentId={savedEnvironmentId}
+          savedServiceId={savedServiceId}
+          onConfigChange={handleRailwayConfigChange}
+          corsProxy={railwayProvider.proxy ? config.corsProxy : undefined}
         />
       );
     }
@@ -653,7 +733,8 @@ export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProp
                     (selectedProvider.type === 'nsite' && !nsiteForm.nsec) ||
                     (selectedProvider.type === 'netlify' && !netlifyForm.siteId && !netlifyForm.siteName) ||
                     (selectedProvider.type === 'cloudflare' && !cloudflareForm.projectName) ||
-                    (selectedProvider.type === 'deno' && !denoDeployForm.projectName)
+                    (selectedProvider.type === 'deno' && !denoDeployForm.projectName) ||
+                    (selectedProvider.type === 'railway' && !railwayForm.workspaceId)
                   }
                   className="w-full"
                 >

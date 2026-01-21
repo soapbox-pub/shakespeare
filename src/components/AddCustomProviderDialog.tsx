@@ -28,6 +28,7 @@ import type {
   NsiteProvider,
   CloudflareProvider,
   DenoDeployProvider,
+  RailwayProvider,
 } from '@/contexts/DeploySettingsContext';
 
 // Type for provider without the 'id' field (will be generated)
@@ -37,7 +38,8 @@ type DeployProviderInput =
   | Omit<VercelProvider, 'id'>
   | Omit<NsiteProvider, 'id'>
   | Omit<CloudflareProvider, 'id'>
-  | Omit<DenoDeployProvider, 'id'>;
+  | Omit<DenoDeployProvider, 'id'>
+  | Omit<RailwayProvider, 'id'>;
 
 interface AddCustomProviderDialogProps {
   open: boolean;
@@ -51,7 +53,7 @@ export function AddCustomProviderDialog({
   onAdd,
 }: AddCustomProviderDialogProps) {
   const { t } = useTranslation();
-  const [customProviderType, setCustomProviderType] = useState<'shakespeare' | 'netlify' | 'vercel' | 'nsite' | 'cloudflare' | 'deno' | ''>('');
+  const [customProviderType, setCustomProviderType] = useState<'shakespeare' | 'netlify' | 'vercel' | 'nsite' | 'cloudflare' | 'deno' | 'railway' | ''>('');
   const [customName, setCustomName] = useState('');
   const [customApiKey, setCustomApiKey] = useState('');
   const [customAccountId, setCustomAccountId] = useState('');
@@ -129,6 +131,15 @@ export function AddCustomProviderDialog({
         ...(customBaseDomain?.trim() && { baseDomain: customBaseDomain.trim() }),
         ...(customProxy && { proxy: true }),
       };
+    } else if (customProviderType === 'railway') {
+      if (!customApiKey.trim()) return;
+      provider = {
+        type: 'railway',
+        name: customName.trim(),
+        apiKey: customApiKey.trim(),
+        ...(customBaseURL?.trim() && { baseURL: customBaseURL.trim() }),
+        ...(customProxy && { proxy: true }),
+      };
     } else {
       return; // Unknown type
     }
@@ -156,7 +167,8 @@ export function AddCustomProviderDialog({
     (customProviderType === 'shakespeare' || customProviderType === 'nsite' ||
       (customApiKey.trim() &&
         (customProviderType !== 'cloudflare' || customAccountId.trim()) &&
-        (customProviderType !== 'deno' || customOrganizationId.trim())));
+        (customProviderType !== 'deno' || customOrganizationId.trim()) &&
+        (customProviderType !== 'railway' || true)));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -175,7 +187,7 @@ export function AddCustomProviderDialog({
             </Label>
             <Select
               value={customProviderType}
-              onValueChange={(value: 'shakespeare' | 'netlify' | 'vercel' | 'nsite' | 'cloudflare' | 'deno') => {
+              onValueChange={(value: 'shakespeare' | 'netlify' | 'vercel' | 'nsite' | 'cloudflare' | 'deno' | 'railway') => {
                 setCustomProviderType(value);
                 // Reset form when provider type changes
                 setCustomApiKey('');
@@ -200,6 +212,7 @@ export function AddCustomProviderDialog({
                 <SelectItem value="vercel">Vercel</SelectItem>
                 <SelectItem value="cloudflare">Cloudflare</SelectItem>
                 <SelectItem value="deno">Deno Deploy</SelectItem>
+                <SelectItem value="railway">Railway</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -299,7 +312,8 @@ export function AddCustomProviderDialog({
                       {customProviderType === 'netlify' ? 'Personal Access Token' :
                         customProviderType === 'cloudflare' ? 'API Token' :
                           customProviderType === 'deno' ? 'Access Token' :
-                            'Access Token'} <span className="text-destructive">*</span>
+                            customProviderType === 'railway' ? 'API Token' :
+                              'Access Token'} <span className="text-destructive">*</span>
                     </Label>
                     <PasswordInput
                       id="custom-apikey"
@@ -319,7 +333,9 @@ export function AddCustomProviderDialog({
                             ? 'https://api.vercel.com'
                             : customProviderType === 'deno'
                               ? 'https://api.deno.com/v1'
-                              : 'https://api.cloudflare.com/client/v4'
+                              : customProviderType === 'railway'
+                                ? 'https://backboard.railway.com'
+                                : 'https://api.cloudflare.com/client/v4'
                       }
                       value={customBaseURL}
                       onChange={(e) => setCustomBaseURL(e.target.value)}

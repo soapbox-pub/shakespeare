@@ -260,6 +260,14 @@ export function DeploySettings() {
         organizationId: organizationId.trim(),
         ...(preset.proxy && { proxy: true }),
       };
+    } else if (preset.type === 'railway') {
+      newProvider = {
+        id: preset.id, // Use preset ID for presets
+        name: preset.name,
+        type: 'railway',
+        apiKey: apiKey.trim(),
+        ...(preset.proxy && { proxy: true }),
+      };
     } else {
       return; // Unknown type
     }

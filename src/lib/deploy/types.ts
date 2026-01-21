@@ -75,9 +75,21 @@ export interface DenoDeployConfig {
   corsProxy?: string;
 }
 
+export interface RailwayDeployConfig {
+  fs: JSRuntimeFS;
+  apiKey: string;
+  baseURL?: string;
+  workspaceId?: string;
+  projectId?: string;
+  environmentId?: string;
+  serviceId?: string;
+  projectName?: string;
+  corsProxy?: string;
+}
+
 export interface PresetDeployProvider {
   id: string;
-  type: 'shakespeare' | 'netlify' | 'vercel' | 'nsite' | 'cloudflare' | 'deno';
+  type: 'shakespeare' | 'netlify' | 'vercel' | 'nsite' | 'cloudflare' | 'deno' | 'railway';
   name: string;
   description: string;
   baseURL?: string;

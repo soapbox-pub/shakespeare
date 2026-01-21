@@ -130,6 +130,12 @@ const denoDeployProviderSchema = baseDeployProviderSchema.extend({
   baseDomain: z.string().optional(),
 });
 
+const railwayProviderSchema = baseDeployProviderSchema.extend({
+  type: z.literal('railway'),
+  apiKey: z.string(),
+  baseURL: z.string().optional(),
+});
+
 const deployProviderSchema: z.ZodType<DeployProvider> = z.discriminatedUnion('type', [
   shakespeareDeployProviderSchema,
   netlifyProviderSchema,
@@ -137,6 +143,7 @@ const deployProviderSchema: z.ZodType<DeployProvider> = z.discriminatedUnion('ty
   nsiteProviderSchema,
   cloudflareProviderSchema,
   denoDeployProviderSchema,
+  railwayProviderSchema,
 ]);
 
 const deploySettingsSchema = z.object({

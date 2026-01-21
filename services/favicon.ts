@@ -48,6 +48,11 @@ export default {
       hostname = 'docs.z.ai';
     }
 
+    // Deployment-provider-specific hacks
+    if (url.host === 'backboard.railway.com') {
+      hostname = 'railway.com';
+    }
+
     // Fetch the favicon from DuckDuckGo's service
     return fetch(`https://external-content.duckduckgo.com/ip3/${hostname}.ico`);
   },

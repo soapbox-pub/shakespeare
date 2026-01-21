@@ -52,6 +52,17 @@ const denoDeployProjectConfigSchema = z.object({
   }),
 });
 
+const railwayProjectConfigSchema = z.object({
+  type: z.literal('railway'),
+  url: z.string(),
+  data: z.object({
+    workspaceId: z.string().optional(),
+    projectId: z.string().optional(),
+    environmentId: z.string().optional(),
+    serviceId: z.string().optional(),
+  }),
+});
+
 const projectProviderConfigSchema = z.discriminatedUnion('type', [
   shakespeareProjectConfigSchema,
   nsiteProjectConfigSchema,
@@ -59,6 +70,7 @@ const projectProviderConfigSchema = z.discriminatedUnion('type', [
   vercelProjectConfigSchema,
   cloudflareProjectConfigSchema,
   denoDeployProjectConfigSchema,
+  railwayProjectConfigSchema,
 ]);
 
 const projectDeploySettingsSchema = z.object({
@@ -72,6 +84,7 @@ export type NetlifyProjectConfig = z.infer<typeof netlifyProjectConfigSchema>;
 export type VercelProjectConfig = z.infer<typeof vercelProjectConfigSchema>;
 export type CloudflareProjectConfig = z.infer<typeof cloudflareProjectConfigSchema>;
 export type DenoDeployProjectConfig = z.infer<typeof denoDeployProjectConfigSchema>;
+export type RailwayProjectConfig = z.infer<typeof railwayProjectConfigSchema>;
 export type ProjectProviderConfig = z.infer<typeof projectProviderConfigSchema>;
 export type ProjectDeploySettings = z.infer<typeof projectDeploySettingsSchema>;
 

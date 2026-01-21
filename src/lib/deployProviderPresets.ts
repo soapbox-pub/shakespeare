@@ -60,4 +60,14 @@ export const PRESET_DEPLOY_PROVIDERS: PresetDeployProvider[] = [
     organizationIdURL: 'https://dash.deno.com/orgs',
     proxy: true,
   },
+  {
+    id: 'railway',
+    type: 'railway',
+    name: 'Railway',
+    description: 'Deploy to Railway',
+    baseURL: 'https://backboard.railway.com',
+    apiKeyLabel: 'API Token',
+    apiKeyURL: 'https://railway.app/account/tokens',
+    proxy: true,
+  },
 ];

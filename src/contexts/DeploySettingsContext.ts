@@ -50,7 +50,14 @@ export interface DenoDeployProvider extends BaseDeployProvider {
   proxy?: boolean;
 }
 
-export type DeployProvider = ShakespeareDeployProvider | NetlifyProvider | VercelProvider | NsiteProvider | CloudflareProvider | DenoDeployProvider;
+export interface RailwayProvider extends BaseDeployProvider {
+  type: 'railway';
+  apiKey: string;
+  baseURL?: string;
+  proxy?: boolean;
+}
+
+export type DeployProvider = ShakespeareDeployProvider | NetlifyProvider | VercelProvider | NsiteProvider | CloudflareProvider | DenoDeployProvider | RailwayProvider;
 
 export interface DeploySettings {
   providers: DeployProvider[];

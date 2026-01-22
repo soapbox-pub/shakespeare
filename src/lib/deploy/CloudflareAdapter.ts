@@ -312,26 +312,44 @@ export class CloudflareAdapter implements DeployAdapter {
     const url = `${this.baseURL}/accounts/${this.accountId}/workers/scripts/${scriptName}`;
     const targetUrl = this.corsProxy ? proxyUrl({ template: this.corsProxy, url }) : url;
 
-    // Determine the main module name from wrangler.jsonc or defaults
-    const mainModuleName = wranglerConfig?.main || '_worker.js';
+    // Determine the main module name from wrangler.jsonc or try defaults
+    let mainModuleName = 'worker.js';
+    let workerScript = this.getDefaultWorkerScript();
 
-    // Try to bundle custom worker script from project (supports .js and .ts), fall back to default
-    let workerScript: string;
-    try {
-      // Check if a custom worker file exists (try both .js and .ts)
-      const workerExists = await this.fileExists(join(projectPath, mainModuleName));
+    if (wranglerConfig?.main) {
+      // Use explicitly configured main module
+      const configuredModule = wranglerConfig.main;
       
-      if (workerExists) {
-        // Bundle the worker with its dependencies
-        workerScript = await this.bundleWorker(mainModuleName, projectPath);
-      } else {
-        // Fallback to default worker script if custom script not found
-        workerScript = this.getDefaultWorkerScript();
+      try {
+        const workerExists = await this.fileExists(join(projectPath, configuredModule));
+        if (workerExists) {
+          mainModuleName = configuredModule;
+          workerScript = await this.bundleWorker(configuredModule, projectPath);
+        } else {
+          throw new Error(`Configured worker file not found: ${configuredModule}`);
+        }
+      } catch (error) {
+        console.warn(`Failed to bundle configured worker script, using default:`, error);
+        // Keep default values
       }
-    } catch (error) {
-      console.warn(`Failed to bundle custom worker script, using default:`, error);
-      // Fallback to default worker script on any error
-      workerScript = this.getDefaultWorkerScript();
+    } else {
+      // Try default worker files in order: worker.ts -> worker.mjs -> worker.js
+      const defaultWorkerFiles = ['worker.ts', 'worker.mjs', 'worker.js'];
+
+      for (const filename of defaultWorkerFiles) {
+        try {
+          const workerExists = await this.fileExists(join(projectPath, filename));
+          if (workerExists) {
+            mainModuleName = filename;
+            workerScript = await this.bundleWorker(filename, projectPath);
+            break; // Successfully bundled, stop searching
+          }
+        } catch (error) {
+          console.warn(`Failed to bundle ${filename}:`, error);
+          // Continue to next file
+        }
+      }
+      // If no custom worker found, use default values already set
     }
 
     const formData = new FormData();

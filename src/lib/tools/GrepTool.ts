@@ -48,7 +48,10 @@ export class GrepTool implements Tool<GrepParams> {
       throw new Error("pattern is required");
     }
 
-    const searchPath = args.path ? join(this.cwd, args.path) : this.cwd;
+    // If path is absolute, use it directly; otherwise join with cwd
+    const searchPath = args.path 
+      ? (args.path.startsWith('/') ? args.path : join(this.cwd, args.path))
+      : this.cwd;
 
     try {
       // Check if search path exists

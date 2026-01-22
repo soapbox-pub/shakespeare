@@ -51,7 +51,8 @@ export class GlobTool implements Tool<GlobParams> {
 
       if (args.path) {
         // User explicitly specified a path parameter
-        searchPath = join(this.cwd, args.path);
+        // If path is absolute, use it directly; otherwise join with cwd
+        searchPath = args.path.startsWith('/') ? args.path : join(this.cwd, args.path);
         pattern = args.pattern;
       } else {
         // Parse the pattern to extract base directory

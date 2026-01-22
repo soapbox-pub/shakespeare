@@ -53,7 +53,8 @@ import OpenAI from 'openai';
 import { useGit } from '@/hooks/useGit';
 import { Quilly } from '@/components/Quilly';
 import { ShakespeareLogo } from '@/components/ShakespeareLogo';
-import { ChatInput } from '@/components/Shakespeare/ChatInput';
+import { ChatInput, SlashCommand } from '@/components/Shakespeare/ChatInput';
+import { ToolsDialog } from '@/components/Shakespeare/ToolsDialog';
 import { buildMessageContent } from '@/lib/buildMessageContent';
 import { DotAI } from '@/lib/DotAI';
 import { parseProviderModel } from '@/lib/parseProviderModel';
@@ -104,6 +105,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   const [aiError, setAIError] = useState<Error | null>(null);
   const [templateInfo, setTemplateInfo] = useState<{ name: string; description: string; url: string } | null>(null);
   const [showTemplateInfo, setShowTemplateInfo] = useState(false);
+  const [showToolsDialog, setShowToolsDialog] = useState(false);
 
   // Determine which error to show - AI errors take priority over console errors
   // since they are more immediately relevant to the user's current action
@@ -634,6 +636,23 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     }
   }, [onFirstInteraction]);
 
+  // Slash commands
+  const slashCommands: SlashCommand[] = [
+    {
+      name: 'new',
+      description: 'Start a new chat session',
+      action: () => {
+        internalStartNewSession();
+        onNewChat();
+      },
+    },
+    {
+      name: 'tools',
+      description: "View the current session's available tools",
+      action: () => setShowToolsDialog(true),
+    },
+  ];
+
   // Expose startNewSession function via ref
   useImperativeHandle(ref, () => ({
     startNewSession: () => {
@@ -911,12 +930,20 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
+        slashCommands={slashCommands}
       />
 
       {/* Onboarding Dialog */}
       <OnboardingDialog
         open={showOnboarding}
         onOpenChange={setShowOnboarding}
+      />
+
+      {/* Tools Dialog */}
+      <ToolsDialog
+        open={showToolsDialog}
+        onOpenChange={setShowToolsDialog}
+        tools={tools}
       />
     </div>
   );

@@ -645,6 +645,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
               key="streaming-message"
               message={streamingMessage}
               isCurrentlyLoading={isLoading}
+              projectId={projectId}
             />
           )}
           {/* Show tool call in "calling" state if streaming tool call is in progress */}
@@ -660,6 +661,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
                 }
               })()}
               state="calling"
+              projectId={projectId}
             />
           ) : (
             <>
@@ -696,6 +698,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
             }
           })()}
           state="waiting"
+          projectId={projectId}
         />
       );
     }
@@ -827,6 +830,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
                 key={`${index}-${message.role}-${typeof message.content === 'string' ? message.content.slice(0, 50) : 'content'}`}
                 message={message}
                 toolCall={toolCall}
+                projectId={projectId}
               />
             );
           })}

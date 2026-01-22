@@ -22,7 +22,7 @@ export class GlobTool implements Tool<GlobParams> {
 - Supports glob patterns like "**/*.js" or "src/**/*.ts"
 - Returns matching file paths sorted by modification time
 - Use this tool when you need to find files by name patterns
-- When you are doing an open-ended search that may require multiple rounds of globbing and grepping, use the Task tool instead
+- When you are doing an open-ended search that may require multiple rounds of globbing and grepping, use the task tool instead
 - You have the capability to call multiple tools in a single response. It is always better to speculatively perform multiple searches as a batch that are potentially useful.`;
 
   readonly inputSchema = z.object({

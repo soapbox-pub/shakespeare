@@ -26,12 +26,14 @@ import {
   Settings,
   TriangleAlert,
   X,
+  Search,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { VFSImage } from '@/components/VFSImage';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ImageModelDialog } from '@/components/ImageModelDialog';
 import { ImageLightbox } from '@/components/ImageLightbox';
+import { useFSPaths } from '@/hooks/useFSPaths';
 
 interface ToolInfo {
   icon: LucideIcon;
@@ -45,6 +47,7 @@ interface ToolCallDisplayProps {
   toolArgs: Record<string, unknown>;
   state: 'calling' | 'waiting' | 'completed';
   result?: string; // The tool result content (only for completed state)
+  projectId: string; // Current project ID for path display
 }
 
 // Component to show image generation errors inline
@@ -78,9 +81,24 @@ function ImageGenerationError() {
 }
 
 /**
+ * Strip project path prefix from absolute paths
+ * e.g., /projects/mysite/src/index.ts -> src/index.ts
+ */
+function stripProjectPrefix(path: string, projectId?: string, projectsPath = '/projects'): string {
+  if (!projectId) return path;
+  
+  const projectPrefix = `${projectsPath}/${projectId}/`;
+  if (path.startsWith(projectPrefix)) {
+    return path.slice(projectPrefix.length);
+  }
+  
+  return path;
+}
+
+/**
  * Get tool information including icon, title, and calling title
  */
-function getToolInfo(toolName: string, args: Record<string, unknown>): ToolInfo {
+function getToolInfo(toolName: string, args: Record<string, unknown>, projectId?: string, projectsPath?: string): ToolInfo {
   switch (toolName) {
     case 'shell':
       return {
@@ -92,56 +110,63 @@ function getToolInfo(toolName: string, args: Record<string, unknown>): ToolInfo 
 
     // New tools (OpenCode-compatible names)
     case 'read': {
-      const path = args.filePath ? String(args.filePath) : 'File';
+      const rawPath = args.filePath ? String(args.filePath) : 'File';
+      const path = stripProjectPrefix(rawPath, projectId, projectsPath);
       const offset = typeof args.offset === 'number' ? args.offset : 0;
-      const limit = typeof args.limit === 'number' ? args.limit : 2000;
-      const hasLineRange = args.offset || args.limit;
-      const lineInfo = hasLineRange
-        ? ` (lines ${offset}-${offset + limit})`
+      const limit = typeof args.limit === 'number' ? args.limit : undefined;
+      const lineInfo = (typeof offset === 'number' && typeof limit === 'number')
+        ? ` (lines ${(offset || 0) + 1}-${limit ? offset + limit : ''})`
         : '';
       return {
         icon: Eye,
-        title: `Read ${path}${lineInfo}`,
-        callingTitle: `Reading ${path}${lineInfo}`,
-        errorTitle: `Failed to read ${path}${lineInfo}`,
+        title: `Viewed ${path}${lineInfo}`,
+        callingTitle: `Viewing ${path}${lineInfo}`,
+        errorTitle: `Failed to view ${path}${lineInfo}`,
       };
     }
 
-    case 'write':
+    case 'write': {
+      const rawPath = args.filePath ? String(args.filePath) : '';
+      const path = rawPath ? stripProjectPrefix(rawPath, projectId, projectsPath) : '';
       return {
         icon: FileText,
-        title: args.filePath ? `Wrote ${args.filePath}` : 'Wrote File',
-        callingTitle: args.filePath ? `Writing ${args.filePath}` : 'Writing File',
-        errorTitle: args.filePath ? `Failed to write ${args.filePath}` : 'Failed to Write File',
+        title: path ? `Wrote ${path}` : 'Wrote File',
+        callingTitle: path ? `Writing ${path}` : 'Writing File',
+        errorTitle: path ? `Failed to write ${path}` : 'Failed to Write File',
       };
+    }
 
-    case 'edit':
+    case 'edit': {
+      const rawPath = args.filePath ? String(args.filePath) : '';
+      const path = rawPath ? stripProjectPrefix(rawPath, projectId, projectsPath) : '';
       return {
         icon: Edit,
-        title: args.filePath ? `Edited ${args.filePath}` : 'Edited File',
-        callingTitle: args.filePath ? `Editing ${args.filePath}` : 'Editing File',
-        errorTitle: args.filePath ? `Failed to edit ${args.filePath}` : 'Failed to Edit File',
+        title: path ? `Edited ${path}` : 'Edited File',
+        callingTitle: path ? `Editing ${path}` : 'Editing File',
+        errorTitle: path ? `Failed to edit ${path}` : 'Failed to Edit File',
       };
+    }
 
     case 'glob':
       return {
-        icon: Eye,
-        title: args.pattern ? `Glob: ${args.pattern}` : 'File Pattern Search',
-        callingTitle: args.pattern ? `Searching: ${args.pattern}` : 'Searching Files',
-        errorTitle: args.pattern ? `Failed to search: ${args.pattern}` : 'Search Failed',
+        icon: Search,
+        title: args.pattern ? `Searched "${args.pattern}"` : 'File Pattern Search',
+        callingTitle: args.pattern ? `Searching "${args.pattern}"` : 'Searching Files',
+        errorTitle: args.pattern ? `Failed to search ${args.pattern}` : 'Search Failed',
       };
 
     case 'grep':
       return {
-        icon: Eye,
-        title: args.pattern ? `Grep: ${args.pattern}` : 'Content Search',
-        callingTitle: args.pattern ? `Searching: ${args.pattern}` : 'Searching Content',
-        errorTitle: args.pattern ? `Failed to search: ${args.pattern}` : 'Search Failed',
+        icon: Search,
+        title: args.pattern ? `Searched "${args.pattern}"` : 'Content Search',
+        callingTitle: args.pattern ? `Searching "${args.pattern}"` : 'Searching Content',
+        errorTitle: args.pattern ? `Failed to search ${args.pattern}` : 'Search Failed',
       };
 
     // Legacy tools (kept for old chat history)
     case 'text_editor_view': {
-      const path = args.path ? String(args.path) : 'File';
+      const rawPath = args.path ? String(args.path) : 'File';
+      const path = stripProjectPrefix(rawPath, projectId, projectsPath);
       const hasLineRange = args.start_line || args.end_line;
       const lineInfo = hasLineRange
         ? ` (lines ${args.start_line || 1}-${args.end_line || 'end'})`
@@ -154,21 +179,27 @@ function getToolInfo(toolName: string, args: Record<string, unknown>): ToolInfo 
       };
     }
 
-    case 'text_editor_write':
+    case 'text_editor_write': {
+      const rawPath = args.path ? String(args.path) : '';
+      const path = rawPath ? stripProjectPrefix(rawPath, projectId, projectsPath) : '';
       return {
         icon: FileText,
-        title: args.path ? `Wrote ${args.path}` : 'Wrote File',
-        callingTitle: args.path ? `Writing ${args.path}` : 'Writing File',
-        errorTitle: args.path ? `Failed to write ${args.path}` : 'Failed to Write File',
+        title: path ? `Wrote ${path}` : 'Wrote File',
+        callingTitle: path ? `Writing ${path}` : 'Writing File',
+        errorTitle: path ? `Failed to write ${path}` : 'Failed to Write File',
       };
+    }
 
-    case 'text_editor_str_replace':
+    case 'text_editor_str_replace': {
+      const rawPath = args.path ? String(args.path) : '';
+      const path = rawPath ? stripProjectPrefix(rawPath, projectId, projectsPath) : '';
       return {
         icon: Edit,
-        title: args.path ? `Edited ${args.path}` : 'Edited File',
-        callingTitle: args.path ? `Editing ${args.path}` : 'Editing File',
-        errorTitle: args.path ? `Failed to edit ${args.path}` : 'Failed to Edit File',
+        title: path ? `Edited ${path}` : 'Edited File',
+        callingTitle: path ? `Editing ${path}` : 'Editing File',
+        errorTitle: path ? `Failed to edit ${path}` : 'Failed to Edit File',
       };
+    }
 
     case 'npm_add_package': {
       const name = args.name ? String(args.name) : 'Package';
@@ -349,12 +380,13 @@ function parseToolError(result: string | undefined, expectedToolName: string): s
 /**
  * Unified component for displaying tool calls in all states
  */
-export function ToolCallDisplay({ toolName, toolArgs, state, result }: ToolCallDisplayProps) {
+export function ToolCallDisplay({ toolName, toolArgs, state, result, projectId }: ToolCallDisplayProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [expandedImageUrl, setExpandedImageUrl] = useState<string | null>(null);
   const [imageLoadError, setImageLoadError] = useState(false);
+  const { projectsPath } = useFSPaths();
 
-  const toolInfo = getToolInfo(toolName, toolArgs);
+  const toolInfo = getToolInfo(toolName, toolArgs, projectId, projectsPath);
   const IconComponent = toolInfo.icon;
 
   // Check if this is an error result
@@ -442,6 +474,56 @@ export function ToolCallDisplay({ toolName, toolArgs, state, result }: ToolCallD
           </div>
         </div>
       );
+    }
+
+    // Read tool expanded content - parse and display file content nicely
+    if (toolName === 'read' || toolName === 'text_editor_view') {
+      // Parse the result to extract file content from <file> tags
+      const fileMatch = result.match(/<file>\n([\s\S]*?)\n\n\((.*?)\)\n<\/file>/);
+      if (fileMatch) {
+        const fileContent = fileMatch[1];
+        const footerMessage = fileMatch[2];
+        
+        // Split content into lines and parse line numbers
+        const lines = fileContent.split('\n');
+        
+        return (
+          <div className="mt-1 rounded border bg-background text-xs font-mono overflow-hidden">
+            <div className="max-h-96 overflow-y-auto">
+              <div>
+                {lines.map((line, idx) => {
+                  // Parse line number and content (format: "    1| content")
+                  const match = line.match(/^(\s*\d+)\|(.*)$/);
+                  if (match) {
+                    return (
+                      <div key={idx} className="flex hover:bg-muted/30 transition-colors">
+                        <div className="text-muted-foreground/60 select-none px-3 py-0.5 text-right min-w-[3rem] bg-muted/20">
+                          {match[1].trim()}
+                        </div>
+                        <div className="flex-1 px-3 py-0.5 whitespace-pre-wrap break-words">
+                          {match[2]}
+                        </div>
+                      </div>
+                    );
+                  }
+                  // Fallback for lines that don't match expected format
+                  return (
+                    <div key={idx} className="px-3 py-0.5 whitespace-pre-wrap break-words">
+                      {line}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            {footerMessage && (
+              <div className="px-3 py-1.5 bg-muted/30 border-t text-muted-foreground text-[10px]">
+                {footerMessage}
+              </div>
+            )}
+          </div>
+        );
+      }
+      // Fallback to default rendering if no <file> tags found
     }
 
     if (toolName === 'generate_image') {

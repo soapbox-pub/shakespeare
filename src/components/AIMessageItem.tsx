@@ -19,12 +19,14 @@ interface AIMessageItemProps {
   message: AIMessage;
   isCurrentlyLoading?: boolean;
   toolCall?: OpenAI.Chat.Completions.ChatCompletionMessageToolCall | undefined; // Tool call data passed from the assistant message
+  projectId: string; // Current project ID for path display
 }
 
 export const AIMessageItem = memo(({
   message,
   isCurrentlyLoading = false,
   toolCall,
+  projectId,
 }: AIMessageItemProps) => {
   const [isReasoningExpanded, setIsReasoningExpanded] = useState(false);
   const [expandedImageUrl, setExpandedImageUrl] = useState<string | null>(null);
@@ -71,6 +73,7 @@ export const AIMessageItem = memo(({
         toolArgs={toolArgs}
         state="completed"
         result={content}
+        projectId={projectId}
       />
     );
   }

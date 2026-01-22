@@ -1,7 +1,7 @@
 import type OpenAI from 'openai';
 import type { JSRuntimeFS } from '@/lib/JSRuntime';
 import { saveFileToTmp } from './fileUtils';
-import { fileToUrl } from './imageUtils';
+import { fileToUrl, resizeImageIfNeeded } from './imageUtils';
 
 type ContentPart = OpenAI.Chat.Completions.ChatCompletionContentPartText | OpenAI.Chat.Completions.ChatCompletionContentPartImage;
 
@@ -41,8 +41,11 @@ export async function buildMessageContent(
   if (attachedFiles.length > 0) {
     const filePromises = attachedFiles.map(async (file) => {
       try {
+        // Resize image if needed before processing
+        const processedFile = await resizeImageIfNeeded(file);
+        
         // Save file to VFS (always do this)
-        const savedPath = await saveFileToTmp(fs, file, tmpPath);
+        const savedPath = await saveFileToTmp(fs, processedFile, tmpPath);
 
         // Always add text part with VFS path
         const textPart: ContentPart = {
@@ -51,10 +54,10 @@ export async function buildMessageContent(
         };
 
         // For all image types, also add as image_url for UI display with base64 encoding
-        const isImage = file.type.startsWith('image/');
+        const isImage = processedFile.type.startsWith('image/');
         if (isImage) {
           try {
-            const imageUrl = await fileToUrl(file);
+            const imageUrl = await fileToUrl(processedFile);
             // Return both parts: image_url for UI display and text for VFS path
             return [textPart, {
               type: 'image_url' as const,

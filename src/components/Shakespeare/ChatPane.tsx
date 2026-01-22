@@ -205,8 +205,8 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
       skill: new SkillTool(fs, pluginsPath, cwd),
       webfetch: new WebFetchTool({ corsProxy: config.corsProxy }),
       websearch: new WebSearchTool(),
-      todowrite: new TodoWriteTool(fs, projectId),
-      todoread: new TodoReadTool(fs, projectId),
+      todowrite: new TodoWriteTool(fs, projectId, { projectsPath }),
+      todoread: new TodoReadTool(fs, projectId, { projectsPath }),
     };
 
     // Add generate_image tool if imageModel is configured

@@ -24,6 +24,7 @@ interface TodoWriteParams {
 export class TodoWriteTool implements Tool<TodoWriteParams> {
   private fs: JSRuntimeFS;
   private projectId: string;
+  private projectsPath: string;
 
   readonly description = `Use this tool to create and manage a structured task list for your current coding session. This helps you track progress, organize complex tasks, and demonstrate thoroughness to the user.
 It also helps the user understand the progress of the task and overall progress of their requests.
@@ -197,9 +198,10 @@ When in doubt, use this tool. Being proactive with task management demonstrates 
     todos: z.array(TodoSchema).describe("The updated todo list"),
   });
 
-  constructor(fs: JSRuntimeFS, projectId: string) {
+  constructor(fs: JSRuntimeFS, projectId: string, options?: { projectsPath?: string }) {
     this.fs = fs;
     this.projectId = projectId;
+    this.projectsPath = options?.projectsPath || '/projects';
   }
 
   async execute(args: TodoWriteParams): Promise<ToolResult> {
@@ -207,8 +209,8 @@ When in doubt, use this tool. Being proactive with task management demonstrates 
 
     try {
       // Write todos to .git/ai/TODO file
-      const todoPath = join("/projects", this.projectId, ".git", "ai", "TODO");
-      const aiDir = join("/projects", this.projectId, ".git", "ai");
+      const todoPath = join(this.projectsPath, this.projectId, ".git", "ai", "TODO");
+      const aiDir = join(this.projectsPath, this.projectId, ".git", "ai");
 
       // Ensure .git/ai directory exists
       try {

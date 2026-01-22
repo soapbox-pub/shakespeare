@@ -88,7 +88,9 @@ function stripProjectPrefix(path: string, projectId?: string, projectsPath = '/p
   if (!projectId) return path;
   
   const projectPrefix = `${projectsPath}/${projectId}/`;
-  if (path.startsWith(projectPrefix)) {
+  if (path === `${projectsPath}/${projectId}`) {
+    return '.';
+  } else if (path.startsWith(projectPrefix)) {
     return path.slice(projectPrefix.length);
   }
   

@@ -3,6 +3,8 @@ import type { DeployAdapter, DeployOptions, DeployResult, CloudflareDeployConfig
 import { proxyUrl } from '../proxyUrl';
 import { parse as parseJsonc } from 'jsonc-parser';
 import { join } from 'path-browserify';
+import { readBuildContext, createPlugins } from '../build';
+import { getEsbuild } from '../esbuild';
 
 interface AssetManifest {
   [path: string]: { hash: string; size: number };
@@ -61,6 +63,7 @@ export class CloudflareAdapter implements DeployAdapter {
   private baseDomain: string;
   private projectName?: string;
   private corsProxy?: string;
+  private esmUrl: string;
 
   constructor(config: CloudflareDeployConfig) {
     this.fs = config.fs;
@@ -70,6 +73,7 @@ export class CloudflareAdapter implements DeployAdapter {
     this.baseDomain = config.baseDomain || 'workers.dev';
     this.projectName = config.projectName;
     this.corsProxy = config.corsProxy;
+    this.esmUrl = config.esmUrl;
   }
 
   async deploy(options: DeployOptions): Promise<DeployResult> {
@@ -264,6 +268,41 @@ export class CloudflareAdapter implements DeployAdapter {
     return data.result || {};
   }
 
+  private async bundleWorker(entryPoint: string, projectPath: string): Promise<string> {
+    const esbuild = await getEsbuild();
+
+    // Read build context (package.json, package-lock.json, tsconfig.json)
+    const context = await readBuildContext(this.fs, projectPath);
+
+    // Resolve the entry point path
+    const entryPointPath = entryPoint.startsWith('/') 
+      ? entryPoint 
+      : join(projectPath, entryPoint);
+
+    // Build the worker with dependencies bundled
+    const results = await esbuild.build({
+      entryPoints: [entryPointPath],
+      bundle: true,
+      write: false,
+      format: "esm",
+      target: "esnext",
+      outdir: "/",
+      metafile: true,
+      sourcemap: false, // Workers typically don't need sourcemaps
+      plugins: createPlugins(this.fs, projectPath, context, this.esmUrl),
+      define: {
+        "import.meta.env": JSON.stringify({}),
+      },
+    });
+
+    if (results.outputFiles.length === 0) {
+      throw new Error(`Failed to bundle worker: no output files generated`);
+    }
+
+    // Return the bundled worker code as a string
+    return results.outputFiles[0].text;
+  }
+
   private async deployWorker(
     scriptName: string,
     assetsJwt: string,
@@ -276,19 +315,23 @@ export class CloudflareAdapter implements DeployAdapter {
     // Determine the main module name from wrangler.jsonc or defaults
     const mainModuleName = wranglerConfig?.main || '_worker.js';
 
-    // Try to read custom worker script from project, fall back to default
+    // Try to bundle custom worker script from project (supports .js and .ts), fall back to default
     let workerScript: string;
     try {
-      workerScript = await this.fs.readFile(join(projectPath, mainModuleName), 'utf8');
-    } catch {
-      // Fallback to default worker script if custom script not found
-      workerScript = `export default {
-  async fetch(request) {
-    // This worker only serves static assets
-    // The assets are automatically served by Cloudflare's asset handler
-    return new Response('Not Found', { status: 404 });
-  }
-};`;
+      // Check if a custom worker file exists (try both .js and .ts)
+      const workerExists = await this.fileExists(join(projectPath, mainModuleName));
+      
+      if (workerExists) {
+        // Bundle the worker with its dependencies
+        workerScript = await this.bundleWorker(mainModuleName, projectPath);
+      } else {
+        // Fallback to default worker script if custom script not found
+        workerScript = this.getDefaultWorkerScript();
+      }
+    } catch (error) {
+      console.warn(`Failed to bundle custom worker script, using default:`, error);
+      // Fallback to default worker script on any error
+      workerScript = this.getDefaultWorkerScript();
     }
 
     const formData = new FormData();
@@ -449,5 +492,24 @@ export class CloudflareAdapter implements DeployAdapter {
       'wasm': 'application/wasm',
     };
     return mimeTypes[ext] || 'application/octet-stream';
+  }
+
+  private async fileExists(path: string): Promise<boolean> {
+    try {
+      const stat = await this.fs.stat(path);
+      return stat.isFile();
+    } catch {
+      return false;
+    }
+  }
+
+  private getDefaultWorkerScript(): string {
+    return `export default {
+  async fetch(request) {
+    // This worker only serves static assets
+    // The assets are automatically served by Cloudflare's asset handler
+    return new Response('Not Found', { status: 404 });
+  }
+};`;
   }
 }

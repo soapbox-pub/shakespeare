@@ -10,6 +10,7 @@ import { fsPlugin } from "./fsPlugin";
 import { convertYarnLockToPackageLock } from "./yarnLockConverter";
 
 import type { JSRuntimeFS } from '@/lib/JSRuntime';
+import type { Plugin } from 'esbuild-wasm';
 
 export interface BuildProjectOptions {
   fs: JSRuntimeFS;
@@ -18,6 +19,115 @@ export interface BuildProjectOptions {
   target?: string;
   outputPath?: string;
   esmUrl: string;
+}
+
+export interface PackageJson {
+  dependencies?: { [key: string]: string };
+  devDependencies?: { [key: string]: string };
+  peerDependencies?: { [key: string]: string };
+}
+
+export interface PackageLock {
+  packages: {
+    [key: string]: {
+      name?: string;
+      version: string;
+      dependencies?: { [key: string]: string };
+      peerDependencies?: { [key: string]: string };
+    } | undefined;
+  };
+}
+
+export interface TsConfig {
+  compilerOptions?: {
+    baseUrl?: string;
+    paths?: Record<string, string[]>;
+  };
+}
+
+export interface BuildContext {
+  packageJson: PackageJson;
+  packageLock: PackageLock;
+  tsconfig?: TsConfig;
+}
+
+/**
+ * Read package.json, package-lock.json/yarn.lock, and tsconfig.json from project
+ * Exported for use by deployment adapters that need to bundle workers
+ */
+export async function readBuildContext(
+  fs: JSRuntimeFS,
+  projectPath: string,
+): Promise<BuildContext> {
+  // Read package.json
+  let packageJson: PackageJson;
+  try {
+    const packageJsonText = await fs.readFile(
+      `${projectPath}/package.json`,
+      "utf8",
+    );
+    packageJson = JSON.parse(packageJsonText);
+  } catch {
+    packageJson = {};
+  }
+
+  // Try to read tsconfig.json
+  let tsconfig: TsConfig | undefined;
+  try {
+    const tsconfigText = await fs.readFile(
+      `${projectPath}/tsconfig.json`,
+      "utf8",
+    );
+    tsconfig = JSONC.parse(tsconfigText);
+  } catch {
+    // tsconfig.json is optional
+    tsconfig = undefined;
+  }
+
+  // Try to read package-lock.json first, fall back to yarn.lock
+  let packageLock: PackageLock;
+  try {
+    const packageLockText = await fs.readFile(
+      `${projectPath}/package-lock.json`,
+      "utf8",
+    );
+    packageLock = JSON.parse(packageLockText);
+    console.log(`Building with npm (package-lock.json)`);
+  } catch {
+    // If package-lock.json doesn't exist, try yarn.lock
+    try {
+      const yarnLockText = await fs.readFile(
+        `${projectPath}/yarn.lock`,
+        "utf8",
+      );
+      packageLock = convertYarnLockToPackageLock(yarnLockText);
+      console.log(`Building with yarn (yarn.lock)`);
+    } catch {
+      // If neither exists, use empty packages object
+      packageLock = { packages: {} };
+      console.log(`Building with package.json only (no lock file)`);
+    }
+  }
+
+  return { packageJson, packageLock, tsconfig };
+}
+
+/**
+ * Create the common esbuild plugins for both project and worker builds
+ * Exported for use by deployment adapters that need to bundle workers
+ */
+export function createPlugins(
+  fs: JSRuntimeFS,
+  projectPath: string,
+  context: BuildContext,
+  esmUrl: string,
+  target?: string,
+): Plugin[] {
+  return [
+    shakespearePlugin({ esmUrl }),
+    fsPlugin({ fs, cwd: projectPath, tsconfig: context.tsconfig, packageJson: context.packageJson }),
+    esmPlugin({ packageJson: context.packageJson, packageLock: context.packageLock, target, esmUrl }),
+  ];
 }
 
 async function bundle(
@@ -31,58 +141,8 @@ async function bundle(
     "utf8",
   );
 
-  // Read package.json
-  let packageJson;
-  try {
-    const packageJsonText = await fs.readFile(
-      `${projectPath}/package.json`,
-      "utf8",
-    );
-    packageJson = JSON.parse(packageJsonText);
-  } catch {
-    packageJson = {};
-  }
-
-  // Try to read tsconfig.json
-  let tsconfig;
-  try {
-    const tsconfigText = await fs.readFile(
-      `${projectPath}/tsconfig.json`,
-      "utf8",
-    );
-    tsconfig = JSONC.parse(tsconfigText);
-  } catch {
-    // tsconfig.json is optional
-    tsconfig = undefined;
-  }
-
-  // Try to read package-lock.json first, fall back to yarn.lock
-  let packageLock;
-  let buildMode: string;
-  try {
-    const packageLockText = await fs.readFile(
-      `${projectPath}/package-lock.json`,
-      "utf8",
-    );
-    packageLock = JSON.parse(packageLockText);
-    buildMode = "npm (package-lock.json)";
-  } catch {
-    // If package-lock.json doesn't exist, try yarn.lock
-    try {
-      const yarnLockText = await fs.readFile(
-        `${projectPath}/yarn.lock`,
-        "utf8",
-      );
-      packageLock = convertYarnLockToPackageLock(yarnLockText);
-      buildMode = "yarn (yarn.lock)";
-    } catch {
-      // If neither exists, use empty packages object
-      packageLock = { packages: {} };
-      buildMode = "package.json only (no lock file)";
-    }
-  }
-
-  console.log(`Building with ${buildMode}`);
+  // Read build context (package.json, package-lock.json, tsconfig.json)
+  const context = await readBuildContext(fs, projectPath);
 
   const doc = domParser.parseFromString(indexHtmlText, "text/html");
   const entryPoints: string[] = [];
@@ -128,11 +188,7 @@ async function bundle(
     entryNames: "[name]-[hash]",
     chunkNames: "[name]-[hash]",
     assetNames: "[name]-[hash]",
-    plugins: [
-      shakespearePlugin({ esmUrl }),
-      fsPlugin({ fs, cwd: projectPath, tsconfig, packageJson }),
-      esmPlugin({ packageJson, packageLock, target, esmUrl }),
-    ],
+    plugins: createPlugins(fs, projectPath, context, esmUrl, target),
     define: {
       "import.meta.env": JSON.stringify({}),
     },

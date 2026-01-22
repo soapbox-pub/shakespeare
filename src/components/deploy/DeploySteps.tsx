@@ -259,6 +259,7 @@ export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProp
           baseDomain: cloudflareProvider.baseDomain,
           projectName: cloudflareForm.projectName || undefined,
           corsProxy: cloudflareProvider.proxy ? config.corsProxy : undefined,
+          esmUrl: config.esmUrl,
         });
       } else if (selectedProvider.type === 'deno') {
         const denoProvider = selectedProvider;

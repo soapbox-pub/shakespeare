@@ -63,6 +63,7 @@ export interface CloudflareDeployConfig {
   baseDomain?: string;
   projectName?: string;
   corsProxy?: string;
+  esmUrl: string;
 }
 
 export interface DenoDeployConfig {

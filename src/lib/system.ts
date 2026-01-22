@@ -244,10 +244,11 @@ When deploying, all components (frontend, backend, APIs) must go to a **single p
 #### Cloudflare Workers
 
 - **wrangler.jsonc** (optional): Configuration file in project root
-- **_worker.js** (optional): Custom worker script in project root
-  - Only \`.js\` supported, NOT \`.ts\`
-  - Static assets are handled automatically
-  - Add this only if you need server-side logic (APIs, edge functions, etc.)
+- **worker.ts** (optional): Custom worker script in project root
+  - Supports \`.ts\`, \`.mjs\`, and \`.js\` extensions (defaults to \`worker.ts\`)
+  - Worker scripts are automatically bundled with their dependencies before deployment
+  - Static assets are handled automatically by Cloudflare's asset handler
+  - Add this only if you need server-side logic (APIs, edge functions, middleware, etc.)
 
 #### Netlify Functions
 

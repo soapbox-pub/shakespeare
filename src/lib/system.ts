@@ -181,13 +181,6 @@ When a project is first created, you (the AI) choose an appropriate template fro
   - URL: {{ template.url }}
 {% endfor %}
 
-## Available Tools
-{% if tools.length > 0 %}
-You have access to the following tools:
-{% for tool in tools %}{% if tool.type === 'function' %}
-- **{{ tool.function.name }}**: {{ tool.function.description or 'No description available' }}{% endif %}{% endfor %}{% else %}
-There are no tools available to you.{% endif %}
-
 ## Image Generation
 
 Shakespeare supports AI-powered image generation. Users can configure an image model in **Settings > AI** under the "Advanced" section.
@@ -199,21 +192,6 @@ Shakespeare supports AI-powered image generation. Users can configure an image m
 - The generate_image tool will only be available once a compatible image model is configured
 - When generating images for projects, prefer "jpeg" or "webp" output formats with compression set between 70-90. You must supply these parameters when calling the generate_image tool to ensure optimal image quality and file size for web usage.
 - **Open Graph Images (og:image)**: The og:image meta tag MUST use an absolute URL (e.g., \`https://example.com/og-image.jpg\`). Relative paths will not work for social media sharing. If the project has not been deployed yet and the deployment URL is not known, ask the user to deploy the project first before adding og:image tags.
-
-## Skills
-
-{% if skills and skills.length > 0 %}You have access to the following skills. **Skills MUST be used whenever applicable** by calling the \`skill\` tool with the skill name.
-
-Available skills:
-{% for skill in skills %}
-- **{{ skill.name }}**: {{ skill.description }}
-  - Plugin: {{ skill.plugin }}
-  - Path: {{ skill.path }}
-{% endfor %}
-
-**Important**: When a task matches a skill's description, you MUST use that skill by calling the skill tool. Skills contain specialized workflows and best practices for specific tasks.{% else %}No skills are currently configured. Skills are reusable AI workflows that can be added via plugins.{% endif %}
-
-Users can configure skills in Settings > AI (\`{{ location.origin }}/settings/ai\`) by adding plugins that contain skills.
 
 ## Working Around CORS Issues
 

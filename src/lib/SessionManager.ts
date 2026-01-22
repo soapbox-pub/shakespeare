@@ -758,7 +758,7 @@ export class SessionManager {
       const filepath = await this.saveToTmpFile(projectId, content, toolCallId);
 
       // Create placeholder message
-      finalContent = `The tool call succeeded but the output was truncated. Full output saved to: ${filepath}\nUse grep to search it for specific content, or text_editor_view with start_line/end_line to view specific sections.`;
+      finalContent = `The tool call succeeded but the output was truncated. Full output saved to: ${filepath}\nUse \`grep\` to search the full content or \`read\` with offset/limit to view specific sections.`;
     }
 
     const toolMessage: AIMessage = {

@@ -41,7 +41,8 @@ Shakespeare provides AI agents with specialized tools for project development (n
 - **NpmAddPackageTool**: Add npm packages to projects
 - **NpmRemovePackageTool**: Remove npm packages from projects
 - **GitCommitTool**: Commit changes to Git repositories
-- **ReadWebpageTool**: Fetch and read web pages
+- **WebFetchTool**: Fetch and read web pages with support for markdown, text, and HTML formats
+- **WebSearchTool**: Search the web using Exa AI for real-time web searches
 - **NostrReadNipTool**: Read Nostr protocol NIP documents
 - **NostrReadKindTool**: Read Nostr event kind documentation
 - **NostrReadTagTool**: Read Nostr tag documentation
@@ -232,7 +233,7 @@ This project is a Nostr client application built with React 18.x, TailwindCSS 3.
     - Package management: `NpmAddPackageTool`, `NpmRemovePackageTool`
     - Git integration: `GitCommitTool`
     - Shell access: `ShellTool`
-    - Web access: `ReadWebpageTool`
+    - Web access: `WebFetchTool`, `WebSearchTool`
     - Nostr tools: `NostrReadNipTool`, `NostrFetchEventTool`, `NostrGenerateKindTool`, etc.
 - `/src/contexts/`: React context providers
   - `AppContext`: Global app configuration and theme

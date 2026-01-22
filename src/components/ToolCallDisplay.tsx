@@ -105,9 +105,9 @@ function getToolInfo(toolName: string, args: Record<string, unknown>, projectId?
     case 'shell':
       return {
         icon: Terminal,
-        title: args.command ? String(args.command) : 'Shell Command',
-        callingTitle: args.command ? String(args.command) : 'Running Shell Command',
-        errorTitle: args.command ? `Failed: ${String(args.command)}` : 'Shell Command Failed',
+        title: args.command ? String(args.command) : 'Shell command',
+        callingTitle: args.command ? String(args.command) : 'Running shell command',
+        errorTitle: args.command ? `Failed: ${String(args.command)}` : 'Shell command failed',
       };
 
     // New tools (OpenCode-compatible names)
@@ -132,9 +132,9 @@ function getToolInfo(toolName: string, args: Record<string, unknown>, projectId?
       const path = rawPath ? stripProjectPrefix(rawPath, projectId, projectsPath) : '';
       return {
         icon: FileText,
-        title: path ? `Wrote ${path}` : 'Wrote File',
-        callingTitle: path ? `Writing ${path}` : 'Writing File',
-        errorTitle: path ? `Failed to write ${path}` : 'Failed to Write File',
+        title: path ? `Wrote ${path}` : 'Wrote file',
+        callingTitle: path ? `Writing ${path}` : 'Writing file',
+        errorTitle: path ? `Failed to write ${path}` : 'Failed to write file',
       };
     }
 
@@ -143,26 +143,26 @@ function getToolInfo(toolName: string, args: Record<string, unknown>, projectId?
       const path = rawPath ? stripProjectPrefix(rawPath, projectId, projectsPath) : '';
       return {
         icon: Edit,
-        title: path ? `Edited ${path}` : 'Edited File',
-        callingTitle: path ? `Editing ${path}` : 'Editing File',
-        errorTitle: path ? `Failed to edit ${path}` : 'Failed to Edit File',
+        title: path ? `Edited ${path}` : 'Edited file',
+        callingTitle: path ? `Editing ${path}` : 'Editing file',
+        errorTitle: path ? `Failed to edit ${path}` : 'Failed to edit file',
       };
     }
 
     case 'glob':
       return {
         icon: Search,
-        title: args.pattern ? `Searched "${args.pattern}"` : 'File Pattern Search',
-        callingTitle: args.pattern ? `Searching "${args.pattern}"` : 'Searching Files',
-        errorTitle: args.pattern ? `Failed to search ${args.pattern}` : 'Search Failed',
+        title: args.pattern ? `Searched "${args.pattern}"` : 'File pattern search',
+        callingTitle: args.pattern ? `Searching "${args.pattern}"` : 'Searching files',
+        errorTitle: args.pattern ? `Failed to search ${args.pattern}` : 'Search failed',
       };
 
     case 'grep':
       return {
         icon: Search,
-        title: args.pattern ? `Searched "${args.pattern}"` : 'Content Search',
-        callingTitle: args.pattern ? `Searching "${args.pattern}"` : 'Searching Content',
-        errorTitle: args.pattern ? `Failed to search ${args.pattern}` : 'Search Failed',
+        title: args.pattern ? `Searched "${args.pattern}"` : 'Content search',
+        callingTitle: args.pattern ? `Searching "${args.pattern}"` : 'Searching content',
+        errorTitle: args.pattern ? `Failed to search ${args.pattern}` : 'Search failed',
       };
 
     // Legacy tools (kept for old chat history)
@@ -186,9 +186,9 @@ function getToolInfo(toolName: string, args: Record<string, unknown>, projectId?
       const path = rawPath ? stripProjectPrefix(rawPath, projectId, projectsPath) : '';
       return {
         icon: FileText,
-        title: path ? `Wrote ${path}` : 'Wrote File',
-        callingTitle: path ? `Writing ${path}` : 'Writing File',
-        errorTitle: path ? `Failed to write ${path}` : 'Failed to Write File',
+        title: path ? `Wrote ${path}` : 'Wrote file',
+        callingTitle: path ? `Writing ${path}` : 'Writing file',
+        errorTitle: path ? `Failed to write ${path}` : 'Failed to write file',
       };
     }
 
@@ -197,9 +197,9 @@ function getToolInfo(toolName: string, args: Record<string, unknown>, projectId?
       const path = rawPath ? stripProjectPrefix(rawPath, projectId, projectsPath) : '';
       return {
         icon: Edit,
-        title: path ? `Edited ${path}` : 'Edited File',
-        callingTitle: path ? `Editing ${path}` : 'Editing File',
-        errorTitle: path ? `Failed to edit ${path}` : 'Failed to Edit File',
+        title: path ? `Edited ${path}` : 'Edited file',
+        callingTitle: path ? `Editing ${path}` : 'Editing file',
+        errorTitle: path ? `Failed to edit ${path}` : 'Failed to edit file',
       };
     }
 
@@ -217,25 +217,25 @@ function getToolInfo(toolName: string, args: Record<string, unknown>, projectId?
     case 'npm_remove_package':
       return {
         icon: PackageMinus,
-        title: args.name ? `Removed ${args.name}` : 'Removed Package',
-        callingTitle: args.name ? `Removing ${args.name}` : 'Removing Package',
-        errorTitle: args.name ? `Failed to remove ${args.name}` : 'Failed to Remove Package',
+        title: args.name ? `Removed ${args.name}` : 'Removed package',
+        callingTitle: args.name ? `Removing ${args.name}` : 'Removing package',
+        errorTitle: args.name ? `Failed to remove ${args.name}` : 'Failed to remove package',
       };
 
     case 'git_commit':
       return {
         icon: GitCommit,
-        title: args.message ? `Committed: ${args.message}` : 'Committed Changes',
-        callingTitle: args.message ? `Committing: ${args.message}` : 'Committing Changes',
-        errorTitle: 'Failed to Commit Changes',
+        title: args.message ? `Committed: ${args.message}` : 'Committed changes',
+        callingTitle: args.message ? `Committing: ${args.message}` : 'Committing changes',
+        errorTitle: 'Failed to commit changes',
       };
 
     case 'build_project':
       return {
         icon: Package,
-        title: 'Built Project',
-        callingTitle: 'Building Project',
-        errorTitle: 'Failed to Build Project',
+        title: 'Built project',
+        callingTitle: 'Building project',
+        errorTitle: 'Failed to build project',
       };
 
     case 'nostr_read_nip':
@@ -243,55 +243,55 @@ function getToolInfo(toolName: string, args: Record<string, unknown>, projectId?
         icon: BookOpen,
         title: args.nip ? `Read NIP-${args.nip}` : 'Read NIP',
         callingTitle: args.nip ? `Reading NIP-${args.nip}` : 'Reading NIP',
-        errorTitle: args.nip ? `Failed to read NIP-${args.nip}` : 'Failed to Read NIP',
+        errorTitle: args.nip ? `Failed to read NIP-${args.nip}` : 'Failed to read NIP',
       };
 
     case 'nostr_fetch_event':
       return {
         icon: Download,
-        title: args.identifier ? `Fetched ${String(args.identifier).slice(0, 16)}...` : 'Fetched Event',
-        callingTitle: args.identifier ? `Fetching ${String(args.identifier).slice(0, 16)}...` : 'Fetching Event',
-        errorTitle: args.identifier ? `Failed to fetch ${String(args.identifier).slice(0, 16)}...` : 'Failed to Fetch Event',
+        title: args.identifier ? `Viewed ${String(args.identifier).slice(0, 16)}...` : 'Viewed event',
+        callingTitle: args.identifier ? `Viewing ${String(args.identifier).slice(0, 16)}...` : 'Viewing event',
+        errorTitle: args.identifier ? `Failed to view ${String(args.identifier).slice(0, 16)}...` : 'Failed to view event',
       };
 
     case 'nostr_read_kind':
       return {
         icon: Hash,
-        title: args.kind !== undefined ? `Read Kind ${args.kind}` : 'Read Kind',
-        callingTitle: args.kind !== undefined ? `Reading Kind ${args.kind}` : 'Reading Kind',
-        errorTitle: args.kind !== undefined ? `Failed to read Kind ${args.kind}` : 'Failed to Read Kind',
+        title: args.kind !== undefined ? `Viewed kind ${args.kind}` : 'Viewed kind',
+        callingTitle: args.kind !== undefined ? `Viewing kind ${args.kind}` : 'Viewing kind',
+        errorTitle: args.kind !== undefined ? `Failed to view kind ${args.kind}` : 'Failed to view kind',
       };
 
     case 'nostr_read_tag':
       return {
         icon: Tag,
-        title: args.tag ? `Read Tag "${args.tag}"` : 'Read Tag',
-        callingTitle: args.tag ? `Reading Tag "${args.tag}"` : 'Reading Tag',
-        errorTitle: args.tag ? `Failed to read Tag "${args.tag}"` : 'Failed to Read Tag',
+        title: args.tag ? `Viewed tag "${args.tag}"` : 'Viewed tag',
+        callingTitle: args.tag ? `Viewing tag "${args.tag}"` : 'Viewing tag',
+        errorTitle: args.tag ? `Failed to view tag "${args.tag}"` : 'Failed to view tag',
       };
 
     case 'nostr_read_protocol':
       return {
         icon: Network,
-        title: args.doc ? `Read Protocol: ${args.doc}` : 'Read Protocol',
-        callingTitle: args.doc ? `Reading Protocol: ${args.doc}` : 'Reading Protocol',
-        errorTitle: args.doc ? `Failed to read Protocol: ${args.doc}` : 'Failed to Read Protocol',
+        title: args.doc ? `Viewed protocol ${args.doc}` : 'Viewed protocol',
+        callingTitle: args.doc ? `Viewing protocol ${args.doc}` : 'Viewing protocol',
+        errorTitle: args.doc ? `Failed to view protocol ${args.doc}` : 'Failed to view protocol',
       };
 
     case 'nostr_read_nips_index':
       return {
         icon: List,
-        title: 'Read NIPs Index',
-        callingTitle: 'Reading NIPs Index',
-        errorTitle: 'Failed to Read NIPs Index',
+        title: 'Viewed NIPs index',
+        callingTitle: 'Viewing NIPs index',
+        errorTitle: 'Failed to view NIPs index',
       };
 
     case 'nostr_generate_kind':
       return {
         icon: Plus,
-        title: args.range ? `Generated ${args.range} kind` : 'Generated Kind',
-        callingTitle: args.range ? `Generating ${args.range} kind` : 'Generating Kind',
-        errorTitle: args.range ? `Failed to generate ${args.range} kind` : 'Failed to Generate Kind',
+        title: args.range ? `Generated ${args.range} kind` : 'Generated kind',
+        callingTitle: args.range ? `Generating ${args.range} kind` : 'Generating kind',
+        errorTitle: args.range ? `Failed to generate ${args.range} kind` : 'Failed to generate kind',
       };
 
     case 'nostr_publish_events': {
@@ -300,56 +300,76 @@ function getToolInfo(toolName: string, args: Record<string, unknown>, projectId?
         icon: Send,
         title: eventCount > 1 ? `Published ${eventCount} Nostr events` : 'Published Nostr event',
         callingTitle: eventCount > 1 ? `Publishing ${eventCount} Nostr events` : 'Publishing Nostr event',
-        errorTitle: eventCount > 1 ? `Failed to publish ${eventCount} Nostr events` : 'Failed to Publish Nostr Event',
+        errorTitle: eventCount > 1 ? `Failed to publish ${eventCount} Nostr events` : 'Failed to publish Nostr event',
       };
     }
 
     case 'deploy_project':
       return {
         icon: Globe,
-        title: args.deployServer ? `Deployed to ${args.deployServer}` : 'Deployed Project',
-        callingTitle: args.deployServer ? `Deploying to ${args.deployServer}` : 'Deploying Project',
-        errorTitle: args.deployServer ? `Failed to deploy to ${args.deployServer}` : 'Failed to Deploy Project',
+        title: args.deployServer ? `Deployed to ${args.deployServer}` : 'Deployed project',
+        callingTitle: args.deployServer ? `Deploying to ${args.deployServer}` : 'Deploying project',
+        errorTitle: args.deployServer ? `Failed to deploy to ${args.deployServer}` : 'Failed to deploy project',
       };
 
     case 'read_console_messages':
       return {
         icon: Logs,
-        title: 'Read Console',
-        callingTitle: 'Reading Console',
-        errorTitle: 'Failed to Read Console',
+        title: 'Viewed console',
+        callingTitle: 'Viewing console',
+        errorTitle: 'Failed to view console',
       };
+
+    case 'webfetch': {
+      const url = args.url ? String(args.url) : '';
+      return {
+        icon: Globe,
+        title: url ? `Viewed ${url}` : 'Viewed webpage',
+        callingTitle: url ? `Viewing ${url}` : 'Viewing webpage',
+        errorTitle: url ? `Failed to view ${url}` : 'Failed to view webpage',
+      };
+    }
+
+    case 'websearch': {
+      const query = args.query ? String(args.query) : '';
+      return {
+        icon: Search,
+        title: query ? `Searched "${query}"` : 'Web search',
+        callingTitle: query ? `Searching "${query}"` : 'Searching web',
+        errorTitle: query ? `Failed to search "${query}"` : 'Search failed',
+      };
+    }
 
     case 'skill':
       return {
         icon: Puzzle,
         title: args.name ? `Skill: ${args.name}` : 'Skill',
-        callingTitle: args.name ? `Running Skill: ${args.name}` : 'Running Skill',
-        errorTitle: args.name ? `Skill Failed: ${args.name}` : 'Skill Failed',
+        callingTitle: args.name ? `Running skill: ${args.name}` : 'Running skill',
+        errorTitle: args.name ? `Skill failed: ${args.name}` : 'Skill failed',
       };
 
     case 'generate_image':
       return {
         icon: Image,
-        title: args.prompt ? String(args.prompt) : 'Generated Image',
-        callingTitle: args.prompt ? String(args.prompt) : 'Generating Image',
-        errorTitle: 'Failed to Generate Image',
+        title: args.prompt ? String(args.prompt) : 'Generated image',
+        callingTitle: args.prompt ? String(args.prompt) : 'Generating image',
+        errorTitle: 'Failed to generate image',
       };
 
     case 'view_available_models':
       return {
         icon: Eye,
-        title: 'Viewed Available Models',
-        callingTitle: 'Viewing Available Models',
-        errorTitle: 'Failed to View Available Models',
+        title: 'Viewed available models',
+        callingTitle: 'Viewing available models',
+        errorTitle: 'Failed to view available models',
       };
 
     case 'configure_image_generation':
       return {
         icon: Settings,
-        title: args.model ? `Configured image model: ${args.model}` : 'Configured Image Generation',
-        callingTitle: args.model ? `Configuring image model: ${args.model}` : 'Configuring Image Generation',
-        errorTitle: args.model ? `Failed to configure image model: ${args.model}` : 'Failed to Configure Image Generation',
+        title: args.model ? `Configured image model: ${args.model}` : 'Configured image generation',
+        callingTitle: args.model ? `Configuring image model: ${args.model}` : 'Configuring image generation',
+        errorTitle: args.model ? `Failed to configure image model: ${args.model}` : 'Failed to configure image generation',
       };
 
     default: {

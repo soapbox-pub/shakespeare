@@ -41,6 +41,8 @@ import { SkillTool } from '@/lib/tools/SkillTool';
 import { GenerateImageTool } from '@/lib/tools/GenerateImageTool';
 import { ViewAvailableModelsTool } from '@/lib/tools/ViewAvailableModelsTool';
 import { ConfigureImageGenerationTool } from '@/lib/tools/ConfigureImageGenerationTool';
+import { WebFetchTool } from '@/lib/tools/WebFetchTool';
+import { WebSearchTool } from '@/lib/tools/WebSearchTool';
 import { createMCPTools } from '@/lib/tools/MCPTool';
 import { ProjectPreviewConsoleError } from '@/lib/consoleMessages';
 import { toolToOpenAI } from '@/lib/tools/openai-adapter';
@@ -199,6 +201,8 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
       shell: new ShellTool(fs, cwd, git, config.corsProxy, user?.signer),
       read_console_messages: new ReadConsoleMessagesTool(),
       skill: new SkillTool(fs, pluginsPath, cwd),
+      webfetch: new WebFetchTool({ corsProxy: config.corsProxy }),
+      websearch: new WebSearchTool(),
     };
 
     // Add generate_image tool if imageModel is configured

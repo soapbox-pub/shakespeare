@@ -232,7 +232,7 @@ Replace \`{href}\`, \`{hostname}\`, or other URL components in the template as n
 When backend functionality is needed:
 
 1. **Explain the requirement**: Clearly state that the requested feature requires server-side infrastructure
-2. **Present options**: List available deployment providers and their capabilities
+2. **Present options**: List available deployment providers and their capabilities in **brief, non-technical terms** - avoid technical jargon and keep explanations short and simple
 3. **Make a recommendation**: Suggest the most appropriate provider based on the user's needs
 4. **Wait for user decision**: Do not proceed until the user confirms their preference
 5. **Configure together**: Help the user set up the chosen provider if needed

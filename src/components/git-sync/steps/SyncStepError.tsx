@@ -8,14 +8,16 @@ import { getSentryInstance } from '@/lib/sentry';
 interface SyncStepErrorProps {
   error: Error;
   onDismiss: () => void;
-  onForcePull: () => void;
+  onForcePull?: () => void;
   onForcePush: () => void;
-  onPull: () => void;
-  remoteUrl: URL;
+  onPull?: () => void;
+  remoteUrl?: URL;
   remoteName: string;
+  /** Context for error messages - 'sync' for existing remotes, 'configure' for initial setup */
+  context?: 'sync' | 'configure';
 }
 
-export function SyncStepError({ error, onDismiss, onForcePull, onForcePush, onPull, remoteName, remoteUrl }: SyncStepErrorProps) {
+export function SyncStepError({ error, onDismiss, onForcePull, onForcePush, onPull, remoteName, remoteUrl, context = 'sync' }: SyncStepErrorProps) {
   const renderForcePullButton = () => (
     <Button
       variant="outline"
@@ -104,17 +106,23 @@ export function SyncStepError({ error, onDismiss, onForcePull, onForcePush, onPu
 
   // PushRejectedError - remote has changes
   if (error instanceof GitErrors.PushRejectedError) {
+    // Different message based on context
+    const message = context === 'configure'
+      ? `The repository on ${remoteName} is not empty. You'll need to force push to overwrite it with your local project.`
+      : `Push rejected. The remote repository has changes you don't have locally. Try pulling first.`;
+
     return (
       <Alert variant="destructive">
         <div className="flex flex-col gap-3">
           <div className="flex items-start justify-between gap-2">
             <AlertDescription className="text-sm flex-1">
-              Push rejected. The remote repository has changes you don't have locally. Try pulling first.
+              {message}
             </AlertDescription>
             {renderDismissButton()}
           </div>
           <div className="flex gap-2">
-            {renderPullButton()}
+            {/* Only show Pull button in sync context (not during initial configure) */}
+            {context === 'sync' && onPull && renderPullButton()}
             {renderForcePushButton()}
           </div>
         </div>
@@ -126,17 +134,43 @@ export function SyncStepError({ error, onDismiss, onForcePull, onForcePush, onPu
   if (error instanceof GitErrors.HttpError) {
     let message: React.ReactNode = `HTTP Error: ${error.data.statusCode} ${error.data.statusMessage}`;
 
-    if (remoteUrl.protocol === 'nostr:') {
+    // Check if remoteUrl is a Nostr URL
+    if (remoteUrl?.protocol === 'nostr:') {
       // This should never happen
       getSentryInstance()?.captureException(error);
       message = `There was an HTTP (${error.data.statusCode}) error communicating with Nostr Git servers.`
-    } else if (remoteUrl.protocol !== 'http:' && remoteUrl.protocol !== 'https:') {
+    } else if (remoteUrl && remoteUrl.protocol !== 'http:' && remoteUrl.protocol !== 'https:') {
+      // Handle standard HTTP errors based on status code
       switch (error.data.statusCode) {
         case 401:
-          message = <>Your API token for {remoteName} is probably invalid or expired. Please try logging out and back into {remoteName} in <Link to="/settings/git" className="underline">Git Settings</Link>.</>
+          message = context === 'configure'
+            ? <>Your credentials for {remoteName} are invalid or expired. Please check your login in <Link to="/settings/git" className="underline">Git Settings</Link>.</>
+            : <>Your API token for {remoteName} is probably invalid or expired. Please try logging out and back into {remoteName} in <Link to="/settings/git" className="underline">Git Settings</Link>.</>;
           break;
         case 403:
-          message = <>You don't have permission to access this repository on {remoteName}. Try checking your permissions on <a href={remoteUrl.origin} target="_blank" className="underline">{remoteName}</a>.</>;
+          message = context === 'configure'
+            ? <>You don't have permission to push to this repository on {remoteName}. Make sure the repository exists and you have write access.</>
+            : <>You don't have permission to access this repository on {remoteName}. Try checking your permissions on <a href={remoteUrl.origin} target="_blank" className="underline">{remoteName}</a>.</>;
+          break;
+        case 404:
+          if (context === 'configure') {
+            message = <>Repository not found on {remoteName}. Make sure you've created the repository first and the URL is correct.</>;
+          }
+          break;
+      }
+    } else {
+      // No remoteUrl available or it's a standard HTTP/HTTPS URL
+      switch (error.data.statusCode) {
+        case 401:
+          message = <>Your credentials for {remoteName} are invalid or expired. Please check your login in <Link to="/settings/git" className="underline">Git Settings</Link>.</>;
+          break;
+        case 403:
+          message = <>You don't have permission to push to this repository on {remoteName}. Make sure the repository exists and you have write access.</>;
+          break;
+        case 404:
+          if (context === 'configure') {
+            message = <>Repository not found on {remoteName}. Make sure you've created the repository first and the URL is correct.</>;
+          }
           break;
       }
     }

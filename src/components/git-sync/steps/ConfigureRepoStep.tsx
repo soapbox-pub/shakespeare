@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useGit } from '@/hooks/useGit';
 import { useGitStatus } from '@/hooks/useGitStatus';
@@ -20,6 +19,8 @@ import type { NostrEvent } from '@nostrify/nostrify';
 import { NostrURI } from '@/lib/NostrURI';
 import { useGitAutosync } from '@/hooks/useGitAutosync';
 import { ArrowUp } from 'lucide-react';
+import { ForcePushDialog } from './ForcePushDialog';
+import { SyncStepError } from './SyncStepError';
 
 // Helper function to convert kebab-case to Title Case
 function kebabToTitleCase(str: string): string {
@@ -41,7 +42,8 @@ export function ConfigureRepoStep({
   const [repoName, setRepoName] = useState(kebabToTitleCase(projectId));
   const [isRepoNameManuallyEdited, setIsRepoNameManuallyEdited] = useState(false);
   const [isPushing, setIsPushing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<Error | null>(null);
+  const [showForcePushDialog, setShowForcePushDialog] = useState(false);
 
   const { user } = useCurrentUser();
   const { git } = useGit();
@@ -74,9 +76,10 @@ export function ConfigureRepoStep({
     setIsRepoNameManuallyEdited(true);
   };
 
-  const handlePushInitial = async () => {
-    setIsPushing(true);
-    setError(null);
+  // Shared push logic for both initial push and force push
+  const executePush = async (force: boolean = false) => {
+    // Store the URL we're trying to add so we can remove it on error
+    let remoteAdded = false;
 
     try {
       if (selectedProvider.id === 'nostr') {
@@ -196,12 +199,14 @@ export function ConfigureRepoStep({
           url: nostrURI.toString(),
           force: true,
         });
+        remoteAdded = true;
 
         // Push to Nostr (the rest of the Nostr logic is handled internally by git.push)
         await git.push({
           dir,
           remote: 'origin',
           ref: gitStatus?.currentBranch || 'main',
+          force,
         });
       } else {
         // Validate repository URL
@@ -216,12 +221,14 @@ export function ConfigureRepoStep({
           url: repositoryUrl,
           force: true, // Override if exists
         });
+        remoteAdded = true;
 
         // Push to remote
         await git.push({
           dir,
           remote: 'origin',
           ref: gitStatus?.currentBranch || 'main',
+          force,
         });
       }
 
@@ -238,8 +245,45 @@ export function ConfigureRepoStep({
       // Show success state
       onSuccess();
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to push';
-      setError(message);
+      const error = err instanceof Error ? err : new Error(force ? 'Failed to force push' : 'Failed to push');
+      
+      // If we added the remote but push failed, remove it
+      if (remoteAdded) {
+        try {
+          await git.deleteRemote({ dir, remote: 'origin' });
+        } catch {
+          // Ignore errors when cleaning up remote
+        }
+      }
+      
+      throw error; // Re-throw so caller can handle
+    }
+  };
+
+  const handlePushInitial = async () => {
+    setIsPushing(true);
+    setError(null);
+
+    try {
+      await executePush(false);
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error('Failed to push');
+      setError(error);
+    } finally {
+      setIsPushing(false);
+    }
+  };
+
+  const handleForcePush = async () => {
+    setIsPushing(true);
+    setError(null);
+    setShowForcePushDialog(false);
+
+    try {
+      await executePush(true);
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error('Failed to force push');
+      setError(error);
     } finally {
       setIsPushing(false);
     }
@@ -343,9 +387,13 @@ export function ConfigureRepoStep({
         </div>
 
         {error && (
-          <Alert variant="destructive">
-            <AlertDescription className="text-sm">{error}</AlertDescription>
-          </Alert>
+          <SyncStepError
+            error={error}
+            onDismiss={() => setError(null)}
+            onForcePush={() => setShowForcePushDialog(true)}
+            remoteName={selectedProvider.name}
+            context="configure"
+          />
         )}
 
         <div className="flex gap-2">
@@ -360,6 +408,13 @@ export function ConfigureRepoStep({
             {isPushing ? 'Pushing...' : 'Push'}
           </Button>
         </div>
+
+        <ForcePushDialog
+          open={showForcePushDialog}
+          onOpenChange={setShowForcePushDialog}
+          onConfirm={handleForcePush}
+          remoteName={selectedProvider.name}
+        />
       </div>
     );
   }
@@ -386,9 +441,13 @@ export function ConfigureRepoStep({
       </div>
 
       {error && (
-        <Alert variant="destructive">
-          <AlertDescription className="text-sm">{error}</AlertDescription>
-        </Alert>
+        <SyncStepError
+          error={error}
+          onDismiss={() => setError(null)}
+          onForcePush={() => setShowForcePushDialog(true)}
+          remoteName={selectedProvider.name}
+          context="configure"
+        />
       )}
 
       <div className="flex gap-2">
@@ -407,6 +466,13 @@ export function ConfigureRepoStep({
           )}
         </Button>
       </div>
+
+      <ForcePushDialog
+        open={showForcePushDialog}
+        onOpenChange={setShowForcePushDialog}
+        onConfirm={handleForcePush}
+        remoteName={selectedProvider.name}
+      />
     </div>
   );
 }

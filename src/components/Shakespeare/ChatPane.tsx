@@ -44,6 +44,8 @@ import { ConfigureImageGenerationTool } from '@/lib/tools/ConfigureImageGenerati
 import { WebFetchTool } from '@/lib/tools/WebFetchTool';
 import { WebSearchTool } from '@/lib/tools/WebSearchTool';
 import { createMCPTools } from '@/lib/tools/MCPTool';
+import { TodoWriteTool } from '@/lib/tools/TodoWriteTool';
+import { TodoReadTool } from '@/lib/tools/TodoReadTool';
 import { ProjectPreviewConsoleError } from '@/lib/consoleMessages';
 import { toolToOpenAI } from '@/lib/tools/openai-adapter';
 import { Tool } from '@/lib/tools/Tool';
@@ -203,6 +205,8 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
       skill: new SkillTool(fs, pluginsPath, cwd),
       webfetch: new WebFetchTool({ corsProxy: config.corsProxy }),
       websearch: new WebSearchTool(),
+      todowrite: new TodoWriteTool(fs, projectId),
+      todoread: new TodoReadTool(fs, projectId),
     };
 
     // Add generate_image tool if imageModel is configured
@@ -254,7 +258,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     }
 
     return tools;
-  }, [fs, git, cwd, user, projectsPath, tmpPath, pluginsPath, config.corsProxy, settings, aiSettings, models, handleFileChanged, handleCommit]);
+  }, [fs, git, cwd, user, projectsPath, tmpPath, pluginsPath, config.corsProxy, settings, aiSettings, models, handleFileChanged, handleCommit, projectId]);
 
   // MCP tools wrapped for execution
   const mcpToolWrappers = useMemo(() => createMCPTools(mcpClients), [mcpClients]);

@@ -27,6 +27,7 @@ import {
   TriangleAlert,
   X,
   Search,
+  Clipboard,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { VFSImage } from '@/components/VFSImage';
@@ -100,7 +101,7 @@ function stripProjectPrefix(path: string, projectId?: string, projectsPath = '/p
 /**
  * Get tool information including icon, title, and calling title
  */
-function getToolInfo(toolName: string, args: Record<string, unknown>, projectId?: string, projectsPath?: string): ToolInfo {
+function getToolInfo(toolName: string, args: Record<string, unknown>, projectId?: string, projectsPath?: string, result?: string): ToolInfo {
   switch (toolName) {
     case 'shell':
       return {
@@ -372,6 +373,45 @@ function getToolInfo(toolName: string, args: Record<string, unknown>, projectId?
         errorTitle: args.model ? `Failed to configure image model: ${args.model}` : 'Failed to configure image generation',
       };
 
+    case 'todowrite':
+    case 'todoread': {
+      // Try to parse the result to get task counts for the title
+      let title = toolName === 'todowrite' ? 'Updated todo list' : 'Viewed todo list';
+      if (result) {
+        try {
+          const todos = JSON.parse(result);
+          if (Array.isArray(todos)) {
+            const activeTodos = todos.filter((x: { status: string }) => x.status !== 'completed' && x.status !== 'cancelled');
+            const completedTodos = todos.filter((x: { status: string }) => x.status === 'completed');
+            const inProgressTask = todos.find((x: { status: string }) => x.status === 'in_progress');
+            
+            // Format: "[<completed>/<total>] <active-task>" if in_progress task exists
+            if (inProgressTask) {
+              const taskName = inProgressTask.content || 'Task';
+              const totalTasks = todos.length;
+              title = `[${completedTodos.length + 1}/${totalTasks}] ${taskName}`;
+            } else if (activeTodos.length === 0 && completedTodos.length > 0) {
+              // All tasks completed
+              title = `${completedTodos.length + 1} task${completedTodos.length !== 0 ? 's' : ''} completed`;
+            } else if (completedTodos.length === 0) {
+              // No completed tasks yet
+              title = `${activeTodos.length} active task${activeTodos.length !== 1 ? 's' : ''}`;
+            } else {
+              title = `${activeTodos.length} active task${activeTodos.length !== 1 ? 's' : ''}, ${completedTodos.length} completed`;
+            }
+          }
+        } catch {
+          // If parsing fails, use default title
+        }
+      }
+      return {
+        icon: Clipboard,
+        title,
+        callingTitle: toolName === 'todowrite' ? 'Updating todo list' : 'Viewing todo list',
+        errorTitle: toolName === 'todowrite' ? 'Failed to update todo list' : 'Failed to view todo list',
+      };
+    }
+
     default: {
       const formattedName = toolName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
       return {
@@ -408,7 +448,7 @@ export function ToolCallDisplay({ toolName, toolArgs, state, result, projectId }
   const [imageLoadError, setImageLoadError] = useState(false);
   const { projectsPath } = useFSPaths();
 
-  const toolInfo = getToolInfo(toolName, toolArgs, projectId, projectsPath);
+  const toolInfo = getToolInfo(toolName, toolArgs, projectId, projectsPath, result);
   const IconComponent = toolInfo.icon;
 
   // Check if this is an error result
@@ -555,6 +595,58 @@ export function ToolCallDisplay({ toolName, toolArgs, state, result, projectId }
           <div>{typeof toolArgs.prompt === 'string' ? toolArgs.prompt : 'No prompt provided'}</div>
         </div>
       );
+    }
+
+    // Todo tools expanded content
+    if (toolName === 'todowrite' || toolName === 'todoread') {
+      try {
+        const todos = JSON.parse(result);
+        if (!Array.isArray(todos)) {
+          throw new Error('Invalid todo format');
+        }
+
+        if (todos.length === 0) {
+          return (
+            <div className="mt-1 p-3 bg-muted/30 rounded border text-xs">
+              <div className="text-muted-foreground italic">No todos found</div>
+            </div>
+          );
+        }
+
+        // Find the first in_progress task for bold styling
+        const firstInProgressIndex = todos.findIndex((x: { status: string }) => x.status === 'in_progress');
+
+        return (
+          <div className="mt-1 rounded border bg-muted/30 text-xs overflow-hidden">
+            <div className="px-3 py-2 space-y-1">
+              {todos.map((todo: { id: string; content: string; status: string; priority: string }, index: number) => {
+                const isChecked = todo.status === 'completed' || todo.status === 'cancelled';
+                const isFirstInProgress = index === firstInProgressIndex;
+                
+                return (
+                  <div key={todo.id} className="flex items-start gap-2 py-1">
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      readOnly
+                      className="mt-0.5 h-4 w-4 rounded border-gray-300 cursor-default"
+                    />
+                    <span className={cn(
+                      "flex-1 text-foreground",
+                      isChecked && "line-through text-muted-foreground",
+                      isFirstInProgress && "font-bold"
+                    )}>
+                      {todo.content}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      } catch {
+        // If parsing fails, fall through to default rendering
+      }
     }
 
     // Default rendering for other tools

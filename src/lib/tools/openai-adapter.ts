@@ -71,6 +71,8 @@ function convertZodField(field: unknown): Record<string, unknown> {
       checks?: Array<{ kind: string; value: unknown }>;
       innerType?: unknown;
       type?: unknown;
+      shape?: () => Record<string, unknown>;
+      values?: unknown[];
     }
   };
 
@@ -93,14 +95,51 @@ function convertZodField(field: unknown): Record<string, unknown> {
         type: 'boolean',
         description: fieldObj._def?.description
       };
-    case 'ZodOptional':
-      return convertZodField(fieldObj._def?.innerType);
+    case 'ZodOptional': {
+      const innerSchema = convertZodField(fieldObj._def?.innerType);
+      // Preserve description from ZodOptional if it exists
+      if (fieldObj._def?.description && !innerSchema.description) {
+        innerSchema.description = fieldObj._def.description;
+      }
+      return innerSchema;
+    }
     case 'ZodArray':
       return {
         type: 'array',
         items: convertZodField(fieldObj._def?.type),
         description: fieldObj._def?.description
       };
+    case 'ZodObject': {
+      const properties: Record<string, unknown> = {};
+      const required: string[] = [];
+      
+      const shape = fieldObj._def?.shape?.();
+      if (shape) {
+        for (const [key, value] of Object.entries(shape)) {
+          const fieldSchema = value as { _def?: { typeName?: string } };
+          properties[key] = convertZodField(fieldSchema);
+          
+          if (!fieldSchema._def?.typeName?.includes('Optional')) {
+            required.push(key);
+          }
+        }
+      }
+      
+      return {
+        type: 'object',
+        properties,
+        required: required.length > 0 ? required : undefined,
+        description: fieldObj._def?.description
+      };
+    }
+    case 'ZodEnum': {
+      const values = fieldObj._def?.values as string[] | undefined;
+      return {
+        type: 'string',
+        enum: values || [],
+        description: fieldObj._def?.description
+      };
+    }
     default:
       return {
         type: 'string',

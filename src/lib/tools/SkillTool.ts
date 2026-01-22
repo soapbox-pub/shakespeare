@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { Tool, ToolResult } from './Tool';
 import type { JSRuntimeFS } from '../JSRuntime';
-import { findSkill, readSkillContent } from '../skills';
+import { readSkillContent, type Skill } from '../skills';
 
 interface SkillParams {
   name: string;
@@ -9,45 +9,65 @@ interface SkillParams {
 
 export class SkillTool implements Tool<SkillParams> {
   private fs: JSRuntimeFS;
-  private pluginsPath: string;
-  private projectPath: string;
-
-  readonly description = 'Load and execute a skill from the configured plugins or project. Skills are reusable AI workflows that can be invoked by name.';
+  private availableSkills: Skill[];
+  readonly description: string;
 
   readonly inputSchema = z.object({
-    name: z.string().describe('The name of the skill to execute (lowercase alphanumeric with hyphens)'),
+    name: z.string().describe('The skill identifier from available_skills'),
   });
 
-  constructor(fs: JSRuntimeFS, pluginsPath: string, projectPath: string) {
+  /**
+   * Create a SkillTool instance.
+   * @param fs - Filesystem instance
+   * @param availableSkills - List of available skills (should be pre-loaded)
+   */
+  constructor(fs: JSRuntimeFS, availableSkills: Skill[]) {
     this.fs = fs;
-    this.pluginsPath = pluginsPath;
-    this.projectPath = projectPath;
+    this.availableSkills = availableSkills;
+    this.description = this.generateDescription(availableSkills);
+  }
+
+  /**
+   * Generate description text for SkillTool based on available skills.
+   */
+  private generateDescription(skills: Skill[]): string {
+    if (skills.length === 0) {
+      return 'Load a skill to get detailed instructions for a specific task. No skills are currently available.';
+    }
+
+    return [
+      'Load a skill to get detailed instructions for a specific task.',
+      'Skills provide specialized knowledge and step-by-step guidance.',
+      'Use this when a task matches an available skill\'s description.',
+      '<available_skills>',
+      ...skills.map(skill =>
+        `  <skill>\n    <name>${skill.name}</name>\n    <description>${skill.description}</description>\n  </skill>`
+      ),
+      '</available_skills>',
+    ].join('\n');
   }
 
   async execute(args: SkillParams): Promise<ToolResult> {
     const { name } = args;
 
     try {
-      // Find the skill across all plugins and project
-      const skill = await findSkill(this.fs, this.pluginsPath, this.projectPath, name);
+      // Find the skill in the pre-loaded list
+      const skill = this.availableSkills.find(s => s.name === name);
 
       if (!skill) {
-        throw new Error(`Skill "${name}" not found. Use the skill tool to list available skills or configure plugins in Settings > AI.`);
+        const available = this.availableSkills.map(s => s.name).join(', ');
+        throw new Error(`Skill "${name}" not found. Available skills: ${available || 'none'}`);
       }
 
       // Read and return the skill content
       const content = await readSkillContent(this.fs, skill);
 
       return {
-        content: `# Skill: ${skill.name}
+        content: `## Skill: ${skill.name}
 
-**Source**: ${skill.plugin === 'project' ? 'Project' : `Plugin: ${skill.plugin}`}
-**Description**: ${skill.description}
-**Path**: ${skill.path}
+**Base directory**: ${skill.path}
 
----
-
-${content}`
+${content.trim()}`
       };
     } catch (error) {
       if (error instanceof Error) {

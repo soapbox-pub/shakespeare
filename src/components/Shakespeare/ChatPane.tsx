@@ -59,6 +59,7 @@ import { buildMessageContent } from '@/lib/buildMessageContent';
 import { DotAI } from '@/lib/DotAI';
 import { parseProviderModel } from '@/lib/parseProviderModel';
 import { AIMessage } from '@/lib/SessionManager';
+import { getAllSkills } from '@/lib/skills';
 
 // Clean interfaces now handled by proper hooks
 
@@ -106,6 +107,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   const [templateInfo, setTemplateInfo] = useState<{ name: string; description: string; url: string } | null>(null);
   const [showTemplateInfo, setShowTemplateInfo] = useState(false);
   const [showToolsDialog, setShowToolsDialog] = useState(false);
+  const [availableSkills, setAvailableSkills] = useState<Array<{ name: string; description: string; path: string; plugin: string }>>([]);
 
   // Determine which error to show - AI errors take priority over console errors
   // since they are more immediately relevant to the user's current action
@@ -176,6 +178,19 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     queryClient.invalidateQueries({ queryKey: ['git-sync', cwd] });
   }, [queryClient, cwd]);
 
+  // Load available skills
+  useEffect(() => {
+    const loadSkills = async () => {
+      const skills = await getAllSkills(fs, pluginsPath, cwd);
+      setAvailableSkills(skills);
+    };
+    
+    loadSkills().catch(err => {
+      console.error('Failed to load skills:', err);
+      setAvailableSkills([]);
+    });
+  }, [fs, pluginsPath, cwd]);
+
   // Fetch MCP tools
   const { tools: mcpOpenAITools, clients: mcpClients } = useMCPTools();
 
@@ -204,7 +219,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
       nostr_publish_events: new NostrPublishEventsTool(),
       shell: new ShellTool(fs, cwd, git, config.corsProxy, user?.signer),
       read_console_messages: new ReadConsoleMessagesTool(),
-      skill: new SkillTool(fs, pluginsPath, cwd),
+      skill: new SkillTool(fs, availableSkills),
       webfetch: new WebFetchTool({ corsProxy: config.corsProxy }),
       websearch: new WebSearchTool(),
       todowrite: new TodoWriteTool(fs, projectId, { projectsPath }),
@@ -260,7 +275,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     }
 
     return tools;
-  }, [fs, git, cwd, user, projectsPath, tmpPath, pluginsPath, config.corsProxy, settings, aiSettings, models, handleFileChanged, handleCommit, projectId]);
+  }, [fs, git, cwd, user, projectsPath, tmpPath, config.corsProxy, settings, aiSettings, models, handleFileChanged, handleCommit, projectId, availableSkills]);
 
   // MCP tools wrapped for execution
   const mcpToolWrappers = useMemo(() => createMCPTools(mcpClients), [mcpClients]);

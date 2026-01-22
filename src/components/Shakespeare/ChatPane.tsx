@@ -18,9 +18,11 @@ import { useMCPTools } from '@/hooks/useMCPTools';
 import { useQueryClient } from '@tanstack/react-query';
 import { AIMessageItem } from '@/components/AIMessageItem';
 import { ToolCallDisplay } from '@/components/ToolCallDisplay';
-import { TextEditorViewTool } from '@/lib/tools/TextEditorViewTool';
-import { TextEditorWriteTool } from '@/lib/tools/TextEditorWriteTool';
-import { TextEditorStrReplaceTool } from '@/lib/tools/TextEditorStrReplaceTool';
+import { ReadTool } from '@/lib/tools/ReadTool';
+import { WriteTool } from '@/lib/tools/WriteTool';
+import { EditTool } from '@/lib/tools/EditTool';
+import { GlobTool } from '@/lib/tools/GlobTool';
+import { GrepTool } from '@/lib/tools/GrepTool';
 import { NpmAddPackageTool } from '@/lib/tools/NpmAddPackageTool';
 import { NpmRemovePackageTool } from '@/lib/tools/NpmRemovePackageTool';
 import { GitCommitTool } from '@/lib/tools/GitCommitTool';
@@ -174,10 +176,15 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   // Separate built-in tools from MCP tools for clarity
   const builtInTools = useMemo(() => {
     const tools: Record<string, Tool<unknown>> = {
+      // File operation tools (OpenCode-compatible API)
+      read: new ReadTool(fs, cwd, { projectsPath }),
+      write: new WriteTool(fs, cwd, { projectsPath, tmpPath, onFileChanged: handleFileChanged }),
+      edit: new EditTool(fs, cwd, { projectsPath, tmpPath, onFileChanged: handleFileChanged }),
+      glob: new GlobTool(fs, cwd),
+      grep: new GrepTool(fs, cwd),
+      
+      // Other tools
       git_commit: new GitCommitTool(fs, cwd, git, { onCommit: handleCommit }),
-      text_editor_view: new TextEditorViewTool(fs, cwd, { projectsPath }),
-      text_editor_write: new TextEditorWriteTool(fs, cwd, { projectsPath, tmpPath, onFileChanged: handleFileChanged }),
-      text_editor_str_replace: new TextEditorStrReplaceTool(fs, cwd, { projectsPath, tmpPath, onFileChanged: handleFileChanged }),
       npm_add_package: new NpmAddPackageTool(fs, cwd),
       npm_remove_package: new NpmRemovePackageTool(fs, cwd),
       build_project: new BuildProjectTool(fs, cwd, esmUrlRef.current),

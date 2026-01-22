@@ -90,6 +90,56 @@ function getToolInfo(toolName: string, args: Record<string, unknown>): ToolInfo 
         errorTitle: args.command ? `Failed: ${String(args.command)}` : 'Shell Command Failed',
       };
 
+    // New tools (OpenCode-compatible names)
+    case 'read': {
+      const path = args.filePath ? String(args.filePath) : 'File';
+      const offset = typeof args.offset === 'number' ? args.offset : 0;
+      const limit = typeof args.limit === 'number' ? args.limit : 2000;
+      const hasLineRange = args.offset || args.limit;
+      const lineInfo = hasLineRange
+        ? ` (lines ${offset}-${offset + limit})`
+        : '';
+      return {
+        icon: Eye,
+        title: `Read ${path}${lineInfo}`,
+        callingTitle: `Reading ${path}${lineInfo}`,
+        errorTitle: `Failed to read ${path}${lineInfo}`,
+      };
+    }
+
+    case 'write':
+      return {
+        icon: FileText,
+        title: args.filePath ? `Wrote ${args.filePath}` : 'Wrote File',
+        callingTitle: args.filePath ? `Writing ${args.filePath}` : 'Writing File',
+        errorTitle: args.filePath ? `Failed to write ${args.filePath}` : 'Failed to Write File',
+      };
+
+    case 'edit':
+      return {
+        icon: Edit,
+        title: args.filePath ? `Edited ${args.filePath}` : 'Edited File',
+        callingTitle: args.filePath ? `Editing ${args.filePath}` : 'Editing File',
+        errorTitle: args.filePath ? `Failed to edit ${args.filePath}` : 'Failed to Edit File',
+      };
+
+    case 'glob':
+      return {
+        icon: Eye,
+        title: args.pattern ? `Glob: ${args.pattern}` : 'File Pattern Search',
+        callingTitle: args.pattern ? `Searching: ${args.pattern}` : 'Searching Files',
+        errorTitle: args.pattern ? `Failed to search: ${args.pattern}` : 'Search Failed',
+      };
+
+    case 'grep':
+      return {
+        icon: Eye,
+        title: args.pattern ? `Grep: ${args.pattern}` : 'Content Search',
+        callingTitle: args.pattern ? `Searching: ${args.pattern}` : 'Searching Content',
+        errorTitle: args.pattern ? `Failed to search: ${args.pattern}` : 'Search Failed',
+      };
+
+    // Legacy tools (kept for old chat history)
     case 'text_editor_view': {
       const path = args.path ? String(args.path) : 'File';
       const hasLineRange = args.start_line || args.end_line;
@@ -342,19 +392,26 @@ export function ToolCallDisplay({ toolName, toolArgs, state, result }: ToolCallD
       );
     }
 
-    if (toolName === 'text_editor_write' && typeof toolArgs.file_text === 'string') {
+    // Write tool expanded content (new and legacy)
+    if ((toolName === 'write' && typeof toolArgs.content === 'string') || 
+        (toolName === 'text_editor_write' && typeof toolArgs.file_text === 'string')) {
+      const content = toolName === 'write' ? String(toolArgs.content) : String(toolArgs.file_text);
       return (
         <div className="mt-1 p-3 bg-muted/30 rounded border text-xs">
           <div className="whitespace-pre-wrap break-words font-mono">
-            {toolArgs.file_text}
+            {content}
           </div>
         </div>
       );
     }
 
-    if (toolName === 'text_editor_str_replace' && typeof toolArgs.old_str === 'string' && typeof toolArgs.new_str === 'string') {
-      const oldLines = String(toolArgs.old_str).split('\n');
-      const newLines = String(toolArgs.new_str).split('\n');
+    // Edit tool expanded content (new and legacy)
+    if ((toolName === 'edit' && typeof toolArgs.oldString === 'string' && typeof toolArgs.newString === 'string') ||
+        (toolName === 'text_editor_str_replace' && typeof toolArgs.old_str === 'string' && typeof toolArgs.new_str === 'string')) {
+      const oldStr = toolName === 'edit' ? String(toolArgs.oldString) : String(toolArgs.old_str);
+      const newStr = toolName === 'edit' ? String(toolArgs.newString) : String(toolArgs.new_str);
+      const oldLines = oldStr.split('\n');
+      const newLines = newStr.split('\n');
 
       return (
         <div className="mt-1 p-3 bg-muted/30 rounded border text-xs font-mono">

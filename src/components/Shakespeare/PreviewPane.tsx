@@ -804,7 +804,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
                         <TabsList className="h-8">
                           <TabsTrigger value="logs" className="h-7 text-xs gap-1.5">
                             <Bug className="h-3 w-3" />
-                            <span>Debug</span>
+                            <span>Logs</span>
                             {hasConsoleErrors && (
                               <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
                             )}

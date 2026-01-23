@@ -7,7 +7,7 @@ import { useFSPaths } from '@/hooks/useFSPaths';
 import { addConsoleMessage, getConsoleMessages, type ConsoleMessage } from '@/lib/consoleMessages';
 import { useConsoleError } from '@/hooks/useConsoleError';
 import { useBuildProject } from '@/hooks/useBuildProject';
-import { Tabs, TabsContent } from '@/components/ui/tabs';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { FolderOpen, ArrowLeft, Bug, Copy, Check, Loader2, Code, X, Terminal, Expand, Shrink, Hammer, RefreshCw } from 'lucide-react';
@@ -70,8 +70,6 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [fileContent, setFileContent] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
-  const [mobileCodeView, setMobileCodeView] = useState<'explorer' | 'editor' | 'terminal'>('explorer');
-  const [desktopCodeView, setDesktopCodeView] = useState<'files' | 'terminal'>('files');
   const isMobile = useIsMobile();
   const [hasBuiltProject, setHasBuiltProject] = useState(false);
   const [buildError, setBuildError] = useState<string | null>(null);
@@ -82,6 +80,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [deviceMode, setDeviceMode] = useState<DeviceMode>('laptop');
   const [isLogsOpen, setIsLogsOpen] = useState(false);
+  const [logsPanelTab, setLogsPanelTab] = useState<'logs' | 'code' | 'terminal'>('logs');
   const previewContainerRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const iframePanelRef = useRef<ImperativePanelHandle>(null);
@@ -427,8 +426,6 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
   useEffect(() => {
     setSelectedFile(null);
     setFileContent('');
-    setMobileCodeView('explorer');
-    setDesktopCodeView('files');
     setBuildError(null);
 
     // Reset navigation history and state
@@ -464,9 +461,6 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
 
   const handleFileSelect = (filePath: string) => {
     setSelectedFile(filePath);
-    if (isMobile) {
-      setMobileCodeView('editor');
-    }
   };
 
   const handleFileSave = async (content: string) => {
@@ -597,18 +591,6 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
                     )}
                     <span className="hidden lg:inline">Build</span>
                   </Button>
-                  {(!isMobile && onToggleView && isPreviewable) && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={onToggleView}
-                      className="h-8 gap-2"
-                      title={t('codeButtonTooltip')}
-                    >
-                      <Code className="h-4 w-4" />
-                      <span className="hidden lg:inline">Code</span>
-                    </Button>
-                  )}
                   <Button
                     variant="ghost"
                     size="sm"
@@ -617,7 +599,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
                     title={t('logsButtonTooltip')}
                   >
                     <Bug className="h-4 w-4" />
-                    <span className="hidden lg:inline">Logs</span>
+                    <span className="hidden lg:inline">Debug</span>
                     {hasConsoleErrors && (
                       <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full border-2 border-background bg-red-500" />
                     )}
@@ -751,16 +733,28 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
                     collapsedSize={0}
                   >
                     {/* Logs Panel */}
-                    <div className="h-full flex flex-col bg-background border-t overflow-hidden min-h-0 w-full min-w-0">
+                    <Tabs value={logsPanelTab} onValueChange={(v) => setLogsPanelTab(v as 'logs' | 'code' | 'terminal')} className="h-full flex flex-col bg-background border-t overflow-hidden min-h-0 w-full min-w-0">
                       {/* Logs Header */}
                       <div className="h-12 px-4 border-b flex items-center justify-between flex-shrink-0">
+                        <TabsList className="h-8">
+                          <TabsTrigger value="logs" className="h-7 text-xs gap-1.5">
+                            <Bug className="h-3 w-3" />
+                            <span>Debug</span>
+                            {hasConsoleErrors && (
+                              <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+                            )}
+                          </TabsTrigger>
+                          <TabsTrigger value="code" className="h-7 text-xs gap-1.5">
+                            <Code className="h-3 w-3" />
+                            <span>Code</span>
+                          </TabsTrigger>
+                          <TabsTrigger value="terminal" className="h-7 text-xs gap-1.5">
+                            <Terminal className="h-3 w-3" />
+                            <span>Terminal</span>
+                          </TabsTrigger>
+                        </TabsList>
                         <div className="flex items-center gap-2">
-                          {hasConsoleErrors && (
-                            <span className="h-2 w-2 rounded-full bg-red-500" />
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {messageCount > 0 && (
+                          {logsPanelTab === 'logs' && messageCount > 0 && (
                             <Button
                               variant="ghost"
                               size="sm"
@@ -780,6 +774,9 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
                               )}
                             </Button>
                           )}
+                          {logsPanelTab === 'code' && (
+                            <BranchSwitcher projectId={projectId} />
+                          )}
                           <Button
                             variant="ghost"
                             size="sm"
@@ -790,60 +787,106 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
                           </Button>
                         </div>
                       </div>
-                      {/* Logs Content */}
+                      {/* Panel Content */}
                       <div className="flex-1 min-h-0 overflow-hidden w-full">
-                        <ScrollArea className="h-full w-full">
-                          <div className="p-2 space-y-0 w-full min-w-0 max-w-full">
-                            {messageCount === 0 ? (
-                              <div className="flex flex-col items-center justify-center py-12 text-center">
-                                <p className="text-sm text-muted-foreground font-medium">No console messages</p>
-                                <p className="text-xs text-muted-foreground mt-1">Messages from your project will appear here</p>
-                              </div>
-                            ) : (
-                              messages.map((msg, index) => (
-                                <div
-                                  key={index}
-                                  className="group relative py-0.5 px-1 hover:bg-muted/50 transition-colors duration-150 rounded cursor-pointer w-full max-w-full"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    copyMessageToClipboard(msg, index);
-                                  }}
-                                >
-                                  <div 
-                                    className={cn(
-                                      "text-xs font-mono leading-tight whitespace-pre-wrap break-words w-full min-w-0 max-w-full",
-                                      msg.level === 'error' ? "text-destructive" :
-                                        msg.level === 'warn' ? "text-warning" :
-                                          msg.level === 'info' ? "text-primary" :
-                                            "text-muted-foreground"
-                                    )}
-                                    style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}
-                                  >
-                                    {msg.message}
-                                  </div>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
+                        {/* Logs Tab */}
+                        <TabsContent value="logs" className="h-full mt-0 m-0 data-[state=active]:flex data-[state=active]:flex-col">
+                          <ScrollArea className="flex-1 min-h-0">
+                            <div className="p-2 space-y-0 w-full min-w-0 max-w-full">
+                              {messageCount === 0 ? (
+                                <div className="flex flex-col items-center justify-center py-12 text-center">
+                                  <p className="text-sm text-muted-foreground font-medium">No console messages</p>
+                                  <p className="text-xs text-muted-foreground mt-1">Messages from your project will appear here</p>
+                                </div>
+                              ) : (
+                                messages.map((msg, index) => (
+                                  <div
+                                    key={index}
+                                    className="group relative py-0.5 px-1 hover:bg-muted/50 transition-colors duration-150 rounded cursor-pointer w-full max-w-full"
                                     onClick={(e) => {
-                                      e.preventDefault();
                                       e.stopPropagation();
                                       copyMessageToClipboard(msg, index);
                                     }}
-                                    className="h-3 w-3 p-0 opacity-0 group-hover:opacity-100 transition-all duration-200 absolute right-1 top-1 hover:bg-muted/70 text-muted-foreground hover:text-foreground bg-background/80 rounded border"
                                   >
-                                    {copiedMessageIndex === index ? (
-                                      <Check className="h-2 w-2 text-success" />
-                                    ) : (
-                                      <Copy className="h-2 w-2" />
-                                    )}
-                                  </Button>
+                                    <div 
+                                      className={cn(
+                                        "text-xs font-mono leading-tight whitespace-pre-wrap break-words w-full min-w-0 max-w-full",
+                                        msg.level === 'error' ? "text-destructive" :
+                                          msg.level === 'warn' ? "text-warning" :
+                                            msg.level === 'info' ? "text-primary" :
+                                              "text-muted-foreground"
+                                      )}
+                                      style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}
+                                    >
+                                      {msg.message}
+                                    </div>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        copyMessageToClipboard(msg, index);
+                                      }}
+                                      className="h-3 w-3 p-0 opacity-0 group-hover:opacity-100 transition-all duration-200 absolute right-1 top-1 hover:bg-muted/70 text-muted-foreground hover:text-foreground bg-background/80 rounded border"
+                                    >
+                                      {copiedMessageIndex === index ? (
+                                        <Check className="h-2 w-2 text-success" />
+                                      ) : (
+                                        <Copy className="h-2 w-2" />
+                                      )}
+                                    </Button>
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          </ScrollArea>
+                        </TabsContent>
+                        {/* Code Tab */}
+                        <TabsContent value="code" className="h-full mt-0 m-0 data-[state=active]:flex data-[state=active]:flex-col">
+                          <div className="flex-1 min-h-0 flex">
+                            <div className="w-1/3 border-r flex flex-col min-h-0">
+                              <ScrollArea className="flex-1 min-h-0">
+                                <ScrollBar orientation="horizontal" />
+                                <div className="min-w-max">
+                                  <FileTree
+                                    projectId={projectId}
+                                    onFileSelect={handleFileSelect}
+                                    selectedFile={selectedFile}
+                                  />
                                 </div>
-                              ))
-                            )}
+                              </ScrollArea>
+                            </div>
+                            <div className="flex-1 min-h-0">
+                              {selectedFile ? (
+                                <FileEditor
+                                  filePath={selectedFile}
+                                  content={fileContent}
+                                  onSave={handleFileSave}
+                                  isLoading={isLoading}
+                                  projectId={projectId}
+                                />
+                              ) : (
+                                <div className="h-full flex items-center justify-center">
+                                  <div className="text-center">
+                                    <FolderOpen className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                                    <p className="text-muted-foreground">
+                                      {t('selectFileFromExplorer')}
+                                    </p>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
                           </div>
-                        </ScrollArea>
+                        </TabsContent>
+                        {/* Terminal Tab */}
+                        <TabsContent value="terminal" className="h-full mt-0 m-0 data-[state=active]:flex data-[state=active]:flex-col">
+                          <div className="flex-1 min-h-0">
+                            <TerminalComponent cwd={`${projectsPath}/${projectId}`} />
+                          </div>
+                        </TabsContent>
                       </div>
-                    </div>
+                    </Tabs>
                   </ResizablePanel>
                 </ResizablePanelGroup>
               </div>
@@ -864,180 +907,6 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
           </TabsContent>
         )}
 
-        <TabsContent value="code" className="h-full mt-0">
-          {isMobile ? (
-            <div className="h-full flex flex-col min-h-0">
-              {/* Mobile Code view header */}
-              <div className="h-12 px-4 border-b flex items-center bg-gradient-to-r from-muted/20 to-background flex-shrink-0">
-                <BranchSwitcher projectId={projectId} />
-                <div className="flex-1" />
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setMobileCodeView(mobileCodeView === 'terminal' ? 'explorer' : 'terminal')}
-                  className="gap-2 text-muted-foreground hover:text-foreground"
-                >
-                  <Terminal className="h-4 w-4" />
-                  <span className="hidden sm:inline">Terminal</span>
-                </Button>
-                <GitStatusIndicator projectId={projectId} />
-              </div>
-
-              {mobileCodeView === 'explorer' ? (
-                <div className="flex-1 min-h-0">
-                  <ScrollArea className="h-full">
-                    <ScrollBar orientation="horizontal" />
-                    <div className="min-w-max">
-                      <FileTree
-                        projectId={projectId}
-                        onFileSelect={handleFileSelect}
-                        selectedFile={selectedFile}
-                      />
-                    </div>
-                  </ScrollArea>
-                </div>
-              ) : mobileCodeView === 'terminal' ? (
-                <div className="flex-1 min-h-0">
-                  <TerminalComponent cwd={`${projectsPath}/${projectId}`} />
-                </div>
-              ) : (
-                <>
-                  <div className="p-3 border-b bg-gradient-to-r from-primary/5 to-accent/5 flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setMobileCodeView('explorer')}
-                      className="p-1"
-                    >
-                      <ArrowLeft className="h-4 w-4" />
-                    </Button>
-                    <h3 className="font-semibold flex-1 truncate bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                      {selectedFile ? selectedFile.split('/').pop() : t('fileEditor')}
-                    </h3>
-                    <GitStatusIndicator projectId={projectId} />
-                  </div>
-                  <div className="flex-1">
-                    {selectedFile ? (
-                      <FileEditor
-                        filePath={selectedFile}
-                        content={fileContent}
-                        onSave={handleFileSave}
-                        isLoading={isLoading}
-                        projectId={projectId}
-                      />
-                    ) : (
-                      <div className="h-full flex items-center justify-center">
-                        <div className="text-center">
-                          <FolderOpen className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                          <p className="text-muted-foreground">
-                            {t('selectFileFromExplorer')}
-                          </p>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setMobileCodeView('explorer')}
-                            className="mt-4"
-                          >
-                            {t('openFileExplorer')}
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
-          ) : (
-            <div className="h-full flex flex-col">
-              {/* Code view header with back button */}
-              {!isMobile && onToggleView && isPreviewable && (
-                <div className="h-12 px-4 border-b flex items-center bg-gradient-to-r from-muted/20 to-background gap-3">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={onToggleView}
-                    className="gap-2 text-muted-foreground hover:text-foreground"
-                  >
-                    <ArrowLeft className="h-4 w-4" />
-                    {t('backToPreview')}
-                  </Button>
-                  <div className="flex-1" />
-                  <BranchSwitcher projectId={projectId} />
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setDesktopCodeView(desktopCodeView === 'terminal' ? 'files' : 'terminal')}
-                    className="gap-2 text-muted-foreground hover:text-foreground"
-                  >
-                    <Terminal className="h-4 w-4" />
-                    <span className="hidden lg:inline">Terminal</span>
-                  </Button>
-                  <GitStatusIndicator projectId={projectId} />
-                </div>
-              )}
-              {/* Code view header without back button for non-previewable projects */}
-              {!isMobile && !isPreviewable && (
-                <div className="h-12 px-4 border-b flex items-center bg-gradient-to-r from-muted/20 to-background">
-                  <div className="flex-1" />
-                  <BranchSwitcher projectId={projectId} />
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setDesktopCodeView(desktopCodeView === 'terminal' ? 'files' : 'terminal')}
-                    className="gap-2 text-muted-foreground hover:text-foreground"
-                  >
-                    <Terminal className="h-4 w-4" />
-                    <span className="hidden lg:inline">Terminal</span>
-                  </Button>
-                  <GitStatusIndicator projectId={projectId} />
-                </div>
-              )}
-
-              <div className="flex-1 flex min-h-0">
-                {desktopCodeView === 'terminal' ? (
-                  <div className="flex-1">
-                    <TerminalComponent cwd={`${projectsPath}/${projectId}`} />
-                  </div>
-                ) : (
-                  <>
-                    <div className="w-1/3 border-r flex flex-col">
-                      <ScrollArea className="flex-1">
-                        <ScrollBar orientation="horizontal" />
-                        <div className="min-w-max">
-                          <FileTree
-                            projectId={projectId}
-                            onFileSelect={handleFileSelect}
-                            selectedFile={selectedFile}
-                          />
-                        </div>
-                      </ScrollArea>
-                    </div>
-
-                    <div className="flex-1">
-                      {selectedFile ? (
-                        <FileEditor
-                          filePath={selectedFile}
-                          content={fileContent}
-                          onSave={handleFileSave}
-                          isLoading={isLoading}
-                          projectId={projectId}
-                        />
-                      ) : (
-                        <div className="h-full flex items-center justify-center">
-                          <div className="text-center">
-                            <p className="text-muted-foreground">
-                              {t('selectFileFromExplorer')}
-                            </p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-          )}
-        </TabsContent>
       </Tabs>
     </div>
   );

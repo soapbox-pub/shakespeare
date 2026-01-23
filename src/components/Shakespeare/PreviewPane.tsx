@@ -10,7 +10,7 @@ import { useBuildProject } from '@/hooks/useBuildProject';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { FolderOpen, ArrowLeft, Bug, Copy, Check, Loader2, Code, X, Terminal, Expand, Shrink, Hammer, RefreshCw } from 'lucide-react';
+import { FolderOpen, ArrowLeft, Bug, Copy, Check, Loader2, Code, X, Terminal, Expand, Shrink, Hammer, RefreshCw, Save } from 'lucide-react';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { GitStatusIndicator } from '@/components/GitStatusIndicator';
 import { BranchSwitcher } from '@/components/BranchSwitcher';
@@ -68,7 +68,11 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
   const { config } = useAppContext();
   const { previewDomain } = config;
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
-  const [fileContent, setFileContent] = useState<string>('');
+  const [openFiles, setOpenFiles] = useState<string[]>([]);
+  const [activeFileTab, setActiveFileTab] = useState<string | null>(null);
+  const [fileContents, setFileContents] = useState<Record<string, string>>({});
+  const [editedContents, setEditedContents] = useState<Record<string, string>>({});
+  const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const isMobile = useIsMobile();
   const [hasBuiltProject, setHasBuiltProject] = useState(false);
@@ -124,22 +128,26 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
   const loadFileContent = useCallback(async (filePath: string) => {
     // Skip loading media files - they can't be edited as text
     if (isMediaFile(filePath)) {
-      setFileContent('');
-      setIsLoading(false);
+      setFileContents(prev => ({ ...prev, [filePath]: '' }));
+      return;
+    }
+
+    // Don't reload if we already have the content
+    if (fileContents[filePath]) {
       return;
     }
 
     setIsLoading(true);
     try {
       const content = await projectsManager.readFile(projectId, filePath);
-      setFileContent(content);
+      setFileContents(prev => ({ ...prev, [filePath]: content }));
     } catch (_error) {
       console.error('Failed to load file:', _error);
-      setFileContent('');
+      setFileContents(prev => ({ ...prev, [filePath]: '' }));
     } finally {
       setIsLoading(false);
     }
-  }, [projectId, projectsManager]);
+  }, [projectId, projectsManager, fileContents]);
 
   const getContentType = (filename: string): string => {
     const ext = filename.split('.').pop()?.toLowerCase();
@@ -415,17 +423,23 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
     return () => window.removeEventListener('message', handleMessage);
   }, [handleFetch, handleConsoleMessage, handleUpdateNavigationState, projectId, previewDomain]);
 
+  // Load content for all open files
   useEffect(() => {
-    if (selectedFile) {
-      loadFileContent(selectedFile);
-    }
-  }, [selectedFile, loadFileContent]);
+    openFiles.forEach(filePath => {
+      if (!fileContents[filePath] && !isMediaFile(filePath)) {
+        loadFileContent(filePath);
+      }
+    });
+  }, [openFiles, fileContents, loadFileContent]);
 
   // Reset selected file and navigation history when projectId changes
   const prevProjectIdRef = useRef<string>();
   useEffect(() => {
     setSelectedFile(null);
-    setFileContent('');
+    setOpenFiles([]);
+    setActiveFileTab(null);
+    setFileContents({});
+    setEditedContents({});
     setBuildError(null);
 
     // Reset navigation history and state
@@ -460,15 +474,64 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
   }, [projectId, checkForBuiltProject, refreshIframe]);
 
   const handleFileSelect = (filePath: string) => {
+    // Skip media files
+    if (isMediaFile(filePath)) {
+      return;
+    }
+    
+    // Add to open files if not already open
+    if (!openFiles.includes(filePath)) {
+      setOpenFiles(prev => [...prev, filePath]);
+    }
+    
+    // Set as active tab
+    setActiveFileTab(filePath);
     setSelectedFile(filePath);
   };
 
-  const handleFileSave = async (content: string) => {
-    if (!selectedFile) return;
+  const handleCloseTab = (filePath: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    // Remove from open files
+    setOpenFiles(prev => prev.filter(f => f !== filePath));
+    
+    // Remove from file contents
+    setFileContents(prev => {
+      const newContents = { ...prev };
+      delete newContents[filePath];
+      return newContents;
+    });
+    
+    // If this was the active tab, switch to another tab or clear
+    if (activeFileTab === filePath) {
+      const remainingFiles = openFiles.filter(f => f !== filePath);
+      if (remainingFiles.length > 0) {
+        setActiveFileTab(remainingFiles[remainingFiles.length - 1]);
+        setSelectedFile(remainingFiles[remainingFiles.length - 1]);
+      } else {
+        setActiveFileTab(null);
+        setSelectedFile(null);
+      }
+    }
+  };
 
+  const handleFileSave = async () => {
+    if (!activeFileTab) return;
+    
+    const contentToSave = editedContents[activeFileTab];
+    if (contentToSave === undefined || contentToSave === fileContents[activeFileTab]) {
+      return; // No changes to save
+    }
+
+    setIsSaving(true);
     try {
-      await fs.writeFile(`${projectsPath}/${projectId}/${selectedFile}`, content);
-      setFileContent(content);
+      await fs.writeFile(`${projectsPath}/${projectId}/${activeFileTab}`, contentToSave);
+      setFileContents(prev => ({ ...prev, [activeFileTab]: contentToSave }));
+      setEditedContents(prev => {
+        const newContents = { ...prev };
+        delete newContents[activeFileTab];
+        return newContents;
+      });
 
       // Automatically trigger a rebuild after saving a file
       if (isPreviewable) {
@@ -481,6 +544,8 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
       }
     } catch (error) {
       console.error('Failed to save file:', error);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -775,7 +840,34 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
                             </Button>
                           )}
                           {logsPanelTab === 'code' && (
-                            <BranchSwitcher projectId={projectId} />
+                            <>
+                              <BranchSwitcher projectId={projectId} />
+                              {activeFileTab && (() => {
+                                const hasUnsavedChanges = editedContents[activeFileTab] !== undefined && 
+                                  editedContents[activeFileTab] !== fileContents[activeFileTab];
+                                return (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={handleFileSave}
+                                    disabled={!hasUnsavedChanges || isSaving || isLoading}
+                                    className="h-7 gap-1.5 text-xs"
+                                  >
+                                    {isSaving ? (
+                                      <>
+                                        <Loader2 className="h-3 w-3 animate-spin" />
+                                        <span className="hidden sm:inline">{t('saving')}</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Save className="h-3 w-3" />
+                                        <span className="hidden sm:inline">{t('save')}</span>
+                                      </>
+                                    )}
+                                  </Button>
+                                );
+                              })()}
+                            </>
                           )}
                           <Button
                             variant="ghost"
@@ -852,20 +944,67 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
                                   <FileTree
                                     projectId={projectId}
                                     onFileSelect={handleFileSelect}
-                                    selectedFile={selectedFile}
+                                    selectedFile={activeFileTab}
                                   />
                                 </div>
                               </ScrollArea>
                             </div>
-                            <div className="flex-1 min-h-0">
-                              {selectedFile ? (
-                                <FileEditor
-                                  filePath={selectedFile}
-                                  content={fileContent}
-                                  onSave={handleFileSave}
-                                  isLoading={isLoading}
-                                  projectId={projectId}
-                                />
+                            <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+                              {openFiles.length > 0 ? (
+                                <>
+                                  {/* File Tabs */}
+                                  <div className="border-b flex-shrink-0 w-full overflow-x-auto overflow-y-hidden">
+                                    <div className="flex items-center gap-1 px-2" style={{ width: 'max-content' }}>
+                                      {openFiles.map((filePath) => {
+                                        const fileName = filePath.split('/').pop() || filePath;
+                                        const hasUnsavedChanges = editedContents[filePath] !== undefined && 
+                                          editedContents[filePath] !== fileContents[filePath];
+                                        const isActive = activeFileTab === filePath;
+                                        
+                                        return (
+                                          <button
+                                            key={filePath}
+                                            onClick={() => {
+                                              setActiveFileTab(filePath);
+                                              setSelectedFile(filePath);
+                                            }}
+                                            className={cn(
+                                              "flex items-center gap-2 px-3 py-1.5 text-sm border-b-2 transition-colors flex-shrink-0 whitespace-nowrap",
+                                              isActive 
+                                                ? "border-primary text-foreground" 
+                                                : "border-transparent text-muted-foreground hover:text-foreground"
+                                            )}
+                                          >
+                                            <span>{fileName}</span>
+                                            {hasUnsavedChanges && (
+                                              <span className="h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />
+                                            )}
+                                            <button
+                                              onClick={(e) => handleCloseTab(filePath, e)}
+                                              className="ml-1 hover:bg-muted rounded p-0.5 flex-shrink-0"
+                                            >
+                                              <X className="h-3 w-3" />
+                                            </button>
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                  {/* Editor */}
+                                  {activeFileTab && (
+                                    <FileEditor
+                                      filePath={activeFileTab}
+                                      content={editedContents[activeFileTab] !== undefined 
+                                        ? editedContents[activeFileTab] 
+                                        : (fileContents[activeFileTab] ?? '')}
+                                      onContentChange={(content) => {
+                                        setEditedContents(prev => ({ ...prev, [activeFileTab]: content }));
+                                      }}
+                                      isLoading={isLoading && !fileContents[activeFileTab]}
+                                      projectId={projectId}
+                                    />
+                                  )}
+                                </>
                               ) : (
                                 <div className="h-full flex items-center justify-center">
                                   <div className="text-center">

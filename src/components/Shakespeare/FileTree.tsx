@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { useFS } from '@/hooks/useFS';
 import { useGitStatus } from '@/hooks/useGitStatus';
-import { ChevronRight, ChevronDown, File, Folder, Search } from 'lucide-react';
+import { ChevronRight, ChevronDown, File, Folder, Search, Code, FileText, Image, FileJson, Palette, Settings, FileCode } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { createGitignoreFilter, normalizePathForGitignore } from '@/lib/gitignore';
 import { Input } from '@/components/ui/input';
@@ -20,6 +21,49 @@ interface FileNode {
   type: 'file' | 'directory';
   children?: FileNode[];
   isOpen?: boolean;
+}
+
+// Helper function to get file icon based on extension
+function getFileIcon(fileName: string): { icon: LucideIcon; color: string } {
+  const ext = fileName.split('.').pop()?.toLowerCase() || '';
+  
+  // Image files - subtle blue hint
+  if (['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'ico', 'bmp', 'tiff'].includes(ext)) {
+    return { icon: Image, color: 'text-blue-400/60' };
+  }
+  
+  // Code files - subtle amber hint
+  if (['js', 'jsx', 'ts', 'tsx', 'py', 'java', 'cpp', 'c', 'cs', 'php', 'rb', 'go', 'rs', 'swift', 'kt', 'scala', 'dart'].includes(ext)) {
+    return { icon: Code, color: 'text-amber-400/60' };
+  }
+  
+  // Web files - subtle orange hint
+  if (['html', 'htm', 'xhtml'].includes(ext)) {
+    return { icon: FileCode, color: 'text-orange-400/60' };
+  }
+  
+  // CSS files - subtle purple hint
+  if (['css', 'scss', 'sass', 'less', 'styl'].includes(ext)) {
+    return { icon: Palette, color: 'text-purple-400/60' };
+  }
+  
+  // Data/Config files - subtle green hint
+  if (['json', 'jsonc'].includes(ext)) {
+    return { icon: FileJson, color: 'text-green-400/60' };
+  }
+  
+  // Config files - subtle amber hint
+  if (['xml', 'yaml', 'yml', 'toml', 'ini', 'conf', 'config'].includes(ext)) {
+    return { icon: Settings, color: 'text-amber-400/60' };
+  }
+  
+  // Text/Markdown files - subtle amber hint
+  if (['txt', 'md', 'markdown', 'rst', 'log'].includes(ext)) {
+    return { icon: FileText, color: 'text-amber-400/60' };
+  }
+  
+  // Default file icon - subtle amber hint
+  return { icon: File, color: 'text-amber-400/60' };
 }
 
 export function FileTree({ projectId, onFileSelect, selectedFile }: FileTreeProps) {
@@ -264,7 +308,10 @@ export function FileTree({ projectId, onFileSelect, selectedFile }: FileTreeProp
           ) : (
             <>
               <div className="w-4" /> {/* Spacer for alignment */}
-              <File className={cn("h-4 w-4 text-gray-500 flex-shrink-0", gitignoreClasses)} />
+              {(() => {
+                const { icon: Icon, color } = getFileIcon(node.name);
+                return <Icon className={cn("h-4 w-4 flex-shrink-0", color, gitignoreClasses)} />;
+              })()}
             </>
           )}
           <span className={cn("text-sm whitespace-nowrap", gitStatusClasses, gitignoreClasses)}>{node.name}</span>

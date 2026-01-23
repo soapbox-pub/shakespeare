@@ -824,17 +824,17 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
                               variant="ghost"
                               size="sm"
                               onClick={copyAllMessagesToClipboard}
-                              className="h-7 px-2 text-xs"
+                              className="h-7 text-xs gap-1.5"
                             >
                               {copiedAll ? (
                                 <>
-                                  <Check className="h-3 w-3 mr-1.5 text-success" />
-                                  {t('copied')}
+                                  <Check className="h-3 w-3 text-success" />
+                                  <span className="hidden sm:inline">{t('copied')}</span>
                                 </>
                               ) : (
                                 <>
-                                  <Copy className="h-3 w-3 mr-1.5" />
-                                  {t('copyAll')}
+                                  <Copy className="h-3 w-3" />
+                                  <span className="hidden sm:inline">{t('copyAll')}</span>
                                 </>
                               )}
                             </Button>
@@ -851,7 +851,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
                                     size="sm"
                                     onClick={handleFileSave}
                                     disabled={!hasUnsavedChanges || isSaving || isLoading}
-                                    className="h-7 gap-1.5 text-xs"
+                                    className="h-7 text-xs gap-1.5"
                                   >
                                     {isSaving ? (
                                       <>

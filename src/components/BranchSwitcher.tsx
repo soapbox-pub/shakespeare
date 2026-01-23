@@ -170,17 +170,17 @@ export function BranchSwitcher({ projectId, className }: BranchSwitcherProps) {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
-            className={cn("gap-1 sm:gap-2 hover:bg-secondary/10 hover:border-secondary/20", className)}
+            className={cn("h-7 text-xs gap-1.5", className)}
             disabled={isSwitching}
           >
             {isSwitching ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2 className="h-3 w-3 animate-spin" />
             ) : (
-              <GitBranch className="h-4 w-4" />
+              <GitBranch className="h-3 w-3" />
             )}
-            <span className=" max-w-[120px] truncate">{currentBranch}</span>
+            <span className="max-w-[120px] truncate">{currentBranch}</span>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">

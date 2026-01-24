@@ -82,7 +82,7 @@
     "mime": "^4.1.0",
     "nostr-tools": "^2.15.2",
     "nunjucks": "^3.2.4",
-    "openai": "^5.15.0",
+    "openai": "^6.16.0",
     "path-browserify": "^1.0.1",
     "prismjs": "^1.30.0",
     "qrcode": "^1.5.4",
@@ -107,7 +107,7 @@
     "vaul": "^0.9.3",
     "webln": "^0.3.2",
     "workbox-window": "^7.3.0",
-    "zod": "^3.25.76"
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.0",

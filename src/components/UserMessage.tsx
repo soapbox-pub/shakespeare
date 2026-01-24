@@ -35,7 +35,6 @@ export function UserMessage({ content }: UserMessageProps) {
 
           // Detect "Added file: <filename>" pattern
           const fileAddedMatch = /^Added file: (\/[^\s\n]+$)/g.exec(part.text);
-          console.log('fileAddedMatch', part, fileAddedMatch);
           if (fileAddedMatch && fileAddedMatch[1]) {
             const path = fileAddedMatch[1];
             const filename = getFileName(path);

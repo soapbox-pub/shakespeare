@@ -52,6 +52,33 @@ Shakespeare provides AI agents with specialized tools for project development (n
 - **NostrGenerateKindTool**: Generate unused Nostr event kind numbers
 - **ReadConsoleMessagesTool**: Read console messages from project preview with filtering capabilities
 
+#### Project-Specific Custom Tools
+
+Shakespeare now supports loading custom tools from `.opencode/tools` within each project. This allows users to create project-specific functionality that the AI can use.
+
+**How it works:**
+1. Place tool files (`.ts` or `.js`) in `.opencode/tools/` relative to the project root
+2. Tools use the OpenCode tool format: https://opencode.ai/docs/custom-tools/
+3. Tools are automatically loaded and transformed using esbuild-wasm
+4. Tools that fail to load are silently skipped
+5. Tool naming: single exports use filename, multiple exports use `filename_exportname`
+
+**Example tool:**
+```typescript
+// .opencode/tools/hello.ts
+import { z } from 'zod';
+
+export default {
+  description: "Say hello to someone",
+  args: {
+    name: z.string().describe("Name of the person to greet"),
+  },
+  async execute(args: { name: string }) {
+    return `Hello, ${args.name}!`;
+  },
+};
+```
+
 #### Shell Commands
 
 Shakespeare provides a comprehensive set of shell commands that are JavaScript reimplementations of common Unix commands. These commands operate on the virtual filesystem (VFS) and are accessible through the ShellTool. The shell commands are implemented in `src/lib/commands/` and provide familiar Unix-like functionality for file and directory operations.

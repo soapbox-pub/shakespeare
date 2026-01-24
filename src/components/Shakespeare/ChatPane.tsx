@@ -15,6 +15,7 @@ import { useAIChat } from '@/hooks/useAIChat';
 import { useProviderModels } from '@/hooks/useProviderModels';
 import { useSessionManager } from '@/hooks/useSessionManager';
 import { useMCPTools } from '@/hooks/useMCPTools';
+import { useProjectTools } from '@/hooks/useProjectTools';
 import { useQueryClient } from '@tanstack/react-query';
 import { AIMessageItem } from '@/components/AIMessageItem';
 import { ToolCallDisplay } from '@/components/ToolCallDisplay';
@@ -194,6 +195,17 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   // Fetch MCP tools
   const { tools: mcpOpenAITools, clients: mcpClients } = useMCPTools();
 
+  // Load project-specific tools from .opencode/tools
+  const projectTools = useProjectTools(cwd, config.esmUrl);
+  
+  // Log project tools when they change
+  useEffect(() => {
+    const toolCount = Object.keys(projectTools).length;
+    if (toolCount > 0) {
+      console.log(`[ChatPane] Project tools loaded: ${Object.keys(projectTools).join(', ')}`);
+    }
+  }, [projectTools]);
+
   // Separate built-in tools from MCP tools for clarity
   const builtInTools = useMemo(() => {
     const tools: Record<string, Tool<unknown>> = {
@@ -281,10 +293,15 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   const mcpToolWrappers = useMemo(() => createMCPTools(mcpClients), [mcpClients]);
 
   // Combined tool executors (for SessionManager to call)
-  const customTools = useMemo(() => ({
-    ...builtInTools,
-    ...mcpToolWrappers,
-  }), [builtInTools, mcpToolWrappers]);
+  const customTools = useMemo(() => {
+    const combined = {
+      ...builtInTools,
+      ...projectTools,
+      ...mcpToolWrappers,
+    };
+    console.log(`[ChatPane] Combined ${Object.keys(combined).length} custom tools (built-in: ${Object.keys(builtInTools).length}, project: ${Object.keys(projectTools).length}, MCP: ${Object.keys(mcpToolWrappers).length})`);
+    return combined;
+  }, [builtInTools, projectTools, mcpToolWrappers]);
 
   // Convert tools to OpenAI format for AI provider
   const tools = useMemo(() => {
@@ -295,11 +312,18 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
       result[name] = toolToOpenAI(name, tool as Tool<unknown>);
     }
 
+    // Convert project-specific tools to OpenAI format
+    for (const [name, tool] of Object.entries(projectTools)) {
+      console.log(`[ChatPane] Converting project tool to OpenAI format: ${name}`);
+      result[name] = toolToOpenAI(name, tool as Tool<unknown>);
+    }
+
     // Add MCP tools (already in OpenAI format from useMCPTools)
     Object.assign(result, mcpOpenAITools);
 
+    console.log(`[ChatPane] Total tools available to AI: ${Object.keys(result).length}`);
     return result;
-  }, [builtInTools, mcpOpenAITools]);
+  }, [builtInTools, projectTools, mcpOpenAITools]);
 
   // Keep-alive functionality to prevent tab throttling during AI processing
   const { updateMetadata } = useKeepAlive({

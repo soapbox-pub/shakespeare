@@ -10,9 +10,7 @@ import { useBuildProject } from '@/hooks/useBuildProject';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { FolderOpen, ArrowLeft, Bug, Copy, Check, Loader2, Code, X, Terminal, Expand, Shrink, Hammer, RefreshCw, Save } from 'lucide-react';
-import { useIsMobile } from '@/hooks/useIsMobile';
-import { GitStatusIndicator } from '@/components/GitStatusIndicator';
+import { FolderOpen, Bug, Copy, Check, Loader2, Code, X, Terminal, Expand, Shrink, Hammer, RefreshCw, Save } from 'lucide-react';
 import { BranchSwitcher } from '@/components/BranchSwitcher';
 import { BrowserAddressBar } from '@/components/ui/browser-address-bar';
 import { type DeviceMode } from '@/components/ui/device-toggle';
@@ -63,18 +61,16 @@ interface JSONRPCResponse {
   id: number;
 }
 
-export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable = true }: PreviewPaneProps) {
+export function PreviewPane({ projectId, activeTab, onToggleView: _onToggleView, isPreviewable = true }: PreviewPaneProps) {
   const { t } = useTranslation();
   const { config } = useAppContext();
   const { previewDomain } = config;
-  const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [openFiles, setOpenFiles] = useState<string[]>([]);
   const [activeFileTab, setActiveFileTab] = useState<string | null>(null);
   const [fileContents, setFileContents] = useState<Record<string, string>>({});
   const [editedContents, setEditedContents] = useState<Record<string, string>>({});
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const isMobile = useIsMobile();
   const [hasBuiltProject, setHasBuiltProject] = useState(false);
   const [buildError, setBuildError] = useState<string | null>(null);
   const [currentPath, setCurrentPath] = useState('/');
@@ -435,7 +431,6 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
   // Reset selected file and navigation history when projectId changes
   const prevProjectIdRef = useRef<string>();
   useEffect(() => {
-    setSelectedFile(null);
     setOpenFiles([]);
     setActiveFileTab(null);
     setFileContents({});
@@ -486,7 +481,6 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
     
     // Set as active tab
     setActiveFileTab(filePath);
-    setSelectedFile(filePath);
   };
 
   const handleCloseTab = (filePath: string, e: React.MouseEvent) => {
@@ -507,10 +501,8 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
       const remainingFiles = openFiles.filter(f => f !== filePath);
       if (remainingFiles.length > 0) {
         setActiveFileTab(remainingFiles[remainingFiles.length - 1]);
-        setSelectedFile(remainingFiles[remainingFiles.length - 1]);
       } else {
         setActiveFileTab(null);
-        setSelectedFile(null);
       }
     }
   };
@@ -678,7 +670,6 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
                   <ResizablePanel 
                     ref={iframePanelRef}
                     defaultSize={isLogsOpen ? 60 : 100} 
-                    minSize={30} 
                     className="min-h-0"
                   >
                     <div className="h-full flex items-center justify-center min-h-0">
@@ -966,7 +957,6 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
                                             key={filePath}
                                             onClick={() => {
                                               setActiveFileTab(filePath);
-                                              setSelectedFile(filePath);
                                             }}
                                             className={cn(
                                               "flex items-center gap-2 px-3 py-1.5 text-sm border-b-2 transition-colors flex-shrink-0 whitespace-nowrap",
@@ -1001,7 +991,6 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
                                         setEditedContents(prev => ({ ...prev, [activeFileTab]: content }));
                                       }}
                                       isLoading={isLoading && !fileContents[activeFileTab]}
-                                      projectId={projectId}
                                     />
                                   )}
                                 </>

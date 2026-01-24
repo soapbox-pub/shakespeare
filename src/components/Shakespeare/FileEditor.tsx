@@ -9,10 +9,9 @@ interface FileEditorProps {
   content: string;
   onContentChange: (content: string) => void;
   isLoading: boolean;
-  projectId?: string;
 }
 
-export function FileEditor({ filePath, content, onContentChange, isLoading, projectId }: FileEditorProps) {
+export function FileEditor({ filePath, content, onContentChange, isLoading }: FileEditorProps) {
   const [editedContent, setEditedContent] = useState(content);
   const isMedia = isMediaFile(filePath);
 

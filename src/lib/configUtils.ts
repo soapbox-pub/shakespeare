@@ -208,7 +208,7 @@ export async function readAISettings(fs: JSRuntimeFS, configPath = '/config'): P
     };
   } catch (error) {
     if (error instanceof z.ZodError) {
-      console.error('AI settings parsing error:', error.errors);
+      console.error('AI settings parsing error:', error.issues);
     }
     return defaultSettings;
   }
@@ -329,7 +329,7 @@ export async function readDeploySettings(fs: JSRuntimeFS, configPath = '/config'
     return deploySettingsSchema.parse(data);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      console.error('Deploy settings parsing error:', error.errors);
+      console.error('Deploy settings parsing error:', error.issues);
     }
     return defaultSettings;
   }

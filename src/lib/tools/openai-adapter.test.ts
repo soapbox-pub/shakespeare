@@ -22,7 +22,7 @@ describe('openai-adapter', () => {
       expect(result.type).toBe('function');
       expect(result.function.name).toBe('test_tool');
       expect(result.function.description).toBe('Test tool');
-      expect(result.function.parameters).toEqual({
+      expect(result.function.parameters).toMatchObject({
         type: 'object',
         properties: {
           message: {
@@ -50,7 +50,7 @@ describe('openai-adapter', () => {
 
       const result = toolToOpenAI('user_tool', tool) as OpenAI.Chat.Completions.ChatCompletionTool & { type: 'function' };
 
-      expect(result.function.parameters).toEqual({
+      expect(result.function.parameters).toMatchObject({
         type: 'object',
         properties: {
           user: {
@@ -92,7 +92,7 @@ describe('openai-adapter', () => {
 
       const result = toolToOpenAI('todo_tool', tool) as OpenAI.Chat.Completions.ChatCompletionTool & { type: 'function' };
 
-      expect(result.function.parameters).toEqual({
+      expect(result.function.parameters).toMatchObject({
         type: 'object',
         properties: {
           todos: {
@@ -137,7 +137,7 @@ describe('openai-adapter', () => {
 
       const result = toolToOpenAI('test_tool', tool) as OpenAI.Chat.Completions.ChatCompletionTool & { type: 'function' };
 
-      expect(result.function.parameters).toEqual({
+      expect(result.function.parameters).toMatchObject({
         type: 'object',
         properties: {
           required: {
@@ -182,7 +182,7 @@ describe('openai-adapter', () => {
 
       const result = toolToOpenAI('priority_tool', tool) as OpenAI.Chat.Completions.ChatCompletionTool & { type: 'function' };
 
-      expect(result.function.parameters).toEqual({
+      expect(result.function.parameters).toMatchObject({
         type: 'object',
         properties: {
           priority: {

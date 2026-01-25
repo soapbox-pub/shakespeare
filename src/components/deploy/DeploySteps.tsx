@@ -16,7 +16,6 @@ import { useNostr } from '@nostrify/react';
 import { useNostrPublish } from '@/hooks/useNostrPublish';
 import { useGit } from '@/hooks/useGit';
 import { NostrURI } from '@/lib/NostrURI';
-import { createRepositoryAnnouncementEvent } from '@/lib/announceRepository';
 import { Link } from 'react-router-dom';
 import type { DeployProvider } from '@/contexts/DeploySettingsContext';
 import type { PresetDeployProvider } from '@/lib/deploy/types';
@@ -387,47 +386,35 @@ export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProp
           // Query for existing repository announcement
           const existingRepos = await nostr.query(
             [{ kinds: [30617], authors: [user.pubkey], '#d': [nostrURI.identifier], limit: 1 }],
-            { signal: AbortSignal.timeout(5000) }
+            { signal: AbortSignal.timeout(1500) }
           );
 
           if (existingRepos.length > 0) {
-            const existingEvent = existingRepos[0];
+            let changed = false;
+            let hasWebTag = false;
 
-            // Extract existing data from the event
-            const description = existingEvent.tags.find(([tagName]) => tagName === 'description')?.[1];
-            const webTag = existingEvent.tags.find(([tagName]) => tagName === 'web');
-            const existingWebUrls = webTag ? webTag.slice(1) : [];
-            const cloneTag = existingEvent.tags.find(([tagName]) => tagName === 'clone');
-            const cloneUrls = cloneTag ? cloneTag.slice(1) : [];
-            const relaysTag = existingEvent.tags.find(([tagName]) => tagName === 'relays');
-            const relays = relaysTag ? relaysTag.slice(1) : [];
-            const tTags = existingEvent.tags
-              .filter(([tagName]) => tagName === 't')
-              .map(([, value]) => value);
-            const eucTag = existingEvent.tags.find(([tagName, , marker]) => tagName === 'r' && marker === 'euc');
-            const earliestCommit = eucTag?.[1];
-            const name = existingEvent.tags.find(([tagName]) => tagName === 'name')?.[1];
+            const repoEvent = structuredClone(existingRepos[0]);
 
-            // Add deployment URL if not already present
-            const deploymentUrl = result.url;
-            const updatedWebUrls = existingWebUrls.includes(deploymentUrl)
-              ? existingWebUrls
-              : [...existingWebUrls, deploymentUrl];
+            for (const tag of repoEvent.tags) {
+              if (tag[0] === 'web') {
+                if (tag[1] !== result.url) {
+                  tag[1] = result.url;
+                  changed = true;
+                  hasWebTag = true;
+                }
+              }
+            }
 
-            // Create updated repository announcement event
-            const eventTemplate = createRepositoryAnnouncementEvent({
-              repoId: nostrURI.identifier,
-              name,
-              description,
-              webUrls: updatedWebUrls,
-              cloneUrls,
-              relays,
-              tTags: tTags.length > 0 ? tTags : undefined,
-              earliestCommit,
-            });
+            if (!hasWebTag) {
+              repoEvent.tags.push(['web', result.url]);
+              changed = true;
+            }
 
-            // Publish the updated event
-            await publishEvent(eventTemplate);
+            // Publish updated repo event if deployment URL changed
+            if (changed) {
+              // Publish the updated event
+              await publishEvent(repoEvent);
+            }
           }
         }
       } catch (err) {

@@ -13,6 +13,10 @@ import { useFS } from '@/hooks/useFS';
 import { useFSPaths } from '@/hooks/useFSPaths';
 import { useAppContext } from '@/hooks/useAppContext';
 import { useNostr } from '@nostrify/react';
+import { useNostrPublish } from '@/hooks/useNostrPublish';
+import { useGit } from '@/hooks/useGit';
+import { NostrURI } from '@/lib/NostrURI';
+import { createRepositoryAnnouncementEvent } from '@/lib/announceRepository';
 import { Link } from 'react-router-dom';
 import type { DeployProvider } from '@/contexts/DeploySettingsContext';
 import type { PresetDeployProvider } from '@/lib/deploy/types';
@@ -120,6 +124,8 @@ export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProp
   const { projectsPath } = useFSPaths();
   const { config } = useAppContext();
   const { nostr } = useNostr();
+  const { mutateAsync: publishEvent } = useNostrPublish();
+  const { git } = useGit();
 
   const [selectedProviderId, setSelectedProviderId] = useState<string>('');
   const [isDeploying, setIsDeploying] = useState(false);
@@ -369,6 +375,65 @@ export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProp
       }
 
       setDeployResult(result);
+
+      // Update repository announcement with deployment URL if using Nostr git
+      try {
+        const projectPath = `${projectsPath}/${projectId}`;
+        const remoteUrl = await git.getRemoteURL(projectPath, 'origin');
+
+        if (remoteUrl && remoteUrl.startsWith('nostr://') && user) {
+          const nostrURI = await NostrURI.parse(remoteUrl);
+
+          // Query for existing repository announcement
+          const existingRepos = await nostr.query(
+            [{ kinds: [30617], authors: [user.pubkey], '#d': [nostrURI.identifier], limit: 1 }],
+            { signal: AbortSignal.timeout(5000) }
+          );
+
+          if (existingRepos.length > 0) {
+            const existingEvent = existingRepos[0];
+
+            // Extract existing data from the event
+            const description = existingEvent.tags.find(([tagName]) => tagName === 'description')?.[1];
+            const webTag = existingEvent.tags.find(([tagName]) => tagName === 'web');
+            const existingWebUrls = webTag ? webTag.slice(1) : [];
+            const cloneTag = existingEvent.tags.find(([tagName]) => tagName === 'clone');
+            const cloneUrls = cloneTag ? cloneTag.slice(1) : [];
+            const relaysTag = existingEvent.tags.find(([tagName]) => tagName === 'relays');
+            const relays = relaysTag ? relaysTag.slice(1) : [];
+            const tTags = existingEvent.tags
+              .filter(([tagName]) => tagName === 't')
+              .map(([, value]) => value);
+            const eucTag = existingEvent.tags.find(([tagName, , marker]) => tagName === 'r' && marker === 'euc');
+            const earliestCommit = eucTag?.[1];
+            const name = existingEvent.tags.find(([tagName]) => tagName === 'name')?.[1];
+
+            // Add deployment URL if not already present
+            const deploymentUrl = result.url;
+            const updatedWebUrls = existingWebUrls.includes(deploymentUrl)
+              ? existingWebUrls
+              : [...existingWebUrls, deploymentUrl];
+
+            // Create updated repository announcement event
+            const eventTemplate = createRepositoryAnnouncementEvent({
+              repoId: nostrURI.identifier,
+              name,
+              description,
+              webUrls: updatedWebUrls,
+              cloneUrls,
+              relays,
+              tTags: tTags.length > 0 ? tTags : undefined,
+              earliestCommit,
+            });
+
+            // Publish the updated event
+            await publishEvent(eventTemplate);
+          }
+        }
+      } catch (err) {
+        // Silently fail - updating web tag is not critical for deployment
+        console.warn('Failed to update repository announcement with deployment URL:', err);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Deployment failed');
     } finally {

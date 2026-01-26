@@ -21,6 +21,7 @@ import { useGitAutosync } from '@/hooks/useGitAutosync';
 import { ArrowUp } from 'lucide-react';
 import { ForcePushDialog } from './ForcePushDialog';
 import { SyncStepError } from './SyncStepError';
+import { useProjectDeploySettings } from '@/hooks/useProjectDeploySettings';
 
 // Helper function to convert kebab-case to Title Case
 function kebabToTitleCase(str: string): string {
@@ -57,6 +58,7 @@ export function ConfigureRepoStep({
   const { mutateAsync: publishEvent } = useNostrPublish();
   const { fs } = useFS();
   const { config } = useAppContext();
+  const { settings: projectDeploySettings } = useProjectDeploySettings(projectId);
 
   // Auto-update repo name when repo identifier changes (unless manually edited)
   useEffect(() => {
@@ -169,6 +171,15 @@ export function ConfigureRepoStep({
             tTags.push(template.name);
           }
 
+          // Get deployment URL from project settings if available
+          let webUrls: string[] | undefined;
+          if (projectDeploySettings.currentProvider) {
+            const currentProviderConfig = projectDeploySettings.providers[projectDeploySettings.currentProvider];
+            if (currentProviderConfig?.url) {
+              webUrls = [currentProviderConfig.url];
+            }
+          }
+
           // Create the repository announcement event
           const eventTemplate = createRepositoryAnnouncementEvent({
             repoId: repoIdentifier,
@@ -176,6 +187,7 @@ export function ConfigureRepoStep({
             cloneUrls: [...cloneUrls],
             relays: [...relays],
             tTags,
+            webUrls,
           });
 
           // Publish the event

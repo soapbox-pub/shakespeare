@@ -999,7 +999,9 @@ export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProp
                 <Alert variant="destructive">
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription className="space-y-2">
-                    <p>{error}</p>
+                    {/* Errors that itemise per-file failures are newline
+                        separated; a bare <p> would run them together. */}
+                    <p className="whitespace-pre-line">{error}</p>
                     {/* The gateway refuses a name it is holding for this user
                         and says to take it back instead. Saying so and leaving
                         them to find out where is the worst of both. */}

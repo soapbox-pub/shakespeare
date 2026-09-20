@@ -21,8 +21,54 @@ const UPLOAD_AUTH_BATCH_SIZE = 20;
 /** Max concurrent uploads per Blossom server */
 const UPLOAD_CONCURRENCY = 4;
 
-/** Timeout for individual HTTP requests (ms) */
+/** Timeout for bodyless probe requests — HEAD checks and gateway probes (ms) */
 const FETCH_TIMEOUT_MS = 15_000;
+
+/** Connection setup and server-side processing, independent of payload size (ms) */
+const UPLOAD_BASE_TIMEOUT_MS = 30_000;
+
+/**
+ * Slowest sustained throughput an upload is allowed to run at before it is
+ * abandoned (bytes/sec).
+ *
+ * Deliberately forgiving, because uploads do not get the link to themselves:
+ * every configured server uploads concurrently and each runs
+ * UPLOAD_CONCURRENCY files at once, so with the three default servers a single
+ * request may be sharing the uplink with eleven others.
+ */
+const UPLOAD_MIN_THROUGHPUT_BPS = 32 * 1024; // 256 kbps
+
+/** How many failed files get spelled out before the error message summarises */
+const MAX_REPORTED_FAILURES = 3;
+
+/**
+ * The time budget for uploading a blob of the given size.
+ *
+ * A fixed deadline applied to a multi-megabyte body is a bandwidth test rather
+ * than a timeout: it fails the largest files first, on exactly the connections
+ * that most needed the time. Scaling the budget to the payload means what gets
+ * enforced is a floor on throughput, which is the thing actually worth
+ * enforcing.
+ */
+function uploadTimeoutMs(byteLength: number): number {
+  return UPLOAD_BASE_TIMEOUT_MS + (byteLength / UPLOAD_MIN_THROUGHPUT_BPS) * 1000;
+}
+
+/** Render a byte count the way a person reads one. */
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+
+  const units = ['KB', 'MB', 'GB'];
+  let value = bytes / 1024;
+  let unit = 0;
+
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024;
+    unit++;
+  }
+
+  return `${value < 10 ? value.toFixed(1) : Math.round(value)} ${units[unit]}`;
+}
 
 interface FileEntry {
   /** Absolute path in the manifest, e.g. "/index.html" */
@@ -177,28 +223,38 @@ async function blobExistsOnServer(serverBase: string, sha256: string): Promise<b
   }
 }
 
+/** The result of one upload attempt, carrying the refusal when there was one. */
+type UploadOutcome =
+  | { ok: true }
+  | { ok: false; reason: string };
+
 /**
  * Upload a single file to a single Blossom server using a pre-signed auth header.
  * Skips the upload if the blob already exists on the server.
- * Returns true on success or if already present.
+ *
+ * Reports why it failed rather than just that it did: a 413, a 401 and a
+ * timeout are three different problems with three different answers, and a
+ * bare boolean makes them indistinguishable to the person who has to fix it.
  */
 async function uploadToServer(
   serverBase: string,
   file: FileEntry,
   authHeader: string,
-): Promise<boolean> {
+): Promise<UploadOutcome> {
   // Skip if already present
   if (await blobExistsOnServer(serverBase, file.sha256)) {
-    return true;
+    return { ok: true };
   }
 
   const blob = new File([file.data], file.path.split('/').pop() || 'file', {
     type: file.contentType,
   });
 
+  const timeout = uploadTimeoutMs(file.data.byteLength);
+
   try {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+    const timer = setTimeout(() => controller.abort(), timeout);
     try {
       const resp = await fetch(`${serverBase}/upload`, {
         method: 'PUT',
@@ -209,13 +265,60 @@ async function uploadToServer(
         body: blob,
         signal: controller.signal,
       });
-      return resp.ok;
+
+      if (resp.ok) {
+        return { ok: true };
+      }
+
+      // BUD-01 puts the refusal in X-Reason, and Blossom servers list it in
+      // Access-Control-Expose-Headers precisely so a browser client can read
+      // it. statusText is empty over HTTP/2, so it only gets appended when set.
+      const detail = resp.headers.get('x-reason');
+      const status = resp.statusText
+        ? `${resp.status} ${resp.statusText}`
+        : String(resp.status);
+
+      return { ok: false, reason: detail ? `${status} — ${detail}` : status };
     } finally {
       clearTimeout(timer);
     }
-  } catch {
-    return false;
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      return { ok: false, reason: `timed out after ${Math.round(timeout / 1000)}s` };
+    }
+    return { ok: false, reason: err instanceof Error ? err.message : String(err) };
   }
+}
+
+/**
+ * Compose the error for files that reached no server at all.
+ *
+ * Sizes are included because size is what separates these files from the ones
+ * that uploaded fine, and because a 413 only means something next to the
+ * number that provoked it.
+ */
+function describeUploadFailures(
+  failedFiles: FileEntry[],
+  failures: Map<string, { server: string; reason: string }[]>,
+): string {
+  const lines = failedFiles.slice(0, MAX_REPORTED_FAILURES).map(file => {
+    const reasons = failures.get(file.sha256) ?? [];
+    const detail = reasons.length
+      ? reasons.map(r => `${r.server} — ${r.reason}`).join('; ')
+      : 'no server was reached';
+
+    return `${file.path} (${formatBytes(file.data.byteLength)}): ${detail}`;
+  });
+
+  const remaining = failedFiles.length - lines.length;
+  if (remaining > 0) {
+    lines.push(`…and ${remaining} more`);
+  }
+
+  return [
+    `Failed to upload ${failedFiles.length} file(s) to any Blossom server.`,
+    ...lines,
+  ].join('\n');
 }
 
 /**
@@ -328,14 +431,26 @@ export class NsiteAdapter implements DeployAdapter {
     // uploadedSha256s: set of sha256 hashes confirmed present on ≥1 server
     const uploadedSha256s = new Set<string>();
 
+    // Why each server refused a blob, kept for the files that fail everywhere.
+    // A refusal from one server is not itself a problem — another may take it —
+    // so these are only worth reporting once no server has taken the file.
+    const failures = new Map<string, { server: string; reason: string }[]>();
+
     await Promise.all(
       serverBases.map(serverBase =>
         runConcurrent(files, UPLOAD_CONCURRENCY, async (file) => {
           const authHeader = authTokenMap.get(file.sha256);
           if (!authHeader) return;
-          const ok = await uploadToServer(serverBase, file, authHeader);
-          if (ok) {
+          const result = await uploadToServer(serverBase, file, authHeader);
+          if (result.ok) {
             uploadedSha256s.add(file.sha256);
+          } else {
+            const reasons = failures.get(file.sha256) ?? [];
+            reasons.push({
+              server: serverBase.replace(/^https?:\/\//, ''),
+              reason: result.reason,
+            });
+            failures.set(file.sha256, reasons);
           }
         }),
       ),
@@ -345,10 +460,7 @@ export class NsiteAdapter implements DeployAdapter {
     // would serve broken responses for those paths — abort before publishing.
     const failedFiles = files.filter(f => !uploadedSha256s.has(f.sha256));
     if (failedFiles.length > 0) {
-      const paths = failedFiles.map(f => f.path).join(', ');
-      throw new Error(
-        `Failed to upload ${failedFiles.length} file(s) to any Blossom server: ${paths}`,
-      );
+      throw new Error(describeUploadFailures(failedFiles, failures));
     }
 
     // ── Step 4: Build the site manifest event ────────────────────────────────

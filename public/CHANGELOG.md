@@ -1,5 +1,11 @@
 # Changelog
 
+## [9.16.5] - 2026-09-20
+
+### Fixed
+- Publishing a site no longer drops its largest files on a slow connection — big uploads are given the time they need to finish instead of being cut off on a fixed deadline
+- When an upload does fail, the error names each file, its size, and what the server actually said, so you can tell a file that's too large from one that timed out
+
 ## [9.16.4] - 2026-09-16
 
 ### Changed

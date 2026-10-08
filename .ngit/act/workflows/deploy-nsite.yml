@@ -104,9 +104,15 @@ jobs:
       # servers fall back to.
       - run: npm run build
 
-      # Sourcemaps are ~290 files and 30 MB of blobs nobody fetches, and they
-      # near-double the manifest. The GitLab job dropped them too.
-      - run: find dist -name '*.map' -delete
+      # Every file becomes a `path` tag in the manifest event, which relays cap
+      # at ~64 KB. vite.config.ts already drops the ~280 source maps for Shiki's
+      # grammar/theme chunks and keeps the 7 for real code; fail here if the
+      # manifest still nears the limit rather than deploying one relays reject.
+      - name: Check manifest size
+        run: |
+          BYTES=$(cd dist && find . -type f | sed 's|^\.||' | awk '{s+=length($0)+80} END {print s}')
+          echo "Estimated nsite manifest size: ${BYTES} bytes"
+          [ "$BYTES" -lt 60000 ] || { echo "nsite manifest too large"; exit 1; }
 
       - name: Publish to Blossom + relays
         env:

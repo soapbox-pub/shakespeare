@@ -16,7 +16,7 @@ This skill guides you through publishing a new release of the app. It handles ve
   - **Patch (Z)**: Most releases. Bug fixes, tweaks, internal improvements, anything a user wouldn't specifically notice or seek out.
   - **Minor (Y)**: Releases with headline features -- things worth announcing. A user should be able to look at the minor bump and think "oh, something new happened."
   - **Major (X)**: Only when the user explicitly requests it (milestones, rebrands, major redesigns)
-- **CI trigger**: Pushing a version tag (`v9.9.0`) triggers the CI pipeline to build and create a GitLab release
+- **CI**: No CI job runs on version tags. ngit-ci (`.ngit/act/workflows/`) only tests every push and deploys the nsite from `main`. The Android APK/AAB build and the Zapstore publish lived in the old GitLab pipeline and have not been ported (last Zapstore release: 9.16.2).
 
 ## Release Procedure
 
@@ -195,4 +195,4 @@ git reset --soft HEAD~1     # undo the commit but keep changes staged
 Then redo steps 4-10 with the correct version.
 
 ### Already pushed a bad release
-This requires manual intervention. Inform the user and suggest they delete the tag and release from GitLab manually, then re-run the release process.
+This requires manual intervention. Inform the user and suggest they delete the tag from the remote manually, then re-run the release process.

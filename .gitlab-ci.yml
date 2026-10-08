@@ -43,8 +43,12 @@ deploy-nsite:
     - npm run build
     - cp dist/index.html dist/404.html
 
-    # Remove sourcemaps to stay under nsite's 65KB manifest limit
-    - find dist -name '*.map' -delete
+    # Every file becomes a `path` tag in the manifest event, which relays cap at ~64 KB.
+    # vite.config.ts already drops maps for Shiki's data chunks; fail here if we're close anyway.
+    - |
+      BYTES=$(cd dist && find . -type f | sed 's|^\.||' | awk '{s+=length($0)+80} END {print s}')
+      echo "Estimated nsite manifest size: ${BYTES} bytes"
+      [ "$BYTES" -lt 60000 ] || { echo "nsite manifest too large"; exit 1; }
 
     # Download nsyte binary
     - curl -fsSL "https://github.com/sandwichfarm/nsyte/releases/download/${NSYTE_VERSION}/nsyte-linux" -o /usr/local/bin/nsyte

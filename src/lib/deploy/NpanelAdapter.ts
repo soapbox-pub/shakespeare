@@ -1,6 +1,7 @@
 import type { NostrSigner } from '@nostrify/nostrify';
 import type { DeployAdapter, DeployOptions, DeployResult, NpanelDeployConfig } from './types';
 import { NsiteAdapter } from './NsiteAdapter';
+import { toNsiteDTag } from '../utils/nsite';
 import { NPANEL_TIMEOUT_MS, npanelError, npanelRequest } from './npanelApi';
 
 /** nsite named-site kind. An npanel host always points at one of these. */
@@ -88,24 +89,26 @@ export class NpanelAdapter implements DeployAdapter {
   private readonly signer: NostrSigner;
   private readonly dashboardHost: string;
   private readonly hostname: string;
-  private readonly subdomain: string;
+  private readonly identifier: string;
 
   constructor(config: NpanelDeployConfig) {
     this.signer = config.signer;
     this.dashboardHost = config.dashboardHost;
-    this.subdomain = config.subdomain;
     this.hostname = `${config.subdomain}.${config.domain}`;
 
     // The identifier is the subdomain, so a site's name and its address agree
-    // and a second gateway asked to serve it lands on the same name.
-    this.nsite = new NsiteAdapter({ ...config, siteIdentifier: config.subdomain });
+    // and a second gateway asked to serve it lands on the same name — as far
+    // as NIP-5A allows. A subdomain can be longer than the 13 characters a `d`
+    // tag may hold, and then only the hostname binding ties the two together.
+    this.identifier = toNsiteDTag(config.subdomain);
+    this.nsite = new NsiteAdapter({ ...config, siteIdentifier: this.identifier });
   }
 
   async deploy(options: DeployOptions): Promise<DeployResult> {
     const result = await this.nsite.deploy(options);
 
     const pubkey = await this.signer.getPublicKey();
-    const address = `${NAMED_SITE_KIND}:${pubkey}:${this.subdomain}`;
+    const address = `${NAMED_SITE_KIND}:${pubkey}:${this.identifier}`;
 
     await this.bindHostname(address);
 

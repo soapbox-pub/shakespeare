@@ -1,6 +1,6 @@
 import { nip19 } from 'nostr-tools';
 import type { NostrEvent } from '@nostrify/nostrify';
-import { buildNsiteUrl, isValidDTag } from '@/lib/utils/nsite';
+import { buildNsiteUrl, isValidDTag, toNsiteDTag } from '@/lib/utils/nsite';
 import type { NpanelClaim, NpanelClaimManifest } from './npanelApi';
 
 /** nsite named-site kind. Everything a gateway archived is one of these. */
@@ -179,18 +179,25 @@ export function planClaim(
     return { kind: 'blocked', reason: 'The archived site has no name to publish it under.' };
   }
 
+  // The archive named sites after projects, and a quarter of those names are
+  // longer than NIP-5A lets a `d` tag be. Those are republished under a name
+  // that fits; the hostname binding is what keeps the old name pointing at it.
+  const dTag = toNsiteDTag(identifier);
+
   // The site is already theirs under this name; the hostname just needs to be
   // told about it. Both names then serve the same site, which is what someone
   // who deployed the same project twice was always asking for.
-  if (published.has(identifier)) {
-    return {
-      kind: 'claim',
-      address: `${NAMED_SITE_KIND}:${pubkey}:${identifier}`,
-      reason: 'published',
-    };
+  for (const candidate of new Set([identifier, dTag])) {
+    if (published.has(candidate)) {
+      return {
+        kind: 'claim',
+        address: `${NAMED_SITE_KIND}:${pubkey}:${candidate}`,
+        reason: 'published',
+      };
+    }
   }
 
-  return { kind: 'republish', identifier, manifest: claim.manifest };
+  return { kind: 'republish', identifier: dTag, manifest: claim.manifest };
 }
 
 /**

@@ -2,6 +2,7 @@ import git from 'isomorphic-git';
 import { DotAI } from './DotAI';
 import { NostrURI } from './NostrURI';
 import { readNsiteVfsConfig } from './nsiteConfig';
+import { toNsiteDTag } from './utils/nsite';
 import type { JSRuntimeFS } from './JSRuntime';
 
 /** Input for building a kind 31990 app event. */
@@ -124,7 +125,7 @@ export async function buildAppEvent(
     try {
       const nsiteConfig = await readNsiteVfsConfig(opts.fs, opts.cwd);
       if (nsiteConfig?.id) {
-        tags.push(['a', `35128:${opts.pubkey}:${nsiteConfig.id}`]);
+        tags.push(['a', `35128:${opts.pubkey}:${toNsiteDTag(nsiteConfig.id)}`]);
       }
     } catch {
       // No nsite config found, skip

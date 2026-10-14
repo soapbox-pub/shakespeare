@@ -2,6 +2,9 @@
  * Utilities for the nsite v2 deployment spec.
  */
 
+import { sha256 } from '@noble/hashes/sha256';
+import { bytesToHex, utf8ToBytes } from '@noble/hashes/utils';
+
 /** Max length of a valid nsite dTag — must fit as a DNS label component */
 const DTAG_MAX_LENGTH = 13;
 
@@ -60,6 +63,32 @@ export async function projectNameToDTag(name: string): Promise<string> {
  */
 export function isValidDTag(value: string): boolean {
   return value.length >= 1 && value.length <= DTAG_MAX_LENGTH && DTAG_REGEX.test(value);
+}
+
+/**
+ * Fit an arbitrary site identifier into a NIP-5A named-site `d` tag.
+ *
+ * Valid identifiers pass through unchanged, so existing sites keep their
+ * address. Anything else — an npanel subdomain, an archived manifest named
+ * after a project, a hand-edited `.nsite/config.json` — is slugified and
+ * truncated, with a short hash of the original appended. Plain truncation
+ * would let two long names that share a prefix land on the same `d` tag, and
+ * kind 35128 is addressable: deploying one would replace the other.
+ */
+export function toNsiteDTag(identifier: string): string {
+  if (isValidDTag(identifier)) return identifier;
+
+  const hash = bytesToHex(sha256(utf8ToBytes(identifier))).slice(0, 4);
+  const head = identifier
+    .toLowerCase()
+    .replace(/[\s_./]+/g, '-')
+    .replace(/[^a-z0-9-]/g, '')
+    .replace(/-{2,}/g, '-')
+    .replace(/^-+/, '')
+    .slice(0, DTAG_MAX_LENGTH - hash.length - 1)
+    .replace(/-+$/, '');
+
+  return head ? `${head}-${hash}` : hash;
 }
 
 /**

@@ -3,7 +3,7 @@ import mime from 'mime';
 import { nip19 } from 'nostr-tools';
 import type { JSRuntimeFS } from '../JSRuntime';
 import type { DeployAdapter, DeployOptions, DeployResult, NsiteDeployConfig } from './types';
-import { buildNsiteUrl } from '../utils/nsite';
+import { buildNsiteUrl, toNsiteDTag } from '../utils/nsite';
 import { publishToRelays } from './publishToRelays';
 
 /** nsite v2 root-site kind (replaceable by pubkey+kind) */
@@ -383,7 +383,7 @@ export class NsiteAdapter implements DeployAdapter {
     this.siteTitle = config.siteTitle;
     this.siteDescription = config.siteDescription;
     this.sourceUrl = config.sourceUrl;
-    this.siteIdentifier = config.siteIdentifier;
+    this.siteIdentifier = config.siteIdentifier ? toNsiteDTag(config.siteIdentifier) : undefined;
   }
 
   async deploy(options: DeployOptions): Promise<DeployResult> {

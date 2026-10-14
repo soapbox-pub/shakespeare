@@ -77,7 +77,10 @@ Shakespeare provides a comprehensive set of shell commands that are JavaScript r
 - **Compiler**: the project's own TypeScript version from `package-lock.json`, downloaded from the npm registry and evaluated in the worker. TypeScript 7+ is native code, so those projects are checked with the newest 6.x.
 - **Dependency types**: tarballs from the lockfile's `resolved` URLs, integrity-checked, reduced to `.d.ts`/`.ts`/`package.json` files (JavaScript files are kept as empty stubs) and cached in IndexedDB (`shakespeare-tsc`). Packages the lockfile lacks are resolved from the registry using package.json ranges.
 - **Discovery**: compiler file access is synchronous, so packages can't be fetched on demand. Unfetched lockfile packages appear as empty directories and accesses are recorded; the worker runs `--listFilesOnly` rounds, downloading what was touched, until nothing new is needed, then runs the real command.
-- **Writes**: files the compiler writes (emit output, `.tsbuildinfo` for `incremental` projects) are written back into the project.
+- **Incremental checks**: the worker keeps a session per project (its files, mounted packages, and last program). A plain type check (`tsc`, `--noEmit`, `-p`, `--pretty`, with `noEmit` in effect) builds a `SemanticDiagnosticsBuilderProgram` on the previous one, reusing parsed source files, so a check after an edit takes well under a second. Any other invocation runs the full CLI (`ts.executeCommandLine`).
+- **Syncing**: the main thread sends only project files whose mtime or size changed since the last request (`src/lib/tsc/index.ts`).
+- **Warm-up**: `ChatPane` calls `warmTsc` when a project opens, so dependency downloads and the first full check happen before the agent asks.
+- **Writes**: files the full CLI writes (emit output, `.tsbuildinfo`) are written back into the project. Incremental checks keep their state in memory and write nothing.
 
 #### Security
 

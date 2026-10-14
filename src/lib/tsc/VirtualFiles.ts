@@ -89,6 +89,11 @@ export class VirtualFiles {
     this.ensureDir(parentOf(path)).files.add(baseName(path));
   }
 
+  deleteFile(path: string): void {
+    this.files.delete(path);
+    this.tree.get(parentOf(path))?.files.delete(baseName(path));
+  }
+
   createDirectory(path: string): void {
     this.ensureDir(path);
   }

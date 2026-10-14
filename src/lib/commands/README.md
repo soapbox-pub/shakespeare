@@ -612,7 +612,8 @@ tsc -v                         # Show the TypeScript version
 **Features:**
 - Same output and exit codes as `tsc` (2 when there are type errors)
 - Downloads dependency types once and caches them in IndexedDB
-- Writes emitted files and `.tsbuildinfo` back to the project
+- Checks incrementally: after an edit, only affected files are checked again
+- Writes emitted files back to the project
 - `--watch` is not supported
 
 ### npx

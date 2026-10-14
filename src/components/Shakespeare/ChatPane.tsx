@@ -64,6 +64,7 @@ import { DotAI } from '@/lib/DotAI';
 import { parseProviderModel } from '@/lib/parseProviderModel';
 import { AIMessage } from '@/lib/SessionManager';
 import { getAllSkills } from '@/lib/skills';
+import { warmTsc } from '@/lib/tsc';
 
 // Clean interfaces now handled by proper hooks
 
@@ -359,6 +360,12 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     onUpdateMetadata,
     onAIError,
   });
+
+  // Typecheck in the background, so the agent's first `tsc` doesn't wait on downloads and a full check.
+  useEffect(() => {
+    const timer = setTimeout(() => warmTsc(fs, cwd), 2000);
+    return () => clearTimeout(timer);
+  }, [fs, cwd]);
 
   // Check if we should show the template info banner
   useEffect(() => {

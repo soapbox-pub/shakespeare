@@ -596,6 +596,31 @@ clear                          # Clear screen
 - Moves cursor to top-left position
 - No arguments accepted
 
+### tsc
+
+**Usage:** `tsc [--noEmit] [-p project] [--pretty] [options] [file...]`
+
+Run the TypeScript compiler. This is the real `tsc` CLI, running in a Web Worker with the project's own TypeScript version and its dependencies' type declarations (see `src/lib/tsc/`).
+
+**Examples:**
+```bash
+tsc --noEmit                   # Typecheck the project using tsconfig.json
+tsc --noEmit --pretty          # Colored output with code frames
+tsc -v                         # Show the TypeScript version
+```
+
+**Features:**
+- Same output and exit codes as `tsc` (2 when there are type errors)
+- Downloads dependency types once and caches them in IndexedDB
+- Writes emitted files and `.tsbuildinfo` back to the project
+- `--watch` is not supported
+
+### npx
+
+**Usage:** `npx [-y] command [args...]`
+
+Run a built-in command, e.g. `npx tsc --noEmit`. Packages can't be installed, so anything else fails with exit code 127.
+
 ## Usage with ShellTool
 
 Commands are executed through the `ShellTool` which handles:

@@ -24,6 +24,7 @@ import {
   LsCommand,
   MkdirCommand,
   MvCommand,
+  NpxCommand,
   PwdCommand,
   RmCommand,
   SedCommand,
@@ -32,6 +33,7 @@ import {
   TailCommand,
   TouchCommand,
   TrCommand,
+  TscCommand,
   UniqCommand,
   UnzipCommand,
   WcCommand,
@@ -70,7 +72,7 @@ export class ShellTool implements Tool<ShellToolParams> {
   private readonly executor: ShellExecutor;
 
   readonly description =
-    "Execute shell commands over the virtual filesystem. Supports pipes (|), conditionals (&&, ||, ;), quoting, variable expansion ($VAR), command substitution ($(cmd), `cmd`), arithmetic ($((…))), tilde (~), brace {a,b} and glob (*, ?, […]) expansion, redirections (>, >>, <, <<, 2>, 2>&1), control flow (if, for, while, until, case), and subshells. Built-in commands: cat, ls, cd, pwd, cp, mv, rm, echo, head, tail, grep, find, wc, touch, mkdir, sort, uniq, cut, tr, sed, diff, which, whoami, date, env, clear, git, curl, unzip, hexdump.";
+    "Execute shell commands over the virtual filesystem. Supports pipes (|), conditionals (&&, ||, ;), quoting, variable expansion ($VAR), command substitution ($(cmd), `cmd`), arithmetic ($((…))), tilde (~), brace {a,b} and glob (*, ?, […]) expansion, redirections (>, >>, <, <<, 2>, 2>&1), control flow (if, for, while, until, case), and subshells. Built-in commands: cat, ls, cd, pwd, cp, mv, rm, echo, head, tail, grep, find, wc, touch, mkdir, sort, uniq, cut, tr, sed, diff, which, whoami, date, env, clear, git, curl, unzip, hexdump, tsc, npx. Typecheck the project with `tsc --noEmit` (the real TypeScript compiler, using the project's tsconfig and dependencies).";
 
   readonly inputSchema = z.object({
     command: z
@@ -116,12 +118,14 @@ export class ShellTool implements Tool<ShellToolParams> {
     this.registerCommand(new TailCommand(fs));
     this.registerCommand(new TouchCommand(fs));
     this.registerCommand(new TrCommand(fs));
+    this.registerCommand(new TscCommand(fs, cwd));
     this.registerCommand(new UniqCommand(fs));
     this.registerCommand(new UnzipCommand(fs));
     this.registerCommand(new WcCommand(fs));
     this.registerCommand(new WhoamiCommand());
-    // which must see the final registry.
+    // which and npx must see the final registry.
     this.registerCommand(new WhichCommand(this.commands));
+    this.registerCommand(new NpxCommand(this.commands));
 
     this.executor = new ShellExecutor({
       fs,

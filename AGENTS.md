@@ -67,7 +67,17 @@ Shakespeare provides a comprehensive set of shell commands that are JavaScript r
 - **File Operations**: `cat`, `cp`, `mv`, `rm`, `touch`, `find`, `grep`
 - **Directory Operations**: `cd`, `ls`, `mkdir`, `pwd`, `tree`
 - **System Commands**: `echo`, `which`, `wc`, `head`, `tail`
+- **TypeScript**: `tsc` (the real compiler CLI, e.g. `tsc --noEmit`), `npx` (runs built-ins only, e.g. `npx tsc`)
 - **Git Commands**: `git add`, `git commit`, `git push`, `git pull`, `git status`, `git log`, `git diff`, `git branch`, `git checkout`, `git switch`, `git merge`, `git revert`, `git rm`, `git mv`, `git restore`, `git rev-parse`, `git ls-files`, `git tag`, `git stash`, `git fetch`, `git clone`, `git init`, `git reset`, `git show`, `git remote`, `git config`
+
+#### Typechecking (`tsc`)
+
+`tsc` runs the real TypeScript compiler CLI (`ts.executeCommandLine`) in a Web Worker, over a virtual `ts.System`. The code lives in `src/lib/tsc/`.
+
+- **Compiler**: the project's own TypeScript version from `package-lock.json`, downloaded from the npm registry and evaluated in the worker. TypeScript 7+ is native code, so those projects are checked with the newest 6.x.
+- **Dependency types**: tarballs from the lockfile's `resolved` URLs, integrity-checked, reduced to `.d.ts`/`.ts`/`package.json` files (JavaScript files are kept as empty stubs) and cached in IndexedDB (`shakespeare-tsc`). Packages the lockfile lacks are resolved from the registry using package.json ranges.
+- **Discovery**: compiler file access is synchronous, so packages can't be fetched on demand. Unfetched lockfile packages appear as empty directories and accesses are recorded; the worker runs `--listFilesOnly` rounds, downloading what was touched, until nothing new is needed, then runs the real command.
+- **Writes**: files the compiler writes (emit output, `.tsbuildinfo` for `incremental` projects) are written back into the project.
 
 #### Security
 

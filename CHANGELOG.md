@@ -1,5 +1,10 @@
 # Changelog
 
+## [9.16.6] - 2026-10-14
+
+### Fixed
+- Sites with long names now load on every nsite gateway — names are kept short enough for a web address, with a short code added when needed so two similar names never overwrite each other
+
 ## [9.16.5] - 2026-09-20
 
 ### Fixed

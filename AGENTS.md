@@ -68,6 +68,7 @@ Shakespeare provides a comprehensive set of shell commands that are JavaScript r
 - **Directory Operations**: `cd`, `ls`, `mkdir`, `pwd`, `tree`
 - **System Commands**: `echo`, `which`, `wc`, `head`, `tail`
 - **TypeScript**: `tsc` (the real compiler CLI, e.g. `tsc --noEmit`), `npx` (runs built-ins only, e.g. `npx tsc`)
+- **Python**: `python3`/`python` (CPython via Pyodide, see below), `pip`/`pip3` (`install` only, via micropip)
 - **Git Commands**: `git add`, `git commit`, `git push`, `git pull`, `git status`, `git log`, `git diff`, `git branch`, `git checkout`, `git switch`, `git merge`, `git revert`, `git rm`, `git mv`, `git restore`, `git rev-parse`, `git ls-files`, `git tag`, `git stash`, `git fetch`, `git clone`, `git init`, `git reset`, `git show`, `git remote`, `git config`
 
 #### Typechecking (`tsc`)
@@ -81,6 +82,15 @@ Shakespeare provides a comprehensive set of shell commands that are JavaScript r
 - **Syncing**: the main thread sends only project files whose mtime or size changed since the last request (`src/lib/tsc/index.ts`).
 - **Warm-up**: `ChatPane` calls `warmTsc` when a project opens, so dependency downloads and the first full check happen before the agent asks.
 - **Writes**: files the full CLI writes (emit output, `.tsbuildinfo`) are written back into the project. Incremental checks keep their state in memory and write nothing.
+
+#### Python (`python3`)
+
+`python3` runs CPython (Pyodide, loaded from jsDelivr on first use) in a Web Worker. The code lives in `src/lib/python/`.
+
+- **Filesystem**: the project (minus `node_modules` and `.git`) and `/tmp` are mirrored into Pyodide's in-memory filesystem at the same paths. Only files whose mtime or size changed since the last run are sent. Synced files get an mtime of 0 in the worker, so anything a script writes is detectable; those writes, deletions, and new or removed directories are applied back to the VFS afterwards.
+- **Packages**: imports of Pyodide-provided packages are loaded automatically (`loadPackagesFromImports`). `pip install` uses micropip; installs last for the worker's lifetime.
+- **Isolation between runs**: each run gets fresh `sys.argv`, cwd, std streams, and `__main__` namespace, and modules imported from outside `/lib` are dropped from `sys.modules` so project edits are picked up. Bytecode isn't written.
+- **Timeout**: a script that runs longer than 2 minutes (after loading) terminates the worker and exits 124.
 
 #### Security
 

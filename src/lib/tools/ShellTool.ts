@@ -25,6 +25,8 @@ import {
   MkdirCommand,
   MvCommand,
   NpxCommand,
+  PipCommand,
+  PythonCommand,
   PwdCommand,
   RmCommand,
   SedCommand,
@@ -72,7 +74,7 @@ export class ShellTool implements Tool<ShellToolParams> {
   private readonly executor: ShellExecutor;
 
   readonly description =
-    "Execute shell commands over the virtual filesystem. Supports pipes (|), conditionals (&&, ||, ;), quoting, variable expansion ($VAR), command substitution ($(cmd), `cmd`), arithmetic ($((…))), tilde (~), brace {a,b} and glob (*, ?, […]) expansion, redirections (>, >>, <, <<, 2>, 2>&1), control flow (if, for, while, until, case), and subshells. Built-in commands: cat, ls, cd, pwd, cp, mv, rm, echo, head, tail, grep, find, wc, touch, mkdir, sort, uniq, cut, tr, sed, diff, which, whoami, date, env, clear, git, curl, unzip, hexdump, tsc, npx. Typecheck the project with `tsc --noEmit` (the real TypeScript compiler, using the project's tsconfig and dependencies).";
+    "Execute shell commands over the virtual filesystem. Supports pipes (|), conditionals (&&, ||, ;), quoting, variable expansion ($VAR), command substitution ($(cmd), `cmd`), arithmetic ($((…))), tilde (~), brace {a,b} and glob (*, ?, […]) expansion, redirections (>, >>, <, <<, 2>, 2>&1), control flow (if, for, while, until, case), and subshells. Built-in commands: cat, ls, cd, pwd, cp, mv, rm, echo, head, tail, grep, find, wc, touch, mkdir, sort, uniq, cut, tr, sed, diff, which, whoami, date, env, clear, git, curl, unzip, hexdump, tsc, npx, python3, pip. Typecheck the project with `tsc --noEmit` (the real TypeScript compiler, using the project's tsconfig and dependencies). `python3` is real CPython (Pyodide): scripts can read and write the project and /tmp, Pyodide's packages (numpy, pandas, ...) load automatically on import, and `pip install` adds pure-Python packages for the session. It cannot open sockets or start subprocesses.";
 
   readonly inputSchema = z.object({
     command: z
@@ -110,6 +112,11 @@ export class ShellTool implements Tool<ShellToolParams> {
     this.registerCommand(new LsCommand(fs));
     this.registerCommand(new MkdirCommand(fs));
     this.registerCommand(new MvCommand(fs));
+    const pythonCommand = new PythonCommand(fs, cwd);
+    this.registerCommand(pythonCommand);
+    this.registerCommand(new PythonCommand(fs, cwd, 'python'));
+    this.registerCommand(new PipCommand(pythonCommand));
+    this.registerCommand(new PipCommand(pythonCommand, 'pip3'));
     this.registerCommand(new PwdCommand());
     this.registerCommand(new RmCommand(fs));
     this.registerCommand(new SedCommand(fs));

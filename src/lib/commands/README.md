@@ -24,7 +24,7 @@ Commands return a `ShellCommandResult` object containing:
 
 ## Available Commands
 
-The shell supports 25 essential commands for file and directory operations, text processing, content analysis, and system utilities.
+The shell supports essential commands for file and directory operations, text processing, content analysis, and system utilities.
 
 ### cat
 
@@ -621,6 +621,36 @@ tsc -v                         # Show the TypeScript version
 **Usage:** `npx [-y] command [args...]`
 
 Run a built-in command, e.g. `npx tsc --noEmit`. Packages can't be installed, so anything else fails with exit code 127.
+
+### python3
+
+**Usage:** `python3 [-c cmd | -m module | file | -] [arg...]` (also available as `python`)
+
+Run CPython 3.14 compiled to WebAssembly ([Pyodide](https://pyodide.org)), in a Web Worker (see `src/lib/python/`). Pyodide is loaded from jsDelivr on first use.
+
+**Examples:**
+```bash
+python3 script.py arg           # Run a script
+python3 -c 'print(1 + 1)'       # Run a one-liner
+python3 - <<'EOF'               # Run a heredoc
+print("hi")
+EOF
+echo '{"a":1}' | python3 -m json.tool
+```
+
+**Features:**
+- Scripts see the project (except `node_modules` and `.git`) and `/tmp` at their real paths; files they create, change, or delete there are saved back to the VFS
+- Only files changed since the last run are sent to the worker
+- Packages Pyodide provides (numpy, pandas, ...) are loaded automatically when the script imports them
+- Local modules are reloaded on every run, so edits are picked up
+- Scripts are stopped after 2 minutes of running (exit code 124)
+- No sockets or subprocesses; no interactive mode
+
+### pip / pip3
+
+**Usage:** `pip install package...`
+
+Install packages with micropip (pure-Python wheels from PyPI and Pyodide's own packages). Installed packages last until the page is reloaded.
 
 ## Usage with ShellTool
 

@@ -18,6 +18,7 @@ export { LsCommand } from './ls';
 export { MkdirCommand } from './mkdir';
 export { MvCommand } from './mv';
 export { NpxCommand } from './npx';
+export { PipCommand, PythonCommand } from './python';
 export { PwdCommand } from './pwd';
 export { RmCommand } from './rm';
 export { SedCommand } from './sed';

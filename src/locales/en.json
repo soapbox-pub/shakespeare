@@ -581,5 +581,22 @@
   "failedToDuplicateProject": "Failed to duplicate project",
   "newProjectName": "New Project Name",
   "duplicateProjectDescription": "Create a copy of this project with a new name",
-  "resume": "Resume"
+  "resume": "Resume",
+  "previewSignerRequest": "Permission request",
+  "previewSignerSignKind": "Sign event (kind {{kind}})",
+  "previewSignerWriteAppData": "Write app data \"{{dTag}}\"",
+  "previewSignerSignDescription": "Your preview wants to sign a Nostr event with your account.",
+  "previewSignerWriteAppDataDescription": "Your preview wants to save this record with your account, replacing what is stored there now.",
+  "previewSignerEncrypt": "Encrypt message ({{nip}})",
+  "previewSignerEncryptDescription": "Your preview wants to encrypt a message with your keys.",
+  "previewSignerDecrypt": "Decrypt message ({{nip}})",
+  "previewSignerDecryptDescription": "Your preview wants to decrypt a message with your keys.",
+  "previewSignerDecryptSelf": "Read your private data ({{nip}})",
+  "previewSignerDecryptSelfDescription": "Your preview wants to decrypt data encrypted to your own key. It could be private lists, app settings, or wallet backups from other apps.",
+  "previewSignerContent": "Content",
+  "previewSignerShowDetails": "Show details",
+  "previewSignerHideDetails": "Hide details",
+  "previewSignerRemember": "Remember for this project",
+  "previewSignerAllow": "Allow",
+  "previewSignerDeny": "Deny"
 }

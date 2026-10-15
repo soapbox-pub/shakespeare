@@ -27,6 +27,10 @@ import { useAppContext } from '@/hooks/useAppContext';
 import { isMediaFile } from '@/lib/fileUtils';
 import { deriveIframeSubdomain } from '@/lib/iframeSubdomain';
 import { getPreviewInjectedScript } from '@/lib/previewInjectedScript';
+import { getPreviewNostrProviderScript } from '@/lib/previewNostrProvider';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { usePreviewSignerRpc } from '@/hooks/usePreviewSignerRpc';
+import { PreviewPermissionPrompt } from './PreviewPermissionPrompt';
 
 interface PreviewPaneProps {
   projectId: string;
@@ -104,6 +108,8 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
   const { fs } = useFS();
   const { projectsPath } = useFSPaths();
   const projectsManager = useProjectsManager();
+  const { user } = useCurrentUser();
+  const signerRpc = usePreviewSignerRpc(projectId);
 
   // Use console error state from provider
   const { hasErrors: hasConsoleErrors, clearErrors } = useConsoleError();
@@ -303,17 +309,29 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
     setIsFullscreen(prev => !prev);
   }, []);
 
-  /** Virtual path where the injected preview script is served. */
-  const INJECTED_SCRIPT_PATH = '/__injected__/preview.js';
+  /**
+   * Scripts served at virtual paths and injected into HTML responses. When a
+   * user is logged in, a NIP-07 provider lets the app use their signer.
+   */
+  const injectedScripts = useMemo(() => {
+    const scripts = new Map([['/__injected__/preview.js', getPreviewInjectedScript()]]);
+    if (user) {
+      scripts.set('/__injected__/nostr-provider.js', getPreviewNostrProviderScript(user.pubkey));
+    }
+    return scripts;
+  }, [user]);
 
-  /** Inject a script tag into an HTML string using DOMParser. */
+  /** Inject the script tags into an HTML string using DOMParser. */
   const injectScript = useCallback((html: string): string => {
     const doc = new DOMParser().parseFromString(html, 'text/html');
-    const tag = doc.createElement('script');
-    tag.src = INJECTED_SCRIPT_PATH;
-    doc.head.insertBefore(tag, doc.head.firstChild);
+    const first = doc.head.firstChild;
+    for (const path of injectedScripts.keys()) {
+      const tag = doc.createElement('script');
+      tag.src = path;
+      doc.head.insertBefore(tag, first);
+    }
     return '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
-  }, []);
+  }, [injectedScripts]);
 
   const handleFetch = useCallback(async (request: JSONRPCRequest) => {
     const { params, id } = request;
@@ -340,8 +358,9 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
       const path = url.pathname;
       const filePath = path;
 
-      // Serve the injected preview script at its virtual path
-      if (path === INJECTED_SCRIPT_PATH) {
+      // Serve the injected scripts at their virtual paths
+      const injectedScript = injectedScripts.get(path);
+      if (injectedScript !== undefined) {
         sendResponse({
           jsonrpc: '2.0',
           result: {
@@ -351,7 +370,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
               'Content-Type': 'application/javascript',
               'Cache-Control': 'no-cache',
             },
-            body: encodeBase64(new TextEncoder().encode(getPreviewInjectedScript())),
+            body: encodeBase64(new TextEncoder().encode(injectedScript)),
           },
           id
         });
@@ -460,7 +479,20 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
         id
       });
     }
-  }, [projectId, projectsManager, sendResponse, sendError, previewOrigin, injectScript]);
+  }, [projectId, projectsManager, sendResponse, sendError, previewOrigin, injectScript, injectedScripts]);
+
+  const { onRpc: onSignerRpc } = signerRpc;
+  const handleSignerRpc = useCallback(async (message: { id: string | number; method: string; params?: unknown }) => {
+    const { id } = message;
+    let reply: Record<string, unknown>;
+    try {
+      const result = await onSignerRpc(message.method, message.params);
+      reply = { jsonrpc: '2.0', id, result: result ?? null };
+    } catch (error) {
+      reply = { jsonrpc: '2.0', id, error: { code: -1, message: error instanceof Error ? error.message : String(error) } };
+    }
+    iframeRef.current?.contentWindow?.postMessage(reply, previewOrigin);
+  }, [onSignerRpc, previewOrigin]);
 
   // Setup messaging protocol for iframe communication
   useEffect(() => {
@@ -485,12 +517,14 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
         handleConsoleMessage(message);
       } else if (message.method === 'updateNavigationState') {
         handleUpdateNavigationState(message);
+      } else if (typeof message.method === 'string' && message.method.startsWith('nostr.') && message.id !== undefined) {
+        handleSignerRpc(message);
       }
     };
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [handleFetch, handleConsoleMessage, handleUpdateNavigationState, sendNotification, previewOrigin]);
+  }, [handleFetch, handleConsoleMessage, handleUpdateNavigationState, handleSignerRpc, sendNotification, previewOrigin]);
 
   useEffect(() => {
     if (selectedFile) {
@@ -714,20 +748,27 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
                       {hasBuiltProject ? (
                         <div
                           className={cn(
-                            "h-full transition-all duration-300 ease-in-out bg-background",
+                            "h-full relative transition-all duration-300 ease-in-out bg-background",
                             deviceMode === 'laptop' && "w-full",
                             deviceMode === 'tablet' && "w-full max-w-3xl shadow-lg",
                             deviceMode === 'phone' && "w-full max-w-sm shadow-lg"
                           )}
                         >
                           <iframe
-                            key={`${projectId}:${iframeReloadKey}`}
+                            key={`${projectId}:${user?.pubkey}:${iframeReloadKey}`}
                             ref={iframeRef}
                             src={`${previewOrigin}/`}
                             className="w-full h-full border-0"
                             title="Project Preview"
                             allow="microphone; camera; display-capture; geolocation; clipboard-read; clipboard-write; encrypted-media; fullscreen; autoplay; midi; accelerometer; gyroscope; magnetometer; ambient-light-sensor; payment; usb; xr-spatial-tracking"
                           />
+                          {signerRpc.pendingPrompt && (
+                            <PreviewPermissionPrompt
+                              key={signerRpc.pendingPrompt.id}
+                              prompt={signerRpc.pendingPrompt}
+                              onResolve={signerRpc.resolvePrompt}
+                            />
+                          )}
                         </div>
                       ) : (
                         <div className="h-full w-full flex items-center justify-center bg-muted p-4">

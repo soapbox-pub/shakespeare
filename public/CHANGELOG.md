@@ -1,5 +1,10 @@
 # Changelog
 
+## [9.17.1] - 2026-10-14
+
+### Fixed
+- Everything new in 9.17.0 — Python, type checking, and the reasoning effort setting — now actually reaches shakespeare.diy, after that release got stuck before it could go live
+
 ## [9.17.0] - 2026-10-14
 
 ### Added

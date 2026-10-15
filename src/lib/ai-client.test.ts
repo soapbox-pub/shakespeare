@@ -87,6 +87,26 @@ describe('applyOpenRouterTransforms', () => {
     expect(hasCache(body.messages[4])).toBe(true);
   });
 
+  it('skips empty text when placing message cache breakpoints', () => {
+    const toolCall = { id: 't1', type: 'function' as const, function: { name: 'shell', arguments: '{}' } };
+    const body = makeBody({
+      messages: [
+        { role: 'system', content: 'you are helpful' },
+        { role: 'user', content: 'build it' },
+        { role: 'assistant', content: '', tool_calls: [toolCall] },
+        { role: 'tool', tool_call_id: 't1', content: 'ok' },
+      ],
+    });
+    applyOpenRouterTransforms(body);
+
+    // The tool-only assistant turn keeps its empty string and gets no breakpoint.
+    expect(body.messages[2].content).toBe('');
+    const markedText = (m: OpenAI.Chat.Completions.ChatCompletionMessageParam) =>
+      Array.isArray(m.content) && m.content.some((b) => (b as { cache_control?: unknown }).cache_control !== undefined);
+    expect(markedText(body.messages[1])).toBe(true);
+    expect(markedText(body.messages[3])).toBe(true);
+  });
+
   it('normalizes string content to text block arrays for Anthropic', () => {
     const body = makeBody();
     applyOpenRouterTransforms(body);

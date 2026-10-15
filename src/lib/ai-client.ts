@@ -106,10 +106,12 @@ export function applyOpenRouterTransforms(
   if (!body.model.startsWith("anthropic/")) return;
 
   // Normalize the message history to use content blocks so we can attach
-  // cache_control to individual text parts.
+  // cache_control to individual text parts. Empty strings (assistant turns
+  // that only call tools) stay as they are: Anthropic rejects empty text
+  // blocks, and cache_control on one.
   body.messages = structuredClone(body.messages);
   body.messages = body.messages.map((m) => {
-    if (m.role !== "function" && typeof m.content === "string") {
+    if (m.role !== "function" && typeof m.content === "string" && m.content) {
       return { ...m, content: [{ type: "text", text: m.content }] };
     } else {
       return m;
@@ -118,13 +120,14 @@ export function applyOpenRouterTransforms(
 
   const systemMessage = body.messages.find((m) => m.role === "system");
   const nonSystemMessages = body.messages.filter((m) => m.role !== "system");
-  const lastTwoMessages = nonSystemMessages.slice(-2);
 
   if (systemMessage) {
     addCacheControl(systemMessage);
   }
-  for (const msg of lastTwoMessages) {
-    addCacheControl(msg);
+  // Mark the last two messages that have text to put a breakpoint on.
+  let breakpoints = 0;
+  for (let i = nonSystemMessages.length - 1; i >= 0 && breakpoints < 2; i--) {
+    if (addCacheControl(nonSystemMessages[i])) breakpoints++;
   }
 
   // Cache the tools array by marking the last tool with cache_control.
@@ -146,13 +149,18 @@ export function applyOpenRouterTransforms(
   }
 }
 
-/** Mutate msg to add an Anthropic `cache_control` property to its last text block */
-function addCacheControl(msg: OpenAI.Chat.Completions.ChatCompletionMessageParam) {
+/**
+ * Mutate msg to add an Anthropic `cache_control` property to its last
+ * non-empty text block. Returns whether a block was marked.
+ */
+function addCacheControl(msg: OpenAI.Chat.Completions.ChatCompletionMessageParam): boolean {
   if (Array.isArray(msg.content)) {
-    const lastTextBlock = msg.content.findLast((b) => b.type === "text");
+    const lastTextBlock = msg.content.findLast((b) => b.type === "text" && b.text !== "");
     if (lastTextBlock) {
       (lastTextBlock as { cache_control?: { type: "ephemeral" } })
         .cache_control = { type: "ephemeral" };
+      return true;
     }
   }
+  return false;
 };

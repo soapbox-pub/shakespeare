@@ -209,12 +209,6 @@ export function NpanelDeployForm({
           </div>
         )}
 
-        {nameState.kind === 'mine' && (
-          <p className="text-xs text-muted-foreground">
-            Updating <span className="font-mono">{subdomain.trim()}.{domain}</span>.
-          </p>
-        )}
-
         {nameState.kind === 'waiting' && (
           <div className="rounded-md border border-dashed p-3 space-y-2">
             <p className="text-sm">

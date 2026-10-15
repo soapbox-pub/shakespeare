@@ -864,16 +864,13 @@ export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProp
           </div>
         )}
 
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-xs text-muted-foreground">
-            You can close this. The deploy keeps going.
-          </p>
-          {canCancel && (
+        {canCancel && (
+          <div className="flex justify-end">
             <Button variant="outline" size="sm" onClick={() => cancelDeploy(projectId)}>
               Cancel
             </Button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     );
   };

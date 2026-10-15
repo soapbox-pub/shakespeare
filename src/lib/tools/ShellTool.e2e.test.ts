@@ -259,6 +259,21 @@ describe('ShellTool (end-to-end)', () => {
       expect(out).toBe('value=expanded\n');
     });
 
+    it('writes several files with heredocs and runs the command after them', async () => {
+      const out = await run([
+        "cat > x.ts <<'E'",
+        'const s = `${n}s`; // it\'s "fine"',
+        'E',
+        "cat > y.ts <<'E'",
+        "const re = /(https?:\\/\\/[^\\s]+|#\\w+)/g;",
+        'E',
+        'echo done',
+      ].join('\n'));
+      expect(out).toBe('done\n');
+      expect(await fs.readFile('/work/x.ts', 'utf8')).toBe('const s = `${n}s`; // it\'s "fine"\n');
+      expect(await fs.readFile('/work/y.ts', 'utf8')).toBe("const re = /(https?:\\/\\/[^\\s]+|#\\w+)/g;\n");
+    });
+
     it('2>&1 merges stderr into stdout (no bogus &1 file)', async () => {
       // cat on a missing file writes to stderr; 2>&1 should merge it
       // into stdout instead of writing to a file called "&1".

@@ -39,6 +39,8 @@ export interface Token {
   segments?: TokenSegment[];
   /** Byte offset in the source for error messages. */
   offset: number;
+  /** For heredoc delimiter WORDs: the body text, collected verbatim. */
+  heredocBody?: string;
 }
 
 const OPERATORS = new Set([
@@ -62,6 +64,8 @@ export function tokenize(input: string): Token[] {
   let i = 0;
   /** True if we just consumed whitespace/newline/operator and a `#` here starts a comment. */
   let atBoundary = true;
+  /** Heredoc delimiters seen on the current line, whose bodies start after the next newline. */
+  const pendingHeredocs: { token: Token; stripTabs: boolean }[] = [];
 
   const peek = (o = 0) => input[i + o];
   const atEnd = () => i >= input.length;
@@ -87,6 +91,12 @@ export function tokenize(input: string): Token[] {
       tokens.push({ type: 'NEWLINE', value: '\n', offset: i });
       i++;
       atBoundary = true;
+      // Heredoc bodies are raw text, not shell syntax: read them now and
+      // resume tokenizing after the last delimiter line.
+      for (const heredoc of pendingHeredocs) {
+        i = readHeredocBody(input, i, heredoc.token, heredoc.stripTabs);
+      }
+      pendingHeredocs.length = 0;
       continue;
     }
 
@@ -248,11 +258,38 @@ export function tokenize(input: string): Token[] {
 
     // Collapse adjacent literal segments for cleanliness.
     const collapsed = collapseLiterals(segments);
-    tokens.push({ type: 'WORD', value: raw, segments: collapsed, offset: wordStart });
+    const word: Token = { type: 'WORD', value: raw, segments: collapsed, offset: wordStart };
+    const prev = tokens[tokens.length - 1];
+    if (prev && isOperator(prev, '<<', '<<-')) {
+      pendingHeredocs.push({ token: word, stripTabs: prev.value === '<<-' });
+    }
+    tokens.push(word);
   }
 
   tokens.push({ type: 'EOF', value: '', offset: i });
   return tokens;
+}
+
+/**
+ * Read a heredoc body starting at offset i (the start of the line after
+ * the command), store it on the delimiter token, and return the offset
+ * just past the delimiter line. Without a delimiter line, the body runs
+ * to the end of the input.
+ */
+function readHeredocBody(input: string, i: number, delimiter: Token, stripTabs: boolean): number {
+  const tag = (delimiter.segments ?? []).map((seg) => seg.value).join('');
+  let body = '';
+  while (i < input.length) {
+    const nl = input.indexOf('\n', i);
+    const end = nl === -1 ? input.length : nl;
+    let line = input.slice(i, end);
+    if (stripTabs) line = line.replace(/^\t+/, '');
+    i = nl === -1 ? input.length : nl + 1;
+    if (line === tag) break;
+    body += line + '\n';
+  }
+  delimiter.heredocBody = body;
+  return i;
 }
 
 /** Try to match a multi-character operator at position i, longest first. */

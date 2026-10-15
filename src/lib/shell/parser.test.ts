@@ -4,7 +4,7 @@ import { parse, ParseError } from './parser';
 import type { CommandList, SimpleCommand, Pipeline, AndOrList, ForLoop, IfStatement, WhileLoop } from './ast';
 
 function parseStr(src: string): CommandList {
-  return parse(tokenize(src), src);
+  return parse(tokenize(src));
 }
 
 describe('parse', () => {
@@ -135,6 +135,26 @@ describe('parse', () => {
     const cmd = ast.commands[0] as SimpleCommand;
     expect(cmd.redirections[0].heredocExpand).toBe(false);
     expect(cmd.redirections[0].heredocBody).toBe('$HOME\n');
+  });
+
+  it('does not tokenize heredoc bodies as shell syntax', () => {
+    const ast = parseStr("cat <<'E'\nit's `x` \"y ${z\nE");
+    const cmd = ast.commands[0] as SimpleCommand;
+    expect(cmd.redirections[0].heredocBody).toBe("it's `x` \"y ${z\n");
+  });
+
+  it('parses the commands after a heredoc separately', () => {
+    const ast = parseStr("cat > a <<'E'\none\nE\ncat > b <<'E'\ntwo\nE\necho done");
+    expect(ast.commands).toHaveLength(3);
+    const [a, b, echo] = ast.commands as SimpleCommand[];
+    expect(a.redirections[1].heredocBody).toBe('one\n');
+    expect(b.redirections[1].heredocBody).toBe('two\n');
+    expect(echo.words).toHaveLength(2);
+  });
+
+  it('reads multiple heredocs on one line in order', () => {
+    const ast = parseStr('cat <<A && cat <<B\nfirst\nA\nsecond\nB\necho done');
+    expect(ast.commands).toHaveLength(2);
   });
 
   it('throws on unclosed for', () => {

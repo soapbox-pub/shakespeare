@@ -6,7 +6,7 @@ import type { JSRuntimeFS } from '../JSRuntime';
 import type { SimpleCommand, Word } from './ast';
 
 function wordFrom(src: string, argIndex = 1): Word {
-  const ast = parse(tokenize(src), src);
+  const ast = parse(tokenize(src));
   const cmd = ast.commands[0] as SimpleCommand;
   return cmd.words[argIndex];
 }

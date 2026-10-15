@@ -9,9 +9,8 @@
  *   - compound: for, while, until, if, case, subshell (…), group {…}
  *   - redirections (including fd numbers and heredocs)
  *
- * Also collects heredoc bodies: after the tokenizer finishes, any `<<TAG`
- * redirections need to read their body from the input stream. We handle
- * that by passing the raw input alongside the tokens.
+ * Heredoc bodies are collected by the tokenizer and attached to the
+ * delimiter token.
  */
 
 import type {
@@ -27,7 +26,7 @@ export class ParseError extends Error {
   }
 }
 
-/** A parser consumes tokens + the original source (for heredocs). */
+/** A parser consumes the token stream. */
 class Parser {
   private pos = 0;
   /**
@@ -41,10 +40,7 @@ class Parser {
    */
   private terminatorStack: string[][] = [];
 
-  constructor(
-    private readonly tokens: Token[],
-    private readonly source: string,
-  ) {}
+  constructor(private readonly tokens: Token[]) {}
 
   private isActiveTerminator(word: string): boolean {
     for (const set of this.terminatorStack) {
@@ -370,60 +366,15 @@ class Parser {
       return { op: realOp === '>&' ? '>' : '<', fd: fd ?? (realOp === '>&' ? 1 : 0), target: tokenToWord(t) };
     }
 
-    // Heredoc: gather body by scanning the source for the delimiter line.
+    // Heredoc: the tokenizer has already collected the body onto the delimiter.
     if (realOp === '<<') {
       const tagTok = this.expect('WORD', 'heredoc delimiter');
-      const { tag, expand } = parseHeredocTag(tagTok);
-      const body = this.readHeredocBody(tag, opStr === '<<-');
-      return { op: '<<', fd: fd ?? 0, target: tokenToWord(tagTok), heredocBody: body, heredocExpand: expand };
+      const expand = isHeredocExpanded(tagTok);
+      return { op: '<<', fd: fd ?? 0, target: tokenToWord(tagTok), heredocBody: tagTok.heredocBody ?? '', heredocExpand: expand };
     }
 
     const target = this.expect('WORD', 'redirection target');
     return { op: realOp, fd, target: tokenToWord(target) };
-  }
-
-  /**
-   * Heredoc body reader: finds the line matching the delimiter AFTER the
-   * current position in the input, extracts everything between, and
-   * advances the tokenizer's effective "where we are". Since heredocs
-   * are rare in the shell-tool use case, we implement a minimal version
-   * that works for single-line command input (no heredoc) and multi-line
-   * input (the body begins on the next newline).
-   */
-  private readHeredocBody(tag: string, stripTabs: boolean): string {
-    // Find the next NEWLINE token after the current position; the body
-    // starts after its offset + 1 and ends at the first line equal to `tag`.
-    let nlIdx = this.pos;
-    while (nlIdx < this.tokens.length && this.tokens[nlIdx].type !== 'NEWLINE' && this.tokens[nlIdx].type !== 'EOF') {
-      nlIdx++;
-    }
-    if (nlIdx >= this.tokens.length || this.tokens[nlIdx].type === 'EOF') {
-      // No newline — no heredoc body available. Return empty.
-      return '';
-    }
-    const bodyStart = this.tokens[nlIdx].offset + 1;
-    // Scan the source for the delimiter line.
-    let i = bodyStart;
-    const lines: string[] = [];
-    while (i < this.source.length) {
-      const nl = this.source.indexOf('\n', i);
-      const line = nl === -1 ? this.source.slice(i) : this.source.slice(i, nl);
-      const trimmed = stripTabs ? line.replace(/^\t+/, '') : line;
-      if (trimmed === tag) {
-        // Advance parser past all tokens up to and including this line.
-        const endOffset = nl === -1 ? this.source.length : nl + 1;
-        while (this.pos < this.tokens.length && this.tokens[this.pos].offset < endOffset) {
-          this.pos++;
-        }
-        return lines.map((l) => (stripTabs ? l.replace(/^\t+/, '') : l) + '\n').join('');
-      }
-      lines.push(line);
-      if (nl === -1) break;
-      i = nl + 1;
-    }
-    // Delimiter not found — consume to EOF and return whatever we have.
-    while (this.pos < this.tokens.length && this.tokens[this.pos].type !== 'EOF') this.pos++;
-    return lines.map((l) => (stripTabs ? l.replace(/^\t+/, '') : l) + '\n').join('');
   }
 
   /** Parse trailing redirections after a compound command. */
@@ -494,8 +445,8 @@ class Parser {
 }
 
 /** Export: parse a token stream into a CommandList AST. */
-export function parse(tokens: Token[], source: string): CommandList {
-  const parser = new Parser(tokens, source);
+export function parse(tokens: Token[]): CommandList {
+  const parser = new Parser(tokens);
   return parser.parseScript();
 }
 
@@ -630,16 +581,7 @@ function segmentsAfterChar(_tok: Token, _charIndex: number, valueText: string): 
   return { segments: [{ type: 'literal', value: valueText }] };
 }
 
-/** Decide whether a heredoc delimiter is quoted (disables expansion). */
-function parseHeredocTag(tok: Token): { tag: string; expand: boolean } {
-  if (!tok.segments) return { tag: tok.value, expand: true };
-  let tag = '';
-  let expand = true;
-  for (const seg of tok.segments) {
-    if (seg.type === 'literal') tag += seg.value;
-    else if (seg.type === 'single_quoted') { tag += seg.value; expand = false; }
-    else if (seg.type === 'double_quoted') { tag += seg.value; expand = false; }
-    else tag += seg.value; // ignore dollar inside a heredoc tag
-  }
-  return { tag, expand };
+/** A quoted heredoc delimiter disables expansion in the body. */
+function isHeredocExpanded(tok: Token): boolean {
+  return !tok.segments?.some((seg) => seg.type === 'single_quoted' || seg.type === 'double_quoted');
 }

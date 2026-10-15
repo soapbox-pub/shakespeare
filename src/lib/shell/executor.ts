@@ -96,7 +96,7 @@ export class ShellExecutor {
   async run(script: string): Promise<ExecuteResult> {
     let ast: CommandList;
     try {
-      ast = parse(tokenize(script), script);
+      ast = parse(tokenize(script));
     } catch (error) {
       return {
         exitCode: 2,

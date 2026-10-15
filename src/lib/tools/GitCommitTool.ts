@@ -110,13 +110,14 @@ export class GitCommitTool implements Tool<GitCommitParams> {
       // Get short hash (first 7 characters)
       const shortHash = commitSha.substring(0, 7);
 
-      // Analyze the changes for summary
+      // Analyze the changes for summary. In isomorphic-git's status matrix,
+      // a workdir status of 2 means the file differs from HEAD (1 means identical).
       const addedFiles = changedFiles.filter(([, headStatus, workdirStatus]) =>
-        headStatus === 0 && workdirStatus === 1
+        headStatus === 0 && workdirStatus === 2
       ).length;
 
       const modifiedFiles = changedFiles.filter(([, headStatus, workdirStatus]) =>
-        headStatus === 1 && workdirStatus === 1
+        headStatus === 1 && workdirStatus === 2
       ).length;
 
       const deletedFiles = changedFiles.filter(([, headStatus, workdirStatus]) =>

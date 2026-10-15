@@ -43,8 +43,8 @@ describe('GitCommitTool', () => {
 
     // Setup default mocks
     mockGitInstance.statusMatrix.mockResolvedValue([
-      ['src/file1.ts', 1, 1, 0], // Modified file (present in head and workdir, but not staged)
-      ['src/file2.ts', 0, 1, 0], // New file (absent in head, present in workdir, not staged)
+      ['src/file1.ts', 1, 2, 1], // Modified file (workdir differs from head, not staged)
+      ['src/file2.ts', 0, 2, 0], // New file (absent in head, present in workdir, not staged)
     ]);
     mockGitInstance.add.mockResolvedValue(undefined);
     mockGitInstance.remove.mockResolvedValue(undefined);
@@ -169,6 +169,22 @@ describe('GitCommitTool', () => {
     expect(result.content).toContain('🔗 Hash:');
     expect(result.content).toContain('🌿 Branch:');
     expect(result.content).toContain('📊 Changes:');
+    expect(result.content).toContain('1 file added');
+    expect(result.content).toContain('1 file modified');
+  });
+
+  it('should count deleted files', async () => {
+    vi.mocked(mockFS.stat).mockResolvedValue({
+      isDirectory: () => true,
+      isFile: () => false,
+    });
+    vi.mocked(mockGitInstance.statusMatrix).mockResolvedValue([
+      ['src/old.ts', 1, 0, 1],
+    ]);
+
+    const result = await tool.execute({ message: 'Remove old file' });
+
+    expect(result.content).toContain('1 file deleted');
   });
 
 

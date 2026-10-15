@@ -1,5 +1,16 @@
 # Changelog
 
+## [9.18.0] - 2026-10-15
+
+### Added
+- Nostr apps you build can now sign in with your account right in the preview — Shakespeare asks before each request, can remember your choice per project, and always checks with you before reading your private messages
+- Deploys keep going in the background, so you can close the deploy menu or switch projects while your site publishes, and a notification lets you know when it's live
+- Watch your nsite and npanel deploys happen with a progress bar and each step named as it goes, and cancel partway through if you change your mind
+
+### Changed
+- Publishing to nsite and npanel is much faster — your site goes live as soon as every file has landed somewhere, and redeploys only upload and sign for what actually changed
+- The deploy menu is simpler, with less-used options tucked away under Advanced
+
 ## [9.17.1] - 2026-10-14
 
 ### Fixed

@@ -1,5 +1,22 @@
 # Changelog
 
+## [9.17.0] - 2026-10-14
+
+### Added
+- Shakespeare can now run Python right in your browser — it can write and run scripts to crunch data, generate files, or try out an idea, and install packages with pip
+- Shakespeare now checks its own code for type errors as it works, catching mistakes before you ever see them, and gets this check ready in the background as soon as you open a project
+- Choose how hard the AI thinks before it answers in Settings > AI > Advanced — it starts on low for quick, affordable replies, and you can turn it up for tougher tasks
+
+### Changed
+- Shakespeare's built-in terminal now speaks real bash, so the commands the AI runs behave the way they would on your own computer instead of failing in surprising ways
+
+### Fixed
+- Claude models on OpenRouter keep their train of thought between steps instead of losing it after every action
+- New projects get a proper name again with newer Claude models instead of being called "untitled"
+- Files written with multi-line commands are no longer left empty or garbled
+- Commit summaries list the files you added and changed again
+- Long conversations with Claude stay fast and affordable thanks to more reliable caching
+
 ## [9.16.6] - 2026-10-14
 
 ### Fixed

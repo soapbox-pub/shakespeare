@@ -16,11 +16,13 @@ import { Git } from './git';
 import type { NPool } from '@nostrify/nostrify';
 import type { AppConfig } from '@/contexts/AppContext';
 import { getSentryInstance } from './sentry';
+import { mergeReasoningDetails, type ReasoningDetail } from './reasoningDetails';
 
 export type AIMessage = OpenAI.Chat.Completions.ChatCompletionMessageParam | {
   role: 'assistant';
   content: string;
   reasoning_content?: string;
+  reasoning_details?: ReasoningDetail[];
   tool_calls?: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[];
 };
 
@@ -411,6 +413,15 @@ export class SessionManager {
         // This ensures the UI shows all image types, but API only receives supported formats
         messages = filterSupportedImages(messages);
 
+        // `reasoning_content` is a plain-text alias for the same reasoning; send only the signed blocks.
+        messages = messages.map((msg) => {
+          if (msg.role === 'assistant' && 'reasoning_details' in msg && 'reasoning_content' in msg) {
+            const { reasoning_content: _, ...rest } = msg as AIMessage & { reasoning_content?: string };
+            return rest as OpenAI.Chat.Completions.ChatCompletionMessageParam;
+          }
+          return msg;
+        });
+
         // If this session has already determined images aren't supported, strip them proactively
         if (session.imagesNotSupported) {
           messages = stripImageUrls(messages);
@@ -485,6 +496,7 @@ export class SessionManager {
 
         let accumulatedContent = '';
         let accumulatedReasoningContent = '';
+        const accumulatedReasoningDetails: ReasoningDetail[] = [];
         const accumulatedToolCalls: Map<number, OpenAI.Chat.Completions.ChatCompletionMessageFunctionToolCall> = new Map();
         let finishReason: string | null = null;
 
@@ -512,6 +524,10 @@ export class SessionManager {
             // ollama uses 'reasoning'
           } else if (delta && 'reasoning' in delta && typeof delta.reasoning === 'string') {
             reasoningContent = delta.reasoning;
+          }
+          // OpenRouter also sends structured blocks, which must be sent back for Claude to keep its thinking.
+          if (delta && 'reasoning_details' in delta && Array.isArray(delta.reasoning_details)) {
+            mergeReasoningDetails(accumulatedReasoningDetails, delta.reasoning_details as ReasoningDetail[]);
           }
           if (reasoningContent) {
             accumulatedReasoningContent += reasoningContent;
@@ -593,6 +609,7 @@ export class SessionManager {
           role: 'assistant',
           content: accumulatedContent,
           ...(accumulatedReasoningContent && { reasoning_content: accumulatedReasoningContent }),
+          ...(accumulatedReasoningDetails.length > 0 && { reasoning_details: accumulatedReasoningDetails }),
           ...(accumulatedToolCalls.size > 0 && { tool_calls: [...accumulatedToolCalls.values()] })
         };
 

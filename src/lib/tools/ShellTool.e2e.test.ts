@@ -295,7 +295,8 @@ describe('ShellTool (end-to-end)', () => {
 
     it('rejects redirection to denied paths without creating a file', async () => {
       const result = await run('echo test > /etc/passwd');
-      expect(result).toContain('write access denied');
+      expect(result).toContain('permission denied');
+      await expect(fs.stat('/etc/passwd')).rejects.toThrow(/ENOENT/);
     });
   });
 

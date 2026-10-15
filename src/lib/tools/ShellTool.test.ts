@@ -1,23 +1,8 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { ShellTool } from './ShellTool';
 import { Git } from '../git';
-import type { JSRuntimeFS } from '../JSRuntime';
 import { NPool } from '@nostrify/nostrify';
-
-// Mock filesystem
-const createMockFS = (): JSRuntimeFS => ({
-  readFile: vi.fn(),
-  writeFile: vi.fn(),
-  readdir: vi.fn(),
-  mkdir: vi.fn(),
-  stat: vi.fn(),
-  lstat: vi.fn(),
-  unlink: vi.fn(),
-  rmdir: vi.fn(),
-  rename: vi.fn(),
-  readlink: vi.fn(),
-  symlink: vi.fn(),
-});
+import { HostFS } from '@/test/HostFS';
 
 const createMockNostr = (): NPool => ({
   req: vi.fn(),
@@ -30,359 +15,307 @@ const createMockNostr = (): NPool => ({
 }) as unknown as NPool;
 
 describe('ShellTool', () => {
-  let mockFS: JSRuntimeFS;
-  let mockGit: Git;
-  let mockNostr: NPool;
+  let fs: HostFS;
   let shellTool: ShellTool;
   const testCwd = '/test/dir';
   const testCorsProxy = 'https://proxy.shakespeare.diy/?url={href}';
 
-  beforeEach(() => {
-    mockFS = createMockFS();
-    mockNostr = createMockNostr();
-    mockGit = new Git({ fs: mockFS, nostr: mockNostr });
-    shellTool = new ShellTool(mockFS, testCwd, mockGit, testCorsProxy);
+  const run = async (command: string) => (await shellTool.execute({ command })).content;
+  const read = (path: string) => fs.readFile(path, 'utf8');
+
+  beforeEach(async () => {
+    fs = new HostFS();
+    await fs.mkdirp(testCwd);
+    await fs.mkdirp('/tmp');
+    const git = new Git({ fs, nostr: createMockNostr() });
+    shellTool = new ShellTool(fs, testCwd, git, testCorsProxy);
+  });
+
+  afterEach(() => {
+    fs.dispose();
   });
 
   it('should have correct tool properties', () => {
-    expect(shellTool.description).toContain('Execute shell commands');
+    expect(shellTool.description).toContain('bash');
     expect(shellTool.description).toContain('pipes');
     expect(shellTool.description).toContain('cat');
     expect(shellTool.inputSchema).toBeDefined();
   });
 
   it('should return error for empty command', async () => {
-    const result = await shellTool.execute({ command: '' });
-    expect(result.content).toBe('Error: Empty command');
+    expect(await run('')).toBe('Error: Empty command');
   });
 
   it('should return error for whitespace-only command', async () => {
-    const result = await shellTool.execute({ command: '   ' });
-    expect(result.content).toBe('Error: Empty command');
+    expect(await run('   ')).toBe('Error: Empty command');
   });
 
   it('should return error for unknown command', async () => {
-    const result = await shellTool.execute({ command: 'unknowncommand' });
-    expect(result.content).toContain("Command 'unknowncommand' not found");
-    expect(result.content).toContain('Available commands:');
-    expect(result.content).toContain('cat');
+    const result = await run('unknowncommand');
+    expect(result).toContain('unknowncommand: command not found');
+    expect(result).toContain('Available commands:');
+    expect(result).toContain('cat');
+    expect(result).toContain('Exit code: 127');
   });
 
   it('should execute cat command successfully', async () => {
-    const fileContent = 'Hello, World!';
-    vi.mocked(mockFS.stat).mockResolvedValue({
-      isDirectory: () => false,
-      isFile: () => true,
-    });
-    vi.mocked(mockFS.readFile).mockResolvedValue(fileContent);
-
-    const result = await shellTool.execute({ command: 'cat test.txt' });
-
-    expect(result.content).toBe(fileContent);
+    await fs.seed({ '/test/dir/test.txt': 'Hello, World!' });
+    expect(await run('cat test.txt')).toBe('Hello, World!');
   });
 
-  it('should parse commands with arguments correctly', async () => {
-    vi.mocked(mockFS.stat).mockResolvedValue({
-      isDirectory: () => false,
-      isFile: () => true,
-    });
-    vi.mocked(mockFS.readFile)
-      .mockResolvedValueOnce('File 1\n')
-      .mockResolvedValueOnce('File 2\n');
-
-    const result = await shellTool.execute({ command: 'cat file1.txt file2.txt' });
-
-    expect(result.content).toBe('File 1\nFile 2\n');
+  it('should concatenate several files', async () => {
+    await fs.seed({ '/test/dir/file1.txt': 'File 1\n', '/test/dir/file2.txt': 'File 2\n' });
+    expect(await run('cat file1.txt file2.txt')).toBe('File 1\nFile 2\n');
   });
 
   it('should handle quoted arguments', async () => {
-    vi.mocked(mockFS.stat).mockResolvedValue({
-      isDirectory: () => false,
-      isFile: () => true,
-    });
-    vi.mocked(mockFS.readFile).mockResolvedValue('Content');
-
-    await shellTool.execute({ command: 'cat "file with spaces.txt"' });
-
-    expect(mockFS.readFile).toHaveBeenCalledWith('/test/dir/file with spaces.txt', 'utf8');
+    await fs.seed({ '/test/dir/file with spaces.txt': 'Content' });
+    expect(await run('cat "file with spaces.txt"')).toBe('Content');
   });
 
   it('should return current working directory', () => {
     expect(shellTool.getCurrentWorkingDirectory()).toBe(testCwd);
   });
 
-  it('should allow setting working directory', () => {
-    const newCwd = '/new/dir';
-    shellTool.setCurrentWorkingDirectory(newCwd);
-    expect(shellTool.getCurrentWorkingDirectory()).toBe(newCwd);
+  it('should allow setting working directory', async () => {
+    await fs.mkdirp('/new/dir');
+    shellTool.setCurrentWorkingDirectory('/new/dir');
+    expect(shellTool.getCurrentWorkingDirectory()).toBe('/new/dir');
+    expect(await run('pwd')).toBe('/new/dir\n');
   });
 
   it('should return available commands', () => {
-    const commands = shellTool.getAvailableCommands();
-    expect(commands.length).toBeGreaterThan(1);
-
-    // Check that cat command is included
-    const catCommand = commands.find(cmd => cmd.name === 'cat');
-    expect(catCommand).toEqual({
-      name: 'cat',
-      description: 'Concatenate and display file contents',
-      usage: 'cat [-nbsETAvu] [--] [file...]',
-    });
-
-    // Check that other commands are included
-    const commandNames = commands.map(cmd => cmd.name);
-    expect(commandNames).toContain('ls');
-    expect(commandNames).toContain('cd');
-    expect(commandNames).toContain('pwd');
-    expect(commandNames).toContain('echo');
-    expect(commandNames).toContain('rm');
-    expect(commandNames).toContain('cp');
-    expect(commandNames).toContain('mv');
+    const names = shellTool.getAvailableCommands().map((cmd) => cmd.name);
+    for (const name of ['ls', 'pwd', 'echo', 'rm', 'cp', 'mv', 'cat', 'grep', 'sed', 'awk', 'jq', 'git', 'tsc', 'python3']) {
+      expect(names).toContain(name);
+    }
+    expect(names).not.toContain('sqlite3');
+    expect(shellTool.getAvailableCommands().find((cmd) => cmd.name === 'git')?.description).toBeTruthy();
   });
 
-  it('should handle command errors gracefully', async () => {
-    vi.mocked(mockFS.stat).mockRejectedValue(new Error('ENOENT: no such file or directory'));
-
-    const result = await shellTool.execute({ command: 'cat nonexistent.txt' });
-
-    expect(result.content).toContain('No such file or directory');
-    expect(result.content).toContain('Exit code: 1');
-  });
-
-  it('should show stderr output', async () => {
-    // With no args, cat reads empty stdin and outputs nothing.
-    // Use cat on a missing file to trigger an error instead.
-    vi.mocked(mockFS.stat).mockRejectedValue(new Error('ENOENT: no such file or directory'));
-    const result = await shellTool.execute({ command: 'cat missing.txt' });
-
-    expect(result.content).toContain('No such file or directory');
-    expect(result.content).toContain('Exit code: 1');
+  it('should report a missing file', async () => {
+    const result = await run('cat nonexistent.txt');
+    expect(result).toContain('No such file or directory');
+    expect(result).toContain('Exit code: 1');
   });
 
   it('should execute echo command', async () => {
-    const result = await shellTool.execute({ command: 'echo hello world' });
-
-    expect(result.content).toBe('hello world\n');
+    expect(await run('echo hello world')).toBe('hello world\n');
   });
 
   it('should execute pwd command', async () => {
-    const result = await shellTool.execute({ command: 'pwd' });
-
-    expect(result.content).toBe(testCwd + '\n');
+    expect(await run('pwd')).toBe(testCwd + '\n');
   });
 
-  it('should handle cd command and update working directory', async () => {
-    vi.mocked(mockFS.stat).mockResolvedValue({
-      isDirectory: () => true,
-      isFile: () => false,
-    });
-
-    const result = await shellTool.execute({ command: 'cd subdir' });
-
-    expect(result.content).toBe('(no output)');
+  it('should keep the working directory after cd', async () => {
+    await fs.mkdirp('/test/dir/subdir');
+    expect(await run('cd subdir')).toBe('(no output)');
     expect(shellTool.getCurrentWorkingDirectory()).toBe('/test/dir/subdir');
+    expect(await run('pwd')).toBe('/test/dir/subdir\n');
+  });
+
+  it('should not keep variables between calls', async () => {
+    await run('X=1; f() { echo hi; }');
+    expect(await run('echo "[$X]"; type f >/dev/null 2>&1 || echo nofunc')).toBe('[]\nnofunc\n');
   });
 
   describe('output redirection', () => {
     it('should redirect output to file with > operator', async () => {
-      const result = await shellTool.execute({ command: 'echo "hello world" > test.txt' });
-
-      expect(result.content).toBe('(no output)');
-      expect(mockFS.writeFile).toHaveBeenCalledWith('/test/dir/test.txt', 'hello world\n', 'utf8');
+      expect(await run('echo "hello world" > test.txt')).toBe('(no output)');
+      expect(await read('/test/dir/test.txt')).toBe('hello world\n');
     });
 
     it('should append output to file with >> operator', async () => {
-      vi.mocked(mockFS.readFile).mockResolvedValue('existing content\n');
-
-      const result = await shellTool.execute({ command: 'echo "new line" >> test.txt' });
-
-      expect(result.content).toBe('(no output)');
-      expect(mockFS.readFile).toHaveBeenCalledWith('/test/dir/test.txt', 'utf8');
-      expect(mockFS.writeFile).toHaveBeenCalledWith('/test/dir/test.txt', 'existing content\nnew line\n', 'utf8');
+      await fs.seed({ '/test/dir/test.txt': 'existing content\n' });
+      expect(await run('echo "new line" >> test.txt')).toBe('(no output)');
+      expect(await read('/test/dir/test.txt')).toBe('existing content\nnew line\n');
     });
 
     it('should create new file with >> operator if file does not exist', async () => {
-      vi.mocked(mockFS.readFile).mockRejectedValue(new Error('ENOENT: no such file or directory'));
-
-      const result = await shellTool.execute({ command: 'echo "first line" >> newfile.txt' });
-
-      expect(result.content).toBe('(no output)');
-      expect(mockFS.writeFile).toHaveBeenCalledWith('/test/dir/newfile.txt', 'first line\n', 'utf8');
+      await run('echo "first line" >> newfile.txt');
+      expect(await read('/test/dir/newfile.txt')).toBe('first line\n');
     });
 
     it('should handle quoted filenames in redirection', async () => {
-      const result = await shellTool.execute({ command: 'echo test > "file with spaces.txt"' });
-
-      expect(result.content).toBe('(no output)');
-      expect(mockFS.writeFile).toHaveBeenCalledWith('/test/dir/file with spaces.txt', 'test\n', 'utf8');
+      await run('echo test > "file with spaces.txt"');
+      expect(await read('/test/dir/file with spaces.txt')).toBe('test\n');
     });
 
     it('should handle absolute paths in redirection', async () => {
-      const result = await shellTool.execute({ command: 'echo test > /tmp/absolute.txt' });
+      await run('echo test > /tmp/absolute.txt');
+      expect(await read('/tmp/absolute.txt')).toBe('test\n');
+    });
 
-      expect(result.content).toBe('(no output)');
-      expect(mockFS.writeFile).toHaveBeenCalledWith('/tmp/absolute.txt', 'test\n', 'utf8');
+    it('should create missing parent directories', async () => {
+      await run('echo x > a/b/c.txt');
+      expect(await read('/test/dir/a/b/c.txt')).toBe('x\n');
+    });
+
+    it('should discard output sent to /dev/null', async () => {
+      expect(await run('echo hidden > /dev/null; cat nope 2>/dev/null; echo shown')).toBe('shown\n');
     });
 
     it('should reject redirection to denied paths', async () => {
-      const result = await shellTool.execute({ command: 'echo test > /readonly/file.txt' });
+      const result = await run('echo test > /readonly/file.txt');
+      expect(result).toContain('permission denied');
+      expect(result).toContain('Exit code: 1');
+      await expect(fs.stat('/readonly/file.txt')).rejects.toThrow(/ENOENT/);
+    });
 
-      // The write is rejected before we ever touch the filesystem,
-      // preventing silent file creation at bogus paths.
-      expect(result.content).toContain('write access denied');
-      expect(result.content).toContain('Exit code: 1');
-      expect(mockFS.writeFile).not.toHaveBeenCalledWith('/readonly/file.txt', expect.anything(), expect.anything());
+    it('should reject commands that write to denied paths', async () => {
+      const result = await run('touch /readonly.txt; mkdir /nope; echo after');
+      expect(result).toContain('after');
+      await expect(fs.stat('/readonly.txt')).rejects.toThrow(/ENOENT/);
+      await expect(fs.stat('/nope')).rejects.toThrow(/ENOENT/);
+    });
+
+    it('should write heredocs verbatim', async () => {
+      await run([
+        "cat > x.ts <<'E'",
+        'function f() {',
+        '  return `${n}s`; // it\'s "fine"',
+        '}',
+        'E',
+        "cat > y.ts <<'E'",
+        "const re = /(https?:\\/\\/[^\\s]+|#\\w+)/g;",
+        'E',
+      ].join('\n'));
+      expect(await read('/test/dir/x.ts')).toBe('function f() {\n  return `${n}s`; // it\'s "fine"\n}\n');
+      expect(await read('/test/dir/y.ts')).toBe("const re = /(https?:\\/\\/[^\\s]+|#\\w+)/g;\n");
     });
   });
 
   describe('compound commands', () => {
     it('should execute commands with && operator (success case)', async () => {
-      const result = await shellTool.execute({ command: 'pwd && echo hello' });
-
-      expect(result.content).toContain(testCwd);
-      expect(result.content).toContain('hello');
+      expect(await run('pwd && echo hello')).toBe(`${testCwd}\nhello\n`);
     });
 
     it('should execute commands with && operator (failure case)', async () => {
-      vi.mocked(mockFS.stat).mockRejectedValue(new Error('ENOENT: no such file or directory'));
-
-      const result = await shellTool.execute({ command: 'cat nonexistent.txt && echo should not run' });
-
-      expect(result.content).toContain('No such file or directory');
-      expect(result.content).not.toContain('should not run');
+      const result = await run('cat nonexistent.txt && echo should not run');
+      expect(result).toContain('No such file or directory');
+      expect(result).not.toContain('should not run');
     });
 
     it('should execute commands with || operator (success case)', async () => {
-      const result = await shellTool.execute({ command: 'pwd || echo fallback' });
-
-      expect(result.content).toContain(testCwd);
-      expect(result.content).not.toContain('fallback');
+      const result = await run('pwd || echo fallback');
+      expect(result).toContain(testCwd);
+      expect(result).not.toContain('fallback');
     });
 
     it('should execute commands with || operator (failure case)', async () => {
-      vi.mocked(mockFS.stat).mockRejectedValue(new Error('ENOENT: no such file or directory'));
-
-      const result = await shellTool.execute({ command: 'cat nonexistent.txt || echo fallback' });
-
-      expect(result.content).toContain('No such file or directory');
-      expect(result.content).toContain('fallback');
+      const result = await run('cat nonexistent.txt || echo fallback');
+      expect(result).toContain('No such file or directory');
+      expect(result).toContain('fallback');
     });
 
     it('should execute commands with ; operator', async () => {
-      const result = await shellTool.execute({ command: 'echo first; echo second' });
-
-      expect(result.content).toContain('first');
-      expect(result.content).toContain('second');
+      expect(await run('echo first; echo second')).toBe('first\nsecond\n');
     });
 
     it('should execute commands with pipe operator', async () => {
-      const result = await shellTool.execute({ command: 'echo "hello world" | cat' });
-
-      expect(result.content).toContain('hello world');
+      expect(await run('echo "hello world" | cat')).toBe('hello world\n');
     });
 
     it('should handle complex compound commands', async () => {
-      const result = await shellTool.execute({ command: 'echo "line1\nline2\nline3" | head -n 2' });
-
-      expect(result.content).toContain('line1');
-      expect(result.content).toContain('line2');
-      expect(result.content).not.toContain('line3');
+      expect(await run('printf "line1\\nline2\\nline3\\n" | head -n 2')).toBe('line1\nline2\n');
     });
 
     it('should parse quoted strings in compound commands', async () => {
-      const result = await shellTool.execute({ command: 'echo "hello && world" && echo success' });
+      expect(await run('echo "hello && world" && echo success')).toBe('hello && world\nsuccess\n');
+    });
+  });
 
-      expect(result.content).toContain('hello && world');
-      expect(result.content).toContain('success');
+  describe('bash language', () => {
+    it('should assign command substitution results', async () => {
+      expect(await run('X=$(echo hi); echo "$X"')).toBe('hi\n');
+    });
+
+    it('should handle nested quotes in command substitution', async () => {
+      expect(await run('echo "$(echo "inner $(echo deep)")"')).toBe('inner deep\n');
+    });
+
+    it('should test files', async () => {
+      await fs.seed({ '/test/dir/a.txt': 'A' });
+      expect(await run('[ -f a.txt ] && echo f; [ -d . ] && echo d; [ -e nope ] || echo missing')).toBe('f\nd\nmissing\n');
+    });
+
+    it('should support [[ ]], functions, locals and arrays', async () => {
+      expect(await run('f() { local x=$1; echo "hi $x"; }; f there; a=(1 2 3); echo ${a[1]} ${#a[@]}; [[ foo.ts == *.ts ]] && echo ts'))
+        .toBe('hi there\n2 3\nts\n');
+    });
+
+    it('should support parameter expansion', async () => {
+      expect(await run('F=a/b.tsx; echo ${UNSET:-def} ${#F} ${F%.*} ${F##*/} ${F//b/c}')).toBe('def 7 a/b b.tsx a/c.tsx\n');
+    });
+
+    it('should support loops with break, C-style for and while read', async () => {
+      expect(await run('for i in 1 2 3; do [ $i = 2 ] && break; echo $i; done; for ((i=0;i<2;i++)); do echo c$i; done; printf "a\\nb\\n" | while read -r l; do echo "<$l>"; done'))
+        .toBe('1\nc0\nc1\n<a>\n<b>\n');
+    });
+
+    it('should isolate subshells', async () => {
+      await fs.mkdirp('/test/dir/src');
+      expect(await run('(cd src && pwd); pwd; (X=inner); echo "[$X]"; (exit 3); echo after $?'))
+        .toBe('/test/dir/src\n/test/dir\n[]\nafter 3\n');
+    });
+
+    it('should stop on errors with set -e', async () => {
+      const result = await run('set -e; false; echo should-not-print');
+      expect(result).not.toContain('should-not-print');
+      expect(result).toContain('Exit code: 1');
+    });
+
+    it('should support here-strings and process substitution', async () => {
+      expect(await run('cat <<< "hi there"; diff <(echo a) <(echo a) && echo same')).toBe('hi there\nsame\n');
+    });
+
+    it('should find custom commands with which and command -v', async () => {
+      expect(await run('which git; command -v tsc')).toBe('/usr/bin/git\n/usr/bin/tsc\n');
+    });
+
+    it('should pass piped stdin to custom commands', async () => {
+      expect(await run('printf ab | hexdump -C')).toContain('61 62');
     });
   });
 
   describe('glob expansion', () => {
+    beforeEach(async () => {
+      await fs.seed({
+        '/test/dir/a.tsx': 'a',
+        '/test/dir/b.tsx': 'b',
+        '/test/dir/readme.md': 'r',
+        '/test/dir/.hidden.tsx': 'h',
+        '/test/dir/src/foo.ts': 'foo',
+        '/test/dir/src/bar.ts': 'bar',
+      });
+    });
+
     it('should expand * wildcard to matching filenames', async () => {
-      // /test/dir contains three files
-      vi.mocked(mockFS.readdir).mockImplementation(async (path: string) => {
-        if (path === '/test/dir') return ['a.tsx', 'b.tsx', 'readme.md'];
-        return [];
-      });
-      vi.mocked(mockFS.stat).mockResolvedValue({
-        isDirectory: () => false,
-        isFile: () => true,
-      });
-      vi.mocked(mockFS.readFile).mockResolvedValue('x');
-
-      await shellTool.execute({ command: 'cat *.tsx' });
-
-      // Both .tsx files should be read (in sorted order).
-      expect(mockFS.readFile).toHaveBeenCalledWith('/test/dir/a.tsx', 'utf8');
-      expect(mockFS.readFile).toHaveBeenCalledWith('/test/dir/b.tsx', 'utf8');
-      expect(mockFS.readFile).not.toHaveBeenCalledWith('/test/dir/readme.md', 'utf8');
+      expect(await run('cat *.tsx')).toBe('ab');
     });
 
     it('should expand globs across path segments', async () => {
-      vi.mocked(mockFS.readdir).mockImplementation(async (path: string) => {
-        if (path === '/test/dir/src') return ['foo.ts', 'bar.ts'];
-        return [];
-      });
-      vi.mocked(mockFS.stat).mockResolvedValue({
-        isDirectory: () => false,
-        isFile: () => true,
-      });
-      vi.mocked(mockFS.readFile).mockResolvedValue('');
-
-      await shellTool.execute({ command: 'cat src/*.ts' });
-
-      expect(mockFS.readFile).toHaveBeenCalledWith('/test/dir/src/bar.ts', 'utf8');
-      expect(mockFS.readFile).toHaveBeenCalledWith('/test/dir/src/foo.ts', 'utf8');
+      expect(await run('echo src/*.ts')).toBe('src/bar.ts src/foo.ts\n');
     });
 
     it('should not expand quoted patterns', async () => {
-      vi.mocked(mockFS.readdir).mockResolvedValue(['a.tsx', 'b.tsx']);
-      vi.mocked(mockFS.stat).mockRejectedValue(new Error('ENOENT: no such file or directory'));
-
-      const result = await shellTool.execute({ command: 'cat "*.tsx"' });
-
-      // Pattern preserved literally; readdir not consulted for this arg.
-      expect(mockFS.readdir).not.toHaveBeenCalled();
-      expect(result.content).toContain('No such file or directory');
+      expect(await run('cat "*.tsx"')).toContain('No such file or directory');
     });
 
     it('should leave pattern unchanged when no files match', async () => {
-      vi.mocked(mockFS.readdir).mockResolvedValue(['readme.md']);
-      vi.mocked(mockFS.stat).mockRejectedValue(new Error('ENOENT: no such file or directory'));
-
-      const result = await shellTool.execute({ command: 'cat *.tsx' });
-
-      // cat receives the literal "*.tsx" and fails to stat it.
-      expect(result.content).toContain('*.tsx');
-      expect(result.content).toContain('No such file or directory');
+      const result = await run('cat *.nothing');
+      expect(result).toContain('*.nothing');
+      expect(result).toContain('No such file or directory');
     });
 
     it('should skip hidden files unless pattern starts with dot', async () => {
-      vi.mocked(mockFS.readdir).mockResolvedValue(['.hidden.ts', 'visible.ts']);
-      vi.mocked(mockFS.stat).mockResolvedValue({
-        isDirectory: () => false,
-        isFile: () => true,
-      });
-      vi.mocked(mockFS.readFile).mockResolvedValue('');
-
-      await shellTool.execute({ command: 'cat *.ts' });
-
-      expect(mockFS.readFile).toHaveBeenCalledWith('/test/dir/visible.ts', 'utf8');
-      expect(mockFS.readFile).not.toHaveBeenCalledWith('/test/dir/.hidden.ts', 'utf8');
+      expect(await run('echo *.tsx; echo .*.tsx')).toBe('a.tsx b.tsx\n.hidden.tsx\n');
     });
 
     it('should not expand option flags starting with -', async () => {
-      // An arg like "-la" shouldn't be treated as a glob even if it
-      // somehow contained brackets.
-      vi.mocked(mockFS.readdir).mockResolvedValue(['file.txt']);
-      vi.mocked(mockFS.stat).mockResolvedValue({
-        isDirectory: () => true,
-        isFile: () => false,
-      });
-
-      const result = await shellTool.execute({ command: 'ls -la' });
-      // Just make sure it doesn't blow up; ls itself handles its own args.
-      expect(result.content).toBeDefined();
+      const result = await run('ls -la');
+      expect(result).toContain('a.tsx');
+      expect(result).not.toContain('Exit code');
     });
   });
 });

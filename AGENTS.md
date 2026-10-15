@@ -61,15 +61,15 @@ Shakespeare provides AI agents with specialized tools for project development (n
 
 #### Shell Commands
 
-Shakespeare provides a comprehensive set of shell commands that are JavaScript reimplementations of common Unix commands. These commands operate on the virtual filesystem (VFS) and are accessible through the ShellTool. The shell commands are implemented in `src/lib/commands/` and provide familiar Unix-like functionality for file and directory operations.
+The ShellTool runs scripts with [just-bash](https://github.com/vercel-labs/just-bash), a bash interpreter written in TypeScript, over the VFS. It supports the bash language (functions, arrays, `[[ ]]`, `set -e`, here-docs and here-strings, process substitution, ...) and the standard utilities (`cat`, `ls`, `grep`, `rg`, `sed`, `awk`, `jq`, `find`, `xargs`, `tee`, `tree`, ...). The working directory persists between calls; variables and functions don't.
 
-**Available Commands:**
-- **File Operations**: `cat`, `cp`, `mv`, `rm`, `touch`, `find`, `grep`
-- **Directory Operations**: `cd`, `ls`, `mkdir`, `pwd`, `tree`
-- **System Commands**: `echo`, `which`, `wc`, `head`, `tail`
-- **TypeScript**: `tsc` (the real compiler CLI, e.g. `tsc --noEmit`), `npx` (runs built-ins only, e.g. `npx tsc`)
-- **Python**: `python3`/`python` (CPython via Pyodide, see below), `pip`/`pip3` (`install` only, via micropip)
-- **Git Commands**: `git add`, `git commit`, `git push`, `git pull`, `git status`, `git log`, `git diff`, `git branch`, `git checkout`, `git switch`, `git merge`, `git revert`, `git rm`, `git mv`, `git restore`, `git rev-parse`, `git ls-files`, `git tag`, `git stash`, `git fetch`, `git clone`, `git init`, `git reset`, `git show`, `git remote`, `git config`
+- **Filesystem bridge**: `src/lib/shell/BashFS.ts` adapts the VFS to just-bash. It enforces the write restrictions below, creates missing parent directories on write (as just-bash's own filesystems do), and provides `/dev/null` and `/bin`/`/usr/bin` (listing the shell's commands, for `which` and `command -v`) virtually.
+- **Browser build**: just-bash's browser bundle imports `node:zlib`; `vite.config.ts` aliases it to `src/lib/shell/zlib.ts`, so `gzip`/`gunzip`/`zcat` are left out. `sqlite3` is left out too.
+- **Custom commands**: commands just-bash lacks live in `src/lib/commands/` and are registered as just-bash custom commands:
+  - **Network and files**: `curl` (through the CORS proxy), `unzip`, `hexdump`
+  - **TypeScript**: `tsc` (the real compiler CLI, e.g. `tsc --noEmit`), `npx` (runs built-ins only, e.g. `npx tsc`)
+  - **Python**: `python3`/`python` (CPython via Pyodide, see below), `pip`/`pip3` (`install` only, via micropip)
+  - **Git Commands**: `git add`, `git commit`, `git push`, `git pull`, `git status`, `git log`, `git diff`, `git branch`, `git checkout`, `git switch`, `git merge`, `git revert`, `git rm`, `git mv`, `git restore`, `git rev-parse`, `git ls-files`, `git tag`, `git stash`, `git fetch`, `git clone`, `git init`, `git reset`, `git show`, `git remote`, `git config`
 
 #### Typechecking (`tsc`)
 

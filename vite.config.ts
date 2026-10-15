@@ -100,6 +100,8 @@ export default defineConfig(() => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      // just-bash's browser bundle imports node:zlib for gzip.
+      "node:zlib": path.resolve(__dirname, "./src/lib/shell/zlib.ts"),
     },
   },
 }));

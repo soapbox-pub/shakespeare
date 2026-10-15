@@ -1,46 +1,21 @@
 import { z } from "zod";
+import { Bash, defineCommand, getCommandNames, type CommandName } from "just-bash/browser";
 import type { Tool, ToolResult } from "./Tool";
 import type { JSRuntimeFS } from "../JSRuntime";
 import type { ShellCommand } from "../commands/ShellCommand";
 import { Git } from "../git";
 import type { NostrSigner } from "@nostrify/nostrify";
-import { ShellExecutor } from "../shell/executor";
+import { BashFS } from "../shell/BashFS";
 import {
-  CatCommand,
-  CdCommand,
-  ClearCommand,
-  CpCommand,
   CurlCommand,
-  CutCommand,
-  DateCommand,
-  DiffCommand,
-  EchoCommand,
-  EnvCommand,
-  FindCommand,
   GitCommand,
-  GrepCommand,
-  HeadCommand,
   HexdumpCommand,
-  LsCommand,
-  MkdirCommand,
-  MvCommand,
   NpxCommand,
   PipCommand,
   PythonCommand,
-  PwdCommand,
-  RmCommand,
-  SedCommand,
   ShakespeareCommand,
-  SortCommand,
-  TailCommand,
-  TouchCommand,
-  TrCommand,
   TscCommand,
-  UniqCommand,
   UnzipCommand,
-  WcCommand,
-  WhoamiCommand,
-  WhichCommand,
 } from "../commands";
 
 interface ShellToolParams {
@@ -48,105 +23,66 @@ interface ShellToolParams {
 }
 
 /**
- * Shell tool exposing a bash-like command interface over the virtual
- * filesystem.
+ * just-bash built-ins that don't work in the browser (sqlite3 needs worker
+ * threads, the gzip family needs zlib) or are replaced by our own commands.
+ */
+const EXCLUDED_BUILTINS = new Set(['sqlite3', 'gzip', 'gunzip', 'zcat', 'curl', 'python3', 'python']);
+
+/**
+ * Shell tool exposing bash over the virtual filesystem.
  *
- * Internally backed by ShellExecutor, which tokenizes, parses, expands,
- * and runs the command against a registry of ShellCommand
- * implementations. Supports the practical subset of bash features:
- *
- *   - Pipes, &&, ||, ;, newlines
- *   - Quoting (single/double) and escaping
- *   - Variable expansion ($VAR, ${VAR}), command substitution ($(...), ``),
- *     arithmetic expansion ($((...))), tilde (~), brace expansion ({a,b,c}),
- *     glob expansion (*, ?, [...])
- *   - Redirections: >, >>, <, <<, 2>, 2>>, &>, 2>&1, 1>&2
- *   - Control flow: if/then/elif/else/fi, for, while, until, case
- *   - Subshells (…) and brace groups { … }
- *   - Built-ins: true, false, :, export, unset, exit, test / [
+ * Scripts are run by just-bash, a bash interpreter written in TypeScript: the
+ * full bash language (functions, arrays, [[ ]], set -e, here-strings, process
+ * substitution, ...) and the usual Unix utilities. Shakespeare's own commands
+ * (git, tsc, python3, curl, ...) are registered alongside them. The working
+ * directory carries over between calls; variables and functions don't.
  */
 export class ShellTool implements Tool<ShellToolParams> {
-  private readonly fs: JSRuntimeFS;
-  private readonly git: Git;
-  private readonly commands: Map<string, ShellCommand>;
-  private readonly signer?: NostrSigner;
-  private readonly corsProxy: string;
-  private readonly executor: ShellExecutor;
+  private readonly bash: Bash;
+  private readonly custom: Map<string, ShellCommand>;
+  private cwd: string;
 
   readonly description =
-    "Execute shell commands over the virtual filesystem. Supports pipes (|), conditionals (&&, ||, ;), quoting, variable expansion ($VAR), command substitution ($(cmd), `cmd`), arithmetic ($((…))), tilde (~), brace {a,b} and glob (*, ?, […]) expansion, redirections (>, >>, <, <<, 2>, 2>&1), control flow (if, for, while, until, case), and subshells. Built-in commands: cat, ls, cd, pwd, cp, mv, rm, echo, head, tail, grep, find, wc, touch, mkdir, sort, uniq, cut, tr, sed, diff, which, whoami, date, env, clear, git, curl, unzip, hexdump, tsc, npx, python3, pip. Typecheck the project with `tsc --noEmit` (the real TypeScript compiler, using the project's tsconfig and dependencies). `python3` is real CPython (Pyodide): scripts can read and write the project and /tmp, Pyodide's packages (numpy, pandas, ...) load automatically on import, and `pip install` adds pure-Python packages for the session. It cannot open sockets or start subprocesses.";
+    "Run a bash script over the virtual filesystem. The full bash language is supported: pipes, &&/||, quoting, variables and parameter expansion (${x:-d}, ${x%.*}, ${x//a/b}), command substitution, arithmetic, globs and brace expansion, redirections (>, >>, <, <<, <<<, 2>&1, &>, /dev/null), here-docs, process substitution, if/for/while/until/case, functions, local, arrays, [[ ]], set -e/-u/-o pipefail, and subshells. Commands include cat, ls, cp, mv, rm, mkdir, touch, ln, find, grep, rg, sed, awk, jq, yq, sort, uniq, cut, tr, head, tail, wc, diff, xargs, tee, printf, basename, dirname, tree, base64, sha256sum, tar, plus git, curl, unzip, hexdump, tsc, npx, python3 and pip. Typecheck the project with `tsc --noEmit` (the real TypeScript compiler, using the project's tsconfig and dependencies). `python3` is real CPython (Pyodide): scripts can read and write the project and /tmp, Pyodide's packages (numpy, pandas, ...) load automatically on import, and `pip install` adds pure-Python packages for the session. It cannot open sockets or start subprocesses. The working directory persists between calls; shell variables and functions do not.";
 
   readonly inputSchema = z.object({
     command: z
       .string()
       .describe(
-        'Shell command to execute. Supports pipes (cat x | grep y), conditionals (cmd1 && cmd2 || cmd3), quoting ("a b" or \'a b\'), variable expansion ($VAR or ${VAR}), command substitution ($(cmd) or `cmd`), arithmetic ($((1+2))), glob patterns (*.ts), brace expansion ({a,b,c}), redirections (> file, >> file, < file, 2>&1), and control flow (if/for/while/case/until). Example: "for f in src/*.tsx; do echo $f; done"',
+        'Bash script to execute. Example: "for f in src/*.tsx; do grep -q useState \\"$f\\" && echo \\"$f\\"; done"',
       ),
   });
 
   constructor(fs: JSRuntimeFS, cwd: string, git: Git, corsProxy: string, signer?: NostrSigner) {
-    this.fs = fs;
-    this.git = git;
-    this.corsProxy = corsProxy;
-    this.signer = signer;
-    this.commands = new Map();
+    this.cwd = cwd;
 
-    // Register all built-in commands.
-    this.registerCommand(new CatCommand(fs));
-    const cdCommand = new CdCommand(fs);
-    this.registerCommand(cdCommand);
-    this.registerCommand(new ClearCommand());
-    this.registerCommand(new CpCommand(fs));
-    this.registerCommand(new CurlCommand(fs, this.corsProxy));
-    this.registerCommand(new CutCommand(fs));
-    this.registerCommand(new DateCommand());
-    this.registerCommand(new DiffCommand(fs));
-    this.registerCommand(new EchoCommand());
-    const envCommand = new EnvCommand();
-    this.registerCommand(envCommand);
-    this.registerCommand(new FindCommand(fs));
-    this.registerCommand(new GitCommand({ git: this.git, fs, cwd, signer: this.signer }));
-    this.registerCommand(new GrepCommand(fs));
-    this.registerCommand(new HeadCommand(fs));
-    this.registerCommand(new HexdumpCommand(fs));
-    this.registerCommand(new LsCommand(fs));
-    this.registerCommand(new MkdirCommand(fs));
-    this.registerCommand(new MvCommand(fs));
-    const pythonCommand = new PythonCommand(fs, cwd);
-    this.registerCommand(pythonCommand);
-    this.registerCommand(new PythonCommand(fs, cwd, 'python'));
-    this.registerCommand(new PipCommand(pythonCommand));
-    this.registerCommand(new PipCommand(pythonCommand, 'pip3'));
-    this.registerCommand(new PwdCommand());
-    this.registerCommand(new RmCommand(fs));
-    this.registerCommand(new SedCommand(fs));
-    this.registerCommand(new ShakespeareCommand());
-    this.registerCommand(new SortCommand(fs));
-    this.registerCommand(new TailCommand(fs));
-    this.registerCommand(new TouchCommand(fs));
-    this.registerCommand(new TrCommand(fs));
-    this.registerCommand(new TscCommand(fs, cwd));
-    this.registerCommand(new UniqCommand(fs));
-    this.registerCommand(new UnzipCommand(fs));
-    this.registerCommand(new WcCommand(fs));
-    this.registerCommand(new WhoamiCommand());
-    // which and npx must see the final registry.
-    this.registerCommand(new WhichCommand(this.commands));
-    this.registerCommand(new NpxCommand(this.commands));
+    const python = new PythonCommand(fs, cwd);
+    const custom: ShellCommand[] = [
+      new CurlCommand(fs, corsProxy),
+      new GitCommand({ git, fs, cwd, signer }),
+      new HexdumpCommand(fs),
+      python,
+      new PythonCommand(fs, cwd, 'python'),
+      new PipCommand(python),
+      new PipCommand(python, 'pip3'),
+      new ShakespeareCommand(),
+      new TscCommand(fs, cwd),
+      new UnzipCommand(fs),
+    ];
+    this.custom = new Map(custom.map((cmd) => [cmd.name, cmd]));
+    const npx = new NpxCommand(this.custom);
+    this.custom.set(npx.name, npx);
 
-    this.executor = new ShellExecutor({
-      fs,
-      commands: this.commands,
-      initialCwd: cwd,
-      initialEnv: { PWD: cwd, SHELL: '/bin/sh', HOME: cwd },
-      home: cwd,
+    const builtins = getCommandNames().filter((name) => !EXCLUDED_BUILTINS.has(name));
+    const commandNames = [...new Set([...builtins, ...this.custom.keys()])];
+
+    this.bash = new Bash({
+      fs: new BashFS(fs, cwd, () => commandNames),
+      cwd,
+      env: { HOME: cwd, SHELL: '/bin/bash', USER: 'user' },
+      commands: builtins as CommandName[],
+      customCommands: [...this.custom.values()].map(toBashCommand),
     });
-    cdCommand.setHomeDir(cwd);
-    envCommand.envSource = () => this.executor.getVars();
-  }
-
-  private registerCommand(command: ShellCommand): void {
-    this.commands.set(command.name, command);
   }
 
   async execute(args: ShellToolParams): Promise<ToolResult> {
@@ -155,46 +91,72 @@ export class ShellTool implements Tool<ShellToolParams> {
       return { content: "Error: Empty command" };
     }
 
-    const result = await this.executor.run(command);
-    // Keep PWD in sync after cd.
-    this.executor.setVar('PWD', this.executor.getCwd());
+    let result;
+    try {
+      result = await this.bash.exec(command, { cwd: this.cwd, rawScript: true });
+    } catch (error) {
+      // just-bash rejects when a redirection's write fails (e.g. outside the project).
+      const message = error instanceof Error ? error.message : String(error);
+      return { content: `bash: ${message}\nThe script stopped at this error.\nExit code: 1` };
+    }
+    if (result.env.PWD) this.cwd = result.env.PWD;
 
-    // Format output in the shape existing tests/UI expect.
-    return { content: formatResult(result.stdout, result.stderr, result.exitCode) };
+    let stderr = result.stderr;
+    if (/: command not found$/m.test(stderr)) {
+      stderr += `Available commands: ${this.getAvailableCommands().map((cmd) => cmd.name).join(', ')}\n`;
+    }
+
+    return { content: formatResult(result.stdout, stderr, result.exitCode) };
   }
 
   /** Current working directory (updated by cd). */
   getCurrentWorkingDirectory(): string {
-    return this.executor.getCwd();
+    return this.cwd;
   }
 
   /** Replace the working directory. */
   setCurrentWorkingDirectory(newCwd: string): void {
-    this.executor.setCwd(newCwd);
-    this.executor.setVar('PWD', newCwd);
+    this.cwd = newCwd;
   }
 
   /** List of user-facing commands (excludes easter eggs). */
   getAvailableCommands(): Array<{ name: string; description: string; usage: string }> {
-    return Array.from(this.commands.values())
+    const builtins = getCommandNames()
+      .filter((name) => !EXCLUDED_BUILTINS.has(name) && !this.custom.has(name))
+      .map((name) => ({ name, description: '', usage: '' }));
+    const custom = [...this.custom.values()]
       .filter((cmd) => !cmd.isEasterEgg)
-      .map((cmd) => ({
-        name: cmd.name,
-        description: cmd.description,
-        usage: cmd.usage,
-      }));
+      .map((cmd) => ({ name: cmd.name, description: cmd.description, usage: cmd.usage }));
+    return [...builtins, ...custom].sort((a, b) => a.name.localeCompare(b.name));
   }
+}
+
+/** Expose a Shakespeare command to just-bash. */
+function toBashCommand(cmd: ShellCommand) {
+  return defineCommand(cmd.name, async (args, ctx) => {
+    const input = decodeStdin(ctx.stdin);
+    const result = await cmd.execute(args, ctx.cwd, input || undefined);
+    const stderr = result.stderr && !result.stderr.endsWith('\n') ? `${result.stderr}\n` : result.stderr;
+    return { stdout: result.stdout, stderr, exitCode: result.exitCode };
+  });
+}
+
+/** just-bash passes stdin as a latin1 byte string; our commands take text. */
+function decodeStdin(stdin: unknown): string {
+  const bytes = String(stdin);
+  if (!bytes) return '';
+  return new TextDecoder().decode(Uint8Array.from(bytes, (c) => c.charCodeAt(0)));
 }
 
 function formatResult(stdout: string, stderr: string, exitCode: number): string {
   let output = '';
   if (stdout) output += stdout;
   if (stderr) {
-    if (output) output += '\n';
+    if (output && !output.endsWith('\n')) output += '\n';
     output += stderr;
   }
   if (exitCode !== 0) {
-    if (output) output += '\n';
+    if (output && !output.endsWith('\n')) output += '\n';
     output += `Exit code: ${exitCode}`;
   }
   return output || '(no output)';

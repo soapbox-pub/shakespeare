@@ -107,20 +107,11 @@ export function Terminal({ cwd, className }: TerminalProps) {
       // Use virtual shell
       if (!shellToolRef.current) return;
 
-      // Handle special help command
-      if (command.trim() === 'help') {
-        const availableCommands = shellToolRef.current.getAvailableCommands();
-        const helpText = `Available commands:\n\n${availableCommands.map(cmd =>
-          `${cmd.name.padEnd(12)} - ${cmd.description}`
-        ).join('\n')}\n\nUse 'which <command>' for more details about a specific command.`;
-        addLine('output', helpText);
-      } else {
-        const result = await shellToolRef.current.execute({ command });
+      const result = await shellToolRef.current.execute({ command });
 
-        // Add output
-        if (result.content && result.content.trim()) {
-          addLine('output', result.content);
-        }
+      // Add output
+      if (result.content && result.content.trim()) {
+        addLine('output', result.content);
       }
     } catch (error) {
       addLine('error', `Error: ${error instanceof Error ? error.message : 'Unknown error'}`);

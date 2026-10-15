@@ -2,7 +2,7 @@ import type { NostrSigner } from '@nostrify/nostrify';
 import mime from 'mime';
 import { nip19 } from 'nostr-tools';
 import type { JSRuntimeFS } from '../JSRuntime';
-import type { DeployAdapter, DeployOptions, DeployResult, NsiteDeployConfig } from './types';
+import type { DeployAdapter, DeployOptions, DeployProgress, DeployResult, NsiteDeployConfig } from './types';
 import { buildNsiteUrl, toNsiteDTag } from '../utils/nsite';
 import { publishToRelays } from './publishToRelays';
 
@@ -20,6 +20,18 @@ const UPLOAD_AUTH_BATCH_SIZE = 20;
 
 /** Max concurrent uploads per Blossom server */
 const UPLOAD_CONCURRENCY = 4;
+
+/** Max concurrent HEAD checks per Blossom server — bodyless, so cheap to run wide */
+const HEAD_CONCURRENCY = 8;
+
+/**
+ * How long the first upload auth waits for company (ms). HEAD checks finish in
+ * bunches, and every hash that arrives in this window shares one signature.
+ */
+const AUTH_BATCH_WINDOW_MS = 50;
+
+/** Minimum gap between upload progress reports (ms) */
+const PROGRESS_INTERVAL_MS = 100;
 
 /** Timeout for bodyless probe requests — HEAD checks and gateway probes (ms) */
 const FETCH_TIMEOUT_MS = 15_000;
@@ -121,6 +133,64 @@ async function createBatchUploadAuth(
   };
   const signed = await signer.signEvent(template);
   return `Nostr ${btoa(JSON.stringify(signed))}`;
+}
+
+/**
+ * Hands out BUD-02 auth headers on demand, signing them in batches.
+ *
+ * Only blobs some server is actually missing get signed for, so a redeploy
+ * that changed two files costs one signature rather than one per twenty files.
+ * Signing happens one batch at a time — a remote signer is the slowest thing in
+ * the deploy, and uploads whose header is ready go ahead while the next batch
+ * waits on it. Once the signer refuses, everything after is refused with the
+ * same error rather than prompting again.
+ */
+class UploadAuthorizer {
+  private tokens = new Map<string, Promise<string>>();
+  private queue: { hash: string; resolve: (header: string) => void; reject: (err: unknown) => void }[] = [];
+
+  /** Whether a signature is being waited on */
+  busy = false;
+  /** The signer's refusal, once there has been one */
+  error?: unknown;
+
+  constructor(
+    private signer: NostrSigner,
+    private onBusyChange: () => void,
+  ) {}
+
+  authorize(sha256: string): Promise<string> {
+    let token = this.tokens.get(sha256);
+    if (!token) {
+      token = new Promise((resolve, reject) => this.queue.push({ hash: sha256, resolve, reject }));
+      this.tokens.set(sha256, token);
+      void this.drain();
+    }
+    return token;
+  }
+
+  private async drain(): Promise<void> {
+    if (this.busy) return;
+    this.busy = true;
+    this.onBusyChange();
+
+    await new Promise(resolve => setTimeout(resolve, AUTH_BATCH_WINDOW_MS));
+
+    while (this.queue.length) {
+      const batch = this.queue.splice(0, UPLOAD_AUTH_BATCH_SIZE);
+      try {
+        if (this.error) throw this.error;
+        const header = await createBatchUploadAuth(this.signer, batch.map(b => b.hash));
+        for (const b of batch) b.resolve(header);
+      } catch (err) {
+        this.error ??= err;
+        for (const b of batch) b.reject(err);
+      }
+    }
+
+    this.busy = false;
+    this.onBusyChange();
+  }
 }
 
 /**
@@ -229,65 +299,60 @@ type UploadOutcome =
   | { ok: false; reason: string };
 
 /**
- * Upload a single file to a single Blossom server using a pre-signed auth header.
- * Skips the upload if the blob already exists on the server.
+ * PUT a single blob to a single Blossom server using a pre-signed auth header.
+ *
+ * XMLHttpRequest rather than fetch, because it is the only way a browser will
+ * say how much of a request body has been sent, and that is what a progress
+ * bar is made of.
  *
  * Reports why it failed rather than just that it did: a 413, a 401 and a
  * timeout are three different problems with three different answers, and a
  * bare boolean makes them indistinguishable to the person who has to fix it.
  */
-async function uploadToServer(
+function putBlob(
   serverBase: string,
   file: FileEntry,
   authHeader: string,
+  onProgress: (loaded: number) => void,
 ): Promise<UploadOutcome> {
-  // Skip if already present
-  if (await blobExistsOnServer(serverBase, file.sha256)) {
-    return { ok: true };
-  }
-
-  const blob = new File([file.data], file.path.split('/').pop() || 'file', {
-    type: file.contentType,
-  });
-
   const timeout = uploadTimeoutMs(file.data.byteLength);
 
-  try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeout);
-    try {
-      const resp = await fetch(`${serverBase}/upload`, {
-        method: 'PUT',
-        headers: {
-          Authorization: authHeader,
-          'Content-Type': file.contentType,
-        },
-        body: blob,
-        signal: controller.signal,
-      });
+  return new Promise(resolve => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('PUT', `${serverBase}/upload`);
+    xhr.setRequestHeader('Authorization', authHeader);
+    xhr.setRequestHeader('Content-Type', file.contentType);
+    xhr.timeout = timeout;
 
-      if (resp.ok) {
-        return { ok: true };
+    xhr.upload.onprogress = (event) => onProgress(event.loaded);
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve({ ok: true });
+        return;
       }
 
       // BUD-01 puts the refusal in X-Reason, and Blossom servers list it in
       // Access-Control-Expose-Headers precisely so a browser client can read
       // it. statusText is empty over HTTP/2, so it only gets appended when set.
-      const detail = resp.headers.get('x-reason');
-      const status = resp.statusText
-        ? `${resp.status} ${resp.statusText}`
-        : String(resp.status);
+      const detail = xhr.getResponseHeader('x-reason');
+      const status = xhr.statusText
+        ? `${xhr.status} ${xhr.statusText}`
+        : String(xhr.status);
 
-      return { ok: false, reason: detail ? `${status} — ${detail}` : status };
-    } finally {
-      clearTimeout(timer);
-    }
-  } catch (err) {
-    if (err instanceof DOMException && err.name === 'AbortError') {
-      return { ok: false, reason: `timed out after ${Math.round(timeout / 1000)}s` };
-    }
-    return { ok: false, reason: err instanceof Error ? err.message : String(err) };
-  }
+      resolve({ ok: false, reason: detail ? `${status} — ${detail}` : status });
+    };
+
+    xhr.ontimeout = () => {
+      resolve({ ok: false, reason: `timed out after ${Math.round(timeout / 1000)}s` });
+    };
+
+    xhr.onerror = () => {
+      resolve({ ok: false, reason: 'network error' });
+    };
+
+    xhr.send(new Blob([file.data], { type: file.contentType }));
+  });
 }
 
 /**
@@ -322,25 +387,176 @@ function describeUploadFailures(
 }
 
 /**
- * Run an async task queue with a fixed concurrency limit.
+ * A gate that lets at most `concurrency` tasks run at once.
  */
-async function runConcurrent<T>(
-  items: T[],
-  limit: number,
-  fn: (item: T) => Promise<void>,
-): Promise<void> {
-  let index = 0;
-  async function worker() {
-    while (index < items.length) {
-      const item = items[index++];
-      await fn(item);
+function limiter(concurrency: number) {
+  let active = 0;
+  const waiting: (() => void)[] = [];
+
+  return async <T>(task: () => Promise<T>): Promise<T> => {
+    while (active >= concurrency) {
+      await new Promise<void>(resolve => waiting.push(resolve));
     }
-  }
-  const workers: Promise<void>[] = [];
-  for (let i = 0; i < Math.min(limit, items.length); i++) {
-    workers.push(worker());
-  }
-  await Promise.all(workers);
+    active++;
+    try {
+      return await task();
+    } finally {
+      active--;
+      waiting.shift()?.();
+    }
+  };
+}
+
+/** One blob's way to being live, which is being on at least one server. */
+interface BlobState {
+  file: FileEntry;
+  /** Servers that have not yet answered for this blob */
+  pending: number;
+  covered: boolean;
+  /** Bytes each server has received so far, for uploads in flight */
+  loaded: Map<string, number>;
+}
+
+/** Blobs no server took, and what each server said about them. */
+interface UploadReport {
+  uncovered: FileEntry[];
+  failures: Map<string, { server: string; reason: string }[]>;
+  /** The signer's refusal, if it refused */
+  authError?: unknown;
+}
+
+/**
+ * Put every blob on every server, resolving once each blob is on at least one.
+ *
+ * That is the moment the site can be published: the manifest lists every
+ * server, and a gateway that misses on one tries the next. Waiting for every
+ * server instead means waiting for the slowest one — and a server that is down
+ * outright costs a full upload timeout per file before anything is published.
+ * The remaining copies carry on in the background, and a later deploy fills in
+ * any gaps, since it checks before it uploads.
+ */
+function uploadBlobs(
+  blobs: FileEntry[],
+  serverBases: string[],
+  signer: NostrSigner,
+  onProgress?: (progress: DeployProgress) => void,
+): Promise<UploadReport> {
+  return new Promise(resolve => {
+    const states = blobs.map((file): BlobState => ({
+      file,
+      pending: serverBases.length,
+      covered: false,
+      loaded: new Map(),
+    }));
+
+    const failures = new Map<string, { server: string; reason: string }[]>();
+    const totalBytes = blobs.reduce((sum, b) => sum + b.data.byteLength, 0);
+
+    let settled = 0;
+    let coveredCount = 0;
+    let coveredBytes = 0;
+    let activePuts = 0;
+    let finished = false;
+    let lastReport = 0;
+
+    const authorizer = new UploadAuthorizer(signer, () => report(true));
+
+    const report = (force = false) => {
+      if (finished || !onProgress) return;
+      const now = Date.now();
+      if (!force && now - lastReport < PROGRESS_INTERVAL_MS) return;
+      lastReport = now;
+
+      let sent = coveredBytes;
+      for (const state of states) {
+        if (!state.covered && state.loaded.size) {
+          sent += Math.max(...state.loaded.values());
+        }
+      }
+
+      let stage = 'Checking which files are already uploaded';
+      if (activePuts > 0) stage = 'Uploading files';
+      else if (authorizer.busy) stage = 'Waiting for your signer';
+
+      onProgress({
+        stage,
+        fraction: totalBytes ? sent / totalBytes : 1,
+        detail: `${coveredCount} of ${blobs.length} files · ${formatBytes(sent)} of ${formatBytes(totalBytes)}`,
+      });
+    };
+
+    const answer = (state: BlobState, server: string, outcome: UploadOutcome) => {
+      state.pending--;
+      state.loaded.delete(server);
+
+      if (outcome.ok) {
+        if (!state.covered) {
+          state.covered = true;
+          coveredCount++;
+          coveredBytes += state.file.data.byteLength;
+          settled++;
+        }
+      } else {
+        const reasons = failures.get(state.file.sha256) ?? [];
+        reasons.push({ server, reason: outcome.reason });
+        failures.set(state.file.sha256, reasons);
+        if (state.pending === 0 && !state.covered) settled++;
+      }
+
+      if (settled === blobs.length && !finished) {
+        report(true);
+        finished = true;
+        resolve({
+          uncovered: states.filter(s => !s.covered).map(s => s.file),
+          failures,
+          authError: authorizer.error,
+        });
+      } else {
+        report();
+      }
+    };
+
+    report(true);
+
+    for (const serverBase of serverBases) {
+      const server = serverBase.replace(/^https?:\/\//, '');
+      const head = limiter(HEAD_CONCURRENCY);
+      const put = limiter(UPLOAD_CONCURRENCY);
+
+      for (const state of states) {
+        void (async () => {
+          if (await head(() => blobExistsOnServer(serverBase, state.file.sha256))) {
+            answer(state, server, { ok: true });
+            return;
+          }
+
+          let authHeader: string;
+          try {
+            authHeader = await authorizer.authorize(state.file.sha256);
+          } catch (err) {
+            const reason = err instanceof Error ? err.message : String(err);
+            answer(state, server, { ok: false, reason: `upload not authorized: ${reason}` });
+            return;
+          }
+
+          const outcome = await put(async () => {
+            activePuts++;
+            report(true);
+            try {
+              return await putBlob(serverBase, state.file, authHeader, (loaded) => {
+                state.loaded.set(server, loaded);
+                report();
+              });
+            } finally {
+              activePuts--;
+            }
+          });
+
+          answer(state, server, outcome);
+        })();
+      }
+    }
+  });
 }
 
 /**
@@ -349,9 +565,11 @@ async function runConcurrent<T>(
  * Deploys a built project as a Nostr static site using the nsite v2 spec:
  * - Uses the logged-in user's NostrSigner — no dedicated per-site keypair needed
  * - Pre-hashes all files with SHA-256 (Web Crypto API)
- * - Signs batched BUD-02 kind-24242 auth tokens (20 files per signing call)
- * - HEAD-checks each file on each Blossom server before uploading
- * - PUTs files to Blossom servers with pre-signed auth headers
+ * - HEAD-checks each blob on each Blossom server before uploading
+ * - Signs batched BUD-02 kind-24242 auth tokens (up to 20 blobs per signing
+ *   call), only for blobs some server is missing
+ * - PUTs blobs to Blossom servers, publishing as soon as each is on one server
+ *   while the other copies finish in the background
  * - Publishes a single kind-15128 (root) or kind-35128 (named) site manifest event
  *   containing all ["path", "/path", sha256] tags and ["server", url] Blossom
  *   hints — no separate kind 10002 or kind 10063 published
@@ -372,6 +590,7 @@ export class NsiteAdapter implements DeployAdapter {
   private siteDescription?: string;
   private sourceUrl?: string;
   private siteIdentifier?: string;
+  private probeVanity: boolean;
 
   constructor(config: NsiteDeployConfig) {
     this.fs = config.fs;
@@ -384,10 +603,11 @@ export class NsiteAdapter implements DeployAdapter {
     this.siteDescription = config.siteDescription;
     this.sourceUrl = config.sourceUrl;
     this.siteIdentifier = config.siteIdentifier ? toNsiteDTag(config.siteIdentifier) : undefined;
+    this.probeVanity = config.probeVanity ?? true;
   }
 
   async deploy(options: DeployOptions): Promise<DeployResult> {
-    const { projectPath } = options;
+    const { projectPath, onProgress } = options;
     const distPath = `${projectPath}/dist`;
 
     // Verify build output exists
@@ -400,70 +620,34 @@ export class NsiteAdapter implements DeployAdapter {
     const pubkey = await this.signer.getPublicKey();
     const npub = nip19.npubEncode(pubkey);
 
+    const serverBases = this.blossomServers.map(s => s.replace(/\/$/, ''));
+    if (serverBases.length === 0) {
+      throw new Error('No Blossom servers are configured to upload to.');
+    }
+
     // ── Step 1: Walk dist/ and read + hash all files ──────────────────────────
-    const files: FileEntry[] = [];
-    await this.collectFiles(distPath, '', files);
+    const files = await this.collectFiles(distPath, onProgress);
 
     if (files.length === 0) {
       throw new Error('No files found in dist directory.');
     }
 
-    // ── Step 2: Pre-sign batched BUD-02 auth tokens ───────────────────────────
-    // One kind-24242 event covers up to UPLOAD_AUTH_BATCH_SIZE sha256 hashes,
-    // dramatically reducing signer calls when using remote signers/bunkers.
-    const authTokenMap = new Map<string, string>();
-    for (let i = 0; i < files.length; i += UPLOAD_AUTH_BATCH_SIZE) {
-      const batch = files.slice(i, i + UPLOAD_AUTH_BATCH_SIZE);
-      const hashes = batch.map(f => f.sha256);
-      const authHeader = await createBatchUploadAuth(this.signer, hashes);
-      for (const hash of hashes) {
-        authTokenMap.set(hash, authHeader);
-      }
-    }
-
-    // ── Step 3: Upload files to each Blossom server ───────────────────────────
-    // All servers upload concurrently; within each server, files are uploaded
-    // with limited concurrency to avoid overwhelming the server.
-    // Track which files land on at least one server — a file missing from every
-    // server means the manifest would point to an unreachable blob.
-    const serverBases = this.blossomServers.map(s => s.replace(/\/$/, ''));
-
-    // uploadedSha256s: set of sha256 hashes confirmed present on ≥1 server
-    const uploadedSha256s = new Set<string>();
-
-    // Why each server refused a blob, kept for the files that fail everywhere.
-    // A refusal from one server is not itself a problem — another may take it —
-    // so these are only worth reporting once no server has taken the file.
-    const failures = new Map<string, { server: string; reason: string }[]>();
-
-    await Promise.all(
-      serverBases.map(serverBase =>
-        runConcurrent(files, UPLOAD_CONCURRENCY, async (file) => {
-          const authHeader = authTokenMap.get(file.sha256);
-          if (!authHeader) return;
-          const result = await uploadToServer(serverBase, file, authHeader);
-          if (result.ok) {
-            uploadedSha256s.add(file.sha256);
-          } else {
-            const reasons = failures.get(file.sha256) ?? [];
-            reasons.push({
-              server: serverBase.replace(/^https?:\/\//, ''),
-              reason: result.reason,
-            });
-            failures.set(file.sha256, reasons);
-          }
-        }),
-      ),
-    );
+    // ── Step 2: Upload each blob to every Blossom server ──────────────────────
+    // Identical files are one blob, so each is uploaded once per server.
+    // Upload auth is signed only for blobs some server lacks, in batches of up
+    // to UPLOAD_AUTH_BATCH_SIZE hashes, while uploads already authorized run.
+    const blobs = [...new Map(files.map(f => [f.sha256, f])).values()];
+    const { uncovered, failures, authError } = await uploadBlobs(blobs, serverBases, this.signer, onProgress);
 
     // Fail fast: any file unreachable on all servers means the deployed site
     // would serve broken responses for those paths — abort before publishing.
-    const failedFiles = files.filter(f => !uploadedSha256s.has(f.sha256));
-    if (failedFiles.length > 0) {
-      throw new Error(describeUploadFailures(failedFiles, failures));
+    if (uncovered.length > 0) {
+      if (authError) throw authError;
+      const missing = new Set(uncovered.map(f => f.sha256));
+      throw new Error(describeUploadFailures(files.filter(f => missing.has(f.sha256)), failures));
     }
 
-    // ── Step 4: Build the site manifest event ────────────────────────────────
+    // ── Step 3: Build the site manifest event ────────────────────────────────
     // kind 35128 for named sites (has siteIdentifier / d tag)
     // kind 15128 for root site (no d tag)
     const isNamedSite = Boolean(this.siteIdentifier);
@@ -505,6 +689,8 @@ export class NsiteAdapter implements DeployAdapter {
       tags.push(['source', this.sourceUrl]);
     }
 
+    onProgress?.({ stage: 'Signing the site manifest' });
+
     const manifestEvent = await this.signer.signEvent({
       kind: manifestKind,
       content: '',
@@ -512,13 +698,14 @@ export class NsiteAdapter implements DeployAdapter {
       tags,
     });
 
-    // ── Step 5: Publish manifest ──────────────────────────────────────────────
+    // ── Step 4: Publish manifest ──────────────────────────────────────────────
     // Blossom server hints are embedded as tags in the manifest itself —
     // no separate kind 10002 or kind 10063 events are published.
     //
     // Relay by relay, because the site is only as findable as the relays that
     // actually took it, and publishing to the group as a whole reports success
     // the moment one of them does — throwing away what the others said.
+    onProgress?.({ stage: 'Publishing to relays' });
     const publish = await publishToRelays(this.nostr, manifestEvent, this.relayUrls);
 
     // Build the canonical deployed URL (always the long-form base36 or npub URL)
@@ -533,7 +720,8 @@ export class NsiteAdapter implements DeployAdapter {
     // This is best-effort — if the gateway doesn't support vanity, we just
     // return the canonical URL and move on.
     let vanityUrl: string | undefined;
-    if (isNamedSite && this.siteIdentifier) {
+    if (isNamedSite && this.siteIdentifier && this.probeVanity) {
+      onProgress?.({ stage: 'Checking the site address' });
       vanityUrl = await probeVanityUrl(this.gateway, this.siteIdentifier, pubkey);
     }
 
@@ -557,34 +745,44 @@ export class NsiteAdapter implements DeployAdapter {
   }
 
   /**
-   * Recursively walk a directory in the VFS, reading every file and computing its SHA-256.
-   * Populates the provided `files` array with fully resolved FileEntry objects.
+   * Read every file under a directory in the VFS and compute its SHA-256.
+   * Files are read in parallel and returned sorted by path.
    */
   private async collectFiles(
-    dirPath: string,
-    relativePrefix: string,
-    files: FileEntry[],
-  ): Promise<void> {
+    distPath: string,
+    onProgress?: (progress: DeployProgress) => void,
+  ): Promise<FileEntry[]> {
+    const paths: string[] = [];
+    await this.walk(distPath, '', paths);
+    paths.sort();
+
+    onProgress?.({ stage: 'Reading files' });
+
+    return Promise.all(paths.map(async (relPath) => {
+      const fullPath = `${distPath}/${relPath}`;
+      const raw = await this.fs.readFile(fullPath) as Uint8Array;
+      // raw.slice() copies bytes into a new Uint8Array backed by a concrete ArrayBuffer,
+      // avoiding the SharedArrayBuffer variant that Web Crypto and Blob refuse.
+      const sliced = raw.slice();
+      const data: ArrayBuffer = sliced.buffer as ArrayBuffer;
+      const sha256 = await sha256Hex(sliced);
+      const contentType = mime.getType(fullPath) || 'application/octet-stream';
+      return { path: `/${relPath}`, data, sha256, contentType };
+    }));
+  }
+
+  /** Collect the relative paths of every file under a directory. */
+  private async walk(dirPath: string, relativePrefix: string, paths: string[]): Promise<void> {
     const entries = await this.fs.readdir(dirPath, { withFileTypes: true });
 
-    for (const entry of entries) {
-      const fullPath = `${dirPath}/${entry.name}`;
+    await Promise.all(entries.map(async (entry) => {
       const relPath = relativePrefix ? `${relativePrefix}/${entry.name}` : entry.name;
 
       if (entry.isDirectory()) {
-        await this.collectFiles(fullPath, relPath, files);
+        await this.walk(`${dirPath}/${entry.name}`, relPath, paths);
       } else if (entry.isFile()) {
-        const raw = await this.fs.readFile(fullPath) as Uint8Array;
-        // raw.slice() copies bytes into a new Uint8Array backed by a concrete ArrayBuffer,
-        // avoiding the SharedArrayBuffer variant that Web Crypto and File refuse.
-        const sliced = raw.slice();
-        const data: ArrayBuffer = sliced.buffer as ArrayBuffer;
-        const sha256 = await sha256Hex(sliced);
-        const absolutePath = `/${relPath}`;
-        const contentType = mime.getType(fullPath) || 'application/octet-stream';
-
-        files.push({ path: absolutePath, data, sha256, contentType });
+        paths.push(relPath);
       }
-    }
+    }));
   }
 }

@@ -101,7 +101,9 @@ export class NpanelAdapter implements DeployAdapter {
     // as NIP-5A allows. A subdomain can be longer than the 13 characters a `d`
     // tag may hold, and then only the hostname binding ties the two together.
     this.identifier = toNsiteDTag(config.subdomain);
-    this.nsite = new NsiteAdapter({ ...config, siteIdentifier: this.identifier });
+    // The hostname is the URL this reports, so a vanity probe would only cost
+    // a round trip to the gateway for an answer nobody reads.
+    this.nsite = new NsiteAdapter({ ...config, siteIdentifier: this.identifier, probeVanity: false });
   }
 
   async deploy(options: DeployOptions): Promise<DeployResult> {
@@ -110,6 +112,7 @@ export class NpanelAdapter implements DeployAdapter {
     const pubkey = await this.signer.getPublicKey();
     const address = `${NAMED_SITE_KIND}:${pubkey}:${this.identifier}`;
 
+    options.onProgress?.({ stage: `Pointing ${this.hostname} at your site` });
     await this.bindHostname(address);
 
     return {

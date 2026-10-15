@@ -6,6 +6,18 @@ export interface DeployOptions {
   projectId: string;
   /** Path to the project directory */
   projectPath: string;
+  /** Called as the deploy moves along, for adapters that can say how far it has got */
+  onProgress?: (progress: DeployProgress) => void;
+}
+
+/** Where a deploy has got to, phrased for the person waiting on it. */
+export interface DeployProgress {
+  /** What is happening now, e.g. "Uploading files" */
+  stage: string;
+  /** How much of this stage is done, 0–1, when that can be measured */
+  fraction?: number;
+  /** Supporting figures, e.g. "12 of 40 files · 1.2 MB of 3.4 MB" */
+  detail?: string;
 }
 
 export interface DeployResult {
@@ -58,6 +70,11 @@ export interface NsiteDeployConfig {
    * When absent → publishes kind 15128 (root site), URL = {npub}.{gateway}
    */
   siteIdentifier?: string;
+  /**
+   * Whether to ask the gateway for a vanity subdomain after a named-site deploy.
+   * Defaults to true; pointless when the caller is about to report its own URL.
+   */
+  probeVanity?: boolean;
 }
 
 /**
@@ -67,7 +84,7 @@ export interface NsiteDeployConfig {
  * `d` tag are the same label, so that a second gateway asked to serve the site
  * lands on the same name.
  */
-export interface NpanelDeployConfig extends Omit<NsiteDeployConfig, 'siteIdentifier'> {
+export interface NpanelDeployConfig extends Omit<NsiteDeployConfig, 'siteIdentifier' | 'probeVanity'> {
   /**
    * The gateway's dashboard hostname, which is also its API origin — the `u`
    * tag of every NIP-98 request has to name it, so it is not interchangeable

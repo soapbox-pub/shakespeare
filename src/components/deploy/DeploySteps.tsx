@@ -29,7 +29,8 @@ import { CloudflareDeployForm } from '@/components/deploy/CloudflareDeployForm';
 import { DenoDeployForm } from '@/components/deploy/DenoDeployForm';
 import { RailwayDeployForm } from '@/components/deploy/RailwayDeployForm';
 import { cn } from '@/lib/utils';
-import { DeployAdapter } from '@/lib/deploy/types';
+import type { DeployAdapter, DeployProgress } from '@/lib/deploy/types';
+import { Progress } from '@/components/ui/progress';
 import { NpanelAdapter } from '@/lib/deploy/NpanelAdapter';
 import { NsiteAdapter } from '@/lib/deploy/NsiteAdapter';
 import { NetlifyAdapter } from '@/lib/deploy/NetlifyAdapter';
@@ -152,6 +153,7 @@ export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProp
 
   const [selectedProviderId, setSelectedProviderId] = useState<string>('');
   const [isDeploying, setIsDeploying] = useState(false);
+  const [progress, setProgress] = useState<DeployProgress | null>(null);
   const [deployResult, setDeployResult] = useState<{ url: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isNpanelFormValid, setIsNpanelFormValid] = useState(true);
@@ -412,6 +414,9 @@ export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProp
       const result = await adapter.deploy({
         projectId,
         projectPath,
+        // Later stages say what they are doing without a measure of their own,
+        // so the upload figures stay up rather than the bar vanishing.
+        onProgress: (next) => setProgress(prev => ({ ...prev, ...next })),
       });
 
       // Save project-specific settings (updateSettings now automatically sets currentProvider)
@@ -550,6 +555,7 @@ export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProp
       setError(err instanceof Error ? err.message : 'Deployment failed');
     } finally {
       setIsDeploying(false);
+      setProgress(null);
     }
   };
 
@@ -1038,7 +1044,7 @@ export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProp
                   {isDeploying ? (
                     <>
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Deploying...
+                      {progress ? `${progress.stage}…` : 'Deploying...'}
                     </>
                   ) : (
                     <>
@@ -1047,6 +1053,16 @@ export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProp
                     </>
                   )}
                 </Button>
+              )}
+
+              {isDeploying && progress?.fraction !== undefined && (
+                <div className="space-y-1.5" aria-live="polite">
+                  <Progress value={progress.fraction * 100} className="h-2" />
+                  <div className="flex justify-between gap-2 text-xs text-muted-foreground tabular-nums">
+                    <span>{progress.detail}</span>
+                    <span>{Math.round(progress.fraction * 100)}%</span>
+                  </div>
+                </div>
               )}
             </>
           )}

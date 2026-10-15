@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import OpenAI from 'openai';
 import { useAISettings } from '@/hooks/useAISettings';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useAppContext } from '@/hooks/useAppContext';
@@ -117,14 +118,27 @@ You MUST call the create_project tool with your choices.`;
         { role: 'user', content: prompt }
       ];
 
-      // Call AI with tool
-      const completion = await openai.chat.completions.create({
+      const params = {
         model,
         messages,
         tools: [createProjectTool],
-        tool_choice: { type: 'function', function: { name: 'create_project' } },
         temperature: 1,
-      });
+      };
+
+      // Some models (e.g. newer Claude models) reject forced tool choice with a 400,
+      // so retry with automatic tool choice and rely on the system prompt instead.
+      let completion: OpenAI.Chat.Completions.ChatCompletion;
+      try {
+        completion = await openai.chat.completions.create({
+          ...params,
+          tool_choice: { type: 'function', function: { name: 'create_project' } },
+        });
+      } catch (error) {
+        if (!(error instanceof OpenAI.APIError) || error.status !== 400) {
+          throw error;
+        }
+        completion = await openai.chat.completions.create(params);
+      }
 
       const toolCall = completion.choices[0]?.message?.tool_calls?.[0];
 

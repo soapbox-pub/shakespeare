@@ -3,7 +3,6 @@ import { execSync } from "node:child_process";
 import path from "node:path";
 
 import react from "@vitejs/plugin-react-swc";
-import type { Plugin } from "vite";
 import { defineConfig } from "vitest/config";
 import { VitePWA } from 'vite-plugin-pwa';
 
@@ -30,29 +29,6 @@ function getCommitTag(): string {
   }
 }
 
-/**
- * Drop source maps for chunks that are pure Shiki grammar/theme data.
- *
- * Shiki emits ~280 such chunks. Their maps are worthless for debugging, and each
- * one costs a `path` tag in the nsite manifest, which must stay under relays'
- * ~64 KB event limit. Removing them keeps maps for the code that matters.
- */
-function dropDataChunkSourcemaps(): Plugin {
-  const isData = (id: string) => /[\\/]@shikijs[\\/](langs|themes)[\\/]/.test(id);
-  return {
-    name: 'drop-data-chunk-sourcemaps',
-    apply: 'build',
-    generateBundle(_options, bundle) {
-      for (const chunk of Object.values(bundle)) {
-        if (chunk.type !== 'chunk' || !chunk.moduleIds.length || !chunk.moduleIds.every(isData)) continue;
-        delete bundle[`${chunk.fileName}.map`];
-        chunk.map = null;
-        chunk.code = chunk.code.replace(/\n\/\/# sourceMappingURL=\S+\s*$/, '\n');
-      }
-    },
-  };
-}
-
 // https://vitejs.dev/config/
 export default defineConfig(() => ({
   server: {
@@ -67,7 +43,6 @@ export default defineConfig(() => ({
   },
   plugins: [
     react(),
-    dropDataChunkSourcemaps(),
     VitePWA({
       includeAssets: ['shakespeare.svg', 'shakespeare-192x192.png', 'shakespeare-512x512.png', 'sine.mp3', 'CHANGELOG.md'],
       manifest: false, // Use existing manifest.webmanifest from public folder
@@ -82,9 +57,6 @@ export default defineConfig(() => ({
       }
     })
   ],
-  build: {
-    sourcemap: true,
-  },
   test: {
     globals: true,
     environment: 'jsdom',

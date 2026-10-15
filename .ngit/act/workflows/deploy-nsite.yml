@@ -105,9 +105,9 @@ jobs:
       - run: npm run build
 
       # Every file becomes a `path` tag in the manifest event, which relays cap
-      # at ~64 KB. vite.config.ts already drops the ~280 source maps for Shiki's
-      # grammar/theme chunks and keeps the 7 for real code; fail here if the
-      # manifest still nears the limit rather than deploying one relays reject.
+      # at ~64 KB. The build emits no source maps, which keeps the count down;
+      # fail here if the manifest still nears the limit rather than deploying
+      # one relays reject.
       - name: Check manifest size
         run: |
           BYTES=$(cd dist && find . -type f | sed 's|^\.||' | awk '{s+=length($0)+80} END {print s}')

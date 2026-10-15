@@ -1,8 +1,9 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Bot, ChevronDown, RotateCcw, FileText, Edit, X } from 'lucide-react';
+import { Bot, Brain, ChevronDown, RotateCcw, FileText, Edit, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -18,7 +19,7 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useAppContext } from '@/hooks/useAppContext';
 import { useOpenRouterOAuth } from '@/hooks/useOpenRouterOAuth';
 import { SettingsPageLayout } from '@/components/SettingsPageLayout';
-import type { AIProvider } from '@/contexts/AISettingsContext';
+import { DEFAULT_REASONING_EFFORT, REASONING_EFFORTS, type AIProvider, type AISettings as AISettingsData } from '@/contexts/AISettingsContext';
 import { AI_PROVIDER_PRESETS, type PresetProvider } from '@/lib/aiProviderPresets';
 import { MCPServersSection } from '@/components/MCPServersSection';
 import { PluginsSection } from '@/components/PluginsSection';
@@ -332,6 +333,36 @@ export function AISettings() {
                       </Button>
                     )}
                   </div>
+                </div>
+                <Separator />
+
+                {/* Reasoning Effort Configuration */}
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Brain className="h-5 w-5 text-primary" />
+                      <h3 className="text-lg font-semibold">{t('reasoningEffort')}</h3>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {t('reasoningEffortDescription')}
+                    </p>
+                  </div>
+                  <Select
+                    value={settings.reasoningEffort ?? DEFAULT_REASONING_EFFORT}
+                    onValueChange={(value) => updateSettings({ reasoningEffort: value as AISettingsData['reasoningEffort'] })}
+                  >
+                    <SelectTrigger className="w-full sm:w-64 bg-muted/50">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {REASONING_EFFORTS.map((effort) => (
+                        <SelectItem key={effort} value={effort}>
+                          {t(`reasoningEffort_${effort}`)}
+                        </SelectItem>
+                      ))}
+                      <SelectItem value="default">{t('reasoningEffort_default')}</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <Separator />
 

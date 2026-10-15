@@ -20,11 +20,18 @@ export interface MCPServers {
   [key: string]: MCPServer;
 }
 
+export const REASONING_EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max'] as const;
+export type ReasoningEffort = typeof REASONING_EFFORTS[number];
+/** Used when no effort is configured. Models' own defaults are often `high`, which thinks at length. */
+export const DEFAULT_REASONING_EFFORT: ReasoningEffort = 'medium';
+
 export interface AISettings {
   providers: AIProvider[];
   recentlyUsedModels: string[];
   imageModel?: string;
   mcpServers?: MCPServers;
+  /** How much reasoning models think. `default` leaves it to the model. */
+  reasoningEffort?: ReasoningEffort | 'default';
 }
 
 export interface AISettingsContextType {

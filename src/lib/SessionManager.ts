@@ -3,10 +3,10 @@ import type { Decimal } from 'decimal.js';
 import type { JSRuntimeFS } from './JSRuntime';
 import { DotAI } from './DotAI';
 import { parseProviderModel } from './parseProviderModel';
-import { createAIClient } from './ai-client';
+import { createAIClient, isOpenRouter } from './ai-client';
 import type { Tool } from './tools/Tool';
 import type { NUser } from '@nostrify/react/login';
-import type { AIProvider } from '@/contexts/AISettingsContext';
+import { DEFAULT_REASONING_EFFORT, type AISettings } from '@/contexts/AISettingsContext';
 import { makeSystemPrompt } from './system';
 import { NostrMetadata } from '@nostrify/nostrify';
 import { MalformedToolCallError } from './errors/MalformedToolCallError';
@@ -67,7 +67,7 @@ export class SessionManager {
   private listeners: Partial<Record<keyof SessionManagerEvents, Set<(...args: unknown[]) => void>>> = {};
   private fs: JSRuntimeFS;
   private nostr: NPool;
-  private getSettings: () => { providers: AIProvider[]; imageModel?: string };
+  private getSettings: () => Pick<AISettings, 'providers' | 'imageModel' | 'reasoningEffort'>;
   private getConfig: () => AppConfig;
   private getDefaultConfig: () => AppConfig;
   private getProviderModels?: () => Array<{ id: string; provider: string; contextLength?: number; pricing?: { prompt: Decimal; completion: Decimal } }>;
@@ -76,7 +76,7 @@ export class SessionManager {
   constructor(
     fs: JSRuntimeFS,
     nostr: NPool,
-    getSettings: () => { providers: AIProvider[]; imageModel?: string },
+    getSettings: () => Pick<AISettings, 'providers' | 'imageModel' | 'reasoningEffort'>,
     getConfig: () => AppConfig,
     getDefaultConfig: () => AppConfig,
     getProviderModels?: () => Array<{ id: string; provider: string; contextLength?: number; pricing?: { prompt: Decimal; completion: Decimal } }>,
@@ -426,6 +426,12 @@ export class SessionManager {
             include_usage: true,
           },
         };
+
+        // OpenRouter maps the effort to each model's own setting and ignores it for models that don't reason.
+        const reasoningEffort = settings.reasoningEffort ?? DEFAULT_REASONING_EFFORT;
+        if (reasoningEffort !== 'default' && isOpenRouter(provider)) {
+          (completionOptions as { reasoning?: { effort: string } }).reasoning = { effort: reasoningEffort };
+        }
 
         // Check if messages contain any images (for retry logic)
         const hasImages = messages.some(msg => {

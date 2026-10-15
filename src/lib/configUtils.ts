@@ -3,7 +3,7 @@ import { filteredArray } from '@/lib/schema';
 import { AI_PROVIDER_PRESETS } from '@/lib/aiProviderPresets';
 import { DEFAULT_DEPLOY_PROVIDERS, migrateDeployProvider } from '@/lib/deployProviderPresets';
 import type { JSRuntimeFS } from '@/lib/JSRuntime';
-import type { AISettings, MCPServer } from '@/contexts/AISettingsContext';
+import { REASONING_EFFORTS, type AISettings, type MCPServer } from '@/contexts/AISettingsContext';
 import type { GitSettings, GitCredential } from '@/contexts/GitSettingsContext';
 import type { DeployProvider, DeploySettings } from '@/contexts/DeploySettingsContext';
 
@@ -57,6 +57,7 @@ const aiSettingsSchema = z.object({
   recentlyUsedModels: filteredArray(providerModelSchema),
   imageModel: providerModelSchema.optional(),
   mcpServers: z.record(z.string(), mcpServerSchema).optional(),
+  reasoningEffort: z.enum([...REASONING_EFFORTS, 'default']).optional().catch(undefined),
 });
 
 // New format for git credentials

@@ -63,7 +63,7 @@ export function createAIClient(provider: AIProvider, user?: NUser, corsProxy?: s
 
   openai.chat.completions.create = ((...[body, options]: Parameters<typeof createCompletion>) => {
     // OpenRouter-specific hacks
-    if (provider.id === "openrouter" || provider.baseURL === "https://openrouter.ai/api/v1") {
+    if (isOpenRouter(provider)) {
       applyOpenRouterTransforms(body);
     }
 
@@ -71,6 +71,10 @@ export function createAIClient(provider: AIProvider, user?: NUser, corsProxy?: s
   }) as typeof createCompletion;
 
   return openai;
+}
+
+export function isOpenRouter(provider: AIProvider): boolean {
+  return provider.id === "openrouter" || provider.baseURL === "https://openrouter.ai/api/v1";
 }
 
 /**

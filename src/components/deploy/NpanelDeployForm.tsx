@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { checkNameAvailable, type NameAvailability } from '@/lib/deploy/NpanelAdapter';
+import { AdvancedSection } from './AdvancedSection';
 
 /** How long typing has to stop before the gateway is asked about a name. */
 const AVAILABILITY_DEBOUNCE_MS = 400;
@@ -176,7 +177,7 @@ export function NpanelDeployForm({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div className="space-y-2">
         <Label htmlFor="npanel-subdomain">Address</Label>
         <div className="flex items-center gap-2">
@@ -240,28 +241,30 @@ export function NpanelDeployForm({
         )}
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="npanel-title">Site Title</Label>
-        <Input
-          id="npanel-title"
-          value={siteTitle}
-          onChange={(e) => handleSiteTitleChange(e.target.value)}
-          placeholder="My Nostr Site"
-        />
-      </div>
+      <AdvancedSection>
+        <div className="space-y-2">
+          <Label htmlFor="npanel-title">Site Title</Label>
+          <Input
+            id="npanel-title"
+            value={siteTitle}
+            onChange={(e) => handleSiteTitleChange(e.target.value)}
+            placeholder="My Nostr Site"
+          />
+        </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="npanel-description">
-          Description <span className="text-muted-foreground font-normal">(optional)</span>
-        </Label>
-        <Textarea
-          id="npanel-description"
-          value={siteDescription}
-          onChange={(e) => handleSiteDescriptionChange(e.target.value)}
-          placeholder="A short description of this site…"
-          rows={3}
-        />
-      </div>
+        <div className="space-y-2">
+          <Label htmlFor="npanel-description">
+            Description <span className="text-muted-foreground font-normal">(optional)</span>
+          </Label>
+          <Textarea
+            id="npanel-description"
+            value={siteDescription}
+            onChange={(e) => handleSiteDescriptionChange(e.target.value)}
+            placeholder="A short description of this site…"
+            rows={2}
+          />
+        </div>
+      </AdvancedSection>
     </div>
   );
 }

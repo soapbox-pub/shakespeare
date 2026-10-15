@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, type ReactNode } from 'react';
 import { AlertCircle } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AdvancedSection } from './AdvancedSection';
 
 interface NsiteDeployFormProps {
   /** Human-readable project name — used to default the title */
@@ -13,6 +14,13 @@ interface NsiteDeployFormProps {
   savedSiteDescription?: string;
   /** Present only when the project was previously deployed with a dedicated keypair (v1) */
   savedNsec?: string;
+  /**
+   * Whether the site has been set up before. A first deploy shows the title,
+   * since it picks the site's address; after that it lives under Advanced.
+   */
+  configured?: boolean;
+  /** Extra detail shown at the end of the Advanced section */
+  advancedFooter?: ReactNode;
   onSiteTitleChange: (title: string) => void;
   onSiteDescriptionChange: (description: string) => void;
 }
@@ -22,6 +30,8 @@ export function NsiteDeployForm({
   savedSiteTitle,
   savedSiteDescription,
   savedNsec,
+  configured,
+  advancedFooter,
   onSiteTitleChange,
   onSiteDescriptionChange,
 }: NsiteDeployFormProps) {
@@ -57,8 +67,20 @@ export function NsiteDeployForm({
     onSiteDescriptionChange(value);
   };
 
+  const titleField = (
+    <div className="space-y-2">
+      <Label htmlFor="nsite-title">Site Title</Label>
+      <Input
+        id="nsite-title"
+        value={siteTitle}
+        onChange={(e) => handleSiteTitleChange(e.target.value)}
+        placeholder="My Nostr Site"
+      />
+    </div>
+  );
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
 
       {/* Migration notice */}
       {savedNsec && (
@@ -72,34 +94,24 @@ export function NsiteDeployForm({
         </Alert>
       )}
 
-      {/* Site title */}
-      <div className="space-y-2">
-        <Label htmlFor="nsite-title">Site Title</Label>
-        <Input
-          id="nsite-title"
-          value={siteTitle}
-          onChange={(e) => handleSiteTitleChange(e.target.value)}
-          placeholder="My Nostr Site"
-        />
-        <p className="text-xs text-muted-foreground">
-          Shown by nsite gateways and directories. Included as a title tag in the manifest.
-        </p>
-      </div>
+      {!configured && titleField}
 
-      {/* Site description */}
-      <div className="space-y-2">
-        <Label htmlFor="nsite-description">Description <span className="text-muted-foreground font-normal">(optional)</span></Label>
-        <Textarea
-          id="nsite-description"
-          value={siteDescription}
-          onChange={(e) => handleSiteDescriptionChange(e.target.value)}
-          placeholder="A short description of this site…"
-          rows={3}
-        />
-        <p className="text-xs text-muted-foreground">
-          Included as a description tag in the manifest.
-        </p>
-      </div>
+      <AdvancedSection>
+        {configured && titleField}
+
+        <div className="space-y-2">
+          <Label htmlFor="nsite-description">Description <span className="text-muted-foreground font-normal">(optional)</span></Label>
+          <Textarea
+            id="nsite-description"
+            value={siteDescription}
+            onChange={(e) => handleSiteDescriptionChange(e.target.value)}
+            placeholder="A short description of this site…"
+            rows={2}
+          />
+        </div>
+
+        {advancedFooter}
+      </AdvancedSection>
     </div>
   );
 }

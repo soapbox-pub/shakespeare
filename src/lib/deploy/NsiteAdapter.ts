@@ -157,6 +157,7 @@ class UploadAuthorizer {
   constructor(
     private signer: NostrSigner,
     private onBusyChange: () => void,
+    private signal?: AbortSignal,
   ) {}
 
   authorize(sha256: string): Promise<string> {
@@ -180,6 +181,7 @@ class UploadAuthorizer {
       const batch = this.queue.splice(0, UPLOAD_AUTH_BATCH_SIZE);
       try {
         if (this.error) throw this.error;
+        this.signal?.throwIfAborted();
         const header = await createBatchUploadAuth(this.signer, batch.map(b => b.hash));
         for (const b of batch) b.resolve(header);
       } catch (err) {
@@ -275,19 +277,14 @@ async function probeVanityUrl(
  * Check whether a blob already exists on a Blossom server.
  * Returns true if the server responds 2xx to a HEAD request.
  */
-async function blobExistsOnServer(serverBase: string, sha256: string): Promise<boolean> {
+async function blobExistsOnServer(serverBase: string, sha256: string, signal?: AbortSignal): Promise<boolean> {
   try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-    try {
-      const resp = await fetch(`${serverBase}/${sha256}`, {
-        method: 'HEAD',
-        signal: controller.signal,
-      });
-      return resp.ok;
-    } finally {
-      clearTimeout(timer);
-    }
+    const timeout = AbortSignal.timeout(FETCH_TIMEOUT_MS);
+    const resp = await fetch(`${serverBase}/${sha256}`, {
+      method: 'HEAD',
+      signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
+    });
+    return resp.ok;
   } catch {
     return false;
   }
@@ -314,11 +311,15 @@ function putBlob(
   file: FileEntry,
   authHeader: string,
   onProgress: (loaded: number) => void,
+  signal?: AbortSignal,
 ): Promise<UploadOutcome> {
   const timeout = uploadTimeoutMs(file.data.byteLength);
 
   return new Promise(resolve => {
     const xhr = new XMLHttpRequest();
+    signal?.addEventListener('abort', () => xhr.abort(), { once: true });
+    xhr.onabort = () => resolve({ ok: false, reason: 'cancelled' });
+
     xhr.open('PUT', `${serverBase}/upload`);
     xhr.setRequestHeader('Authorization', authHeader);
     xhr.setRequestHeader('Content-Type', file.contentType);
@@ -440,8 +441,9 @@ function uploadBlobs(
   serverBases: string[],
   signer: NostrSigner,
   onProgress?: (progress: DeployProgress) => void,
+  signal?: AbortSignal,
 ): Promise<UploadReport> {
-  return new Promise(resolve => {
+  return new Promise((resolve, reject) => {
     const states = blobs.map((file): BlobState => ({
       file,
       pending: serverBases.length,
@@ -459,7 +461,14 @@ function uploadBlobs(
     let finished = false;
     let lastReport = 0;
 
-    const authorizer = new UploadAuthorizer(signer, () => report(true));
+    const authorizer = new UploadAuthorizer(signer, () => report(true), signal);
+
+    // A cancelled deploy stops where it is: in-flight PUTs are aborted, and
+    // nothing not yet started gets signed for or sent.
+    signal?.addEventListener('abort', () => {
+      finished = true;
+      reject(signal.reason);
+    }, { once: true });
 
     const report = (force = false) => {
       if (finished || !onProgress) return;
@@ -525,10 +534,11 @@ function uploadBlobs(
 
       for (const state of states) {
         void (async () => {
-          if (await head(() => blobExistsOnServer(serverBase, state.file.sha256))) {
+          if (await head(() => blobExistsOnServer(serverBase, state.file.sha256, signal))) {
             answer(state, server, { ok: true });
             return;
           }
+          if (signal?.aborted) return;
 
           let authHeader: string;
           try {
@@ -539,14 +549,15 @@ function uploadBlobs(
             return;
           }
 
-          const outcome = await put(async () => {
+          const outcome = await put(async (): Promise<UploadOutcome> => {
+            if (signal?.aborted) return { ok: false, reason: 'cancelled' };
             activePuts++;
             report(true);
             try {
               return await putBlob(serverBase, state.file, authHeader, (loaded) => {
                 state.loaded.set(server, loaded);
                 report();
-              });
+              }, signal);
             } finally {
               activePuts--;
             }
@@ -607,7 +618,7 @@ export class NsiteAdapter implements DeployAdapter {
   }
 
   async deploy(options: DeployOptions): Promise<DeployResult> {
-    const { projectPath, onProgress } = options;
+    const { projectPath, onProgress, signal } = options;
     const distPath = `${projectPath}/dist`;
 
     // Verify build output exists
@@ -637,7 +648,8 @@ export class NsiteAdapter implements DeployAdapter {
     // Upload auth is signed only for blobs some server lacks, in batches of up
     // to UPLOAD_AUTH_BATCH_SIZE hashes, while uploads already authorized run.
     const blobs = [...new Map(files.map(f => [f.sha256, f])).values()];
-    const { uncovered, failures, authError } = await uploadBlobs(blobs, serverBases, this.signer, onProgress);
+    signal?.throwIfAborted();
+    const { uncovered, failures, authError } = await uploadBlobs(blobs, serverBases, this.signer, onProgress, signal);
 
     // Fail fast: any file unreachable on all servers means the deployed site
     // would serve broken responses for those paths — abort before publishing.
@@ -698,6 +710,10 @@ export class NsiteAdapter implements DeployAdapter {
       tags,
     });
 
+    // The last point a cancel can take back: once a relay has the manifest,
+    // the site is live.
+    signal?.throwIfAborted();
+
     // ── Step 4: Publish manifest ──────────────────────────────────────────────
     // Blossom server hints are embedded as tags in the manifest itself —
     // no separate kind 10002 or kind 10063 events are published.
@@ -705,7 +721,7 @@ export class NsiteAdapter implements DeployAdapter {
     // Relay by relay, because the site is only as findable as the relays that
     // actually took it, and publishing to the group as a whole reports success
     // the moment one of them does — throwing away what the others said.
-    onProgress?.({ stage: 'Publishing to relays' });
+    onProgress?.({ stage: 'Publishing to relays', cancellable: false });
     const publish = await publishToRelays(this.nostr, manifestEvent, this.relayUrls);
 
     // Build the canonical deployed URL (always the long-form base36 or npub URL)

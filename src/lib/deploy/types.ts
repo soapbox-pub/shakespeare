@@ -8,6 +8,8 @@ export interface DeployOptions {
   projectPath: string;
   /** Called as the deploy moves along, for adapters that can say how far it has got */
   onProgress?: (progress: DeployProgress) => void;
+  /** Aborts the deploy, for adapters that can stop partway */
+  signal?: AbortSignal;
 }
 
 /** Where a deploy has got to, phrased for the person waiting on it. */
@@ -18,6 +20,8 @@ export interface DeployProgress {
   fraction?: number;
   /** Supporting figures, e.g. "12 of 40 files · 1.2 MB of 3.4 MB" */
   detail?: string;
+  /** False once the deploy is past the point where stopping it would undo anything */
+  cancellable?: boolean;
 }
 
 export interface DeployResult {

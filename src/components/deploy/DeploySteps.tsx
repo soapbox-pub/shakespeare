@@ -1,10 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Rocket, ExternalLink, AlertCircle, Settings, Cloud } from 'lucide-react';
+import { Rocket, ExternalLink, AlertCircle, Settings, Cloud, Loader2, CheckCircle2 } from 'lucide-react';
 import { ExternalFavicon } from '@/components/ExternalFavicon';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useDeploySettings } from '@/hooks/useDeploySettings';
 import { useProjectDeploySettings } from '@/hooks/useProjectDeploySettings';
@@ -29,8 +27,18 @@ import { CloudflareDeployForm } from '@/components/deploy/CloudflareDeployForm';
 import { DenoDeployForm } from '@/components/deploy/DenoDeployForm';
 import { RailwayDeployForm } from '@/components/deploy/RailwayDeployForm';
 import { cn } from '@/lib/utils';
-import type { DeployAdapter, DeployProgress } from '@/lib/deploy/types';
+import type { DeployAdapter, DeployResult } from '@/lib/deploy/types';
 import { Progress } from '@/components/ui/progress';
+import { toast } from '@/hooks/useToast';
+import { useDeployJob } from '@/hooks/useDeployJob';
+import {
+  cancelDeploy,
+  clearDeployJob,
+  isDeployWatched,
+  runDeploy,
+  watchDeploy,
+  type DeployTaskContext,
+} from '@/lib/deploy/deployJobs';
 import { NpanelAdapter } from '@/lib/deploy/NpanelAdapter';
 import { NsiteAdapter } from '@/lib/deploy/NsiteAdapter';
 import { NetlifyAdapter } from '@/lib/deploy/NetlifyAdapter';
@@ -152,10 +160,16 @@ export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProp
   const { git } = useGit();
 
   const [selectedProviderId, setSelectedProviderId] = useState<string>('');
-  const [isDeploying, setIsDeploying] = useState(false);
-  const [progress, setProgress] = useState<DeployProgress | null>(null);
-  const [deployResult, setDeployResult] = useState<{ url: string } | null>(null);
-  const [error, setError] = useState<string | null>(null);
+
+  // The deploy lives outside this component, so it keeps going when the
+  // popover closes and is still here when it reopens.
+  const job = useDeployJob(projectId);
+  const deployResult = job?.status === 'succeeded' ? job.result : null;
+  const error = job?.status === 'failed' ? job.error : null;
+
+  // While open, a deploy that finishes is seen here rather than toasted.
+  useEffect(() => watchDeploy(projectId), [projectId]);
+
   const [isNpanelFormValid, setIsNpanelFormValid] = useState(true);
   /**
    * The gateway whose held names are being looked at, if any.
@@ -176,12 +190,9 @@ export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProp
    */
   const heldName = error !== null && /being held for you/i.test(error);
 
-  // .nsite/config.json state — loaded once on mount, used to skip config form on re-deploy
+  // .nsite/config.json state — loaded once on mount, used to fold the form away on re-deploy
   const [nsiteVfsConfig, setNsiteVfsConfig] = useState<NsiteVfsConfig | null>(null);
   const [nsiteVfsConfigLoading, setNsiteVfsConfigLoading] = useState(true);
-  // When a .nsite/config.json already exists, hide the full form and show a summary instead.
-  // The user can click "Edit" to expand it.
-  const [nsiteShowFullForm, setNsiteShowFullForm] = useState(false);
 
   useEffect(() => {
     if (!projectId) {
@@ -192,17 +203,13 @@ export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProp
     readNsiteVfsConfig(fs, projectPath)
       .then((cfg) => {
         setNsiteVfsConfig(cfg);
-        // If a config already exists, seed the form from it and stay in summary mode.
-        // If not, show the full form so the user can configure for the first time.
+        // If a config already exists, seed the form from it.
         if (cfg) {
           setNsiteForm({
             siteTitle: cfg.title ?? '',
             siteDescription: cfg.description ?? '',
             dTag: (cfg.id != null && cfg.id !== '') ? cfg.id : '',
           });
-          setNsiteShowFullForm(false);
-        } else {
-          setNsiteShowFullForm(true);
         }
       })
       .finally(() => setNsiteVfsConfigLoading(false));
@@ -251,6 +258,9 @@ export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProp
       const providerIds = Object.keys(projectSettings.providers);
       if (providerIds.length > 0) {
         setSelectedProviderId(providerIds[0]);
+      } else if (settings.providers.length === 1) {
+        // With only one provider there is no choice to make, and no picker shown.
+        setSelectedProviderId(settings.providers[0].id);
       }
     }
   }, [projectSettings, settings.providers]);
@@ -260,11 +270,9 @@ export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProp
   const handleDeploy = async () => {
     if (!selectedProvider) return;
 
-    setIsDeploying(true);
-    setError(null);
-    setDeployResult(null);
-
-    try {
+    // Runs to the end even if this component unmounts: everything it needs is
+    // captured here, and nothing after the deploy depends on it staying open.
+    const deployTask = async ({ signal, onProgress }: DeployTaskContext): Promise<DeployResult> => {
       const projectPath = `${projectsPath}/${projectId}`;
 
       let adapter: DeployAdapter;
@@ -414,10 +422,13 @@ export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProp
       const result = await adapter.deploy({
         projectId,
         projectPath,
-        // Later stages say what they are doing without a measure of their own,
-        // so the upload figures stay up rather than the bar vanishing.
-        onProgress: (next) => setProgress(prev => ({ ...prev, ...next })),
+        onProgress,
+        signal,
       });
+
+      // Adapters that cannot stop partway finish anyway; a cancelled deploy
+      // still should not be recorded as this project's.
+      signal.throwIfAborted();
 
       // Save project-specific settings (updateSettings now automatically sets currentProvider)
       if (selectedProvider.type === 'npanel') {
@@ -454,9 +465,8 @@ export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProp
           gatewayHostnames: [nsiteProvider.gateway],
         };
         await writeNsiteVfsConfig(fs, projectPath, newNsiteVfsConfig);
-        // Update in-memory state so summary view reflects new values immediately
+        // Update in-memory state so the form reflects new values immediately
         setNsiteVfsConfig(newNsiteVfsConfig);
-        setNsiteShowFullForm(false);
       } else if (selectedProvider.type === 'netlify') {
         await updateProjectSettings(selectedProviderId, {
           type: 'netlify',
@@ -503,66 +513,86 @@ export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProp
         });
       }
 
-      setDeployResult(result);
+      // Not part of the deploy, so it does not hold up saying it is done.
+      void updateRepoWebTag(projectPath, result.url);
 
-      // Update repository announcement with deployment URL if using Nostr git
-      try {
-        const projectPath = `${projectsPath}/${projectId}`;
-        const remoteUrl = await git.getRemoteURL(projectPath, 'origin');
+      return result;
+    };
 
-        if (remoteUrl && remoteUrl.startsWith('nostr://') && user) {
-          const nostrURI = await NostrURI.parse(remoteUrl);
+    const finished = await runDeploy(projectId, selectedProvider.id, deployTask);
 
-          // Query for existing repository announcement
-          const existingRepos = await nostr.query(
-            [{ kinds: [30617], authors: [user.pubkey], '#d': [nostrURI.identifier], limit: 1 }],
-            { signal: AbortSignal.timeout(1500) }
-          );
+    if (finished && !isDeployWatched(projectId)) {
+      if (finished.status === 'succeeded') {
+        const { url } = finished.result;
+        toast({
+          title: `${projectName || projectId} is deployed`,
+          description: (
+            <a href={url} target="_blank" rel="noopener noreferrer" className="underline break-all">
+              {url}
+            </a>
+          ),
+        });
+      } else if (finished.status === 'failed') {
+        toast({
+          variant: 'destructive',
+          title: `Deploying ${projectName || projectId} failed`,
+          description: finished.error,
+        });
+      }
+    }
+  };
 
-          if (existingRepos.length > 0) {
-            let changed = false;
-            let hasWebTag = false;
+  /** Point the project's Nostr repository announcement at where it is deployed. */
+  const updateRepoWebTag = async (projectPath: string, url: string) => {
+    try {
+      const remoteUrl = await git.getRemoteURL(projectPath, 'origin');
 
-            const repoEvent = structuredClone(existingRepos[0]);
+      if (remoteUrl && remoteUrl.startsWith('nostr://') && user) {
+        const nostrURI = await NostrURI.parse(remoteUrl);
 
-            for (const tag of repoEvent.tags) {
-              if (tag[0] === 'web') {
-                if (tag[1] !== result.url) {
-                  tag[1] = result.url;
-                  changed = true;
-                  hasWebTag = true;
-                }
+        // Query for existing repository announcement
+        const existingRepos = await nostr.query(
+          [{ kinds: [30617], authors: [user.pubkey], '#d': [nostrURI.identifier], limit: 1 }],
+          { signal: AbortSignal.timeout(1500) }
+        );
+
+        if (existingRepos.length > 0) {
+          let changed = false;
+          let hasWebTag = false;
+
+          const repoEvent = structuredClone(existingRepos[0]);
+
+          for (const tag of repoEvent.tags) {
+            if (tag[0] === 'web') {
+              if (tag[1] !== url) {
+                tag[1] = url;
+                changed = true;
+                hasWebTag = true;
               }
             }
+          }
 
-            if (!hasWebTag) {
-              repoEvent.tags.push(['web', result.url]);
-              changed = true;
-            }
+          if (!hasWebTag) {
+            repoEvent.tags.push(['web', url]);
+            changed = true;
+          }
 
-            // Publish updated repo event if deployment URL changed
-            if (changed) {
-              // Publish the updated event
-              await publishEvent(repoEvent);
-            }
+          // Publish updated repo event if deployment URL changed
+          if (changed) {
+            // Publish the updated event
+            await publishEvent(repoEvent);
           }
         }
-      } catch (err) {
-        // Silently fail - updating web tag is not critical for deployment
-        console.warn('Failed to update repository announcement with deployment URL:', err);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Deployment failed');
-    } finally {
-      setIsDeploying(false);
-      setProgress(null);
+      // Silently fail - updating web tag is not critical for deployment
+      console.warn('Failed to update repository announcement with deployment URL:', err);
     }
   };
 
   const handleClose = () => {
     setSelectedProviderId('');
-    setDeployResult(null);
-    setError(null);
+    clearDeployJob(projectId);
     // Reset forms
     setNpanelForm({ subdomain: projectId, siteTitle: projectName || projectId, siteDescription: '' });
     setNsiteForm({ siteTitle: '', siteDescription: '', dTag: '' });
@@ -571,8 +601,6 @@ export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProp
     setCloudflareForm({ projectName: projectName || projectId });
     setDenoDeployForm({ projectName: projectName || projectId });
     setRailwayForm({ workspaceId: '', projectId: '', environmentId: '', serviceId: '', projectName: projectName || projectId });
-    // Return to summary mode so next open shows the compact view (if config exists)
-    setNsiteShowFullForm(false);
     onClose();
   };
 
@@ -594,12 +622,20 @@ export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProp
 
   const handleNsiteSiteTitleChange = useCallback((siteTitle: string) => {
     setNsiteForm(prev => ({ ...prev, siteTitle }));
+    // The form reports the saved title when it mounts. That is not an edit, and
+    // the saved identifier stands, even one nsyte chose that the title would
+    // not derive to.
+    const savedId = nsiteVfsConfig?.id;
+    if (savedId && siteTitle === (nsiteVfsConfig.title ?? (projectName || projectId))) {
+      setNsiteForm(prev => ({ ...prev, dTag: savedId }));
+      return;
+    }
     // Derive the dTag from the title so the user never has to think about it.
     // Falls back to projectName when the title is blank.
     projectNameToDTag(siteTitle || projectName).then(dTag => {
       setNsiteForm(prev => ({ ...prev, dTag }));
     });
-  }, [projectName]);
+  }, [projectName, projectId, nsiteVfsConfig]);
 
   const handleNsiteSiteDescriptionChange = useCallback((siteDescription: string) => {
     setNsiteForm(prev => ({ ...prev, siteDescription }));
@@ -661,42 +697,6 @@ export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProp
       // While the .nsite/config.json load is still in flight, render nothing to avoid flicker
       if (nsiteVfsConfigLoading) return null;
 
-      // Summary view: shown when .nsite/config.json already exists and user hasn't clicked Edit
-      if (nsiteVfsConfig && !nsiteShowFullForm) {
-        const relayCount = nsiteVfsConfig.relays?.length ?? 0;
-        const serverCount = nsiteVfsConfig.servers?.length ?? 0;
-
-        return (
-          <div className="space-y-3">
-            <div className="rounded-md border bg-muted/30 p-3 space-y-2 text-sm">
-              {nsiteVfsConfig.title && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Title</span>
-                  <span className="font-medium">{nsiteVfsConfig.title}</span>
-                </div>
-              )}
-
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Relays</span>
-                <span className="font-medium">{relayCount} configured</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Blossom servers</span>
-                <span className="font-medium">{serverCount} configured</span>
-              </div>
-            </div>
-            <button
-              type="button"
-              className="text-xs text-muted-foreground underline hover:text-foreground transition-colors"
-              onClick={() => setNsiteShowFullForm(true)}
-            >
-              Edit site settings
-            </button>
-          </div>
-        );
-      }
-
-      // Full config form: shown on first deploy or when user clicks "Edit site settings"
       const savedConfig = projectSettings.providers[selectedProviderId];
       const legacy = savedConfig?.type === 'nsite' ? savedConfig.data : undefined;
 
@@ -704,27 +704,25 @@ export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProp
       const savedSiteTitle       = nsiteVfsConfig?.title       ?? legacy?.siteTitle;
       const savedSiteDescription = nsiteVfsConfig?.description ?? legacy?.siteDescription;
 
+      // Once .nsite/config.json exists the site is set up, and its settings
+      // fold away under Advanced.
       return (
-        <div className="space-y-3">
-          <NsiteDeployForm
-            key={selectedProviderId}
-            projectName={projectName || projectId}
-            savedNsec={legacy?.nsec}
-            savedSiteTitle={savedSiteTitle}
-            savedSiteDescription={savedSiteDescription}
-            onSiteTitleChange={handleNsiteSiteTitleChange}
-            onSiteDescriptionChange={handleNsiteSiteDescriptionChange}
-          />
-          {nsiteVfsConfig && (
-            <button
-              type="button"
-              className="text-xs text-muted-foreground underline hover:text-foreground transition-colors"
-              onClick={() => setNsiteShowFullForm(false)}
-            >
-              Back to summary
-            </button>
+        <NsiteDeployForm
+          key={selectedProviderId}
+          projectName={projectName || projectId}
+          savedNsec={legacy?.nsec}
+          savedSiteTitle={savedSiteTitle}
+          savedSiteDescription={savedSiteDescription}
+          configured={Boolean(nsiteVfsConfig)}
+          advancedFooter={nsiteVfsConfig && (
+            <p className="text-xs text-muted-foreground">
+              {nsiteVfsConfig.relays?.length ?? 0} relays · {nsiteVfsConfig.servers?.length ?? 0} Blossom servers,
+              from <span className="font-mono">.nsite/config.json</span>
+            </p>
           )}
-        </div>
+          onSiteTitleChange={handleNsiteSiteTitleChange}
+          onSiteDescriptionChange={handleNsiteSiteDescriptionChange}
+        />
       );
     }
 
@@ -828,246 +826,272 @@ export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProp
     return null;
   };
 
-  return (
-    <div className="space-y-4">
-      <div>
-        <h3 className="font-semibold mb-1">Deploy your project</h3>
-        <p className="text-sm text-muted-foreground">
-          Choose a provider to deploy your project
-        </p>
-      </div>
+  const renderDeploying = () => {
+    if (job?.status !== 'running') return null;
 
-      {deployResult ? (
-        <div className="space-y-4">
-          <Alert>
-            <Rocket className="h-4 w-4" />
-            <AlertDescription>
-              Your project has been successfully deployed!
-            </AlertDescription>
-          </Alert>
+    const provider = settings.providers.find(p => p.id === job.providerId);
+    const preset = provider && PRESET_DEPLOY_PROVIDERS.find(p => p.type === provider.type);
+    const { progress } = job;
+    // Only the nsite adapters stop when asked. Elsewhere, cancelling would stop
+    // the waiting and not the deploy, which is worse than not offering it.
+    const canCancel =
+      (provider?.type === 'nsite' || provider?.type === 'npanel') && progress?.cancellable !== false;
 
-          <div className="space-y-2">
-            <Label>Deployed URL</Label>
-            <div className="flex gap-2">
-              <Input
-                value={deployResult.url}
-                readOnly
-                className="flex-1"
-              />
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => window.open(deployResult.url, '_blank')}
-              >
-                <ExternalLink className="h-4 w-4" />
-              </Button>
-            </div>
-
+    return (
+      <div className="space-y-4" aria-live="polite">
+        <div className="flex items-center gap-3">
+          <div className="relative flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <Loader2 className="absolute size-10 animate-spin opacity-40" strokeWidth={1} />
+            {provider ? renderProviderIcon(provider, preset, 16) : <Rocket size={16} />}
           </div>
-
-          <div className="flex justify-end gap-2">
-            <Button onClick={handleClose}>
-              {t('close')}
-            </Button>
+          <div className="min-w-0">
+            <h3 className="font-semibold leading-tight truncate">
+              Deploying{provider ? ` to ${provider.name}` : ''}
+            </h3>
+            <p className="text-sm text-muted-foreground truncate">
+              {progress?.stage ?? 'Starting'}…
+            </p>
           </div>
         </div>
-      ) : (
-        <div className="space-y-4">
-          {settings.providers.length === 0 ? (
-            <div className="py-8 px-4">
-              <div className="max-w-md mx-auto space-y-6 text-center">
-                {/* Icon */}
-                <div className="flex justify-center">
-                  <div className="relative">
-                    <div className="absolute inset-0 bg-primary/10 rounded-full blur-xl"></div>
-                    <div className="relative bg-gradient-to-br from-primary/20 to-primary/5 p-6 rounded-2xl border border-primary/20">
-                      <Cloud className="h-12 w-12 text-primary" />
-                    </div>
-                  </div>
-                </div>
 
-                {/* Heading */}
-                <div className="space-y-2">
-                  <h3 className="text-xl font-semibold">Choose Your Deployment Platform</h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    Deploy your Shakespeare projects to any hosting provider. Configure your preferred platform to get started.
-                  </p>
-                </div>
-
-                {/* CTA */}
-                <div className="pt-2">
-                  <Button
-                    asChild
-                    size="lg"
-                    className="w-full"
-                    onClick={handleClose}
-                  >
-                    <Link to="/settings/deploy">
-                      <Settings className="h-4 w-4 mr-2" />
-                      Configure Deployment Provider
-                    </Link>
-                  </Button>
-                </div>
-              </div>
+        {progress?.fraction !== undefined && (
+          <div className="space-y-1.5">
+            <Progress value={progress.fraction * 100} className="h-2" />
+            <div className="flex justify-between gap-2 text-xs text-muted-foreground tabular-nums">
+              <span className="truncate">{progress.detail}</span>
+              <span>{Math.round(progress.fraction * 100)}%</span>
             </div>
-          ) : (
-            <>
-              <div className="space-y-2">
-                <Label>Select Provider</Label>
-                <div className="flex flex-wrap gap-2">
-                  {settings.providers.map((provider) => {
-                    const preset = PRESET_DEPLOY_PROVIDERS.find(p => p.type === provider.type);
-                    return (
-                      <button
-                        key={provider.id}
-                        type="button"
-                        onClick={() => setSelectedProviderId(provider.id)}
-                        className={cn(
-                          "inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all",
-                          "border-2 hover:scale-105 active:scale-95",
-                          selectedProviderId === provider.id
-                            ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                            : "bg-background text-foreground border-border hover:border-primary/50"
-                        )}
-                      >
-                        {renderProviderIcon(provider, preset, 14)}
-                        <span>{provider.name}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+          </div>
+        )}
 
-              {selectedProvider && selectedProviderId && (() => {
-                const savedConfig = projectSettings.providers[selectedProviderId];
-                const url = savedConfig?.url;
-
-                if (url) {
-                  return (
-                    <div className="space-y-2">
-                      <Label>Last Deployment</Label>
-                      <div className="flex gap-2">
-                        <Input
-                          value={url}
-                          readOnly
-                          className="flex-1 text-muted-foreground"
-                        />
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => window.open(url, '_blank')}
-                          title="Visit last deployment"
-                        >
-                          <ExternalLink className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  );
-                }
-                return null;
-              })()}
-
-              {selectedProvider && renderProviderFields()}
-
-              {selectedProvider?.type === 'npanel' && !user && (
-                <Alert>
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    You must be logged in with Nostr to publish a site.{' '}
-                    <Link
-                      to="/settings/nostr"
-                      className="underline hover:no-underline"
-                      onClick={handleClose}
-                    >
-                      Go to Nostr Settings
-                    </Link>
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              {selectedProvider?.type === 'nsite' && !user && (
-                <Alert>
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    You must be logged in with Nostr to deploy to nsite.{' '}
-                    <Link
-                      to="/settings/nostr"
-                      className="underline hover:no-underline"
-                      onClick={handleClose}
-                    >
-                      Go to Nostr Settings
-                    </Link>
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              {error && (
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription className="space-y-2">
-                    {/* Errors that itemise per-file failures are newline
-                        separated; a bare <p> would run them together. */}
-                    <p className="whitespace-pre-line">{error}</p>
-                    {/* The gateway refuses a name it is holding for this user
-                        and says to take it back instead. Saying so and leaving
-                        them to find out where is the worst of both. */}
-                    {heldName && selectedProvider?.type === 'npanel' && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setMigratingProvider(selectedProvider)}
-                      >
-                        Take back your sites
-                      </Button>
-                    )}
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              {selectedProvider && (
-                <Button
-                  onClick={handleDeploy}
-                  disabled={
-                    isDeploying ||
-                    (selectedProvider.type === 'npanel' && !user) ||
-                    (selectedProvider.type === 'npanel' && !isNpanelFormValid) ||
-                    (selectedProvider.type === 'nsite' && !user) ||
-                    (selectedProvider.type === 'nsite' && !nsiteForm.dTag) ||
-                    (selectedProvider.type === 'netlify' && !netlifyForm.siteId && !netlifyForm.siteName) ||
-                    (selectedProvider.type === 'cloudflare' && !cloudflareForm.projectName) ||
-                    (selectedProvider.type === 'deno' && !denoDeployForm.projectName) ||
-                    (selectedProvider.type === 'railway' && !railwayForm.workspaceId)
-                  }
-                  className="w-full"
-                >
-                  {isDeploying ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      {progress ? `${progress.stage}…` : 'Deploying...'}
-                    </>
-                  ) : (
-                    <>
-                      <Rocket className="h-4 w-4 mr-2" />
-                      Deploy
-                    </>
-                  )}
-                </Button>
-              )}
-
-              {isDeploying && progress?.fraction !== undefined && (
-                <div className="space-y-1.5" aria-live="polite">
-                  <Progress value={progress.fraction * 100} className="h-2" />
-                  <div className="flex justify-between gap-2 text-xs text-muted-foreground tabular-nums">
-                    <span>{progress.detail}</span>
-                    <span>{Math.round(progress.fraction * 100)}%</span>
-                  </div>
-                </div>
-              )}
-            </>
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-xs text-muted-foreground">
+            You can close this. The deploy keeps going.
+          </p>
+          {canCancel && (
+            <Button variant="outline" size="sm" onClick={() => cancelDeploy(projectId)}>
+              Cancel
+            </Button>
           )}
         </div>
-      )}
+      </div>
+    );
+  };
+
+  const renderResult = (result: DeployResult) => (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+          <CheckCircle2 className="size-5" />
+        </div>
+        <div className="min-w-0">
+          <h3 className="font-semibold leading-tight">Deployed</h3>
+          <a
+            href={result.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block text-sm text-muted-foreground hover:text-foreground underline-offset-2 hover:underline truncate"
+          >
+            {result.url.replace(/^https?:\/\//, '')}
+          </a>
+        </div>
+      </div>
+
+      <div className="flex justify-end gap-2">
+        <Button variant="outline" onClick={handleClose}>
+          {t('close')}
+        </Button>
+        <Button onClick={() => window.open(result.url, '_blank')}>
+          <ExternalLink className="h-4 w-4 mr-2" />
+          Visit site
+        </Button>
+      </div>
+    </div>
+  );
+
+  const renderEmpty = () => (
+    <div className="py-8 px-4">
+      <div className="max-w-md mx-auto space-y-6 text-center">
+        {/* Icon */}
+        <div className="flex justify-center">
+          <div className="relative">
+            <div className="absolute inset-0 bg-primary/10 rounded-full blur-xl"></div>
+            <div className="relative bg-gradient-to-br from-primary/20 to-primary/5 p-6 rounded-2xl border border-primary/20">
+              <Cloud className="h-12 w-12 text-primary" />
+            </div>
+          </div>
+        </div>
+
+        {/* Heading */}
+        <div className="space-y-2">
+          <h3 className="text-xl font-semibold">Choose Your Deployment Platform</h3>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Deploy your Shakespeare projects to any hosting provider. Configure your preferred platform to get started.
+          </p>
+        </div>
+
+        {/* CTA */}
+        <div className="pt-2">
+          <Button
+            asChild
+            size="lg"
+            className="w-full"
+            onClick={handleClose}
+          >
+            <Link to="/settings/deploy">
+              <Settings className="h-4 w-4 mr-2" />
+              Configure Deployment Provider
+            </Link>
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderForm = () => {
+    const lastUrl = selectedProviderId ? projectSettings.providers[selectedProviderId]?.url : undefined;
+    // With a single provider there is nothing to pick, so it is named in the
+    // heading instead of offered as a choice of one.
+    const onlyProvider = settings.providers.length === 1 ? settings.providers[0] : undefined;
+
+    return (
+      <div className="space-y-4">
+        <div className="space-y-1">
+          <h3 className="font-semibold">
+            {onlyProvider ? `Deploy to ${onlyProvider.name}` : 'Deploy your project'}
+          </h3>
+          {lastUrl && (
+            <a
+              href={lastUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors min-w-0"
+              title="Visit last deployment"
+            >
+              <ExternalLink className="h-3 w-3 shrink-0" />
+              <span className="truncate">Live at {lastUrl.replace(/^https?:\/\//, '')}</span>
+            </a>
+          )}
+        </div>
+
+        {!onlyProvider && (
+          <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Provider">
+            {settings.providers.map((provider) => {
+              const preset = PRESET_DEPLOY_PROVIDERS.find(p => p.type === provider.type);
+              return (
+                <button
+                  key={provider.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={selectedProviderId === provider.id}
+                  onClick={() => setSelectedProviderId(provider.id)}
+                  className={cn(
+                    "inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium transition-all",
+                    "border-2 hover:scale-105 active:scale-95",
+                    selectedProviderId === provider.id
+                      ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                      : "bg-background text-foreground border-border hover:border-primary/50"
+                  )}
+                >
+                  {renderProviderIcon(provider, preset, 14)}
+                  <span>{provider.name}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {selectedProvider && renderProviderFields()}
+
+        {selectedProvider?.type === 'npanel' && !user && (
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              You must be logged in with Nostr to publish a site.{' '}
+              <Link
+                to="/settings/nostr"
+                className="underline hover:no-underline"
+                onClick={handleClose}
+              >
+                Go to Nostr Settings
+              </Link>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {selectedProvider?.type === 'nsite' && !user && (
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              You must be logged in with Nostr to deploy to nsite.{' '}
+              <Link
+                to="/settings/nostr"
+                className="underline hover:no-underline"
+                onClick={handleClose}
+              >
+                Go to Nostr Settings
+              </Link>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {error && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription className="space-y-2">
+              {/* Errors that itemise per-file failures are newline
+                  separated; a bare <p> would run them together. */}
+              <p className="whitespace-pre-line">{error}</p>
+              {/* The gateway refuses a name it is holding for this user
+                  and says to take it back instead. Saying so and leaving
+                  them to find out where is the worst of both. */}
+              {heldName && selectedProvider?.type === 'npanel' && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setMigratingProvider(selectedProvider)}
+                >
+                  Take back your sites
+                </Button>
+              )}
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {selectedProvider && (
+          <Button
+            onClick={handleDeploy}
+            disabled={
+              (selectedProvider.type === 'npanel' && !user) ||
+              (selectedProvider.type === 'npanel' && !isNpanelFormValid) ||
+              (selectedProvider.type === 'nsite' && !user) ||
+              (selectedProvider.type === 'nsite' && !nsiteForm.dTag) ||
+              (selectedProvider.type === 'netlify' && !netlifyForm.siteId && !netlifyForm.siteName) ||
+              (selectedProvider.type === 'cloudflare' && !cloudflareForm.projectName) ||
+              (selectedProvider.type === 'deno' && !denoDeployForm.projectName) ||
+              (selectedProvider.type === 'railway' && !railwayForm.workspaceId)
+            }
+            className="w-full"
+          >
+            <Rocket className="h-4 w-4 mr-2" />
+            Deploy
+          </Button>
+        )}
+      </div>
+    );
+  };
+
+  const renderBody = () => {
+    if (job?.status === 'running') return renderDeploying();
+    if (deployResult) return renderResult(deployResult);
+    if (settings.providers.length === 0) return renderEmpty();
+    return renderForm();
+  };
+
+  return (
+    <>
+      {renderBody()}
 
       {migratingProvider && (
         <NpanelMigrationDialog
@@ -1076,6 +1100,6 @@ export function DeploySteps({ projectId, projectName, onClose }: DeployStepsProp
           provider={migratingProvider}
         />
       )}
-    </div>
+    </>
   );
 }

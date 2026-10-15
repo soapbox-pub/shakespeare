@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { AdvancedSection } from './AdvancedSection';
 
 interface VercelDeployFormProps {
   projectId: string;
@@ -25,7 +26,7 @@ export function VercelDeployForm({
   }, [projectName, teamId, onConfigChange]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div className="space-y-2">
         <Label htmlFor="vercel-project-name">Project Name</Label>
         <Input
@@ -38,18 +39,21 @@ export function VercelDeployForm({
           URL: <span className="font-mono">{projectName || projectId}.vercel.app</span>
         </p>
       </div>
-      <div className="space-y-2">
-        <Label htmlFor="vercel-team-id">Team ID (optional)</Label>
-        <Input
-          id="vercel-team-id"
-          value={teamId}
-          onChange={(e) => setTeamId(e.target.value)}
-          placeholder="Leave empty for personal account"
-        />
-        <p className="text-xs text-muted-foreground">
-          Deploy to a team account instead of your personal account
-        </p>
-      </div>
+      {/* Open from the start when a team is already set, so it is not hidden state. */}
+      <AdvancedSection defaultOpen={Boolean(savedTeamId)}>
+        <div className="space-y-2">
+          <Label htmlFor="vercel-team-id">Team ID (optional)</Label>
+          <Input
+            id="vercel-team-id"
+            value={teamId}
+            onChange={(e) => setTeamId(e.target.value)}
+            placeholder="Leave empty for personal account"
+          />
+          <p className="text-xs text-muted-foreground">
+            Deploy to a team account instead of your personal account
+          </p>
+        </div>
+      </AdvancedSection>
     </div>
   );
 }

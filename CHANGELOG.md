@@ -1,5 +1,13 @@
 # Changelog
 
+## [9.18.1] - 2026-10-15
+
+### Changed
+- Apps you build can remember permission to read their own encrypted data, like saved settings or lists, so you aren't asked every time — reading your private messages is still a separate choice
+
+### Fixed
+- The close button in the image viewer no longer hides under your phone's status bar, and you can now swipe an image up or down to dismiss it
+
 ## [9.18.0] - 2026-10-15
 
 ### Added

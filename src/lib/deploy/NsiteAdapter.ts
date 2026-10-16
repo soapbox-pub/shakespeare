@@ -1,4 +1,4 @@
-import type { NostrSigner } from '@nostrify/nostrify';
+import type { NostrEvent, NostrSigner } from '@nostrify/nostrify';
 import mime from 'mime';
 import { nip19 } from 'nostr-tools';
 import type { JSRuntimeFS } from '../JSRuntime';
@@ -52,6 +52,9 @@ const UPLOAD_MIN_THROUGHPUT_BPS = 32 * 1024; // 256 kbps
 
 /** How many failed files get spelled out before the error message summarises */
 const MAX_REPORTED_FAILURES = 3;
+
+/** The largest plaintext the original NIP-44 can encrypt, before its v2 extension */
+const NIP44_LEGACY_MAX_BYTES = 65535;
 
 /**
  * The time budget for uploading a blob of the given size.
@@ -388,6 +391,43 @@ function describeUploadFailures(
 }
 
 /**
+ * Why the manifest could not be signed, in words that say what to do next.
+ *
+ * A remote signer that never answers surfaces as Nostrify's bare "The signal
+ * has been aborted" once its request times out. The usual reason with a large
+ * site is size: a bunker request is NIP-44 encrypted, and signers still on the
+ * original NIP-44 cannot read a payload over 64 KB, so they drop it without
+ * replying.
+ */
+function describeSigningFailure(
+  error: unknown,
+  template: Omit<NostrEvent, 'id' | 'pubkey' | 'sig'>,
+  fileCount: number,
+): string {
+  const { name, message } = (error ?? {}) as { name?: unknown; message?: unknown };
+
+  if (name !== 'AbortError' && name !== 'TimeoutError') {
+    const reason = typeof message === 'string' && message ? message : String(error);
+    return `Couldn't sign the site manifest: ${reason}`;
+  }
+
+  // Roughly what a bunker request carries: the template, serialized, as a
+  // string inside the JSON-RPC request.
+  const requestBytes = new TextEncoder().encode(JSON.stringify(JSON.stringify(template))).byteLength;
+
+  if (requestBytes <= NIP44_LEGACY_MAX_BYTES) {
+    return 'Your signer didn\'t respond to the request to sign the site manifest. Make sure your signer app is open and connected, then try again.';
+  }
+
+  return [
+    `Your signer didn't respond to the request to sign the site manifest.`,
+    `This site has ${fileCount} files, which makes the signing request ${formatBytes(requestBytes)}.`,
+    `Remote signers that haven't updated their NIP-44 encryption can't read requests over 64 KB, and ignore them.`,
+    `Update your signer app, or log in with a browser extension or a signer that supports large payloads.`,
+  ].join(' ');
+}
+
+/**
  * A gate that lets at most `concurrency` tasks run at once.
  */
 function limiter(concurrency: number) {
@@ -703,12 +743,19 @@ export class NsiteAdapter implements DeployAdapter {
 
     onProgress?.({ stage: 'Signing the site manifest' });
 
-    const manifestEvent = await this.signer.signEvent({
+    const template = {
       kind: manifestKind,
       content: '',
       created_at: Math.floor(Date.now() / 1000),
       tags,
-    });
+    };
+
+    let manifestEvent: NostrEvent;
+    try {
+      manifestEvent = await this.signer.signEvent(template);
+    } catch (error) {
+      throw new Error(describeSigningFailure(error, template, pathTags.length));
+    }
 
     // The last point a cancel can take back: once a relay has the manifest,
     // the site is live.

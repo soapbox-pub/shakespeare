@@ -9,6 +9,7 @@ import { Command, CommandGroup, CommandItem, CommandList } from '@/components/ui
 import { Square, ArrowUp } from 'lucide-react';
 import { ModelSelector } from '@/components/ModelSelector';
 import { QueuedMessages } from '@/components/Shakespeare/QueuedMessages';
+import { VoiceInputButton } from '@/components/Shakespeare/VoiceInputButton';
 import type { QueuedMessage } from '@/lib/SessionManager';
 import { readChatDraft, writeChatDraft } from '@/lib/chatDrafts';
 
@@ -112,6 +113,23 @@ export const ChatInput = memo(function ChatInput({
 
     onSend(currentInput, currentFiles);
   }, [input, attachedFiles, isConfigured, providerModel, onSend]);
+
+  const handleTranscript = useCallback((text: string) => {
+    const textarea = textareaRef.current;
+    setInput(prev => {
+      const start = textarea?.selectionStart ?? prev.length;
+      const end = textarea?.selectionEnd ?? prev.length;
+      const before = prev.slice(0, start);
+      const after = prev.slice(end);
+      const spaced = (before && !/\s$/.test(before) ? ' ' : '') + text + (after && !/^\s/.test(after) ? ' ' : '');
+      return before + spaced + after;
+    });
+    requestAnimationFrame(() => {
+      if (!textarea) return;
+      textarea.style.height = 'auto';
+      textarea.style.height = Math.min(textarea.scrollHeight, 128) + 'px';
+    });
+  }, []);
 
   const hasInput = !!input.trim() || attachedFiles.length > 0;
 
@@ -300,6 +318,12 @@ export const ChatInput = memo(function ChatInput({
             selectedFiles={attachedFiles}
             disabled={isLoadingSettings}
             multiple={true}
+          />
+
+          {/* Voice Input */}
+          <VoiceInputButton
+            onTranscript={handleTranscript}
+            disabled={isLoadingSettings || (isConfigured && !providerModel.trim())}
           />
 
           {/* Context Usage Wheel */}

@@ -1,5 +1,14 @@
 # Changelog
 
+## [9.19.0] - 2026-10-15
+
+### Added
+- Keep the ideas flowing while Shakespeare works — send messages mid-task and they'll wait in a queue, then go out as soon as it finishes; you can remove any before they're sent, and they survive a reload
+- Copy any message in the chat with one click, including Shakespeare's replies and your queued messages
+
+### Changed
+- Your unsent message stays put for each project, so a reload, switching projects, or flipping between chat and preview on your phone no longer wipes what you were typing
+
 ## [9.18.1] - 2026-10-15
 
 ### Changed

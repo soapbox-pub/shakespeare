@@ -263,7 +263,7 @@ export function getPreviewInjectedScript(): string {
         method: 'console',
         params: {
           level: 'error',
-          message: 'Uncaught Error: ' + event.message,
+          message: /^Uncaught/.test(event.message) ? event.message : 'Uncaught Error: ' + event.message,
           source: event.filename,
           lineno: event.lineno,
           colno: event.colno,

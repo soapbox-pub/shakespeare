@@ -29,6 +29,8 @@ import {
   Search,
   Clipboard,
   AppWindow,
+  MousePointerClick,
+  Keyboard,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { VFSImage } from '@/components/VFSImage';
@@ -321,6 +323,27 @@ function getToolInfo(toolName: string, args: Record<string, unknown>, projectId?
         callingTitle: 'Viewing console',
         errorTitle: 'Failed to view console',
       };
+
+    case 'preview': {
+      const path = args.path ? String(args.path) : '/';
+      const text = args.text ? `"${String(args.text).slice(0, 40)}"` : '';
+      switch (args.action) {
+        case 'open':
+          return { icon: AppWindow, title: `Opened ${path}`, callingTitle: `Opening ${path}`, errorTitle: `Failed to open ${path}` };
+        case 'click':
+          return { icon: MousePointerClick, title: 'Clicked in preview', callingTitle: 'Clicking in preview', errorTitle: 'Failed to click in preview' };
+        case 'type':
+          return { icon: Keyboard, title: `Typed ${text}`, callingTitle: `Typing ${text}`, errorTitle: `Failed to type ${text}` };
+        case 'press':
+          return { icon: Keyboard, title: `Pressed ${String(args.key)}`, callingTitle: `Pressing ${String(args.key)}`, errorTitle: `Failed to press ${String(args.key)}` };
+        case 'wait':
+          return { icon: AppWindow, title: text ? `Waited for ${text}` : 'Waited for preview', callingTitle: text ? `Waiting for ${text}` : 'Waiting for preview', errorTitle: 'Failed to wait for preview' };
+        case 'eval':
+          return { icon: Terminal, title: 'Ran script in preview', callingTitle: 'Running script in preview', errorTitle: 'Script failed in preview' };
+        default:
+          return { icon: AppWindow, title: 'Inspected preview', callingTitle: 'Inspecting preview', errorTitle: 'Failed to inspect preview' };
+      }
+    }
 
     case 'webfetch': {
       const url = args.url ? String(args.url) : '';

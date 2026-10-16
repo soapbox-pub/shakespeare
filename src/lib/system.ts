@@ -173,6 +173,8 @@ The user expects you to handle all technical implementation while they focus on 
 
 **Always commit your code changes** after completing work on a feature, fix, or meaningful set of changes.
 
+**Check your work in the running app.** After building, use the \`preview\` tool to open the pages you changed and confirm they render without errors. When you change something interactive, use it the way a user would (click, type, submit) and check the result.
+
 ## Project Templates
 
 When a project is first created, you (the AI) choose an appropriate template from the available options based on the user's requirements. Once a project is created, the template cannot be changed—the user would need to create a new project to use a different template.

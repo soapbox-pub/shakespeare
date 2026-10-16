@@ -58,6 +58,16 @@ Shakespeare provides AI agents with specialized tools for project development (n
 - **NostrDecodeTool**: Decode NIP-19 bech32 entities into hex and structured data
 - **BlossomUploadTool**: Upload files from the project to Blossom media hosting, returns a public URL
 - **ReadConsoleMessagesTool**: Read console messages from project preview with filtering capabilities
+- **PreviewTool**: See and use the running app (see below)
+
+#### Preview Tool
+
+`PreviewTool` (tool name `preview`) lets the AI check its work in the running app. It loads the project's `dist` in a hidden iframe.diy frame (`src/lib/preview/AgentBrowser.ts`), separate from the user's preview: its own origin (subdomain derived with the `agent` prefix), no NIP-07 signer, and keyboard focus handed back to Shakespeare whenever the frame grabs it.
+
+- **Injected script**: `src/lib/preview/agentScript.ts` is served alongside `preview.js`. It renders the page as an accessibility snapshot with refs (`[ref=e12]`) on interactive elements, and performs actions on refs: `click`, `type`, `select`, `hover`, `press`, `scroll`, `back`, `wait`, and `eval`. Events are synthetic but complete (pointer, mouse, and focus), which is enough for Radix components.
+- **Settling**: after each action the script waits until the DOM is quiet, no fetches are in flight, and no Nostr `REQ` is waiting on `EOSE`, then snapshots. Each result also lists console output, uncaught errors, and 404s since the previous action.
+- **Messaging**: the parent sends `agent.call` notifications. The script replies with `agent.result` *requests*, because iframe.diy's outer frame forwards responses from the inner frame to its Service Worker, not the parent.
+- **File serving**: both the user's preview and the agent frame serve `dist` through `src/lib/preview/servePreviewFile.ts`.
 
 #### Shell Commands
 

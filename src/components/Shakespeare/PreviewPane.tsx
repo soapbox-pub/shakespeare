@@ -1,4 +1,3 @@
-import { encodeBase64 } from '@std/encoding/base64';
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
@@ -27,6 +26,7 @@ import { useAppContext } from '@/hooks/useAppContext';
 import { isMediaFile } from '@/lib/fileUtils';
 import { deriveIframeSubdomain } from '@/lib/iframeSubdomain';
 import { getPreviewInjectedScript } from '@/lib/previewInjectedScript';
+import { servePreviewFile } from '@/lib/preview/servePreviewFile';
 import { getPreviewNostrProviderScript } from '@/lib/previewNostrProvider';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { usePreviewSignerRpc } from '@/hooks/usePreviewSignerRpc';
@@ -163,32 +163,6 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
     }
   }, [projectId, projectsManager]);
 
-  const getContentType = (filename: string): string => {
-    const ext = filename.split('.').pop()?.toLowerCase();
-    const mimeTypes: Record<string, string> = {
-      'html': 'text/html',
-      'js': 'application/javascript',
-      'mjs': 'application/javascript',
-      'css': 'text/css',
-      'json': 'application/json',
-      'png': 'image/png',
-      'jpg': 'image/jpeg',
-      'jpeg': 'image/jpeg',
-      'gif': 'image/gif',
-      'svg': 'image/svg+xml',
-      'ico': 'image/x-icon',
-      'woff': 'font/woff',
-      'woff2': 'font/woff2',
-      'ttf': 'font/ttf',
-      'eot': 'application/vnd.ms-fontobject',
-      'txt': 'text/plain',
-      'xml': 'application/xml',
-      'pdf': 'application/pdf',
-      'zip': 'application/zip',
-    };
-    return mimeTypes[ext || ''] || 'application/octet-stream';
-  };
-
   const checkForBuiltProject = useCallback(async () => {
     try {
       const exists = await projectsManager.fileExists(projectId, 'dist/index.html');
@@ -321,18 +295,6 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
     return scripts;
   }, [user]);
 
-  /** Inject the script tags into an HTML string using DOMParser. */
-  const injectScript = useCallback((html: string): string => {
-    const doc = new DOMParser().parseFromString(html, 'text/html');
-    const first = doc.head.firstChild;
-    for (const path of injectedScripts.keys()) {
-      const tag = doc.createElement('script');
-      tag.src = path;
-      doc.head.insertBefore(tag, first);
-    }
-    return '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
-  }, [injectedScripts]);
-
   const handleFetch = useCallback(async (request: JSONRPCRequest) => {
     const { params, id } = request;
     const { request: fetchRequest } = params;
@@ -355,118 +317,11 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
         return;
       }
 
-      const path = url.pathname;
-      const filePath = path;
-
-      // Serve the injected scripts at their virtual paths
-      const injectedScript = injectedScripts.get(path);
-      if (injectedScript !== undefined) {
-        sendResponse({
-          jsonrpc: '2.0',
-          result: {
-            status: 200,
-            statusText: 'OK',
-            headers: {
-              'Content-Type': 'application/javascript',
-              'Cache-Control': 'no-cache',
-            },
-            body: encodeBase64(new TextEncoder().encode(injectedScript)),
-          },
-          id
-        });
-        return;
-      }
-
-      // Skip SPA fallback for static assets (files with extensions)
-      const isStaticAsset = /\.[a-zA-Z0-9]+$/.test(path);
-
-      // SPA routing: try to serve the exact file first
-      try {
-        const bytes = await projectsManager.readFileBytes(projectId, 'dist' + filePath);
-        const contentType = getContentType(filePath);
-        console.log(`Serving file: ${filePath}`);
-
-        // Inject preview script into HTML responses
-        let body: string;
-        if (contentType === 'text/html') {
-          const html = new TextDecoder().decode(bytes);
-          body = encodeBase64(new TextEncoder().encode(injectScript(html)));
-        } else {
-          body = encodeBase64(bytes);
-        }
-
-        sendResponse({
-          jsonrpc: '2.0',
-          result: {
-            status: 200,
-            statusText: 'OK',
-            headers: {
-              'Content-Type': contentType,
-              'Cache-Control': 'no-cache',
-            },
-            body,
-          },
-          id
-        });
-        return;
-      } catch {
-
-        // For static assets, return 404 immediately
-        if (isStaticAsset) {
-
-          sendResponse({
-            jsonrpc: '2.0',
-            result: {
-              status: 404,
-              statusText: 'Not Found',
-              headers: {
-                'Content-Type': 'text/plain',
-              },
-              body: encodeBase64(`Static asset not found: ${path}`),
-            },
-            id
-          });
-          return;
-        }
-      }
-
-      // SPA fallback: serve index.html for non-file requests (SPA routing)
-      try {
-        const bytes = await projectsManager.readFileBytes(projectId, 'dist/index.html');
-        console.log(`Serving index.html fallback for: ${path}`);
-
-        // Inject preview script into SPA fallback HTML
-        const html = new TextDecoder().decode(bytes);
-        const body = encodeBase64(new TextEncoder().encode(injectScript(html)));
-
-        sendResponse({
-          jsonrpc: '2.0',
-          result: {
-            status: 200,
-            statusText: 'OK',
-            headers: {
-              'Content-Type': 'text/html',
-              'Cache-Control': 'no-cache',
-            },
-            body,
-          },
-          id
-        });
-      } catch {
-        // Even index.html doesn't exist
-        sendResponse({
-          jsonrpc: '2.0',
-          result: {
-            status: 404,
-            statusText: 'Not Found',
-            headers: {
-              'Content-Type': 'text/plain',
-            },
-            body: encodeBase64(`File not found: ${path}`),
-          },
-          id
-        });
-      }
+      const result = await servePreviewFile(url.pathname, {
+        readDistFile: (path) => projectsManager.readFileBytes(projectId, 'dist' + path),
+        injectedScripts,
+      });
+      sendResponse({ jsonrpc: '2.0', result, id });
     } catch (error) {
       console.error('Error processing fetch request:', error);
       sendError({
@@ -479,7 +334,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
         id
       });
     }
-  }, [projectId, projectsManager, sendResponse, sendError, previewOrigin, injectScript, injectedScripts]);
+  }, [projectId, projectsManager, sendResponse, sendError, previewOrigin, injectedScripts]);
 
   const { onRpc: onSignerRpc } = signerRpc;
   const handleSignerRpc = useCallback(async (message: { id: string | number; method: string; params?: unknown }) => {

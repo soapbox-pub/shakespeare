@@ -40,6 +40,7 @@ import { NostrDecodeTool } from '@/lib/tools/NostrDecodeTool';
 import { BlossomUploadTool } from '@/lib/tools/BlossomUploadTool';
 import { ShellTool } from '@/lib/tools/ShellTool';
 import { ReadConsoleMessagesTool } from '@/lib/tools/ReadConsoleMessagesTool';
+import { PreviewTool } from '@/lib/tools/PreviewTool';
 import { SkillTool } from '@/lib/tools/SkillTool';
 import { GenerateImageTool } from '@/lib/tools/GenerateImageTool';
 import { ViewAvailableModelsTool } from '@/lib/tools/ViewAvailableModelsTool';
@@ -227,6 +228,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
       blossom_upload: new BlossomUploadTool(fs, cwd, user?.signer),
       shell: new ShellTool(fs, cwd, git, config.corsProxy, user?.signer),
       read_console_messages: new ReadConsoleMessagesTool(),
+      preview: new PreviewTool(fs, cwd, projectId, config.previewDomain),
       skill: new SkillTool(fs, availableSkills),
       webfetch: new WebFetchTool({ corsProxy: config.corsProxy }),
       websearch: new WebSearchTool(),
@@ -290,7 +292,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     }
 
     return tools;
-  }, [fs, git, cwd, user, projectsPath, tmpPath, config.corsProxy, config.relayMetadata, settings, aiSettings, models, handleFileChanged, handleCommit, projectId, availableSkills]);
+  }, [fs, git, cwd, user, projectsPath, tmpPath, config.corsProxy, config.relayMetadata, config.previewDomain, settings, aiSettings, models, handleFileChanged, handleCommit, projectId, availableSkills]);
 
   // MCP tools wrapped for execution
   const mcpToolWrappers = useMemo(() => createMCPTools(mcpClients), [mcpClients]);

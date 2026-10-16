@@ -949,6 +949,8 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
       )}
 
       <ChatInput
+        key={projectId}
+        projectId={projectId}
         isLoading={isLoading}
         isConfigured={isConfigured}
         isLoadingSettings={isLoadingSettings}

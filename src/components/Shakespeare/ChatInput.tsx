@@ -10,6 +10,7 @@ import { Square, ArrowUp } from 'lucide-react';
 import { ModelSelector } from '@/components/ModelSelector';
 import { QueuedMessages } from '@/components/Shakespeare/QueuedMessages';
 import type { QueuedMessage } from '@/lib/SessionManager';
+import { readChatDraft, writeChatDraft } from '@/lib/chatDrafts';
 
 export interface SlashCommand {
   name: string;
@@ -18,6 +19,8 @@ export interface SlashCommand {
 }
 
 interface ChatInputProps {
+  /** The draft is saved per project. Remount (`key`) when this changes. */
+  projectId: string;
   isLoading: boolean;
   isConfigured: boolean;
   isLoadingSettings: boolean;
@@ -44,6 +47,7 @@ interface ChatInputProps {
 }
 
 export const ChatInput = memo(function ChatInput({
+  projectId,
   isLoading,
   isConfigured,
   isLoadingSettings,
@@ -69,12 +73,24 @@ export const ChatInput = memo(function ChatInput({
   onRemoveQueuedMessage,
 }: ChatInputProps) {
   const { t } = useTranslation();
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState(() => readChatDraft(projectId));
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   const [showSlashCommands, setShowSlashCommands] = useState(false);
   const [filteredCommands, setFilteredCommands] = useState<SlashCommand[]>([]);
   const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    writeChatDraft(projectId, input);
+  }, [projectId, input]);
+
+  // Size the textarea to a restored draft, as typing would
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea || !textarea.value) return;
+    textarea.style.height = 'auto';
+    textarea.style.height = Math.min(textarea.scrollHeight, 128) + 'px';
+  }, []);
 
   const handleFileSelect = useCallback((file: File) => {
     setAttachedFiles(prev => [...prev, file]);

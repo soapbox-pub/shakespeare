@@ -4,6 +4,7 @@ import { Git } from '@/lib/git';
 import type { JSRuntimeFS } from '@/lib/JSRuntime';
 import { ensurePersistentStorage } from '@/lib/persistentStorage';
 import { DotAI } from '@/lib/DotAI';
+import { moveChatDraft, writeChatDraft } from '@/lib/chatDrafts';
 
 // Polyfill Buffer for browser
 if (typeof window !== 'undefined') {
@@ -711,6 +712,7 @@ export class ProjectsManager {
 
     // Recursively delete the project directory
     await this.deleteDirectory(projectPath);
+    writeChatDraft(projectId, '');
   }
 
   async renameProject(oldId: string, newId: string): Promise<Project> {
@@ -744,6 +746,7 @@ export class ProjectsManager {
 
     // Rename the directory
     await this.fs.rename(oldPath, newPath);
+    moveChatDraft(oldId, newId);
 
     // Return the updated project object
     const stats = await this.fs.stat(newPath);

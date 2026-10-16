@@ -2,6 +2,7 @@ import { join } from "path-browserify";
 import type OpenAI from "openai";
 import type { JSRuntimeFS } from "./JSRuntime";
 import { isEmptyMessage } from "./isEmptyMessage";
+import type { QueuedMessage } from "./SessionManager";
 
 /** AI message history manager and .git/ai directory utilities */
 export class DotAI {
@@ -391,6 +392,50 @@ export class DotAI {
       await this.fs.writeFile(finishReasonPath, content);
     } catch (error) {
       console.warn(`Failed to write .git/ai/FINISH_REASON file: ${error}`);
+    }
+  }
+
+  /**
+   * Read queued user messages from .git/ai/QUEUE.json file
+   * @returns The queued messages, or an empty array if the file doesn't exist or is invalid
+   */
+  async readQueue(): Promise<QueuedMessage[]> {
+    try {
+      const queuePath = join(this.workingDir, ".git", "ai", "QUEUE.json");
+      const content = await this.fs.readFile(queuePath, "utf8");
+      const queue = JSON.parse(content);
+
+      if (!Array.isArray(queue)) return [];
+
+      return queue.filter((message): message is QueuedMessage =>
+        !!message && typeof message.id === 'string' &&
+        (typeof message.content === 'string' || Array.isArray(message.content))
+      );
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Write queued user messages to .git/ai/QUEUE.json file, removing it when the queue is empty
+   * @param queue The queued messages
+   */
+  async writeQueue(queue: QueuedMessage[]): Promise<void> {
+    const aiDir = join(this.workingDir, ".git", "ai");
+    const queuePath = join(aiDir, "QUEUE.json");
+
+    try {
+      if (queue.length === 0) {
+        await this.fs.unlink(queuePath).catch(() => {});
+        return;
+      }
+
+      // Ensure .git/ai directory exists
+      await this.fs.mkdir(aiDir, { recursive: true });
+
+      await this.fs.writeFile(queuePath, JSON.stringify(queue) + "\n");
+    } catch (error) {
+      console.warn(`Failed to write .git/ai/QUEUE.json file: ${error}`);
     }
   }
 

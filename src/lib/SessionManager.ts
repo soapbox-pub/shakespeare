@@ -76,6 +76,7 @@ export interface SessionManagerEvents {
  */
 export class SessionManager {
   private sessions = new Map<string, SessionState>();
+  private queueWrites = new Map<string, Promise<void>>();
   private listeners: Partial<Record<keyof SessionManagerEvents, Set<(...args: unknown[]) => void>>> = {};
   private fs: JSRuntimeFS;
   private nostr: NPool;
@@ -120,6 +121,7 @@ export class SessionManager {
     let messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [];
     let sessionName = DotAI.generateSessionName();
     let lastFinishReason: string | null | undefined;
+    let queuedMessages: QueuedMessage[] = [];
 
     // Try to load existing history
     try {
@@ -133,6 +135,9 @@ export class SessionManager {
 
       // Load last finish reason
       lastFinishReason = await dotAI.readFinishReason();
+
+      // Load messages queued before a reload
+      queuedMessages = await dotAI.readQueue();
     } catch (error) {
       console.warn('Failed to load session history:', error);
     }
@@ -147,7 +152,7 @@ export class SessionManager {
       totalCost: 0,
       lastInputTokens: 0,
       lastFinishReason,
-      queuedMessages: [],
+      queuedMessages,
       ...this.sessions.get(projectId),
       messages,
       sessionName,
@@ -237,8 +242,7 @@ export class SessionManager {
     const session = this.sessions.get(projectId);
     if (!session) return;
 
-    session.queuedMessages = [...session.queuedMessages, { id: crypto.randomUUID(), content }];
-    this.emit('queueChanged', projectId, session.queuedMessages);
+    this.setQueue(projectId, [...session.queuedMessages, { id: crypto.randomUUID(), content }]);
   }
 
   /**
@@ -248,8 +252,25 @@ export class SessionManager {
     const session = this.sessions.get(projectId);
     if (!session) return;
 
-    session.queuedMessages = session.queuedMessages.filter((message) => message.id !== id);
-    this.emit('queueChanged', projectId, session.queuedMessages);
+    this.setQueue(projectId, session.queuedMessages.filter((message) => message.id !== id));
+  }
+
+  /**
+   * Replace a session's queue, notify listeners, and save it
+   */
+  private setQueue(projectId: string, queue: QueuedMessage[]): void {
+    const session = this.sessions.get(projectId);
+    if (!session) return;
+
+    session.queuedMessages = queue;
+    this.emit('queueChanged', projectId, queue);
+
+    // Chain writes so they land in order; each one saves the queue as it is when it runs.
+    const config = this.getConfig();
+    const dotAI = new DotAI(this.fs, `${config.fsPathProjects}/${projectId}`);
+    const previous = this.queueWrites.get(projectId) ?? Promise.resolve();
+    const write = previous.then(() => dotAI.writeQueue(this.sessions.get(projectId)?.queuedMessages ?? []));
+    this.queueWrites.set(projectId, write);
   }
 
   /**
@@ -260,12 +281,14 @@ export class SessionManager {
     if (!session || session.queuedMessages.length === 0) return false;
 
     const queued = session.queuedMessages;
-    session.queuedMessages = [];
-    this.emit('queueChanged', projectId, session.queuedMessages);
-
     for (const { content } of queued) {
       await this.addMessage(projectId, { role: 'user', content });
     }
+
+    // Cleared after the messages are in the history, so a reload in between can't lose them.
+    // Anything queued meanwhile stays.
+    const flushed = new Set(queued.map(({ id }) => id));
+    this.setQueue(projectId, session.queuedMessages.filter(({ id }) => !flushed.has(id)));
     return true;
   }
 
@@ -827,9 +850,8 @@ export class SessionManager {
     session.totalCost = 0;
     session.lastInputTokens = 0;
     session.lastFinishReason = null;
-    session.queuedMessages = [];
+    this.setQueue(projectId, []);
 
-    this.emit('queueChanged', projectId, []);
     this.emit('costUpdated', projectId, 0);
     this.emit('contextUsageUpdated', projectId, 0);
     this.emit('finishReasonChanged', projectId, null);

@@ -13,7 +13,7 @@ import { useToast } from '@/hooks/useToast';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { genUserName } from '@/lib/genUserName';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import type { NostrMetadata } from '@nostrify/nostrify';
 
 interface DiscoverPluginsDialogProps {

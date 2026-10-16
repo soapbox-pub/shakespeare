@@ -1,5 +1,5 @@
 import { nip19 } from 'nostr-tools';
-import { useParams } from 'react-router-dom';
+import { useParams } from 'react-router';
 import NotFound from './NotFound';
 
 export function NIP19Page() {

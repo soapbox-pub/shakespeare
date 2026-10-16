@@ -1,5 +1,5 @@
 import { APIConnectionError, APIError } from 'openai';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { QuillySVG } from '@/components/ui/QuillySVG';

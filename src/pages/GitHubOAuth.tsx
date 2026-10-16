@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router';
 import { useGitHubOAuth } from '@/hooks/useGitHubOAuth';
 import { useGitSettings } from '@/hooks/useGitSettings';
 import { useToast } from '@/hooks/useToast';

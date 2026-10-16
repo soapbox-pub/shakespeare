@@ -14,7 +14,7 @@ import { useToast } from '@/hooks/useToast';
 import { useFS } from '@/hooks/useFS';
 import { useFSPaths } from '@/hooks/useFSPaths';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import {
   Calendar,
   Folder,

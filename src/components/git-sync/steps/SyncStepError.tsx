@@ -2,7 +2,7 @@ import { Errors as GitErrors } from 'isomorphic-git';
 import { X, ArrowDown, ArrowUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { getSentryInstance } from '@/lib/sentry';
 
 interface SyncStepErrorProps {

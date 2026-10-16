@@ -13,7 +13,7 @@ import type { Repository } from '@/hooks/useUserRepositories';
 import { useAuthor } from '@/hooks/useAuthor';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { genUserName } from '@/lib/genUserName';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { NostrURI } from '@/lib/NostrURI';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
 import { useToast } from '@/hooks/useToast';

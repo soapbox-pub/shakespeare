@@ -14,7 +14,7 @@ import { useNostr } from '@nostrify/react';
 import { useNostrPublish } from '@/hooks/useNostrPublish';
 import { useGit } from '@/hooks/useGit';
 import { NostrURI } from '@/lib/NostrURI';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import type { DeployProvider, NpanelProvider } from '@/contexts/DeploySettingsContext';
 import { NpanelMigrationDialog } from '@/components/deploy/NpanelMigrationDialog';
 import type { PresetDeployProvider } from '@/lib/deploy/types';

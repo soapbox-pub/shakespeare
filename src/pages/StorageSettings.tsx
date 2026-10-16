@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { Download, Trash2, AlertTriangle, Loader2, Database, Info, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';

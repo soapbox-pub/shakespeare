@@ -10,7 +10,7 @@ import { useNostr } from '@nostrify/react';
 import { useNostrPublish } from '@/hooks/useNostrPublish';
 import { useFS } from '@/hooks/useFS';
 import { useAppContext } from '@/hooks/useAppContext';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { createRepositoryAnnouncementEvent } from '@/lib/announceRepository';
 import { DotAI } from '@/lib/DotAI';
 import { nip19 } from 'nostr-tools';

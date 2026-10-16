@@ -12,7 +12,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar.tsx';
 import { useLoggedInAccounts, type Account } from '@/hooks/useLoggedInAccounts';
 import { genUserName } from '@/lib/genUserName';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 
 interface AccountSwitcherProps {
   onAddAccountClick: () => void;

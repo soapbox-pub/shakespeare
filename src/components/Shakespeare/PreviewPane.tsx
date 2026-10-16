@@ -21,7 +21,7 @@ import { cn } from '@/lib/utils';
 import { FileTree } from './FileTree';
 import { FileEditor } from './FileEditor';
 import { Terminal as TerminalComponent } from '@/components/Terminal';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router';
 import { useAppContext } from '@/hooks/useAppContext';
 import { isMediaFile } from '@/lib/fileUtils';
 import { deriveIframeSubdomain } from '@/lib/iframeSubdomain';

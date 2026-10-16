@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router';
 import { useOpenRouterOAuth } from '@/hooks/useOpenRouterOAuth';
 import { useAISettings } from '@/hooks/useAISettings';
 import { useToast } from '@/hooks/useToast';

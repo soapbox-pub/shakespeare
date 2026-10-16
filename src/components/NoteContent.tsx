@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { type NostrEvent } from '@nostrify/nostrify';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { nip19 } from 'nostr-tools';
 import { useAuthor } from '@/hooks/useAuthor';
 import { genUserName } from '@/lib/genUserName';

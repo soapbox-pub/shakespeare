@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { Info, ExternalLink, Loader2, AlertTriangle, Code, Globe, ScrollText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SettingsPageLayout } from '@/components/SettingsPageLayout';

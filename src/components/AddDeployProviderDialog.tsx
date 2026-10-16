@@ -18,7 +18,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ExternalFavicon } from '@/components/ExternalFavicon';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import type { PresetDeployProvider } from '@/lib/deploy/types';
 
 interface OAuthHook {

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { Plus, Folder, GitBranch, Loader2, ChevronDown, ChevronRight, Star, Columns2, X, Settings, HelpCircle, Search, Tag, Folders } from 'lucide-react';
 import { Button } from '@/components/ui/button';

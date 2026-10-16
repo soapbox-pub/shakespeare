@@ -5,7 +5,7 @@ import { useLoggedInAccounts } from '@/hooks/useLoggedInAccounts';
 
 // Mock the hooks
 vi.mock('@/hooks/useLoggedInAccounts');
-vi.mock('react-router-dom', () => ({
+vi.mock('react-router', () => ({
   useNavigate: () => vi.fn()
 }));
 

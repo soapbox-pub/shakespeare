@@ -2,7 +2,7 @@ import { ArrowLeft, type LucideIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { useIsMobile } from '@/hooks/useIsMobile';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 

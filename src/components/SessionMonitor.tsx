@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useSessionManager } from '@/hooks/useSessionManager';
 import { useToast } from '@/hooks/useToast';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router';
 
 /**
  * Global component that monitors AI sessions and shows notifications

@@ -11,7 +11,7 @@ vi.mock('@/hooks/useLocalStorage');
 vi.mock('@/hooks/useProjectSessionStatus', () => ({
   useProjectSessionStatus: () => ({ hasRunningSessions: false })
 }));
-vi.mock('react-router-dom', async (importOriginal) => {
+vi.mock('react-router', async (importOriginal) => {
   const actual = await importOriginal() as Record<string, unknown>;
   return {
     ...actual,

@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router';
 import { useNetlifyOAuth } from '@/hooks/useNetlifyOAuth';
 import { useDeploySettings } from '@/hooks/useDeploySettings';
 import { useToast } from '@/hooks/useToast';

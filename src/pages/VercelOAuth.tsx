@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router';
 import { useVercelOAuth } from '@/hooks/useVercelOAuth';
 import { useDeploySettings } from '@/hooks/useDeploySettings';
 import { useToast } from '@/hooks/useToast';

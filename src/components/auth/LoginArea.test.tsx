@@ -24,8 +24,8 @@ vi.mock('./AccountSwitcher', () => ({
   )
 }));
 
-// Mock react-router-dom
-vi.mock('react-router-dom', () => ({
+// Mock react-router
+vi.mock('react-router', () => ({
   useNavigate: () => vi.fn()
 }));
 

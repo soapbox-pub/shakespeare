@@ -348,7 +348,9 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     totalCost,
     lastInputTokens,
     lastFinishReason,
+    queuedMessages,
     addMessage,
+    removeQueuedMessage,
     sendMessage,
     startGeneration,
     stopGeneration,
@@ -620,7 +622,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
   }, []);
 
   const handleSend = useCallback(async (input: string, attachedFiles: File[]) => {
-    if ((!input.trim() && attachedFiles.length === 0) || isLoading) return;
+    if (!input.trim() && attachedFiles.length === 0) return;
 
     // If AI is not configured, show onboarding dialog
     if (!isConfigured) {
@@ -650,8 +652,9 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     // Mark that we should scroll to bottom when the message is added
     shouldScrollToBottomRef.current = true;
 
+    // Queued by the session manager if the AI is mid-turn
     await sendMessage(messageContent, modelToUse);
-  }, [addRecentlyUsedModel, fs, isConfigured, isLoading, providerModel, sendMessage, tmpPath]);
+  }, [addRecentlyUsedModel, fs, isConfigured, providerModel, sendMessage, tmpPath]);
 
   // Handle textarea focus - show onboarding if not configured
   const handleTextareaFocus = useCallback(() => {
@@ -967,6 +970,8 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         slashCommands={slashCommands}
+        queuedMessages={queuedMessages}
+        onRemoveQueuedMessage={removeQueuedMessage}
       />
 
       {/* Onboarding Dialog */}

@@ -26,6 +26,14 @@ export type AIMessage = OpenAI.Chat.Completions.ChatCompletionMessageParam | {
   tool_calls?: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[];
 };
 
+export type UserMessageContent = string | Array<OpenAI.Chat.Completions.ChatCompletionContentPartText | OpenAI.Chat.Completions.ChatCompletionContentPartImage>;
+
+/** A user message waiting for the current turn to finish. */
+export interface QueuedMessage {
+  id: string;
+  content: UserMessageContent;
+}
+
 export interface SessionState {
   projectId: string;
   tools: Record<string, OpenAI.Chat.Completions.ChatCompletionTool>;
@@ -46,6 +54,7 @@ export interface SessionState {
   lastInputTokens?: number; // Input tokens from the last AI request
   imagesNotSupported?: boolean; // Track if this session's model doesn't support images
   lastFinishReason?: string | null; // Last finish reason from AI generation
+  queuedMessages: QueuedMessage[]; // Sent while the AI was working; added once its turn ends
 }
 
 export interface SessionManagerEvents {
@@ -58,6 +67,7 @@ export interface SessionManagerEvents {
   contextUsageUpdated: (projectId: string, inputTokens: number) => void;
   fileChanged: (projectId: string, filePath: string) => void;
   finishReasonChanged: (projectId: string, finishReason: string | null) => void;
+  queueChanged: (projectId: string, queuedMessages: QueuedMessage[]) => void;
 }
 
 /**
@@ -137,6 +147,7 @@ export class SessionManager {
       totalCost: 0,
       lastInputTokens: 0,
       lastFinishReason,
+      queuedMessages: [],
       ...this.sessions.get(projectId),
       messages,
       sessionName,
@@ -197,19 +208,65 @@ export class SessionManager {
   }
 
   /**
-   * Send a message and start AI generation
+   * Send a message and start AI generation.
+   * If the AI is already working, the message is queued until its turn ends.
    */
   async sendMessage(
     projectId: string,
-    content: string | Array<OpenAI.Chat.Completions.ChatCompletionContentPartText | OpenAI.Chat.Completions.ChatCompletionContentPartImage>,
+    content: UserMessageContent,
     providerModel: string
   ): Promise<void> {
     const session = this.sessions.get(projectId);
+    if (!session) return;
 
-    if (!session || session.isLoading) return;
+    if (session.isLoading) {
+      this.queueMessage(projectId, content);
+      return;
+    }
 
+    // Messages left over from a turn that was stopped go first, in the order they were written.
+    await this.flushQueue(projectId);
     await this.addMessage(projectId, { role: 'user', content });
     await this.startGeneration(projectId, providerModel);
+  }
+
+  /**
+   * Queue a user message to be added once the current turn ends
+   */
+  queueMessage(projectId: string, content: UserMessageContent): void {
+    const session = this.sessions.get(projectId);
+    if (!session) return;
+
+    session.queuedMessages = [...session.queuedMessages, { id: crypto.randomUUID(), content }];
+    this.emit('queueChanged', projectId, session.queuedMessages);
+  }
+
+  /**
+   * Remove a queued message before it is sent
+   */
+  removeQueuedMessage(projectId: string, id: string): void {
+    const session = this.sessions.get(projectId);
+    if (!session) return;
+
+    session.queuedMessages = session.queuedMessages.filter((message) => message.id !== id);
+    this.emit('queueChanged', projectId, session.queuedMessages);
+  }
+
+  /**
+   * Add all queued messages to the conversation. Returns whether there were any.
+   */
+  private async flushQueue(projectId: string): Promise<boolean> {
+    const session = this.sessions.get(projectId);
+    if (!session || session.queuedMessages.length === 0) return false;
+
+    const queued = session.queuedMessages;
+    session.queuedMessages = [];
+    this.emit('queueChanged', projectId, session.queuedMessages);
+
+    for (const { content } of queued) {
+      await this.addMessage(projectId, { role: 'user', content });
+    }
+    return true;
   }
 
   /**
@@ -704,8 +761,12 @@ export class SessionManager {
         this.emit('finishReasonChanged', projectId, finishReason);
         await this.saveFinishReason(projectId, finishReason);
 
-        // Check if we should stop
+        // The turn is over. Continue with any messages the user queued during it, or stop.
         if (finishReason === 'stop') {
+          if (session.isLoading && await this.flushQueue(projectId)) {
+            stepCount = 0;
+            continue;
+          }
           break;
         }
       }
@@ -766,7 +827,9 @@ export class SessionManager {
     session.totalCost = 0;
     session.lastInputTokens = 0;
     session.lastFinishReason = null;
+    session.queuedMessages = [];
 
+    this.emit('queueChanged', projectId, []);
     this.emit('costUpdated', projectId, 0);
     this.emit('contextUsageUpdated', projectId, 0);
     this.emit('finishReasonChanged', projectId, null);

@@ -8,6 +8,8 @@ import { FileAttachment } from '@/components/ui/file-attachment';
 import { Command, CommandGroup, CommandItem, CommandList } from '@/components/ui/command';
 import { Square, ArrowUp } from 'lucide-react';
 import { ModelSelector } from '@/components/ModelSelector';
+import { QueuedMessages } from '@/components/Shakespeare/QueuedMessages';
+import type { QueuedMessage } from '@/lib/SessionManager';
 
 export interface SlashCommand {
   name: string;
@@ -37,6 +39,8 @@ interface ChatInputProps {
   onDragLeave: (e: React.DragEvent) => void;
   onDrop: (e: React.DragEvent) => void;
   slashCommands?: SlashCommand[];
+  queuedMessages?: QueuedMessage[];
+  onRemoveQueuedMessage?: (id: string) => void;
 }
 
 export const ChatInput = memo(function ChatInput({
@@ -61,6 +65,8 @@ export const ChatInput = memo(function ChatInput({
   onDragLeave,
   onDrop,
   slashCommands = [],
+  queuedMessages = [],
+  onRemoveQueuedMessage,
 }: ChatInputProps) {
   const { t } = useTranslation();
   const [input, setInput] = useState('');
@@ -79,7 +85,7 @@ export const ChatInput = memo(function ChatInput({
   }, []);
 
   const handleSend = useCallback(() => {
-    if ((!input.trim() && attachedFiles.length === 0) || isLoading) return;
+    if (!input.trim() && attachedFiles.length === 0) return;
     if (!isConfigured || !providerModel.trim()) return;
 
     const currentInput = input;
@@ -89,7 +95,9 @@ export const ChatInput = memo(function ChatInput({
     setAttachedFiles([]);
 
     onSend(currentInput, currentFiles);
-  }, [input, attachedFiles, isLoading, isConfigured, providerModel, onSend]);
+  }, [input, attachedFiles, isConfigured, providerModel, onSend]);
+
+  const hasInput = !!input.trim() || attachedFiles.length > 0;
 
   const executeSlashCommand = useCallback((command: SlashCommand) => {
     setInput('');
@@ -208,6 +216,9 @@ export const ChatInput = memo(function ChatInput({
         onDragLeave={onDragLeave}
         onDrop={handleDrop}
       >
+        {onRemoveQueuedMessage && (
+          <QueuedMessages messages={queuedMessages} onRemove={onRemoveQueuedMessage} />
+        )}
         <div className="relative">
           <Textarea
             ref={textareaRef}
@@ -219,9 +230,11 @@ export const ChatInput = memo(function ChatInput({
             placeholder={
               !isConfigured
                 ? t('askToAddFeatures')
-                : providerModel.trim()
-                  ? t('askToAddFeatures')
-                  : t('selectModelFirst')
+                : !providerModel.trim()
+                  ? t('selectModelFirst')
+                  : isLoading
+                    ? t('queueMessage')
+                    : t('askToAddFeatures')
             }
             className="flex-1 resize-none border-0 bg-transparent px-4 py-3 text-sm focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground"
             disabled={isLoadingSettings || (isConfigured && !providerModel.trim())}
@@ -325,9 +338,9 @@ export const ChatInput = memo(function ChatInput({
             />
           </div>
 
-          {/* Send/Stop Button */}
-          <div>
-            {isLoading ? (
+          {/* Send/Stop Button. While the AI works, sending queues the message for the end of its turn. */}
+          <div className="flex items-center gap-2">
+            {isLoading && (
               <Button
                 onClick={onStop}
                 size="sm"
@@ -336,13 +349,16 @@ export const ChatInput = memo(function ChatInput({
               >
                 <Square />
               </Button>
-            ) : (
+            )}
+            {(!isLoading || hasInput) && (
               <Button
                 onClick={handleSend}
                 onMouseDown={onFirstInteraction}
-                disabled={isLoadingSettings || (!input.trim() && attachedFiles.length === 0) || (isConfigured && !providerModel.trim())}
+                disabled={isLoadingSettings || !hasInput || (isConfigured && !providerModel.trim())}
                 size="sm"
                 className="size-8 [&_svg]:size-5 rounded-full p-0"
+                aria-label={isLoading ? t('sendAfterTurn') : undefined}
+                title={isLoading ? t('sendAfterTurn') : undefined}
               >
                 <ArrowUp />
               </Button>

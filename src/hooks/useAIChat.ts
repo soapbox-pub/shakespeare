@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useSessionManager } from '@/hooks/useSessionManager';
 import { useSessionSubscription } from '@/hooks/useSessionSubscription';
 import { useAISettings } from '@/hooks/useAISettings';
-import type { AIMessage } from '@/lib/SessionManager';
+import type { AIMessage, QueuedMessage } from '@/lib/SessionManager';
 import type OpenAI from 'openai';
 import type { Tool } from '@/lib/tools/Tool';
 
@@ -45,6 +45,7 @@ export function useAIChat({
   const [lastInputTokens, setLastInputTokens] = useState<number>(0);
   const [lastFinishReason, setLastFinishReason] = useState<string | null>(null);
   const [isLoadingHistory, setIsLoadingHistory] = useState<boolean>(true);
+  const [queuedMessages, setQueuedMessages] = useState<QueuedMessage[]>([]);
 
   const initSession = useCallback(async (showLoading = true) => {
     if (showLoading) {
@@ -60,6 +61,7 @@ export function useAIChat({
       setTotalCost(session.totalCost || 0);
       setLastInputTokens(session.lastInputTokens || 0);
       setLastFinishReason(session.lastFinishReason ?? null);
+      setQueuedMessages(session.queuedMessages);
     } finally {
       if (showLoading) {
         setIsLoadingHistory(false);
@@ -127,6 +129,12 @@ export function useAIChat({
     }
   }, [projectId]);
 
+  useSessionSubscription('queueChanged', (updatedProjectId: string, queued: QueuedMessage[]) => {
+    if (updatedProjectId === projectId) {
+      setQueuedMessages(queued);
+    }
+  }, [projectId]);
+
   // Actions
   const sendMessage = useCallback(async (
     content: string | Array<OpenAI.Chat.Completions.ChatCompletionContentPartText | OpenAI.Chat.Completions.ChatCompletionContentPartImage>,
@@ -167,6 +175,10 @@ export function useAIChat({
     await sessionManager.addMessage(projectId, message);
   }, [projectId, sessionManager]);
 
+  const removeQueuedMessage = useCallback((id: string) => {
+    sessionManager.removeQueuedMessage(projectId, id);
+  }, [projectId, sessionManager]);
+
   const startNewSession = useCallback(async () => {
     await sessionManager.startNewSession(projectId);
 
@@ -191,12 +203,14 @@ export function useAIChat({
     totalCost,
     lastInputTokens,
     lastFinishReason,
+    queuedMessages,
     sendMessage,
     startGeneration,
     stopGeneration,
     clearMessages,
     startNewSession,
     addMessage,
+    removeQueuedMessage,
     isConfigured,
     projectId
   };

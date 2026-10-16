@@ -1,5 +1,14 @@
 # Changelog
 
+## [9.20.0] - 2026-10-15
+
+### Added
+- Shakespeare can now open your app and use it like a person would — clicking buttons, filling in forms, and reading what's on screen — so it can check its own work and catch problems before you do
+
+### Fixed
+- Shakespeare can see WebP, GIF, and other image types you attach, not just JPEG and PNG
+- Images in messages you queue up while Shakespeare is working are no longer lost, and Shakespeare no longer claims it never saw an image from earlier in the chat
+
 ## [9.19.0] - 2026-10-15
 
 ### Added

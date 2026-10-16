@@ -1,5 +1,11 @@
 # Changelog
 
+## [9.20.1] - 2026-10-16
+
+### Fixed
+- Publishing a big site to Nostr while signed in with a remote signer no longer fails with an "invalid plaintext size" error
+- Closed a security hole where a crafted link could send you to an outside website
+
 ## [9.20.0] - 2026-10-15
 
 ### Added

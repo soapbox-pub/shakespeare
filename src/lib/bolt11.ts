@@ -15,8 +15,8 @@
  * Reference: BOLT 11, "Invoice Protocol for Lightning Payments".
  */
 import { bech32 } from '@scure/base';
-import { sha256 } from '@noble/hashes/sha256';
-import { bytesToHex, utf8ToBytes } from '@noble/hashes/utils';
+import { sha256 } from '@noble/hashes/sha2.js';
+import { bytesToHex, utf8ToBytes } from '@noble/hashes/utils.js';
 
 /** A decoded BOLT11 invoice. Only the fields we need are surfaced. */
 export interface DecodedInvoice {

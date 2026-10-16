@@ -2,8 +2,8 @@
  * Utilities for the nsite v2 deployment spec.
  */
 
-import { sha256 } from '@noble/hashes/sha256';
-import { bytesToHex, utf8ToBytes } from '@noble/hashes/utils';
+import { sha256 } from '@noble/hashes/sha2.js';
+import { bytesToHex, utf8ToBytes } from '@noble/hashes/utils.js';
 
 /** Max length of a valid nsite dTag — must fit as a DNS label component */
 const DTAG_MAX_LENGTH = 13;

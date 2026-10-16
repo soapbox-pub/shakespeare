@@ -12,6 +12,7 @@ import { QueuedMessages } from '@/components/Shakespeare/QueuedMessages';
 import { VoiceInputButton } from '@/components/Shakespeare/VoiceInputButton';
 import type { QueuedMessage } from '@/lib/SessionManager';
 import { readChatDraft, writeChatDraft } from '@/lib/chatDrafts';
+import { joinText } from '@/lib/speech/dictation';
 
 export interface SlashCommand {
   name: string;
@@ -80,6 +81,9 @@ export const ChatInput = memo(function ChatInput({
   const [filteredCommands, setFilteredCommands] = useState<SlashCommand[]>([]);
   const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  // The draft around the cursor when dictation started; the transcript goes between.
+  const dictationRef = useRef<{ before: string; after: string }>();
+  const [isDictating, setIsDictating] = useState(false);
 
   useEffect(() => {
     writeChatDraft(projectId, input);
@@ -104,6 +108,7 @@ export const ChatInput = memo(function ChatInput({
   const handleSend = useCallback(() => {
     if (!input.trim() && attachedFiles.length === 0) return;
     if (!isConfigured || !providerModel.trim()) return;
+    if (isDictating) return;
 
     const currentInput = input;
     const currentFiles = [...attachedFiles];
@@ -112,23 +117,33 @@ export const ChatInput = memo(function ChatInput({
     setAttachedFiles([]);
 
     onSend(currentInput, currentFiles);
-  }, [input, attachedFiles, isConfigured, providerModel, onSend]);
+  }, [input, attachedFiles, isConfigured, providerModel, isDictating, onSend]);
 
-  const handleTranscript = useCallback((text: string) => {
+  const handleDictationStart = useCallback(() => {
     const textarea = textareaRef.current;
-    setInput(prev => {
-      const start = textarea?.selectionStart ?? prev.length;
-      const end = textarea?.selectionEnd ?? prev.length;
-      const before = prev.slice(0, start);
-      const after = prev.slice(end);
-      const spaced = (before && !/\s$/.test(before) ? ' ' : '') + text + (after && !/^\s/.test(after) ? ' ' : '');
-      return before + spaced + after;
-    });
+    const start = textarea?.selectionStart ?? input.length;
+    const end = textarea?.selectionEnd ?? input.length;
+    dictationRef.current = { before: input.slice(0, start), after: input.slice(end) };
+    setIsDictating(true);
+  }, [input]);
+
+  const handleDictationText = useCallback((text: string) => {
+    if (!dictationRef.current) return;
+    const { before, after } = dictationRef.current;
+    const joined = joinText(before, text);
+    setInput(joined + (text && after && !/^\s/.test(after) ? ' ' : '') + after);
     requestAnimationFrame(() => {
+      const textarea = textareaRef.current;
       if (!textarea) return;
       textarea.style.height = 'auto';
       textarea.style.height = Math.min(textarea.scrollHeight, 128) + 'px';
+      textarea.scrollTop = textarea.scrollHeight;
     });
+  }, []);
+
+  const handleDictationEnd = useCallback(() => {
+    dictationRef.current = undefined;
+    setIsDictating(false);
   }, []);
 
   const hasInput = !!input.trim() || attachedFiles.length > 0;
@@ -272,6 +287,7 @@ export const ChatInput = memo(function ChatInput({
             }
             className="flex-1 resize-none border-0 bg-transparent px-4 py-3 text-sm focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground"
             disabled={isLoadingSettings || (isConfigured && !providerModel.trim())}
+            readOnly={isDictating}
             rows={1}
             aria-label="Chat message input"
             style={{
@@ -322,7 +338,9 @@ export const ChatInput = memo(function ChatInput({
 
           {/* Voice Input */}
           <VoiceInputButton
-            onTranscript={handleTranscript}
+            onStart={handleDictationStart}
+            onText={handleDictationText}
+            onEnd={handleDictationEnd}
             disabled={isLoadingSettings || (isConfigured && !providerModel.trim())}
           />
 
@@ -394,7 +412,7 @@ export const ChatInput = memo(function ChatInput({
               <Button
                 onClick={handleSend}
                 onMouseDown={onFirstInteraction}
-                disabled={isLoadingSettings || !hasInput || (isConfigured && !providerModel.trim())}
+                disabled={isLoadingSettings || !hasInput || isDictating || (isConfigured && !providerModel.trim())}
                 size="sm"
                 className="size-8 [&_svg]:size-5 rounded-full p-0"
                 aria-label={isLoading ? t('sendAfterTurn') : undefined}

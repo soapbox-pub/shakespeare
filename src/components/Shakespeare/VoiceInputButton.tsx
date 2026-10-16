@@ -4,88 +4,79 @@ import { Loader2, Mic, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/useToast';
-import { decodeAudio, transcribe } from '@/lib/speech';
+import { Dictation } from '@/lib/speech/dictation';
 import { cn } from '@/lib/utils';
 
-type VoiceState =
-  | { status: 'idle' }
-  | { status: 'recording' }
-  | { status: 'transcribing'; progress?: number };
+type VoiceState = 'idle' | 'starting' | 'listening' | 'finishing';
 
 interface VoiceInputButtonProps {
-  onTranscript: (text: string) => void;
+  /** Dictation is starting; its text goes where the cursor is now. */
+  onStart: () => void;
+  /** The transcript so far, which replaces the previous one. */
+  onText: (text: string) => void;
+  /** Dictation is over, the last `onText` was final. */
+  onEnd: () => void;
   disabled?: boolean;
 }
 
-/** Records from the microphone and transcribes it locally with Whisper. */
-export function VoiceInputButton({ onTranscript, disabled }: VoiceInputButtonProps) {
+/** Live dictation, transcribed locally with Whisper. Stops by itself when the speaker does. */
+export function VoiceInputButton({ onStart, onText, onEnd, disabled }: VoiceInputButtonProps) {
   const { t, i18n } = useTranslation();
   const { toast } = useToast();
-  const [state, setState] = useState<VoiceState>({ status: 'idle' });
-  const recorderRef = useRef<MediaRecorder>();
+  const [state, setState] = useState<VoiceState>('idle');
+  const [progress, setProgress] = useState<number>();
+  const dictationRef = useRef<Dictation>();
 
-  // Release the microphone if the input goes away mid-recording.
-  useEffect(() => () => {
-    const recorder = recorderRef.current;
-    recorder?.stream.getTracks().forEach((track) => track.stop());
-  }, []);
+  // Release the microphone if the input goes away mid-dictation.
+  useEffect(() => () => dictationRef.current?.cancel(), []);
 
   const fail = useCallback((error: unknown) => {
-    setState({ status: 'idle' });
+    dictationRef.current = undefined;
+    setState('idle');
+    onEnd();
     toast({
       title: t('voiceInputFailed'),
       description: error instanceof Error ? error.message : String(error),
       variant: 'destructive',
     });
-  }, [t, toast]);
+  }, [onEnd, t, toast]);
 
   const start = useCallback(async () => {
-    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+    if (!navigator.mediaDevices?.getUserMedia || typeof AudioWorkletNode === 'undefined') {
       fail(new Error(t('voiceInputUnsupported')));
       return;
     }
-
-    let stream: MediaStream;
+    setState('starting');
+    onStart();
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      dictationRef.current = await Dictation.start({
+        language: i18n.resolvedLanguage ?? 'en',
+        onText,
+        onProgress: setProgress,
+        onFinishing: () => setState('finishing'),
+        onEnd: (text) => {
+          dictationRef.current = undefined;
+          setState('idle');
+          onText(text);
+          onEnd();
+        },
+        onError: fail,
+      });
+      setState('listening');
     } catch (error) {
       fail(error);
-      return;
     }
+  }, [fail, i18n, onEnd, onStart, onText, t]);
 
-    const recorder = new MediaRecorder(stream);
-    const chunks: Blob[] = [];
-    recorder.ondataavailable = (event) => chunks.push(event.data);
-    recorder.onstop = async () => {
-      stream.getTracks().forEach((track) => track.stop());
-      recorderRef.current = undefined;
-      setState({ status: 'transcribing' });
-      try {
-        const audio = await decodeAudio(new Blob(chunks, { type: recorder.mimeType }));
-        const text = await transcribe(audio, i18n.resolvedLanguage ?? 'en', (progress) => setState({ status: 'transcribing', progress }));
-        if (text) onTranscript(text);
-        setState({ status: 'idle' });
-      } catch (error) {
-        fail(error);
-      }
-    };
-    recorderRef.current = recorder;
-    recorder.start();
-    setState({ status: 'recording' });
-  }, [fail, i18n, onTranscript, t]);
+  const stop = useCallback(() => dictationRef.current?.stop(), []);
 
-  const stop = useCallback(() => {
-    recorderRef.current?.stop();
-  }, []);
-
-  const downloading = state.status === 'transcribing' && state.progress !== undefined && state.progress < 100;
-  const label =
-    state.status === 'recording'
+  const downloading = state !== 'idle' && progress !== undefined && progress < 100;
+  const label = downloading
+    ? t('voiceInputDownloading', { percent: Math.round(progress) })
+    : state === 'listening'
       ? t('voiceInputStop')
-      : state.status === 'transcribing'
-        ? downloading
-          ? t('voiceInputDownloading', { percent: Math.round(state.progress ?? 0) })
-          : t('voiceInputTranscribing')
+      : state === 'finishing'
+        ? t('voiceInputTranscribing')
         : t('voiceInputStart');
 
   return (
@@ -96,21 +87,21 @@ export function VoiceInputButton({ onTranscript, disabled }: VoiceInputButtonPro
             type="button"
             variant="ghost"
             size="sm"
-            onClick={state.status === 'idle' ? start : state.status === 'recording' ? stop : undefined}
+            onClick={state === 'idle' ? start : state === 'listening' ? stop : undefined}
             disabled={disabled}
             className={cn(
               'h-8 w-8 p-0 rounded-full hover:bg-muted/50',
-              state.status === 'recording' && 'bg-destructive/10 text-destructive hover:bg-destructive/20 animate-pulse',
+              state === 'listening' && 'bg-destructive/10 text-destructive hover:bg-destructive/20 animate-pulse',
             )}
             aria-label={label}
-            aria-pressed={state.status === 'recording'}
+            aria-pressed={state === 'listening'}
           >
-            {state.status === 'recording' ? (
+            {state === 'listening' ? (
               <Square className="h-3.5 w-3.5 fill-current" />
-            ) : state.status === 'transcribing' ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
+            ) : state === 'idle' ? (
               <Mic className="h-4 w-4" />
+            ) : (
+              <Loader2 className="h-4 w-4 animate-spin" />
             )}
           </Button>
         </TooltipTrigger>

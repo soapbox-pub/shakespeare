@@ -1,9 +1,32 @@
+import type { DataType } from '@huggingface/transformers';
+
 /** transformers.js release the worker loads. Keep in step with the devDependency, which provides its types. */
 export const TRANSFORMERS_VERSION = '4.3.1';
 export const TRANSFORMERS_URL = `https://cdn.jsdelivr.net/npm/@huggingface/transformers@${TRANSFORMERS_VERSION}/dist/transformers.min.js`;
-/** Whisper model, downloaded from Hugging Face on first use and cached by the browser. */
-export const SPEECH_MODEL = 'onnx-community/whisper-base';
-/** Sample rate Whisper expects. */
+export type SpeechModel = 'moonshine' | 'whisper';
+
+/**
+ * Speech models, downloaded from Hugging Face on first use and cached by the browser.
+ *
+ * English uses Moonshine, whose cost grows with the length of the audio, so it
+ * keeps up with live speech even without a GPU. Whisper pads everything to 30
+ * seconds, which takes several seconds a pass on the CPU, but knows ~100 languages.
+ */
+type DataTypes = Record<string, DataType>;
+
+export const SPEECH_MODELS: Record<SpeechModel, { name: string; wasm: DataTypes; webgpu: DataTypes }> = {
+  moonshine: {
+    name: 'onnx-community/moonshine-base-ONNX',
+    wasm: { encoder_model: 'fp32', decoder_model_merged: 'q8' },
+    webgpu: { encoder_model: 'fp32', decoder_model_merged: 'q4' },
+  },
+  whisper: {
+    name: 'onnx-community/whisper-base',
+    wasm: { encoder_model: 'q8', decoder_model_merged: 'q8' },
+    webgpu: { encoder_model: 'fp32', decoder_model_merged: 'q4' },
+  },
+};
+/** Sample rate the speech models expect. */
 export const SPEECH_SAMPLE_RATE = 16_000;
 
 export interface SpeechRequest {
@@ -57,7 +80,7 @@ function getWorker(): Worker {
 /**
  * Transcribe speech to text on this device.
  *
- * Runs Whisper (transformers.js) in a Web Worker, on WebGPU when available.
+ * Runs Moonshine or Whisper (transformers.js) in a Web Worker, on WebGPU when available.
  * The model is downloaded on first use, reported through `onProgress` as a
  * percentage; audio never leaves the browser. Languages Whisper doesn't
  * know are transcribed as English.
@@ -68,21 +91,4 @@ export function transcribe(audio: Float32Array, language: string, onProgress?: (
     pending.set(id, { resolve, reject, onProgress });
     getWorker().postMessage({ id, audio, language } satisfies SpeechRequest, [audio.buffer]);
   });
-}
-
-/** Decode a recording to mono PCM at Whisper's sample rate. */
-export async function decodeAudio(blob: Blob): Promise<Float32Array> {
-  const context = new AudioContext({ sampleRate: SPEECH_SAMPLE_RATE });
-  try {
-    const buffer = await context.decodeAudioData(await blob.arrayBuffer());
-    if (buffer.numberOfChannels === 1) return buffer.getChannelData(0);
-    const mono = new Float32Array(buffer.length);
-    for (let channel = 0; channel < buffer.numberOfChannels; channel++) {
-      const data = buffer.getChannelData(channel);
-      for (let i = 0; i < data.length; i++) mono[i] += data[i] / buffer.numberOfChannels;
-    }
-    return mono;
-  } finally {
-    void context.close();
-  }
 }

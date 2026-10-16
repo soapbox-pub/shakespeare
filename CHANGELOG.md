@@ -1,5 +1,10 @@
 # Changelog
 
+## [9.20.2] - 2026-10-16
+
+### Changed
+- When your signer doesn't respond while publishing a site to Nostr, Shakespeare now explains why and what to do, instead of showing a cryptic "signal has been aborted" error
+
 ## [9.20.1] - 2026-10-16
 
 ### Fixed

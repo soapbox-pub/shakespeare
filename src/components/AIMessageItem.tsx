@@ -9,6 +9,8 @@ import { ToolCallDisplay } from '@/components/ToolCallDisplay';
 import OpenAI from 'openai';
 import { useTheme } from '@/hooks/useTheme';
 import { isEmptyMessage } from '@/lib/isEmptyMessage';
+import { userMessageText } from '@/lib/messageText';
+import { CopyButton } from '@/components/CopyButton';
 
 // Type guard to check if message has reasoning content
 function hasReasoningContent(message: AIMessage): message is AIMessage & { reasoning_content: string } {
@@ -30,7 +32,23 @@ export const AIMessageItem = memo(({
 }: AIMessageItemProps) => {
   const [isReasoningExpanded, setIsReasoningExpanded] = useState(false);
   const [expandedImageUrl, setExpandedImageUrl] = useState<string | null>(null);
+  const [actionsRevealed, setActionsRevealed] = useState(false);
   const { displayTheme } = useTheme();
+
+  // Touch screens can't hover, so a tap shows the message actions. Long presses are left to text selection.
+  const handleTap = (e: React.PointerEvent) => {
+    if (e.pointerType === 'mouse') return;
+    if ((e.target as Element).closest('a, button, img, input, textarea, summary, [role="button"]')) return;
+    if (window.getSelection()?.toString()) return;
+    setActionsRevealed((revealed) => !revealed);
+  };
+
+  // Shown on hover where hover exists, when revealed by a tap, or when a button inside has keyboard focus
+  const actionsClassName = cn(
+    'transition-opacity focus-within:opacity-100',
+    '[@media(hover:hover)]:group-hover:opacity-100 [@media(hover:hover)]:group-hover:pointer-events-auto',
+    actionsRevealed ? 'opacity-100' : 'opacity-0 pointer-events-none',
+  );
 
   // Get content to display
   const getContent = () => {
@@ -94,38 +112,45 @@ export const AIMessageItem = memo(({
     return (
       <>
         <div className="flex justify-end py-6">
-          <div className="max-w-[80%] bg-secondary rounded-2xl rounded-br-md px-4 py-3">
-            <div className="text-sm break-words space-y-2">
-              {/* Render text content and attachments first */}
-              <UserMessage content={message.content} />
-              {/* Render images after text and attachments */}
-              {imageUrls.length > 0 && (
-                <div className="space-y-2">
-                  {imageUrls.map((url, index) => (
-                    <div
-                      key={index}
-                      className="rounded-lg overflow-hidden border border-border cursor-pointer hover:opacity-90 transition-opacity"
-                      onClick={() => setExpandedImageUrl(url)}
-                    >
-                      <img
-                        src={url}
-                        alt={`User uploaded image ${index + 1}`}
-                        className="max-w-full h-auto max-h-96 object-contain"
-                        loading="lazy"
-                        onError={(e) => {
-                          // Fallback if image fails to load
-                          const target = e.target as HTMLImageElement;
-                          target.style.display = 'none';
-                          const fallback = document.createElement('div');
-                          fallback.className = 'p-2 text-xs text-muted-foreground bg-muted rounded';
-                          fallback.textContent = `Image failed to load: ${url}`;
-                          target.parentElement?.appendChild(fallback);
-                        }}
-                      />
-                    </div>
-                  ))}
-                </div>
-              )}
+          <div className="group relative max-w-[80%]" onPointerUp={handleTap}>
+            {userMessageText(message.content).trim() && (
+              <div className={cn('absolute bottom-0 right-full pr-1', actionsClassName)}>
+                <CopyButton text={userMessageText(message.content)} />
+              </div>
+            )}
+            <div className="bg-secondary rounded-2xl rounded-br-md px-4 py-3">
+              <div className="text-sm break-words space-y-2">
+                {/* Render text content and attachments first */}
+                <UserMessage content={message.content} />
+                {/* Render images after text and attachments */}
+                {imageUrls.length > 0 && (
+                  <div className="space-y-2">
+                    {imageUrls.map((url, index) => (
+                      <div
+                        key={index}
+                        className="rounded-lg overflow-hidden border border-border cursor-pointer hover:opacity-90 transition-opacity"
+                        onClick={() => setExpandedImageUrl(url)}
+                      >
+                        <img
+                          src={url}
+                          alt={`User uploaded image ${index + 1}`}
+                          className="max-w-full h-auto max-h-96 object-contain"
+                          loading="lazy"
+                          onError={(e) => {
+                            // Fallback if image fails to load
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                            const fallback = document.createElement('div');
+                            fallback.className = 'p-2 text-xs text-muted-foreground bg-muted rounded';
+                            fallback.textContent = `Image failed to load: ${url}`;
+                            target.parentElement?.appendChild(fallback);
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -149,8 +174,14 @@ export const AIMessageItem = memo(({
   }
 
   // Assistant messages: left-aligned without avatar/name
+  const assistantText = getContent().trim();
   const assistantContent = (
-    <div className="flex">
+    <div className="group relative flex" onPointerUp={handleTap}>
+      {assistantText && !isCurrentlyLoading && (
+        <div className={cn('absolute right-0 top-full z-10 -translate-y-1/2 rounded-md border bg-background shadow-sm', actionsClassName)}>
+          <CopyButton text={assistantText} />
+        </div>
+      )}
       <div className="flex-1 min-w-0">
         <div className="text-sm space-y-3">
           {/* Reasoning content display */}

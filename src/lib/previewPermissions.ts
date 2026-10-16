@@ -4,7 +4,8 @@
  * Decisions are scoped to (projectId, userPubkey). `signEvent` is remembered
  * per event kind, and per `d` tag for kind 30078 app data, so a grant to write
  * one app's record can't be used to overwrite another's. Encryption and
- * decryption of messages with other people are remembered per operation.
+ * decryption are remembered per operation, with decrypting data encrypted to
+ * the user's own key kept separate from decrypting messages with others.
  */
 
 export type PreviewPermissionType =
@@ -18,6 +19,8 @@ export interface PreviewPermissionScope {
   type: PreviewPermissionType;
   kind: number | null;
   dTag: string | null;
+  /** For decrypt: whether the data is encrypted to the user's own key. */
+  self?: boolean;
 }
 
 interface PreviewPermission extends PreviewPermissionScope {
@@ -46,7 +49,10 @@ function readAllowances(): PreviewAllowance[] {
 }
 
 function matchesScope(p: PreviewPermissionScope, scope: PreviewPermissionScope): boolean {
-  return p.type === scope.type && p.kind === scope.kind && p.dTag === scope.dTag;
+  return p.type === scope.type
+    && p.kind === scope.kind
+    && p.dTag === scope.dTag
+    && (p.self ?? false) === (scope.self ?? false);
 }
 
 /** Look up a remembered decision. */

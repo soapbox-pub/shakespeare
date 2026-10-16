@@ -31,8 +31,6 @@ export interface PreviewPromptState {
   event?: Record<string, unknown>;
   /** For decrypt: whether the data is encrypted to the user's own key. */
   self?: boolean;
-  /** Whether the decision may be remembered for this project. */
-  rememberable: boolean;
 }
 
 export interface PreviewPromptDecision {
@@ -96,17 +94,15 @@ export function usePreviewSignerRpc(projectId: string) {
   const checkPermission = useCallback(async (request: PromptRequest): Promise<void> => {
     if (!user) throw new Error('Not logged in');
 
-    const scope: PreviewPermissionScope = { type: request.type, kind: request.kind, dTag: request.dTag };
+    const scope: PreviewPermissionScope = { type: request.type, kind: request.kind, dTag: request.dTag, self: request.self };
 
-    if (request.rememberable) {
-      const stored = getPreviewPermission(projectId, user.pubkey, scope);
-      if (stored === 'allow') return;
-      if (stored === 'deny') throw new Error('User rejected');
-    }
+    const stored = getPreviewPermission(projectId, user.pubkey, scope);
+    if (stored === 'allow') return;
+    if (stored === 'deny') throw new Error('User rejected');
 
     const decision = await showPrompt(request);
 
-    if (request.rememberable && decision.remember) {
+    if (decision.remember) {
       setPreviewPermission(projectId, user.pubkey, scope, decision.allowed);
     }
 
@@ -143,7 +139,7 @@ export function usePreviewSignerRpc(projectId: string) {
           dTag = dTags[0] ?? '';
         }
 
-        await checkPermission({ type: 'signEvent', kind, dTag, event, rememberable: true });
+        await checkPermission({ type: 'signEvent', kind, dTag, event });
 
         return await signer.signEvent({
           kind,
@@ -164,7 +160,7 @@ export function usePreviewSignerRpc(projectId: string) {
           throw new Error('Invalid params');
         }
 
-        await checkPermission({ type, kind: null, dTag: null, rememberable: true });
+        await checkPermission({ type, kind: null, dTag: null });
         return await crypto.encrypt(pubkey, plaintext);
       }
 
@@ -180,10 +176,10 @@ export function usePreviewSignerRpc(projectId: string) {
         }
 
         // Data encrypted to the user's own key holds private lists, app
-        // settings and wallet backups from other apps, so it is asked about
-        // every time.
+        // settings and wallet backups from other apps, so a grant for it is
+        // kept apart from one for messages with others.
         const self = pubkey.toLowerCase() === user.pubkey;
-        await checkPermission({ type, kind: null, dTag: null, self, rememberable: !self });
+        await checkPermission({ type, kind: null, dTag: null, self });
         return await crypto.decrypt(pubkey, ciphertext);
       }
 

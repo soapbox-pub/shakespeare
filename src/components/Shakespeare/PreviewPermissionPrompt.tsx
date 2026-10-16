@@ -59,7 +59,7 @@ export function PreviewPermissionPrompt({ prompt, onResolve }: PreviewPermission
   const eventContent = typeof prompt.event?.content === 'string' ? prompt.event.content : undefined;
   const eventJson = prompt.event ? JSON.stringify(prompt.event, null, 2) : null;
 
-  const resolve = (allowed: boolean) => onResolve({ allowed, remember: prompt.rememberable && remember });
+  const resolve = (allowed: boolean) => onResolve({ allowed, remember });
 
   return (
     <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
@@ -104,21 +104,19 @@ export function PreviewPermissionPrompt({ prompt, onResolve }: PreviewPermission
             </Collapsible>
           )}
 
-          {prompt.rememberable && (
-            <div className="flex items-center gap-2 pt-1">
-              <Checkbox
-                id="preview-signer-remember"
-                checked={remember}
-                onCheckedChange={(checked) => setRemember(checked === true)}
-              />
-              <Label
-                htmlFor="preview-signer-remember"
-                className="text-xs text-muted-foreground cursor-pointer select-none"
-              >
-                {t('previewSignerRemember')}
-              </Label>
-            </div>
-          )}
+          <div className="flex items-center gap-2 pt-1">
+            <Checkbox
+              id="preview-signer-remember"
+              checked={remember}
+              onCheckedChange={(checked) => setRemember(checked === true)}
+            />
+            <Label
+              htmlFor="preview-signer-remember"
+              className="text-xs text-muted-foreground cursor-pointer select-none"
+            >
+              {t('previewSignerRemember')}
+            </Label>
+          </div>
         </div>
 
         <div className="flex gap-2 px-5 pb-5">

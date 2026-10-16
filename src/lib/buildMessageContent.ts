@@ -1,15 +1,14 @@
 import type OpenAI from 'openai';
 import type { JSRuntimeFS } from '@/lib/JSRuntime';
 import { saveFileToTmp } from './fileUtils';
-import { fileToUrl, resizeImageIfNeeded } from './imageUtils';
+import { fileToUrl, resizeImageIfNeeded, toApiImage } from './imageUtils';
 
 type ContentPart = OpenAI.Chat.Completions.ChatCompletionContentPartText | OpenAI.Chat.Completions.ChatCompletionContentPartImage;
 
 /**
  * Builds message content from text input and attached files.
  *
- * - All image formats are included in the message content for UI display
- * - SessionManager filters to only pass JPG/JPEG/PNG to the OpenAI API
+ * - Images other than JPEG/PNG are converted to PNG, since SessionManager only passes JPEG/PNG to the API
  * - All files are saved to VFS and get a text part with the path
  * - Images are converted to base64-encoded data URLs for API consumption
  *
@@ -57,7 +56,7 @@ export async function buildMessageContent(
         const isImage = processedFile.type.startsWith('image/');
         if (isImage) {
           try {
-            const imageUrl = await fileToUrl(processedFile);
+            const imageUrl = await fileToUrl(await toApiImage(processedFile));
             // Return both parts: image_url for UI display and text for VFS path
             return [textPart, {
               type: 'image_url' as const,

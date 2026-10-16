@@ -66,15 +66,35 @@ async function getImageDimensions(file: File): Promise<{ width: number; height: 
   });
 }
 
+/** Image types that every vision API accepts. */
+const API_IMAGE_TYPES = ['image/png', 'image/jpeg'];
+
+/**
+ * Converts an image to PNG unless it is already a type every vision API accepts.
+ * WebP, GIF, BMP, etc. would otherwise be dropped before reaching the model.
+ *
+ * @param file - The image file
+ * @returns Promise resolving to the original file, or a PNG copy of it
+ */
+export async function toApiImage(file: File): Promise<File> {
+  if (API_IMAGE_TYPES.includes(file.type)) {
+    return file;
+  }
+
+  const { width, height } = await getImageDimensions(file);
+  return await resizeImage(file, Math.max(width, height), 1, 'image/png');
+}
+
 /**
  * Resizes an image to fit within maxDimension while maintaining aspect ratio.
  * 
  * @param file - The image file to resize
  * @param maxDimension - Maximum width or height
  * @param quality - JPEG quality 0-1
+ * @param type - Output MIME type (defaults to the file's own type)
  * @returns Promise resolving to resized File
  */
-async function resizeImage(file: File, maxDimension: number, quality: number): Promise<File> {
+async function resizeImage(file: File, maxDimension: number, quality: number, type = file.type || 'image/jpeg'): Promise<File> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     const url = URL.createObjectURL(file);
@@ -118,13 +138,13 @@ async function resizeImage(file: File, maxDimension: number, quality: number): P
 
           // Create new File from blob with original name
           const resizedFile = new File([blob], file.name, {
-            type: file.type || 'image/jpeg',
+            type: blob.type,
             lastModified: Date.now(),
           });
 
           resolve(resizedFile);
         },
-        file.type || 'image/jpeg',
+        type,
         quality
       );
     };

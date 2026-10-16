@@ -401,28 +401,27 @@ export class SessionManager {
           imageModel: settings.imageModel,
         });
 
-        // Strip image_url parts from all user messages except the last one.
-        // The model has already seen and responded to earlier images, so re-sending
-        // them on every turn just burns tokens. The VFS text path (e.g. "Added file: /tmp/…")
-        // is kept, so the model can `read` the file again if it needs to.
+        // Strip image_url parts from user messages the model has already responded to.
+        // Re-sending them on every turn just burns tokens. Each one is replaced with a
+        // note, so the model knows it saw the image rather than concluding it never got one.
         const evictSeenImages = (msgs: OpenAI.Chat.Completions.ChatCompletionMessageParam[]): OpenAI.Chat.Completions.ChatCompletionMessageParam[] => {
-          // Find the index of the last user message
-          let lastUserIdx = -1;
-          for (let i = msgs.length - 1; i >= 0; i--) {
-            if (msgs[i].role === 'user') {
-              lastUserIdx = i;
-              break;
-            }
-          }
+          // The latest run of user messages (several when queued messages were flushed together) is unseen.
+          let lastUserIdx = msgs.length - 1;
+          while (lastUserIdx >= 0 && msgs[lastUserIdx].role !== 'user') lastUserIdx--;
+          let firstUnseenIdx = lastUserIdx;
+          while (firstUnseenIdx > 0 && msgs[firstUnseenIdx - 1].role === 'user') firstUnseenIdx--;
 
           return msgs.map((msg, idx) => {
-            if (idx === lastUserIdx) return msg; // keep the latest user message intact
+            if (idx >= firstUnseenIdx && idx <= lastUserIdx) return msg;
             if (msg.role !== 'user' || typeof msg.content === 'string' || !Array.isArray(msg.content)) return msg;
+            if (!msg.content.some(part => part.type === 'image_url')) return msg;
 
-            const filtered = msg.content.filter(part => part.type !== 'image_url');
-            if (filtered.length === msg.content.length) return msg; // no images to strip
-
-            return { ...msg, content: filtered.length > 0 ? filtered : '' };
+            return {
+              ...msg,
+              content: msg.content.map(part => part.type === 'image_url'
+                ? { type: 'text' as const, text: '[Image shown to you earlier, now removed from the context to save tokens.]' }
+                : part),
+            };
           });
         };
 

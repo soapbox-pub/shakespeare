@@ -11,6 +11,8 @@ interface FileAttachmentProps {
   accept?: string;
   multiple?: boolean;
   className?: string;
+  /** Controls shown beside the attach button, before the attached files. */
+  children?: React.ReactNode;
 }
 
 export function FileAttachment({
@@ -20,7 +22,8 @@ export function FileAttachment({
   disabled = false,
   accept,
   multiple = false,
-  className
+  className,
+  children,
 }: FileAttachmentProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -59,18 +62,21 @@ export function FileAttachment({
         disabled={disabled}
       />
 
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        onClick={handleButtonClick}
-        disabled={disabled}
-        className="h-8 w-8 p-0 rounded-full hover:bg-muted/50"
-        aria-label="Attach files"
-        data-testid="paperclip-button"
-      >
-        <Paperclip className="h-4 w-4" />
-      </Button>
+      <div className="flex items-center">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={handleButtonClick}
+          disabled={disabled}
+          className="h-8 w-8 p-0 rounded-full hover:bg-muted/50"
+          aria-label="Attach files"
+          data-testid="paperclip-button"
+        >
+          <Paperclip className="h-4 w-4" />
+        </Button>
+        {children}
+      </div>
 
       {selectedFiles.length > 0 && (
         <div className="flex flex-wrap gap-1 max-w-48">

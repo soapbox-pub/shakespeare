@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { useProjectsManager } from '@/hooks/useProjectsManager';
@@ -8,11 +8,13 @@ import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { useAISettings } from '@/hooks/useAISettings';
 import { useAppContext } from '@/hooks/useAppContext';
+import { useDictationInput } from '@/hooks/useDictationInput';
 import { AppLayout } from '@/components/AppLayout';
 import { OnboardingDialog } from '@/components/OnboardingDialog';
 import { Act1Dialog } from '@/components/Act1Dialog';
 import { GiftCardRedeemDialog } from '@/components/GiftCardRedeemDialog';
 import { Quilly } from '@/components/Quilly';
+import { VoiceInputButton } from '@/components/Shakespeare/VoiceInputButton';
 import { DotAI } from '@/lib/DotAI';
 import type { AIMessage } from '@/lib/SessionManager';
 import { buildMessageContent } from '@/lib/buildMessageContent';
@@ -104,11 +106,18 @@ export default function Index() {
   }, [location, navigate]);
 
   // Sync prompt with local storage
-  const handlePromptChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const newPrompt = e.target.value;
+  const updatePrompt = (newPrompt: string) => {
     setPrompt(newPrompt);
     setStoredPrompt(newPrompt);
   };
+
+  const handlePromptChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    updatePrompt(e.target.value);
+  };
+
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const dictation = useDictationInput({ textareaRef, value: prompt, onChange: updatePrompt, maxHeight: 256 });
+  const { isDictating } = dictation;
 
   const handleFileSelect = (file: File) => {
     setAttachedFiles(prev => [...prev, file]);
@@ -213,7 +222,7 @@ export default function Index() {
   };
 
   const handleCreateProject = async () => {
-    if (!prompt.trim() || !providerModel.trim()) return;
+    if (!prompt.trim() || !providerModel.trim() || isDictating) return;
 
     // Clear stored prompt when creating project
     setStoredPrompt('');
@@ -312,6 +321,7 @@ export default function Index() {
                 onDrop={handleDrop}
               >
                 <Textarea
+                  ref={textareaRef}
                   placeholder={
                     !hasProvidersConfigured
                       ? t('examplePrompt')
@@ -326,6 +336,7 @@ export default function Index() {
                   onClick={handleTextareaClick}
                   className="resize-none border-0 bg-transparent px-4 py-3 text-base focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground"
                   disabled={isLoadingSettings || isCreating || isGeneratingInfo || (hasProvidersConfigured && !providerModel.trim())}
+                  readOnly={isDictating}
                   rows={2}
                   style={{
                     height: 'auto',
@@ -341,14 +352,21 @@ export default function Index() {
 
                 {/* Bottom Controls Row */}
                 <div className="flex items-center gap-4 px-3 py-3">
-                  {/* File Attachment */}
+                  {/* File Attachment and Voice Input */}
                   <FileAttachment
                     onFileSelect={handleFileSelect}
                     onFileRemove={handleFileRemove}
                     selectedFiles={attachedFiles}
                     disabled={isLoadingSettings || isCreating || isGeneratingInfo}
                     multiple={true}
-                  />
+                  >
+                    <VoiceInputButton
+                      onStart={dictation.onStart}
+                      onText={dictation.onText}
+                      onEnd={dictation.onEnd}
+                      disabled={isLoadingSettings || isCreating || isGeneratingInfo || (hasProvidersConfigured && !providerModel.trim())}
+                    />
+                  </FileAttachment>
 
                   {/* Model Selector - always show to allow configuration */}
                   <div className="flex-1 max-w-72 ml-auto overflow-hidden">
@@ -367,6 +385,7 @@ export default function Index() {
                     disabled={
                       isLoadingSettings ||
                       !prompt.trim() ||
+                      isDictating ||
                       isCreating ||
                       isGeneratingInfo ||
                       (hasProvidersConfigured && !providerModel.trim())

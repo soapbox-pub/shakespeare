@@ -12,7 +12,7 @@ import { QueuedMessages } from '@/components/Shakespeare/QueuedMessages';
 import { VoiceInputButton } from '@/components/Shakespeare/VoiceInputButton';
 import type { QueuedMessage } from '@/lib/SessionManager';
 import { readChatDraft, writeChatDraft } from '@/lib/chatDrafts';
-import { joinText } from '@/lib/speech/dictation';
+import { useDictationInput } from '@/hooks/useDictationInput';
 
 export interface SlashCommand {
   name: string;
@@ -81,9 +81,8 @@ export const ChatInput = memo(function ChatInput({
   const [filteredCommands, setFilteredCommands] = useState<SlashCommand[]>([]);
   const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  // The draft around the cursor when dictation started; the transcript goes between.
-  const dictationRef = useRef<{ before: string; after: string }>();
-  const [isDictating, setIsDictating] = useState(false);
+  const dictation = useDictationInput({ textareaRef, value: input, onChange: setInput, maxHeight: 128 });
+  const { isDictating } = dictation;
 
   useEffect(() => {
     writeChatDraft(projectId, input);
@@ -118,33 +117,6 @@ export const ChatInput = memo(function ChatInput({
 
     onSend(currentInput, currentFiles);
   }, [input, attachedFiles, isConfigured, providerModel, isDictating, onSend]);
-
-  const handleDictationStart = useCallback(() => {
-    const textarea = textareaRef.current;
-    const start = textarea?.selectionStart ?? input.length;
-    const end = textarea?.selectionEnd ?? input.length;
-    dictationRef.current = { before: input.slice(0, start), after: input.slice(end) };
-    setIsDictating(true);
-  }, [input]);
-
-  const handleDictationText = useCallback((text: string) => {
-    if (!dictationRef.current) return;
-    const { before, after } = dictationRef.current;
-    const joined = joinText(before, text);
-    setInput(joined + (text && after && !/^\s/.test(after) ? ' ' : '') + after);
-    requestAnimationFrame(() => {
-      const textarea = textareaRef.current;
-      if (!textarea) return;
-      textarea.style.height = 'auto';
-      textarea.style.height = Math.min(textarea.scrollHeight, 128) + 'px';
-      textarea.scrollTop = textarea.scrollHeight;
-    });
-  }, []);
-
-  const handleDictationEnd = useCallback(() => {
-    dictationRef.current = undefined;
-    setIsDictating(false);
-  }, []);
 
   const hasInput = !!input.trim() || attachedFiles.length > 0;
 
@@ -327,22 +299,21 @@ export const ChatInput = memo(function ChatInput({
 
         {/* Bottom Controls Row */}
         <div className="flex items-center gap-4 px-2 py-2">
-          {/* File Attachment */}
+          {/* File Attachment and Voice Input */}
           <FileAttachment
             onFileSelect={handleFileSelect}
             onFileRemove={handleFileRemove}
             selectedFiles={attachedFiles}
             disabled={isLoadingSettings}
             multiple={true}
-          />
-
-          {/* Voice Input */}
-          <VoiceInputButton
-            onStart={handleDictationStart}
-            onText={handleDictationText}
-            onEnd={handleDictationEnd}
-            disabled={isLoadingSettings || (isConfigured && !providerModel.trim())}
-          />
+          >
+            <VoiceInputButton
+              onStart={dictation.onStart}
+              onText={dictation.onText}
+              onEnd={dictation.onEnd}
+              disabled={isLoadingSettings || (isConfigured && !providerModel.trim())}
+            />
+          </FileAttachment>
 
           {/* Context Usage Wheel */}
           {contextUsagePercentage >= 10 && currentModelContextLength && lastInputTokens && lastInputTokens > 0 && (

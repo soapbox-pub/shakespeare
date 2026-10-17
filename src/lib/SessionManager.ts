@@ -24,6 +24,11 @@ export type AIMessage = OpenAI.Chat.Completions.ChatCompletionMessageParam | {
   reasoning_content?: string;
   reasoning_details?: ReasoningDetail[];
   tool_calls?: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[];
+} | {
+  /** A tool result with images. APIs don't accept images in tool results, so they're sent in a user message after it. */
+  role: 'tool';
+  tool_call_id: string;
+  content: Array<OpenAI.Chat.Completions.ChatCompletionContentPartText | OpenAI.Chat.Completions.ChatCompletionContentPartImage>;
 };
 
 export type UserMessageContent = string | Array<OpenAI.Chat.Completions.ChatCompletionContentPartText | OpenAI.Chat.Completions.ChatCompletionContentPartImage>;
@@ -477,12 +482,39 @@ export class SessionManager {
           });
         };
 
+        // Tool results can only carry text, so images from tools (e.g. `read` on a PNG) are
+        // sent in a user message after the run of tool results they belong to.
+        const moveToolImagesToUserMessages = (msgs: AIMessage[]): AIMessage[] => {
+          const result: AIMessage[] = [];
+          let pending: OpenAI.Chat.Completions.ChatCompletionContentPartImage[] = [];
+
+          const flush = () => {
+            if (pending.length === 0) return;
+            result.push({ role: 'user', content: [{ type: 'text', text: 'Images from the tool results above:' }, ...pending] });
+            pending = [];
+          };
+
+          for (const msg of msgs) {
+            if (msg.role !== 'tool') flush();
+            if (msg.role === 'tool' && Array.isArray(msg.content)) {
+              const text = msg.content.flatMap((part) => part.type === 'text' ? [part.text] : []).join('\n');
+              pending.push(...msg.content.flatMap((part) => part.type === 'image_url' ? [part] : []));
+              result.push({ role: 'tool', tool_call_id: msg.tool_call_id, content: text });
+            } else {
+              result.push(msg);
+            }
+          }
+          flush();
+
+          return result;
+        };
+
         // Prepare messages for AI
         // Note: User messages with image_url content parts are valid ChatCompletionMessageParam types
         // The AIMessage type includes ChatCompletionMessageParam, so this cast is safe
         let messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = (systemPrompt
-          ? [{ role: 'system', content: systemPrompt }, ...session.messages]
-          : session.messages) as OpenAI.Chat.Completions.ChatCompletionMessageParam[];
+          ? [{ role: 'system', content: systemPrompt }, ...moveToolImagesToUserMessages(session.messages)]
+          : moveToolImagesToUserMessages(session.messages)) as OpenAI.Chat.Completions.ChatCompletionMessageParam[];
 
         // Evict images the model has already seen (all except the last user message).
         // This is a send-time transformation only — session.messages stays intact for the UI.
@@ -756,7 +788,7 @@ export class SessionManager {
                 toolArgs = rawArgs ? JSON.parse(rawArgs) : {};
               }
               const result = await tool.execute(toolArgs);
-              await this.addToolMessage(projectId, functionToolCall.id, result.content);
+              await this.addToolMessage(projectId, functionToolCall.id, result.content, result.images);
 
               // Update session cost if tool returned a cost
               if (result.cost !== undefined) {
@@ -885,7 +917,7 @@ export class SessionManager {
   /**
    * Helper to add tool messages and update conversation
    */
-  private async addToolMessage(projectId: string, toolCallId: string, content: string): Promise<void> {
+  private async addToolMessage(projectId: string, toolCallId: string, content: string, images: string[] = []): Promise<void> {
     let finalContent = content;
 
     // Check if content exceeds limits
@@ -897,11 +929,17 @@ export class SessionManager {
       finalContent = `The tool call succeeded but the output was truncated. Full output saved to: ${filepath}\nUse \`grep\` to search the full content or \`read\` with offset/limit to view specific sections.`;
     }
 
-    const toolMessage: AIMessage = {
-      role: 'tool',
-      content: finalContent,
-      tool_call_id: toolCallId
-    };
+    const toolMessage: AIMessage = images.length > 0
+      ? {
+        role: 'tool',
+        content: [{ type: 'text', text: finalContent }, ...images.map((url) => ({ type: 'image_url' as const, image_url: { url } }))],
+        tool_call_id: toolCallId,
+      }
+      : {
+        role: 'tool',
+        content: finalContent,
+        tool_call_id: toolCallId
+      };
 
     await this.addMessage(projectId, toolMessage);
   }

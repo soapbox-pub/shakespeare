@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import type { Tool, ToolResult } from "./Tool";
 import type { JSRuntimeFS } from "../JSRuntime";
+import { fileToUrl, resizeImageIfNeeded, toApiImage } from "../imageUtils";
 
 interface ReadParams {
   filePath: string;
@@ -81,15 +82,24 @@ Usage:
       // Check if it's an image file
       const isImage = this.isImageFile(filepath);
       if (isImage) {
-        // Read image as base64
         const bytes = await this.fs.readFile(filepath);
-        const base64 = this.arrayBufferToBase64(bytes);
         const ext = this.getFileExtension(filepath).toLowerCase();
-        const mimeType = this.getMimeType(ext);
-        
-        // Return base64 data URL in the content
+        const name = filepath.split('/').pop() || filepath;
+        const file = new File([bytes], name, { type: this.getMimeType(ext) });
+
+        let image: File;
+        try {
+          // Convert to a format and size every vision API accepts
+          image = await resizeImageIfNeeded(await toApiImage(file), { maxFileSize: 3.75 * 1024 * 1024 });
+        } catch {
+          return {
+            content: `[Image file: ${ext.toUpperCase()}, ${this.formatFileSize(bytes.length)}]\n\nThe image could not be decoded. The file may be corrupt or not actually a ${ext.toUpperCase()}.`,
+          };
+        }
+
         return {
-          content: `[Image file: ${ext.toUpperCase()} file]\n\nImage read successfully.\n\nData URL: data:${mimeType};base64,${base64}`,
+          content: `[Image file: ${ext.toUpperCase()}, ${this.formatFileSize(bytes.length)}]\n\nThe image is attached for you to view.`,
+          images: [await fileToUrl(image)],
         };
       }
 
@@ -229,7 +239,7 @@ Usage:
    */
   private isImageFile(filePath: string): boolean {
     const extension = this.getFileExtension(filePath).toLowerCase();
-    const imageExtensions = new Set(['png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp', 'svg', 'ico', 'avif']);
+    const imageExtensions = new Set(['png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp', 'ico', 'avif']);
     return imageExtensions.has(extension);
   }
 
@@ -249,18 +259,6 @@ Usage:
       'avif': 'image/avif',
     };
     return mimeTypes[extension] || 'application/octet-stream';
-  }
-
-  /**
-   * Convert ArrayBuffer to base64
-   */
-  private arrayBufferToBase64(buffer: ArrayBuffer | Uint8Array): string {
-    const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
-    let binary = '';
-    for (let i = 0; i < bytes.length; i++) {
-      binary += String.fromCharCode(bytes[i]);
-    }
-    return btoa(binary);
   }
 
   /**

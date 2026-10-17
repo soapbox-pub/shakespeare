@@ -61,7 +61,8 @@ export const AIMessageItem = memo(({
         .map(item => {
           if (typeof item === 'string') return item;
           if (item.type === 'text') return item.text;
-          if (item.type === 'image_url') return `[Image: ${item.image_url.url}]`;
+          // Tool results show their text only; the image is for the model
+          if (item.type === 'image_url') return message.role === 'tool' ? '' : `[Image: ${item.image_url.url}]`;
           return '[Unknown content]';
         })
         .join('\n');

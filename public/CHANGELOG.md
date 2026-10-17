@@ -1,5 +1,10 @@
 # Changelog
 
+## [9.21.1] - 2026-10-16
+
+### Fixed
+- Talking instead of typing now works — the mic no longer gets stuck before it can hear you
+
 ## [9.21.0] - 2026-10-16
 
 ### Added

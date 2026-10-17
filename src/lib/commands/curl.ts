@@ -14,6 +14,7 @@ interface CurlOptions {
   headers: Record<string, string>;
   data?: string;
   output?: string;
+  remoteName?: boolean;
   includeHeaders: boolean;
   followRedirects: boolean;
   silent: boolean;
@@ -137,8 +138,9 @@ export class CurlCommand implements ShellCommand {
           output += '\n';
         }
 
-        // Get response body
-        const responseText = await response.text();
+        // Get response body. It stays as bytes unless it is valid UTF-8 text.
+        const body = new Uint8Array(await response.arrayBuffer());
+        const responseText = decodeUtf8(body);
 
         if (options.verbose && !options.silent) {
           console.log(`< HTTP/1.1 ${response.status} ${response.statusText}`);
@@ -153,33 +155,34 @@ export class CurlCommand implements ShellCommand {
           const errorMsg = `HTTP ${response.status}: ${response.statusText}`;
           if (options.output) {
             // Still write to file even on error
-            await this.writeToFile(options.output, responseText, cwd);
+            await this.writeToFile(options.output, body, cwd);
             return shouldShowError ? createErrorResult(errorMsg) : createSuccessResult('');
           } else {
-            output += responseText;
+            output += responseText ?? new TextDecoder().decode(body);
             return shouldShowError ? createErrorResult(`${errorMsg}\n${output}`) : createSuccessResult(output);
           }
         }
 
-        output += responseText;
-
         // Write to file if output option is specified
         if (options.output) {
-          await this.writeToFile(options.output, responseText, cwd);
+          await this.writeToFile(options.output, body, cwd);
           if (!options.silent) {
-            return createSuccessResult(`  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current\n                                 Dload  Upload   Total   Spent    Left  Speed\n100  ${responseText.length}  100  ${responseText.length}    0     0   ${Math.round(responseText.length / 0.1)}      0 --:--:-- --:--:-- --:--:--  ${Math.round(responseText.length / 0.1)}`);
+            return createSuccessResult(`  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current\n                                 Dload  Upload   Total   Spent    Left  Speed\n100  ${body.length}  100  ${body.length}    0     0   ${Math.round(body.length / 0.1)}      0 --:--:-- --:--:-- --:--:--  ${Math.round(body.length / 0.1)}`);
           } else {
             return createSuccessResult('');
           }
         }
 
-        // Handle write-out format
-        if (options.writeOut) {
-          const writeOutResult = this.formatWriteOut(options.writeOut, response, responseText);
-          output += '\n' + writeOutResult;
+        const writeOut = options.writeOut ? '\n' + this.formatWriteOut(options.writeOut, response, body.length) : '';
+
+        // Binary bodies go to stdout as raw bytes, so `curl url > file` and pipes keep them intact
+        if (responseText === undefined) {
+          const encoder = new TextEncoder();
+          const bytes = toLatin1(encoder.encode(output)) + toLatin1(body) + toLatin1(encoder.encode(writeOut));
+          return { ...createSuccessResult(bytes), stdoutKind: 'bytes' };
         }
 
-        return createSuccessResult(output);
+        return createSuccessResult(output + responseText + writeOut);
 
       } catch (error) {
         if (timeoutId) {
@@ -224,6 +227,8 @@ export class CurlCommand implements ShellCommand {
       maxRedirects: 50,
       showProgress: true,
     };
+
+    args = expandShortOptions(args);
 
     let i = 0;
     while (i < args.length) {
@@ -331,35 +336,13 @@ export class CurlCommand implements ShellCommand {
             }
             break;
 
-          case '--no-progress-meter':
-            options.showProgress = false;
+          case '-O':
+          case '--remote-name':
+            options.remoteName = true;
             break;
 
-          default:
-            // Handle combined short options like -sL
-            if (arg.startsWith('-') && arg.length > 2 && !arg.startsWith('--')) {
-              for (let j = 1; j < arg.length; j++) {
-                const shortOpt = '-' + arg[j];
-                switch (shortOpt) {
-                  case '-s':
-                    options.silent = true;
-                    options.showProgress = false;
-                    break;
-                  case '-S':
-                    options.showError = true;
-                    break;
-                  case '-L':
-                    options.followRedirects = true;
-                    break;
-                  case '-i':
-                    options.includeHeaders = true;
-                    break;
-                  case '-v':
-                    options.verbose = true;
-                    break;
-                }
-              }
-            }
+          case '--no-progress-meter':
+            options.showProgress = false;
             break;
         }
       } else {
@@ -372,13 +355,22 @@ export class CurlCommand implements ShellCommand {
       i++;
     }
 
+    // -O names the file after the last segment of the URL path
+    if (options.remoteName && !options.output && options.url) {
+      try {
+        options.output = decodeURIComponent(new URL(options.url).pathname.split('/').pop() || '') || 'index.html';
+      } catch {
+        // Invalid URLs are reported by execute()
+      }
+    }
+
     return options;
   }
 
   /**
    * Write response to a file
    */
-  private async writeToFile(filename: string, content: string, cwd: string): Promise<void> {
+  private async writeToFile(filename: string, content: Uint8Array, cwd: string): Promise<void> {
     try {
       // Validate write permissions for absolute paths
       validateWritePath(filename, 'curl', cwd);
@@ -391,7 +383,7 @@ export class CurlCommand implements ShellCommand {
         absolutePath = join(cwd, filename);
       }
 
-      await this.fs.writeFile(absolutePath, content, 'utf8');
+      await this.fs.writeFile(absolutePath, content);
     } catch (error) {
       throw new Error(`failed to write to file ${filename}: ${error instanceof Error ? error.message : 'unknown error'}`);
     }
@@ -400,12 +392,12 @@ export class CurlCommand implements ShellCommand {
   /**
    * Format write-out variables
    */
-  private formatWriteOut(format: string, response: Response, responseText: string): string {
+  private formatWriteOut(format: string, response: Response, sizeDownload: number): string {
     const variables: Record<string, string | number> = {
       'http_code': response.status,
       'response_code': response.status,
       'http_version': '1.1',
-      'size_download': responseText.length,
+      'size_download': sizeDownload,
       'size_upload': 0,
       'time_total': 0.1, // Placeholder since we don't track timing
       'time_namelookup': 0.01,
@@ -434,4 +426,43 @@ export class CurlCommand implements ShellCommand {
 
     return result;
   }
+}
+/** Decode a body as UTF-8, or return undefined if it isn't valid UTF-8 (i.e. it's binary). */
+function decodeUtf8(bytes: Uint8Array): string | undefined {
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  } catch {
+    return undefined;
+  }
+}
+
+/** Pack bytes into a latin1 string (one char per byte), the form just-bash uses for binary stdout. */
+function toLatin1(bytes: Uint8Array): string {
+  let result = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) {
+    result += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  }
+  return result;
+}
+
+/** Short options that take a value. */
+const SHORT_OPTIONS_WITH_VALUE = new Set(['X', 'H', 'd', 'o', 'A', 'm', 'w']);
+
+/** Split combined short options, e.g. `-sLo file` into `-s -L -o file`, and `-ofile` into `-o file`. */
+function expandShortOptions(args: string[]): string[] {
+  const result: string[] = [];
+  for (const arg of args) {
+    if (!/^-[^-]./.test(arg)) {
+      result.push(arg);
+      continue;
+    }
+    for (let j = 1; j < arg.length; j++) {
+      result.push('-' + arg[j]);
+      if (SHORT_OPTIONS_WITH_VALUE.has(arg[j])) {
+        if (j + 1 < arg.length) result.push(arg.slice(j + 1));
+        break;
+      }
+    }
+  }
+  return result;
 }

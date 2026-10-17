@@ -137,7 +137,7 @@ function toBashCommand(cmd: ShellCommand) {
     const input = decodeStdin(ctx.stdin);
     const result = await cmd.execute(args, ctx.cwd, input || undefined);
     const stderr = result.stderr && !result.stderr.endsWith('\n') ? `${result.stderr}\n` : result.stderr;
-    return { stdout: result.stdout, stderr, exitCode: result.exitCode };
+    return { stdout: result.stdout, stdoutKind: result.stdoutKind, stderr, exitCode: result.exitCode };
   });
 }
 

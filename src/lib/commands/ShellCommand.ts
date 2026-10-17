@@ -34,6 +34,9 @@ export interface ShellCommandResult {
   /** Standard output content */
   stdout: string;
 
+  /** 'bytes' when stdout is binary, packed one byte per char (latin1) */
+  stdoutKind?: 'text' | 'bytes';
+
   /** Standard error content */
   stderr: string;
 

@@ -67,7 +67,7 @@ describe('CurlCommand', () => {
       status: 200,
       statusText: 'OK',
       url: 'https://example.com',
-      text: vi.fn().mockResolvedValue('Hello World'),
+      arrayBuffer: vi.fn().mockResolvedValue(new TextEncoder().encode('Hello World').buffer),
       headers: new Map([['content-type', 'text/plain']]),
       redirected: false,
     };
@@ -91,7 +91,7 @@ describe('CurlCommand', () => {
       status: 200,
       statusText: 'OK',
       url: 'https://example.com/api',
-      text: vi.fn().mockResolvedValue('{"success": true}'),
+      arrayBuffer: vi.fn().mockResolvedValue(new TextEncoder().encode('{"success": true}').buffer),
       headers: new Map([['content-type', 'application/json']]),
       redirected: false,
     };
@@ -119,7 +119,7 @@ describe('CurlCommand', () => {
       status: 200,
       statusText: 'OK',
       url: 'https://example.com',
-      text: vi.fn().mockResolvedValue('OK'),
+      arrayBuffer: vi.fn().mockResolvedValue(new TextEncoder().encode('OK').buffer),
       headers: new Map(),
       redirected: false,
     };
@@ -151,7 +151,7 @@ describe('CurlCommand', () => {
       status: 200,
       statusText: 'OK',
       url: 'https://example.com',
-      text: vi.fn().mockResolvedValue('Hello World'),
+      arrayBuffer: vi.fn().mockResolvedValue(new TextEncoder().encode('Hello World').buffer),
       headers: mockHeaders,
       redirected: false,
     };
@@ -175,7 +175,7 @@ describe('CurlCommand', () => {
       status: 200,
       statusText: 'OK',
       url: 'https://example.com',
-      text: vi.fn().mockResolvedValue('File content'),
+      arrayBuffer: vi.fn().mockResolvedValue(new TextEncoder().encode('File content').buffer),
       headers: new Map(),
       redirected: false,
     };
@@ -187,7 +187,9 @@ describe('CurlCommand', () => {
     ], '/test');
 
     expect(result.exitCode).toBe(0);
-    expect(mockFS.writeFile).toHaveBeenCalledWith('/test/output.txt', 'File content', 'utf8');
+    const [path, data] = vi.mocked(mockFS.writeFile).mock.calls[0];
+    expect(path).toBe('/test/output.txt');
+    expect(new TextDecoder().decode(data as Uint8Array)).toBe('File content');
     expect(result.stdout).toContain('100  12  100  12');
   });
 
@@ -197,7 +199,7 @@ describe('CurlCommand', () => {
       status: 200,
       statusText: 'OK',
       url: 'https://example.com',
-      text: vi.fn().mockResolvedValue('Hello World'),
+      arrayBuffer: vi.fn().mockResolvedValue(new TextEncoder().encode('Hello World').buffer),
       headers: new Map(),
       redirected: false,
     };
@@ -215,7 +217,7 @@ describe('CurlCommand', () => {
       status: 404,
       statusText: 'Not Found',
       url: 'https://example.com/notfound',
-      text: vi.fn().mockResolvedValue('Page not found'),
+      arrayBuffer: vi.fn().mockResolvedValue(new TextEncoder().encode('Page not found').buffer),
       headers: new Map(),
       redirected: false,
     };
@@ -234,7 +236,7 @@ describe('CurlCommand', () => {
       status: 204,
       statusText: 'No Content',
       url: 'https://example.com',
-      text: vi.fn().mockResolvedValue(''),
+      arrayBuffer: vi.fn().mockResolvedValue(new TextEncoder().encode('').buffer),
       headers: new Map(),
       redirected: false,
     };
@@ -261,7 +263,7 @@ describe('CurlCommand', () => {
       status: 200,
       statusText: 'OK',
       url: 'https://example.com',
-      text: vi.fn().mockResolvedValue('Hello World'),
+      arrayBuffer: vi.fn().mockResolvedValue(new TextEncoder().encode('Hello World').buffer),
       headers: mockHeaders,
       redirected: false,
     };
@@ -284,7 +286,7 @@ describe('CurlCommand', () => {
       status: 200,
       statusText: 'OK',
       url: 'https://example.com',
-      text: vi.fn().mockResolvedValue('Hello World'),
+      arrayBuffer: vi.fn().mockResolvedValue(new TextEncoder().encode('Hello World').buffer),
       headers: new Map([['content-type', 'text/plain']]),
       redirected: false,
     };
@@ -315,7 +317,7 @@ describe('CurlCommand', () => {
       status: 404,
       statusText: 'Not Found',
       url: 'https://example.com/notfound',
-      text: vi.fn().mockResolvedValue('Page not found'),
+      arrayBuffer: vi.fn().mockResolvedValue(new TextEncoder().encode('Page not found').buffer),
       headers: new Map(),
       redirected: false,
     };
@@ -334,7 +336,7 @@ describe('CurlCommand', () => {
       status: 404,
       statusText: 'Not Found',
       url: 'https://example.com/notfound',
-      text: vi.fn().mockResolvedValue('Page not found'),
+      arrayBuffer: vi.fn().mockResolvedValue(new TextEncoder().encode('Page not found').buffer),
       headers: new Map(),
       redirected: false,
     };
@@ -353,7 +355,7 @@ describe('CurlCommand', () => {
       status: 500,
       statusText: 'Internal Server Error',
       url: 'https://example.com/error',
-      text: vi.fn().mockResolvedValue('Server error'),
+      arrayBuffer: vi.fn().mockResolvedValue(new TextEncoder().encode('Server error').buffer),
       headers: new Map(),
       redirected: false,
     };

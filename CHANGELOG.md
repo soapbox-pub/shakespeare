@@ -1,5 +1,14 @@
 # Changelog
 
+## [9.21.0] - 2026-10-16
+
+### Added
+- Talk instead of type — tap the mic in the chat or on the homepage and your words appear as you speak, stopping on their own when you pause; transcription runs entirely on your device, so your voice never leaves it
+
+### Fixed
+- Shakespeare can now actually look at images it opens in your project, instead of getting a wall of garbled text
+- Images, PDFs, and other files Shakespeare downloads from the web no longer come out corrupted
+
 ## [9.20.2] - 2026-10-16
 
 ### Changed

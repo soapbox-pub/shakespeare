@@ -1,8 +1,13 @@
-import type { AutomaticSpeechRecognitionOutput, ProgressInfo } from '@huggingface/transformers';
+import { env, pipeline, type AutomaticSpeechRecognitionOutput, type ProgressInfo } from '@huggingface/transformers';
+import ortMjs from 'onnxruntime-web/ort-wasm-simd-threaded.asyncify.mjs?url';
+import ortWasm from 'onnxruntime-web/ort-wasm-simd-threaded.asyncify.wasm?url';
 
-import { SPEECH_MODELS, SPEECH_SAMPLE_RATE, TRANSFORMERS_URL, type SpeechModel, type SpeechReply, type SpeechRequest } from './index';
+import { SPEECH_MODELS, SPEECH_SAMPLE_RATE, type SpeechModel, type SpeechReply, type SpeechRequest } from './index';
 
-type Transformers = typeof import('@huggingface/transformers');
+// onnxruntime's runtime ships with our build; transformers.js would otherwise load it from jsDelivr,
+// which the CSP blocks. Its wasm cache would import the runtime from a blob: URL, which the CSP blocks too.
+env.backends.onnx.wasm!.wasmPaths = { mjs: ortMjs, wasm: ortWasm };
+env.useWasmCache = false;
 
 interface Transcriber {
   (audio: Float32Array, options: Record<string, unknown>): Promise<AutomaticSpeechRecognitionOutput>;
@@ -22,8 +27,6 @@ async function hasWebGPU(): Promise<boolean> {
 }
 
 async function createTranscriber(model: SpeechModel, id: number): Promise<Transcriber> {
-  // Loaded from a CDN rather than bundled: it fetches onnxruntime's wasm from there anyway.
-  const { pipeline }: Transformers = await import(/* @vite-ignore */ TRANSFORMERS_URL);
   const { name, wasm, webgpu } = SPEECH_MODELS[model];
   const gpu = await hasWebGPU();
   const asr = await pipeline('automatic-speech-recognition', name, {

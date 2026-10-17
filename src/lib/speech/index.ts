@@ -1,8 +1,5 @@
 import type { DataType } from '@huggingface/transformers';
 
-/** transformers.js release the worker loads. Keep in step with the devDependency, which provides its types. */
-export const TRANSFORMERS_VERSION = '4.3.1';
-export const TRANSFORMERS_URL = `https://cdn.jsdelivr.net/npm/@huggingface/transformers@${TRANSFORMERS_VERSION}/dist/transformers.min.js`;
 export type SpeechModel = 'moonshine' | 'whisper';
 
 /**

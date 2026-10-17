@@ -48,6 +48,8 @@ export default defineConfig(() => ({
       manifest: false, // Use existing manifest.webmanifest from public folder
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,wasm,mp3}'],
+        // onnxruntime (~27 MB) is only for dictation, so it's fetched when first used.
+        globIgnores: ['**/ort-wasm-*'],
         maximumFileSizeToCacheInBytes: 15 * 1024 * 1024, // 15 MB (to accommodate esbuild.wasm at ~12 MB)
         cleanupOutdatedCaches: true,
       },

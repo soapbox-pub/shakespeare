@@ -563,14 +563,19 @@ export class SessionManager {
           return false;
         });
 
+        // `x-session-id` lets providers keep the conversation on one cache (OpenRouter's sticky
+        // routing, Meridian's session resume). Every preset provider's CORS policy allows it.
+        const requestOptions: OpenAI.RequestOptions = {
+          signal: session.abortController?.signal,
+          headers: { 'x-session-id': session.sessionName },
+        };
+
         // Generate streaming response with retry logic for models that don't support images
         let stream: AsyncIterable<OpenAI.Chat.Completions.ChatCompletionChunk>;
         let retriedWithoutImages = false;
 
         try {
-          stream = await openai.chat.completions.create(completionOptions, {
-            signal: session.abortController?.signal
-          });
+          stream = await openai.chat.completions.create(completionOptions, requestOptions);
         } catch (error) {
           // Check if this might be an image-related error and we have images to strip
           const errorObj = error as Record<string, unknown>;
@@ -591,9 +596,7 @@ export class SessionManager {
             };
 
             // Retry the API call - if this succeeds, we know images were the problem
-            stream = await openai.chat.completions.create(retryOptions, {
-              signal: session.abortController?.signal
-            });
+            stream = await openai.chat.completions.create(retryOptions, requestOptions);
 
             // SUCCESS: The retry without images worked, so this model doesn't support images
             // Mark this session as not supporting images to avoid future retries

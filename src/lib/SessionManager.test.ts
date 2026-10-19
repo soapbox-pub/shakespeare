@@ -4,6 +4,24 @@ import type { JSRuntimeFS } from './JSRuntime';
 import type { NPool } from '@nostrify/nostrify';
 import type { AppConfig } from '@/contexts/AppContext';
 
+const mockCreate = vi.fn();
+
+vi.mock('./ai-client', async (importOriginal) => ({
+  ...await importOriginal<typeof import('./ai-client')>(),
+  createAIClient: () => ({ chat: { completions: { create: mockCreate } } }),
+}));
+
+vi.mock('./system', () => ({
+  makeSystemPrompt: async () => 'system prompt',
+}));
+
+vi.mock('./git', () => ({
+  Git: class {
+    getRemoteURL = async () => undefined;
+    log = async () => [];
+  },
+}));
+
 // Mock the filesystem
 const mockFS: JSRuntimeFS = {
   readFile: vi.fn(),
@@ -181,5 +199,21 @@ describe('SessionManager', () => {
 
     // On subsequent requests, the SessionManager should proactively strip images
     // This prevents retrying with images on every message/tool call
+  });
+
+  it('should send the session name as x-session-id', async () => {
+    const projectId = 'test-project';
+    const session = await sessionManager.loadSession(projectId, {}, {});
+    await sessionManager.addMessage(projectId, { role: 'user', content: 'test message' });
+
+    mockCreate.mockImplementation(async function* () {
+      yield { choices: [{ delta: { content: 'ok' }, finish_reason: 'stop' }] };
+    });
+
+    await sessionManager.startGeneration(projectId, 'test-provider/test-model');
+
+    expect(mockCreate).toHaveBeenCalledTimes(1);
+    const [, options] = mockCreate.mock.calls[0];
+    expect(options.headers).toEqual({ 'x-session-id': session.sessionName });
   });
 });

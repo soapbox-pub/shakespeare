@@ -1,17 +1,7 @@
 import { extname } from "path-browserify";
 import type { Loader, Plugin } from "esbuild-wasm";
 
-interface PackageLock {
-  packages: {
-    [key: string]: {
-      name?: string;
-      version: string;
-      /** Resolved dependencies for this package (as in package-lock v2 packages[...] entry) */
-      dependencies?: { [key: string]: string };
-      peerDependencies?: { [key: string]: string };
-    } | undefined;
-  };
-}
+import type { PackageLock } from "@/lib/lockfile";
 
 interface PackageJson {
   dependencies?: { [key: string]: string };

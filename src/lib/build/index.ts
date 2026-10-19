@@ -7,9 +7,9 @@ import { addDomainToCSP } from "@/lib/csp";
 import { shakespearePlugin } from "./shakespearePlugin";
 import { esmPlugin } from "./esmPlugin";
 import { fsPlugin } from "./fsPlugin";
-import { convertYarnLockToPackageLock } from "./yarnLockConverter";
 import type { WorkerMatch, AssetMatch } from "./workerPlugin";
 
+import { readLockfile, type PackageLock } from '@/lib/lockfile';
 import type { JSRuntimeFS } from '@/lib/JSRuntime';
 import type { Plugin } from 'esbuild-wasm';
 
@@ -28,16 +28,7 @@ export interface PackageJson {
   peerDependencies?: { [key: string]: string };
 }
 
-export interface PackageLock {
-  packages: {
-    [key: string]: {
-      name?: string;
-      version: string;
-      dependencies?: { [key: string]: string };
-      peerDependencies?: { [key: string]: string };
-    } | undefined;
-  };
-}
+export type { PackageLock };
 
 export interface TsConfig {
   compilerOptions?: {
@@ -84,7 +75,7 @@ export function detectTailwindVariant(packageJson: PackageJson): TailwindVariant
 }
 
 /**
- * Read package.json, package-lock.json/yarn.lock, and tsconfig.json from project
+ * Read package.json, the lockfile, and tsconfig.json from project
  * Exported for use by deployment adapters that need to bundle workers
  */
 export async function readBuildContext(
@@ -116,30 +107,12 @@ export async function readBuildContext(
     tsconfig = undefined;
   }
 
-  // Try to read package-lock.json first, fall back to yarn.lock
-  let packageLock: PackageLock;
-  try {
-    const packageLockText = await fs.readFile(
-      `${projectPath}/package-lock.json`,
-      "utf8",
-    );
-    packageLock = JSON.parse(packageLockText);
-    console.log(`Building with npm (package-lock.json)`);
-  } catch {
-    // If package-lock.json doesn't exist, try yarn.lock
-    try {
-      const yarnLockText = await fs.readFile(
-        `${projectPath}/yarn.lock`,
-        "utf8",
-      );
-      packageLock = convertYarnLockToPackageLock(yarnLockText);
-      console.log(`Building with yarn (yarn.lock)`);
-    } catch {
-      // If neither exists, use empty packages object
-      packageLock = { packages: {} };
-      console.log(`Building with package.json only (no lock file)`);
-    }
-  }
+  const found = await readLockfile(
+    (file) => fs.readFile(`${projectPath}/${file}`, "utf8").catch(() => undefined),
+    packageJson,
+  );
+  const packageLock = found?.lock ?? { packages: {} };
+  console.log(found ? `Building with ${found.file}` : `Building with package.json only (no lock file)`);
 
   return { packageJson, packageLock, tsconfig };
 }

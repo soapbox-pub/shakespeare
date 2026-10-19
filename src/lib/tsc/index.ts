@@ -4,8 +4,8 @@ import type { JSRuntimeFS } from '../JSRuntime';
 import type { TscRequest, TscResult } from './runTsc';
 
 const SKIP_DIRS = new Set(['node_modules', '.git', 'dist']);
-/** Files the compiler may read: sources, configs, and incremental build info. */
-const READABLE = /\.([mc]?[jt]sx?|json|tsbuildinfo)$|^\.tsbuildinfo$/;
+/** Files the compiler may read: sources, configs, incremental build info, and lockfiles. */
+const READABLE = /\.([mc]?[jt]sx?|json|tsbuildinfo)$|^\.tsbuildinfo$|^(pnpm-lock\.yaml|bun\.lock|yarn\.lock)$/;
 
 type WorkerReply = { id: number; result?: TscResult; resync?: true; error?: string };
 
@@ -86,8 +86,8 @@ export interface TscOptions {
  * Run the TypeScript compiler CLI over a project in the virtual filesystem.
  *
  * Runs in a Web Worker with the project's own TypeScript version. Dependency
- * type declarations are downloaded from the npm registry according to
- * package-lock.json and cached in IndexedDB. The worker keeps each project's
+ * type declarations are downloaded from the npm registry according to the
+ * project's lockfile and cached in IndexedDB. The worker keeps each project's
  * last program, so a type check after an edit only rechecks what changed.
  * Files the compiler writes (emitted JavaScript, .tsbuildinfo) are written
  * back to the project.

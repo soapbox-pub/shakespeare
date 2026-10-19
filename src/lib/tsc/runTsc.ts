@@ -13,11 +13,12 @@ import {
   type PackageSource,
 } from './packages';
 import { normalizePath, VirtualFiles } from './VirtualFiles';
+import { LOCKFILES, readLockfile } from '../lockfile';
 
 export type TypeScriptModule = typeof TS;
 
 export interface TscRequest {
-  /** Absolute path of the project (where package.json and package-lock.json live). */
+  /** Absolute path of the project (where package.json and the lockfile live). */
   projectRoot: string;
   /** Absolute working directory of the command. */
   cwd: string;
@@ -250,13 +251,15 @@ class Session {
     vfs.createDirectory(`${root}/node_modules`);
 
     for (const [key, entry] of Object.entries(lock?.packages ?? {})) {
-      if (!key.startsWith('node_modules/') || entry.link || !entry.resolved) continue;
+      // Without a tarball URL (JSR packages, from some lockfiles), the version is looked up in the registry.
+      if (!key.startsWith('node_modules/') || entry.link || !(entry.resolved || entry.version)) continue;
       session.lockEntries.set(key, entry);
       vfs.addLazyPackage(key);
     }
 
     // Anything downloaded before is cheap to mount, and saves discovery rounds.
     await Promise.all([...session.lockEntries].map(async ([key, entry]) => {
+      if (!entry.resolved) return;
       const pkg = await env.cache.get(`types:${entry.resolved}`);
       if (pkg) vfs.mount(`${root}/${key}`, pkg, key);
     }));
@@ -512,6 +515,9 @@ class Session {
       const entry = this.lockEntries.get(key);
       if (entry?.resolved) {
         jobs.push({ key, source: async () => ({ resolved: entry.resolved!, integrity: entry.integrity }) });
+      } else if (entry?.version) {
+        const name = entry.name ?? key.replace(/^.*node_modules\//, '');
+        jobs.push({ key, source: () => resolveFromRegistry(name, entry.version!) });
       }
     }
 
@@ -543,6 +549,8 @@ class Session {
 interface Project {
   files: Map<string, string>;
   session?: Session;
+  /** The parsed lockfile, and the texts it was parsed from. */
+  lock?: { text: string; packageText: string | undefined; value: PackageLock | undefined };
 }
 
 /**
@@ -579,10 +587,14 @@ export class TscService {
     for (const [path, text] of Object.entries(changed)) project.files.set(path, text);
 
     const notes: string[] = [];
-    const lockText = project.files.get(`${root}/package-lock.json`);
     const packageText = project.files.get(`${root}/package.json`);
-    const lock = parseJson<PackageLock>(lockText);
     const rootPackage = parseJson<PackageJson>(packageText) ?? {};
+    const lockText = LOCKFILES.map((file) => project.files.get(`${root}/${file}`) ?? '').join('\0');
+    if (project.lock?.text !== lockText || project.lock.packageText !== packageText) {
+      const found = await readLockfile((file) => project.files.get(`${root}/${file}`), rootPackage);
+      project.lock = { text: lockText, packageText, value: found?.lock };
+    }
+    const lock = project.lock.value;
     const declaredTs = rootPackage.devDependencies?.typescript ?? rootPackage.dependencies?.typescript;
     const compilerSource = await chooseCompiler(lock, declaredTs, notes);
     const compiler = await loadCompiler(compilerSource, this.env);

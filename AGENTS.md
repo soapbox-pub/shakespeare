@@ -42,8 +42,8 @@ Shakespeare provides AI agents with specialized tools for project development (n
 - **TextEditorWriteTool**: Create or overwrite files with new content
 - **TextEditorStrReplaceTool**: Replace strings in files
 - **BuildProjectTool**: Build and compile projects
-- **NpmAddPackageTool**: Add npm packages to projects
-- **NpmRemovePackageTool**: Remove npm packages from projects
+- **NpmAddPackageTool**: Add npm packages to projects, resolving them and their dependencies into package-lock.json or bun.lock (`src/lib/lockfile/`)
+- **NpmRemovePackageTool**: Remove npm packages from projects, pruning the lockfile
 - **GitCommitTool**: Commit changes to Git repositories
 - **WebFetchTool**: Fetch and read web pages with support for markdown, text, and HTML formats
 - **WebSearchTool**: Search the web using Exa AI for real-time web searches

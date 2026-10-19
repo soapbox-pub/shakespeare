@@ -1,6 +1,9 @@
+import semver from 'semver';
 import { describe, expect, it } from 'vitest';
 
-import { parseLockfile, readLockfile } from '.';
+import { parseLockfile, readLockfile, Registry } from '.';
+import { updateBunLock } from './bun';
+import { updateNpmLock } from './npm';
 import { findInstalled, layOut, type LockNode } from './tree';
 
 /** The version Node would load for `name` when imported from `from`. */
@@ -301,5 +304,83 @@ describe('readLockfile', () => {
 
     files['package-lock.json'] = '{ "packages": {} }';
     expect((await readLockfile((file) => files[file]))?.file).toBe('package-lock.json');
+  });
+});
+
+describe('updating lockfiles', () => {
+  /** A registry where each package has the given versions and dependencies. */
+  function registry(packages: Record<string, Record<string, Record<string, string>>>) {
+    return new Registry('', (async (url: string) => {
+      const name = decodeURIComponent(url.replace(/^https:\/\/[^/]+\//, ''));
+      const versions = packages[name];
+      if (!versions) return new Response('', { status: 404 });
+      const latest = Object.keys(versions).sort(semver.compare).pop();
+      return Response.json({
+        'dist-tags': { latest },
+        versions: Object.fromEntries(Object.entries(versions).map(([version, dependencies]) => [version, {
+          name, version, dependencies, dist: { tarball: `https://registry.npmjs.org/${name}/-/${name}-${version}.tgz`, integrity: `sha512-${version}` },
+        }])),
+      });
+    }) as typeof fetch);
+  }
+
+  it('nests the old version for packages that still need it when the project changes version', async () => {
+    const lock = JSON.stringify({
+      lockfileVersion: 3,
+      packages: {
+        '': { dependencies: { lib: '^2.0.0', user: '^1.0.0' } },
+        'node_modules/lib': { version: '2.0.0' },
+        'node_modules/user': { version: '1.0.0', dependencies: { lib: '^2.0.0' } },
+      },
+    });
+    const { text } = await updateNpmLock(lock, { dependencies: { lib: '^1.0.0', user: '^1.0.0' } }, registry({
+      lib: { '1.0.0': {}, '2.0.0': {} },
+    }));
+    const { packages } = JSON.parse(text);
+    expect(packages['node_modules/lib'].version).toBe('1.0.0');
+    expect(packages['node_modules/user/node_modules/lib'].version).toBe('2.0.0');
+  });
+
+  it('honors overrides', async () => {
+    const { text } = await updateNpmLock(
+      JSON.stringify({ lockfileVersion: 3, packages: { '': {} } }),
+      { dependencies: { a: '^1.0.0' }, overrides: { b: '2.0.0' } },
+      registry({ a: { '1.0.0': { b: '^1.0.0' } }, b: { '1.0.0': {}, '2.0.0': {} } }),
+    );
+    const { packages } = JSON.parse(text);
+    expect(packages['node_modules/b'].version).toBe('2.0.0');
+    expect(packages['node_modules/a/node_modules/b']).toBeUndefined();
+  });
+
+  it('writes an unchanged bun.lock back exactly', async () => {
+    const lock = `{
+  "lockfileVersion": 1,
+  "configVersion": 1,
+  "workspaces": {
+    "": {
+      "name": "app",
+      "dependencies": {
+        "a": "^1.0.0",
+      },
+      "optionalPeers": [
+        "react",
+      ],
+    },
+  },
+  "trustedDependencies": [
+    "a",
+  ],
+  "packages": {
+    "a": ["a@1.0.0", "", { "dependencies": { "b": "^1.0.0" }, "optionalDependencies": { "c": "1.0.0" }, "peerDependencies": { "react": "*" }, "optionalPeers": ["react"], "bin": { "a": "cli.js" } }, "sha512-a"],
+
+    "b": ["b@1.0.0", "", {}, "sha512-b"],
+
+    "c": ["c@1.0.0", "", { "os": [ "linux", "darwin", ], "cpu": "x64" }, "sha512-c"],
+  }
+}
+`;
+    const manifest = { name: 'app', dependencies: { a: '^1.0.0' }, peerDependencies: { react: '*' }, peerDependenciesMeta: { react: { optional: true } } };
+    const { text } = await updateBunLock(lock, manifest, registry({}));
+    expect(text).toBe(lock.replace('      "optionalPeers"', '      "peerDependencies": {\n        "react": "*",\n      },\n      "optionalPeers"'));
   });
 });

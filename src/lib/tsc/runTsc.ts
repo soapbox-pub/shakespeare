@@ -488,7 +488,7 @@ class Session {
 
   /**
    * Find the range a package.json asks for, for a package the lockfile lacks
-   * (npm_add_package records only the top-level package in the lockfile).
+   * (a stale lockfile, or one that couldn't be updated, like pnpm's).
    * Like npm, this skips optional peer dependencies.
    */
   private declaredRange(name: string): string | undefined {

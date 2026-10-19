@@ -2,522 +2,316 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { NpmAddPackageTool } from './NpmAddPackageTool';
 import type { JSRuntimeFS } from '../JSRuntime';
 
-// Mock fetch globally
-const mockFetch = vi.fn();
-global.fetch = mockFetch;
+/** An in-memory project directory. */
+function memoryFS(files: Record<string, string>): JSRuntimeFS {
+  return {
+    readFile: vi.fn(async (path: string) => {
+      if (!(path in files)) throw new Error(`ENOENT: ${path}`);
+      return files[path];
+    }),
+    writeFile: vi.fn(async (path: string, data: string) => {
+      files[path] = data;
+    }),
+  } as unknown as JSRuntimeFS;
+}
 
-// Mock filesystem
-const mockFS: JSRuntimeFS = {
-  readFile: vi.fn(),
-  writeFile: vi.fn(),
-  readdir: vi.fn(),
-  mkdir: vi.fn(),
-  stat: vi.fn(),
-  lstat: vi.fn(),
-  unlink: vi.fn(),
-  rmdir: vi.fn(),
-  rename: vi.fn(),
-  readlink: vi.fn(),
-  symlink: vi.fn(),
+type Versions = Record<string, { dependencies?: Record<string, string>; peerDependencies?: Record<string, string> }>;
+
+/** Serve abbreviated packuments for the given packages. */
+function mockRegistry(packages: Record<string, { latest: string; versions: Versions }>) {
+  return vi.fn(async (url: string) => {
+    const name = decodeURIComponent(url.replace(/^https:\/\/[^/]+\//, ''));
+    const pkg = packages[name];
+    if (!pkg) return { ok: false, status: 404, statusText: 'Not Found' };
+    const versions = Object.fromEntries(Object.entries(pkg.versions).map(([version, manifest]) => [version, {
+      name,
+      version,
+      ...manifest,
+      dist: {
+        tarball: `https://registry.npmjs.org/${name}/-/${name.replace(/^@[^/]+\//, '')}-${version}.tgz`,
+        integrity: `sha512-${name}-${version}`,
+      },
+    }]));
+    return { ok: true, status: 200, json: async () => ({ name, 'dist-tags': { latest: pkg.latest }, versions }) };
+  });
+}
+
+const registry = {
+  lodash: { latest: '4.17.21', versions: { '4.17.20': {}, '4.17.21': {} } },
+  typescript: { latest: '5.0.0', versions: { '5.0.0': {} } },
+  'framer-motion': {
+    latest: '12.0.0',
+    versions: { '12.0.0': { dependencies: { 'motion-dom': '^12.0.0', tslib: '^2.4.0' }, peerDependencies: { react: '^18 || ^19' } } },
+  },
+  'motion-dom': { latest: '12.1.0', versions: { '12.1.0': { dependencies: { tslib: '^2.0.0' } } } },
+  tslib: { latest: '2.8.1', versions: { '1.14.1': {}, '2.8.1': {} } },
+  react: { latest: '19.0.0', versions: { '18.3.1': {}, '19.0.0': {} } },
 };
 
+const PROJECT = '/test/project';
+
+function packageLock(packages: Record<string, unknown>) {
+  return JSON.stringify({ name: 'test-project', version: '1.0.0', lockfileVersion: 3, requires: true, packages }, null, 2);
+}
+
 describe('NpmAddPackageTool', () => {
-  let tool: NpmAddPackageTool;
+  let files: Record<string, string>;
+  let fetchMock: ReturnType<typeof mockRegistry>;
 
   beforeEach(() => {
-    vi.clearAllMocks();
-    tool = new NpmAddPackageTool(mockFS, '/test/project');
+    files = {};
+    fetchMock = mockRegistry(registry);
+    vi.stubGlobal('fetch', fetchMock);
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 
-  it('should have correct description and inputSchema', () => {
-    expect(tool.description).toBe('Safely add an npm package to the project in the current directory.');
-    expect(tool.inputSchema).toBeDefined();
-  });
+  function tool() {
+    return new NpmAddPackageTool(memoryFS(files), PROJECT);
+  }
+
+  function writePackageJson(json: Record<string, unknown>) {
+    files[`${PROJECT}/package.json`] = JSON.stringify({ name: 'test-project', version: '1.0.0', ...json }, null, 2);
+  }
+
+  function readJson(file: string) {
+    return JSON.parse(files[`${PROJECT}/${file}`]);
+  }
 
   it('should successfully add a new package', async () => {
-    const packageJson = {
-      name: 'test-project',
-      version: '1.0.0',
-      dependencies: {}
-    };
+    writePackageJson({ dependencies: {} });
 
-    vi.mocked(mockFS.readFile)
-      .mockResolvedValueOnce(JSON.stringify(packageJson, null, 2)) // package.json
-      .mockRejectedValueOnce(new Error('File not found')); // package-lock.json doesn't exist
+    const result = await tool().execute({ name: 'lodash' });
 
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({
-        version: '4.17.21',
-        dist: {
-          tarball: 'https://registry.npmjs.org/lodash/-/lodash-4.17.21.tgz',
-          integrity: 'sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg=='
-        },
-        license: 'MIT'
-      })
-    });
-
-    const result = await tool.execute({ name: 'lodash' });
-
-    expect(mockFS.readFile).toHaveBeenCalledWith('/test/project/package.json', 'utf8');
-    expect(mockFetch).toHaveBeenCalledWith('https://registry.npmjs.org/lodash/latest');
-    expect(mockFS.writeFile).toHaveBeenCalledWith(
-      '/test/project/package.json',
-      expect.stringContaining('"lodash": "^4.17.21"'),
-      'utf8'
-    );
+    expect(fetchMock).toHaveBeenCalledWith('https://registry.npmjs.org/lodash', expect.anything());
+    expect(readJson('package.json').dependencies).toEqual({ lodash: '^4.17.21' });
     expect(result.content).toContain('✅ Successfully added lodash@4.17.21');
     expect(result.content).toContain('Updated: package.json');
   });
 
   it('should add package with specific version', async () => {
-    const packageJson = {
-      name: 'test-project',
-      version: '1.0.0',
-      dependencies: {}
-    };
+    writePackageJson({ dependencies: {} });
 
-    vi.mocked(mockFS.readFile)
-      .mockResolvedValueOnce(JSON.stringify(packageJson, null, 2)) // package.json
-      .mockRejectedValueOnce(new Error('File not found')); // package-lock.json doesn't exist
+    const result = await tool().execute({ name: 'lodash', version: '4.17.20' });
 
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({
-        version: '4.17.20',
-        dist: {
-          tarball: 'https://registry.npmjs.org/lodash/-/lodash-4.17.20.tgz',
-          integrity: 'sha512-PlhdFcillOINfeV7Ni6oF1TAEayyZBoZ8bcshTHqOYJYlrqzRK5hagpagky5o4HfCzzd1TRkXPMFq6cKk9rGmA=='
-        },
-        license: 'MIT'
-      })
-    });
-
-    const result = await tool.execute({ name: 'lodash', version: '4.17.20' });
-
-    expect(mockFetch).toHaveBeenCalledWith('https://registry.npmjs.org/lodash/4.17.20'); // Should fetch metadata for specified version
-    expect(mockFS.writeFile).toHaveBeenCalledWith(
-      '/test/project/package.json',
-      expect.stringContaining('"lodash": "^4.17.20"'),
-      'utf8'
-    );
+    expect(readJson('package.json').dependencies.lodash).toBe('^4.17.20');
     expect(result.content).toContain('✅ Successfully added lodash@4.17.20');
   });
 
+  it('should resolve a range to the version it picks', async () => {
+    writePackageJson({});
+
+    await tool().execute({ name: 'lodash', version: '~4.17.0' });
+
+    expect(readJson('package.json').dependencies.lodash).toBe('^4.17.21');
+  });
+
   it('should add dev dependency', async () => {
-    const packageJson = {
-      name: 'test-project',
-      version: '1.0.0',
-      dependencies: {},
-      devDependencies: {}
-    };
+    writePackageJson({ dependencies: { lodash: '^4.17.21' } });
 
-    vi.mocked(mockFS.readFile)
-      .mockResolvedValueOnce(JSON.stringify(packageJson, null, 2)) // package.json
-      .mockRejectedValueOnce(new Error('File not found')); // package-lock.json doesn't exist
+    const result = await tool().execute({ name: 'typescript', dev: true });
 
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({
-        version: '5.0.0',
-        dist: {
-          tarball: 'https://registry.npmjs.org/typescript/-/typescript-5.0.0.tgz',
-          integrity: 'sha512-w90NqzHl3S+GGUNGjREnnLAW6zIsfRIKwG5IwxJmtfAb6dPwx9Pq6Q3aRpIyq4Y7Udq9Y8SdJGrZBj8JKl6qCg=='
-        },
-        license: 'Apache-2.0'
-      })
-    });
-
-    const result = await tool.execute({ name: 'typescript', dev: true });
-
-    expect(mockFS.writeFile).toHaveBeenCalledWith(
-      '/test/project/package.json',
-      expect.stringContaining('"typescript": "^5.0.0"'),
-      'utf8'
-    );
-
-    // Check that it was written to devDependencies
-    const writtenContent = vi.mocked(mockFS.writeFile).mock.calls[0][1] as string;
-    const writtenPackageJson = JSON.parse(writtenContent);
-    expect(writtenPackageJson.devDependencies.typescript).toBe('^5.0.0');
-    expect(writtenPackageJson.dependencies?.typescript).toBeUndefined();
-
+    const packageJson = readJson('package.json');
+    expect(packageJson.devDependencies.typescript).toBe('^5.0.0');
+    expect(packageJson.dependencies.typescript).toBeUndefined();
     expect(result.content).toContain('Development dependency');
   });
 
   it('should move package from dependencies to devDependencies', async () => {
-    const packageJson = {
-      name: 'test-project',
-      version: '1.0.0',
-      dependencies: {
-        'typescript': '^4.0.0'
-      },
-      devDependencies: {}
-    };
+    writePackageJson({ dependencies: { typescript: '^5.0.0' } });
 
-    vi.mocked(mockFS.readFile)
-      .mockResolvedValueOnce(JSON.stringify(packageJson, null, 2)) // package.json
-      .mockRejectedValueOnce(new Error('File not found')); // package-lock.json doesn't exist
+    const result = await tool().execute({ name: 'typescript', dev: true });
 
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({
-        version: '5.0.0',
-        dist: {
-          tarball: 'https://registry.npmjs.org/typescript/-/typescript-5.0.0.tgz',
-          integrity: 'sha512-w90NqzHl3S+GGUNGjREnnLAW6zIsfRIKwG5IwxJmtfAb6dPwx9Pq6Q3aRpIyq4Y7Udq9Y8SdJGrZBj8JKl6qCg=='
-        },
-        license: 'Apache-2.0'
-      })
-    });
-
-    const result = await tool.execute({ name: 'typescript', dev: true });
-
-    const writtenContent = vi.mocked(mockFS.writeFile).mock.calls[0][1] as string;
-    const writtenPackageJson = JSON.parse(writtenContent);
-
-    expect(writtenPackageJson.devDependencies.typescript).toBe('^5.0.0');
-    // dependencies object should be empty or not contain typescript
-    expect(writtenPackageJson.dependencies?.typescript).toBeUndefined();
+    const packageJson = readJson('package.json');
+    expect(packageJson.devDependencies.typescript).toBe('^5.0.0');
+    expect(packageJson.dependencies).toBeUndefined();
     expect(result.content).toContain('✅ Successfully added');
   });
 
   it('should handle package already installed', async () => {
-    const packageJson = {
-      name: 'test-project',
-      version: '1.0.0',
-      dependencies: {
-        'lodash': '^4.17.21'
-      }
-    };
+    writePackageJson({ dependencies: { lodash: '^4.17.21' } });
+    const fs = memoryFS(files);
 
-    vi.mocked(mockFS.readFile).mockResolvedValue(JSON.stringify(packageJson, null, 2));
+    const result = await new NpmAddPackageTool(fs, PROJECT).execute({ name: 'lodash' });
 
-    const result = await tool.execute({ name: 'lodash' });
-
-    // Should not fetch from registry when no version specified and package already installed
-    expect(mockFetch).not.toHaveBeenCalled();
-    expect(mockFS.writeFile).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(fs.writeFile).not.toHaveBeenCalled();
     expect(result.content).toContain('ℹ️ Package lodash is already installed in dependencies with version ^4.17.21.');
   });
 
   it('should handle package already installed with specific version', async () => {
-    const packageJson = {
-      name: 'test-project',
-      version: '1.0.0',
-      dependencies: {
-        'lodash': '^4.17.21'
-      }
-    };
+    writePackageJson({ dependencies: { lodash: '^4.17.21' } });
+    const fs = memoryFS(files);
 
-    vi.mocked(mockFS.readFile).mockResolvedValue(JSON.stringify(packageJson, null, 2));
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({
-        version: '4.17.21',
-        dist: {
-          tarball: 'https://registry.npmjs.org/lodash/-/lodash-4.17.21.tgz',
-          integrity: 'sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg=='
-        },
-        license: 'MIT'
-      })
-    });
+    const result = await new NpmAddPackageTool(fs, PROJECT).execute({ name: 'lodash', version: '4.17.21' });
 
-    const result = await tool.execute({ name: 'lodash', version: '4.17.21' });
-
-    expect(mockFS.writeFile).not.toHaveBeenCalled();
+    expect(fs.writeFile).not.toHaveBeenCalled();
     expect(result.content).toContain('ℹ️ Package lodash@4.17.21 is already installed in dependencies.');
   });
 
   it('should handle missing package.json', async () => {
-    vi.mocked(mockFS.readFile).mockRejectedValue(new Error('File not found'));
-
-    await expect(tool.execute({ name: 'lodash' })).rejects.toThrow('❌ Could not read package.json');
+    await expect(tool().execute({ name: 'lodash' })).rejects.toThrow('❌ Could not read package.json');
   });
 
   it('should handle invalid package.json', async () => {
-    vi.mocked(mockFS.readFile).mockResolvedValue('invalid json');
-
-    await expect(tool.execute({ name: 'lodash' })).rejects.toThrow('❌ Invalid package.json format');
+    files[`${PROJECT}/package.json`] = 'invalid json';
+    await expect(tool().execute({ name: 'lodash' })).rejects.toThrow('❌ Invalid package.json format');
   });
 
   it('should handle npm registry errors', async () => {
-    const packageJson = {
-      name: 'test-project',
-      version: '1.0.0',
-      dependencies: {}
-    };
-
-    vi.mocked(mockFS.readFile).mockResolvedValue(JSON.stringify(packageJson, null, 2));
-    mockFetch.mockResolvedValue({
-      ok: false,
-      status: 404,
-      statusText: 'Not Found'
-    });
-
-    await expect(tool.execute({ name: 'nonexistent-package' })).rejects.toThrow('❌ Could not fetch latest version');
+    writePackageJson({});
+    await expect(tool().execute({ name: 'nonexistent-package' })).rejects.toThrow('❌ Could not fetch latest version');
   });
 
   it('should sort dependencies alphabetically', async () => {
-    const packageJson = {
-      name: 'test-project',
-      version: '1.0.0',
-      dependencies: {
-        'zlib': '^1.0.0',
-        'axios': '^1.0.0'
-      }
-    };
+    writePackageJson({ dependencies: { zlib: '^1.0.0', axios: '^1.0.0' } });
 
-    vi.mocked(mockFS.readFile)
-      .mockResolvedValueOnce(JSON.stringify(packageJson, null, 2)) // package.json
-      .mockRejectedValueOnce(new Error('File not found')); // package-lock.json doesn't exist
+    await tool().execute({ name: 'lodash' });
 
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({
-        version: '4.17.21',
-        dist: {
-          tarball: 'https://registry.npmjs.org/lodash/-/lodash-4.17.21.tgz',
-          integrity: 'sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg=='
-        },
-        license: 'MIT'
-      })
-    });
-
-    const result = await tool.execute({ name: 'lodash' });
-
-    const writtenContent = vi.mocked(mockFS.writeFile).mock.calls[0][1] as string;
-    const writtenPackageJson = JSON.parse(writtenContent);
-    const dependencyKeys = Object.keys(writtenPackageJson.dependencies);
-
-    expect(dependencyKeys).toEqual(['axios', 'lodash', 'zlib']);
-    expect(result.content).toContain('✅ Successfully added');
+    expect(Object.keys(readJson('package.json').dependencies)).toEqual(['axios', 'lodash', 'zlib']);
   });
 
-  it('should update package-lock.json when it exists', async () => {
-    const packageJson = {
-      name: 'test-project',
-      version: '1.0.0',
-      dependencies: {}
-    };
-
-    const packageLock = {
-      name: 'test-project',
-      version: '1.0.0',
-      lockfileVersion: 3,
-      requires: true,
-      packages: {
-        '': {
-          name: 'test-project',
-          version: '1.0.0',
-          dependencies: {}
-        }
-      }
-    };
-
-    vi.mocked(mockFS.readFile)
-      .mockResolvedValueOnce(JSON.stringify(packageJson, null, 2)) // package.json
-      .mockResolvedValueOnce(JSON.stringify(packageLock, null, 2)); // package-lock.json
-
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({
-        version: '4.17.21',
-        dist: {
-          tarball: 'https://registry.npmjs.org/lodash/-/lodash-4.17.21.tgz',
-          integrity: 'sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg=='
-        },
-        license: 'MIT'
-      })
+  it('should install the package and its dependencies into package-lock.json', async () => {
+    writePackageJson({ dependencies: { react: '^18.3.1' } });
+    files[`${PROJECT}/package-lock.json`] = packageLock({
+      '': { name: 'test-project', version: '1.0.0', dependencies: { react: '^18.3.1' } },
+      'node_modules/react': { version: '18.3.1', license: 'MIT', dependencies: { tslib: '^1.0.0' } },
+      'node_modules/tslib': { version: '1.14.1' },
     });
 
-    const result = await tool.execute({ name: 'lodash' });
+    const result = await tool().execute({ name: 'framer-motion' });
 
-    expect(mockFS.writeFile).toHaveBeenCalledTimes(2); // package.json and package-lock.json
-
-    // Check package-lock.json was updated
-    const lockWriteCall = vi.mocked(mockFS.writeFile).mock.calls.find(call =>
-      call[0] === '/test/project/package-lock.json'
-    );
-    expect(lockWriteCall).toBeDefined();
-
-    const updatedLock = JSON.parse(lockWriteCall![1] as string);
-    expect(updatedLock.packages[''].dependencies.lodash).toBe('^4.17.21');
-    expect(updatedLock.packages['node_modules/lodash']).toEqual({
-      version: '4.17.21',
-      resolved: 'https://registry.npmjs.org/lodash/-/lodash-4.17.21.tgz',
-      integrity: 'sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg==',
-      license: 'MIT'
+    const lock = readJson('package-lock.json');
+    expect(lock.packages[''].dependencies).toEqual({ 'framer-motion': '^12.0.0', react: '^18.3.1' });
+    expect(lock.packages['node_modules/framer-motion']).toEqual({
+      version: '12.0.0',
+      resolved: 'https://registry.npmjs.org/framer-motion/-/framer-motion-12.0.0.tgz',
+      integrity: 'sha512-framer-motion-12.0.0',
+      dependencies: { 'motion-dom': '^12.0.0', tslib: '^2.4.0' },
+      peerDependencies: { react: '^18 || ^19' },
     });
-
+    expect(lock.packages['node_modules/motion-dom'].version).toBe('12.1.0');
+    // tslib@1 stays where it was; framer-motion and motion-dom each get 2.x nested.
+    expect(lock.packages['node_modules/tslib'].version).toBe('1.14.1');
+    expect(lock.packages['node_modules/framer-motion/node_modules/tslib'].version).toBe('2.8.1');
+    expect(lock.packages['node_modules/motion-dom/node_modules/tslib'].version).toBe('2.8.1');
+    // Existing entries are untouched.
+    expect(lock.packages['node_modules/react']).toEqual({ version: '18.3.1', license: 'MIT', dependencies: { tslib: '^1.0.0' } });
     expect(result.content).toContain('Updated: package.json, package-lock.json');
   });
 
-  it('should update package-lock.json for dev dependencies', async () => {
-    const packageJson = {
-      name: 'test-project',
-      version: '1.0.0',
-      devDependencies: {}
-    };
+  it('should mark dev dependencies in package-lock.json', async () => {
+    writePackageJson({});
+    files[`${PROJECT}/package-lock.json`] = packageLock({ '': { name: 'test-project', version: '1.0.0' } });
 
-    const packageLock = {
-      name: 'test-project',
-      version: '1.0.0',
-      lockfileVersion: 3,
-      requires: true,
-      packages: {
-        '': {
-          name: 'test-project',
-          version: '1.0.0',
-          devDependencies: {}
-        }
-      }
-    };
+    await tool().execute({ name: 'typescript', dev: true });
 
-    vi.mocked(mockFS.readFile)
-      .mockResolvedValueOnce(JSON.stringify(packageJson, null, 2)) // package.json
-      .mockResolvedValueOnce(JSON.stringify(packageLock, null, 2)); // package-lock.json
-
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({
-        version: '5.0.0',
-        dist: {
-          tarball: 'https://registry.npmjs.org/typescript/-/typescript-5.0.0.tgz',
-          integrity: 'sha512-w90NqzHl3S+GGUNGjREnnLAW6zIsfRIKwG5IwxJmtfAb6dPwx9Pq6Q3aRpIyq4Y7Udq9Y8SdJGrZBj8JKl6qCg=='
-        },
-        license: 'Apache-2.0',
-        engines: { node: '>=14.17' }
-      })
-    });
-
-    const result = await tool.execute({ name: 'typescript', dev: true });
-
-    const lockWriteCall = vi.mocked(mockFS.writeFile).mock.calls.find(call =>
-      call[0] === '/test/project/package-lock.json'
-    );
-    expect(lockWriteCall).toBeDefined();
-
-    const updatedLock = JSON.parse(lockWriteCall![1] as string);
-    expect(updatedLock.packages[''].devDependencies.typescript).toBe('^5.0.0');
-    expect(updatedLock.packages['node_modules/typescript']).toEqual({
-      version: '5.0.0',
-      resolved: 'https://registry.npmjs.org/typescript/-/typescript-5.0.0.tgz',
-      integrity: 'sha512-w90NqzHl3S+GGUNGjREnnLAW6zIsfRIKwG5IwxJmtfAb6dPwx9Pq6Q3aRpIyq4Y7Udq9Y8SdJGrZBj8JKl6qCg==',
-      license: 'Apache-2.0',
-      dev: true,
-      engines: { node: '>=14.17' }
-    });
-
-    expect(result.content).toContain('Updated: package.json, package-lock.json');
+    const lock = readJson('package-lock.json');
+    expect(lock.packages[''].devDependencies).toEqual({ typescript: '^5.0.0' });
+    expect(lock.packages['node_modules/typescript'].dev).toBe(true);
   });
 
-  it('should move package between dependency types in package-lock.json', async () => {
-    const packageJson = {
-      name: 'test-project',
-      version: '1.0.0',
-      dependencies: {
-        'typescript': '^4.0.0'
+  it('should clear the dev flag when a package moves to dependencies', async () => {
+    writePackageJson({ devDependencies: { typescript: '^5.0.0' } });
+    files[`${PROJECT}/package-lock.json`] = packageLock({
+      '': { name: 'test-project', version: '1.0.0', devDependencies: { typescript: '^5.0.0' } },
+      'node_modules/typescript': { version: '5.0.0', resolved: 'https://registry.npmjs.org/typescript/-/typescript-5.0.0.tgz', dev: true },
+    });
+
+    await tool().execute({ name: 'typescript' });
+
+    const lock = readJson('package-lock.json');
+    expect(lock.packages[''].dependencies).toEqual({ typescript: '^5.0.0' });
+    expect(lock.packages[''].devDependencies).toBeUndefined();
+    expect(lock.packages['node_modules/typescript'].dev).toBeUndefined();
+  });
+
+  it('should report peer dependency conflicts', async () => {
+    writePackageJson({ dependencies: { react: '^17.0.0' } });
+    files[`${PROJECT}/package-lock.json`] = packageLock({
+      '': { name: 'test-project', version: '1.0.0', dependencies: { react: '^17.0.0' } },
+      'node_modules/react': { version: '17.0.2' },
+    });
+
+    const result = await tool().execute({ name: 'framer-motion' });
+
+    expect(result.content).toContain('framer-motion@12.0.0 wants react@^18 || ^19 as a peer, but 17.0.2 is installed');
+  });
+
+  it('should update bun.lock', async () => {
+    writePackageJson({ dependencies: { react: '^19.0.0' } });
+    files[`${PROJECT}/bun.lock`] = `{
+  "lockfileVersion": 1,
+  "workspaces": {
+    "": {
+      "name": "test-project",
+      "dependencies": {
+        "react": "^19.0.0",
       },
-      devDependencies: {}
-    };
+    },
+  },
+  "packages": {
+    "react": ["react@19.0.0", "", {}, "sha512-react"],
+  }
+}
+`;
 
-    const packageLock = {
-      name: 'test-project',
-      version: '1.0.0',
-      lockfileVersion: 3,
-      requires: true,
-      packages: {
-        '': {
-          name: 'test-project',
-          version: '1.0.0',
-          dependencies: {
-            'typescript': '^4.0.0'
-          },
-          devDependencies: {}
-        },
-        'node_modules/typescript': {
-          version: '4.0.0',
-          resolved: 'https://registry.npmjs.org/typescript/-/typescript-4.0.0.tgz',
-          integrity: 'sha512-old-integrity',
-          license: 'Apache-2.0'
-        }
-      }
-    };
+    const result = await tool().execute({ name: 'framer-motion' });
 
-    vi.mocked(mockFS.readFile)
-      .mockResolvedValueOnce(JSON.stringify(packageJson, null, 2)) // package.json
-      .mockResolvedValueOnce(JSON.stringify(packageLock, null, 2)); // package-lock.json
+    expect(files[`${PROJECT}/bun.lock`]).toBe(`{
+  "lockfileVersion": 1,
+  "workspaces": {
+    "": {
+      "name": "test-project",
+      "dependencies": {
+        "framer-motion": "^12.0.0",
+        "react": "^19.0.0",
+      },
+    },
+  },
+  "packages": {
+    "framer-motion": ["framer-motion@12.0.0", "", { "dependencies": { "motion-dom": "^12.0.0", "tslib": "^2.4.0" }, "peerDependencies": { "react": "^18 || ^19" } }, "sha512-framer-motion-12.0.0"],
 
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({
-        version: '5.0.0',
-        dist: {
-          tarball: 'https://registry.npmjs.org/typescript/-/typescript-5.0.0.tgz',
-          integrity: 'sha512-w90NqzHl3S+GGUNGjREnnLAW6zIsfRIKwG5IwxJmtfAb6dPwx9Pq6Q3aRpIyq4Y7Udq9Y8SdJGrZBj8JKl6qCg=='
-        },
-        license: 'Apache-2.0'
-      })
-    });
+    "motion-dom": ["motion-dom@12.1.0", "", { "dependencies": { "tslib": "^2.0.0" } }, "sha512-motion-dom-12.1.0"],
 
-    const result = await tool.execute({ name: 'typescript', dev: true });
+    "react": ["react@19.0.0", "", {}, "sha512-react"],
 
-    const lockWriteCall = vi.mocked(mockFS.writeFile).mock.calls.find(call =>
-      call[0] === '/test/project/package-lock.json'
-    );
-    expect(lockWriteCall).toBeDefined();
-
-    const updatedLock = JSON.parse(lockWriteCall![1] as string);
-
-    // Should be moved to devDependencies
-    expect(updatedLock.packages[''].devDependencies.typescript).toBe('^5.0.0');
-    expect(updatedLock.packages[''].dependencies?.typescript).toBeUndefined();
-
-    // Node modules entry should be updated with new version and dev flag
-    expect(updatedLock.packages['node_modules/typescript']).toEqual({
-      version: '5.0.0',
-      resolved: 'https://registry.npmjs.org/typescript/-/typescript-5.0.0.tgz',
-      integrity: 'sha512-w90NqzHl3S+GGUNGjREnnLAW6zIsfRIKwG5IwxJmtfAb6dPwx9Pq6Q3aRpIyq4Y7Udq9Y8SdJGrZBj8JKl6qCg==',
-      license: 'Apache-2.0',
-      dev: true
-    });
-
-    expect(result.content).toContain('✅ Successfully added');
+    "tslib": ["tslib@2.8.1", "", {}, "sha512-tslib-2.8.1"],
+  }
+}
+`);
+    expect(result.content).toContain('Updated: package.json, bun.lock');
   });
 
-  it('should handle corrupted package-lock.json gracefully', async () => {
-    const packageJson = {
-      name: 'test-project',
-      version: '1.0.0',
-      dependencies: {}
-    };
+  it('should leave lockfiles it cannot update alone, and say so', async () => {
+    writePackageJson({});
+    files[`${PROJECT}/pnpm-lock.yaml`] = "lockfileVersion: '9.0'\n";
 
-    vi.mocked(mockFS.readFile)
-      .mockResolvedValueOnce(JSON.stringify(packageJson, null, 2)) // package.json
-      .mockResolvedValueOnce('invalid json'); // corrupted package-lock.json
+    const result = await tool().execute({ name: 'lodash' });
 
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({
-        version: '4.17.21',
-        dist: {
-          tarball: 'https://registry.npmjs.org/lodash/-/lodash-4.17.21.tgz',
-          integrity: 'sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg=='
-        },
-        license: 'MIT'
-      })
-    });
+    expect(files[`${PROJECT}/pnpm-lock.yaml`]).toBe("lockfileVersion: '9.0'\n");
+    expect(result.content).toContain('Updated: package.json\n');
+    expect(result.content).toContain('pnpm-lock.yaml was not updated');
+  });
 
-    // Should not throw error, just log warning and continue
-    const result = await tool.execute({ name: 'lodash' });
+  it('should write nothing if a dependency cannot be resolved', async () => {
+    writePackageJson({});
+    files[`${PROJECT}/package-lock.json`] = packageLock({ '': { name: 'test-project', version: '1.0.0' } });
+    const before = { ...files };
+    vi.stubGlobal('fetch', mockRegistry({ ...registry, 'motion-dom': { latest: '1.0.0', versions: { '1.0.0': {} } } }));
 
-    expect(result.content).toContain('✅ Successfully added lodash@4.17.21');
-    expect(result.content).toContain('Updated: package.json'); // Should not mention package-lock.json
-    expect(mockFS.writeFile).toHaveBeenCalledTimes(1); // Only package.json should be written
+    await expect(tool().execute({ name: 'framer-motion' })).rejects.toThrow('No version of motion-dom matches ^12.0.0');
+    expect(files).toEqual(before);
+  });
+
+  it('should fail on a corrupted package-lock.json without writing anything', async () => {
+    writePackageJson({});
+    files[`${PROJECT}/package-lock.json`] = 'invalid json';
+    const before = { ...files };
+
+    await expect(tool().execute({ name: 'lodash' })).rejects.toThrow("Could not install lodash@4.17.21's dependencies");
+    expect(files).toEqual(before);
   });
 });

@@ -2,6 +2,8 @@ import { z } from "zod";
 
 import type { Tool, ToolResult } from "./Tool";
 import type { JSRuntimeFS } from "../JSRuntime";
+import { Registry, updateLockfile, type LockfileUpdate } from "../lockfile";
+import { lockfileNotes, sortDependencies, updatedFiles } from "./NpmAddPackageTool";
 
 interface NpmRemovePackageParams {
   name: string;
@@ -17,7 +19,7 @@ export class NpmRemovePackageTool implements Tool<NpmRemovePackageParams> {
   private fs: JSRuntimeFS;
   private cwd: string;
 
-  readonly description = "Safely remove an npm package from the project in the current directory.";
+  readonly description = "Safely remove an npm package from the project in the current directory, updating package.json and the lockfile (package-lock.json or bun.lock).";
 
   readonly inputSchema = z.object({
     name: z.string().describe("Name of the npm package to remove"),
@@ -78,32 +80,35 @@ export class NpmRemovePackageTool implements Tool<NpmRemovePackageParams> {
         return { content: `ℹ️ Package ${name} was not found in package.json dependencies or devDependencies.` };
       }
 
-      // Sort remaining dependencies alphabetically
-      if (packageJson.dependencies) {
-        const sorted = Object.keys(packageJson.dependencies).sort().reduce((acc, key) => {
-          acc[key] = packageJson.dependencies![key];
-          return acc;
-        }, {} as Record<string, string>);
-        packageJson.dependencies = sorted;
+      sortDependencies(packageJson);
+
+      // Usually this only drops packages, but a stale lockfile may need some fetched.
+      let lockfile: LockfileUpdate | undefined;
+      try {
+        const registry = new Registry(await this.readProjectFile('.npmrc') ?? '');
+        lockfile = await updateLockfile((file) => this.readProjectFile(file), packageJson, registry);
+      } catch (error) {
+        throw new Error(`❌ Could not update the lockfile: ${error instanceof Error ? error.message : String(error)}`);
       }
 
-      if (packageJson.devDependencies) {
-        const sorted = Object.keys(packageJson.devDependencies).sort().reduce((acc, key) => {
-          acc[key] = packageJson.devDependencies![key];
-          return acc;
-        }, {} as Record<string, string>);
-        packageJson.devDependencies = sorted;
+      await this.fs.writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2) + '\n', "utf8");
+      if (lockfile && 'text' in lockfile) {
+        await this.fs.writeFile(`${this.cwd}/${lockfile.file}`, lockfile.text, "utf8");
       }
-
-      // Write updated package.json
-      const updatedContent = JSON.stringify(packageJson, null, 2) + '\n';
-      await this.fs.writeFile(packageJsonPath, updatedContent, "utf8");
 
       return {
-        content: `✅ Successfully removed ${name} from ${foundIn} in package.json\n\n📦 Package: ${name}\n🏷️ Version: ${removedVersion}\n📁 Removed from: ${foundIn}\n\n⚠️ **Next step**: Run \`npm install\` to update node_modules and package-lock.json`
+        content: `✅ Successfully removed ${name} from ${foundIn}\n\n📦 Package: ${name}\n🏷️ Version: ${removedVersion}\n📁 Removed from: ${foundIn}\n📄 Updated: ${updatedFiles(lockfile)}${lockfileNotes(lockfile)}`
       };
     } catch (error) {
       throw new Error(`❌ Error removing package ${name}: ${String(error)}`);
+    }
+  }
+
+  private async readProjectFile(file: string): Promise<string | undefined> {
+    try {
+      return await this.fs.readFile(`${this.cwd}/${file}`, "utf8");
+    } catch {
+      return undefined;
     }
   }
 }

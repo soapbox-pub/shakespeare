@@ -17,6 +17,14 @@ const mockFS: JSRuntimeFS = {
   symlink: vi.fn(),
 };
 
+/** Serve these files from mockFS; anything else doesn't exist. */
+function mockFiles(files: Record<string, string>) {
+  vi.mocked(mockFS.readFile).mockImplementation((async (path: string) => {
+    if (!(path in files)) throw new Error(`ENOENT: ${path}`);
+    return files[path];
+  }) as typeof mockFS.readFile);
+}
+
 describe('NpmRemovePackageTool', () => {
   let tool: NpmRemovePackageTool;
 
@@ -26,7 +34,7 @@ describe('NpmRemovePackageTool', () => {
   });
 
   it('should have correct description and inputSchema', () => {
-    expect(tool.description).toBe('Safely remove an npm package from the project in the current directory.');
+    expect(tool.description).toBe('Safely remove an npm package from the project in the current directory, updating package.json and the lockfile (package-lock.json or bun.lock).');
     expect(tool.inputSchema).toBeDefined();
   });
 
@@ -40,7 +48,7 @@ describe('NpmRemovePackageTool', () => {
       }
     };
 
-    vi.mocked(mockFS.readFile).mockResolvedValue(JSON.stringify(packageJson, null, 2));
+    mockFiles({ "/test/project/package.json": JSON.stringify(packageJson, null, 2) });
 
     const result = await tool.execute({ name: 'lodash' });
 
@@ -67,7 +75,7 @@ describe('NpmRemovePackageTool', () => {
       }
     };
 
-    vi.mocked(mockFS.readFile).mockResolvedValue(JSON.stringify(packageJson, null, 2));
+    mockFiles({ "/test/project/package.json": JSON.stringify(packageJson, null, 2) });
 
     const result = await tool.execute({ name: 'typescript' });
 
@@ -89,7 +97,7 @@ describe('NpmRemovePackageTool', () => {
       }
     };
 
-    vi.mocked(mockFS.readFile).mockResolvedValue(JSON.stringify(packageJson, null, 2));
+    mockFiles({ "/test/project/package.json": JSON.stringify(packageJson, null, 2) });
 
     const result = await tool.execute({ name: 'lodash' });
 
@@ -112,7 +120,7 @@ describe('NpmRemovePackageTool', () => {
       }
     };
 
-    vi.mocked(mockFS.readFile).mockResolvedValue(JSON.stringify(packageJson, null, 2));
+    mockFiles({ "/test/project/package.json": JSON.stringify(packageJson, null, 2) });
 
     const result = await tool.execute({ name: 'typescript' });
 
@@ -133,7 +141,7 @@ describe('NpmRemovePackageTool', () => {
       }
     };
 
-    vi.mocked(mockFS.readFile).mockResolvedValue(JSON.stringify(packageJson, null, 2));
+    mockFiles({ "/test/project/package.json": JSON.stringify(packageJson, null, 2) });
 
     const result = await tool.execute({ name: 'nonexistent-package' });
 
@@ -148,7 +156,7 @@ describe('NpmRemovePackageTool', () => {
   });
 
   it('should handle invalid package.json', async () => {
-    vi.mocked(mockFS.readFile).mockResolvedValue('invalid json');
+    mockFiles({ "/test/project/package.json": "invalid json" });
 
     await expect(tool.execute({ name: 'lodash' })).rejects.toThrow('❌ Invalid package.json format');
   });
@@ -164,7 +172,7 @@ describe('NpmRemovePackageTool', () => {
       }
     };
 
-    vi.mocked(mockFS.readFile).mockResolvedValue(JSON.stringify(packageJson, null, 2));
+    mockFiles({ "/test/project/package.json": JSON.stringify(packageJson, null, 2) });
 
     const result = await tool.execute({ name: 'lodash' });
 
@@ -185,11 +193,36 @@ describe('NpmRemovePackageTool', () => {
       }
     };
 
-    vi.mocked(mockFS.readFile).mockResolvedValue(JSON.stringify(packageJson, null, 2));
+    mockFiles({ "/test/project/package.json": JSON.stringify(packageJson, null, 2) });
 
     const result = await tool.execute({ name: 'lodash' });
 
     expect(result.content).toContain('🏷️ Version: ^4.17.21');
     expect(result.content).toContain('📁 Removed from: dependencies');
+  });
+
+  it('should drop packages nothing needs any more from package-lock.json', async () => {
+    const packageJson = { name: 'test-project', version: '1.0.0', dependencies: { a: '^1.0.0', b: '^1.0.0' } };
+    mockFiles({
+      '/test/project/package.json': JSON.stringify(packageJson, null, 2),
+      '/test/project/package-lock.json': JSON.stringify({
+        lockfileVersion: 3,
+        packages: {
+          '': { name: 'test-project', version: '1.0.0', dependencies: packageJson.dependencies },
+          'node_modules/a': { version: '1.0.0', dependencies: { shared: '^1.0.0', only: '^1.0.0' } },
+          'node_modules/b': { version: '1.0.0', dependencies: { shared: '^1.0.0' } },
+          'node_modules/only': { version: '1.0.0' },
+          'node_modules/shared': { version: '1.0.0' },
+        },
+      }),
+    });
+
+    const result = await tool.execute({ name: 'a' });
+
+    const lockWrite = vi.mocked(mockFS.writeFile).mock.calls.find(([path]) => path === '/test/project/package-lock.json');
+    const lock = JSON.parse(lockWrite![1] as string);
+    expect(Object.keys(lock.packages)).toEqual(['', 'node_modules/b', 'node_modules/shared']);
+    expect(lock.packages[''].dependencies).toEqual({ b: '^1.0.0' });
+    expect(result.content).toContain('Updated: package.json, package-lock.json');
   });
 });

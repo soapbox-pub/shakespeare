@@ -71,8 +71,13 @@ export function useProviderModels(): ModelFetchResult {
                 providerModel.type = model.type;
               }
 
+              // `name` and `context_length` are OpenRouter's fields; Anthropic-style
+              // listings (Meridian, Anthropic's OpenAI-compatible API) use
+              // `display_name` and `context_window` instead.
               if ('name' in model && typeof model.name === 'string') {
                 providerModel.name = model.name;
+              } else if ('display_name' in model && typeof model.display_name === 'string') {
+                providerModel.name = model.display_name;
               }
 
               if ('description' in model && typeof model.description === 'string') {
@@ -81,6 +86,8 @@ export function useProviderModels(): ModelFetchResult {
 
               if ('context_length' in model && typeof model.context_length === 'number') {
                 providerModel.contextLength = model.context_length;
+              } else if ('context_window' in model && typeof model.context_window === 'number') {
+                providerModel.contextLength = model.context_window;
               }
 
               if (

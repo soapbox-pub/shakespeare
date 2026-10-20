@@ -1,13 +1,14 @@
 import OpenAI from 'openai';
 import type { Decimal } from 'decimal.js';
 import type { JSRuntimeFS } from './JSRuntime';
-import { DotAI } from './DotAI';
+import { DotAI, type SystemPromptSnapshot } from './DotAI';
 import { parseProviderModel } from './parseProviderModel';
 import { createAIClient, isOpenRouter } from './ai-client';
 import type { Tool } from './tools/Tool';
 import type { NUser } from '@nostrify/react/login';
 import { DEFAULT_REASONING_EFFORT, type AISettings } from '@/contexts/AISettingsContext';
-import { makeSystemPrompt } from './system';
+import { formatPromptDate, makeSystemPrompt, readDeployedUrl, type PromptEnvironment } from './system';
+import { describeEnvironmentChanges, isSystemReminder, makeSystemReminder } from './systemReminder';
 import { NostrMetadata } from '@nostrify/nostrify';
 import { MalformedToolCallError } from './errors/MalformedToolCallError';
 import { EmptyMessageError } from './errors/EmptyMessageError';
@@ -60,6 +61,7 @@ export interface SessionState {
   imagesNotSupported?: boolean; // Track if this session's model doesn't support images
   lastFinishReason?: string | null; // Last finish reason from AI generation
   queuedMessages: QueuedMessage[]; // Sent while the AI was working; added once its turn ends
+  systemPrompt?: SystemPromptSnapshot; // Rendered once per session so prompt caching keeps working
 }
 
 export interface SessionManagerEvents {
@@ -161,6 +163,7 @@ export class SessionManager {
       ...this.sessions.get(projectId),
       messages,
       sessionName,
+      systemPrompt: undefined, // Read from the loaded session's own snapshot on the next request
     };
 
     // Update session configuration
@@ -386,33 +389,60 @@ export class SessionManager {
         };
 
         const cwd = `${config.fsPathProjects}/${projectId}`;
-        const commits = await this.git.log({ dir: cwd });
         const settings = this.getSettings();
+        const dotAI = new DotAI(this.fs, cwd);
 
-        const systemPrompt = await makeSystemPrompt({
-          cwd,
-          fs: this.fs,
-          mode: commits.length > 1 ? "agent" : "init",
-          tools: Object.values(session.tools),
-          config,
-          defaultConfig,
-          user,
-          metadata,
+        const environment: PromptEnvironment = {
+          date: formatPromptDate(),
           repositoryUrl,
-          template: config.systemPrompt,
-          projectTemplate,
-          model: modelInfo,
-          provider: providerInfo,
-          imageModel: settings.imageModel,
-        });
+          deployedUrl: await readDeployedUrl(this.fs, cwd),
+        };
+        const template = config.systemPrompt || null;
+
+        // The system prompt is the start of every request, so any change to it makes the
+        // provider's prompt cache miss for the whole conversation. Render it once per session
+        // (and again only when the model or template changes, which misses the cache anyway),
+        // and report later changes to what it states in a reminder at the end of the history.
+        const snapshot = session.systemPrompt ?? await dotAI.readSystemPrompt(session.sessionName) ?? undefined;
+        if (snapshot && snapshot.model === providerModel && snapshot.template === template) {
+          const changes = describeEnvironmentChanges(snapshot.environment, environment);
+          if (changes) {
+            await this.addMessage(projectId, makeSystemReminder(changes));
+            snapshot.environment = environment;
+            await dotAI.writeSystemPrompt(session.sessionName, snapshot);
+          }
+          session.systemPrompt = snapshot;
+        } else {
+          const commits = await this.git.log({ dir: cwd });
+          const prompt = await makeSystemPrompt({
+            cwd,
+            fs: this.fs,
+            mode: commits.length > 1 ? "agent" : "init",
+            tools: Object.values(session.tools),
+            config,
+            defaultConfig,
+            user,
+            metadata,
+            repositoryUrl,
+            template: config.systemPrompt,
+            projectTemplate,
+            model: modelInfo,
+            provider: providerInfo,
+            imageModel: settings.imageModel,
+          });
+          session.systemPrompt = { prompt, model: providerModel, template, environment };
+          await dotAI.writeSystemPrompt(session.sessionName, session.systemPrompt);
+        }
+        const systemPrompt = session.systemPrompt.prompt;
 
         // Strip image_url parts from user messages the model has already responded to.
         // Re-sending them on every turn just burns tokens. Each one is replaced with a
         // note, so the model knows it saw the image rather than concluding it never got one.
         const evictSeenImages = (msgs: OpenAI.Chat.Completions.ChatCompletionMessageParam[]): OpenAI.Chat.Completions.ChatCompletionMessageParam[] => {
           // The latest run of user messages (several when queued messages were flushed together) is unseen.
+          // Reminders are not the user's turn, so they don't count as the latest user message.
           let lastUserIdx = msgs.length - 1;
-          while (lastUserIdx >= 0 && msgs[lastUserIdx].role !== 'user') lastUserIdx--;
+          while (lastUserIdx >= 0 && (msgs[lastUserIdx].role !== 'user' || isSystemReminder(msgs[lastUserIdx]))) lastUserIdx--;
           let firstUnseenIdx = lastUserIdx;
           while (firstUnseenIdx > 0 && msgs[firstUnseenIdx - 1].role === 'user') firstUnseenIdx--;
 
@@ -880,6 +910,7 @@ export class SessionManager {
     session.messages = [];
     session.streamingMessage = undefined;
     session.sessionName = DotAI.generateSessionName();
+    session.systemPrompt = undefined;
     session.lastActivity = new Date();
     session.totalCost = 0;
     session.lastInputTokens = 0;

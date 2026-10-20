@@ -10,6 +10,7 @@ import OpenAI from 'openai';
 import { useTheme } from '@/hooks/useTheme';
 import { isEmptyMessage } from '@/lib/isEmptyMessage';
 import { userMessageText } from '@/lib/messageText';
+import { isSystemReminder } from '@/lib/systemReminder';
 import { CopyButton } from '@/components/CopyButton';
 
 // Type guard to check if message has reasoning content
@@ -99,6 +100,9 @@ export const AIMessageItem = memo(({
 
   // Regular rendering for non-tool messages
   if (message.role === 'user') {
+    // Reminders are written by Shakespeare for the model, not by the user
+    if (isSystemReminder(message)) return null;
+
     // User messages: right-aligned bubble without avatar/name
     // Extract text and image parts from message content
     const contentArray = Array.isArray(message.content) ? message.content : null;

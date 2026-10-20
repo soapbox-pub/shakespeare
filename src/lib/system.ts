@@ -305,16 +305,55 @@ Users can also manage their app listing manually through the **App** option in t
 
 {{ AGENTS }}{% endif %}`;
 
-export async function makeSystemPrompt(opts: MakeSystemPromptOpts): Promise<string> {
-  const { tools, mode, fs, cwd, config, defaultConfig, user, metadata, repositoryUrl, template, projectTemplate, model, provider, imageModel } = opts;
+/** The facts in the system prompt that can change during a session. */
+export interface PromptEnvironment {
+  date: string;
+  repositoryUrl?: string;
+  deployedUrl?: string;
+}
 
-  // Add current date
-  const date = new Date().toLocaleDateString("en-US", {
+/** The current date, as the system prompt states it */
+export function formatPromptDate(now = new Date()): string {
+  return now.toLocaleDateString("en-US", {
     weekday: "long",
     year: "numeric",
     month: "long",
     day: "numeric",
   });
+}
+
+/** The URL the project is deployed to by its current deploy provider, if any */
+export async function readDeployedUrl(fs: JSRuntimeFS, cwd: string): Promise<string | undefined> {
+  try {
+    const deployConfigPath = join(cwd, '.git/shakespeare/deploy.json');
+    const deployConfigText = await fs.readFile(deployConfigPath, 'utf8');
+    const deployConfig = JSON.parse(deployConfigText);
+
+    // Get the current provider's URL
+    if (deployConfig.currentProvider && deployConfig.providers) {
+      const currentProviderConfig = deployConfig.providers[deployConfig.currentProvider];
+      if (currentProviderConfig?.url) {
+        return currentProviderConfig.url;
+      }
+    }
+  } catch {
+    // Deploy config not found or invalid, continue
+  }
+  return undefined;
+}
+
+/** The "Edit with Shakespeare" badge and link for a repository */
+export function editWithShakespeareUrls(repositoryUrl: string): { badgeUrl: string; editUrl: string } {
+  const badgeUrl = new URL('/badge.svg', location.origin).toString();
+  const editUrlObj = new URL('/clone', location.origin);
+  editUrlObj.searchParams.set('url', repositoryUrl);
+  return { badgeUrl, editUrl: editUrlObj.toString() };
+}
+
+export async function makeSystemPrompt(opts: MakeSystemPromptOpts): Promise<string> {
+  const { tools, mode, fs, cwd, config, defaultConfig, user, metadata, repositoryUrl, template, projectTemplate, model, provider, imageModel } = opts;
+
+  const date = formatPromptDate();
 
   // Get skills from both plugins and project
   let skills: Array<{ name: string; description: string; plugin: string; path: string }> = [];
@@ -345,33 +384,10 @@ export async function makeSystemPrompt(opts: MakeSystemPromptOpts): Promise<stri
     // AGENTS.md not found, continue
   }
 
-  // Get deployed URL if it exists
-  let deployedUrl: string | undefined;
-  try {
-    const deployConfigPath = join(cwd, '.git/shakespeare/deploy.json');
-    const deployConfigText = await fs.readFile(deployConfigPath, 'utf8');
-    const deployConfig = JSON.parse(deployConfigText);
-
-    // Get the current provider's URL
-    if (deployConfig.currentProvider && deployConfig.providers) {
-      const currentProviderConfig = deployConfig.providers[deployConfig.currentProvider];
-      if (currentProviderConfig?.url) {
-        deployedUrl = currentProviderConfig.url;
-      }
-    }
-  } catch {
-    // Deploy config not found or invalid, continue
-  }
+  const deployedUrl = await readDeployedUrl(fs, cwd);
 
   // Build URLs for Edit with Shakespeare
-  let badgeUrl: string | undefined;
-  let editUrl: string | undefined;
-  if (repositoryUrl) {
-    badgeUrl = new URL('/badge.svg', location.origin).toString();
-    const editUrlObj = new URL('/clone', location.origin);
-    editUrlObj.searchParams.set('url', repositoryUrl);
-    editUrl = editUrlObj.toString();
-  }
+  const { badgeUrl, editUrl } = repositoryUrl ? editWithShakespeareUrls(repositoryUrl) : {};
 
   // Build context object for template
   const context = {

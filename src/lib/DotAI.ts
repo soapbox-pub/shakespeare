@@ -3,6 +3,7 @@ import type OpenAI from "openai";
 import type { JSRuntimeFS } from "./JSRuntime";
 import { isEmptyMessage } from "./isEmptyMessage";
 import type { QueuedMessage } from "./SessionManager";
+import type { PromptEnvironment } from "./system";
 
 /** AI message history manager and .git/ai directory utilities */
 export class DotAI {
@@ -120,6 +121,33 @@ export class DotAI {
           );
         }
       }
+    }
+  }
+
+  /** Read the system prompt a session was started with, or null if it has none */
+  async readSystemPrompt(sessionName: string): Promise<SystemPromptSnapshot | null> {
+    try {
+      const content = await this.fs.readFile(join(this.historyDir, sessionName + ".system.json"), "utf8");
+      const snapshot = JSON.parse(content);
+      if (
+        snapshot && typeof snapshot.prompt === 'string' && typeof snapshot.model === 'string' &&
+        snapshot.environment && typeof snapshot.environment.date === 'string'
+      ) {
+        return snapshot;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Save the system prompt a session uses, next to its history */
+  async writeSystemPrompt(sessionName: string, snapshot: SystemPromptSnapshot): Promise<void> {
+    try {
+      await this.fs.mkdir(this.historyDir, { recursive: true });
+      await this.fs.writeFile(join(this.historyDir, sessionName + ".system.json"), JSON.stringify(snapshot, null, 2) + "\n");
+    } catch (error) {
+      console.warn(`Failed to save the session's system prompt: ${error}`);
     }
   }
 
@@ -475,6 +503,21 @@ export class DotAI {
       console.warn(`Failed to write .git/shakespeare/app.json file: ${error}`);
     }
   }
+}
+
+/**
+ * The system prompt a session was started with, stored in .git/ai/history/<session>.system.json.
+ * It is reused for every request in the session so that prompt caching keeps working.
+ */
+export interface SystemPromptSnapshot {
+  /** The rendered system prompt */
+  prompt: string;
+  /** The provider/model it was rendered for; switching models renders it again */
+  model: string;
+  /** The custom template it was rendered from (null for the default); editing it renders it again */
+  template: string | null;
+  /** The changeable facts the prompt states; later changes are reported with a system reminder */
+  environment: PromptEnvironment;
 }
 
 /** App config stored in .git/shakespeare/app.json */

@@ -1,7 +1,6 @@
 import { useAppContext } from '@/hooks/useAppContext';
 import { faviconUrl } from '@/lib/faviconUrl';
 import { cn } from '@/lib/utils';
-import { Globe } from 'lucide-react';
 import { ReactNode, useMemo } from 'react';
 
 /**
@@ -14,7 +13,7 @@ function knownProviderIcon(url: string | URL | undefined, size: number): ReactNo
     const u = new URL(url);
     // Meridian local bridge
     if (u.hostname === '127.0.0.1' && u.port === '3456') {
-      return <Globe size={size} className="text-purple-500" />;
+      return <img src="/meridian.svg" alt="" className="object-contain" style={{ width: size, height: size }} />;
     }
   } catch {
     return;

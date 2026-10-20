@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="mGrad" x1="256" y1="32" x2="256" y2="480" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#58a6ff"/>
+      <stop offset="1" stop-color="#bc8cff"/>
+    </linearGradient>
+  </defs>
+  <!-- Globe -->
+  <circle cx="256" cy="256" r="200" stroke="url(#mGrad)" stroke-width="28"/>
+  <!-- Prime meridian -->
+  <ellipse cx="256" cy="256" rx="84" ry="200" stroke="url(#mGrad)" stroke-width="20" opacity="0.8"/>
+  <!-- Equator -->
+  <path d="M56 256h400" stroke="url(#mGrad)" stroke-width="16" opacity="0.4"/>
+  <!-- Poles -->
+  <circle cx="256" cy="56" r="36" fill="#58a6ff"/>
+  <circle cx="256" cy="456" r="36" fill="#bc8cff"/>
+</svg>

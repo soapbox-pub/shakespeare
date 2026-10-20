@@ -1,5 +1,15 @@
 # Changelog
 
+## [9.21.2] - 2026-10-19
+
+### Changed
+- Long conversations are faster and cheaper — Shakespeare keeps its instructions steady for the whole session, so your AI provider can reuse its cache instead of rereading everything on every step
+- Meridian shows up with its own logo, and its models appear with proper names in the model picker
+
+### Fixed
+- Packages Shakespeare adds to your project now install correctly everywhere, along with everything they depend on, and removing a package cleans up after it too
+- Projects using pnpm, Bun, or Yarn now build with exactly the package versions they've locked in
+
 ## [9.21.1] - 2026-10-16
 
 ### Fixed

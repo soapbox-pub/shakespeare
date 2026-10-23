@@ -43,7 +43,7 @@ export class ShellTool implements Tool<ShellToolParams> {
   private cwd: string;
 
   readonly description =
-    "Run a bash script over the virtual filesystem. The full bash language is supported: pipes, &&/||, quoting, variables and parameter expansion (${x:-d}, ${x%.*}, ${x//a/b}), command substitution, arithmetic, globs and brace expansion, redirections (>, >>, <, <<, <<<, 2>&1, &>, /dev/null), here-docs, process substitution, if/for/while/until/case, functions, local, arrays, [[ ]], set -e/-u/-o pipefail, and subshells. Commands include cat, ls, cp, mv, rm, mkdir, touch, ln, find, grep, rg, sed, awk, jq, yq, sort, uniq, cut, tr, head, tail, wc, diff, xargs, tee, printf, basename, dirname, tree, base64, sha256sum, tar, plus git, curl, unzip, hexdump, tsc, npx, python3 and pip. Typecheck the project with `tsc --noEmit` (the real TypeScript compiler, using the project's tsconfig and dependencies). `python3` is real CPython (Pyodide): scripts can read and write the project and /tmp, Pyodide's packages (numpy, pandas, ...) load automatically on import, and `pip install` adds pure-Python packages for the session. It cannot open sockets or start subprocesses. The working directory persists between calls; shell variables and functions do not.";
+    "Run a bash script over the virtual filesystem. The full bash language is supported: pipes, &&/||, quoting, variables and parameter expansion (${x:-d}, ${x%.*}, ${x//a/b}), command substitution, arithmetic, globs and brace expansion, redirections (>, >>, <, <<, <<<, 2>&1, &>, /dev/null), here-docs, process substitution, if/for/while/until/case, functions, local, arrays, [[ ]], set -e/-u/-o pipefail, and subshells. Commands include cat, ls, cp, mv, rm, mkdir, touch, ln, find, grep, rg, sed, awk, jq, yq, sort, uniq, cut, tr, head, tail, wc, diff, xargs, tee, printf, basename, dirname, tree, base64, sha256sum, tar, plus git, curl, unzip, hexdump, tsc, npx, python3 and pip. Typecheck the project with `tsc --noEmit` (the real TypeScript compiler, using the project's tsconfig and dependencies). `python3` is real CPython (Pyodide): scripts can read and write the project and /tmp, Pyodide's packages (numpy, pandas, ...) load automatically on import, and `pip install` adds pure-Python packages for the session. HTTP requests work and go through the CORS proxy (urllib.request, requests, pyodide.http.pyfetch); raw sockets, websockets, and subprocesses don't. The working directory persists between calls; shell variables and functions do not.";
 
   readonly inputSchema = z.object({
     command: z
@@ -56,13 +56,13 @@ export class ShellTool implements Tool<ShellToolParams> {
   constructor(fs: JSRuntimeFS, cwd: string, git: Git, corsProxy: string, signer?: NostrSigner) {
     this.cwd = cwd;
 
-    const python = new PythonCommand(fs, cwd);
+    const python = new PythonCommand(fs, cwd, corsProxy);
     const custom: ShellCommand[] = [
       new CurlCommand(fs, corsProxy),
       new GitCommand({ git, fs, cwd, signer }),
       new HexdumpCommand(fs),
       python,
-      new PythonCommand(fs, cwd, 'python'),
+      new PythonCommand(fs, cwd, corsProxy, 'python'),
       new PipCommand(python),
       new PipCommand(python, 'pip3'),
       new ShakespeareCommand(),

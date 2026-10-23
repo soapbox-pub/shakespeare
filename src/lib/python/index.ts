@@ -109,6 +109,8 @@ export interface PythonOptions {
   mode: PythonMode;
   argv: string[];
   stdin?: string;
+  /** CORS proxy URL template for the script's HTTP requests. */
+  corsProxy?: string;
 }
 
 /**

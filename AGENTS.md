@@ -99,6 +99,7 @@ The ShellTool runs scripts with [just-bash](https://github.com/vercel-labs/just-
 
 - **Filesystem**: the project (minus `node_modules` and `.git`) and `/tmp` are mirrored into Pyodide's in-memory filesystem at the same paths. Only files whose mtime or size changed since the last run are sent. Synced files get an mtime of 0 in the worker, so anything a script writes is detectable; those writes, deletions, and new or removed directories are applied back to the VFS afterwards.
 - **Packages**: imports of Pyodide-provided packages are loaded automatically (`loadPackagesFromImports`). `pip install` uses micropip; installs last for the worker's lifetime.
+- **Network**: the worker wraps `fetch` and `XMLHttpRequest.open` (`network.ts`) so requests to other sites go through the configured CORS proxy, like `curl`; Pyodide's CDN, PyPI, and the proxy itself are reached directly. `pyodide-http` is loaded at startup to send `urllib.request` through synchronous XHR; `requests` uses urllib3's own browser support. Raw sockets don't work.
 - **Isolation between runs**: each run gets fresh `sys.argv`, cwd, std streams, and `__main__` namespace, and modules imported from outside `/lib` are dropped from `sys.modules` so project edits are picked up. Bytecode isn't written.
 - **Timeout**: a script that runs longer than 2 minutes (after loading) terminates the worker and exits 124.
 

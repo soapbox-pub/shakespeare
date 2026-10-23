@@ -1,4 +1,7 @@
+import { installPythonNetwork, setPythonCorsProxy } from './network';
 import { PYODIDE_INDEX_URL, PythonService, type PyodideAPI, type PythonRequest } from './runPython';
+
+installPythonNetwork(self);
 
 const service = new PythonService(async () => {
   const { loadPyodide } = await import(/* @vite-ignore */ `${PYODIDE_INDEX_URL}pyodide.mjs`);
@@ -7,6 +10,7 @@ const service = new PythonService(async () => {
 
 self.onmessage = async (event: MessageEvent<{ id: number; request: PythonRequest }>) => {
   const { id, request } = event.data;
+  setPythonCorsProxy(request.corsProxy);
   try {
     const result = await service.run(request, () => self.postMessage({ id, started: true }));
     const buffers = Object.values(result.writes).map((data) => data.buffer as ArrayBuffer);

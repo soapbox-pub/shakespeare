@@ -13,18 +13,21 @@ const IGNORED_VALUE_OPTIONS = new Set(['-W', '-X']);
  * Implementation of the 'python3' command (and its 'python' alias): CPython
  * compiled to WebAssembly (Pyodide), running in a Web Worker. Scripts see the
  * project and /tmp, and their file writes are saved back to the project.
+ * HTTP requests to other sites go through the CORS proxy.
  */
 export class PythonCommand implements ShellCommand {
   name: string;
-  description = 'Python 3 interpreter (Pyodide). Scripts can read and write the project and /tmp; imported packages Pyodide provides (numpy, pandas, ...) install automatically';
+  description = 'Python 3 interpreter (Pyodide). Scripts can read and write the project and /tmp and make HTTP requests (through the CORS proxy); imported packages Pyodide provides (numpy, pandas, ...) install automatically';
   usage: string;
 
   private fs: JSRuntimeFS;
   private projectRoot: string;
+  private corsProxy?: string;
 
-  constructor(fs: JSRuntimeFS, projectRoot: string, name = 'python3') {
+  constructor(fs: JSRuntimeFS, projectRoot: string, corsProxy?: string, name = 'python3') {
     this.fs = fs;
     this.projectRoot = projectRoot;
+    this.corsProxy = corsProxy;
     this.name = name;
     this.usage = `${name} [-c cmd | -m module | file | -] [arg...]`;
   }
@@ -93,7 +96,7 @@ export class PythonCommand implements ShellCommand {
     }
 
     try {
-      return await python(this.fs, { roots, cwd, mode, argv, stdin });
+      return await python(this.fs, { roots, cwd, mode, argv, stdin, corsProxy: this.corsProxy });
     } catch (error) {
       return createErrorResult(`${this.name}: ${error instanceof Error ? error.message : String(error)}`);
     }

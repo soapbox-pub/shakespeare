@@ -79,7 +79,8 @@ echo '{"a":1}' | python3 -m json.tool
 - Packages Pyodide provides (numpy, pandas, ...) are loaded automatically when the script imports them
 - Local modules are reloaded on every run, so edits are picked up
 - Scripts are stopped after 2 minutes of running (exit code 124)
-- No sockets or subprocesses; no interactive mode
+- HTTP requests (`urllib.request`, `requests`, `pyodide.http.pyfetch`) go through the CORS proxy, like `curl`; Pyodide's CDN and PyPI are reached directly
+- No raw sockets or subprocesses; no interactive mode
 
 ### pip / pip3
 

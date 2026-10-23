@@ -31,6 +31,8 @@ export interface PythonRequest {
   removed: string[];
   /** `changed` holds every file under the roots rather than changes. */
   full: boolean;
+  /** CORS proxy URL template that the script's HTTP requests go through. */
+  corsProxy?: string;
 }
 
 export interface PythonResult {
@@ -187,8 +189,11 @@ export class PythonService {
 
   private getPyodide(): Promise<PyodideAPI> {
     if (!this.pyodide) {
-      this.pyodide = this.load().then((pyodide) => {
+      this.pyodide = this.load().then(async (pyodide) => {
         pyodide.runPython(RUNNER);
+        // urllib.request opens sockets, which a browser doesn't have; send it through XMLHttpRequest.
+        await pyodide.loadPackage('pyodide-http', { messageCallback: () => {} });
+        pyodide.runPython('import pyodide_http; pyodide_http.patch_urllib()');
         return pyodide;
       });
       this.pyodide.catch(() => {

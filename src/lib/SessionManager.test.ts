@@ -332,7 +332,7 @@ describe('SessionManager', () => {
       expect(sentMessages(2).slice(0, second.length)).toEqual(second);
     });
 
-    it('does not count a reminder as the latest user message when evicting seen images', async () => {
+    it('keeps images the user attached when a reminder follows a tool result', async () => {
       await sessionManager.loadSession(projectId, {}, {});
       const image = { role: 'user' as const, content: [
         { type: 'text' as const, text: 'make it look like this' },

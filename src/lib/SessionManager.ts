@@ -8,7 +8,7 @@ import type { Tool } from './tools/Tool';
 import type { NUser } from '@nostrify/react/login';
 import { DEFAULT_REASONING_EFFORT, type AISettings } from '@/contexts/AISettingsContext';
 import { formatPromptDate, makeSystemPrompt, readDeployedUrl, type PromptEnvironment } from './system';
-import { describeEnvironmentChanges, isSystemReminder, makeSystemReminder } from './systemReminder';
+import { describeEnvironmentChanges, makeSystemReminder } from './systemReminder';
 import { NostrMetadata } from '@nostrify/nostrify';
 import { MalformedToolCallError } from './errors/MalformedToolCallError';
 import { EmptyMessageError } from './errors/EmptyMessageError';
@@ -31,6 +31,9 @@ export type AIMessage = OpenAI.Chat.Completions.ChatCompletionMessageParam | {
   tool_call_id: string;
   content: Array<OpenAI.Chat.Completions.ChatCompletionContentPartText | OpenAI.Chat.Completions.ChatCompletionContentPartImage>;
 };
+
+/** How many of the most recent tool-result images are re-sent to the model. */
+const MAX_TOOL_IMAGES = 3;
 
 export type UserMessageContent = string | Array<OpenAI.Chat.Completions.ChatCompletionContentPartText | OpenAI.Chat.Completions.ChatCompletionContentPartImage>;
 
@@ -435,29 +438,31 @@ export class SessionManager {
         }
         const systemPrompt = session.systemPrompt.prompt;
 
-        // Strip image_url parts from user messages the model has already responded to.
-        // Re-sending them on every turn just burns tokens. Each one is replaced with a
+        // Strip older images returned by tools (e.g. `read` on a PNG). Re-sending every one on
+        // every turn burns tokens, but the model needs the last few to compare versions while it
+        // iterates on visual work. Images the user attached are always kept, since they are often
+        // the reference the whole session works towards. Each removed image is replaced with a
         // note, so the model knows it saw the image rather than concluding it never got one.
-        const evictSeenImages = (msgs: OpenAI.Chat.Completions.ChatCompletionMessageParam[]): OpenAI.Chat.Completions.ChatCompletionMessageParam[] => {
-          // The latest run of user messages (several when queued messages were flushed together) is unseen.
-          // Reminders are not the user's turn, so they don't count as the latest user message.
-          let lastUserIdx = msgs.length - 1;
-          while (lastUserIdx >= 0 && (msgs[lastUserIdx].role !== 'user' || isSystemReminder(msgs[lastUserIdx]))) lastUserIdx--;
-          let firstUnseenIdx = lastUserIdx;
-          while (firstUnseenIdx > 0 && msgs[firstUnseenIdx - 1].role === 'user') firstUnseenIdx--;
-
-          return msgs.map((msg, idx) => {
-            if (idx >= firstUnseenIdx && idx <= lastUserIdx) return msg;
-            if (msg.role !== 'user' || typeof msg.content === 'string' || !Array.isArray(msg.content)) return msg;
-            if (!msg.content.some(part => part.type === 'image_url')) return msg;
-
-            return {
-              ...msg,
-              content: msg.content.map(part => part.type === 'image_url'
-                ? { type: 'text' as const, text: '[Image shown to you earlier, now removed from the context to save tokens.]' }
-                : part),
-            };
-          });
+        const evictOldToolImages = (msgs: AIMessage[]): AIMessage[] => {
+          let kept = 0;
+          const result: AIMessage[] = [];
+          for (let i = msgs.length - 1; i >= 0; i--) {
+            const msg = msgs[i];
+            if (msg.role !== 'tool' || !Array.isArray(msg.content) || !msg.content.some(part => part.type === 'image_url')) {
+              result.unshift(msg);
+              continue;
+            }
+            const content = [...msg.content].reverse().map(part => {
+              if (part.type !== 'image_url') return part;
+              if (kept < MAX_TOOL_IMAGES) {
+                kept++;
+                return part;
+              }
+              return { type: 'text' as const, text: '[Image shown to you earlier, now removed from the context to save tokens. Read the file again to see it.]' };
+            }).reverse();
+            result.unshift({ ...msg, content } as AIMessage);
+          }
+          return result;
         };
 
         // Helper function to filter out unsupported image formats (keep only JPG/JPEG/PNG)
@@ -542,13 +547,11 @@ export class SessionManager {
         // Prepare messages for AI
         // Note: User messages with image_url content parts are valid ChatCompletionMessageParam types
         // The AIMessage type includes ChatCompletionMessageParam, so this cast is safe
+        // Evicting old tool images is a send-time transformation only — session.messages stays intact for the UI.
+        const history = moveToolImagesToUserMessages(evictOldToolImages(session.messages));
         let messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = (systemPrompt
-          ? [{ role: 'system', content: systemPrompt }, ...moveToolImagesToUserMessages(session.messages)]
-          : moveToolImagesToUserMessages(session.messages)) as OpenAI.Chat.Completions.ChatCompletionMessageParam[];
-
-        // Evict images the model has already seen (all except the last user message).
-        // This is a send-time transformation only — session.messages stays intact for the UI.
-        messages = evictSeenImages(messages);
+          ? [{ role: 'system', content: systemPrompt }, ...history]
+          : history) as OpenAI.Chat.Completions.ChatCompletionMessageParam[];
 
         // Filter out unsupported image formats (keep only JPG/JPEG/PNG for API)
         // This ensures the UI shows all image types, but API only receives supported formats

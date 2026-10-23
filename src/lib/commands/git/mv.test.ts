@@ -1,91 +1,56 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { GitMvCommand } from './mv';
-import type { Git } from '../../git';
-import type { JSRuntimeFS } from '../../JSRuntime';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { createGitShell, type GitShell } from '@/test/gitShell';
 
-const createMockFS = () => {
-  const files = new Map<string, string>();
-  const dirs = new Set(['/test-repo', '/test-repo/dir']);
-  files.set('/test-repo/file1.txt', 'contents');
+describe('git mv', () => {
+  let sh: GitShell;
 
-  return {
-    stat: vi.fn(async (path: string) => {
-      if (path.endsWith('/.git') || dirs.has(path)) {
-        return { isDirectory: () => true, isFile: () => false };
-      }
-      if (files.has(path)) {
-        return { isDirectory: () => false, isFile: () => true };
-      }
-      throw new Error('ENOENT');
-    }),
-    rename: vi.fn(async (src: string, dst: string) => {
-      const content = files.get(src);
-      if (content === undefined) throw new Error('ENOENT');
-      files.delete(src);
-      files.set(dst, content);
-    }),
-    mkdir: vi.fn(async (path: string) => { dirs.add(path); }),
-    readFile: vi.fn(async (path: string) => files.get(path) || ''),
-    _files: files,
-  } as unknown as JSRuntimeFS & { _files: Map<string, string> };
-};
-
-describe('GitMvCommand', () => {
-  let mvCommand: GitMvCommand;
-  let mockGit: Git;
-  let mockFS: JSRuntimeFS & { _files: Map<string, string> };
-
-  beforeEach(() => {
-    mockFS = createMockFS() as JSRuntimeFS & { _files: Map<string, string> };
-    mockGit = {
-      remove: vi.fn(async () => {}),
-      add: vi.fn(async () => {}),
-    } as unknown as Git;
-    mvCommand = new GitMvCommand({ git: mockGit, fs: mockFS });
+  beforeEach(async () => {
+    sh = await createGitShell();
+    await sh.ok('git init -q && echo a > a.txt && echo b > b.txt && mkdir src && echo x > src/x.ts && git add -A && git commit -qm first');
   });
 
-  it('should fail without arguments', async () => {
-    const result = await mvCommand.execute([], '/test-repo');
-    expect(result.exitCode).toBe(1);
+  afterEach(() => sh.dispose());
+
+  it('renames a file', async () => {
+    expect(await sh.ok('git mv a.txt c.txt')).toBe('(no output)');
+    expect(await sh.read('c.txt')).toBe('a\n');
+    expect(await sh.ok('git status -s')).toBe('R  a.txt -> c.txt\n');
   });
 
-  it('should rename a file', async () => {
-    const result = await mvCommand.execute(['file1.txt', 'file2.txt'], '/test-repo');
-    expect(result.exitCode).toBe(0);
-    expect(mockFS.rename).toHaveBeenCalledWith('/test-repo/file1.txt', '/test-repo/file2.txt');
-    expect(mockGit.remove).toHaveBeenCalledWith({ dir: '/test-repo', filepath: 'file1.txt' });
-    expect(mockGit.add).toHaveBeenCalledWith({ dir: '/test-repo', filepath: 'file2.txt' });
+  it('moves files into a directory', async () => {
+    await sh.ok('git mv -v a.txt b.txt src');
+    expect(await sh.ok('git status -s')).toBe('R  a.txt -> src/a.txt\nR  b.txt -> src/b.txt\n');
   });
 
-  it('should fail when source does not exist', async () => {
-    const result = await mvCommand.execute(['nonexistent.txt', 'new.txt'], '/test-repo');
-    expect(result.exitCode).toBe(1);
-    expect(result.stderr).toContain('bad source');
+  it('moves directories', async () => {
+    await sh.ok('mkdir lib && git mv src lib');
+    expect(await sh.read('lib/src/x.ts')).toBe('x\n');
+    expect(await sh.ok('git status -s')).toBe('R  src/x.ts -> lib/src/x.ts\n');
   });
 
-  it('should fail when destination exists without --force', async () => {
-    mockFS._files.set('/test-repo/file2.txt', 'existing');
-    const result = await mvCommand.execute(['file1.txt', 'file2.txt'], '/test-repo');
-    expect(result.exitCode).toBe(1);
-    expect(result.stderr).toContain('destination exists');
+  it('keeps the staged content, not the working tree content', async () => {
+    await sh.ok('echo more >> a.txt && git mv a.txt c.txt');
+    expect(await sh.ok('git status -s')).toBe('RM a.txt -> c.txt\n');
   });
 
-  it('should overwrite with --force', async () => {
-    mockFS._files.set('/test-repo/file2.txt', 'existing');
-    const result = await mvCommand.execute(['-f', 'file1.txt', 'file2.txt'], '/test-repo');
-    expect(result.exitCode).toBe(0);
+  it('refuses to overwrite unless forced', async () => {
+    expect(await sh.run('git mv a.txt b.txt')).toBe('fatal: destination exists, source=a.txt, destination=b.txt\nExit code: 128');
+    await sh.ok('git mv -f a.txt b.txt');
+    expect(await sh.read('b.txt')).toBe('a\n');
+    expect(await sh.ok('git status -s')).toBe('D  a.txt\nM  b.txt\n');
   });
 
-  it('should support --dry-run', async () => {
-    const result = await mvCommand.execute(['-n', 'file1.txt', 'file2.txt'], '/test-repo');
-    expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain('Renaming');
-    expect(mockFS.rename).not.toHaveBeenCalled();
+  it('reports bad sources, and skips errors with -k', async () => {
+    expect(await sh.run('git mv nope x')).toBe('fatal: bad source, source=nope, destination=x\nExit code: 128');
+    await sh.ok('echo u > u.txt');
+    expect(await sh.run('git mv u.txt v.txt')).toBe('fatal: not under version control, source=u.txt, destination=v.txt\nExit code: 128');
+    expect(await sh.run('git mv a.txt b.txt nodir')).toBe("fatal: destination 'nodir' is not a directory\nExit code: 128");
+    expect(await sh.ok('git mv -k nope a.txt src')).toBe('(no output)');
+    expect(await sh.ok('git status -s')).toBe('R  a.txt -> src/a.txt\n?? u.txt\n');
   });
 
-  it('should move a file into a directory', async () => {
-    const result = await mvCommand.execute(['file1.txt', 'dir'], '/test-repo');
-    expect(result.exitCode).toBe(0);
-    expect(mockFS.rename).toHaveBeenCalledWith('/test-repo/file1.txt', '/test-repo/dir/file1.txt');
+  it('supports --dry-run', async () => {
+    expect(await sh.ok('git mv -n a.txt c.txt')).toBe("Checking rename of 'a.txt' to 'c.txt'\nRenaming a.txt to c.txt\n");
+    expect(await sh.ok('git status -s')).toBe('(no output)');
   });
 });

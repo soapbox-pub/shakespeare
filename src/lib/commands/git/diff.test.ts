@@ -1,226 +1,64 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { GitDiffCommand } from './diff';
-import type { GitSubcommandOptions } from '../git';
-import type { Git } from '../../git';
-import type { JSRuntimeFS } from '../../JSRuntime';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { createGitShell, type GitShell } from '@/test/gitShell';
 
-// Mock implementations
-const mockGit = {
-  statusMatrix: async () => [
-    // [filepath, headStatus, workdirStatus, stageStatus]
-    ['modified.txt', 1, 2, 1], // Modified in working dir
-    ['staged.txt', 1, 1, 2],   // Modified in stage
-    ['new.txt', 0, 2, 0],      // Untracked file
-    ['deleted.txt', 1, 0, 1],  // Deleted in working dir
-  ],
-  readBlob: async ({ filepath }: { filepath: string }) => {
-    const content = {
-      'modified.txt': 'original content\nline 2',
-      'staged.txt': 'original staged content',
-      'deleted.txt': 'deleted file content',
-    }[filepath] || '';
-    return { blob: new TextEncoder().encode(content) };
-  },
-  log: async () => [],
-} as unknown as Git;
+describe('git diff', () => {
+  let sh: GitShell;
 
-const mockFS = {
-  stat: async (path: string) => {
-    if (path.endsWith('/.git')) {
-      return { isDirectory: () => true };
-    }
-    throw new Error('File not found');
-  },
-  readFile: async (path: string) => {
-    const filename = path.split('/').pop();
-    const content = {
-      'modified.txt': 'modified content\nline 2\nnew line',
-      'staged.txt': 'staged content modified',
-      'new.txt': 'this is a new file',
-      // deleted.txt is not in working dir
-    }[filename || ''];
-
-    if (!content) {
-      throw new Error('File not found');
-    }
-    return content;
-  },
-} as unknown as JSRuntimeFS;
-
-const mockOptions: GitSubcommandOptions = {
-  git: mockGit,
-  fs: mockFS,
-};
-
-describe('GitDiffCommand', () => {
-  let command: GitDiffCommand;
-
-  beforeEach(() => {
-    command = new GitDiffCommand(mockOptions);
+  beforeEach(async () => {
+    sh = await createGitShell();
+    await sh.ok('git init -q && printf "1\\n2\\n3\\n4\\n5\\n6\\n7\\n8\\n9\\n10\\n" > n.txt && echo a > a.txt && git add -A && git commit -qm first');
   });
 
-  describe('parseArgs', () => {
-    type ParseArgsResult = {
-      commits: string[];
-      paths: string[];
-      options: { cached: boolean; nameOnly: boolean; nameStatus: boolean; stat: boolean };
-    };
+  afterEach(() => sh.dispose());
 
-    it('should parse no arguments correctly', () => {
-      const result = (command as unknown as { parseArgs: (args: string[]) => ParseArgsResult }).parseArgs([]);
-      expect(result).toEqual({
-        commits: [],
-        paths: [],
-        options: { cached: false, nameOnly: false, nameStatus: false, stat: false },
-      });
-    });
-
-    it('should parse --cached option', () => {
-      const result = (command as unknown as { parseArgs: (args: string[]) => ParseArgsResult }).parseArgs(['--cached']);
-      expect(result).toEqual({
-        commits: [],
-        paths: [],
-        options: { cached: true, nameOnly: false, nameStatus: false, stat: false },
-      });
-    });
-
-    it('should parse --staged option as alias for --cached', () => {
-      const result = (command as unknown as { parseArgs: (args: string[]) => ParseArgsResult }).parseArgs(['--staged']);
-      expect(result.options.cached).toBe(true);
-    });
-
-    it('should parse --name-only option', () => {
-      const result = (command as unknown as { parseArgs: (args: string[]) => ParseArgsResult }).parseArgs(['--name-only']);
-      expect(result.options.nameOnly).toBe(true);
-    });
-
-    it('should parse --name-status option', () => {
-      const result = (command as unknown as { parseArgs: (args: string[]) => ParseArgsResult }).parseArgs(['--name-status']);
-      expect(result.options.nameStatus).toBe(true);
-    });
-
-    it('should parse --stat option', () => {
-      const result = (command as unknown as { parseArgs: (args: string[]) => ParseArgsResult }).parseArgs(['--stat']);
-      expect(result.options.stat).toBe(true);
-    });
-
-    it('should parse commits and paths', () => {
-      const result = (command as unknown as { parseArgs: (args: string[]) => ParseArgsResult }).parseArgs(['HEAD~1', 'HEAD', '--', 'file.txt']);
-      expect(result).toEqual({
-        commits: ['HEAD~1', 'HEAD'],
-        paths: ['file.txt'],
-        options: { cached: false, nameOnly: false, nameStatus: false, stat: false },
-      });
-    });
-
-    it('should parse range syntax commit1..commit2', () => {
-      const result = (command as unknown as { parseArgs: (args: string[]) => ParseArgsResult }).parseArgs(['HEAD~2..HEAD']);
-      expect(result.commits).toEqual(['HEAD~2', 'HEAD']);
-    });
+  it('shows unstaged changes with correct hunks', async () => {
+    await sh.ok('sed -i "s/^5$/five/" n.txt');
+    expect(await sh.ok('git diff')).toBe(
+      'diff --git a/n.txt b/n.txt\n' +
+      'index f00c965..33011fd 100644\n' +
+      '--- a/n.txt\n' +
+      '+++ b/n.txt\n' +
+      '@@ -2,7 +2,7 @@\n' +
+      ' 2\n 3\n 4\n-5\n+five\n 6\n 7\n 8\n',
+    );
   });
 
-  describe('execute', () => {
-    it('should fail when not in a git repository', async () => {
-      const commandWithoutGit = new GitDiffCommand({
-        ...mockOptions,
-        fs: {
-          stat: async () => {
-            throw new Error('File not found');
-          },
-        } as unknown as JSRuntimeFS,
-      });
+  it('separates staged, unstaged and HEAD comparisons', async () => {
+    await sh.ok('echo staged >> a.txt && git add a.txt && echo unstaged >> a.txt');
+    expect(await sh.ok('git diff --name-only')).toBe('a.txt\n');
+    expect(await sh.ok('git diff --cached')).toContain('@@ -1 +1,2 @@\n a\n+staged\n');
+    expect(await sh.ok('git diff')).toContain('@@ -1,2 +1,3 @@\n a\n staged\n+unstaged\n');
+    expect(await sh.ok('git diff HEAD')).toContain('@@ -1 +1,3 @@\n a\n+staged\n+unstaged\n');
+    expect(await sh.ok('git diff --staged --stat')).toBe(' a.txt | 1 +\n 1 file changed, 1 insertion(+)\n');
+  });
 
-      const result = await commandWithoutGit.execute([], '/test/repo');
+  it('compares commits, ranges and paths', async () => {
+    await sh.ok('echo b >> a.txt && echo new > new.txt && git add -A && git commit -qm second');
+    expect(await sh.ok('git diff HEAD~1 HEAD --name-status')).toBe('M\ta.txt\nA\tnew.txt\n');
+    expect(await sh.ok('git diff HEAD~1..HEAD --numstat')).toBe('1\t0\ta.txt\n1\t0\tnew.txt\n');
+    const short = (await sh.ok('git rev-parse --short HEAD~1')).trim();
+    expect(await sh.ok(`git diff ${short} -- a.txt`)).toContain('+b\n');
+    expect(await sh.ok(`git diff ${short} -- a.txt`)).not.toContain('new.txt');
+    expect(await sh.ok('git diff HEAD~1 HEAD -- new.txt')).toContain('new file mode 100644\nindex 0000000..3e75765\n--- /dev/null\n+++ b/new.txt\n@@ -0,0 +1 @@\n+new\n');
+  });
 
-      expect(result.exitCode).toBe(1);
-      expect(result.stderr).toContain('fatal: not a git repository');
-    });
+  it('reports deletions and missing newlines', async () => {
+    await sh.ok('rm a.txt && printf "1\\n2\\n3\\n4\\n5\\n6\\n7\\n8\\n9\\n10" > n.txt');
+    const out = await sh.ok('git diff');
+    expect(out).toContain('diff --git a/a.txt b/a.txt\ndeleted file mode 100644\nindex 7898192..0000000\n--- a/a.txt\n+++ /dev/null\n@@ -1 +0,0 @@\n-a\n');
+    expect(out).toContain('-10\n+10\n\\ No newline at end of file\n');
+  });
 
-    it('should show working directory diff for modified files', async () => {
-      const result = await command.execute([], '/test/repo');
+  it('supports --exit-code, --quiet and --stat', async () => {
+    expect(await sh.run('git diff --exit-code')).toBe('(no output)');
+    await sh.ok('echo more >> a.txt');
+    expect(await sh.run('git diff --quiet')).toContain('Exit code: 1');
+    expect(await sh.ok('git diff --stat')).toBe(' a.txt | 1 +\n 1 file changed, 1 insertion(+)\n');
+    expect(await sh.ok('git diff --shortstat')).toBe(' 1 file changed, 1 insertion(+)\n');
+  });
 
-      expect(result.exitCode).toBe(0);
-      expect(result.stdout).toContain('diff --git a/modified.txt b/modified.txt');
-      expect(result.stdout).toContain('--- a/modified.txt');
-      expect(result.stdout).toContain('+++ b/modified.txt');
-      expect(result.stdout).toContain('-original content');
-      expect(result.stdout).toContain('+modified content');
-      expect(result.stdout).toContain('+new line');
-    });
-
-    it('should NOT show untracked files in diff', async () => {
-      const result = await command.execute([], '/test/repo');
-
-      expect(result.exitCode).toBe(0);
-      // Untracked files should not appear in git diff output
-      expect(result.stdout).not.toContain('diff --git a/new.txt b/new.txt');
-      expect(result.stdout).not.toContain('new file mode 100644');
-      expect(result.stdout).not.toContain('+this is a new file');
-    });
-
-    it('should show deleted files in diff', async () => {
-      const result = await command.execute([], '/test/repo');
-
-      expect(result.exitCode).toBe(0);
-      expect(result.stdout).toContain('diff --git a/deleted.txt b/deleted.txt');
-      expect(result.stdout).toContain('deleted file mode 100644');
-      expect(result.stdout).toContain('--- a/deleted.txt');
-      expect(result.stdout).toContain('+++ /dev/null');
-      expect(result.stdout).toContain('-deleted file content');
-    });
-
-    it('should show staged diff with --cached option', async () => {
-      const result = await command.execute(['--cached'], '/test/repo');
-
-      expect(result.exitCode).toBe(0);
-      expect(result.stdout).toContain('diff --git a/staged.txt b/staged.txt');
-      expect(result.stdout).toContain('--- a/staged.txt');
-      expect(result.stdout).toContain('+++ b/staged.txt');
-    });
-
-    it('should show newly added files in staged diff', async () => {
-      // Test with a file that was added to the index (new file staged)
-      const commandWithStagedNew = new GitDiffCommand({
-        ...mockOptions,
-        git: {
-          ...mockGit,
-          statusMatrix: async () => [
-            ['new-staged.txt', 0, 1, 2], // New file added to stage
-          ],
-        } as unknown as Git,
-      });
-
-      const result = await commandWithStagedNew.execute(['--cached'], '/test/repo');
-
-      expect(result.exitCode).toBe(0);
-      expect(result.stdout).toContain('diff --git a/new-staged.txt b/new-staged.txt');
-      expect(result.stdout).toContain('new file mode 100644');
-      expect(result.stdout).toContain('--- /dev/null');
-      expect(result.stdout).toContain('+++ b/new-staged.txt');
-    });
-
-    it('should return empty output when no changes', async () => {
-      const commandWithNoChanges = new GitDiffCommand({
-        ...mockOptions,
-        git: {
-          ...mockGit,
-          statusMatrix: async () => [],
-        } as unknown as Git,
-      });
-
-      const result = await commandWithNoChanges.execute([], '/test/repo');
-
-      expect(result.exitCode).toBe(0);
-      expect(result.stdout).toBe('');
-    });
-
-    it('should filter by path when specified', async () => {
-      const result = await command.execute(['--', 'modified.txt'], '/test/repo');
-
-      expect(result.exitCode).toBe(0);
-      expect(result.stdout).toContain('diff --git a/modified.txt b/modified.txt');
-      expect(result.stdout).not.toContain('new.txt');
-      expect(result.stdout).not.toContain('deleted.txt');
-    });
+  it('rejects unknown revisions and options', async () => {
+    expect(await sh.run('git diff nope')).toContain("ambiguous argument 'nope'");
+    expect(await sh.run('git diff --bogus')).toContain("unknown option `bogus'");
   });
 });

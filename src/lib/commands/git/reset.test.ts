@@ -1,254 +1,79 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { GitResetCommand } from './reset';
-import type { GitSubcommandOptions } from '../git';
-import type { Git } from '../../git';
-import type { JSRuntimeFS } from '../../JSRuntime';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { createGitShell, type GitShell } from '@/test/gitShell';
 
-// Mock implementations
-const mockGit = {
-  statusMatrix: async () => [
-    // [filepath, headStatus, workdirStatus, stageStatus]
-    ['staged.txt', 1, 1, 2],      // Modified in stage
-    ['new-staged.txt', 0, 1, 2],  // New file staged
-    ['modified.txt', 1, 2, 1],    // Modified in working dir (not staged)
-    ['unchanged.txt', 1, 1, 1],   // No changes
-  ],
-  resetIndex: async ({ filepath }: { filepath: string }) => {
-    // Mock successful reset
-    return { filepath };
-  },
-  resolveRef: async ({ ref }: { ref: string }) => {
-    const refs = {
-      'HEAD': 'abc123def456',
-      'HEAD~1': 'def456abc123',
-    };
-    if (refs[ref as keyof typeof refs]) {
-      return refs[ref as keyof typeof refs];
-    }
-    throw new Error(`Unknown ref: ${ref}`);
-  },
-  readCommit: async () => ({
-    oid: 'abc123def456',
-    commit: {
-      message: 'Test commit',
-      author: { name: 'Test', email: 'test@example.com' },
-    },
-  }),
-  writeRef: async () => {},
-  checkout: async () => {},
-  listFiles: async () => ['file1.txt', 'file2.txt', 'file3.txt'],
-  currentBranch: async () => 'main',
-  readBlob: async () => ({ blob: new Uint8Array([72, 101, 108, 108, 111]) }), // "Hello"
-} as unknown as Git;
+describe('git reset', () => {
+  let sh: GitShell;
 
-const mockFS = {
-  stat: async (path: string) => {
-    if (path.endsWith('/.git')) {
-      return { isDirectory: () => true };
-    }
-    throw new Error('File not found');
-  },
-  writeFile: async () => {},
-  mkdir: async () => {},
-  unlink: async () => {},
-} as unknown as JSRuntimeFS;
-
-const mockOptions: GitSubcommandOptions = {
-  git: mockGit,
-  fs: mockFS,
-};
-
-describe('GitResetCommand', () => {
-  let command: GitResetCommand;
-
-  beforeEach(() => {
-    command = new GitResetCommand(mockOptions);
+  beforeEach(async () => {
+    sh = await createGitShell();
+    await sh.ok('git init -q && echo a > a.txt && mkdir src && echo x > src/x.ts && git add -A && git commit -qm first');
+    await sh.ok('echo b >> a.txt && echo y > src/y.ts && git add -A && git commit -qm second');
+    await sh.ok('echo c >> a.txt && git commit -qam third');
   });
 
-  describe('parseArgs', () => {
-    type ParseArgsResult = {
-      mode: 'soft' | 'mixed' | 'hard';
-      target: string;
-      files: string[];
-      isFileReset: boolean;
-    };
+  afterEach(() => sh.dispose());
 
-    const callParseArgs = (args: string[]): Promise<ParseArgsResult> => {
-      return (command as unknown as { parseArgs: (args: string[], cwd: string) => Promise<ParseArgsResult> }).parseArgs(args, '/test/repo');
-    };
+  it('--hard moves HEAD, removes files missing from the target, and restores deleted ones', async () => {
+    await sh.ok('rm src/x.ts && echo junk > a.txt && echo u > untracked.txt');
+    expect(await sh.ok('git reset --hard HEAD~2')).toMatch(/^HEAD is now at [0-9a-f]{7} first\n$/);
+    expect(await sh.read('a.txt')).toBe('a\n');
+    expect(await sh.read('src/x.ts')).toBe('x\n');
+    expect(await sh.run('cat src/y.ts')).toMatch(/No such file/);
+    expect(await sh.ok('git status -s')).toBe('?? untracked.txt\n');
+    expect(await sh.ok('git log --format=%s')).toBe('first\n');
 
-    it('should parse no arguments as file reset', async () => {
-      const result = await callParseArgs([]);
-      expect(result).toEqual({
-        mode: 'mixed',
-        target: 'HEAD',
-        files: [],
-        isFileReset: true,
-      });
-    });
-
-    it('should parse HEAD as file reset', async () => {
-      const result = await callParseArgs(['HEAD']);
-      expect(result).toEqual({
-        mode: 'mixed',
-        target: 'HEAD',
-        files: [],
-        isFileReset: true,
-      });
-    });
-
-    it('should parse HEAD with files as file reset', async () => {
-      const result = await callParseArgs(['HEAD', 'file1.txt', 'file2.txt']);
-      expect(result).toEqual({
-        mode: 'mixed',
-        target: 'HEAD',
-        files: ['file1.txt', 'file2.txt'],
-        isFileReset: true,
-      });
-    });
-
-    it('should parse commit hash as commit reset', async () => {
-      const result = await callParseArgs(['abc123def']);
-      expect(result).toEqual({
-        mode: 'mixed',
-        target: 'abc123def',
-        files: [],
-        isFileReset: false,
-      });
-    });
-
-    it('should parse mode flags correctly', async () => {
-      const result = await callParseArgs(['--hard', 'HEAD~1']);
-      expect(result).toEqual({
-        mode: 'hard',
-        target: 'HEAD~1',
-        files: [],
-        isFileReset: false,
-      });
-    });
-
-    it('should parse mixed mode with commit', async () => {
-      const result = await callParseArgs(['--mixed', 'HEAD~1']);
-      expect(result).toEqual({
-        mode: 'mixed',
-        target: 'HEAD~1',
-        files: [],
-        isFileReset: false,
-      });
-    });
+    expect(await sh.ok('git reset --hard ORIG_HEAD')).toMatch(/third\n$/);
+    expect(await sh.read('src/y.ts')).toBe('y\n');
   });
 
-  describe('execute', () => {
-    it('should fail when not in a git repository', async () => {
-      const commandWithoutGit = new GitResetCommand({
-        ...mockOptions,
-        fs: {
-          stat: async () => {
-            throw new Error('File not found');
-          },
-        } as unknown as JSRuntimeFS,
-      });
+  it('accepts short hashes', async () => {
+    const hash = (await sh.ok('git rev-parse --short HEAD~1')).trim();
+    expect(await sh.ok(`git reset -q --hard ${hash}`)).toBe('(no output)');
+    expect(await sh.ok('git log -1 --format=%s')).toBe('second\n');
+  });
 
-      const result = await commandWithoutGit.execute([], '/test/repo');
+  it('--mixed (the default) keeps the working tree and reports unstaged changes', async () => {
+    expect(await sh.ok('git reset HEAD~1')).toBe('Unstaged changes after reset:\nM\ta.txt\n');
+    expect(await sh.ok('git status -s')).toBe(' M a.txt\n');
+    expect(await sh.read('a.txt')).toBe('a\nb\nc\n');
+    await sh.ok('git reset -q HEAD~1');
+    expect(await sh.ok('git status -s')).toBe(' M a.txt\n?? src/y.ts\n');
+  });
 
-      expect(result.exitCode).toBe(1);
-      expect(result.stderr).toContain('fatal: not a git repository');
-    });
+  it('--soft keeps the index', async () => {
+    expect(await sh.ok('git reset --soft HEAD~1')).toBe('(no output)');
+    expect(await sh.ok('git status -s')).toBe('M  a.txt\n');
+  });
 
-    it('should unstage all files when called without arguments', async () => {
-      const result = await command.execute([], '/test/repo');
+  it('unstages paths', async () => {
+    await sh.ok('echo d >> a.txt && echo n > new.txt && git add -A');
+    expect(await sh.ok('git reset a.txt')).toBe('Unstaged changes after reset:\nM\ta.txt\n');
+    expect(await sh.ok('git status -s')).toBe(' M a.txt\nA  new.txt\n');
+    expect(await sh.ok('git reset -q')).toBe('(no output)');
+    expect(await sh.ok('git status -s')).toBe(' M a.txt\n?? new.txt\n');
+  });
 
-      expect(result.exitCode).toBe(0);
-      expect(result.stdout).toContain('Unstaged changes after reset:');
-      expect(result.stdout).toContain('M\tstaged.txt');
-      expect(result.stdout).toContain('M\tnew-staged.txt');
-      // Should not include files that aren't staged
-      expect(result.stdout).not.toContain('modified.txt');
-      expect(result.stdout).not.toContain('unchanged.txt');
-    });
+  it('resets paths to another commit', async () => {
+    expect(await sh.ok('git reset -q HEAD~2 -- a.txt src')).toBe('(no output)');
+    expect(await sh.ok('git status -s')).toBe('MM a.txt\nD  src/y.ts\n?? src/y.ts\n');
+  });
 
-    it('should unstage all files when called with HEAD', async () => {
-      const result = await command.execute(['HEAD'], '/test/repo');
+  it('--keep refuses to lose local changes', async () => {
+    await sh.ok('echo dirty >> a.txt');
+    expect(await sh.run('git reset --keep HEAD~1')).toBe(
+      "error: Entry 'a.txt' not uptodate. Cannot merge.\nfatal: Could not reset index file to revision 'HEAD~1'.\nExit code: 128",
+    );
+    await sh.ok('git checkout -- a.txt && echo local >> src/x.ts');
+    await sh.ok('git reset --keep HEAD~1');
+    expect(await sh.ok('git status -s')).toBe(' M src/x.ts\n');
+    expect(await sh.read('a.txt')).toBe('a\nb\n');
+  });
 
-      expect(result.exitCode).toBe(0);
-      expect(result.stdout).toContain('Unstaged changes after reset:');
-      expect(result.stdout).toContain('M\tstaged.txt');
-      expect(result.stdout).toContain('M\tnew-staged.txt');
-    });
-
-    it('should unstage specific files when called with HEAD and file paths', async () => {
-      const result = await command.execute(['HEAD', 'staged.txt'], '/test/repo');
-
-      expect(result.exitCode).toBe(0);
-      expect(result.stdout).toContain('Unstaged changes after reset:');
-      expect(result.stdout).toContain('M\tstaged.txt');
-      expect(result.stdout).not.toContain('new-staged.txt');
-    });
-
-    it('should return empty output when no files are staged', async () => {
-      const commandWithNoStaged = new GitResetCommand({
-        ...mockOptions,
-        git: {
-          ...mockGit,
-          statusMatrix: async () => [
-            ['modified.txt', 1, 2, 1], // Modified in working dir only
-            ['unchanged.txt', 1, 1, 1], // No changes
-          ],
-        } as unknown as Git,
-      });
-
-      const result = await commandWithNoStaged.execute([], '/test/repo');
-
-      expect(result.exitCode).toBe(0);
-      expect(result.stdout).toBe('');
-    });
-
-    it('should handle errors when resetting specific files', async () => {
-      const commandWithError = new GitResetCommand({
-        ...mockOptions,
-        git: {
-          ...mockGit,
-          resetIndex: async ({ filepath }: { filepath: string }) => {
-            if (filepath === 'nonexistent.txt') {
-              throw new Error('File not found');
-            }
-            return { filepath };
-          },
-        } as unknown as Git,
-      });
-
-      const result = await commandWithError.execute(['HEAD', 'nonexistent.txt'], '/test/repo');
-
-      expect(result.exitCode).toBe(1);
-      expect(result.stderr).toContain("error: pathspec 'nonexistent.txt' did not match any file(s) known to git");
-    });
-
-    it('should handle commit reset with hard mode', async () => {
-      const result = await command.execute(['--hard', 'HEAD~1'], '/test/repo');
-
-      expect(result.exitCode).toBe(0);
-      expect(result.stdout).toContain('HEAD is now at def456a');
-    });
-
-    it('should handle commit reset with mixed mode', async () => {
-      const result = await command.execute(['--mixed', 'HEAD~1'], '/test/repo');
-
-      expect(result.exitCode).toBe(0);
-      expect(result.stdout).toContain('HEAD is now at def456a');
-    });
-
-    it('should handle commit reset with soft mode', async () => {
-      const result = await command.execute(['--soft', 'HEAD~1'], '/test/repo');
-
-      expect(result.exitCode).toBe(0);
-      expect(result.stdout).toContain('HEAD is now at def456a');
-    });
-
-    it('should handle invalid commit reference', async () => {
-      const result = await command.execute(['abcdef12345'], '/test/repo');
-
-      expect(result.exitCode).toBe(1);
-      expect(result.stderr).toContain("fatal: ambiguous argument 'abcdef12345'");
-    });
+  it('reports git\'s errors', async () => {
+    const hint = "Use '--' to separate paths from revisions, like this:\n'git <command> [<revision>...] -- [<file>...]'";
+    expect(await sh.run('git reset nope')).toBe(`fatal: ambiguous argument 'nope': unknown revision or path not in the working tree.\n${hint}\nExit code: 128`);
+    expect(await sh.run('git reset --soft HEAD -- a.txt')).toBe('fatal: Cannot do soft reset with paths.\nExit code: 128');
+    expect(await sh.run('git reset --hard HEAD a.txt')).toBe('fatal: Cannot do hard reset with paths.\nExit code: 128');
+    expect(await sh.run('git reset --bogus')).toMatch(/^error: unknown option `bogus'[\s\S]*Exit code: 129$/);
   });
 });

@@ -17,7 +17,19 @@ Each command implements `ShellCommand`:
 
 ### git
 
-Git over isomorphic-git, with subcommands in `git/` (`add`, `commit`, `push`, `pull`, `status`, `log`, `diff`, `branch`, `checkout`, `switch`, `merge`, `revert`, `rm`, `mv`, `restore`, `rev-parse`, `ls-files`, `tag`, `stash`, `fetch`, `clone`, `init`, `reset`, `show`, `remote`, `config`).
+Git over isomorphic-git, with subcommands in `git/` (`add`, `commit`, `status`, `log`, `show`, `diff`, `branch`, `checkout`, `switch`, `restore`, `reset`, `rm`, `mv`, `merge`, `revert`, `cherry-pick`, `stash`, `tag`, `clean`, `grep`, `blame`, `describe`, `shortlog`, `rev-parse`, `rev-list`, `merge-base`, `cat-file`, `ls-tree`, `ls-files`, `push`, `pull`, `fetch`, `clone`, `init`, `remote`, `config`). The goal is real git's flags, output, and exit codes, since agents type what they know from real git.
+
+Shared pieces live alongside the subcommands:
+- `revisions.ts`: revision syntax (full and short object ids, refs, `~N`, `^N`, `^{type}`, `<rev>:<path>`, `:<path>`, `@{u}`)
+- `args.ts`: getopt-style parsing (bundled short options like `-qam msg`, `--x=y`, `--no-x`, `--`)
+- `diffing.ts`: snapshots of trees, the index and the working tree, and `git diff`-style output
+- `threeWay.ts`: line-level three-way merges with conflict markers, used by `revert`, `cherry-pick`, `merge` and `stash`
+- `history.ts`: revision ranges (`A..B`, `A...B`, `^A`) and commit walking
+- `pretty.ts`: `--pretty`/`--format` output and dates
+- `worktree.ts`: status, pathspecs, `.gitignore` walking, and branch switching
+- `sequencer.ts`: `MERGE_MSG`, `CHERRY_PICK_HEAD` and friends, for resuming after conflicts
+
+isomorphic-git's `statusMatrix` trusts file stats to the second, so it misses same-size edits made right after an index update; code that needs to know whether a file changed compares content hashes instead.
 
 ### curl
 

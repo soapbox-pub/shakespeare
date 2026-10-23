@@ -1,210 +1,77 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { MockFS } from '@/test/MockFS';
-import { Git } from '@/lib/git';
-import { GitLogCommand } from './log';
-import type { NPool, NostrEvent } from '@nostrify/nostrify';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { createGitShell, type GitShell } from '@/test/gitShell';
 
-const createMockNostr = (): NPool => {
-  const events: NostrEvent[] = [];
-  return {
-    req: vi.fn(),
-    query: vi.fn(async () => events),
-    event: vi.fn(async (event: NostrEvent) => { events.push(event); }),
-    group: vi.fn().mockReturnValue({ query: vi.fn(async () => events) }),
-    relay: vi.fn(),
-    relays: new Map(),
-    close: vi.fn(),
-  } as unknown as NPool;
-};
-
-describe('GitLogCommand', () => {
-  let fs: MockFS;
-  let git: Git;
-  let logCommand: GitLogCommand;
+describe('git log', () => {
+  let sh: GitShell;
 
   beforeEach(async () => {
-    fs = new MockFS();
-    git = new Git({
-      fs,
-      nostr: createMockNostr(),
-    });
-    logCommand = new GitLogCommand({ git, fs });
-
-    // Initialize a git repository
-    await git.init({ dir: '/test-repo' });
-
-    // Configure git
-    await git.setConfig({ dir: '/test-repo', path: 'user.name', value: 'Test User' });
-    await git.setConfig({ dir: '/test-repo', path: 'user.email', value: 'test@example.com' });
-
-    // Create some commits
-    await fs.writeFile('/test-repo/file1.txt', 'content 1');
-    await git.add({ dir: '/test-repo', filepath: 'file1.txt' });
-    await git.commit({
-      dir: '/test-repo',
-      message: 'First commit',
-    });
-
-    await fs.writeFile('/test-repo/file2.txt', 'content 2');
-    await git.add({ dir: '/test-repo', filepath: 'file2.txt' });
-    await git.commit({
-      dir: '/test-repo',
-      message: 'Second commit',
-    });
-
-    await fs.writeFile('/test-repo/file3.txt', 'content 3');
-    await git.add({ dir: '/test-repo', filepath: 'file3.txt' });
-    await git.commit({
-      dir: '/test-repo',
-      message: 'Third commit',
-    });
+    sh = await createGitShell();
+    await sh.ok('git init -q && git config user.name Tester && echo a > a.txt && git add a.txt && git commit -qm first');
+    await sh.ok('echo b >> a.txt && mkdir src && echo y > src/y.ts && git add -A && git commit -qm "second" -m "body line"');
+    await sh.ok('echo c >> a.txt && git commit -qam third');
   });
 
-  it('should show all commits by default (no limit)', async () => {
-    const result = await logCommand.execute([], '/test-repo');
-    expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain('First commit');
-    expect(result.stdout).toContain('Second commit');
-    expect(result.stdout).toContain('Third commit');
+  afterEach(() => sh.dispose());
+
+  it('prints the medium format with indented messages', async () => {
+    const out = await sh.ok('git log -1 HEAD~1');
+    expect(out).toMatch(/^commit [0-9a-f]{40}\nAuthor: .+ <.+>\nDate: {3}\w{3} \w{3} \d+ \d\d:\d\d:\d\d \d{4} [+-]\d{4}\n\n {4}second\n {4}\n {4}body line\n/);
   });
 
-  it('should limit commits with -n flag', async () => {
-    const result = await logCommand.execute(['-n', '1'], '/test-repo');
-    expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain('Third commit');
-    expect(result.stdout).not.toContain('Second commit');
-    expect(result.stdout).not.toContain('First commit');
+  it('supports --oneline, -n, -<n>, --skip and --reverse', async () => {
+    expect(await sh.ok('git log --oneline')).toMatch(/^[0-9a-f]{7} third\n[0-9a-f]{7} second\n[0-9a-f]{7} first\n$/);
+    expect(await sh.ok('git log --format=%s -2')).toBe('third\nsecond\n');
+    expect(await sh.ok('git log --format=%s -n 1')).toBe('third\n');
+    expect(await sh.ok('git log --format=%s --max-count=1 --skip=1')).toBe('second\n');
+    expect(await sh.ok('git log --format=%s --reverse')).toBe('first\nsecond\nthird\n');
   });
 
-  it('should limit commits with -n= syntax', async () => {
-    const result = await logCommand.execute(['-n=2'], '/test-repo');
-    expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain('Third commit');
-    expect(result.stdout).toContain('Second commit');
-    expect(result.stdout).not.toContain('First commit');
+  it('expands format placeholders', async () => {
+    const [full, short] = (await sh.ok('git log -1 --format="%H %h"')).trim().split(' ');
+    expect(full).toMatch(/^[0-9a-f]{40}$/);
+    expect(full.startsWith(short)).toBe(true);
+    expect(await sh.ok('git log -1 --pretty=format:"%s|%P" HEAD~2')).toBe('first|\n');
+    expect(await sh.ok('git log -1 --format="%an%x09%ad" --date=short')).toMatch(/^.+\t\d{4}-\d\d-\d\d\n$/);
   });
 
-  it('should limit commits with --max-count flag', async () => {
-    const result = await logCommand.execute(['--max-count', '2'], '/test-repo');
-    expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain('Third commit');
-    expect(result.stdout).toContain('Second commit');
-    expect(result.stdout).not.toContain('First commit');
+  it('accepts revisions given as short hashes and ranges', async () => {
+    const short = (await sh.ok('git rev-parse --short HEAD~1')).trim();
+    expect(await sh.ok(`git log --format=%s ${short}`)).toBe('second\nfirst\n');
+    expect(await sh.ok('git log --format=%s HEAD~2..HEAD')).toBe('third\nsecond\n');
+    expect(await sh.ok('git log --format=%s ^HEAD~1 HEAD')).toBe('third\n');
   });
 
-  it('should limit commits with -<number> syntax', async () => {
-    const result = await logCommand.execute(['-2'], '/test-repo');
-    expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain('Third commit');
-    expect(result.stdout).toContain('Second commit');
-    expect(result.stdout).not.toContain('First commit');
+  it('limits to paths', async () => {
+    expect(await sh.ok('git log --format=%s -- src/y.ts')).toBe('second\n');
+    expect(await sh.ok('git log --format=%s src')).toBe('second\n');
+    expect(await sh.run('git log nope')).toContain("ambiguous argument 'nope'");
   });
 
-  it('should format with --oneline', async () => {
-    const result = await logCommand.execute(['--oneline'], '/test-repo');
-    expect(result.exitCode).toBe(0);
-    // Oneline format should have short hash and message on same line
-    const lines = result.stdout.trim().split('\n');
-    expect(lines.length).toBe(3);
-    expect(lines[0]).toMatch(/^[0-9a-f]{7} Third commit$/);
-    expect(lines[1]).toMatch(/^[0-9a-f]{7} Second commit$/);
-    expect(lines[2]).toMatch(/^[0-9a-f]{7} First commit$/);
+  it('shows stats, names and patches like git', async () => {
+    expect(await sh.ok('git log --oneline --stat -1 HEAD~1')).toMatch(/^[0-9a-f]{7} second\n a\.txt {4}\| 1 \+\n src\/y\.ts \| 1 \+\n 2 files changed, 2 insertions\(\+\)\n$/);
+    expect(await sh.ok('git log --format=%s --name-status -1 HEAD~1')).toBe('second\n\nM\ta.txt\nA\tsrc/y.ts\n');
+    const patch = await sh.ok('git log -p -1 --format=%s');
+    expect(patch).toContain('third\n\ndiff --git a/a.txt b/a.txt\n');
+    expect(patch).toContain('@@ -1,2 +1,3 @@\n a\n b\n+c\n');
   });
 
-  it('should format with --format=oneline', async () => {
-    const result = await logCommand.execute(['--format=oneline'], '/test-repo');
-    expect(result.exitCode).toBe(0);
-    const lines = result.stdout.trim().split('\n');
-    expect(lines.length).toBe(3);
-    expect(lines[0]).toMatch(/^[0-9a-f]{7} Third commit$/);
+  it('filters by message, author and merges', async () => {
+    expect(await sh.ok('git log --format=%s --grep=sec')).toBe('second\n');
+    expect(await sh.ok('git log --format=%s -i --grep=THIRD')).toBe('third\n');
+    expect(await sh.ok('git log --format=%s --author=nobody')).toBe('(no output)');
+    expect(await sh.ok('git log --format=%s --no-merges -1')).toBe('third\n');
   });
 
-  it('should format with --format=short', async () => {
-    const result = await logCommand.execute(['--format=short'], '/test-repo');
-    expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain('commit');
-    expect(result.stdout).toContain('Author:');
-    expect(result.stdout).not.toContain('Date:'); // Short format doesn't include date
+  it('decorates refs and draws a graph', async () => {
+    await sh.ok('git tag v1 HEAD~1');
+    expect(await sh.ok('git log --oneline --decorate -2')).toMatch(/^[0-9a-f]{7} \(HEAD -> main\) third\n[0-9a-f]{7} \(tag: v1\) second\n$/);
+    expect(await sh.ok('git log --graph --oneline')).toMatch(/^\* [0-9a-f]{7} third\n\* [0-9a-f]{7} second\n\* [0-9a-f]{7} first\n$/);
   });
 
-  it('should format with --format=full', async () => {
-    const result = await logCommand.execute(['--format=full'], '/test-repo');
-    expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain('commit');
-    expect(result.stdout).toContain('Author:');
-    expect(result.stdout).toContain('Date:');
-  });
-
-  it('should format with --format=fuller', async () => {
-    const result = await logCommand.execute(['--format=fuller'], '/test-repo');
-    expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain('commit');
-    expect(result.stdout).toContain('Author:');
-    expect(result.stdout).toContain('AuthorDate:');
-  });
-
-  it('should format with --format=raw', async () => {
-    const result = await logCommand.execute(['--format=raw'], '/test-repo');
-    expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain('commit');
-    expect(result.stdout).toContain('author');
-    expect(result.stdout).toMatch(/author .+ <.+> \d+ [+-]\d{4}/);
-  });
-
-  it('should show graph with --graph', async () => {
-    const result = await logCommand.execute(['--graph', '--oneline'], '/test-repo');
-    expect(result.exitCode).toBe(0);
-    const lines = result.stdout.trim().split('\n');
-    expect(lines[0]).toMatch(/^\* [0-9a-f]{7} Third commit$/);
-  });
-
-  it('should combine --graph with full format', async () => {
-    const result = await logCommand.execute(['--graph'], '/test-repo');
-    expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain('* commit');
-  });
-
-  it('should error when not in a git repository', async () => {
-    const result = await logCommand.execute([], '/not-a-repo');
-    expect(result.exitCode).toBe(1);
-    expect(result.stderr).toContain('not a git repository');
-  });
-
-  it('should show more than 50 commits when no limit is specified', async () => {
-    // Create 60 commits
-    for (let i = 4; i <= 60; i++) {
-      await fs.writeFile(`/test-repo/file${i}.txt`, `content ${i}`);
-      await git.add({ dir: '/test-repo', filepath: `file${i}.txt` });
-      await git.commit({
-        dir: '/test-repo',
-        message: `Commit ${i}`,
-      });
-    }
-
-    const result = await logCommand.execute(['--oneline'], '/test-repo');
-    expect(result.exitCode).toBe(0);
-    const lines = result.stdout.trim().split('\n');
-    expect(lines.length).toBe(60); // Should show all 60 commits, not just 50
-    expect(result.stdout).toContain('Commit 60');
-    expect(result.stdout).toContain('Commit 1');
-  });
-
-  it('should respect limit even with many commits', async () => {
-    // Create 60 commits
-    for (let i = 4; i <= 60; i++) {
-      await fs.writeFile(`/test-repo/file${i}.txt`, `content ${i}`);
-      await git.add({ dir: '/test-repo', filepath: `file${i}.txt` });
-      await git.commit({
-        dir: '/test-repo',
-        message: `Commit ${i}`,
-      });
-    }
-
-    const result = await logCommand.execute(['-10', '--oneline'], '/test-repo');
-    expect(result.exitCode).toBe(0);
-    const lines = result.stdout.trim().split('\n');
-    expect(lines.length).toBe(10); // Should show only 10 commits
-    expect(result.stdout).toContain('Commit 60');
-    expect(result.stdout).not.toContain('Commit 1');
+  it('errors helpfully in an empty repository', async () => {
+    const empty = await createGitShell('/projects/empty');
+    await empty.ok('git init -q');
+    expect(await empty.run('git log')).toContain("does not have any commits yet");
+    empty.dispose();
   });
 });

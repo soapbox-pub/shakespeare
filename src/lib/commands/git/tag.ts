@@ -3,21 +3,26 @@ import type { ShellCommandResult } from "../ShellCommand";
 import { createSuccessResult, createErrorResult } from "../ShellCommand";
 import type { GitSubcommand, GitSubcommandOptions } from "../git";
 import type { Git } from "../../git";
+import { parseArgs, unknownOption } from "./args";
+import { abbrev, peel, resolveCommit, resolveRevision, RevisionError } from "./revisions";
+import { attachDefaultValues, compareVersions, expandRefFormat, isAncestor, isValidRefName, matchesGlob, signature } from "./refUtils";
 
-interface TagOptions {
+interface TagInfo {
+  name: string;
+  /** What the ref points at (a tag object for annotated tags). */
+  oid: string;
+  /** The tagged object with tags peeled. */
+  target: string;
   annotated: boolean;
-  force: boolean;
-  list: boolean;
-  showMessages: boolean;
-  message?: string;
+  /** Tag message, or the commit message for lightweight tags. */
+  message: string;
+  date: number;
 }
-
-type TagAction = 'list' | 'create' | 'delete';
 
 export class GitTagCommand implements GitSubcommand {
   name = 'tag';
   description = 'Create, list, delete or verify a tag object';
-  usage = 'git tag [-l [<pattern>]] [-n [<num>]] | git tag [-a] [-f] [-m <msg>] <tagname> [<commit>] | git tag -d <tagname>...';
+  usage = 'git tag [-a | -s] [-f] [-m <msg> | -F <file>] <tagname> [<commit> | <object>]\n   or: git tag -d <tagname>...\n   or: git tag [-n[<num>]] -l [--contains <commit>] [--points-at <object>] [--sort=<key>] [--format=<format>] [<pattern>...]';
 
   private git: Git;
   private fs: JSRuntimeFS;
@@ -29,257 +34,219 @@ export class GitTagCommand implements GitSubcommand {
 
   async execute(args: string[], cwd: string): Promise<ShellCommandResult> {
     try {
-      // Check if we're in a git repository
       try {
         await this.fs.stat(`${cwd}/.git`);
       } catch {
-        return createErrorResult('fatal: not a git repository (or any of the parent directories): .git');
+        return createErrorResult('fatal: not a git repository (or any of the parent directories): .git', 128);
       }
 
-      const { action, tagName, commit, options, pattern } = this.parseArgs(args);
-
-      switch (action) {
-        case 'list':
-          return await this.listTags(pattern, options.showMessages, cwd);
-        case 'create':
-          return await this.createTag(tagName!, cwd, commit, options);
-        case 'delete':
-          return await this.deleteTag(tagName!, cwd);
-        default:
-          return await this.listTags(pattern, options.showMessages, cwd);
+      // `-n` takes an optional attached number (`-n`, `-n3`).
+      let lines: number | undefined;
+      const rest: string[] = [];
+      for (const arg of args) {
+        const n = arg.match(/^-n(\d*)$/);
+        if (n) lines = n[1] ? parseInt(n[1], 10) : 1;
+        else rest.push(arg);
       }
 
+      const parsed = parseArgs(attachDefaultValues(rest, ['contains', 'no-contains', 'merged', 'no-merged']), {
+        flags: {
+          l: 'list', list: 'list', d: 'delete', delete: 'delete', a: 'annotate', annotate: 'annotate',
+          s: 'sign', sign: 'sign', f: 'force', force: 'force', v: 'verify', verify: 'verify',
+          i: 'ignoreCase', 'ignore-case': 'ignoreCase', 'column': 'column',
+        },
+        values: {
+          m: 'message', message: 'message', F: 'file', file: 'file', sort: 'sort', format: 'format',
+          'points-at': 'pointsAt', contains: 'contains', 'no-contains': 'noContains', merged: 'merged', 'no-merged': 'noMerged', u: 'localUser', 'local-user': 'localUser', cleanup: 'cleanup',
+        },
+      });
+      if (parsed.unknown.length > 0) {
+        return createErrorResult(unknownOption(parsed.unknown[0], this.usage), 129);
+      }
+      if (parsed.has('verify')) {
+        return createErrorResult('error: verifying tag signatures is not supported here', 1);
+      }
+
+      const positionals = parsed.rest;
+
+      if (parsed.has('delete')) {
+        return await this.deleteTags(positionals, cwd);
+      }
+
+      const listing = parsed.has('list') || lines !== undefined || positionals.length === 0 ||
+        ['contains', 'noContains', 'merged', 'noMerged', 'pointsAt', 'sort', 'format'].some((n) => parsed.has(n));
+      if (listing && !parsed.has('annotate') && !parsed.has('message') && !parsed.has('file') && !parsed.has('force')) {
+        return await this.listTags(positionals, parsed, lines, cwd);
+      }
+
+      return await this.createTag(positionals, parsed, cwd);
     } catch (error) {
+      if (error instanceof RevisionError) return createErrorResult(error.message, 128);
       return createErrorResult(`git tag: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
-  private parseArgs(args: string[]): {
-    action: TagAction;
-    tagName?: string;
-    commit?: string;
-    pattern?: string;
-    options: TagOptions;
-  } {
-    const options: TagOptions = {
-      annotated: false,
-      force: false,
-      list: false,
-      showMessages: false,
-    };
-    let action: TagAction = 'list';
-    let tagName: string | undefined;
-    let commit: string | undefined;
-    let pattern: string | undefined;
-    const positionals: string[] = [];
-
-    for (let i = 0; i < args.length; i++) {
-      const arg = args[i];
-
-      if (arg === '-l' || arg === '--list') {
-        action = 'list';
-        options.list = true;
-      } else if (arg === '-d' || arg === '--delete') {
-        action = 'delete';
-      } else if (arg === '-a' || arg === '--annotate') {
-        options.annotated = true;
-      } else if (arg === '-f' || arg === '--force') {
-        options.force = true;
-      } else if (arg === '-n' || arg.match(/^-n\d+$/)) {
-        options.showMessages = true;
-        action = 'list';
-      } else if (arg === '-m' || arg === '--message') {
-        if (i + 1 < args.length) {
-          options.message = args[i + 1];
-          options.annotated = true;
-          i++;
-        }
-      } else if (arg.startsWith('-m=')) {
-        options.message = arg.substring(3);
-        options.annotated = true;
-      } else if (arg.startsWith('--message=')) {
-        options.message = arg.substring(10);
-        options.annotated = true;
-      } else if (!arg.startsWith('-')) {
-        positionals.push(arg);
-      }
-    }
-
-    if (action === 'delete') {
-      tagName = positionals[0];
-    } else if (action === 'list') {
-      pattern = positionals[0];
-    } else if (positionals.length >= 1) {
-      action = 'create';
-      tagName = positionals[0];
-      if (positionals.length >= 2) {
-        commit = positionals[1];
-      }
-    }
-
-    return { action, tagName, commit, pattern, options };
-  }
-
-  private matchPattern(tagName: string, pattern?: string): boolean {
-    if (!pattern) return true;
-    // Simple glob: convert * to .* and ? to .
-    const regex = new RegExp('^' + pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*').replace(/\?/g, '.') + '$');
-    return regex.test(tagName);
-  }
-
-  private async listTags(pattern: string | undefined, showMessages: boolean, cwd: string): Promise<ShellCommandResult> {
-    try {
-      const tags = await this.git.listTags({ dir: cwd });
-
-      const filtered = tags.filter(t => this.matchPattern(t, pattern));
-      if (filtered.length === 0) {
-        return createSuccessResult('');
-      }
-
-      filtered.sort();
-
-      if (showMessages) {
-        const lines: string[] = [];
-        for (const tag of filtered) {
-          try {
-            // Try to read as annotated tag
-            const oid = await this.git.resolveRef({ dir: cwd, ref: tag });
-            try {
-              const tagObj = await this.git.readTag({ dir: cwd, oid });
-              const firstLine = (tagObj.tag.message || '').split('\n')[0];
-              lines.push(`${tag.padEnd(15)} ${firstLine}`);
-            } catch {
-              // Lightweight tag: show commit message
-              try {
-                const log = await this.git.log({ dir: cwd, depth: 1, ref: tag });
-                if (log.length > 0) {
-                  lines.push(`${tag.padEnd(15)} ${log[0].commit.message.split('\n')[0]}`);
-                } else {
-                  lines.push(tag);
-                }
-              } catch {
-                lines.push(tag);
-              }
-            }
-          } catch {
-            lines.push(tag);
-          }
-        }
-        return createSuccessResult(lines.join('\n') + '\n');
-      }
-
-      return createSuccessResult(filtered.join('\n') + '\n');
-
-    } catch (error) {
-      return createErrorResult(`Failed to list tags: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-  }
-
-  private async createTag(
-    tagName: string,
-    cwd: string,
-    commit: string | undefined,
-    options: TagOptions,
-  ): Promise<ShellCommandResult> {
-    try {
-      if (!tagName) {
-        return createErrorResult('usage: git tag <tagname> [<commit>]');
-      }
-
-      // Check if tag already exists (unless --force)
-      if (!options.force) {
-        try {
-          const tags = await this.git.listTags({ dir: cwd });
-          if (tags.includes(tagName)) {
-            return createErrorResult(`fatal: tag '${tagName}' already exists`);
-          }
-        } catch {
-          // Continue
-        }
-      } else {
-        // Delete existing tag first if --force
-        try {
-          const tags = await this.git.listTags({ dir: cwd });
-          if (tags.includes(tagName)) {
-            await this.git.deleteTag({ dir: cwd, ref: tagName });
-          }
-        } catch {
-          // Continue
-        }
-      }
-
-      // Resolve the target commit
-      let targetOid: string;
+  private async readTagInfo(name: string, cwd: string): Promise<TagInfo> {
+    const oid = await this.git.resolveRef({ dir: cwd, ref: `refs/tags/${name}` });
+    const obj = await this.git.readObject({ dir: cwd, oid, format: 'parsed' });
+    if (obj.type === 'tag') {
+      const tag = obj.object as { object: string; message: string; tagger: { timestamp: number } };
+      let target = tag.object;
       try {
-        targetOid = await this.git.resolveRef({
-          dir: cwd,
-          ref: commit || 'HEAD',
-        });
+        target = await peel(this.git, cwd, oid, 'commit', name);
       } catch {
-        return createErrorResult(`fatal: not a valid object name: '${commit || 'HEAD'}'`);
+        // Tag of a tree or blob.
       }
-
-      // Create annotated or lightweight tag
-      if (options.annotated || options.message) {
-        const message = options.message || tagName;
-        try {
-          await this.git.annotatedTag({
-            dir: cwd,
-            ref: tagName,
-            object: targetOid,
-            message,
-          });
-        } catch (error) {
-          // Fallback to lightweight tag
-          await this.git.tag({
-            dir: cwd,
-            ref: tagName,
-            object: targetOid,
-          });
-          console.warn(`Created lightweight tag instead of annotated: ${error instanceof Error ? error.message : error}`);
-        }
-      } else {
-        await this.git.tag({
-          dir: cwd,
-          ref: tagName,
-          object: targetOid,
-        });
-      }
-
-      return createSuccessResult('');
-
-    } catch (error) {
-      return createErrorResult(`Failed to create tag: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      return { name, oid, target, annotated: true, message: tag.message, date: tag.tagger.timestamp };
     }
+    if (obj.type === 'commit') {
+      const commit = obj.object as { message: string; committer: { timestamp: number } };
+      return { name, oid, target: oid, annotated: false, message: commit.message, date: commit.committer.timestamp };
+    }
+    return { name, oid, target: oid, annotated: false, message: '', date: 0 };
   }
 
-  private async deleteTag(tagName: string, cwd: string): Promise<ShellCommandResult> {
+  private async listTags(patterns: string[], parsed: ReturnType<typeof parseArgs>, lines: number | undefined, cwd: string): Promise<ShellCommandResult> {
+    const ignoreCase = parsed.has('ignoreCase');
+    const names = (await this.git.listTags({ dir: cwd })).filter((t) =>
+      patterns.length === 0 || patterns.some((p) => ignoreCase ? matchesGlob(t.toLowerCase(), p.toLowerCase()) : matchesGlob(t, p)));
+
+    let tags: TagInfo[] = [];
+    for (const name of names) tags.push(await this.readTagInfo(name, cwd));
+
+    const contains = parsed.get('contains');
+    const noContains = parsed.get('noContains');
+    const merged = parsed.get('merged');
+    const noMerged = parsed.get('noMerged');
+    const pointsAt = parsed.get('pointsAt');
+    if (contains !== undefined) {
+      const oid = await resolveCommit(this.git, cwd, contains);
+      tags = await filterAsync(tags, (t) => isAncestor(this.git, cwd, oid, t.target));
+    }
+    if (noContains !== undefined) {
+      const oid = await resolveCommit(this.git, cwd, noContains);
+      tags = await filterAsync(tags, async (t) => !(await isAncestor(this.git, cwd, oid, t.target)));
+    }
+    if (merged !== undefined) {
+      const oid = await resolveCommit(this.git, cwd, merged);
+      tags = await filterAsync(tags, (t) => isAncestor(this.git, cwd, t.target, oid));
+    }
+    if (noMerged !== undefined) {
+      const oid = await resolveCommit(this.git, cwd, noMerged);
+      tags = await filterAsync(tags, async (t) => !(await isAncestor(this.git, cwd, t.target, oid)));
+    }
+    if (pointsAt !== undefined) {
+      const oid = await resolveRevision(this.git, cwd, pointsAt);
+      tags = tags.filter((t) => t.oid === oid || t.target === oid);
+    }
+
+    const sort = parsed.get('sort') ?? 'refname';
+    const reverse = sort.startsWith('-');
+    const key = sort.replace(/^-/, '');
+    tags.sort((a, b) => {
+      if (key === 'version:refname' || key === 'v:refname') return compareVersions(a.name, b.name);
+      if (key === 'creatordate' || key === 'taggerdate' || key === 'committerdate') return a.date - b.date || cmp(a.name, b.name);
+      return cmp(a.name, b.name);
+    });
+    if (reverse) tags.reverse();
+
+    const format = parsed.get('format');
+    let out = '';
+    for (const tag of tags) {
+      if (format !== undefined) {
+        const [subject, ...body] = tag.message.split('\n');
+        out += expandRefFormat(format, {
+          refname: `refs/tags/${tag.name}`, short: tag.name, oid: tag.oid, subject,
+          body: body.join('\n').replace(/^\n/, ''), objecttype: tag.annotated ? 'tag' : 'commit',
+        }) + '\n';
+      } else if (lines !== undefined) {
+        const text = tag.message.replace(/\n+$/, '').split('\n').slice(0, Math.max(lines, 1));
+        out += `${tag.name.padEnd(15)} ${text[0] ?? ''}`.trimEnd() + '\n';
+        for (const line of text.slice(1)) out += `    ${line}\n`;
+      } else {
+        out += `${tag.name}\n`;
+      }
+    }
+    return createSuccessResult(out);
+  }
+
+  private async createTag(positionals: string[], parsed: ReturnType<typeof parseArgs>, cwd: string): Promise<ShellCommandResult> {
+    if (positionals.length === 0 || positionals.length > 2) {
+      return createErrorResult(`usage: ${this.usage}`, 129);
+    }
+    const [name, target = 'HEAD'] = positionals;
+    if (!isValidRefName(name)) {
+      return createErrorResult(`fatal: '${name}' is not a valid tag name.`, 128);
+    }
+
+    let objectOid: string;
     try {
-      if (!tagName) {
-        return createErrorResult('usage: git tag -d <tagname>');
-      }
+      objectOid = await resolveRevision(this.git, cwd, target);
+    } catch {
+      return createErrorResult(`fatal: Failed to resolve '${target}' as a valid ref.`, 128);
+    }
 
-      // Check if tag exists
+    const existing = (await this.git.listTags({ dir: cwd })).includes(name)
+      ? await this.git.resolveRef({ dir: cwd, ref: `refs/tags/${name}` })
+      : undefined;
+    if (existing && !parsed.has('force')) {
+      return createErrorResult(`fatal: tag '${name}' already exists`, 128);
+    }
+
+    const parts = [...parsed.getAll('message')];
+    for (const file of parsed.getAll('file')) {
       try {
-        const tags = await this.git.listTags({ dir: cwd });
-
-        if (!tags.includes(tagName)) {
-          return createErrorResult(`error: tag '${tagName}' not found.`);
-        }
+        const path = file.startsWith('/') ? file : `${cwd}/${file}`;
+        parts.push((await this.fs.readFile(path, 'utf8')).replace(/\n+$/, ''));
       } catch {
-        return createErrorResult(`error: tag '${tagName}' not found.`);
+        return createErrorResult(`fatal: could not open or read '${file}': No such file or directory`, 128);
       }
+    }
+    const annotated = parsed.has('annotate') || parsed.has('sign') || parts.length > 0;
 
-      // Delete the tag
-      await this.git.deleteTag({
+    let newOid = objectOid;
+    if (annotated) {
+      if (parts.length === 0) {
+        return createErrorResult('error: no editor is available to write the tag message\nPlease supply the message using either -m or -F option.', 1);
+      }
+      const message = parts.join('\n\n').replace(/\n*$/, '\n');
+      const { type } = await this.git.readObject({ dir: cwd, oid: objectOid, format: 'parsed' });
+      newOid = await this.git.writeTag({
         dir: cwd,
-        ref: tagName,
+        tag: { object: objectOid, type: type as 'commit', tag: name, tagger: await signature(this.git, this.fs, cwd), message },
       });
-
-      return createSuccessResult(`Deleted tag '${tagName}'\n`);
-
-    } catch (error) {
-      return createErrorResult(`Failed to delete tag: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
+    await this.git.writeRef({ dir: cwd, ref: `refs/tags/${name}`, value: newOid, force: true });
+
+    if (existing && existing !== newOid) {
+      return createSuccessResult(`Updated tag '${name}' (was ${abbrev(existing)})\n`);
+    }
+    return createSuccessResult('');
   }
+
+  private async deleteTags(names: string[], cwd: string): Promise<ShellCommandResult> {
+    if (names.length === 0) return createSuccessResult('');
+    const tags = await this.git.listTags({ dir: cwd });
+    let stdout = '';
+    let stderr = '';
+    for (const name of names) {
+      if (!tags.includes(name)) {
+        stderr += `error: tag '${name}' not found.\n`;
+        continue;
+      }
+      const oid = await this.git.resolveRef({ dir: cwd, ref: `refs/tags/${name}` });
+      await this.git.deleteRef({ dir: cwd, ref: `refs/tags/${name}` });
+      stdout += `Deleted tag '${name}' (was ${abbrev(oid)})\n`;
+    }
+    return { exitCode: stderr ? 1 : 0, stdout, stderr };
+  }
+}
+
+function cmp(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
+async function filterAsync<T>(items: T[], pred: (item: T) => Promise<boolean>): Promise<T[]> {
+  const keep = await Promise.all(items.map(pred));
+  return items.filter((_, i) => keep[i]);
 }

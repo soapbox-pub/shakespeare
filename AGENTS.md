@@ -81,7 +81,7 @@ The ShellTool runs scripts with [just-bash](https://github.com/vercel-labs/just-
   - **Network and files**: `curl` (through the CORS proxy), `unzip`, `hexdump`
   - **TypeScript**: `tsc` (the real compiler CLI, e.g. `tsc --noEmit`), `npx` (runs built-ins only, e.g. `npx tsc`)
   - **Python**: `python3`/`python` (CPython via Pyodide, see below), `pip`/`pip3` (`install` only, via micropip)
-  - **Git Commands**: `git add`, `git commit`, `git push`, `git pull`, `git status`, `git log`, `git diff`, `git branch`, `git checkout`, `git switch`, `git merge`, `git revert`, `git rm`, `git mv`, `git restore`, `git rev-parse`, `git ls-files`, `git tag`, `git stash`, `git fetch`, `git clone`, `git init`, `git reset`, `git show`, `git remote`, `git config`
+  - **Git Commands**: `git add`, `git commit`, `git status`, `git log`, `git show`, `git diff`, `git branch`, `git checkout`, `git switch`, `git restore`, `git reset`, `git rm`, `git mv`, `git merge`, `git revert`, `git cherry-pick`, `git stash`, `git tag`, `git clean`, `git grep`, `git blame`, `git describe`, `git shortlog`, `git rev-parse`, `git rev-list`, `git merge-base`, `git cat-file`, `git ls-tree`, `git ls-files`, `git push`, `git pull`, `git fetch`, `git clone`, `git init`, `git remote`, `git config`
 
 #### Typechecking (`tsc`)
 

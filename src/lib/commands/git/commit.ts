@@ -3,11 +3,15 @@ import type { ShellCommandResult } from "../ShellCommand";
 import { createSuccessResult, createErrorResult } from "../ShellCommand";
 import type { GitSubcommand, GitSubcommandOptions } from "../git";
 import type { Git } from "../../git";
+import { parseArgs, unknownOption } from "./args";
+import { compareSnapshots, formatSummary, countLines, readVersion, treeSnapshot, indexSnapshot, workdirSnapshot } from "./diffing";
+import { abbrev, matchesPathspec, resolveCommit, RevisionError } from "./revisions";
+import { clearSequencerState, readMergeHead, readMergeMessage } from "./sequencer";
 
 export class GitCommitCommand implements GitSubcommand {
   name = 'commit';
   description = 'Record changes to the repository';
-  usage = 'git commit [-m <msg>] [-a | --all] [-am <msg>] [--amend] [--allow-empty] [--signoff] [-F <file>] [--author=<author>] [-C <commit>] [--no-verify]';
+  usage = 'git commit [-a] [-q] [-m <msg>]... [-F <file>] [--amend] [--no-edit] [--allow-empty] [-s] [--author=<author>] [-C <commit>] [--] [<pathspec>...]';
 
   private git: Git;
   private fs: JSRuntimeFS;
@@ -19,321 +23,191 @@ export class GitCommitCommand implements GitSubcommand {
 
   async execute(args: string[], cwd: string): Promise<ShellCommandResult> {
     try {
-      // Check if we're in a git repository
       try {
         await this.fs.stat(`${cwd}/.git`);
       } catch {
         return createErrorResult('fatal: not a git repository (or any of the parent directories): .git');
       }
 
-      const { options, message } = await this.parseArgs(args, cwd);
+      const parsed = parseArgs(args, {
+        flags: {
+          a: 'all', all: 'all', q: 'quiet', quiet: 'quiet', v: 'verbose', verbose: 'verbose',
+          amend: 'amend', edit: 'edit', e: 'edit', 'allow-empty': 'allowEmpty', 'allow-empty-message': 'allowEmptyMessage',
+          s: 'signoff', signoff: 'signoff', n: 'noVerify', 'no-verify': 'noVerify', verify: 'verify',
+          o: 'only', only: 'only', i: 'include', include: 'include', 'dry-run': 'dryRun',
+        },
+        values: {
+          m: 'message', message: 'message', F: 'file', file: 'file', author: 'author', date: 'date',
+          C: 'reuse', 'reuse-message': 'reuse', c: 'reuse', 'reedit-message': 'reuse', t: 'template', template: 'template',
+          cleanup: 'cleanup',
+        },
+      });
+      if (parsed.unknown.length > 0) {
+        return createErrorResult(unknownOption(parsed.unknown[0], this.usage));
+      }
 
-      if (!message && !options.amend && !options.reuseMessage) {
+      const quiet = parsed.has('quiet');
+      const amend = parsed.has('amend');
+      const pathspecs = parsed.rest;
+
+      // Resolve HEAD (absent in a new repository)
+      let headOid: string | undefined;
+      try {
+        headOid = await this.git.resolveRef({ dir: cwd, ref: 'HEAD' });
+      } catch {
+        headOid = undefined;
+      }
+      if (amend && !headOid) {
+        return createErrorResult('fatal: You have nothing to amend.');
+      }
+      const headCommit = headOid ? (await this.git.readCommit({ dir: cwd, oid: headOid })).commit : undefined;
+
+      // Build the message
+      const parts = [...parsed.getAll('message')];
+      for (const file of parsed.getAll('file')) {
+        try {
+          const path = file.startsWith('/') ? file : `${cwd}/${file}`;
+          parts.push((await this.fs.readFile(path, 'utf8')).replace(/\n+$/, ''));
+        } catch {
+          return createErrorResult(`fatal: could not read log file '${file}': No such file or directory`);
+        }
+      }
+      let message: string | undefined = parts.length > 0 ? parts.join('\n\n') : undefined;
+
+      let author: { name: string; email: string; timestamp?: number; timezoneOffset?: number } | undefined;
+      const reuse = parsed.get('reuse');
+      if (reuse !== undefined) {
+        try {
+          const oid = await resolveCommit(this.git, cwd, reuse);
+          const { commit } = await this.git.readCommit({ dir: cwd, oid });
+          message ??= commit.message;
+          author = commit.author;
+        } catch (error) {
+          if (error instanceof RevisionError) return createErrorResult(`fatal: could not lookup commit '${reuse}'`);
+          throw error;
+        }
+      }
+      if (message === undefined && amend && headCommit) {
+        message = headCommit.message;
+        author = headCommit.author;
+      }
+      if (message === undefined) {
+        message = await readMergeMessage(this.fs, cwd);
+      }
+      if (message === undefined || (!message.trim() && !parsed.has('allowEmptyMessage'))) {
         return createErrorResult('Aborting commit due to empty commit message.');
       }
 
-      // If -a flag is provided, stage all tracked files with modifications
-      if (options.addAll) {
-        await this.stageTrackedChanges(cwd);
+      const authorOverride = parsed.get('author');
+      if (authorOverride !== undefined) {
+        const match = authorOverride.match(/^(.+?)\s*<(.*)>\s*$/);
+        if (!match) return createErrorResult(`fatal: --author '${authorOverride}' is not 'Name <email>' and matches no existing author`);
+        author = { name: match[1].trim(), email: match[2].trim() };
       }
 
-      // Get current status
-      const statusMatrix = await this.git.statusMatrix({
+      if (parsed.has('signoff')) {
+        const name = await this.git.getConfig({ dir: cwd, path: 'user.name' });
+        const email = await this.git.getConfig({ dir: cwd, path: 'user.email' });
+        if (name && email) {
+          const line = `Signed-off-by: ${name} <${email}>`;
+          if (!message.includes(line)) message = `${message.replace(/\n+$/, '')}\n\n${line}`;
+        }
+      }
+
+      // Stage what was asked for
+      if (parsed.has('all') || pathspecs.length > 0) {
+        const staged = await this.stageTracked(cwd, pathspecs);
+        if (pathspecs.length > 0 && staged === 0) {
+          return createErrorResult(`error: pathspec '${pathspecs[0]}' did not match any file(s) known to git`);
+        }
+      }
+
+      // Compare the index with the parent tree
+      const parentTree = amend ? (headCommit!.parent[0] ? (await this.git.readCommit({ dir: cwd, oid: headCommit!.parent[0] })).commit.tree : null) : headCommit?.tree ?? null;
+      const before = await treeSnapshot(this.git, cwd, parentTree);
+      const index = await indexSnapshot(this.git, cwd);
+      const changes = compareSnapshots(before, index);
+      const headChanges = headCommit ? compareSnapshots(await treeSnapshot(this.git, cwd, headCommit.tree), index) : changes;
+
+      const mergeHead = amend ? undefined : await readMergeHead(this.fs, cwd);
+      if (mergeHead && pathspecs.length > 0) {
+        return createErrorResult('fatal: cannot do a partial commit during a merge.');
+      }
+
+      if (!amend && !mergeHead && headChanges.length === 0 && !parsed.has('allowEmpty')) {
+        return createErrorResult(await this.nothingToCommit(cwd, index));
+      }
+
+      if (parsed.has('dryRun')) {
+        return createSuccessResult(changes.map((c) => `\t${c.status === 'A' ? 'new file' : c.status === 'D' ? 'deleted' : 'modified'}:   ${c.path}\n`).join(''));
+      }
+
+      const oid = await this.git.commit({
         dir: cwd,
+        message: message.endsWith('\n') ? message : `${message}\n`,
+        ...(author ? { author } : {}),
+        ...(amend ? { amend: true } : {}),
+        ...(mergeHead && headOid ? { parent: [headOid, mergeHead] } : {}),
       });
+      await clearSequencerState(this.fs, cwd);
 
-      // Check for staged changes
-      const stagedFiles = statusMatrix.filter(([, headStatus, , stageStatus]) => {
-        return headStatus !== stageStatus;
-      });
+      if (quiet) return createSuccessResult('');
 
-      if (stagedFiles.length === 0 && !options.allowEmpty && !options.amend) {
-        return createErrorResult('nothing to commit, working tree clean');
+      const branch = (await this.git.currentBranch({ dir: cwd })) || 'detached HEAD';
+      const subject = message.trim().split('\n')[0];
+      const root = !headOid || (amend && !headCommit?.parent.length) ? ' (root-commit)' : '';
+      let out = `[${branch}${root} ${abbrev(oid)}] ${subject}\n`;
+
+      let added = 0;
+      let removed = 0;
+      for (const change of changes) {
+        const counts = countLines(await readVersion(this.git, cwd, change.old), await readVersion(this.git, cwd, change.new));
+        added += counts?.added ?? 0;
+        removed += counts?.removed ?? 0;
       }
-
-      let commitMessage = message;
-      if (options.amend || options.reuseMessage) {
-        // Get the last commit message if amending or reusing
-        try {
-          const logOpts: { dir: string; depth: number; ref?: string } = {
-            dir: cwd,
-            depth: 1,
-          };
-          if (options.reuseMessage) {
-            logOpts.ref = options.reuseMessage;
-          }
-          const commits = await this.git.log(logOpts);
-          if (commits.length > 0 && !message) {
-            commitMessage = commits[0].commit.message;
-          }
-        } catch {
-          // If we can't get the last commit, use the provided message or default
-          if (!commitMessage) {
-            commitMessage = 'Amended commit';
-          }
-        }
+      out += formatSummary(changes.length, added, removed) + '\n';
+      for (const change of changes) {
+        if (change.status === 'A') out += ` create mode ${change.new!.mode} ${change.path}\n`;
+        else if (change.status === 'D') out += ` delete mode ${change.old!.mode} ${change.path}\n`;
       }
-
-      // Append sign-off if requested
-      if (options.signoff && commitMessage) {
-        const signoff = await this.buildSignoff(cwd, options.author);
-        if (signoff && !commitMessage.includes(signoff)) {
-          commitMessage = commitMessage.replace(/\n+$/, '') + `\n\nSigned-off-by: ${signoff}\n`;
-        }
-      }
-
-      // Get current branch
-      let currentBranch = 'main';
-      try {
-        currentBranch = await this.git.currentBranch({
-          dir: cwd,
-        }) || 'main';
-      } catch {
-        // Use default
-      }
-
-      // Create the commit
-      const commitOptions: {
-        dir: string;
-        message: string;
-        parent?: string[];
-        author?: { name: string; email: string };
-      } = {
-        dir: cwd,
-        message: commitMessage || 'Empty commit',
-      };
-
-      if (options.author) {
-        const parsed = this.parseAuthor(options.author);
-        if (parsed) {
-          commitOptions.author = parsed;
-        }
-      }
-
-      if (options.amend) {
-        // For amend, we need to reset to the parent of the current commit
-        try {
-          const commits = await this.git.log({
-            dir: cwd,
-            depth: 2,
-          });
-          if (commits.length > 1) {
-            commitOptions.parent = [commits[1].oid];
-          }
-        } catch {
-          // If we can't get parent, proceed without amending
-        }
-      }
-
-      const commitSha = await this.git.commit(commitOptions);
-
-      // Get short hash
-      const shortHash = commitSha.substring(0, 7);
-
-      // Count changes (status matrix values: 0=absent, 1=unchanged from HEAD, 2=differs from HEAD)
-      const addedFiles = stagedFiles.filter(([, headStatus, , stageStatus]) =>
-        headStatus === 0 && stageStatus === 2
-      ).length;
-
-      const modifiedFiles = stagedFiles.filter(([, headStatus, , stageStatus]) =>
-        headStatus === 1 && stageStatus === 2
-      ).length;
-
-      const deletedFiles = stagedFiles.filter(([, headStatus, , stageStatus]) =>
-        headStatus === 1 && stageStatus === 0
-      ).length;
-
-      const totalFiles = stagedFiles.length;
-
-      let result = `[${currentBranch} ${shortHash}] ${commitMessage}\n`;
-
-      if (totalFiles > 0) {
-        const changes: string[] = [];
-        if (addedFiles > 0) changes.push(`${addedFiles} file${addedFiles !== 1 ? 's' : ''} added`);
-        if (modifiedFiles > 0) changes.push(`${modifiedFiles} file${modifiedFiles !== 1 ? 's' : ''} changed`);
-        if (deletedFiles > 0) changes.push(`${deletedFiles} file${deletedFiles !== 1 ? 's' : ''} deleted`);
-
-        result += ` ${changes.join(', ')}\n`;
-      }
-
-      return createSuccessResult(result);
-
+      return createSuccessResult(out);
     } catch (error) {
       return createErrorResult(`git commit: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
-  /**
-   * Stage all tracked files with modifications
-   * This is used when the -a flag is provided
-   */
-  private async  stageTrackedChanges(cwd: string): Promise<void>  {
-    try {
-      // Get the status matrix
-      const statusMatrix = await this.git.statusMatrix({
-        dir: cwd,
-      });
-
-      // Process each file based on its status
-      for (const [filepath, headStatus, workdirStatus] of statusMatrix) {
-        // Only process tracked files (headStatus === 1) with changes
-        if (headStatus === 1 && workdirStatus !== headStatus) {
-          if (workdirStatus === 0) {
-            // File was deleted, use remove
-            await this.git.remove({
-              dir: cwd,
-              filepath,
-            });
-          } else {
-            // File was modified, use add
-            await this.git.add({
-              dir: cwd,
-              filepath,
-            });
-          }
-        }
+  /** Stage modifications and deletions of tracked files (optionally limited to pathspecs). */
+  private async stageTracked(cwd: string, pathspecs: string[]): Promise<number> {
+    // Compare contents rather than trusting statusMatrix, whose stat cache
+    // misses same-size edits made within a second of the last index update.
+    const index = await indexSnapshot(this.git, cwd);
+    const workdir = await workdirSnapshot(this.git, this.fs, cwd, index);
+    let matched = 0;
+    for (const [filepath, version] of index) {
+      if (!matchesPathspec(filepath, pathspecs)) continue;
+      matched++;
+      const current = workdir.get(filepath);
+      if (!current) {
+        await this.git.remove({ dir: cwd, filepath });
+      } else if (current.oid !== version.oid) {
+        await this.git.add({ dir: cwd, filepath });
       }
-    } catch (error) {
-      throw new Error(`Failed to stage tracked changes: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
+    return matched;
   }
 
-  private async parseArgs(args: string[], cwd: string): Promise<{
-    options: {
-      amend: boolean;
-      allowEmpty: boolean;
-      addAll: boolean;
-      signoff: boolean;
-      noVerify: boolean;
-      author?: string;
-      reuseMessage?: string;
-    };
-    message?: string;
-  }> {
-    const options: {
-      amend: boolean;
-      allowEmpty: boolean;
-      addAll: boolean;
-      signoff: boolean;
-      noVerify: boolean;
-      author?: string;
-      reuseMessage?: string;
-    } = {
-      amend: false,
-      allowEmpty: false,
-      addAll: false,
-      signoff: false,
-      noVerify: false,
-    };
-    const messageParts: string[] = [];
-
-    for (let i = 0; i < args.length; i++) {
-      const arg = args[i];
-
-      if (arg === '-m' || arg === '--message') {
-        if (i + 1 < args.length) {
-          messageParts.push(args[i + 1]);
-          i++; // Skip next argument as it's the message
-        }
-      } else if (arg.startsWith('-m=')) {
-        messageParts.push(arg.substring(3));
-      } else if (arg.startsWith('--message=')) {
-        messageParts.push(arg.substring(10));
-      } else if (arg === '-F' || arg === '--file') {
-        if (i + 1 < args.length) {
-          const filePath = args[i + 1];
-          try {
-            const content = await this.fs.readFile(
-              filePath.startsWith('/') ? filePath : `${cwd}/${filePath}`,
-              'utf8'
-            );
-            messageParts.push(content.replace(/\n+$/, ''));
-          } catch {
-            // Ignore if file can't be read
-          }
-          i++;
-        }
-      } else if (arg.startsWith('--file=')) {
-        const filePath = arg.substring(7);
-        try {
-          const content = await this.fs.readFile(
-            filePath.startsWith('/') ? filePath : `${cwd}/${filePath}`,
-            'utf8'
-          );
-          messageParts.push(content.replace(/\n+$/, ''));
-        } catch {
-          // Ignore
-        }
-      } else if (arg === '--amend') {
-        options.amend = true;
-      } else if (arg === '--allow-empty') {
-        options.allowEmpty = true;
-      } else if (arg === '-a' || arg === '--all') {
-        options.addAll = true;
-      } else if (arg === '-am' || arg === '-ma') {
-        options.addAll = true;
-        if (i + 1 < args.length) {
-          messageParts.push(args[i + 1]);
-          i++;
-        }
-      } else if (arg === '-s' || arg === '--signoff') {
-        options.signoff = true;
-      } else if (arg === '--no-verify' || arg === '-n') {
-        // --no-verify skips pre-commit / commit-msg hooks; we don't run hooks anyway
-        options.noVerify = true;
-      } else if (arg === '--author') {
-        if (i + 1 < args.length) {
-          options.author = args[i + 1];
-          i++;
-        }
-      } else if (arg.startsWith('--author=')) {
-        options.author = arg.substring(9);
-      } else if (arg === '-C' || arg === '--reuse-message') {
-        if (i + 1 < args.length) {
-          options.reuseMessage = args[i + 1];
-          i++;
-        }
-      } else if (arg.startsWith('--reuse-message=')) {
-        options.reuseMessage = arg.substring(16);
-      }
+  private async nothingToCommit(cwd: string, index: Awaited<ReturnType<typeof indexSnapshot>>): Promise<string> {
+    const workdir = await workdirSnapshot(this.git, this.fs, cwd, index);
+    const unstaged = compareSnapshots(index, workdir);
+    const branch = (await this.git.currentBranch({ dir: cwd })) || 'HEAD';
+    if (unstaged.length > 0) {
+      const lines = unstaged.map((c) => `\t${c.status === 'D' ? 'deleted' : 'modified'}:   ${c.path}`);
+      return `On branch ${branch}\nChanges not staged for commit:\n${lines.join('\n')}\n\nno changes added to commit (use "git add" and/or "git commit -a")`;
     }
-
-    // Multiple -m flags are joined with double newlines (standard git behavior)
-    const message = messageParts.length > 0 ? messageParts.join('\n\n') : undefined;
-
-    return { options, message };
-  }
-
-  /**
-   * Parse an author string like "Name <email@example.com>"
-   */
-  private parseAuthor(author: string): { name: string; email: string } | null {
-    const match = author.match(/^(.+?)\s*<(.+?)>\s*$/);
-    if (match) {
-      return { name: match[1].trim(), email: match[2].trim() };
+    const untracked = (await this.git.statusMatrix({ dir: cwd })).some(([, head, , stage]) => head === 0 && stage === 0);
+    if (untracked) {
+      return `On branch ${branch}\nnothing added to commit but untracked files present (use "git add" to track)`;
     }
-    return null;
-  }
-
-  /**
-   * Build a Signed-off-by line from the current user config or the provided author
-   */
-  private async buildSignoff(cwd: string, authorOverride?: string): Promise<string | null> {
-    if (authorOverride) {
-      const parsed = this.parseAuthor(authorOverride);
-      if (parsed) {
-        return `${parsed.name} <${parsed.email}>`;
-      }
-    }
-    try {
-      const name = await this.git.getConfig({ dir: cwd, path: 'user.name' });
-      const email = await this.git.getConfig({ dir: cwd, path: 'user.email' });
-      if (name && email) {
-        return `${name} <${email}>`;
-      }
-    } catch {
-      // Ignore
-    }
-    return null;
+    return `On branch ${branch}\nnothing to commit, working tree clean`;
   }
 }

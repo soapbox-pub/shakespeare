@@ -1,97 +1,58 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { GitRmCommand } from './rm';
-import type { Git } from '../../git';
-import type { JSRuntimeFS } from '../../JSRuntime';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { createGitShell, type GitShell } from '@/test/gitShell';
 
-const createMockFS = () => {
-  const files = new Map<string, string>();
-  const dirs = new Set(['/test-repo', '/test-repo/subdir']);
-  files.set('/test-repo/file1.txt', 'contents');
-  files.set('/test-repo/subdir/nested.txt', 'nested');
+describe('git rm', () => {
+  let sh: GitShell;
 
-  return {
-    stat: vi.fn(async (path: string) => {
-      if (path.endsWith('/.git') || dirs.has(path)) {
-        return { isDirectory: () => true, isFile: () => false };
-      }
-      if (files.has(path)) {
-        return { isDirectory: () => false, isFile: () => true };
-      }
-      throw new Error('ENOENT');
-    }),
-    readdir: vi.fn(async (path: string) => {
-      if (path === '/test-repo/subdir') {
-        return [{ name: 'nested.txt', isDirectory: () => false, isFile: () => true }];
-      }
-      return [];
-    }),
-    unlink: vi.fn(async (path: string) => {
-      files.delete(path);
-    }),
-    _files: files,
-  } as unknown as JSRuntimeFS & { _files: Map<string, string> };
-};
-
-describe('GitRmCommand', () => {
-  let rmCommand: GitRmCommand;
-  let mockGit: Git;
-  let mockFS: JSRuntimeFS & { _files: Map<string, string> };
-
-  beforeEach(() => {
-    mockFS = createMockFS() as JSRuntimeFS & { _files: Map<string, string> };
-    mockGit = {
-      remove: vi.fn(async () => {}),
-    } as unknown as Git;
-    rmCommand = new GitRmCommand({ git: mockGit, fs: mockFS });
+  beforeEach(async () => {
+    sh = await createGitShell();
+    await sh.ok('git init -q && echo a > a.txt && mkdir -p d/e && echo f > d/f && echo g > d/e/g && git add -A && git commit -qm first');
   });
 
-  it('should fail without pathspec', async () => {
-    const result = await rmCommand.execute([], '/test-repo');
-    expect(result.exitCode).toBe(1);
-    expect(result.stderr).toContain('No pathspec');
+  afterEach(() => sh.dispose());
+
+  it('removes files from the index and working tree', async () => {
+    expect(await sh.ok('git rm a.txt')).toBe("rm 'a.txt'\n");
+    expect(await sh.run('cat a.txt')).toMatch(/No such file/);
+    expect(await sh.ok('git status -s')).toBe('D  a.txt\n');
   });
 
-  it('should fail when not in a git repo', async () => {
-    const mockFSNoGit = {
-      stat: async () => { throw new Error('ENOENT'); },
-    } as unknown as JSRuntimeFS;
-    const cmd = new GitRmCommand({ git: mockGit, fs: mockFSNoGit });
-    const result = await cmd.execute(['foo.txt'], '/not-a-repo');
-    expect(result.exitCode).toBe(1);
-    expect(result.stderr).toContain('not a git repository');
+  it('keeps the file with --cached', async () => {
+    expect(await sh.ok('git rm -q --cached a.txt')).toBe('(no output)');
+    expect(await sh.read('a.txt')).toBe('a\n');
+    expect(await sh.ok('git status -s')).toBe('D  a.txt\n?? a.txt\n');
   });
 
-  it('should remove a file from working tree and index', async () => {
-    const result = await rmCommand.execute(['file1.txt'], '/test-repo');
-    expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain("rm 'file1.txt'");
-    expect(mockGit.remove).toHaveBeenCalledWith({ dir: '/test-repo', filepath: 'file1.txt' });
-    expect(mockFS.unlink).toHaveBeenCalled();
+  it('needs -r for directories', async () => {
+    expect(await sh.run('git rm d')).toBe("fatal: not removing 'd' recursively without -r\nExit code: 128");
+    expect(await sh.ok('git rm -r d')).toBe("rm 'd/e/g'\nrm 'd/f'\n");
+    expect(await sh.run('ls d')).toMatch(/No such file/);
   });
 
-  it('should only remove from index with --cached', async () => {
-    const result = await rmCommand.execute(['--cached', 'file1.txt'], '/test-repo');
-    expect(result.exitCode).toBe(0);
-    expect(mockGit.remove).toHaveBeenCalled();
-    expect(mockFS.unlink).not.toHaveBeenCalled();
+  it('matches globs and supports --dry-run', async () => {
+    expect(await sh.ok("git rm -n 'd/*'")).toBe("rm 'd/e/g'\nrm 'd/f'\n");
+    expect(await sh.ok('git status -s')).toBe('(no output)');
   });
 
-  it('should not remove files with --dry-run', async () => {
-    const result = await rmCommand.execute(['-n', 'file1.txt'], '/test-repo');
-    expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain("rm 'file1.txt'");
-    expect(mockGit.remove).not.toHaveBeenCalled();
+  it('protects local and staged changes unless forced', async () => {
+    await sh.ok('echo m >> a.txt');
+    expect(await sh.run('git rm a.txt')).toBe(
+      'error: the following file has local modifications:\n    a.txt\n(use --cached to keep the file, or -f to force removal)\nExit code: 1',
+    );
+    await sh.ok('git add a.txt');
+    expect(await sh.run('git rm a.txt')).toBe(
+      'error: the following file has changes staged in the index:\n    a.txt\n(use --cached to keep the file, or -f to force removal)\nExit code: 1',
+    );
+    await sh.ok('echo z >> a.txt');
+    expect(await sh.run('git rm --cached a.txt')).toBe(
+      'error: the following file has staged content different from both the\nfile and the HEAD:\n    a.txt\n(use -f to force removal)\nExit code: 1',
+    );
+    await sh.ok('git rm -qf a.txt');
+    expect(await sh.ok('git status -s')).toBe('D  a.txt\n');
   });
 
-  it('should require -r for directories', async () => {
-    const result = await rmCommand.execute(['subdir'], '/test-repo');
-    expect(result.exitCode).toBe(1);
-    expect(result.stderr).toContain('-r');
-  });
-
-  it('should remove directory recursively with -r', async () => {
-    const result = await rmCommand.execute(['-r', 'subdir'], '/test-repo');
-    expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain('subdir/nested.txt');
+  it('reports unmatched pathspecs', async () => {
+    expect(await sh.run('git rm nope')).toBe("fatal: pathspec 'nope' did not match any files\nExit code: 128");
+    expect(await sh.ok('git rm --ignore-unmatch nope')).toBe('(no output)');
   });
 });

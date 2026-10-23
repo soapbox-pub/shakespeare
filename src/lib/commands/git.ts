@@ -31,6 +31,16 @@ import { GitMergeCommand } from "./git/merge";
 import { GitRevertCommand } from "./git/revert";
 import { GitRevParseCommand } from "./git/rev-parse";
 import { GitLsFilesCommand } from "./git/ls-files";
+import { GitCleanCommand } from "./git/clean";
+import { GitGrepCommand } from "./git/grep";
+import { GitBlameCommand } from "./git/blame";
+import { GitDescribeCommand } from "./git/describe";
+import { GitShortlogCommand } from "./git/shortlog";
+import { GitCherryPickCommand } from "./git/cherry-pick";
+import { GitCatFileCommand } from "./git/cat-file";
+import { GitLsTreeCommand } from "./git/ls-tree";
+import { GitMergeBaseCommand } from "./git/merge-base";
+import { GitRevListCommand } from "./git/rev-list";
 
 export interface GitSubcommand {
   name: string;
@@ -107,6 +117,16 @@ export class GitCommand implements ShellCommand {
     this.registerSubcommand(new GitRevertCommand(subcommandOptions));
     this.registerSubcommand(new GitRevParseCommand(subcommandOptions));
     this.registerSubcommand(new GitLsFilesCommand(subcommandOptions));
+    this.registerSubcommand(new GitCleanCommand(subcommandOptions));
+    this.registerSubcommand(new GitGrepCommand(subcommandOptions));
+    this.registerSubcommand(new GitBlameCommand(subcommandOptions));
+    this.registerSubcommand(new GitDescribeCommand(subcommandOptions));
+    this.registerSubcommand(new GitShortlogCommand(subcommandOptions));
+    this.registerSubcommand(new GitCherryPickCommand(subcommandOptions));
+    this.registerSubcommand(new GitCatFileCommand(subcommandOptions));
+    this.registerSubcommand(new GitLsTreeCommand(subcommandOptions));
+    this.registerSubcommand(new GitMergeBaseCommand(subcommandOptions));
+    this.registerSubcommand(new GitRevListCommand(subcommandOptions));
   }
 
   private registerSubcommand(subcommand: GitSubcommand): void {
@@ -154,6 +174,7 @@ start a working area (see also: git help tutorial)
 
 work on the current change (see also: git help everyday)
    add        Add file contents to the index
+   clean      Remove untracked files from the working tree
    mv         Move or rename a file, a directory, or a symlink
    restore    Restore working tree files
    rm         Remove files from the working tree and from the index
@@ -161,14 +182,19 @@ work on the current change (see also: git help everyday)
    stash      Stash the changes in a dirty working directory away
 
 examine the history and state (see also: git help revisions)
+   blame      Show what revision and author last modified each line of a file
+   describe   Give an object a human readable name based on an available ref
+   diff       Show changes between commits, commit and working tree, etc
+   grep       Print lines matching a pattern
    log        Show commit logs
    ls-files   Show information about files in the index and the working tree
+   shortlog   Summarize git log output
    show       Show various types of objects
    status     Show the working tree status
-   diff       Show changes between commits, commit and working tree, etc
 
 grow, mark and tweak your common history
    branch     List, create, or delete branches
+   cherry-pick  Apply the changes introduced by some existing commits
    checkout   Switch branches or restore working tree files
    commit     Record changes to the repository
    merge      Join two or more development histories together
@@ -185,6 +211,10 @@ collaborate (see also: git help workflows)
 
 configuration and low-level
    config     Get and set repository or global options
+   cat-file   Provide contents or details of repository objects
+   ls-tree    List the contents of a tree object
+   merge-base Find as good common ancestors as possible for a merge
+   rev-list   Lists commit objects in reverse chronological order
    rev-parse  Pick out and massage parameters
 
 'git help -a' and 'git help -g' list available subcommands and some

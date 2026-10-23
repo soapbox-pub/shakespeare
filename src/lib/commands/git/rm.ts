@@ -1,14 +1,15 @@
-import { join, isAbsolute, relative } from "path-browserify";
 import type { JSRuntimeFS } from "../../JSRuntime";
 import type { ShellCommandResult } from "../ShellCommand";
-import { createSuccessResult, createErrorResult } from "../ShellCommand";
+import { createErrorResult } from "../ShellCommand";
 import type { GitSubcommand, GitSubcommandOptions } from "../git";
 import type { Git } from "../../git";
+import { parseArgs, unknownOption } from "./args";
+import { NOT_A_REPO, fatal, isRepo, matchesAny, normalizePathspecs, output, readStatus, removeWorktreeFile } from "./worktree";
 
 export class GitRmCommand implements GitSubcommand {
   name = 'rm';
   description = 'Remove files from the working tree and from the index';
-  usage = 'git rm [-f | --force] [-r] [--cached] [--dry-run | -n] [--] <file>...';
+  usage = 'git rm [-f | --force] [-n] [-r] [--cached] [--ignore-unmatch] [--quiet] [--] <pathspec>...';
 
   private git: Git;
   private fs: JSRuntimeFS;
@@ -20,138 +21,82 @@ export class GitRmCommand implements GitSubcommand {
 
   async execute(args: string[], cwd: string): Promise<ShellCommandResult> {
     try {
-      try {
-        await this.fs.stat(`${cwd}/.git`);
-      } catch {
-        return createErrorResult('fatal: not a git repository (or any of the parent directories): .git');
+      if (!(await isRepo(this.fs, cwd))) return fatal(NOT_A_REPO);
+
+      const parsed = parseArgs(args, {
+        flags: {
+          f: 'force', force: 'force', n: 'dryRun', 'dry-run': 'dryRun', r: 'recursive', R: 'recursive', recursive: 'recursive',
+          cached: 'cached', 'ignore-unmatch': 'ignoreUnmatch', q: 'quiet', quiet: 'quiet', sparse: 'sparse',
+        },
+      });
+      if (parsed.unknown.length > 0) {
+        return createErrorResult(unknownOption(parsed.unknown[0], this.usage), 129);
       }
 
-      const { paths, options } = this.parseArgs(args);
-
+      const paths = parsed.rest;
       if (paths.length === 0) {
-        return createErrorResult('fatal: No pathspec was given. Which files should I remove?');
+        return createErrorResult(`usage: ${this.usage}`, 129);
+      }
+      const normalized = normalizePathspecs(cwd, paths);
+      if ('error' in normalized) return normalized.error;
+
+      const force = parsed.has('force');
+      const cached = parsed.has('cached');
+      const recursive = parsed.has('recursive');
+
+      const status = (await readStatus(this.git, this.fs, cwd)).filter((s) => s.inIndex);
+
+      const targets = new Set<string>();
+      for (let i = 0; i < normalized.specs.length; i++) {
+        const spec = normalized.specs[i];
+        const hits = status.filter((s) => matchesAny(s.path, spec));
+        if (hits.length === 0) {
+          if (parsed.has('ignoreUnmatch')) continue;
+          return fatal(`pathspec '${paths[i]}' did not match any files`);
+        }
+        const isGlob = /[*?[]/.test(spec);
+        if (!recursive && !isGlob && !hits.some((s) => s.path === spec)) {
+          return fatal(`not removing '${paths[i]}' recursively without -r`);
+        }
+        for (const s of hits) targets.add(s.path);
       }
 
-      const removed: string[] = [];
-      const errors: string[] = [];
-
-      for (const path of paths) {
-        const normalized = this.normalizePath(path, cwd);
-        if (normalized === null) {
-          errors.push(`fatal: ${path}: '${path}' is outside repository`);
-          continue;
+      if (!force) {
+        const both: string[] = [];
+        const staged: string[] = [];
+        const local: string[] = [];
+        for (const s of status) {
+          if (!targets.has(s.path)) continue;
+          const stagedChange = s.staged !== ' ';
+          const localChange = s.unstaged === 'M';
+          if (stagedChange && localChange) both.push(s.path);
+          else if (!cached && stagedChange) staged.push(s.path);
+          else if (!cached && localChange) local.push(s.path);
         }
-
-        const absPath = join(cwd, normalized);
-
-        let isDir = false;
-        try {
-          const stats = await this.fs.stat(absPath);
-          isDir = stats.isDirectory();
-        } catch {
-          // File doesn't exist on disk - might still be in index
+        const errors: string[] = [];
+        const list = (files: string[]) => files.map((f) => `    ${f}\n`).join('');
+        if (both.length > 0) {
+          errors.push(`error: the following ${both.length === 1 ? 'file has' : 'files have'} staged content different from both the\nfile and the HEAD:\n${list(both)}(use -f to force removal)\n`);
         }
-
-        if (isDir && !options.recursive) {
-          errors.push(`fatal: not removing '${path}' recursively without -r`);
-          continue;
+        if (staged.length > 0) {
+          errors.push(`error: the following ${staged.length === 1 ? 'file has' : 'files have'} changes staged in the index:\n${list(staged)}(use --cached to keep the file, or -f to force removal)\n`);
         }
-
-        const filesToRemove: string[] = [];
-        if (isDir) {
-          // Collect all files in the directory
-          await this.collectFiles(absPath, normalized, filesToRemove);
-        } else {
-          filesToRemove.push(normalized);
+        if (local.length > 0) {
+          errors.push(`error: the following ${local.length === 1 ? 'file has' : 'files have'} local modifications:\n${list(local)}(use --cached to keep the file, or -f to force removal)\n`);
         }
-
-        for (const file of filesToRemove) {
-          try {
-            if (!options.dryRun) {
-              // Remove from index
-              await this.git.remove({ dir: cwd, filepath: file });
-              // Remove from working tree unless --cached
-              if (!options.cached) {
-                try {
-                  await this.fs.unlink(join(cwd, file));
-                } catch {
-                  // File might not exist on disk
-                }
-              }
-            }
-            removed.push(file);
-          } catch {
-            errors.push(`fatal: pathspec '${file}' did not match any files`);
-          }
-        }
+        if (errors.length > 0) return createErrorResult(errors.join(''));
       }
 
-      if (errors.length > 0 && removed.length === 0) {
-        return createErrorResult(errors.join('\n'));
+      const removed = [...targets].sort();
+      if (!parsed.has('dryRun')) {
+        for (const path of removed) {
+          await this.git.remove({ dir: cwd, filepath: path });
+          if (!cached) await removeWorktreeFile(this.fs, cwd, path);
+        }
       }
-
-      const output = removed.map(f => `rm '${f}'`).join('\n');
-      return createSuccessResult(output + (output ? '\n' : ''));
+      return output(parsed.has('quiet') ? '' : removed.map((p) => `rm '${p}'\n`).join(''));
     } catch (error) {
       return createErrorResult(`git rm: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
-  }
-
-  private async collectFiles(absPath: string, relPath: string, out: string[]): Promise<void> {
-    try {
-      const entries = await this.fs.readdir(absPath, { withFileTypes: true });
-      for (const entry of entries) {
-        if (entry.name === '.git') continue;
-        const entryAbs = join(absPath, entry.name);
-        const entryRel = join(relPath, entry.name);
-        if (entry.isDirectory()) {
-          await this.collectFiles(entryAbs, entryRel, out);
-        } else {
-          out.push(entryRel);
-        }
-      }
-    } catch {
-      // Ignore
-    }
-  }
-
-  private normalizePath(path: string, cwd: string): string | null {
-    if (isAbsolute(path)) {
-      if (!path.startsWith(cwd)) return null;
-      const rel = relative(cwd, path);
-      return rel || '.';
-    }
-    return path;
-  }
-
-  private parseArgs(args: string[]): {
-    paths: string[];
-    options: { force: boolean; recursive: boolean; cached: boolean; dryRun: boolean };
-  } {
-    const options = { force: false, recursive: false, cached: false, dryRun: false };
-    const paths: string[] = [];
-    let foundDoubleDash = false;
-
-    for (const arg of args) {
-      if (arg === '--') {
-        foundDoubleDash = true;
-        continue;
-      }
-      if (foundDoubleDash) {
-        paths.push(arg);
-      } else if (arg === '-f' || arg === '--force') {
-        options.force = true;
-      } else if (arg === '-r' || arg === '-R') {
-        options.recursive = true;
-      } else if (arg === '--cached') {
-        options.cached = true;
-      } else if (arg === '-n' || arg === '--dry-run') {
-        options.dryRun = true;
-      } else if (!arg.startsWith('-')) {
-        paths.push(arg);
-      }
-    }
-
-    return { paths, options };
   }
 }

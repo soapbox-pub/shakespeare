@@ -1,82 +1,49 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { GitLsFilesCommand } from './ls-files';
-import type { Git } from '../../git';
-import type { JSRuntimeFS } from '../../JSRuntime';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { createGitShell, type GitShell } from '@/test/gitShell';
 
-const mockFS = {
-  stat: async (path: string) => {
-    if (path.endsWith('/.git')) {
-      return { isDirectory: () => true };
-    }
-    throw new Error('File not found');
-  },
-} as unknown as JSRuntimeFS;
+describe('git ls-files', () => {
+  let sh: GitShell;
 
-describe('GitLsFilesCommand', () => {
-  let lsFilesCommand: GitLsFilesCommand;
-  let mockGit: Git;
-
-  beforeEach(() => {
-    mockGit = {
-      statusMatrix: vi.fn().mockResolvedValue([
-        // [filepath, headStatus, workdirStatus, stageStatus]
-        ['file1.txt', 1, 1, 1], // Tracked, unchanged
-        ['file2.txt', 1, 1, 1], // Tracked, unchanged
-      ]),
-      resolveRef: vi.fn().mockResolvedValue('abc123'),
-      readBlob: vi.fn().mockResolvedValue({ oid: 'blob1', blob: new Uint8Array() }),
-    } as unknown as Git;
-
-    lsFilesCommand = new GitLsFilesCommand({ git: mockGit, fs: mockFS });
+  beforeEach(async () => {
+    sh = await createGitShell();
+    await sh.ok('git init -q && echo a > a.txt && mkdir src && echo x > src/x.ts && echo y > src/y.ts && echo "*.log" > .gitignore && git add -A && git commit -qm first');
+    await sh.ok('echo m >> a.txt && rm src/x.ts && echo l > x.log && mkdir nd && echo f > nd/f');
   });
 
-  it('should list tracked files', async () => {
-    const result = await lsFilesCommand.execute([], '/test-repo');
-    expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain('file1.txt');
-    expect(result.stdout).toContain('file2.txt');
+  afterEach(() => sh.dispose());
+
+  it('lists cached files by default', async () => {
+    expect(await sh.ok('git ls-files')).toBe('.gitignore\na.txt\nsrc/x.ts\nsrc/y.ts\n');
+    expect(await sh.ok('git ls-files src')).toBe('src/x.ts\nsrc/y.ts\n');
+    expect(await sh.ok("git ls-files '*.ts'")).toBe('src/x.ts\nsrc/y.ts\n');
   });
 
-  it('should list modified files with -m', async () => {
-    mockGit.statusMatrix = vi.fn().mockResolvedValue([
-      ['file1.txt', 1, 2, 1], // Modified
-      ['file2.txt', 1, 1, 1], // Unchanged
-    ]);
-    const result = await lsFilesCommand.execute(['-m'], '/test-repo');
-    expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain('file1.txt');
-    expect(result.stdout).not.toContain('file2.txt');
+  it('lists modified and deleted files', async () => {
+    expect(await sh.ok('git ls-files -m')).toBe('a.txt\nsrc/x.ts\n');
+    expect(await sh.ok('git ls-files -d')).toBe('src/x.ts\n');
+    expect(await sh.ok('git ls-files -t -m -d')).toBe('C a.txt\nR src/x.ts\nC src/x.ts\n');
   });
 
-  it('should list untracked files with -o', async () => {
-    mockGit.statusMatrix = vi.fn().mockResolvedValue([
-      ['file1.txt', 1, 1, 1], // Tracked
-      ['untracked.txt', 0, 2, 0], // Untracked
-    ]);
-    const result = await lsFilesCommand.execute(['-o'], '/test-repo');
-    expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain('untracked.txt');
-    expect(result.stdout).not.toContain('file1.txt');
+  it('lists other files', async () => {
+    expect(await sh.ok('git ls-files -o')).toBe('nd/f\nx.log\n');
+    expect(await sh.ok('git ls-files -o --exclude-standard')).toBe('nd/f\n');
+    expect(await sh.ok('git ls-files -o --exclude-standard --directory')).toBe('nd/\n');
+    expect(await sh.ok('git ls-files -i -o --exclude-standard')).toBe('x.log\n');
   });
 
-  it('should list deleted files with -d', async () => {
-    mockGit.statusMatrix = vi.fn().mockResolvedValue([
-      ['deleted.txt', 1, 0, 1], // Deleted
-      ['file.txt', 1, 1, 1], // Unchanged
-    ]);
-    const result = await lsFilesCommand.execute(['-d'], '/test-repo');
-    expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain('deleted.txt');
-    expect(result.stdout).not.toContain('file.txt');
+  it('shows stage information', async () => {
+    expect(await sh.ok('git ls-files -s a.txt')).toMatch(/^100644 [0-9a-f]{40} 0\ta\.txt\n$/);
+    expect(await sh.ok("git ls-files --format='%(objectmode) %(path)' a.txt")).toBe('100644 a.txt\n');
   });
 
-  it('should fail when not in a git repo', async () => {
-    const mockFSNoGit = {
-      stat: async () => { throw new Error('ENOENT'); },
-    } as unknown as JSRuntimeFS;
-    const cmd = new GitLsFilesCommand({ git: mockGit, fs: mockFSNoGit });
-    const result = await cmd.execute([], '/not-a-repo');
-    expect(result.exitCode).toBe(1);
-    expect(result.stderr).toContain('not a git repository');
+  it('separates entries with NUL under -z', async () => {
+    expect(await sh.ok('git ls-files -z src')).toBe('src/x.ts\0src/y.ts\0');
+  });
+
+  it('fails --error-unmatch for unknown paths', async () => {
+    expect(await sh.run('git ls-files --error-unmatch nope')).toBe(
+      "error: pathspec 'nope' did not match any file(s) known to git\nDid you forget to 'git add'?\nExit code: 1",
+    );
+    expect(await sh.ok('git ls-files --error-unmatch a.txt')).toBe('a.txt\n');
   });
 });

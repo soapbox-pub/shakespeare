@@ -1,82 +1,51 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { GitSwitchCommand } from './switch';
-import type { Git } from '../../git';
-import type { JSRuntimeFS } from '../../JSRuntime';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { createGitShell, type GitShell } from '@/test/gitShell';
 
-const mockFS = {
-  stat: async (path: string) => {
-    if (path.endsWith('/.git')) return { isDirectory: () => true };
-    throw new Error('ENOENT');
-  },
-} as unknown as JSRuntimeFS;
+describe('git switch', () => {
+  let sh: GitShell;
 
-describe('GitSwitchCommand', () => {
-  let switchCommand: GitSwitchCommand;
-  let mockGit: Git;
-
-  beforeEach(() => {
-    mockGit = {
-      listBranches: vi.fn().mockResolvedValue(['main', 'other']),
-      currentBranch: vi.fn().mockResolvedValue('main'),
-      checkout: vi.fn(async () => {}),
-      branch: vi.fn(async () => {}),
-      deleteBranch: vi.fn(async () => {}),
-      resolveRef: vi.fn().mockResolvedValue('abc123'),
-      statusMatrix: vi.fn().mockResolvedValue([]),
-    } as unknown as Git;
-    switchCommand = new GitSwitchCommand({ git: mockGit, fs: mockFS });
+  beforeEach(async () => {
+    sh = await createGitShell();
+    await sh.ok('git init -q && echo a > a.txt && git add -A && git commit -qm first');
+    await sh.ok('echo b >> a.txt && git commit -qam second');
   });
 
-  it('should create and switch with -c', async () => {
-    vi.mocked(mockGit.listBranches).mockResolvedValue(['main']);
-    const result = await switchCommand.execute(['-c', 'feature'], '/test-repo');
-    expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain("Switched to a new branch 'feature'");
-    expect(mockGit.branch).toHaveBeenCalled();
+  afterEach(() => sh.dispose());
+
+  it('creates, switches and resets branches', async () => {
+    expect(await sh.ok('git switch -c feat')).toBe("Switched to a new branch 'feat'\n");
+    expect(await sh.ok('git switch main')).toBe("Switched to branch 'main'\n");
+    expect(await sh.ok('git switch main')).toBe("Already on 'main'\n");
+    expect(await sh.ok('git switch -C feat HEAD~1')).toBe("Switched to and reset branch 'feat'\n");
+    expect(await sh.read('a.txt')).toBe('a\n');
+    expect(await sh.ok('git switch -')).toBe("Switched to branch 'main'\n");
   });
 
-  it('should switch to existing branch', async () => {
-    const result = await switchCommand.execute(['other'], '/test-repo');
-    expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain("Switched to branch 'other'");
+  it('requires --detach for commits', async () => {
+    expect(await sh.run('git switch HEAD~1')).toBe(
+      "fatal: a branch is expected, got commit 'HEAD~1'\nhint: If you want to detach HEAD at the commit, try again with the --detach option.\nExit code: 128",
+    );
+    expect(await sh.ok('git switch --detach HEAD~1')).toMatch(/^HEAD is now at [0-9a-f]{7} first\n$/);
+    expect(await sh.ok('git switch -')).toMatch(/^Previous HEAD position was [0-9a-f]{7} first\nSwitched to branch 'main'\n$/);
   });
 
-  it('should fail for non-existent branch', async () => {
-    const result = await switchCommand.execute(['nonexistent'], '/test-repo');
-    expect(result.exitCode).toBe(1);
-    expect(result.stderr).toContain('invalid reference');
+  it('reports unknown references', async () => {
+    expect(await sh.run('git switch nope')).toBe('fatal: invalid reference: nope\nExit code: 128');
+    expect(await sh.run('git switch -c x nope')).toBe('fatal: invalid reference: nope\nExit code: 128');
+    expect(await sh.run('git switch')).toBe('fatal: missing branch or commit argument\nExit code: 128');
   });
 
-  it('should say already on branch', async () => {
-    const result = await switchCommand.execute(['main'], '/test-repo');
-    expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain("Already on 'main'");
+  it('protects local changes unless forced', async () => {
+    await sh.ok('git switch -q -c feat HEAD~1 && git switch -q main && echo dirty >> a.txt');
+    expect(await sh.run('git switch feat')).toMatch(/would be overwritten by checkout:\n\ta.txt\n[\s\S]*Exit code: 1/);
+    await sh.ok('git switch -q --discard-changes feat');
+    expect(await sh.read('a.txt')).toBe('a\n');
   });
 
-  it('should fail when not in a git repo', async () => {
-    const mockFSNoGit = {
-      stat: async () => { throw new Error('ENOENT'); },
-    } as unknown as JSRuntimeFS;
-    const cmd = new GitSwitchCommand({ git: mockGit, fs: mockFSNoGit });
-    const result = await cmd.execute(['main'], '/not-a-repo');
-    expect(result.exitCode).toBe(1);
-    expect(result.stderr).toContain('not a git repository');
-  });
-
-  it('should block switch with uncommitted changes', async () => {
-    vi.mocked(mockGit.statusMatrix).mockResolvedValue([
-      ['file.txt', 1, 2, 1],
-    ]);
-    const result = await switchCommand.execute(['other'], '/test-repo');
-    expect(result.exitCode).toBe(1);
-    expect(result.stderr).toContain('local changes');
-  });
-
-  it('should force switch with -f', async () => {
-    vi.mocked(mockGit.statusMatrix).mockResolvedValue([
-      ['file.txt', 1, 2, 1],
-    ]);
-    const result = await switchCommand.execute(['-f', 'other'], '/test-repo');
-    expect(result.exitCode).toBe(0);
+  it('creates a tracking branch from a remote-tracking one', async () => {
+    await sh.ok('git remote add origin https://example.com/r.git && mkdir -p .git/refs/remotes/origin && git rev-parse HEAD~1 > .git/refs/remotes/origin/topic');
+    expect(await sh.ok('git switch topic')).toBe(
+      "branch 'topic' set up to track 'origin/topic'.\nSwitched to a new branch 'topic'\nYour branch is up to date with 'origin/topic'.\n",
+    );
   });
 });

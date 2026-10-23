@@ -1,17 +1,17 @@
 import type { JSRuntimeFS } from "../../JSRuntime";
 import type { ShellCommandResult } from "../ShellCommand";
-import { createSuccessResult, createErrorResult } from "../ShellCommand";
+import { createErrorResult } from "../ShellCommand";
 import type { GitSubcommand, GitSubcommandOptions } from "../git";
 import type { Git } from "../../git";
+import { parseArgs, unknownOption } from "./args";
+import { resolveCommit, RevisionError } from "./revisions";
+import { createAndSwitch, detachAt, guessRemoteBranch, orphan, resolvePrevious, switchToBranch, type SwitchContext } from "./checkout";
+import { NOT_A_REPO, branchExists, fatal, isRepo } from "./worktree";
 
-/**
- * `git switch` is the modern replacement for `git checkout <branch>`.
- * Only switches branches; doesn't restore files.
- */
 export class GitSwitchCommand implements GitSubcommand {
   name = 'switch';
   description = 'Switch branches';
-  usage = 'git switch [-c | -C] [--detach] [--force] <branch> | git switch - (switch to previous branch)';
+  usage = 'git switch [<options>] [<branch>]';
 
   private git: Git;
   private fs: JSRuntimeFS;
@@ -23,113 +23,94 @@ export class GitSwitchCommand implements GitSubcommand {
 
   async execute(args: string[], cwd: string): Promise<ShellCommandResult> {
     try {
-      try {
-        await this.fs.stat(`${cwd}/.git`);
-      } catch {
-        return createErrorResult('fatal: not a git repository (or any of the parent directories): .git');
+      if (!(await isRepo(this.fs, cwd))) return fatal(NOT_A_REPO);
+
+      const parsed = parseArgs(args, {
+        flags: {
+          q: 'quiet', quiet: 'quiet', f: 'force', force: 'force', 'discard-changes': 'force',
+          d: 'detach', detach: 'detach', m: 'merge', merge: 'merge', t: 'track', track: 'track',
+          guess: 'guess', progress: 'progress', 'ignore-other-worktrees': 'ignoreOtherWorktrees',
+        },
+        values: { c: 'create', create: 'create', C: 'reset', 'force-create': 'reset', orphan: 'orphan', conflict: 'conflict' },
+      });
+      if (parsed.unknown.length > 0) {
+        return createErrorResult(unknownOption(parsed.unknown[0], this.usage), 129);
       }
 
-      const { target, startPoint, options } = this.parseArgs(args);
-
-      if (!target) {
-        return createErrorResult('fatal: missing branch or commit argument');
-      }
-
-      // Handle "switch to previous branch"
-      if (target === '-') {
-        return createErrorResult('fatal: switch to previous branch is not supported');
-      }
-
-      const branches = await this.git.listBranches({ dir: cwd });
-      const isBranch = branches.includes(target);
-
-      if (options.create || options.createOrReset) {
-        if (isBranch && !options.createOrReset) {
-          return createErrorResult(`fatal: A branch named '${target}' already exists.`);
+      const ctx: SwitchContext = { git: this.git, fs: this.fs, dir: cwd, force: parsed.has('force'), quiet: parsed.has('quiet') };
+      const positionals = [...parsed.rest];
+      if (positionals[0] === '-') {
+        const previous = await resolvePrevious(this.fs, cwd);
+        if (!previous) return fatal('invalid reference: @{-1}');
+        positionals[0] = previous;
+        if (!(await branchExists(this.git, cwd, previous))) {
+          return await this.detach(ctx, previous);
         }
+      }
 
-        if (isBranch && options.createOrReset) {
+      const createName = parsed.get('reset') ?? parsed.get('create');
+      if (createName !== undefined) {
+        if (positionals.length > 1) return fatal(`'${positionals[1]}' is not a commit and a branch '${createName}' cannot be created from it`);
+        if (positionals[0] !== undefined) {
           try {
-            await this.git.deleteBranch({ dir: cwd, ref: target });
+            await resolveCommit(this.git, cwd, positionals[0]);
           } catch {
-            // Continue
+            return fatal(`invalid reference: ${positionals[0]}`);
           }
         }
-
-        let startOid: string;
-        try {
-          startOid = await this.git.resolveRef({ dir: cwd, ref: startPoint || 'HEAD' });
-        } catch {
-          return createErrorResult(`fatal: invalid reference: ${startPoint || 'HEAD'}`);
-        }
-
-        await this.git.branch({ dir: cwd, ref: target, object: startOid });
-
-        await this.git.checkout({ dir: cwd, ref: target, force: options.force });
-
-        return createSuccessResult(`Switched to a new branch '${target}'\n`);
+        return await createAndSwitch(ctx, createName, positionals[0], { reset: parsed.has('reset'), noTrack: parsed.negated('track') });
       }
 
-      if (!isBranch && !options.detach) {
-        return createErrorResult(`fatal: invalid reference: ${target}`);
+      const orphanName = parsed.get('orphan');
+      if (orphanName !== undefined) return await orphan(ctx, orphanName);
+
+      if (parsed.has('detach')) return await this.detach(ctx, positionals[0] ?? 'HEAD');
+
+      if (positionals.length === 0) return fatal('missing branch or commit argument');
+      if (positionals.length > 1) return fatal(`only one reference expected, ${positionals.length} given.`);
+
+      const name = positionals[0];
+      if (await branchExists(this.git, cwd, name)) return await switchToBranch(ctx, name);
+
+      if (!parsed.negated('guess')) {
+        const remote = await guessRemoteBranch(this.git, cwd, name);
+        if (remote) return await createAndSwitch(ctx, name, remote, { reset: false });
       }
 
-      // Check for uncommitted changes unless --force
-      if (!options.force) {
-        const statusMatrix = await this.git.statusMatrix({ dir: cwd });
-        const hasChanges = statusMatrix.some(([, headStatus, workdirStatus, stageStatus]) => {
-          if (headStatus === 0 && stageStatus === 0) return false;
-          return headStatus !== workdirStatus || headStatus !== stageStatus;
-        });
-        if (hasChanges) {
-          return createErrorResult('error: Your local changes to the following files would be overwritten by checkout:\nPlease commit your changes or stash them before you switch branches.');
-        }
-      }
-
-      let currentBranch: string | null = null;
-      try {
-        currentBranch = await this.git.currentBranch({ dir: cwd }) || null;
-      } catch { /* empty */ }
-
-      if (isBranch && currentBranch === target) {
-        return createSuccessResult(`Already on '${target}'\n`);
-      }
-
-      await this.git.checkout({ dir: cwd, ref: target, force: options.force });
-
-      return createSuccessResult(isBranch
-        ? `Switched to branch '${target}'\n`
-        : `HEAD is now at ${target.substring(0, 7)}\n`);
+      return await this.notABranch(cwd, name);
     } catch (error) {
+      if (error instanceof RevisionError) return fatal(error.message);
       return createErrorResult(`git switch: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
-  private parseArgs(args: string[]): {
-    target?: string;
-    startPoint?: string;
-    options: { create: boolean; createOrReset: boolean; detach: boolean; force: boolean };
-  } {
-    const options = { create: false, createOrReset: false, detach: false, force: false };
-    const positionals: string[] = [];
-
-    for (let i = 0; i < args.length; i++) {
-      const arg = args[i];
-      if (arg === '-c' || arg === '--create') {
-        options.create = true;
-      } else if (arg === '-C' || arg === '--force-create') {
-        options.createOrReset = true;
-      } else if (arg === '--detach' || arg === '-d') {
-        options.detach = true;
-      } else if (arg === '--force' || arg === '-f' || arg === '--discard-changes') {
-        options.force = true;
-      } else if (!arg.startsWith('-')) {
-        positionals.push(arg);
-      }
+  private async detach(ctx: SwitchContext, spec: string): Promise<ShellCommandResult> {
+    let oid: string;
+    try {
+      oid = await resolveCommit(this.git, ctx.dir, spec);
+    } catch {
+      return fatal(`invalid reference: ${spec}`);
     }
+    return detachAt(ctx, spec, oid, false);
+  }
 
-    const target = positionals[0];
-    const startPoint = positionals[1];
-    return { target, startPoint, options };
+  private async notABranch(dir: string, name: string): Promise<ShellCommandResult> {
+    const hint = '\nhint: If you want to detach HEAD at the commit, try again with the --detach option.';
+    const isRef = async (ref: string) => {
+      try {
+        await this.git.resolveRef({ dir, ref });
+        return true;
+      } catch {
+        return false;
+      }
+    };
+    if (await isRef(`refs/tags/${name}`)) return fatal(`a branch is expected, got tag '${name}'${hint}`);
+    if (await isRef(`refs/remotes/${name}`)) return fatal(`a branch is expected, got remote branch '${name}'${hint}`);
+    try {
+      await resolveCommit(this.git, dir, name);
+      return fatal(`a branch is expected, got commit '${name}'${hint}`);
+    } catch {
+      return fatal(`invalid reference: ${name}`);
+    }
   }
 }

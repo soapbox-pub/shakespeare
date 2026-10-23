@@ -66,3 +66,11 @@ export function createErrorResult(stderr: string, exitCode: number = 1): ShellCo
     stderr,
   };
 }
+/** Pack bytes into a latin1 string (one char per byte), the form just-bash uses for binary stdout. */
+export function toLatin1(bytes: Uint8Array): string {
+  let result = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) {
+    result += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  }
+  return result;
+}

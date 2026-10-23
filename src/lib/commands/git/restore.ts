@@ -1,13 +1,17 @@
 import type { JSRuntimeFS } from "../../JSRuntime";
 import type { ShellCommandResult } from "../ShellCommand";
-import { createSuccessResult, createErrorResult } from "../ShellCommand";
+import { createErrorResult } from "../ShellCommand";
 import type { GitSubcommand, GitSubcommandOptions } from "../git";
 import type { Git } from "../../git";
+import { parseArgs, unknownOption } from "./args";
+import { treeSnapshot, type Snapshot } from "./diffing";
+import { resolveTree } from "./revisions";
+import { NOT_A_REPO, fatal, headOid, isRepo, normalizePathspecs, output, pathspecDidNotMatch, restorePaths } from "./worktree";
 
 export class GitRestoreCommand implements GitSubcommand {
   name = 'restore';
   description = 'Restore working tree files';
-  usage = 'git restore [--source=<tree>] [--staged] [--worktree] [<path>...]';
+  usage = 'git restore [<options>] [--source=<branch>] <file>...';
 
   private git: Git;
   private fs: JSRuntimeFS;
@@ -19,93 +23,57 @@ export class GitRestoreCommand implements GitSubcommand {
 
   async execute(args: string[], cwd: string): Promise<ShellCommandResult> {
     try {
-      try {
-        await this.fs.stat(`${cwd}/.git`);
-      } catch {
-        return createErrorResult('fatal: not a git repository (or any of the parent directories): .git');
+      if (!(await isRepo(this.fs, cwd))) return fatal(NOT_A_REPO);
+
+      const parsed = parseArgs(args, {
+        flags: {
+          S: 'staged', staged: 'staged', W: 'worktree', worktree: 'worktree', q: 'quiet', quiet: 'quiet',
+          p: 'patch', patch: 'patch', overlay: 'overlay', ours: 'ours', theirs: 'theirs', m: 'merge', merge: 'merge',
+          'ignore-unmerged': 'ignoreUnmerged', progress: 'progress', 'ignore-skip-worktree-bits': 'ignoreSkipWorktreeBits',
+        },
+        values: { s: 'source', source: 'source', conflict: 'conflict' },
+      });
+      if (parsed.unknown.length > 0) {
+        return createErrorResult(unknownOption(parsed.unknown[0], this.usage), 129);
+      }
+      if (parsed.has('patch')) {
+        return fatal('interactive patch mode (-p) is not supported here; restore whole files instead');
       }
 
-      const { paths, options } = this.parseArgs(args);
+      const paths = parsed.rest;
+      if (paths.length === 0) return fatal('you must specify path(s) to restore');
+      const normalized = normalizePathspecs(cwd, paths);
+      if ('error' in normalized) return normalized.error;
 
-      if (paths.length === 0) {
-        return createErrorResult('fatal: you must specify path(s) to restore');
-      }
+      const staged = parsed.has('staged');
+      const worktree = parsed.has('worktree') || !staged;
 
-      // Default behavior: restore working tree from index
-      // With --staged: restore index from HEAD (or source)
-      // With both --staged and --worktree: restore both
-      const restoreWorktree = options.worktree || !options.staged;
-      const restoreStaged = options.staged;
-
-      if (restoreStaged) {
-        // Reset index entries to match HEAD (or source)
-        for (const filepath of paths) {
-          try {
-            await this.git.resetIndex({ dir: cwd, filepath });
-          } catch {
-            return createErrorResult(`error: pathspec '${filepath}' did not match any file(s) known to git`);
-          }
-        }
-      }
-
-      if (restoreWorktree) {
-        const source = options.source || 'HEAD';
+      const sourceSpec = parsed.get('source') ?? (staged ? 'HEAD' : undefined);
+      let source: Snapshot | undefined;
+      if (sourceSpec !== undefined) {
         try {
-          await this.git.checkout({
-            dir: cwd,
-            ref: source,
-            filepaths: paths,
-            force: true,
-          });
-        } catch (error) {
-          if (error instanceof Error && error.message.includes('does not exist')) {
-            return createErrorResult(`error: pathspec did not match any file(s) known to git`);
+          source = await treeSnapshot(this.git, cwd, await resolveTree(this.git, cwd, sourceSpec));
+        } catch {
+          if (sourceSpec === 'HEAD' && !(await headOid(this.git, cwd))) {
+            source = new Map();
+          } else {
+            return fatal(`could not resolve '${sourceSpec}'`);
           }
-          return createErrorResult(`Failed to restore: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
       }
 
-      return createSuccessResult('');
+      const { unmatched } = await restorePaths(this.git, this.fs, cwd, normalized.specs, {
+        source,
+        staged,
+        worktree,
+        overlay: parsed.has('overlay'),
+      });
+      if (unmatched.length > 0) {
+        return createErrorResult(unmatched.map((i) => pathspecDidNotMatch(paths[i])).join('\n'));
+      }
+      return output('');
     } catch (error) {
       return createErrorResult(`git restore: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
-  }
-
-  private parseArgs(args: string[]): {
-    paths: string[];
-    options: { source?: string; staged: boolean; worktree: boolean };
-  } {
-    const options: { source?: string; staged: boolean; worktree: boolean } = {
-      staged: false,
-      worktree: false,
-    };
-    const paths: string[] = [];
-    let foundDoubleDash = false;
-
-    for (let i = 0; i < args.length; i++) {
-      const arg = args[i];
-      if (arg === '--') {
-        foundDoubleDash = true;
-        continue;
-      }
-      if (foundDoubleDash) {
-        paths.push(arg);
-      } else if (arg === '--staged' || arg === '-S') {
-        options.staged = true;
-      } else if (arg === '--worktree' || arg === '-W') {
-        options.worktree = true;
-      } else if (arg === '--source' || arg === '-s') {
-        if (i + 1 < args.length) {
-          options.source = args[i + 1];
-          i++;
-        }
-      } else if (arg.startsWith('--source=')) {
-        options.source = arg.substring(9);
-      } else if (!arg.startsWith('-')) {
-        paths.push(arg);
-      }
-    }
-
-    return { paths, options };
   }
 }

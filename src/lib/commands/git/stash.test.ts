@@ -1,529 +1,106 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { GitStashCommand } from './stash';
-import type { JSRuntimeFS } from '../../JSRuntime';
-import type { Git } from '../../git';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { createGitShell, type GitShell } from '@/test/gitShell';
 
-// Mock filesystem
-const createMockFS = (): JSRuntimeFS => ({
-  readFile: vi.fn().mockImplementation((path: string) => {
-    if (path.includes('shakespeare_stash.json')) {
-      return Promise.reject(new Error('ENOENT'));
-    }
-    return Promise.resolve('mock content');
-  }),
-  writeFile: vi.fn().mockResolvedValue(undefined),
-  readdir: vi.fn().mockResolvedValue([]),
-  mkdir: vi.fn().mockResolvedValue(undefined),
-  stat: vi.fn().mockImplementation((path: string) => {
-    if (path.endsWith('/.git')) {
-      return Promise.resolve({
-        isDirectory: () => true,
-        isFile: () => false,
-        size: 0,
-        mtimeMs: Date.now(),
-      });
-    }
-    return Promise.resolve({
-      isDirectory: () => false,
-      isFile: () => true,
-      size: 100,
-      mtimeMs: Date.now(),
-    });
-  }),
-  lstat: vi.fn().mockResolvedValue({
-    isDirectory: () => false,
-    isFile: () => true,
-    size: 100,
-    mtimeMs: Date.now(),
-  }),
-  unlink: vi.fn().mockResolvedValue(undefined),
-  rmdir: vi.fn().mockResolvedValue(undefined),
-  rename: vi.fn().mockResolvedValue(undefined),
-  readlink: vi.fn().mockResolvedValue('mock link'),
-  symlink: vi.fn().mockResolvedValue(undefined),
-});
+describe('git stash', () => {
+  let sh: GitShell;
 
-// Mock Git
-const createMockGit = (): Git => ({
-  statusMatrix: vi.fn(),
-  currentBranch: vi.fn().mockResolvedValue('main'),
-  add: vi.fn(),
-  checkout: vi.fn(),
-  resetIndex: vi.fn(),
-  readBlob: vi.fn().mockResolvedValue({ blob: new Uint8Array() }),
-} as unknown as Git);
+  beforeEach(async () => {
+    sh = await createGitShell();
+    await sh.ok("git init -q && printf '1\\n2\\n3\\n' > a.txt && echo b > b.txt && git add . && git commit -qm first");
+  });
+  afterEach(() => sh.dispose());
 
-describe('GitStashCommand', () => {
-  let stashCommand: GitStashCommand;
-  let mockFS: JSRuntimeFS;
-  let mockGit: Git;
-  const testCwd = '/test';
-
-  beforeEach(() => {
-    mockFS = createMockFS();
-    mockGit = createMockGit();
-    stashCommand = new GitStashCommand({
-      git: mockGit,
-      fs: mockFS,
-    });
+  it('says when there is nothing to stash', async () => {
+    expect(await sh.ok('git stash')).toBe('No local changes to save\n');
   });
 
-  it('should have correct command properties', () => {
-    expect(stashCommand.name).toBe('stash');
-    expect(stashCommand.description).toBe('Stash the changes in a dirty working directory away');
-    expect(stashCommand.usage).toBe('git stash [push | list | apply | pop | drop | clear | show] [<options>]');
+  it('stashes and pops tracked changes', async () => {
+    await sh.ok('echo 4 >> a.txt && git rm -q b.txt && echo n > n.txt && git add n.txt');
+    expect(await sh.ok('git stash')).toMatch(/^Saved working directory and index state WIP on main: [0-9a-f]{7} first\n$/);
+    expect(await sh.ok('git status --porcelain')).toBe('(no output)');
+    expect(await sh.read('b.txt')).toBe('b\n');
+    expect(await sh.ok('git stash list')).toMatch(/^stash@\{0\}: WIP on main: [0-9a-f]{7} first\n$/);
+    expect(await sh.ok('git stash show')).toContain('3 files changed, 2 insertions(+), 1 deletion(-)');
+
+    const out = await sh.ok('git stash pop');
+    expect(out).toMatch(/Dropped refs\/stash@\{0\} \([0-9a-f]{40}\)/);
+    expect(await sh.read('a.txt')).toBe('1\n2\n3\n4\n');
+    // New files come back staged; other changes unstaged.
+    expect(await sh.ok('git status --porcelain')).toBe(' M a.txt\n D b.txt\nA  n.txt\n');
+    expect(await sh.ok('git stash list')).toBe('(no output)');
   });
 
-  it('should return error when not in a git repository', async () => {
-    vi.mocked(mockFS.stat).mockRejectedValueOnce(new Error('ENOENT'));
-
-    const result = await stashCommand.execute(['push'], testCwd);
-
-    expect(result.exitCode).toBe(1);
-    expect(result.stderr).toContain('fatal: not a git repository');
+  it('keeps messages, indexes entries and drops by name', async () => {
+    await sh.ok('echo x >> a.txt && git stash push -m "first msg"');
+    await sh.ok('echo y >> b.txt && git stash -q');
+    expect(await sh.ok('git stash list')).toMatch(/^stash@\{0\}: WIP on main: \w+ first\nstash@\{1\}: On main: first msg\n$/);
+    expect(await sh.ok('git stash show -p stash@{1}')).toContain('+x');
+    expect(await sh.run('git stash drop stash@{5}')).toContain("fatal: log for 'stash' only has 2 entries");
+    expect(await sh.ok('git stash drop stash@{1}')).toMatch(/^Dropped stash@\{1\} \(\w{40}\)\n$/);
+    await sh.ok('git stash apply -q');
+    expect(await sh.read('b.txt')).toBe('b\ny\n');
+    expect(await sh.ok('git stash list')).toContain('stash@{0}');
+    await sh.ok('git stash clear');
+    expect(await sh.run('git stash pop')).toBe('No stash entries found.\nExit code: 1');
   });
 
-  it('should show help with --help flag', async () => {
-    const result = await stashCommand.execute(['--help'], testCwd);
-
-    expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain('git stash list');
-    expect(result.stdout).toContain('git stash push');
-    expect(result.stdout).toContain('pop | apply');
+  it('stashes untracked files with -u and only given pathspecs', async () => {
+    await sh.ok('echo u > u.txt && echo 4 >> a.txt && echo c >> b.txt');
+    await sh.ok('git stash push -u -- u.txt a.txt');
+    expect(await sh.ok('git status --porcelain')).toBe(' M b.txt\n');
+    expect(await sh.ok('git stash show --include-untracked --name-only')).toBe('a.txt\nu.txt\n');
+    await sh.ok('git checkout -- b.txt && git stash pop');
+    expect(await sh.read('u.txt')).toBe('u\n');
+    expect(await sh.ok('git status --porcelain')).toBe(' M a.txt\n?? u.txt\n');
   });
 
-  describe('stash push', () => {
-    it('should return error when no changes to stash', async () => {
-      vi.mocked(mockGit.statusMatrix).mockResolvedValue([
-        ['unchanged.txt', 1, 1, 1], // No changes
-      ]);
-
-      const result = await stashCommand.execute(['push'], testCwd);
-
-      expect(result.exitCode).toBe(1);
-      expect(result.stderr).toContain('No local changes to save');
-    });
-
-    it('should stash modified files', async () => {
-      vi.mocked(mockGit.statusMatrix).mockResolvedValue([
-        ['modified.txt', 1, 2, 2], // Staged modified file
-      ]);
-      vi.mocked(mockFS.readFile).mockImplementation((path: string) => {
-        if (path.includes('modified.txt')) {
-          return Promise.resolve('modified content');
-        }
-        if (path.includes('shakespeare_stash.json')) {
-          return Promise.reject(new Error('ENOENT'));
-        }
-        return Promise.resolve('');
-      });
-
-      const result = await stashCommand.execute(['push'], testCwd);
-
-      expect(result.exitCode).toBe(0);
-      expect(result.stdout).toContain('Saved working directory and index state');
-      expect(mockFS.writeFile).toHaveBeenCalled();
-      expect(mockGit.checkout).toHaveBeenCalledWith({
-        dir: testCwd,
-        filepaths: ['modified.txt'],
-        force: true,
-      });
-    });
-
-    it('should stash with custom message', async () => {
-      vi.mocked(mockGit.statusMatrix).mockResolvedValue([
-        ['modified.txt', 1, 2, 2],
-      ]);
-      vi.mocked(mockFS.readFile).mockImplementation((path: string) => {
-        if (path.includes('modified.txt')) {
-          return Promise.resolve('content');
-        }
-        if (path.includes('shakespeare_stash.json')) {
-          return Promise.reject(new Error('ENOENT'));
-        }
-        return Promise.resolve('');
-      });
-
-      const result = await stashCommand.execute(['push', '-m', 'my custom message'], testCwd);
-
-      expect(result.exitCode).toBe(0);
-      expect(result.stdout).toContain('my custom message');
-    });
-
-    it('should include untracked files with -u flag', async () => {
-      vi.mocked(mockGit.statusMatrix).mockResolvedValue([
-        ['untracked.txt', 0, 2, 0], // Untracked file
-      ]);
-      vi.mocked(mockFS.readFile).mockImplementation((path: string) => {
-        if (path.includes('untracked.txt')) {
-          return Promise.resolve('untracked content');
-        }
-        if (path.includes('shakespeare_stash.json')) {
-          return Promise.reject(new Error('ENOENT'));
-        }
-        return Promise.resolve('');
-      });
-
-      const result = await stashCommand.execute(['push', '-u'], testCwd);
-
-      expect(result.exitCode).toBe(0);
-      expect(result.stdout).toContain('Saved working directory');
-      expect(mockFS.unlink).toHaveBeenCalledWith(expect.stringContaining('untracked.txt'));
-    });
-
-    it('should handle deleted files', async () => {
-      vi.mocked(mockGit.statusMatrix).mockResolvedValue([
-        ['deleted.txt', 1, 0, 1], // Deleted file
-      ]);
-      vi.mocked(mockFS.readFile).mockImplementation((path: string) => {
-        if (path.includes('shakespeare_stash.json')) {
-          return Promise.reject(new Error('ENOENT'));
-        }
-        return Promise.resolve('');
-      });
-
-      const result = await stashCommand.execute(['push'], testCwd);
-
-      expect(result.exitCode).toBe(0);
-      expect(mockGit.checkout).toHaveBeenCalledWith({
-        dir: testCwd,
-        filepaths: ['deleted.txt'],
-        force: true,
-      });
-    });
-
-    it('should clear staging area after stash', async () => {
-      vi.mocked(mockGit.statusMatrix).mockResolvedValue([
-        ['staged.txt', 1, 2, 2], // Staged file
-      ]);
-      vi.mocked(mockFS.readFile).mockImplementation((path: string) => {
-        if (path.includes('staged.txt')) {
-          return Promise.resolve('staged content');
-        }
-        if (path.includes('shakespeare_stash.json')) {
-          return Promise.reject(new Error('ENOENT'));
-        }
-        return Promise.resolve('');
-      });
-
-      const result = await stashCommand.execute(['push'], testCwd);
-
-      expect(result.exitCode).toBe(0);
-      expect(mockGit.resetIndex).toHaveBeenCalledWith({
-        dir: testCwd,
-        filepath: 'staged.txt',
-      });
-    });
+  it('restores the index with --index', async () => {
+    await sh.ok('echo 4 >> a.txt && git add a.txt && echo c >> b.txt && git stash && git stash apply --index -q');
+    expect(await sh.ok('git status --porcelain')).toBe('M  a.txt\n M b.txt\n');
   });
 
-  describe('stash list', () => {
-    it('should return empty when no stashes', async () => {
-      vi.mocked(mockFS.readFile).mockRejectedValue(new Error('ENOENT'));
-
-      const result = await stashCommand.execute(['list'], testCwd);
-
-      expect(result.exitCode).toBe(0);
-      expect(result.stdout).toBe('');
-    });
-
-    it('should list all stashes', async () => {
-      const mockStashes = [
-        { message: 'first stash', branch: 'main', timestamp: Date.now(), files: [], stagedFiles: [] },
-        { message: 'second stash', branch: 'main', timestamp: Date.now(), files: [], stagedFiles: [] },
-      ];
-      vi.mocked(mockFS.readFile).mockResolvedValue(JSON.stringify(mockStashes));
-
-      const result = await stashCommand.execute(['list'], testCwd);
-
-      expect(result.exitCode).toBe(0);
-      expect(result.stdout).toContain('stash@{0}: first stash');
-      expect(result.stdout).toContain('stash@{1}: second stash');
-    });
+  it('keeps the entry when popping conflicts', async () => {
+    await sh.ok("printf '1\\n2\\nstash\\n' > a.txt && git stash -q");
+    await sh.ok("printf '1\\n2\\nhead\\n' > a.txt && git commit -qam head");
+    const out = await sh.run('git stash pop');
+    expect(out).toContain('CONFLICT (content): Merge conflict in a.txt');
+    expect(out).toContain('The stash entry is kept in case you need it again.');
+    expect(out).toContain('Exit code: 1');
+    expect(await sh.read('a.txt')).toBe('1\n2\n<<<<<<< Updated upstream\nhead\n=======\nstash\n>>>>>>> Stashed changes\n');
+    expect(await sh.ok('git stash list')).toContain('stash@{0}');
   });
 
-  describe('stash show', () => {
-    it('should return error when no stashes', async () => {
-      vi.mocked(mockFS.readFile).mockRejectedValue(new Error('ENOENT'));
-
-      const result = await stashCommand.execute(['show'], testCwd);
-
-      expect(result.exitCode).toBe(1);
-      expect(result.stderr).toContain('No stash entries found');
-    });
-
-    it('should show files in most recent stash', async () => {
-      const mockStashes = [
-        {
-          message: 'test stash',
-          branch: 'main',
-          timestamp: Date.now(),
-          files: [
-            { filepath: 'modified.txt', content: 'content', status: 'modified' },
-            { filepath: 'added.txt', content: 'content', status: 'added' },
-          ],
-          stagedFiles: [],
-        },
-      ];
-      vi.mocked(mockFS.readFile).mockResolvedValue(JSON.stringify(mockStashes));
-
-      const result = await stashCommand.execute(['show'], testCwd);
-
-      expect(result.exitCode).toBe(0);
-      expect(result.stdout).toContain('M\tmodified.txt');
-      expect(result.stdout).toContain('A\tadded.txt');
-    });
-
-    it('should show specific stash by index', async () => {
-      const mockStashes = [
-        {
-          message: 'stash 0',
-          branch: 'main',
-          timestamp: Date.now(),
-          files: [{ filepath: 'file0.txt', content: '', status: 'modified' }],
-          stagedFiles: [],
-        },
-        {
-          message: 'stash 1',
-          branch: 'main',
-          timestamp: Date.now(),
-          files: [{ filepath: 'file1.txt', content: '', status: 'modified' }],
-          stagedFiles: [],
-        },
-      ];
-      vi.mocked(mockFS.readFile).mockResolvedValue(JSON.stringify(mockStashes));
-
-      const result = await stashCommand.execute(['show', 'stash@{1}'], testCwd);
-
-      expect(result.exitCode).toBe(0);
-      expect(result.stdout).toContain('file1.txt');
-      expect(result.stdout).not.toContain('file0.txt');
-    });
+  it('refuses to apply over local changes', async () => {
+    await sh.ok('echo 4 >> a.txt && git stash -q && echo 5 >> a.txt');
+    const out = await sh.run('git stash pop');
+    expect(out).toContain('error: Your local changes to the following files would be overwritten by merge:\n\ta.txt');
+    expect(out).toContain('Exit code: 1');
   });
 
-  describe('stash apply', () => {
-    it('should return error when no stashes', async () => {
-      vi.mocked(mockFS.readFile).mockRejectedValue(new Error('ENOENT'));
-
-      const result = await stashCommand.execute(['apply'], testCwd);
-
-      expect(result.exitCode).toBe(1);
-      expect(result.stderr).toContain('No stash entries found');
-    });
-
-    it('should apply most recent stash', async () => {
-      const mockStashes = [
-        {
-          message: 'test stash',
-          branch: 'main',
-          timestamp: Date.now(),
-          files: [
-            { filepath: 'modified.txt', content: 'stashed content', status: 'modified' },
-          ],
-          stagedFiles: ['modified.txt'],
-        },
-      ];
-      vi.mocked(mockFS.readFile).mockResolvedValue(JSON.stringify(mockStashes));
-
-      const result = await stashCommand.execute(['apply'], testCwd);
-
-      expect(result.exitCode).toBe(0);
-      expect(result.stdout).toContain('test stash');
-      expect(mockFS.writeFile).toHaveBeenCalledWith(
-        expect.stringContaining('modified.txt'),
-        'stashed content'
-      );
-      expect(mockGit.add).toHaveBeenCalledWith({
-        dir: testCwd,
-        filepath: 'modified.txt',
-      });
-    });
-
-    it('should apply specific stash by index', async () => {
-      const mockStashes = [
-        {
-          message: 'stash 0',
-          branch: 'main',
-          timestamp: Date.now(),
-          files: [{ filepath: 'file0.txt', content: 'content0', status: 'modified' }],
-          stagedFiles: [],
-        },
-        {
-          message: 'stash 1',
-          branch: 'main',
-          timestamp: Date.now(),
-          files: [{ filepath: 'file1.txt', content: 'content1', status: 'modified' }],
-          stagedFiles: [],
-        },
-      ];
-      vi.mocked(mockFS.readFile).mockResolvedValue(JSON.stringify(mockStashes));
-
-      const result = await stashCommand.execute(['apply', 'stash@{1}'], testCwd);
-
-      expect(result.exitCode).toBe(0);
-      expect(mockFS.writeFile).toHaveBeenCalledWith(
-        expect.stringContaining('file1.txt'),
-        'content1'
-      );
-    });
-
-    it('should handle deleted files in stash', async () => {
-      const mockStashes = [
-        {
-          message: 'deleted file',
-          branch: 'main',
-          timestamp: Date.now(),
-          files: [{ filepath: 'deleted.txt', content: '', status: 'deleted' }],
-          stagedFiles: [],
-        },
-      ];
-      vi.mocked(mockFS.readFile).mockResolvedValue(JSON.stringify(mockStashes));
-
-      const result = await stashCommand.execute(['apply'], testCwd);
-
-      expect(result.exitCode).toBe(0);
-      expect(mockFS.unlink).toHaveBeenCalledWith(expect.stringContaining('deleted.txt'));
-    });
+  it('creates a branch from a stash', async () => {
+    await sh.ok('echo 4 >> a.txt && git stash -q && echo 9 > b.txt && git commit -qam second');
+    const out = await sh.ok('git stash branch fix');
+    expect(out).toContain("Switched to a new branch 'fix'");
+    expect(await sh.ok('git branch --show-current')).toBe('fix\n');
+    expect(await sh.read('b.txt')).toBe('b\n');
+    expect(await sh.read('a.txt')).toBe('1\n2\n3\n4\n');
+    expect(await sh.ok('git stash list')).toBe('(no output)');
   });
 
-  describe('stash pop', () => {
-    it('should apply and drop stash', async () => {
-      const mockStashes = [
-        {
-          message: 'test stash',
-          branch: 'main',
-          timestamp: Date.now(),
-          files: [{ filepath: 'file.txt', content: 'content', status: 'modified' }],
-          stagedFiles: [],
-        },
-      ];
-      vi.mocked(mockFS.readFile).mockResolvedValue(JSON.stringify(mockStashes));
-
-      const result = await stashCommand.execute(['pop'], testCwd);
-
-      expect(result.exitCode).toBe(0);
-      expect(mockFS.writeFile).toHaveBeenCalledWith(
-        expect.stringContaining('file.txt'),
-        'content'
-      );
-      // Should also write the stash file with empty array (dropped)
-      expect(mockFS.writeFile).toHaveBeenCalledWith(
-        expect.stringContaining('shakespeare_stash.json'),
-        expect.stringContaining('[]')
-      );
-    });
+  it('migrates stashes saved by the old implementation', async () => {
+    await sh.fs.writeFile('/projects/repo/.git/shakespeare_stash.json', JSON.stringify([
+      { message: 'WIP on main', branch: 'main', timestamp: Date.now(), files: [{ filepath: 'a.txt', content: 'old\n', status: 'modified' }], stagedFiles: [] },
+    ]));
+    expect(await sh.ok('git stash list')).toBe('stash@{0}: WIP on main\n');
+    await sh.ok('git stash pop -q');
+    expect(await sh.read('a.txt')).toBe('old\n');
   });
 
-  describe('stash drop', () => {
-    it('should return error when no stashes', async () => {
-      vi.mocked(mockFS.readFile).mockRejectedValue(new Error('ENOENT'));
-
-      const result = await stashCommand.execute(['drop'], testCwd);
-
-      expect(result.exitCode).toBe(1);
-      expect(result.stderr).toContain('No stash entries found');
-    });
-
-    it('should drop most recent stash', async () => {
-      const mockStashes = [
-        { message: 'stash 0', branch: 'main', timestamp: Date.now(), files: [], stagedFiles: [] },
-        { message: 'stash 1', branch: 'main', timestamp: Date.now(), files: [], stagedFiles: [] },
-      ];
-      vi.mocked(mockFS.readFile).mockResolvedValue(JSON.stringify(mockStashes));
-
-      const result = await stashCommand.execute(['drop'], testCwd);
-
-      expect(result.exitCode).toBe(0);
-      expect(result.stdout).toContain('Dropped stash@{0}');
-      // Should write remaining stash
-      expect(mockFS.writeFile).toHaveBeenCalledWith(
-        expect.stringContaining('shakespeare_stash.json'),
-        expect.stringMatching(/stash 1/)
-      );
-    });
-
-    it('should drop specific stash by index', async () => {
-      const mockStashes = [
-        { message: 'stash 0', branch: 'main', timestamp: Date.now(), files: [], stagedFiles: [] },
-        { message: 'stash 1', branch: 'main', timestamp: Date.now(), files: [], stagedFiles: [] },
-      ];
-      vi.mocked(mockFS.readFile).mockResolvedValue(JSON.stringify(mockStashes));
-
-      const result = await stashCommand.execute(['drop', 'stash@{1}'], testCwd);
-
-      expect(result.exitCode).toBe(0);
-      expect(result.stdout).toContain('Dropped stash@{1}');
-    });
-
-    it('should return error for invalid stash index', async () => {
-      const mockStashes = [
-        { message: 'stash 0', branch: 'main', timestamp: Date.now(), files: [], stagedFiles: [] },
-      ];
-      vi.mocked(mockFS.readFile).mockResolvedValue(JSON.stringify(mockStashes));
-
-      const result = await stashCommand.execute(['drop', 'stash@{5}'], testCwd);
-
-      expect(result.exitCode).toBe(1);
-      expect(result.stderr).toContain('is not a valid reference');
-    });
-  });
-
-  describe('stash clear', () => {
-    it('should clear all stashes', async () => {
-      const mockStashes = [
-        { message: 'stash 0', branch: 'main', timestamp: Date.now(), files: [], stagedFiles: [] },
-        { message: 'stash 1', branch: 'main', timestamp: Date.now(), files: [], stagedFiles: [] },
-      ];
-      vi.mocked(mockFS.readFile).mockResolvedValue(JSON.stringify(mockStashes));
-
-      const result = await stashCommand.execute(['clear'], testCwd);
-
-      expect(result.exitCode).toBe(0);
-      expect(mockFS.writeFile).toHaveBeenCalledWith(
-        expect.stringContaining('shakespeare_stash.json'),
-        '[]'
-      );
-    });
-  });
-
-  describe('command aliases', () => {
-    it('should accept "save" as alias for "push"', async () => {
-      vi.mocked(mockGit.statusMatrix).mockResolvedValue([
-        ['file.txt', 1, 2, 2],
-      ]);
-      vi.mocked(mockFS.readFile).mockImplementation((path: string) => {
-        if (path.includes('file.txt')) {
-          return Promise.resolve('content');
-        }
-        if (path.includes('shakespeare_stash.json')) {
-          return Promise.reject(new Error('ENOENT'));
-        }
-        return Promise.resolve('');
-      });
-
-      const result = await stashCommand.execute(['save'], testCwd);
-
-      expect(result.exitCode).toBe(0);
-      expect(result.stdout).toContain('Saved working directory');
-    });
-
-    it('should default to "push" when no subcommand given', async () => {
-      vi.mocked(mockGit.statusMatrix).mockResolvedValue([
-        ['file.txt', 1, 2, 2],
-      ]);
-      vi.mocked(mockFS.readFile).mockImplementation((path: string) => {
-        if (path.includes('file.txt')) {
-          return Promise.resolve('content');
-        }
-        if (path.includes('shakespeare_stash.json')) {
-          return Promise.reject(new Error('ENOENT'));
-        }
-        return Promise.resolve('');
-      });
-
-      const result = await stashCommand.execute([], testCwd);
-
-      expect(result.exitCode).toBe(0);
-      expect(result.stdout).toContain('Saved working directory');
-    });
+  it('writes stashes real git can read', async () => {
+    await sh.ok('echo 4 >> a.txt && git stash -q');
+    const oid = (await sh.ok('git rev-parse refs/stash')).trim();
+    const { commit } = await sh.git.readCommit({ dir: '/projects/repo', oid });
+    expect(commit.parent).toHaveLength(2);
+    expect(await sh.fs.readFile('/projects/repo/.git/logs/refs/stash', 'utf8')).toMatch(/^0{40} [0-9a-f]{40} .+ <.+> \d+ [+-]\d{4}\tWIP on main: \w+ first\n$/);
   });
 });

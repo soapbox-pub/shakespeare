@@ -140,19 +140,30 @@ export class Git {
   }
 
   // Commits and history
-  async commit(options: Omit<Parameters<typeof git.commit>[0], 'fs' | 'author'>) {
+  async commit(options: Omit<Parameters<typeof git.commit>[0], 'fs'>) {
     const { author, coAuthorEnabled } = await this.getGitSettings();
 
     // Add system co-author if enabled
     let message = options.message;
-    if (coAuthorEnabled) {
-      message = `${message}\n\nCo-authored-by: ${this.systemAuthor.name} <${this.systemAuthor.email}>`;
+    const coAuthor = `Co-authored-by: ${this.systemAuthor.name} <${this.systemAuthor.email}>`;
+    if (coAuthorEnabled && message !== undefined && !message.includes(coAuthor)) {
+      message = `${message.replace(/\n+$/, '')}\n\n${coAuthor}`;
+    }
+
+    // With a detached HEAD, isomorphic-git would write the commit to a ref
+    // named after HEAD's oid; point it at HEAD itself instead.
+    let ref = options.ref;
+    if (!ref && !options.noUpdateBranch) {
+      const branch = await git.currentBranch({ fs: this.fs, dir: options.dir, gitdir: options.gitdir });
+      if (!branch) ref = 'HEAD';
     }
 
     return git.commit({
       fs: this.fs,
       ...options,
-      author,
+      ref,
+      author: options.author ?? author,
+      committer: options.committer ?? author,
       message,
     });
   }

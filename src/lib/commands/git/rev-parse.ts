@@ -3,11 +3,12 @@ import type { ShellCommandResult } from "../ShellCommand";
 import { createSuccessResult, createErrorResult } from "../ShellCommand";
 import type { GitSubcommand, GitSubcommandOptions } from "../git";
 import type { Git } from "../../git";
+import { abbrev, resolveRevision, RevisionError, upstreamRef } from "./revisions";
 
 export class GitRevParseCommand implements GitSubcommand {
   name = 'rev-parse';
   description = 'Pick out and massage parameters';
-  usage = 'git rev-parse [--short[=<length>]] [--abbrev-ref] [--show-toplevel] [--git-dir] [--is-inside-work-tree] <ref>...';
+  usage = 'git rev-parse [--verify] [-q] [--short[=<n>]] [--abbrev-ref] [--symbolic-full-name] [--show-toplevel] [--git-dir] [--is-inside-work-tree] <rev>...';
 
   private git: Git;
   private fs: JSRuntimeFS;
@@ -18,165 +19,173 @@ export class GitRevParseCommand implements GitSubcommand {
   }
 
   async execute(args: string[], cwd: string): Promise<ShellCommandResult> {
+    let inRepo = true;
     try {
-      const { refs, options } = this.parseArgs(args);
+      await this.fs.stat(`${cwd}/.git`);
+    } catch {
+      inRepo = false;
+    }
+    const notRepo = 'fatal: not a git repository (or any of the parent directories): .git';
 
-      // Check if we're in a git repository
-      let inRepo = true;
+    let short: number | undefined;
+    let abbrevRef = false;
+    let symbolicFullName = false;
+    let verify = false;
+    let quiet = false;
+    let afterDashDash = false;
+    const outputs: string[] = [];
+    const revs: string[] = [];
+
+    const resolveArg = async (rev: string): Promise<ShellCommandResult | undefined> => {
+      const negate = rev.startsWith('^') && !rev.startsWith('^{');
+      const spec = negate ? rev.slice(1) : rev;
       try {
-        await this.fs.stat(`${cwd}/.git`);
-      } catch {
-        inRepo = false;
-      }
-
-      // Handle special flags
-      const outputs: string[] = [];
-
-      if (options.showToplevel) {
-        if (!inRepo) {
-          return createErrorResult('fatal: not a git repository (or any of the parent directories): .git');
-        }
-        outputs.push(cwd);
-      }
-
-      if (options.gitDir) {
-        if (!inRepo) {
-          return createErrorResult('fatal: not a git repository (or any of the parent directories): .git');
-        }
-        outputs.push(`${cwd}/.git`);
-      }
-
-      if (options.isInsideWorkTree) {
-        outputs.push(inRepo ? 'true' : 'false');
-      }
-
-      if (options.isInsideGitDir) {
-        outputs.push('false');
-      }
-
-      if (options.isBareRepository) {
-        outputs.push('false');
-      }
-
-      // Process refs
-      for (const ref of refs) {
-        if (!inRepo) {
-          return createErrorResult('fatal: not a git repository (or any of the parent directories): .git');
-        }
-        try {
-          if (options.abbrevRef) {
-            // Output the branch name (remove refs/heads/ prefix)
-            if (ref === 'HEAD') {
-              const branch = await this.git.currentBranch({ dir: cwd });
-              outputs.push(branch || 'HEAD');
-            } else {
-              outputs.push(ref);
+        if (rev.includes('..')) {
+          const symmetric = rev.includes('...');
+          const [a, b] = rev.split(symmetric ? '...' : '..');
+          const right = await resolveRevision(this.git, cwd, b || 'HEAD');
+          const left = await resolveRevision(this.git, cwd, a || 'HEAD');
+          outputs.push(this.shorten(right, short));
+          if (symmetric) {
+            outputs.push(this.shorten(left, short));
+            for (const base of await this.git.findMergeBase({ dir: cwd, oids: [left, right] })) {
+              outputs.push(`^${this.shorten(base, short)}`);
             }
           } else {
-            const oid = await this.resolveAnyRef(ref, cwd);
-            if (options.short) {
-              const len = options.short === true ? 7 : options.short;
-              outputs.push(oid.substring(0, len));
-            } else {
-              outputs.push(oid);
-            }
+            outputs.push(`^${this.shorten(left, short)}`);
           }
-        } catch {
-          return createErrorResult(`fatal: ambiguous argument '${ref}': unknown revision or path not in the working tree.`);
+        } else if (abbrevRef || symbolicFullName) {
+          const name = await this.symbolicName(cwd, spec);
+          outputs.push(abbrevRef ? this.abbreviateRef(name) : name);
+        } else {
+          const oid = await resolveRevision(this.git, cwd, spec);
+          outputs.push(`${negate ? '^' : ''}${this.shorten(oid, short)}`);
         }
-      }
-
-      if (outputs.length === 0) {
-        return createErrorResult('usage: git rev-parse [--short[=<length>]] [--abbrev-ref] [--show-toplevel] [--git-dir] <ref>...');
-      }
-
-      return createSuccessResult(outputs.join('\n') + '\n');
-    } catch (error) {
-      return createErrorResult(`git rev-parse: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-  }
-
-  /**
-   * Resolve a ref including HEAD~N, HEAD^N, branch names, or commit hashes.
-   */
-  private async resolveAnyRef(ref: string, cwd: string): Promise<string> {
-    // HEAD~N syntax
-    const tildeMatch = ref.match(/^(.+)~(\d+)$/);
-    if (tildeMatch) {
-      const [, baseRef, steps] = tildeMatch;
-      let currentOid = await this.resolveAnyRef(baseRef, cwd);
-      const numSteps = parseInt(steps, 10);
-      for (let i = 0; i < numSteps; i++) {
-        const commit = await this.git.readCommit({ dir: cwd, oid: currentOid });
-        if (!commit.commit.parent || commit.commit.parent.length === 0) {
-          throw new Error('No parent');
+        return undefined;
+      } catch (error) {
+        if (verify) {
+          return quiet ? { exitCode: 1, stdout: '', stderr: '' } : createErrorResult('fatal: Needed a single revision');
         }
-        currentOid = commit.commit.parent[0];
+        if (error instanceof RevisionError) {
+          // git prints what it resolved, then the argument it couldn't.
+          return {
+            exitCode: 128,
+            stdout: [...outputs, rev].join('\n') + '\n',
+            stderr: `${error.message}\nUse '--' to separate paths from revisions, like this:\n'git <command> [<revision>...] -- [<file>...]'`,
+          };
+        }
+        return createErrorResult(`fatal: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
-      return currentOid;
-    }
-
-    // HEAD^N syntax
-    const caretMatch = ref.match(/^(.+)\^(\d*)$/);
-    if (caretMatch) {
-      const [, baseRef, parentNum] = caretMatch;
-      const parentIndex = parentNum ? parseInt(parentNum, 10) - 1 : 0;
-      const baseOid = await this.resolveAnyRef(baseRef, cwd);
-      const commit = await this.git.readCommit({ dir: cwd, oid: baseOid });
-      if (!commit.commit.parent || parentIndex >= commit.commit.parent.length) {
-        throw new Error('No parent');
-      }
-      return commit.commit.parent[parentIndex];
-    }
-
-    return await this.git.resolveRef({ dir: cwd, ref });
-  }
-
-  private parseArgs(args: string[]): {
-    refs: string[];
-    options: {
-      short: boolean | number;
-      abbrevRef: boolean;
-      showToplevel: boolean;
-      gitDir: boolean;
-      isInsideWorkTree: boolean;
-      isInsideGitDir: boolean;
-      isBareRepository: boolean;
     };
-  } {
-    const options = {
-      short: false as boolean | number,
-      abbrevRef: false,
-      showToplevel: false,
-      gitDir: false,
-      isInsideWorkTree: false,
-      isInsideGitDir: false,
-      isBareRepository: false,
-    };
-    const refs: string[] = [];
 
     for (const arg of args) {
-      if (arg === '--short') {
-        options.short = true;
-      } else if (arg.startsWith('--short=')) {
-        options.short = parseInt(arg.substring(8), 10) || 7;
-      } else if (arg === '--abbrev-ref') {
-        options.abbrevRef = true;
-      } else if (arg === '--show-toplevel') {
-        options.showToplevel = true;
-      } else if (arg === '--git-dir') {
-        options.gitDir = true;
-      } else if (arg === '--is-inside-work-tree') {
-        options.isInsideWorkTree = true;
-      } else if (arg === '--is-inside-git-dir') {
-        options.isInsideGitDir = true;
-      } else if (arg === '--is-bare-repository') {
-        options.isBareRepository = true;
-      } else if (!arg.startsWith('-')) {
-        refs.push(arg);
+      if (afterDashDash) {
+        outputs.push(arg);
+        continue;
+      }
+      switch (arg) {
+        case '--':
+          afterDashDash = true;
+          continue;
+        case '--short':
+          short = 7;
+          continue;
+        case '--abbrev-ref':
+          abbrevRef = true;
+          continue;
+        case '--symbolic-full-name':
+          symbolicFullName = true;
+          continue;
+        case '--verify':
+          verify = true;
+          continue;
+        case '-q':
+        case '--quiet':
+          quiet = true;
+          continue;
+        case '--show-toplevel':
+          if (!inRepo) return createErrorResult(notRepo);
+          outputs.push(cwd);
+          continue;
+        case '--git-dir':
+          if (!inRepo) return createErrorResult(notRepo);
+          outputs.push('.git');
+          continue;
+        case '--absolute-git-dir':
+        case '--git-common-dir':
+          if (!inRepo) return createErrorResult(notRepo);
+          outputs.push(arg === '--git-common-dir' ? '.git' : `${cwd}/.git`);
+          continue;
+        case '--is-inside-work-tree':
+          if (!inRepo) return createErrorResult(notRepo);
+          outputs.push('true');
+          continue;
+        case '--is-inside-git-dir':
+        case '--is-bare-repository':
+        case '--is-shallow-repository':
+          if (!inRepo) return createErrorResult(notRepo);
+          outputs.push('false');
+          continue;
+        case '--show-prefix':
+        case '--show-cdup':
+          if (!inRepo) return createErrorResult(notRepo);
+          outputs.push('');
+          continue;
+        case '--local-env-vars':
+          continue;
+      }
+      if (arg.startsWith('--short=')) {
+        short = Math.max(4, parseInt(arg.slice(8), 10) || 7);
+      } else if (arg.startsWith('--default') || arg === '--revs-only' || arg === '--no-flags') {
+        // Accepted, no effect.
+      } else if (arg.startsWith('-') && !arg.startsWith('^')) {
+        // git prints unknown options back unchanged.
+        if (!verify) outputs.push(arg);
+      } else {
+        if (!inRepo) return createErrorResult(notRepo);
+        revs.push(arg);
+        if (verify && revs.length > 1) break;
+        const failed = await resolveArg(arg);
+        if (failed) return failed;
       }
     }
 
-    return { refs, options };
+    if (verify && revs.length !== 1) {
+      return quiet ? { exitCode: 1, stdout: '', stderr: '' } : createErrorResult('fatal: Needed a single revision');
+    }
+
+    if (outputs.length === 0) return createSuccessResult('');
+    return createSuccessResult(outputs.join('\n') + '\n');
+  }
+
+  private shorten(oid: string, short: number | undefined): string {
+    return short ? abbrev(oid, short) : oid;
+  }
+
+  /** The full ref name a revision refers to (`refs/heads/main`), or the revision itself for object ids. */
+  private async symbolicName(cwd: string, spec: string): Promise<string> {
+    const upstream = spec.match(/^(.*)@\{(?:u|upstream|push)\}$/i);
+    if (upstream) {
+      const ref = await upstreamRef(this.git, cwd, upstream[1] === '@' ? undefined : upstream[1] || undefined);
+      if (!ref) throw new RevisionError(`fatal: no upstream configured for branch '${upstream[1] || (await this.git.currentBranch({ dir: cwd })) || 'HEAD'}'`);
+      return ref;
+    }
+    if (spec === 'HEAD' || spec === '@') {
+      const branch = await this.git.currentBranch({ dir: cwd, fullname: true });
+      if (branch) return branch;
+      await resolveRevision(this.git, cwd, 'HEAD');
+      return 'HEAD';
+    }
+    try {
+      return await this.git.expandRef({ dir: cwd, ref: spec });
+    } catch {
+      // An object id or expression: git prints nothing useful for these; echo the oid.
+      await resolveRevision(this.git, cwd, spec);
+      return spec;
+    }
+  }
+
+  private abbreviateRef(name: string): string {
+    return name.replace(/^refs\/(heads|tags|remotes)\//, '');
   }
 }

@@ -1,229 +1,76 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { GitCommitCommand } from './commit';
-import type { Git } from '../../git';
-import type { JSRuntimeFS } from '../../JSRuntime';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { createGitShell, type GitShell } from '@/test/gitShell';
 
-describe('GitCommitCommand', () => {
-  let commitCommand: GitCommitCommand;
-  let mockGit: Partial<Git>;
-  let mockFS: Partial<JSRuntimeFS>;
-  const mockPwd = '/projects/test';
+describe('git commit', () => {
+  let sh: GitShell;
 
-  beforeEach(() => {
-    // Mock the filesystem
-    mockFS = {
-      stat: vi.fn().mockResolvedValue({}),
-    };
-
-    // Mock Git methods
-    mockGit = {
-      statusMatrix: vi.fn().mockResolvedValue([
-        // filepath, HEAD status, workdir status, stage status
-        ['file1.txt', 1, 2, 1], // modified in workdir
-        ['file2.txt', 1, 1, 2], // modified in index
-        ['file3.txt', 0, 2, 2], // new file
-        ['file4.txt', 1, 0, 1], // deleted file
-      ]),
-      
-      currentBranch: vi.fn().mockResolvedValue('main'),
-      
-      resolveRef: vi.fn().mockResolvedValue('headcommit'),
-      
-      log: vi.fn().mockResolvedValue([
-        {
-          oid: 'headcommit',
-          commit: {
-            message: 'Previous commit',
-            parent: ['parentcommit'],
-            tree: 'tree1',
-            author: {
-              name: 'Test User',
-              email: 'test@example.com',
-              timestamp: 1600000000,
-            },
-          },
-        },
-        {
-          oid: 'parentcommit',
-          commit: {
-            message: 'Parent commit',
-            parent: [],
-            tree: 'tree2',
-            author: {
-              name: 'Test User',
-              email: 'test@example.com',
-              timestamp: 1599000000,
-            },
-          },
-        },
-      ]),
-      
-      getConfig: vi.fn().mockImplementation(({ path }) => {
-        if (path === 'user.name') return Promise.resolve('Test User');
-        if (path === 'user.email') return Promise.resolve('test@example.com');
-        return Promise.resolve(null);
-      }),
-      
-      commit: vi.fn().mockResolvedValue('newcommit'),
-      
-      add: vi.fn().mockResolvedValue(undefined),
-      
-      remove: vi.fn().mockResolvedValue(undefined),
-    };
-
-    // Create the command instance with mocks
-    commitCommand = new GitCommitCommand({
-      git: mockGit as Git,
-      fs: mockFS as JSRuntimeFS,
-    });
+  beforeEach(async () => {
+    sh = await createGitShell();
+    await sh.ok('git init -q && echo a > a.txt && git add a.txt');
   });
 
-  it('should commit with a message', async () => {
-    const result = await commitCommand.execute(['-m', 'Test commit'], mockPwd);
-    
-    expect(mockGit.commit).toHaveBeenCalledWith(expect.objectContaining({
-      dir: mockPwd,
-      message: 'Test commit',
-    }));
-    
-    expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain('Test commit');
+  afterEach(() => sh.dispose());
+
+  it('reports a root commit with a stat summary', async () => {
+    const out = await sh.ok('git commit -m "first"');
+    expect(out).toMatch(/^\[main \(root-commit\) [0-9a-f]{7}\] first\n 1 file changed, 1 insertion\(\+\)\n create mode 100644 a\.txt/);
   });
 
-  it('should fail without a message', async () => {
-    const result = await commitCommand.execute([], mockPwd);
-    
-    expect(mockGit.commit).not.toHaveBeenCalled();
-    
-    expect(result.exitCode).not.toBe(0);
-    expect(result.stderr).toContain('Aborting commit due to empty commit message');
+  it('accepts bundled flags like -qm and -am', async () => {
+    expect(await sh.ok('git commit -qm first')).toBe('(no output)');
+    await sh.ok('echo b >> a.txt');
+    const out = await sh.ok('git commit -am second');
+    expect(out).toMatch(/\[main [0-9a-f]{7}\] second\n 1 file changed, 1 insertion\(\+\)/);
+    expect(await sh.ok('git log --format=%s')).toBe('second\nfirst\n');
   });
 
-  it('should handle --amend flag', async () => {
-    const result = await commitCommand.execute(['--amend', '-m', 'Amended commit'], mockPwd);
-    
-    expect(mockGit.log).toHaveBeenCalledWith({
-      dir: mockPwd,
-      depth: 2,
-    });
-    
-    expect(mockGit.commit).toHaveBeenCalledWith(expect.objectContaining({
-      dir: mockPwd,
-      message: 'Amended commit',
-      parent: ['parentcommit'],
-    }));
-    
-    expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain('Amended commit');
+  it('joins multiple -m paragraphs and reads -F', async () => {
+    await sh.ok('printf "from file\\n" > /tmp/msg && git commit -q -m one -m two');
+    expect(await sh.ok('git log -1 --format=%B')).toMatch(/^one\n\ntwo\n/);
+    await sh.ok('echo b >> a.txt && git commit -qaF /tmp/msg');
+    expect(await sh.ok('git log -1 --format=%s')).toBe('from file\n');
   });
 
-  it('should handle --amend flag without message', async () => {
-    const result = await commitCommand.execute(['--amend'], mockPwd);
-    
-    expect(mockGit.log).toHaveBeenCalledWith({
-      dir: mockPwd,
-      depth: 1,
-    });
-    
-    expect(mockGit.commit).toHaveBeenCalledWith(expect.objectContaining({
-      dir: mockPwd,
-      message: 'Previous commit',
-    }));
-    
-    expect(result.exitCode).toBe(0);
+  it('refuses to commit nothing, and an empty message', async () => {
+    await sh.ok('git commit -qm first');
+    const nothing = await sh.run('git commit -m again');
+    expect(nothing).toContain('nothing to commit, working tree clean');
+    expect(nothing).toContain('Exit code: 1');
+
+    await sh.ok('echo b >> a.txt');
+    expect(await sh.run('git commit -m again')).toContain('no changes added to commit');
+    expect(await sh.run('git commit -a')).toContain('Aborting commit due to empty commit message.');
   });
 
-  it('should handle -a flag to stage all tracked modified files', async () => {
-    const result = await commitCommand.execute(['-a', '-m', 'Commit with auto-stage'], mockPwd);
-    
-    // Should call add for the modified tracked file
-    expect(mockGit.add).toHaveBeenCalledWith({
-      dir: mockPwd,
-      filepath: 'file1.txt',
-    });
-    
-    // Should not call add for already staged files
-    expect(mockGit.add).not.toHaveBeenCalledWith({
-      dir: mockPwd,
-      filepath: 'file2.txt',
-    });
-    
-    // Should call remove for deleted files
-    expect(mockGit.remove).toHaveBeenCalledWith({
-      dir: mockPwd,
-      filepath: 'file4.txt',
-    });
-    
-    expect(mockGit.commit).toHaveBeenCalledWith(expect.objectContaining({
-      dir: mockPwd,
-      message: 'Commit with auto-stage',
-    }));
-    
-    expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain('Commit with auto-stage');
+  it('amends the last commit, keeping its message with --no-edit', async () => {
+    await sh.ok('git commit -qm first && echo b > b.txt && git add b.txt');
+    await sh.ok('git commit -q --amend --no-edit');
+    expect(await sh.ok('git log --format=%s')).toBe('first\n');
+    expect(await sh.ok('git show --name-only --format=')).toContain('b.txt');
+    await sh.ok('git commit -q --amend -m renamed');
+    expect(await sh.ok('git log --format=%s')).toBe('renamed\n');
   });
 
-  it('should handle -am flag for combined auto-stage and message', async () => {
-    const result = await commitCommand.execute(['-am', 'Combined flag commit'], mockPwd);
-    
-    // Should call add for the modified tracked file
-    expect(mockGit.add).toHaveBeenCalledWith({
-      dir: mockPwd,
-      filepath: 'file1.txt',
-    });
-    
-    // Should call remove for deleted files
-    expect(mockGit.remove).toHaveBeenCalledWith({
-      dir: mockPwd,
-      filepath: 'file4.txt',
-    });
-    
-    expect(mockGit.commit).toHaveBeenCalledWith(expect.objectContaining({
-      dir: mockPwd,
-      message: 'Combined flag commit',
-    }));
-    
-    expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain('Combined flag commit');
+  it('allows empty commits and overrides the author', async () => {
+    await sh.ok('git commit -qm first');
+    await sh.ok('git commit -q --allow-empty -m empty --author="Jane Doe <jane@example.com>"');
+    expect(await sh.ok('git log -1 --format="%an <%ae> %s"')).toBe('Jane Doe <jane@example.com> empty\n');
   });
 
-  it('should handle --allow-empty flag', async () => {
-    // Mock empty status
-    mockGit.statusMatrix = vi.fn().mockResolvedValue([]);
-    
-    const result = await commitCommand.execute(['--allow-empty', '-m', 'Empty commit'], mockPwd);
-    
-    expect(mockGit.commit).toHaveBeenCalledWith(expect.objectContaining({
-      dir: mockPwd,
-      message: 'Empty commit',
-    }));
-    
-    expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain('Empty commit');
+  it('commits only the given paths', async () => {
+    await sh.ok('git commit -qm first && echo b >> a.txt && echo n > new.txt && git add new.txt');
+    await sh.ok('git commit -qm "only a" a.txt');
+    expect(await sh.ok('git show --name-only --format=')).toContain('a.txt');
   });
 
-  it('should fail if there are no staged changes', async () => {
-    // Mock status with only unstaged changes
-    mockGit.statusMatrix = vi.fn().mockResolvedValue([
-      ['file1.txt', 1, 2, 1], // modified in workdir only
-    ]);
-    
-    const result = await commitCommand.execute(['-m', 'Should fail'], mockPwd);
-    
-    expect(mockGit.commit).not.toHaveBeenCalled();
-    
-    expect(result.exitCode).not.toBe(0);
-    expect(result.stderr).toContain('nothing to commit');
-  });
-
-  it('should handle not being in a git repository', async () => {
-    mockFS.stat = vi.fn().mockRejectedValue(new Error('Not a directory'));
-    
-    const result = await commitCommand.execute(['-m', 'Test commit'], mockPwd);
-    
-    expect(mockGit.commit).not.toHaveBeenCalled();
-    
-    expect(result.exitCode).not.toBe(0);
-    expect(result.stderr).toContain('not a git repository');
+  it('uses MERGE_MSG after a conflicted cherry-pick', async () => {
+    await sh.ok('git commit -qm first && git branch other');
+    await sh.ok('echo main > a.txt && git commit -qam main-change');
+    await sh.ok('git switch -q other && echo other > a.txt && git commit -qam other-change && git switch -q main');
+    const out = await sh.run('git cherry-pick other');
+    expect(out).toContain('CONFLICT (content): Merge conflict in a.txt');
+    await sh.ok('echo resolved > a.txt && git add a.txt && git commit -q');
+    expect(await sh.ok('git log -1 --format=%s')).toBe('other-change\n');
+    expect(await sh.ok('git status --short')).toBe('(no output)');
   });
 });

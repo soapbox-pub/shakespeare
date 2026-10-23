@@ -1,40 +1,92 @@
+import type { ReadCommitResult } from "isomorphic-git";
 import type { JSRuntimeFS } from "../../JSRuntime";
 import type { ShellCommandResult } from "../ShellCommand";
 import { createSuccessResult, createErrorResult } from "../ShellCommand";
 import type { GitSubcommand, GitSubcommandOptions } from "../git";
 import type { Git } from "../../git";
+import { parseArgs, unknownOption, type ParsedArgs } from "./args";
+import { compareSnapshots, formatChanges, treeSnapshot, type DiffFormat } from "./diffing";
+import { parseRange, walkCommits } from "./history";
+import { formatCommit, loadDecorations, normalizePrettyFormat, type Decorations } from "./pretty";
+import { isRevision, RevisionError } from "./revisions";
 
-interface LogOptions {
-  oneline: boolean;
-  graph: boolean;
-  format?: string;
-  author?: string;
-  grep?: string;
-  since?: number;
-  until?: number;
-  patch: boolean;
-  stat: boolean;
-  nameOnly: boolean;
-  nameStatus: boolean;
-  follow?: string;
-  noMerges: boolean;
-  reverse: boolean;
+/** Options shared by `git log` and `git show` for printing commits. */
+export const COMMIT_DISPLAY_SPEC = {
+  flags: {
+    oneline: 'oneline', 'abbrev-commit': 'abbrevCommit', decorate: 'decorate',
+    p: 'patch', u: 'patch', patch: 'patch', s: 'noPatch', 'no-patch': 'noPatch',
+    stat: 'stat', shortstat: 'shortstat', numstat: 'numstat', 'name-only': 'nameOnly', 'name-status': 'nameStatus',
+    'no-color': 'noColor', color: 'color', 'no-renames': 'noRenames', M: 'renames', 'find-renames': 'renames',
+    'full-index': 'fullIndex', binary: 'binary', 'no-ext-diff': 'noExtDiff',
+  },
+  values: { format: 'format', pretty: 'format', date: 'date', U: 'unified', unified: 'unified' },
+  optional: { decorate: 'decorate', color: 'color', stat: 'stat' },
+} as const;
+
+export interface CommitDisplay {
+  format: string;
+  abbrevCommit: boolean;
+  dateStyle?: string;
+  decorations?: Decorations;
+  diff: DiffFormat | null;
 }
 
-interface CommitInfo {
-  oid: string;
-  commit: {
-    message: string;
-    author: { name: string; email: string; timestamp: number; timezoneOffset?: number };
-    committer?: { name: string; email: string; timestamp: number; timezoneOffset?: number };
-    parent?: string[];
+/** Read the display options from parsed `log`/`show` arguments. */
+export async function commitDisplay(git: Git, dir: string, parsed: ParsedArgs, defaultPatch: boolean): Promise<CommitDisplay> {
+  let format = parsed.has('oneline') ? 'oneline' : 'medium';
+  const pretty = parsed.get('format');
+  if (pretty !== undefined) format = normalizePrettyFormat(pretty);
+  else if (parsed.flags.get('format') === true) format = 'medium';
+
+  const abbrevCommit = parsed.negated('abbrevCommit') ? false : parsed.has('oneline') || parsed.has('abbrevCommit');
+
+  const diff: DiffFormat = {
+    patch: parsed.has('patch'),
+    stat: parsed.has('stat'),
+    shortstat: parsed.has('shortstat'),
+    numstat: parsed.has('numstat'),
+    nameOnly: parsed.has('nameOnly'),
+    nameStatus: parsed.has('nameStatus'),
+    context: parsed.get('unified') !== undefined ? parseInt(parsed.get('unified')!, 10) || 0 : 3,
   };
+  const anyDiff = diff.patch || diff.stat || diff.shortstat || diff.numstat || diff.nameOnly || diff.nameStatus;
+  if (!anyDiff && defaultPatch) diff.patch = true;
+
+  const decorate = parsed.get('decorate') ?? (parsed.has('decorate') ? 'short' : undefined);
+  const decorations = decorate && decorate !== 'no' && !parsed.negated('decorate') ? await loadDecorations(git, dir) : undefined;
+
+  return {
+    format,
+    abbrevCommit,
+    dateStyle: parsed.get('date'),
+    decorations,
+    diff: parsed.has('noPatch') || !(anyDiff || defaultPatch) ? null : diff,
+  };
+}
+
+/** The changes a commit introduced relative to its first parent (none for merges). */
+export async function commitDiff(git: Git, dir: string, entry: ReadCommitResult, format: DiffFormat, pathspecs: string[] = []): Promise<string> {
+  const { commit } = entry;
+  if (commit.parent.length > 1) return '';
+  const parentTree = commit.parent[0] ? (await git.readCommit({ dir, oid: commit.parent[0] })).commit.tree : null;
+  const changes = compareSnapshots(await treeSnapshot(git, dir, parentTree), await treeSnapshot(git, dir, commit.tree), pathspecs);
+  return formatChanges(git, dir, changes, format);
+}
+
+/** One commit with its diff, laid out the way `git log` does. */
+export async function renderCommit(git: Git, dir: string, entry: ReadCommitResult, display: CommitDisplay, pathspecs: string[] = []): Promise<string> {
+  const header = formatCommit(entry, display);
+  const diff = display.diff ? await commitDiff(git, dir, entry, display.diff, pathspecs) : '';
+  const userFormat = display.format.startsWith('format:') || display.format.startsWith('tformat:');
+  let out = header === '' && userFormat ? '' : `${header}\n`;
+  if (diff) out += display.format === 'oneline' ? diff : `\n${diff}`;
+  return out;
 }
 
 export class GitLogCommand implements GitSubcommand {
   name = 'log';
   description = 'Show commit logs';
-  usage = 'git log [--oneline] [--graph] [--stat] [-p|--patch] [--name-only] [--name-status] [--author=<pattern>] [--grep=<pattern>] [--since=<date>] [--until=<date>] [--no-merges] [--reverse] [--format=<format>] [-n <number>] [--all] [<ref>]';
+  usage = 'git log [<options>] [<revision-range>] [[--] <path>...]';
 
   private git: Git;
   private fs: JSRuntimeFS;
@@ -46,483 +98,169 @@ export class GitLogCommand implements GitSubcommand {
 
   async execute(args: string[], cwd: string): Promise<ShellCommandResult> {
     try {
-      // Check if we're in a git repository
       try {
         await this.fs.stat(`${cwd}/.git`);
       } catch {
         return createErrorResult('fatal: not a git repository (or any of the parent directories): .git');
       }
 
-      const { options, limit, ref } = this.parseArgs(args);
+      const parsed = parseArgs(args, {
+        flags: {
+          ...COMMIT_DISPLAY_SPEC.flags,
+          graph: 'graph', all: 'all', 'no-merges': 'noMerges', merges: 'merges', reverse: 'reverse',
+          'first-parent': 'firstParent', i: 'ignoreCase', 'regexp-ignore-case': 'ignoreCase', 'all-match': 'allMatch',
+          'invert-grep': 'invertGrep', E: 'extendedRegexp', 'extended-regexp': 'extendedRegexp', F: 'fixedStrings', 'fixed-strings': 'fixedStrings',
+          follow: 'follow', 'topo-order': 'topoOrder', 'date-order': 'dateOrder', 'full-history': 'fullHistory',
+          'no-walk': 'noWalk', 'show-signature': 'showSignature', 'source': 'source', 'log-size': 'logSize',
+          'no-abbrev': 'noAbbrev', 'ignore-missing': 'ignoreMissing', 'no-decorate': 'noDecorate',
+        },
+        values: {
+          ...COMMIT_DISPLAY_SPEC.values,
+          n: 'maxCount', 'max-count': 'maxCount', skip: 'skip', author: 'author', committer: 'committer', grep: 'grep',
+          since: 'since', after: 'since', until: 'until', before: 'until', 'since-as-filter': 'since',
+        },
+        optional: COMMIT_DISPLAY_SPEC.optional,
+        numeric: 'maxCount',
+      });
+      if (parsed.unknown.length > 0) {
+        return createErrorResult(unknownOption(parsed.unknown[0], this.usage));
+      }
+      if (parsed.has('noDecorate')) parsed.flags.set('decorate', false);
 
+      // Split positionals into revisions and paths, like git does.
+      const revs: string[] = [];
+      const paths = [...parsed.paths];
+      for (const arg of parsed.positionals) {
+        if (paths.length === 0 && (arg.includes('..') || arg.startsWith('^') || await isRevision(this.git, cwd, arg))) {
+          revs.push(arg);
+        } else if (await this.exists(cwd, arg)) {
+          paths.push(arg);
+        } else {
+          return createErrorResult(`fatal: ambiguous argument '${arg}': unknown revision or path not in the working tree.\nUse '--' to separate paths from revisions, like this:\n'git <command> [<revision>...] -- [<file>...]'`);
+        }
+      }
+
+      let range;
       try {
-        const logOptions: { dir: string; depth?: number; ref?: string } = { dir: cwd };
-        if (limit !== undefined) {
-          logOptions.depth = limit;
-        }
-        if (ref !== undefined) {
-          logOptions.ref = ref;
-        }
-
-        let commits = await this.git.log(logOptions) as CommitInfo[];
-
-        if (commits.length === 0) {
-          return createErrorResult('fatal: your current branch does not have any commits yet');
-        }
-
-        // Apply filters
-        commits = this.filterCommits(commits, options);
-
-        if (options.reverse) {
-          commits = [...commits].reverse();
-        }
-
-        // Determine format based on options
-        const format = options.format || (options.oneline ? 'oneline' : 'full');
-
-        return await this.formatLog(commits, format, options, cwd);
-
+        range = await parseRange(this.git, cwd, revs, parsed.has('all'));
       } catch (error) {
-        if (error instanceof Error && error.message.includes('does not exist')) {
-          return createErrorResult('fatal: your current branch does not have any commits yet');
+        if (error instanceof RevisionError) {
+          if (revs.length === 0) {
+            const branch = (await this.git.currentBranch({ dir: cwd })) ?? 'HEAD';
+            return createErrorResult(`fatal: your current branch '${branch}' does not have any commits yet`);
+          }
+          return createErrorResult(error.message);
         }
         throw error;
       }
 
+      const display = await commitDisplay(this.git, cwd, parsed, false);
+      const filter = this.buildFilter(parsed);
+      const maxCount = parsed.get('maxCount') !== undefined ? parseInt(parsed.get('maxCount')!, 10) : Infinity;
+      let skip = parsed.get('skip') !== undefined ? parseInt(parsed.get('skip')!, 10) : 0;
+
+      const entries: ReadCommitResult[] = [];
+      if (maxCount > 0) {
+        for await (const entry of walkCommits(this.git, cwd, range, { firstParent: parsed.has('firstParent'), paths })) {
+          if (!filter(entry)) continue;
+          if (skip > 0) {
+            skip--;
+            continue;
+          }
+          entries.push(entry);
+          if (!parsed.has('reverse') && entries.length >= maxCount) break;
+        }
+      }
+      if (parsed.has('reverse')) entries.splice(maxCount);
+      if (parsed.has('reverse')) entries.reverse();
+
+      const multiline = !['oneline'].includes(display.format) && !display.format.includes(':');
+      const separator = display.format.startsWith('format:') ? '\n' : '';
+      let out = '';
+      for (let i = 0; i < entries.length; i++) {
+        let text = await renderCommit(this.git, cwd, entries[i], display, paths);
+        if (display.format.startsWith('format:')) text = text.replace(/\n$/, '');
+        if (parsed.has('graph')) text = graph(text, i === entries.length - 1);
+        if (i > 0) out += multiline ? (parsed.has('graph') ? '|\n' : '\n') : separator;
+        out += text;
+      }
+      if (display.format.startsWith('format:') && out) out += '\n';
+      return createSuccessResult(out);
     } catch (error) {
       return createErrorResult(`git log: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
-  private filterCommits(commits: CommitInfo[], options: LogOptions): CommitInfo[] {
-    return commits.filter(commit => {
-      if (options.author) {
-        const authorStr = `${commit.commit.author.name} <${commit.commit.author.email}>`;
-        if (!authorStr.toLowerCase().includes(options.author.toLowerCase())) return false;
-      }
-      if (options.grep) {
-        if (!commit.commit.message.toLowerCase().includes(options.grep.toLowerCase())) return false;
-      }
-      if (options.since !== undefined && commit.commit.author.timestamp < options.since) return false;
-      if (options.until !== undefined && commit.commit.author.timestamp > options.until) return false;
-      if (options.noMerges && commit.commit.parent && commit.commit.parent.length > 1) return false;
-      return true;
-    });
-  }
-
-  private parseArgs(args: string[]): {
-    options: LogOptions;
-    limit: number | undefined;
-    ref?: string;
-  } {
-    const options: LogOptions = {
-      oneline: false,
-      graph: false,
-      patch: false,
-      stat: false,
-      nameOnly: false,
-      nameStatus: false,
-      noMerges: false,
-      reverse: false,
-    };
-    let limit: number | undefined = undefined;
-    let ref: string | undefined = undefined;
-
-    for (let i = 0; i < args.length; i++) {
-      const arg = args[i];
-
-      if (arg === '--oneline') {
-        options.oneline = true;
-      } else if (arg === '--graph') {
-        options.graph = true;
-      } else if (arg === '--all') {
-        // Not directly supported by isomorphic-git
-      } else if (arg === '-p' || arg === '--patch') {
-        options.patch = true;
-      } else if (arg === '--stat') {
-        options.stat = true;
-      } else if (arg === '--name-only') {
-        options.nameOnly = true;
-      } else if (arg === '--name-status') {
-        options.nameStatus = true;
-      } else if (arg === '--no-merges') {
-        options.noMerges = true;
-      } else if (arg === '--reverse') {
-        options.reverse = true;
-      } else if (arg === '--format' || arg === '--pretty') {
-        if (i + 1 < args.length) {
-          options.format = args[i + 1];
-          i++;
-        }
-      } else if (arg.startsWith('--format=')) {
-        options.format = arg.substring(9);
-      } else if (arg.startsWith('--pretty=')) {
-        options.format = arg.substring(9);
-      } else if (arg === '--author') {
-        if (i + 1 < args.length) {
-          options.author = args[i + 1];
-          i++;
-        }
-      } else if (arg.startsWith('--author=')) {
-        options.author = arg.substring(9);
-      } else if (arg === '--grep') {
-        if (i + 1 < args.length) {
-          options.grep = args[i + 1];
-          i++;
-        }
-      } else if (arg.startsWith('--grep=')) {
-        options.grep = arg.substring(7);
-      } else if (arg === '--since' || arg === '--after') {
-        if (i + 1 < args.length) {
-          options.since = this.parseDate(args[i + 1]);
-          i++;
-        }
-      } else if (arg.startsWith('--since=') || arg.startsWith('--after=')) {
-        options.since = this.parseDate(arg.substring(arg.indexOf('=') + 1));
-      } else if (arg === '--until' || arg === '--before') {
-        if (i + 1 < args.length) {
-          options.until = this.parseDate(args[i + 1]);
-          i++;
-        }
-      } else if (arg.startsWith('--until=') || arg.startsWith('--before=')) {
-        options.until = this.parseDate(arg.substring(arg.indexOf('=') + 1));
-      } else if (arg === '--follow') {
-        if (i + 1 < args.length) {
-          options.follow = args[i + 1];
-          i++;
-        }
-      } else if (arg.startsWith('--follow=')) {
-        options.follow = arg.substring(9);
-      } else if (arg === '-n' || arg === '--max-count') {
-        if (i + 1 < args.length) {
-          const num = parseInt(args[i + 1], 10);
-          if (!isNaN(num) && num > 0) {
-            limit = num;
-          }
-          i++;
-        }
-      } else if (arg.startsWith('-n=')) {
-        const num = parseInt(arg.substring(3), 10);
-        if (!isNaN(num) && num > 0) {
-          limit = num;
-        }
-      } else if (arg.startsWith('--max-count=')) {
-        const num = parseInt(arg.substring(12), 10);
-        if (!isNaN(num) && num > 0) {
-          limit = num;
-        }
-      } else if (arg.match(/^-\d+$/)) {
-        const num = parseInt(arg.substring(1), 10);
-        if (!isNaN(num) && num > 0) {
-          limit = num;
-        }
-      } else if (!arg.startsWith('-')) {
-        ref = arg;
-      }
-    }
-
-    return { options, limit, ref };
-  }
-
-  /**
-   * Parse a date string into a Unix timestamp (seconds).
-   * Supports absolute dates (ISO format) and relative dates ("2 weeks ago", "1 day ago").
-   */
-  private parseDate(str: string): number | undefined {
-    // Try ISO/standard date parsing first
-    const ts = Date.parse(str);
-    if (!isNaN(ts)) return Math.floor(ts / 1000);
-
-    // Try relative dates like "2 weeks ago", "yesterday"
-    const now = Math.floor(Date.now() / 1000);
-    const lower = str.toLowerCase().trim();
-
-    if (lower === 'yesterday') return now - 86400;
-    if (lower === 'today') return now - (now % 86400);
-
-    const relMatch = lower.match(/^(\d+)\s+(second|minute|hour|day|week|month|year)s?\s+ago$/);
-    if (relMatch) {
-      const num = parseInt(relMatch[1], 10);
-      const unit = relMatch[2];
-      const secs: Record<string, number> = {
-        second: 1,
-        minute: 60,
-        hour: 3600,
-        day: 86400,
-        week: 604800,
-        month: 2592000,
-        year: 31536000,
-      };
-      return now - num * secs[unit];
-    }
-
-    return undefined;
-  }
-
-  /**
-   * Format a Unix timestamp into a git-style date string with timezone offset.
-   */
-  private formatGitDate(timestamp: number, tzOffset?: number): string {
-    const date = new Date(timestamp * 1000);
-    const offset = tzOffset ?? 0;
-    const sign = offset <= 0 ? '+' : '-';
-    const absOff = Math.abs(offset);
-    const tzHours = Math.floor(absOff / 60).toString().padStart(2, '0');
-    const tzMins = (absOff % 60).toString().padStart(2, '0');
-    // Use UTC to get canonical git output
-    return date.toUTCString().replace('GMT', `${sign}${tzHours}${tzMins}`);
-  }
-
-  /**
-   * Get the files changed in a commit (comparing against parent).
-   */
-  private async getChangedFiles(commit: CommitInfo, cwd: string): Promise<Array<{ path: string; status: 'A' | 'M' | 'D' }>> {
-    const changes: Array<{ path: string; status: 'A' | 'M' | 'D' }> = [];
+  private async exists(cwd: string, path: string): Promise<boolean> {
     try {
-      const parents = commit.commit.parent || [];
-      if (parents.length === 0) {
-        // Initial commit: all files are added
-        const files = await this.listFilesInCommit(cwd, commit.oid);
-        for (const f of files) {
-          changes.push({ path: f, status: 'A' });
-        }
-      } else {
-        const currentFiles = await this.getFileMap(cwd, commit.oid);
-        const parentFiles = await this.getFileMap(cwd, parents[0]);
-        // Find additions/modifications
-        for (const [path, oid] of currentFiles) {
-          const parentOid = parentFiles.get(path);
-          if (!parentOid) changes.push({ path, status: 'A' });
-          else if (parentOid !== oid) changes.push({ path, status: 'M' });
-        }
-        // Find deletions
-        for (const path of parentFiles.keys()) {
-          if (!currentFiles.has(path)) {
-            changes.push({ path, status: 'D' });
-          }
-        }
-      }
+      await this.fs.stat(`${cwd}/${path}`);
+      return true;
     } catch {
-      // Ignore
+      return false;
     }
-    return changes;
   }
 
-  private async listFilesInCommit(cwd: string, commitOid: string): Promise<Set<string>> {
-    const map = await this.getFileMap(cwd, commitOid);
-    return new Set(map.keys());
-  }
-
-  private async getFileMap(cwd: string, commitOid: string): Promise<Map<string, string>> {
-    const files = new Map<string, string>();
-    const walk = async (oid: string, prefix: string): Promise<void> => {
+  private buildFilter(parsed: ParsedArgs): (entry: ReadCommitResult) => boolean {
+    const flags = parsed.has('ignoreCase') ? 'i' : '';
+    const toRegExp = (pattern: string) => {
+      if (parsed.has('fixedStrings')) return new RegExp(pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), flags);
       try {
-        const tree = await this.git.readTree({ dir: cwd, oid });
-        for (const entry of tree.tree as Array<{ mode: string; path: string; oid: string; type?: string }>) {
-          const path = prefix ? `${prefix}/${entry.path}` : entry.path;
-          if (entry.mode === '040000' || entry.type === 'tree') {
-            await walk(entry.oid, path);
-          } else {
-            files.set(path, entry.oid);
-          }
-        }
+        return new RegExp(pattern, flags);
       } catch {
-        // Ignore
+        return new RegExp(pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), flags);
       }
     };
-    await walk(commitOid, '');
-    return files;
-  }
+    const authors = parsed.getAll('author').map(toRegExp);
+    const committers = parsed.getAll('committer').map(toRegExp);
+    const greps = parsed.getAll('grep').map(toRegExp);
+    const since = parsed.get('since') !== undefined ? parseDate(parsed.get('since')!) : undefined;
+    const until = parsed.get('until') !== undefined ? parseDate(parsed.get('until')!) : undefined;
 
-  private async formatLog(
-    commits: CommitInfo[],
-    format: string,
-    options: LogOptions,
-    cwd: string,
-  ): Promise<ShellCommandResult> {
-    const lines: string[] = [];
-
-    for (let i = 0; i < commits.length; i++) {
-      const commit = commits[i];
-      const isLast = i === commits.length - 1;
-      const graphPrefix = options.graph ? '* ' : '';
-
-      // Handle format:<spec> pretty format
-      if (format.startsWith('format:') || format.startsWith('tformat:')) {
-        const spec = format.substring(format.indexOf(':') + 1);
-        lines.push(this.formatCustom(commit, spec));
-      } else {
-        switch (format) {
-          case 'oneline':
-            lines.push(this.formatOneline(commit, graphPrefix));
-            break;
-
-          case 'short':
-            lines.push(this.formatShort(commit, graphPrefix));
-            if (!isLast) lines.push('');
-            break;
-
-          case 'medium':
-          case 'full':
-          default:
-            lines.push(this.formatFull(commit, graphPrefix));
-            if (!isLast) lines.push('');
-            break;
-
-          case 'fuller':
-            lines.push(this.formatFuller(commit, graphPrefix));
-            if (!isLast) lines.push('');
-            break;
-
-          case 'raw':
-            lines.push(this.formatRaw(commit));
-            if (!isLast) lines.push('');
-            break;
-        }
+    return ({ commit }) => {
+      const author = `${commit.author.name} <${commit.author.email}>`;
+      const committer = `${commit.committer.name} <${commit.committer.email}>`;
+      if (authors.length && !authors.some((re) => re.test(author))) return false;
+      if (committers.length && !committers.some((re) => re.test(committer))) return false;
+      if (greps.length) {
+        const hits = greps.map((re) => re.test(commit.message));
+        let match = parsed.has('allMatch') ? hits.every(Boolean) : hits.some(Boolean);
+        if (parsed.has('invertGrep')) match = !match;
+        if (!match) return false;
       }
-
-      // Include file changes if requested
-      if (options.stat || options.patch || options.nameOnly || options.nameStatus) {
-        const changes = await this.getChangedFiles(commit, cwd);
-        if (options.nameOnly) {
-          for (const c of changes) lines.push(c.path);
-        } else if (options.nameStatus) {
-          for (const c of changes) lines.push(`${c.status}\t${c.path}`);
-        } else if (options.stat) {
-          lines.push('');
-          for (const c of changes) {
-            lines.push(` ${c.path} | ${c.status === 'A' ? '+' : c.status === 'D' ? '-' : 'M'}`);
-          }
-          lines.push(` ${changes.length} file${changes.length !== 1 ? 's' : ''} changed`);
-        } else if (options.patch) {
-          lines.push('');
-          // Simple patch output: just show changed file names (full patch is expensive)
-          for (const c of changes) {
-            lines.push(`diff --git a/${c.path} b/${c.path}`);
-            if (c.status === 'A') {
-              lines.push('new file mode 100644');
-            } else if (c.status === 'D') {
-              lines.push('deleted file mode 100644');
-            }
-            lines.push(`--- ${c.status === 'A' ? '/dev/null' : `a/${c.path}`}`);
-            lines.push(`+++ ${c.status === 'D' ? '/dev/null' : `b/${c.path}`}`);
-          }
-        }
-        if (!isLast) lines.push('');
-      }
-    }
-
-    return createSuccessResult(lines.join('\n') + '\n');
-  }
-
-  private formatCustom(commit: CommitInfo, spec: string): string {
-    // Minimal pretty format placeholder support
-    const placeholders: Record<string, string> = {
-      '%H': commit.oid,
-      '%h': commit.oid.substring(0, 7),
-      '%an': commit.commit.author.name,
-      '%ae': commit.commit.author.email,
-      '%ad': this.formatGitDate(commit.commit.author.timestamp, commit.commit.author.timezoneOffset),
-      '%at': String(commit.commit.author.timestamp),
-      '%s': commit.commit.message.split('\n')[0],
-      '%b': commit.commit.message.split('\n').slice(1).join('\n'),
-      '%B': commit.commit.message,
-      '%cn': commit.commit.committer?.name || commit.commit.author.name,
-      '%ce': commit.commit.committer?.email || commit.commit.author.email,
-      '%cd': this.formatGitDate(commit.commit.committer?.timestamp || commit.commit.author.timestamp, commit.commit.committer?.timezoneOffset),
-      '%ct': String(commit.commit.committer?.timestamp || commit.commit.author.timestamp),
-      '%P': (commit.commit.parent || []).join(' '),
-      '%p': (commit.commit.parent || []).map(p => p.substring(0, 7)).join(' '),
-      '%n': '\n',
-      '%%': '%',
+      if (since !== undefined && commit.committer.timestamp < since) return false;
+      if (until !== undefined && commit.committer.timestamp > until) return false;
+      if (parsed.has('noMerges') && commit.parent.length > 1) return false;
+      if (parsed.has('merges') && commit.parent.length < 2) return false;
+      return true;
     };
+  }
+}
 
-    let result = spec;
-    // Replace longer placeholders first to avoid partial replacements
-    const keys = Object.keys(placeholders).sort((a, b) => b.length - a.length);
-    for (const key of keys) {
-      result = result.split(key).join(placeholders[key]);
-    }
-    return result;
+/** Prefix lines with a (linear) commit graph. */
+function graph(text: string, last: boolean): string {
+  const lines = text.replace(/\n$/, '').split('\n');
+  return lines.map((line, i) => (i === 0 ? `* ${line}` : `${last ? ' ' : '|'} ${line}`).trimEnd() + '\n').join('');
+}
+
+/** Parse `--since`/`--until` dates: absolute dates and "2 weeks ago" style. Returns Unix seconds. */
+export function parseDate(value: string): number | undefined {
+  const now = Math.floor(Date.now() / 1000);
+  const lower = value.toLowerCase().trim().replace(/\./g, ' ');
+  if (/^\d+$/.test(lower) && lower.length >= 9) return parseInt(lower, 10);
+  if (lower === 'now') return now;
+  if (lower === 'yesterday') return now - 86400;
+  if (lower === 'today' || lower === 'midnight') return now - (now % 86400);
+
+  const units: Record<string, number> = {
+    second: 1, minute: 60, hour: 3600, day: 86400, week: 604800, month: 2592000, year: 31536000,
+  };
+  const relative = lower.match(/^(\d+|an?|one)\s*(second|sec|minute|min|hour|day|week|month|year)s?(\s+ago)?$/);
+  if (relative) {
+    const n = /^\d+$/.test(relative[1]) ? parseInt(relative[1], 10) : 1;
+    const unit = { sec: 'second', min: 'minute' }[relative[2]] ?? relative[2];
+    return now - n * units[unit];
   }
 
-  private formatOneline(commit: CommitInfo, graphPrefix: string): string {
-    const shortHash = commit.oid.substring(0, 7);
-    const message = commit.commit.message.split('\n')[0];
-    return `${graphPrefix}${shortHash} ${message}`;
-  }
-
-  private formatShort(commit: CommitInfo, graphPrefix: string): string {
-    const lines: string[] = [];
-    const shortHash = commit.oid.substring(0, 7);
-
-    lines.push(`${graphPrefix}commit ${shortHash}`);
-    lines.push(`Author: ${commit.commit.author.name} <${commit.commit.author.email}>`);
-    lines.push('');
-
-    const messageLines = commit.commit.message.split('\n');
-    for (const messageLine of messageLines) {
-      lines.push(`    ${messageLine}`);
-    }
-
-    return lines.join('\n');
-  }
-
-  private formatFull(commit: CommitInfo, graphPrefix: string): string {
-    const lines: string[] = [];
-    lines.push(`${graphPrefix}commit ${commit.oid}`);
-    const author = commit.commit.author;
-    lines.push(`Author: ${author.name} <${author.email}>`);
-    lines.push(`Date:   ${this.formatGitDate(author.timestamp, author.timezoneOffset)}`);
-    lines.push('');
-    const messageLines = commit.commit.message.split('\n');
-    for (const messageLine of messageLines) {
-      lines.push(`    ${messageLine}`);
-    }
-    return lines.join('\n');
-  }
-
-  private formatFuller(commit: CommitInfo, graphPrefix: string): string {
-    const lines: string[] = [];
-    lines.push(`${graphPrefix}commit ${commit.oid}`);
-    const author = commit.commit.author;
-    lines.push(`Author:     ${author.name} <${author.email}>`);
-    lines.push(`AuthorDate: ${this.formatGitDate(author.timestamp, author.timezoneOffset)}`);
-    if (commit.commit.committer) {
-      const committer = commit.commit.committer;
-      lines.push(`Commit:     ${committer.name} <${committer.email}>`);
-      lines.push(`CommitDate: ${this.formatGitDate(committer.timestamp, committer.timezoneOffset)}`);
-    }
-    lines.push('');
-    const messageLines = commit.commit.message.split('\n');
-    for (const messageLine of messageLines) {
-      lines.push(`    ${messageLine}`);
-    }
-    return lines.join('\n');
-  }
-
-  private formatRaw(commit: CommitInfo): string {
-    const lines: string[] = [];
-    lines.push(`commit ${commit.oid}`);
-    const author = commit.commit.author;
-    const authorTz = this.gitTzString(author.timezoneOffset);
-    lines.push(`author ${author.name} <${author.email}> ${author.timestamp} ${authorTz}`);
-    if (commit.commit.committer) {
-      const committer = commit.commit.committer;
-      const committerTz = this.gitTzString(committer.timezoneOffset);
-      lines.push(`committer ${committer.name} <${committer.email}> ${committer.timestamp} ${committerTz}`);
-    }
-    lines.push('');
-    lines.push(commit.commit.message);
-    return lines.join('\n');
-  }
-
-  private gitTzString(tzOffset?: number): string {
-    const offset = tzOffset ?? 0;
-    const sign = offset <= 0 ? '+' : '-';
-    const absOff = Math.abs(offset);
-    const h = Math.floor(absOff / 60).toString().padStart(2, '0');
-    const m = (absOff % 60).toString().padStart(2, '0');
-    return `${sign}${h}${m}`;
-  }
+  const parsed = Date.parse(value);
+  return isNaN(parsed) ? undefined : Math.floor(parsed / 1000);
 }

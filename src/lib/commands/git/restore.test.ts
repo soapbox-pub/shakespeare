@@ -1,73 +1,50 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { GitRestoreCommand } from './restore';
-import type { Git } from '../../git';
-import type { JSRuntimeFS } from '../../JSRuntime';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { createGitShell, type GitShell } from '@/test/gitShell';
 
-const mockFS = {
-  stat: async (path: string) => {
-    if (path.endsWith('/.git')) return { isDirectory: () => true };
-    throw new Error('ENOENT');
-  },
-} as unknown as JSRuntimeFS;
+describe('git restore', () => {
+  let sh: GitShell;
 
-describe('GitRestoreCommand', () => {
-  let restoreCommand: GitRestoreCommand;
-  let mockGit: Git;
-
-  beforeEach(() => {
-    mockGit = {
-      checkout: vi.fn(async () => {}),
-      resetIndex: vi.fn(async () => {}),
-    } as unknown as Git;
-    restoreCommand = new GitRestoreCommand({ git: mockGit, fs: mockFS });
+  beforeEach(async () => {
+    sh = await createGitShell();
+    await sh.ok('git init -q && echo a > a.txt && mkdir src && echo x > src/x.ts && git add -A && git commit -qm first');
+    await sh.ok('echo b >> a.txt && echo y > src/y.ts && git add -A && git commit -qm second');
   });
 
-  it('should fail without path arguments', async () => {
-    const result = await restoreCommand.execute([], '/test-repo');
-    expect(result.exitCode).toBe(1);
-    expect(result.stderr).toContain('specify path');
+  afterEach(() => sh.dispose());
+
+  it('restores the working tree from the index', async () => {
+    await sh.ok('echo junk > a.txt && git add a.txt && echo more >> a.txt && rm src/x.ts');
+    await sh.ok('git restore a.txt src');
+    expect(await sh.read('a.txt')).toBe('junk\n');
+    expect(await sh.ok('git status -s')).toBe('M  a.txt\n');
   });
 
-  it('should fail when not in a git repo', async () => {
-    const mockFSNoGit = {
-      stat: async () => { throw new Error('ENOENT'); },
-    } as unknown as JSRuntimeFS;
-    const cmd = new GitRestoreCommand({ git: mockGit, fs: mockFSNoGit });
-    const result = await cmd.execute(['foo.txt'], '/not-a-repo');
-    expect(result.exitCode).toBe(1);
-    expect(result.stderr).toContain('not a git repository');
+  it('unstages with --staged', async () => {
+    await sh.ok('echo junk > a.txt && git add a.txt');
+    await sh.ok('git restore --staged a.txt');
+    expect(await sh.ok('git status -s')).toBe(' M a.txt\n');
+    await sh.ok('git add a.txt && git restore -SW a.txt');
+    expect(await sh.ok('git status -s')).toBe('(no output)');
+    expect(await sh.read('a.txt')).toBe('a\nb\n');
   });
 
-  it('should restore a file from HEAD by default', async () => {
-    const result = await restoreCommand.execute(['file1.txt'], '/test-repo');
-    expect(result.exitCode).toBe(0);
-    expect(mockGit.checkout).toHaveBeenCalledWith(expect.objectContaining({
-      dir: '/test-repo',
-      ref: 'HEAD',
-      filepaths: ['file1.txt'],
-      force: true,
-    }));
+  it('restores from another commit, removing files the source lacks', async () => {
+    await sh.ok('git restore --source=HEAD~1 a.txt src');
+    expect(await sh.read('a.txt')).toBe('a\n');
+    expect(await sh.ok('git status -s')).toBe(' M a.txt\n D src/y.ts\n');
+    await sh.ok('git restore -s HEAD~1 --staged --worktree .');
+    expect(await sh.ok('git status -s')).toBe('M  a.txt\nD  src/y.ts\n');
   });
 
-  it('should unstage with --staged', async () => {
-    const result = await restoreCommand.execute(['--staged', 'file1.txt'], '/test-repo');
-    expect(result.exitCode).toBe(0);
-    expect(mockGit.resetIndex).toHaveBeenCalledWith({ dir: '/test-repo', filepath: 'file1.txt' });
-    expect(mockGit.checkout).not.toHaveBeenCalled();
+  it('matches globs', async () => {
+    await sh.ok('echo q > src/x.ts && echo q > src/y.ts && echo q > a.txt');
+    await sh.ok("git restore 'src/*.ts'");
+    expect(await sh.ok('git status -s')).toBe(' M a.txt\n');
   });
 
-  it('should restore both index and worktree with --staged --worktree', async () => {
-    const result = await restoreCommand.execute(['--staged', '--worktree', 'file1.txt'], '/test-repo');
-    expect(result.exitCode).toBe(0);
-    expect(mockGit.resetIndex).toHaveBeenCalled();
-    expect(mockGit.checkout).toHaveBeenCalled();
-  });
-
-  it('should accept --source', async () => {
-    const result = await restoreCommand.execute(['--source=HEAD~1', 'file1.txt'], '/test-repo');
-    expect(result.exitCode).toBe(0);
-    expect(mockGit.checkout).toHaveBeenCalledWith(expect.objectContaining({
-      ref: 'HEAD~1',
-    }));
+  it('reports git\'s errors', async () => {
+    expect(await sh.run('git restore')).toBe('fatal: you must specify path(s) to restore\nExit code: 128');
+    expect(await sh.run('git restore nope')).toBe("error: pathspec 'nope' did not match any file(s) known to git\nExit code: 1");
+    expect(await sh.run('git restore -s nope a.txt')).toBe("fatal: could not resolve 'nope'\nExit code: 128");
   });
 });

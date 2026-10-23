@@ -97,7 +97,7 @@ describe('GitCommand', () => {
   it('should handle status subcommand (not a git repo)', async () => {
     const result = await gitCommand.execute(['status'], testCwd);
 
-    expect(result.exitCode).toBe(1);
+    expect(result.exitCode).toBe(128);
     expect(result.stderr).toContain('fatal: not a git repository');
   });
 

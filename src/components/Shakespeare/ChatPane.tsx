@@ -229,7 +229,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
       blossom_upload: new BlossomUploadTool(fs, cwd, user?.signer),
       shell: new ShellTool(fs, cwd, git, config.corsProxy, user?.signer),
       read_console_messages: new ReadConsoleMessagesTool(),
-      preview: new PreviewTool(fs, cwd, projectId, config.previewDomain),
+      preview: new PreviewTool(fs, cwd, projectId, config.previewDomain, tmpPath),
       skill: new SkillTool(fs, availableSkills),
       webfetch: new WebFetchTool({ corsProxy: config.corsProxy }),
       websearch: new WebSearchTool(),

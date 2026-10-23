@@ -31,6 +31,7 @@ import {
   AppWindow,
   MousePointerClick,
   Keyboard,
+  Camera,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { VFSImage } from '@/components/VFSImage';
@@ -338,6 +339,8 @@ function getToolInfo(toolName: string, args: Record<string, unknown>, projectId?
           return { icon: Keyboard, title: `Pressed ${String(args.key)}`, callingTitle: `Pressing ${String(args.key)}`, errorTitle: `Failed to press ${String(args.key)}` };
         case 'wait':
           return { icon: AppWindow, title: text ? `Waited for ${text}` : 'Waited for preview', callingTitle: text ? `Waiting for ${text}` : 'Waiting for preview', errorTitle: 'Failed to wait for preview' };
+        case 'screenshot':
+          return { icon: Camera, title: 'Took a screenshot of the preview', callingTitle: 'Taking a screenshot of the preview', errorTitle: 'Failed to take a screenshot of the preview' };
         case 'eval':
           return { icon: Terminal, title: 'Ran script in preview', callingTitle: 'Running script in preview', errorTitle: 'Script failed in preview' };
         default:

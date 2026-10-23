@@ -697,9 +697,69 @@ export function getPreviewAgentScript(): string {
     });
   }
 
+  // ===========================================================================
+  // Screenshots, rendered from the DOM by modern-screenshot (screenshot.js)
+  // ===========================================================================
+
+  var MAX_SCREENSHOT_HEIGHT = 8000;
+
+  function isTransparent(color) {
+    return !color || color === 'transparent' || /^rgba\(.*,\s*0\)$/.test(color);
+  }
+
+  function pageBackground() {
+    var els = [document.body, document.documentElement];
+    for (var i = 0; i < els.length; i++) {
+      var color = els[i] && getComputedStyle(els[i]).backgroundColor;
+      if (!isTransparent(color)) return color;
+    }
+    return '#ffffff';
+  }
+
+  /**
+   * Render the visible part of the page, the whole page, or one element to a PNG.
+   * Small viewports (phones) are rendered at 2×, like a real phone screen, and
+   * elements are enlarged so their detail is visible.
+   */
+  function screenshot(el, fullPage) {
+    var lib = window.modernScreenshot;
+    if (!lib) return Promise.reject(new Error('Screenshots are not available in this page.'));
+    var target = el || document.body;
+    if (!target) return Promise.reject(new Error('The page has no body yet.'));
+    var rect = target.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return Promise.reject(new Error(describe(target) + ' has no size, so there is nothing to capture.'));
+    var scale = el
+      ? Math.max(1, Math.min(4, Math.floor(1600 / Math.max(rect.width, rect.height))))
+      : (window.innerWidth < 600 ? 2 : 1);
+
+    return lib.domToCanvas(target, { scale: scale, backgroundColor: pageBackground() }).then(function(canvas) {
+      var x = 0, y = 0, w = canvas.width, h = canvas.height;
+      if (!el && !fullPage) {
+        x = Math.min(w - 1, Math.max(0, -rect.left) * scale);
+        y = Math.min(h - 1, Math.max(0, -rect.top) * scale);
+        w = Math.min(w - x, window.innerWidth * scale);
+        h = Math.min(h - y, window.innerHeight * scale);
+      }
+      var truncated = h > MAX_SCREENSHOT_HEIGHT;
+      if (truncated) h = MAX_SCREENSHOT_HEIGHT;
+
+      var out = document.createElement('canvas');
+      out.width = Math.round(w);
+      out.height = Math.round(h);
+      out.getContext('2d').drawImage(canvas, x, y, w, h, 0, 0, out.width, out.height);
+      return {
+        dataUrl: out.toDataURL('image/png'),
+        width: out.width,
+        height: out.height,
+        scale: scale,
+        truncated: truncated
+      };
+    });
+  }
+
   function perform(p) {
     switch (p.action) {
-      case 'none': case 'snapshot': case 'wait': return;
+      case 'none': case 'snapshot': case 'wait': case 'screenshot': return;
       case 'navigate': {
         var url = new URL(p.path || '/', location.href);
         if (url.origin !== location.origin) throw new Error('Only paths within the app can be opened.');
@@ -732,7 +792,7 @@ export function getPreviewAgentScript(): string {
 
   function run(p) {
     // Count the action itself as activity, so the page gets time to react
-    if (p.action !== 'snapshot' && p.action !== 'eval') touch();
+    if (p.action !== 'snapshot' && p.action !== 'eval' && p.action !== 'screenshot') touch();
     return Promise.resolve().then(function() { return perform(p); }).then(function(output) {
       return settle(p.wait || {}).then(function(settled) {
         var root = document.body;
@@ -740,13 +800,19 @@ export function getPreviewAgentScript(): string {
           root = refs.get(p.scope);
           if (!root || !root.isConnected) throw new Error('Ref ' + p.scope + ' is not on the page anymore.');
         }
-        return {
-          url: location.pathname + location.search + location.hash,
-          title: document.title,
-          output: output,
-          settled: settled,
-          snapshot: p.snapshot === false ? undefined : snapshot(root, p.maxChars)
-        };
+        var image = p.action === 'screenshot'
+          ? screenshot(p.ref ? resolveRef(p.ref) : null, p.fullPage)
+          : undefined;
+        return Promise.resolve(image).then(function(image) {
+          return {
+            url: location.pathname + location.search + location.hash,
+            title: document.title,
+            output: output,
+            settled: settled,
+            image: image,
+            snapshot: p.snapshot === false ? undefined : snapshot(root, p.maxChars)
+          };
+        });
       });
     });
   }

@@ -1,3 +1,5 @@
+import screenshotScript from 'modern-screenshot/dist/index.js?raw';
+
 import { getPreviewAgentScript } from './agentScript';
 import { servePreviewFile } from './servePreviewFile';
 import { getPreviewInjectedScript } from '../previewInjectedScript';
@@ -24,6 +26,8 @@ export interface AgentCall {
   key?: string;
   direction?: string;
   script?: string;
+  /** For screenshots: capture the whole page, not just the viewport. */
+  fullPage?: boolean;
   /** Snapshot only this ref's subtree. */
   scope?: string;
   /** Set to false to skip the snapshot. */
@@ -38,6 +42,8 @@ export interface AgentResult {
   output?: string;
   settled: { settled: boolean; waited: number; found?: boolean; pending?: number };
   snapshot?: string;
+  /** A screenshot, for the "screenshot" action. Sizes are in image pixels (CSS pixels × scale). */
+  image?: { dataUrl: string; width: number; height: number; scale: number; truncated: boolean };
   /** Set when the page reloaded while the call was in progress. */
   reloaded?: boolean;
 }
@@ -82,6 +88,7 @@ export class AgentBrowser {
   private injectedScripts = new Map([
     ['/__injected__/preview.js', getPreviewInjectedScript()],
     ['/__injected__/agent.js', getPreviewAgentScript()],
+    ['/__injected__/screenshot.js', screenshotScript],
   ]);
 
   constructor(private options: AgentBrowserOptions) {

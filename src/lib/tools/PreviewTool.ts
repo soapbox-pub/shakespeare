@@ -5,8 +5,10 @@ import type { Tool, ToolResult } from './Tool';
 import type { JSRuntimeFS } from '../JSRuntime';
 import { AgentBrowser, getAgentBrowser, type AgentCall, type AgentResult, type Viewport } from '../preview/AgentBrowser';
 import { deriveIframeSubdomain } from '../iframeSubdomain';
+import { decodeBase64 } from '@std/encoding/base64';
+import { fileToUrl, resizeImageIfNeeded } from '../imageUtils';
 
-const ACTIONS = ['open', 'snapshot', 'click', 'type', 'select', 'hover', 'press', 'scroll', 'back', 'wait', 'eval'] as const;
+const ACTIONS = ['open', 'snapshot', 'screenshot', 'click', 'type', 'select', 'hover', 'press', 'scroll', 'back', 'wait', 'eval'] as const;
 
 export interface PreviewParams {
   action: typeof ACTIONS[number];
@@ -20,6 +22,7 @@ export interface PreviewParams {
   direction?: 'up' | 'down' | 'top' | 'bottom';
   script?: string;
   timeout?: number;
+  full_page?: boolean;
 }
 
 /** Actions that act on an element. */
@@ -39,6 +42,7 @@ Every action returns the page as an accessibility snapshot, plus any console out
 Actions:
 - open: load the app fresh at \`path\` (default "/"), optionally with \`viewport\` "desktop" (1280×800, default) or "mobile" (390×844). Run build_project first; this shows the last build.
 - snapshot: snapshot the page again, or only the element \`ref\`.
+- screenshot: see how the page looks. Captures what is on screen, the whole page with \`full_page: true\`, or only the element \`ref\` (enlarged, to check details like images and icons). The screenshot is saved to /tmp, so you can zoom into part of it with \`read\` and \`region\`. It is rendered from the DOM, so images from other sites that block cross-origin requests may come out blank.
 - click / hover: click or hover \`ref\`.
 - type: replace the text of field \`ref\` with \`text\`; \`submit: true\` presses Enter afterwards.
 - select: choose \`values\` (option values or labels) in the native <select> \`ref\`.
@@ -48,7 +52,7 @@ Actions:
 - wait: wait until \`text\` appears on the page (or the page settles), up to \`timeout\` seconds (default 10).
 - eval: run JavaScript in the page and return its result. \`script\` may be an expression or a function body with \`return\`; promises are awaited.
 
-Use this after building to confirm that pages render without errors and that the features you changed actually work. The frame has no Nostr signer, so it can't log in as the user.`;
+Use this after building to confirm that pages render without errors and that the features you changed actually work. For visual changes (layout, colors, images, artwork), take a screenshot, including with the "mobile" viewport, before telling the user the change is done. The frame has no Nostr signer, so it can't log in as the user.`;
 
   readonly inputSchema = z.object({
     action: z.enum(ACTIONS).describe('What to do.'),
@@ -62,6 +66,7 @@ Use this after building to confirm that pages render without errors and that the
     direction: z.enum(['up', 'down', 'top', 'bottom']).optional().describe('For "scroll" without a ref.'),
     script: z.string().optional().describe('For "eval": JavaScript to run in the page.'),
     timeout: z.number().min(1).max(30).optional().describe('For "wait": seconds to wait (default 10).'),
+    full_page: z.boolean().optional().describe('For "screenshot" without a ref: capture the whole page instead of the visible part.'),
   });
 
   constructor(
@@ -69,6 +74,7 @@ Use this after building to confirm that pages render without errors and that the
     private cwd: string,
     private projectId: string,
     private previewDomain: string,
+    private tmpPath: string,
   ) {}
 
   async execute(params: PreviewParams): Promise<ToolResult> {
@@ -91,7 +97,32 @@ Use this after building to confirm that pages render without errors and that the
       result = await browser.call(this.toCall(params));
     }
 
+    if (result.image) {
+      return this.screenshotResult(params, result, browser, notes);
+    }
+
     return { content: this.format(params, result, browser, notes) };
+  }
+
+  private async screenshotResult(params: PreviewParams, result: AgentResult, browser: AgentBrowser, notes: string[]): Promise<ToolResult> {
+    const { dataUrl, width, height, scale, truncated } = result.image!;
+    const bytes = decodeBase64(dataUrl.slice(dataUrl.indexOf(',') + 1));
+    const path = `${this.tmpPath}/screenshot-${Date.now()}.png`;
+    try {
+      await this.fs.stat(this.tmpPath);
+    } catch {
+      await this.fs.mkdir(this.tmpPath, { recursive: true });
+    }
+    await this.fs.writeFile(path, bytes);
+
+    const what = params.ref ? `element ${params.ref}` : params.full_page ? 'the whole page' : 'the visible part of the page';
+    notes.push(`Screenshot of ${what}, ${width}×${height} px (${scale}× the page's CSS pixels), saved to ${path}.${truncated ? ' The page is taller than that and was cut off.' : ''}`);
+
+    const image = await resizeImageIfNeeded(new File([bytes], 'screenshot.png', { type: 'image/png' }), { maxFileSize: 3.75 * 1024 * 1024 });
+    return {
+      content: this.format(params, result, browser, notes),
+      images: [await fileToUrl(image)],
+    };
   }
 
   private getBrowser(): AgentBrowser {
@@ -113,6 +144,8 @@ Use this after building to confirm that pages render without errors and that the
         return { action, wait: { timeout: (params.timeout ?? 10) * 1000, text: params.text } };
       case 'eval':
         return { action, script: params.script, snapshot: false, wait: { timeout: 2000 } };
+      case 'screenshot':
+        return { action, ref, fullPage: params.full_page, snapshot: false, wait: { timeout: 2000 } };
       default:
         return {
           action,

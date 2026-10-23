@@ -3,12 +3,13 @@ import { z } from "zod";
 
 import type { Tool, ToolResult } from "./Tool";
 import type { JSRuntimeFS } from "../JSRuntime";
-import { fileToUrl, resizeImageIfNeeded, toApiImage } from "../imageUtils";
+import { cropImage, fileToUrl, getImageDimensions, resizeImageIfNeeded, toApiImage, type ImageRegion } from "../imageUtils";
 
 interface ReadParams {
   filePath: string;
   offset?: number;
   limit?: number;
+  region?: ImageRegion;
 }
 
 interface ReadToolOptions {
@@ -35,12 +36,19 @@ Usage:
 - Results are returned using cat -n format, with line numbers starting at 1
 - You have the capability to call multiple tools in a single response. It is always better to speculatively read multiple files as a batch that are potentially useful.
 - If you read a file that exists but has empty contents you will receive a system reminder warning in place of file contents.
-- You can read image files using this tool.`;
+- You can read image files using this tool. The result gives the image's size in pixels.
+- Images are downscaled before you see them, so small details get lost. To inspect part of an image up close, pass \`region\` (x, y, width, height in the image's own pixels). The region is cropped and enlarged so you can see it clearly. Use this to check fine work, like a small element drawn onto an illustration.`;
 
   readonly inputSchema = z.object({
     filePath: z.string().describe("The path to the file to read"),
     offset: z.coerce.number().describe("The line number to start reading from (0-based)").optional(),
     limit: z.coerce.number().describe("The number of lines to read (defaults to 2000)").optional(),
+    region: z.object({
+      x: z.coerce.number().min(0),
+      y: z.coerce.number().min(0),
+      width: z.coerce.number().positive(),
+      height: z.coerce.number().positive(),
+    }).describe("For images: the area to zoom into, in the image's pixels").optional(),
   });
 
   constructor(fs: JSRuntimeFS, cwd: string, options?: ReadToolOptions) {
@@ -87,18 +95,30 @@ Usage:
         const name = filepath.split('/').pop() || filepath;
         const file = new File([bytes], name, { type: this.getMimeType(ext) });
 
+        const header = `[Image file: ${ext.toUpperCase()}, ${this.formatFileSize(bytes.length)}`;
         let image: File;
+        let info: string;
         try {
+          const { width, height } = await getImageDimensions(file);
+          if (args.region) {
+            const crop = await cropImage(file, args.region);
+            const { x, y, width: w, height: h } = crop.region;
+            image = crop.file;
+            info = `${header}, ${width}×${height} px]\n\nShowing the region x=${x}, y=${y}, ${w}×${h} px, enlarged ${crop.scale}×. The image is attached for you to view.`;
+          } else {
+            image = file;
+            info = `${header}, ${width}×${height} px]\n\nThe image is attached for you to view.`;
+          }
           // Convert to a format and size every vision API accepts
-          image = await resizeImageIfNeeded(await toApiImage(file), { maxFileSize: 3.75 * 1024 * 1024 });
+          image = await resizeImageIfNeeded(await toApiImage(image), { maxFileSize: 3.75 * 1024 * 1024 });
         } catch {
           return {
-            content: `[Image file: ${ext.toUpperCase()}, ${this.formatFileSize(bytes.length)}]\n\nThe image could not be decoded. The file may be corrupt or not actually a ${ext.toUpperCase()}.`,
+            content: `${header}]\n\nThe image could not be decoded. The file may be corrupt or not actually a ${ext.toUpperCase()}.`,
           };
         }
 
         return {
-          content: `[Image file: ${ext.toUpperCase()}, ${this.formatFileSize(bytes.length)}]\n\nThe image is attached for you to view.`,
+          content: info,
           images: [await fileToUrl(image)],
         };
       }

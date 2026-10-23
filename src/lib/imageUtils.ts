@@ -47,7 +47,7 @@ export async function resizeImageIfNeeded(file: File, opts: ResizeOptions = {}):
  * @param file - The image file
  * @returns Promise resolving to width and height
  */
-async function getImageDimensions(file: File): Promise<{ width: number; height: number }> {
+export async function getImageDimensions(file: File): Promise<{ width: number; height: number }> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     const url = URL.createObjectURL(file);
@@ -154,6 +154,77 @@ async function resizeImage(file: File, maxDimension: number, quality: number, ty
       reject(new Error('Failed to load image for resizing'));
     };
 
+    img.src = url;
+  });
+}
+
+export interface ImageRegion {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * Crops an image to a region and enlarges it, so fine detail survives the
+ * downscaling vision models apply. Enlarging uses nearest-neighbor sampling,
+ * so individual pixels stay sharp.
+ *
+ * @param file - The image file
+ * @param region - The region to keep, in the image's pixels (clamped to the image)
+ * @param minSize - Enlarge until the longer side is at least this many pixels
+ * @param maxScale - Never enlarge more than this
+ * @returns Promise resolving to a PNG of the region, the clamped region, and the scale used
+ */
+export async function cropImage(
+  file: File,
+  region: ImageRegion,
+  minSize = 1024,
+  maxScale = 8,
+): Promise<{ file: File; region: ImageRegion; scale: number }> {
+  const img = await loadImage(file);
+
+  const x = Math.max(0, Math.min(Math.floor(region.x), img.width - 1));
+  const y = Math.max(0, Math.min(Math.floor(region.y), img.height - 1));
+  const width = Math.max(1, Math.min(Math.ceil(region.width), img.width - x));
+  const height = Math.max(1, Math.min(Math.ceil(region.height), img.height - y));
+
+  const scale = Math.max(1, Math.min(maxScale, Math.floor(minSize / Math.max(width, height))));
+
+  const canvas = document.createElement('canvas');
+  canvas.width = width * scale;
+  canvas.height = height * scale;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    throw new Error('Failed to get canvas context');
+  }
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(img, x, y, width, height, 0, 0, canvas.width, canvas.height);
+
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+  if (!blob) {
+    throw new Error('Failed to create blob from canvas');
+  }
+
+  return {
+    file: new File([blob], file.name.replace(/\.[^.]*$/, '') + '-crop.png', { type: 'image/png' }),
+    region: { x, y, width, height },
+    scale,
+  };
+}
+
+function loadImage(file: File): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(img);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('Failed to load image'));
+    };
     img.src = url;
   });
 }

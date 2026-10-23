@@ -3,7 +3,7 @@
   "description": "Build custom apps with AI assistance using Shakespeare, an open-source development environment",
   "homepage": "https://shakespeare.diy",
   "license": "AGPL-3.0-or-later",
-  "version": "9.21.2",
+  "version": "9.21.3",
   "type": "module",
   "author": {
     "name": "shakespeare.diy",

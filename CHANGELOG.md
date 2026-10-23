@@ -1,5 +1,10 @@
 # Changelog
 
+## [9.21.3] - 2026-10-22
+
+### Changed
+- Python scripts Shakespeare runs can now reach the web, so it can fetch data, call APIs, and download files with Python instead of giving up
+
 ## [9.21.2] - 2026-10-19
 
 ### Changed

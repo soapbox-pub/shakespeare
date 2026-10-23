@@ -1,5 +1,18 @@
 # Changelog
 
+## [9.22.0] - 2026-10-23
+
+### Added
+- Shakespeare can now redraw your existing images — ask it to change a logo, recolor artwork, or tweak a photo, and it edits the original instead of starting from scratch
+- Shakespeare can now see your app while it builds it, taking screenshots of the preview to check how things actually look
+- Shakespeare can zoom in on part of an image to catch small details
+
+### Changed
+- Shakespeare remembers the images you share and its recent attempts throughout a conversation, so it can compare versions and stay true to your reference
+
+### Fixed
+- Shakespeare handles version history much more reliably — it can restore old versions of files, undo changes, and recover from merge conflicts instead of getting stuck
+
 ## [9.21.3] - 2026-10-22
 
 ### Changed

@@ -53,7 +53,7 @@ export class ConfigureImageGenerationTool implements Tool<ConfigureImageGenerati
       response += `**Description**: ${model.description}\n`;
     }
 
-    response += `\nThe generate_image tool is now available and ready to use. You can generate images by calling the generate_image tool with a detailed text prompt.`;
+    response += `\nThe generate_image and edit_image tools are now available and ready to use. Call generate_image with a detailed text prompt to create an image, or edit_image with existing image paths to change an image.`;
 
     return { content: response };
   }

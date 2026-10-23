@@ -381,6 +381,14 @@ function getToolInfo(toolName: string, args: Record<string, unknown>, projectId?
         errorTitle: 'Failed to generate image',
       };
 
+    case 'edit_image':
+      return {
+        icon: Image,
+        title: args.prompt ? String(args.prompt) : 'Edited image',
+        callingTitle: args.prompt ? String(args.prompt) : 'Editing image',
+        errorTitle: 'Failed to edit image',
+      };
+
     case 'view_available_models':
       return {
         icon: Eye,
@@ -631,8 +639,8 @@ export function ToolCallDisplay({ toolName, toolArgs, state, result, projectId }
       // Fallback to default rendering if no <file> tags found
     }
 
-    if (toolName === 'generate_image') {
-      // For generate_image, when expanded show the full prompt
+    if (toolName === 'generate_image' || toolName === 'edit_image') {
+      // For image tools, when expanded show the full prompt
       return (
         <div className="mt-1 p-3 bg-muted/30 rounded border text-xs">
           <div>{typeof toolArgs.prompt === 'string' ? toolArgs.prompt : 'No prompt provided'}</div>
@@ -702,10 +710,10 @@ export function ToolCallDisplay({ toolName, toolArgs, state, result, projectId }
     );
   };
 
-  // Special rendering for generate_image - always show image below the tool
+  // Special rendering for image tools - always show image below the tool
   const renderImageBelowTool = () => {
     if (hasError) return null;
-    if (toolName !== 'generate_image') return null;
+    if (toolName !== 'generate_image' && toolName !== 'edit_image') return null;
 
     // Show placeholder while generating (calling or waiting states)
     if (state === 'calling' || state === 'waiting') {
@@ -724,8 +732,8 @@ export function ToolCallDisplay({ toolName, toolArgs, state, result, projectId }
     // For completed state, we need the result
     if (!result) return null;
 
-    // Parse "Generated image: /tmp/filename.png" from result
-    const match = result.match(/Generated image:\s*(\/tmp\/[^\s\n]+)/);
+    // Parse "Generated image: /tmp/filename.png" (or "Edited image: ...") from result
+    const match = result.match(/(?:Generated|Edited) image:\s*(\/tmp\/[^\s\n]+)/);
     if (match) {
       const imagePath = match[1];
       const filename = imagePath.split('/').pop() || imagePath;

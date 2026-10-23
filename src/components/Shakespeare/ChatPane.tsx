@@ -43,6 +43,7 @@ import { ReadConsoleMessagesTool } from '@/lib/tools/ReadConsoleMessagesTool';
 import { PreviewTool } from '@/lib/tools/PreviewTool';
 import { SkillTool } from '@/lib/tools/SkillTool';
 import { GenerateImageTool } from '@/lib/tools/GenerateImageTool';
+import { EditImageTool } from '@/lib/tools/EditImageTool';
 import { ViewAvailableModelsTool } from '@/lib/tools/ViewAvailableModelsTool';
 import { ConfigureImageGenerationTool } from '@/lib/tools/ConfigureImageGenerationTool';
 import { WebFetchTool } from '@/lib/tools/WebFetchTool';
@@ -267,7 +268,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
           mode = 'chat';
         }
 
-        tools.generate_image = new GenerateImageTool(
+        const generateImage = new GenerateImageTool(
           fs,
           tmpPath,
           provider,
@@ -276,6 +277,8 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
           user,
           config.corsProxy
         );
+        tools.generate_image = generateImage;
+        tools.edit_image = new EditImageTool(fs, cwd, generateImage);
       } catch (error) {
         console.warn('Failed to parse imageModel:', error);
       }

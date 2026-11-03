@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { DotAI } from './DotAI';
 import type { JSRuntimeFS } from './JSRuntime';
 import type OpenAI from 'openai';
+import { isHistoryGapNotice } from './repairHistory';
 
 // Mock filesystem
 const createMockFS = (): JSRuntimeFS => ({
@@ -140,76 +141,19 @@ invalid json line
       );
     });
 
-    it('should handle write errors gracefully', async () => {
-      // Mock historyDirExists to return true
+    it('should throw when the file cannot be written', async () => {
       vi.spyOn(dotAI, 'historyDirExists').mockResolvedValue(true);
-      // Mock writeFile to throw an error
       vi.mocked(mockFS.writeFile).mockRejectedValue(new Error('Write failed'));
 
       const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [{ role: 'user', content: 'Hello' }];
 
-      // Should not throw
-      await expect(dotAI.setHistory('test-session', messages)).resolves.toBeUndefined();
+      await expect(dotAI.setHistory('test-session', messages)).rejects.toThrow('Write failed');
     });
 
-    it('should validate tool messages have matching tool_call_id', async () => {
-      const validMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
-        { role: 'user', content: 'Hello' },
-        {
-          role: 'assistant',
-          content: 'I need to use a tool',
-          tool_calls: [{ id: 'call_123', type: 'function', function: { name: 'test_tool', arguments: '{}' } }]
-        },
-        { role: 'tool', content: 'Tool result', tool_call_id: 'call_123' }
-      ];
+    it('should save a valid history as it is', async () => {
+      vi.spyOn(dotAI, 'historyDirExists').mockResolvedValue(true);
 
-      // Should not throw for valid messages
-      await expect(dotAI.setHistory('test-session', validMessages)).resolves.toBeUndefined();
-    });
-
-    it('should throw error for tool message without preceding assistant message with tool_calls', async () => {
-      const invalidMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
-        { role: 'user', content: 'Hello' },
-        { role: 'assistant', content: 'Response without tool calls' },
-        { role: 'tool', content: 'Tool result', tool_call_id: 'call_123' }
-      ];
-
-      await expect(dotAI.setHistory('test-session', invalidMessages))
-        .rejects.toThrow('Tool message at index 2 with tool_call_id "call_123" must be preceded by an assistant message with a matching tool_call id');
-    });
-
-    it('should throw error for tool message with non-matching tool_call_id', async () => {
-      const invalidMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
-        { role: 'user', content: 'Hello' },
-        {
-          role: 'assistant',
-          content: 'I need to use a tool',
-          tool_calls: [{ id: 'call_456', type: 'function', function: { name: 'test_tool', arguments: '{}' } }]
-        },
-        { role: 'tool', content: 'Tool result', tool_call_id: 'call_123' }
-      ];
-
-      await expect(dotAI.setHistory('test-session', invalidMessages))
-        .rejects.toThrow('Tool message at index 2 with tool_call_id "call_123" must be preceded by an assistant message with a matching tool_call id');
-    });
-
-    it('should throw error for tool message without tool_call_id', async () => {
-      const invalidMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
-        { role: 'user', content: 'Hello' },
-        {
-          role: 'assistant',
-          content: 'I need to use a tool',
-          tool_calls: [{ id: 'call_123', type: 'function', function: { name: 'test_tool', arguments: '{}' } }]
-        },
-        { role: 'tool', content: 'Tool result' } as OpenAI.Chat.Completions.ChatCompletionMessageParam
-      ];
-
-      await expect(dotAI.setHistory('test-session', invalidMessages))
-        .rejects.toThrow('Tool message at index 2 is missing tool_call_id');
-    });
-
-    it('should validate multiple tool messages correctly', async () => {
-      const validMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+      const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
         { role: 'user', content: 'Hello' },
         {
           role: 'assistant',
@@ -223,30 +167,31 @@ invalid json line
         { role: 'tool', content: 'Tool 2 result', tool_call_id: 'call_456' }
       ];
 
-      // Should not throw for valid messages
-      await expect(dotAI.setHistory('test-session', validMessages)).resolves.toBeUndefined();
+      await dotAI.setHistory('test-session', messages);
+
+      expect(mockFS.writeFile).toHaveBeenCalledWith(
+        '/test-project/.git/ai/history/test-session.jsonl',
+        messages.map((message) => JSON.stringify(message)).join('\n') + '\n',
+      );
     });
 
-    it('should allow tool messages to reference tool calls from the most recent assistant message', async () => {
-      const validMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
-        { role: 'user', content: 'First request' },
-        {
-          role: 'assistant',
-          content: 'First response',
-          tool_calls: [{ id: 'call_old', type: 'function', function: { name: 'old_tool', arguments: '{}' } }]
-        },
-        { role: 'tool', content: 'Old tool result', tool_call_id: 'call_old' },
-        { role: 'user', content: 'Second request' },
-        {
-          role: 'assistant',
-          content: 'Second response',
-          tool_calls: [{ id: 'call_new', type: 'function', function: { name: 'new_tool', arguments: '{}' } }]
-        },
-        { role: 'tool', content: 'New tool result', tool_call_id: 'call_new' }
+    it('should save a broken history repaired instead of refusing to save it', async () => {
+      vi.spyOn(dotAI, 'historyDirExists').mockResolvedValue(true);
+
+      const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+        { role: 'user', content: 'Hello' },
+        { role: 'assistant', content: 'Response without tool calls' },
+        { role: 'tool', content: 'Stray tool result', tool_call_id: 'call_123' },
+        { role: 'user', content: 'Next' },
       ];
 
-      // Should not throw for valid messages
-      await expect(dotAI.setHistory('test-session', validMessages)).resolves.toBeUndefined();
+      await dotAI.setHistory('test-session', messages);
+
+      const written = vi.mocked(mockFS.writeFile).mock.calls[0][1] as string;
+      const saved = written.trim().split('\n').map((line) => JSON.parse(line));
+      expect(saved.map((message) => message.role)).toEqual(['user', 'assistant', 'user', 'user']);
+      expect(saved[2]).toSatisfy(isHistoryGapNotice);
+      expect(saved[3]).toEqual({ role: 'user', content: 'Next' });
     });
   });
 

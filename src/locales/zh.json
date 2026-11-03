@@ -496,5 +496,7 @@
   "failedToDuplicateProject": "复制项目失败",
   "newProjectName": "新项目名称",
   "duplicateProjectDescription": "使用新名称创建此项目的副本",
-  "resume": "继续"
+  "resume": "继续",
+  "historyGap": "此处丢失了一些消息",
+  "historyGapDescription": "AI 已获知此处的缺口，因此会检查项目文件，而不是假定之前的步骤已完成。"
 }

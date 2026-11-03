@@ -85,6 +85,12 @@ export function useAIChat({
     }
   }, [projectId]);
 
+  useSessionSubscription('messagesReplaced', (updatedProjectId: string, replaced: AIMessage[]) => {
+    if (updatedProjectId === projectId) {
+      setMessages(replaced);
+    }
+  }, [projectId]);
+
   useSessionSubscription('streamingUpdate', (updatedProjectId: string, content: string, reasoningContent?: string, toolCalls?: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[]) => {
     if (updatedProjectId === projectId) {
       setStreamingMessage({

@@ -496,5 +496,7 @@
   "failedToDuplicateProject": "Falha ao duplicar projeto",
   "newProjectName": "Nome do Novo Projeto",
   "duplicateProjectDescription": "Criar uma cópia deste projeto com um novo nome",
-  "resume": "Retomar"
+  "resume": "Retomar",
+  "historyGap": "Algumas mensagens foram perdidas aqui",
+  "historyGapDescription": "A IA foi avisada sobre esta lacuna, então vai verificar os arquivos do projeto em vez de presumir que as etapas anteriores terminaram."
 }

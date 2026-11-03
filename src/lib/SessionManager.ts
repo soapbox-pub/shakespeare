@@ -18,6 +18,7 @@ import type { NPool } from '@nostrify/nostrify';
 import type { AppConfig } from '@/contexts/AppContext';
 import { getSentryInstance } from './sentry';
 import { mergeReasoningDetails, type ReasoningDetail } from './reasoningDetails';
+import { CANCELLED_TOOL_RESULT, repairHistory } from './repairHistory';
 
 export type AIMessage = OpenAI.Chat.Completions.ChatCompletionMessageParam | {
   role: 'assistant';
@@ -87,6 +88,8 @@ export interface SessionManagerEvents {
   sessionCreated: (projectId: string) => void;
   sessionDeleted: (projectId: string) => void;
   messageAdded: (projectId: string, message: AIMessage) => void;
+  /** The history was rewritten (repaired), so listeners should replace their copy */
+  messagesReplaced: (projectId: string, messages: AIMessage[]) => void;
   streamingUpdate: (projectId: string, content: string, reasoningContent?: string, toolCalls?: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[]) => void;
   loadingChanged: (projectId: string, isLoading: boolean) => void;
   costUpdated: (projectId: string, totalCost: number) => void;
@@ -148,6 +151,7 @@ export class SessionManager {
     let sessionName = DotAI.generateSessionName();
     let lastFinishReason: string | null | undefined;
     let queuedMessages: QueuedMessage[] = [];
+    let historyRepaired = false;
 
     // Try to load existing history
     try {
@@ -155,8 +159,13 @@ export class SessionManager {
       const dotAI = new DotAI(this.fs, `${config.fsPathProjects}/${projectId}`);
       const lastSession = await dotAI.readLastSessionHistory();
       if (lastSession) {
-        messages = lastSession.messages;
+        // Tool calls left without a result can only still be running if this session is mid-turn;
+        // otherwise they were cut off (e.g. by a reload) and are answered so the history can be sent.
+        const running = this.sessions.get(projectId)?.isLoading ?? false;
+        const repaired = repairHistory(lastSession.messages as AIMessage[], { closeTrailing: !running });
+        messages = repaired.messages as OpenAI.Chat.Completions.ChatCompletionMessageParam[];
         sessionName = lastSession.sessionName;
+        historyRepaired = repaired.repaired;
       }
 
       // Load last finish reason
@@ -193,6 +202,10 @@ export class SessionManager {
     session.maxSteps = maxSteps;
 
     this.sessions.set(projectId, session);
+
+    if (historyRepaired) {
+      await this.saveSessionHistory(projectId);
+    }
 
     this.emit('sessionCreated', projectId);
 
@@ -333,8 +346,13 @@ export class SessionManager {
       throw new Error('No messages in session');
     }
 
+    // This turn's controller. Stopping aborts it, and a newer turn replaces it, so a turn checks its
+    // own controller (not `session.isLoading`) to know whether it's still the one that should be running.
+    const controller = new AbortController();
+    const { signal } = controller;
+
     session.isLoading = true;
-    session.abortController = new AbortController();
+    session.abortController = controller;
     session.lastActivity = new Date();
     this.sessions.set(projectId, session);
 
@@ -361,7 +379,7 @@ export class SessionManager {
       // Main AI generation loop
       while (stepCount < maxSteps) {
         const currentSession = this.sessions.get(projectId);
-        if (!currentSession || !currentSession.isLoading) {
+        if (!currentSession || signal.aborted) {
           break;
         }
         session = currentSession;
@@ -614,7 +632,7 @@ export class SessionManager {
         // `x-session-id` lets providers keep the conversation on one cache (OpenRouter's sticky
         // routing, Meridian's session resume). Every preset provider's CORS policy allows it.
         const requestOptions: OpenAI.RequestOptions = {
-          signal: session.abortController?.signal,
+          signal,
           headers: { 'x-session-id': session.sessionName },
         };
 
@@ -663,7 +681,7 @@ export class SessionManager {
         let usage: { prompt_tokens: number; completion_tokens: number; cost?: number } | undefined;
         for await (const chunk of stream) {
           // Check if session was cancelled
-          if (!session.isLoading) break;
+          if (signal.aborted) break;
 
           const delta = chunk.choices[0]?.delta as OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta | undefined;
 
@@ -746,6 +764,9 @@ export class SessionManager {
           }
         }
 
+        // Stopped while streaming: the partial response is discarded
+        if (signal.aborted) return;
+
         // Fix tool calls with empty arguments or names
         for (const toolCall of accumulatedToolCalls.values()) {
           if (toolCall.type === 'function') {
@@ -797,6 +818,8 @@ export class SessionManager {
         // Handle tool calls
         if (accumulatedToolCalls?.size) {
           for (const toolCall of accumulatedToolCalls.values()) {
+            // Stopped: stopGeneration has already answered the calls that hadn't finished
+            if (signal.aborted) return;
             if (toolCall.type !== 'function') continue;
 
             const functionToolCall = toolCall as OpenAI.Chat.Completions.ChatCompletionMessageFunctionToolCall;
@@ -835,7 +858,15 @@ export class SessionManager {
                 const rawArgs = functionToolCall.function.arguments;
                 toolArgs = rawArgs ? JSON.parse(rawArgs) : {};
               }
-              const result = await tool.execute(toolArgs);
+              const result = await tool.execute(toolArgs, { signal });
+
+              // Stopped while the tool ran. Its call was already answered as cancelled, and adding
+              // this result now would put it after whatever came next.
+              if (signal.aborted) {
+                if (result.cost !== undefined) await this.accumulateProjectCost(projectId, result.cost);
+                return;
+              }
+
               await this.addToolMessage(projectId, functionToolCall.id, result.content, result.images);
 
               // Update session cost if tool returned a cost
@@ -852,11 +883,14 @@ export class SessionManager {
                 }
               }
             } catch (error) {
+              if (signal.aborted) return;
               const errorMsg = error instanceof Error ? error.message : 'Unknown error';
               await this.addToolMessage(projectId, functionToolCall.id, `Error with tool ${toolName}: ${errorMsg}`);
             }
           }
         }
+
+        if (signal.aborted) return;
 
         // Update and save the finish reason
         session.lastFinishReason = finishReason;
@@ -865,7 +899,7 @@ export class SessionManager {
 
         // The turn is over. Continue with any messages the user queued during it, or stop.
         if (finishReason === 'stop') {
-          if (session.isLoading && await this.flushQueue(projectId)) {
+          if (!signal.aborted && await this.flushQueue(projectId)) {
             stepCount = 0;
             continue;
           }
@@ -888,13 +922,13 @@ export class SessionManager {
       // Re-throw service errors to be handled at the UI level
       throw error;
     } finally {
-      if (session) {
+      // A newer turn may have started after this one was stopped; leave its state alone.
+      if (session && (session.abortController === controller || !session.abortController)) {
         session.isLoading = false;
         session.streamingMessage = undefined;
         session.abortController = undefined;
+        this.emit('loadingChanged', projectId, false);
       }
-
-      this.emit('loadingChanged', projectId, false);
     }
   }
 
@@ -910,7 +944,37 @@ export class SessionManager {
     session.streamingMessage = undefined;
     session.abortController = undefined;
 
+    // Tool calls that were still running are answered now, so the model knows they were cancelled
+    // and the next message doesn't land between a tool call and its result.
+    const cancelled = this.answerOpenToolCalls(session, CANCELLED_TOOL_RESULT);
+    for (const message of cancelled) {
+      this.emit('messageAdded', projectId, message);
+    }
+    if (cancelled.length > 0) {
+      void this.saveSessionHistory(projectId);
+    }
+
     this.emit('loadingChanged', projectId, false);
+  }
+
+  /** Answer the tool calls at the end of the history that have no result yet. Returns the results added. */
+  private answerOpenToolCalls(session: SessionState, content: string): AIMessage[] {
+    const answered = new Set<string>();
+    for (let i = session.messages.length - 1; i >= 0; i--) {
+      const message = session.messages[i];
+      if (message.role === 'tool') {
+        answered.add(message.tool_call_id);
+        continue;
+      }
+      if (message.role !== 'assistant' || !message.tool_calls?.length) return [];
+
+      const added: AIMessage[] = message.tool_calls
+        .filter((call) => !answered.has(call.id))
+        .map((call) => ({ role: 'tool', tool_call_id: call.id, content }));
+      session.messages.push(...added);
+      return added;
+    }
+    return [];
   }
 
   /**
@@ -1054,13 +1118,23 @@ export class SessionManager {
     const session = this.sessions.get(projectId);
     if (!session) return;
 
+    // Keep what's shown and sent the same as what's saved. Repairing never touches the open tool
+    // calls at the end, which may still be running.
+    const repaired = repairHistory(session.messages);
+    if (repaired.repaired) {
+      console.warn('Repaired the session history: some messages were lost or out of order');
+      session.messages = repaired.messages;
+      this.emit('messagesReplaced', projectId, [...session.messages]);
+    }
+
     try {
       const config = this.getConfig();
       const dotAI = new DotAI(this.fs, `${config.fsPathProjects}/${session.projectId}`);
       // Cast to ChatCompletionMessageParam[] - user messages with image arrays are valid
       await dotAI.setHistory(session.sessionName, session.messages as OpenAI.Chat.Completions.ChatCompletionMessageParam[]);
     } catch (error) {
-      console.warn('Failed to save session history:', error);
+      console.error('Failed to save session history:', error);
+      getSentryInstance()?.captureException(error);
     }
   }
 

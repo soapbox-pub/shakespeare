@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type OpenAI from 'openai';
-import type { Tool, ToolResult } from './Tool';
+import type { Tool, ToolExecuteOptions, ToolResult } from './Tool';
 import type { AIProvider } from '@/contexts/AISettingsContext';
 import type { NUser } from '@nostrify/react/login';
 import { createAIClient } from '@/lib/ai-client';
@@ -46,9 +46,9 @@ export class GenerateImageTool implements Tool<GenerateImageParams> {
     private corsProxy?: string,
   ) {}
 
-  async execute(args: GenerateImageParams): Promise<ToolResult> {
+  async execute(args: GenerateImageParams, options?: ToolExecuteOptions): Promise<ToolResult> {
     try {
-      const { path, dataUri, cost } = await this.render(args, 'generated');
+      const { path, dataUri, cost } = await this.render(args, 'generated', undefined, options?.signal);
       return { content: `Generated image: ${path}`, images: [dataUri], cost };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -64,6 +64,7 @@ export class GenerateImageTool implements Tool<GenerateImageParams> {
     args: GenerateImageParams,
     prefix: string,
     source?: SourceImages,
+    signal?: AbortSignal,
   ): Promise<{ path: string; dataUri: string; cost?: number }> {
     const { prompt, output_format, output_compression, size, background } = args;
     const client = createAIClient(this.provider, this.user, this.corsProxy);
@@ -93,7 +94,7 @@ export class GenerateImageTool implements Tool<GenerateImageParams> {
         model: this.model,
         messages: [{ role: 'user', content }],
         modalities: ['image'] as never[], // Type assertion needed as OpenAI SDK doesn't have this typed
-      });
+      }, { signal });
 
       // Default extension for chat models is png (output_format is ignored)
       extension = 'png';
@@ -149,7 +150,7 @@ export class GenerateImageTool implements Tool<GenerateImageParams> {
           output_compression,
           size: size as OpenAI.Images.ImageEditParams['size'],
           background,
-        });
+        }, { signal });
       } else {
         response = await client.images.generate({
           model: this.model,
@@ -158,7 +159,7 @@ export class GenerateImageTool implements Tool<GenerateImageParams> {
           output_compression,
           size,
           background,
-        });
+        }, { signal });
       }
 
       // Extract cost from response
@@ -178,7 +179,7 @@ export class GenerateImageTool implements Tool<GenerateImageParams> {
       } else if (firstImage.url) {
         // Fetch the image from the URL
         const imageUrl = this.corsProxy ? proxyUrl({ template: this.corsProxy, url: firstImage.url }) : firstImage.url;
-        const imageResponse = await fetch(imageUrl);
+        const imageResponse = await fetch(imageUrl, { signal });
 
         if (!imageResponse.ok) {
           throw new Error(`Failed to fetch image from URL: ${imageResponse.status} ${imageResponse.statusText}`);
@@ -199,6 +200,8 @@ export class GenerateImageTool implements Tool<GenerateImageParams> {
         throw new Error('No base64 image data or URL returned from the API');
       }
     }
+
+    signal?.throwIfAborted();
 
     // Generate unique filename
     const timestamp = Date.now();

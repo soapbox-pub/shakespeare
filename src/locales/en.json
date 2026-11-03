@@ -610,5 +610,7 @@
   "previewSignerHideDetails": "Hide details",
   "previewSignerRemember": "Remember for this project",
   "previewSignerAllow": "Allow",
-  "previewSignerDeny": "Deny"
+  "previewSignerDeny": "Deny",
+  "historyGap": "Some messages were lost here",
+  "historyGapDescription": "The AI has been told about this gap, so it will check the project files instead of assuming earlier steps finished."
 }

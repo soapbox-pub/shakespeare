@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { join } from 'path-browserify';
 
-import type { Tool, ToolResult } from './Tool';
+import type { Tool, ToolExecuteOptions, ToolResult } from './Tool';
 import type { JSRuntimeFS } from '@/lib/JSRuntime';
 import type { GenerateImageTool } from './GenerateImageTool';
 
@@ -47,7 +47,7 @@ The output may differ in size from the input. Resize or crop it with code afterw
     private generator: GenerateImageTool,
   ) {}
 
-  async execute(args: EditImageParams): Promise<ToolResult> {
+  async execute(args: EditImageParams, options?: ToolExecuteOptions): Promise<ToolResult> {
     const { prompt, image_paths, mask_path, output_format, size, background } = args;
 
     const images = await Promise.all(image_paths.map((path) => this.readImage(path)));
@@ -58,6 +58,7 @@ The output may differ in size from the input. Resize or crop it with code afterw
         { prompt, output_format, size, background },
         'edited',
         { images, mask },
+        options?.signal,
       );
       return { content: `Edited image: ${path}`, images: [dataUri], cost };
     } catch (error) {

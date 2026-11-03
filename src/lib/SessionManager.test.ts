@@ -4,6 +4,7 @@ import type { JSRuntimeFS } from './JSRuntime';
 import type { NPool } from '@nostrify/nostrify';
 import type { AppConfig } from '@/contexts/AppContext';
 import { isSystemReminder } from './systemReminder';
+import { CANCELLED_TOOL_RESULT, INTERRUPTED_TOOL_RESULT, isHistoryGapNotice } from './repairHistory';
 
 const mockCreate = vi.fn();
 
@@ -297,6 +298,85 @@ describe('SessionManager', () => {
     expect(mockCreate).toHaveBeenCalledTimes(1);
     const [, options] = mockCreate.mock.calls[0];
     expect(options.headers).toEqual({ 'x-session-id': session.sessionName });
+  });
+
+  describe('stopping and broken histories', () => {
+    const projectId = 'test-project';
+    const providerModel = 'test-provider/test-model';
+    const historyFile = () => [...files.keys()].find((path) => path.endsWith('.jsonl'))!;
+    const savedHistory = () => files.get(historyFile())!.trim().split('\n').map((line) => JSON.parse(line) as AIMessage);
+    const stop = async function* () {
+      yield { choices: [{ delta: { content: 'ok' }, finish_reason: 'stop' }] };
+    };
+    const callImage = async function* () {
+      yield {
+        choices: [{
+          delta: { tool_calls: [{ index: 0, id: 'call_img', function: { name: 'generate_image', arguments: '{}' } }] },
+          finish_reason: 'tool_calls',
+        }],
+      };
+    };
+
+    it('answers a tool call stopped mid-run, and drops its late result', async () => {
+      let finishImage!: () => void;
+      let imageSignal: AbortSignal | undefined;
+      const generateImage = {
+        description: 'Generate an image',
+        execute: vi.fn((_args: unknown, options?: { signal?: AbortSignal }) => {
+          imageSignal = options?.signal;
+          // Like a tool that ignores the signal and finishes anyway
+          return new Promise<{ content: string }>((resolve) => {
+            finishImage = () => resolve({ content: 'Generated image: /tmp/late.png' });
+          });
+        }),
+      };
+
+      await sessionManager.loadSession(projectId, {}, { generate_image: generateImage });
+      await sessionManager.addMessage(projectId, { role: 'user', content: 'draw a cat' });
+
+      mockCreate.mockImplementationOnce(callImage);
+      const first = sessionManager.startGeneration(projectId, providerModel);
+      await vi.waitFor(() => expect(generateImage.execute).toHaveBeenCalled());
+
+      sessionManager.stopGeneration(projectId);
+      expect(imageSignal?.aborted).toBe(true);
+
+      // The user moves on while the image is still generating
+      mockCreate.mockImplementationOnce(stop);
+      await sessionManager.sendMessage(projectId, 'never mind', providerModel);
+
+      finishImage();
+      await first;
+
+      const messages = sessionManager.getSession(projectId)!.messages;
+      expect(messages.map((message) => message.role)).toEqual(['user', 'assistant', 'tool', 'user', 'assistant']);
+      expect(messages[2]).toEqual({ role: 'tool', tool_call_id: 'call_img', content: CANCELLED_TOOL_RESULT });
+      expect(sessionManager.getSession(projectId)!.isLoading).toBe(false);
+
+      // What's saved matches what's in memory, so nothing is lost on reload
+      expect(savedHistory()).toEqual(messages);
+    });
+
+    it('repairs a broken history when it is loaded, and marks the gap', async () => {
+      files.set('/projects/test-project/.git/ai/history/2026-01-01T00-00-00Z-abc.jsonl', [
+        { role: 'user', content: 'draw' },
+        { role: 'assistant', content: '', tool_calls: [{ id: 'a', type: 'function', function: { name: 'shell', arguments: '{}' } }] },
+        { role: 'user', content: 'again' },
+        { role: 'assistant', content: 'sure' },
+        { role: 'tool', tool_call_id: 'a', content: 'late' },
+        { role: 'user', content: 'thanks' },
+        { role: 'assistant', content: '', tool_calls: [{ id: 'b', type: 'function', function: { name: 'shell', arguments: '{}' } }] },
+      ].map((message) => JSON.stringify(message)).join('\n') + '\n');
+
+      const session = await sessionManager.loadSession(projectId, {}, {});
+
+      // One notice for each gap: the call the conversation moved on from (whose late result is dropped), and the call cut off at the end
+      expect(session.messages.filter(isHistoryGapNotice)).toHaveLength(2);
+      expect(session.messages.at(-2)).toEqual({ role: 'tool', tool_call_id: 'b', content: INTERRUPTED_TOOL_RESULT });
+      expect(session.messages.at(-1)).toSatisfy(isHistoryGapNotice);
+      expect(session.messages).not.toContainEqual({ role: 'tool', tool_call_id: 'a', content: 'late' });
+      expect(savedHistory()).toEqual(session.messages);
+    });
   });
 
   describe('system prompt', () => {

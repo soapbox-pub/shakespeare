@@ -1,6 +1,7 @@
 import { memo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Streamdown } from 'streamdown';
-import { Lightbulb, Loader2 } from 'lucide-react';
+import { Lightbulb, Loader2, Unlink } from 'lucide-react';
 import type { AIMessage } from '@/lib/SessionManager';
 import { cn } from '@/lib/utils';
 import { UserMessage } from '@/components/UserMessage';
@@ -11,6 +12,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { isEmptyMessage } from '@/lib/isEmptyMessage';
 import { userMessageText } from '@/lib/messageText';
 import { isSystemReminder } from '@/lib/systemReminder';
+import { isHistoryGapNotice } from '@/lib/repairHistory';
 import { CopyButton } from '@/components/CopyButton';
 
 // Type guard to check if message has reasoning content
@@ -35,6 +37,7 @@ export const AIMessageItem = memo(({
   const [expandedImageUrl, setExpandedImageUrl] = useState<string | null>(null);
   const [actionsRevealed, setActionsRevealed] = useState(false);
   const { displayTheme } = useTheme();
+  const { t } = useTranslation();
 
   // Touch screens can't hover, so a tap shows the message actions. Long presses are left to text selection.
   const handleTap = (e: React.PointerEvent) => {
@@ -104,6 +107,20 @@ export const AIMessageItem = memo(({
 
   // Regular rendering for non-tool messages
   if (message.role === 'user') {
+    // Marks where messages were lost. The model reads the reminder; the user sees a divider.
+    if (isHistoryGapNotice(message)) {
+      return (
+        <div role="separator" className="flex items-center gap-3 py-4 text-xs text-muted-foreground" title={t('historyGapDescription')}>
+          <div className="h-px flex-1 border-t border-dashed border-border" />
+          <span className="flex items-center gap-1.5">
+            <Unlink className="h-3.5 w-3.5" aria-hidden="true" />
+            {t('historyGap')}
+          </span>
+          <div className="h-px flex-1 border-t border-dashed border-border" />
+        </div>
+      );
+    }
+
     // Reminders are written by Shakespeare for the model, not by the user
     if (isSystemReminder(message)) return null;
 

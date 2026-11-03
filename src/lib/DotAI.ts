@@ -2,6 +2,7 @@ import { join } from "path-browserify";
 import type OpenAI from "openai";
 import type { JSRuntimeFS } from "./JSRuntime";
 import { isEmptyMessage } from "./isEmptyMessage";
+import { repairHistory } from "./repairHistory";
 import type { QueuedMessage } from "./SessionManager";
 import type { PromptEnvironment } from "./system";
 
@@ -44,16 +45,18 @@ export class DotAI {
     }
   }
 
-  /** Save the full message history to the history file */
+  /**
+   * Save the full message history to the history file.
+   * The history is repaired first (see {@link repairHistory}), so what's saved can always be sent.
+   * Throws if the file can't be written.
+   */
   async setHistory(
     sessionName: string,
     messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[],
   ): Promise<void> {
     // Filter out empty assistant messages
     messages = messages.filter((msg) => !isEmptyMessage(msg));
-
-    // Validate messages before saving
-    this.validateMessages(messages);
+    messages = repairHistory(messages).messages;
 
     // Create the history directory if it doesn't exist
     if (!(await this.historyDirExists())) {
@@ -62,66 +65,12 @@ export class DotAI {
 
     const sessionFile = join(this.historyDir, sessionName + ".jsonl");
 
-    try {
-      // Convert messages to JSONL format
-      const jsonlContent = messages.map(message => JSON.stringify(message)).join('\n');
-      const finalContent = jsonlContent + (messages.length > 0 ? '\n' : '');
+    // Convert messages to JSONL format
+    const jsonlContent = messages.map(message => JSON.stringify(message)).join('\n');
+    const finalContent = jsonlContent + (messages.length > 0 ? '\n' : '');
 
-      // Write the entire file
-      await this.fs.writeFile(sessionFile, finalContent);
-    } catch (error) {
-      // Log error but don't fail the main operation
-      console.warn(`Failed to save messages to AI history: ${error}`);
-    }
-  }
-
-  /** Validate that tool messages are properly preceded by assistant messages with matching tool calls */
-  private validateMessages(messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[]): void {
-    for (let i = 0; i < messages.length; i++) {
-      const message = messages[i];
-
-      // Check if this is a tool message
-      if (message.role === 'tool') {
-        // Tool messages must have tool_call_id
-        if (!('tool_call_id' in message) || !message.tool_call_id) {
-          throw new Error(`Tool message at index ${i} is missing tool_call_id`);
-        }
-
-        // Find the preceding assistant message with tool calls
-        let foundMatchingToolCall = false;
-
-        // Look backwards from the current position to find the assistant message with matching tool call
-        for (let j = i - 1; j >= 0; j--) {
-          const prevMessage = messages[j];
-
-          if (prevMessage.role === 'assistant') {
-            // Check if this assistant message has tool_calls
-            if ('tool_calls' in prevMessage && prevMessage.tool_calls) {
-              // Check if any tool call ID matches
-              const hasMatchingId = prevMessage.tool_calls.some(
-                toolCall => toolCall.id === message.tool_call_id
-              );
-
-              if (hasMatchingId) {
-                foundMatchingToolCall = true;
-                break;
-              }
-            }
-
-            // If we found an assistant message without the matching tool call, stop looking
-            // (tool messages should be paired with the most recent assistant message with tool calls)
-            break;
-          }
-        }
-
-        if (!foundMatchingToolCall) {
-          throw new Error(
-            `Tool message at index ${i} with tool_call_id "${message.tool_call_id}" ` +
-            `must be preceded by an assistant message with a matching tool_call id`
-          );
-        }
-      }
-    }
+    // Write the entire file
+    await this.fs.writeFile(sessionFile, finalContent);
   }
 
   /** Read the system prompt a session was started with, or null if it has none */

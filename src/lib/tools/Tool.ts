@@ -7,8 +7,13 @@ export interface ToolResult {
   cost?: number;
 }
 
+export interface ToolExecuteOptions {
+  /** Aborted when the user stops the AI. Tools that take long (or cost money) should stop work when it fires. */
+  signal?: AbortSignal;
+}
+
 export interface Tool<TParams> {
   description: string;
   inputSchema?: z.ZodType<TParams>;
-  execute(args: TParams): Promise<ToolResult>;
+  execute(args: TParams, options?: ToolExecuteOptions): Promise<ToolResult>;
 }

@@ -74,6 +74,9 @@ export const AIMessageItem = memo(({
   // Special rendering for tool messages
   if (message.role === 'tool') {
     const content = getContent();
+    const images = Array.isArray(message.content)
+      ? message.content.flatMap(part => part.type === 'image_url' ? [part.image_url.url] : [])
+      : [];
 
     // Get tool call arguments
     let toolArgs: Record<string, unknown> = {};
@@ -93,6 +96,7 @@ export const AIMessageItem = memo(({
         toolArgs={toolArgs}
         state="completed"
         result={content}
+        images={images}
         projectId={projectId}
       />
     );

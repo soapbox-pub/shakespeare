@@ -52,6 +52,7 @@ interface ToolCallDisplayProps {
   toolArgs: Record<string, unknown>;
   state: 'calling' | 'waiting' | 'completed';
   result?: string; // The tool result content (only for completed state)
+  images?: string[]; // Image URLs the tool showed the model (e.g. `read` on a PNG)
   projectId: string; // Current project ID for path display
 }
 
@@ -496,7 +497,7 @@ function parseToolError(result: string | undefined, expectedToolName: string): s
 /**
  * Unified component for displaying tool calls in all states
  */
-export function ToolCallDisplay({ toolName, toolArgs, state, result, projectId }: ToolCallDisplayProps) {
+export function ToolCallDisplay({ toolName, toolArgs, state, result, images = [], projectId }: ToolCallDisplayProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [expandedImageUrl, setExpandedImageUrl] = useState<string | null>(null);
   const [imageLoadError, setImageLoadError] = useState(false);
@@ -789,6 +790,19 @@ export function ToolCallDisplay({ toolName, toolArgs, state, result, projectId }
           </span>
         </button>
 
+        {isExpanded && images.length > 0 && (
+          <div className="mt-1 p-3 bg-muted/30 rounded border space-y-2">
+            {images.map((url, index) => (
+              <img
+                key={index}
+                src={url}
+                alt={`Image ${index + 1}`}
+                className="max-w-full h-auto max-h-96 object-contain rounded cursor-pointer hover:opacity-90 transition-opacity"
+                onClick={() => setExpandedImageUrl(url)}
+              />
+            ))}
+          </div>
+        )}
         {renderExpandedContent()}
         {renderImageBelowTool()}
       </div>

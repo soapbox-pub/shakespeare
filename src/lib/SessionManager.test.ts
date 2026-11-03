@@ -227,6 +227,62 @@ describe('SessionManager', () => {
     // This prevents retrying with images on every message/tool call
   });
 
+  describe('images', () => {
+    const projectId = 'test-project';
+    const image = { type: 'image_url' as const, image_url: { url: 'data:image/png;base64,AAAA' } };
+    const stop = async function* () {
+      yield { choices: [{ delta: { content: 'ok' }, finish_reason: 'stop' }] };
+    };
+    const apiError = (status: number, message: string) => Object.assign(new Error(message), { status });
+    const sentImages = (call: number) => (mockCreate.mock.calls[call][0].messages as AIMessage[])
+      .flatMap((msg): Array<{ type: string }> => Array.isArray(msg.content) ? msg.content : [])
+      .filter((part) => part.type === 'image_url').length;
+
+    it('keeps sending images after an error unrelated to images', async () => {
+      await sessionManager.loadSession(projectId, {}, {});
+      await sessionManager.addMessage(projectId, { role: 'user', content: [{ type: 'text', text: 'look' }, image] });
+
+      mockCreate.mockImplementationOnce(() => { throw apiError(400, 'session_turn_conflict: a turn is already running'); });
+      await expect(sessionManager.startGeneration(projectId, 'test-provider/test-model')).rejects.toThrow();
+
+      mockCreate.mockImplementation(stop);
+      await sessionManager.startGeneration(projectId, 'test-provider/test-model');
+
+      expect(sessionManager.getSession(projectId)?.imagesNotSupported).toBeUndefined();
+      expect(sentImages(1)).toBe(1);
+    });
+
+    it('stops sending images when the error says the model cannot take them', async () => {
+      await sessionManager.loadSession(projectId, {}, {});
+      await sessionManager.addMessage(projectId, { role: 'user', content: [{ type: 'text', text: 'look' }, image] });
+
+      mockCreate.mockImplementationOnce(() => { throw apiError(400, 'This model does not support image input'); });
+      mockCreate.mockImplementation(stop);
+      await sessionManager.startGeneration(projectId, 'test-provider/test-model');
+
+      expect(sessionManager.getSession(projectId)?.imagesNotSupported).toBe(true);
+      expect(sentImages(1)).toBe(0);
+    });
+
+    it('removes old tool images in batches, leaving earlier messages unchanged in between', async () => {
+      const session = await sessionManager.loadSession(projectId, {}, {});
+      const readImage = (i: number): AIMessage[] => [
+        { role: 'assistant', content: '', tool_calls: [{ id: `call_${i}`, type: 'function', function: { name: 'read', arguments: '{}' } }] },
+        { role: 'tool', tool_call_id: `call_${i}`, content: [{ type: 'text', text: `image ${i}` }, image] },
+      ];
+      session.messages.push({ role: 'user', content: 'go' });
+      for (let i = 0; i < 7; i++) session.messages.push(...readImage(i));
+
+      mockCreate.mockImplementation(stop);
+      await sessionManager.startGeneration(projectId, 'test-provider/test-model');
+      expect(sentImages(0)).toBe(7);
+
+      session.messages.push(...readImage(7));
+      await sessionManager.startGeneration(projectId, 'test-provider/test-model');
+      expect(sentImages(1)).toBe(3);
+    });
+  });
+
   it('should send the session name as x-session-id', async () => {
     const projectId = 'test-project';
     const session = await sessionManager.loadSession(projectId, {}, {});

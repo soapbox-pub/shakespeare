@@ -32,8 +32,24 @@ export type AIMessage = OpenAI.Chat.Completions.ChatCompletionMessageParam | {
   content: Array<OpenAI.Chat.Completions.ChatCompletionContentPartText | OpenAI.Chat.Completions.ChatCompletionContentPartImage>;
 };
 
-/** How many of the most recent tool-result images are re-sent to the model. */
+/** How many of the most recent tool-result images are always re-sent to the model. */
 const MAX_TOOL_IMAGES = 3;
+
+/**
+ * Older tool images are removed this many at a time, so up to `MAX_TOOL_IMAGES + TOOL_IMAGE_EVICTION_BATCH - 1`
+ * are sent. Removing one per new image would rewrite an earlier message on every turn, which breaks providers'
+ * prompt caches and session resume (Meridian replays the whole conversation when its history changes).
+ */
+const TOOL_IMAGE_EVICTION_BATCH = 5;
+
+/** Whether an API error says the model can't take image input, as opposed to failing for some other reason. */
+export function isImageUnsupportedError(error: unknown): boolean {
+  const errorObj = error as Record<string, unknown> | undefined;
+  const status = typeof errorObj?.status === 'number' ? errorObj.status : undefined;
+  if (status !== 400 && status !== 404 && status !== 500) return false;
+  const message = error instanceof Error ? error.message : JSON.stringify(errorObj?.error ?? errorObj ?? '');
+  return /image|vision|multimodal|modalit/i.test(message);
+}
 
 export type UserMessageContent = string | Array<OpenAI.Chat.Completions.ChatCompletionContentPartText | OpenAI.Chat.Completions.ChatCompletionContentPartImage>;
 
@@ -443,26 +459,25 @@ export class SessionManager {
         // iterates on visual work. Images the user attached are always kept, since they are often
         // the reference the whole session works towards. Each removed image is replaced with a
         // note, so the model knows it saw the image rather than concluding it never got one.
+        // Images are removed in batches (see TOOL_IMAGE_EVICTION_BATCH) to keep the history stable.
         const evictOldToolImages = (msgs: AIMessage[]): AIMessage[] => {
-          let kept = 0;
-          const result: AIMessage[] = [];
-          for (let i = msgs.length - 1; i >= 0; i--) {
-            const msg = msgs[i];
-            if (msg.role !== 'tool' || !Array.isArray(msg.content) || !msg.content.some(part => part.type === 'image_url')) {
-              result.unshift(msg);
-              continue;
-            }
-            const content = [...msg.content].reverse().map(part => {
-              if (part.type !== 'image_url') return part;
-              if (kept < MAX_TOOL_IMAGES) {
-                kept++;
-                return part;
-              }
+          const isToolWithImages = (msg: AIMessage) =>
+            msg.role === 'tool' && Array.isArray(msg.content) && msg.content.some(part => part.type === 'image_url');
+          const total = msgs.reduce((n, msg) =>
+            isToolWithImages(msg) && Array.isArray(msg.content) ? n + msg.content.filter(part => part.type === 'image_url').length : n, 0);
+          const excess = Math.max(0, total - MAX_TOOL_IMAGES);
+          let toEvict = excess - (excess % TOOL_IMAGE_EVICTION_BATCH);
+          if (toEvict === 0) return msgs;
+
+          return msgs.map(msg => {
+            if (toEvict === 0 || !isToolWithImages(msg) || !Array.isArray(msg.content)) return msg;
+            const content = msg.content.map(part => {
+              if (part.type !== 'image_url' || toEvict === 0) return part;
+              toEvict--;
               return { type: 'text' as const, text: '[Image shown to you earlier, now removed from the context to save tokens. Read the file again to see it.]' };
-            }).reverse();
-            result.unshift({ ...msg, content } as AIMessage);
-          }
-          return result;
+            });
+            return { ...msg, content } as AIMessage;
+          });
         };
 
         // Helper function to filter out unsupported image formats (keep only JPG/JPEG/PNG)
@@ -610,12 +625,9 @@ export class SessionManager {
         try {
           stream = await openai.chat.completions.create(completionOptions, requestOptions);
         } catch (error) {
-          // Check if this might be an image-related error and we have images to strip
-          const errorObj = error as Record<string, unknown>;
-          const errorStatus = typeof errorObj?.status === 'number' ? errorObj.status : undefined;
-          const isPotentialImageError = errorStatus === 400 || errorStatus === 404 || errorStatus === 500;
-
-          if (isPotentialImageError && hasImages && !retriedWithoutImages) {
+          // Only an error that says images are the problem may strip them: unrelated 400s (e.g. Meridian's
+          // session_turn_conflict for a duplicate request) would otherwise blind the model for the whole session.
+          if (isImageUnsupportedError(error) && hasImages && !retriedWithoutImages) {
             console.warn('API call failed, retrying without image_url parts (keeping VFS paths):', error);
             retriedWithoutImages = true;
 

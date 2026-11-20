@@ -24,7 +24,7 @@ import { EmptyMessageError } from '@/lib/errors/EmptyMessageError';
 import { MalformedToolCallError } from '@/lib/errors/MalformedToolCallError';
 
 /** Bumped whenever the messages change, so a page never talks to a worker from another version. */
-export const AGENT_PROTOCOL_VERSION = 1;
+export const AGENT_PROTOCOL_VERSION = 2;
 
 /** localStorage key: `on` runs the assistant in the worker even without Din's tasks (for testing), `off` never. */
 export const WORKER_AGENT_OVERRIDE_KEY = 'shakespeare:workerAgent';

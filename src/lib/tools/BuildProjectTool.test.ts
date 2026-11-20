@@ -72,7 +72,6 @@ describe('BuildProjectTool', () => {
       esmUrl: 'https://esm.shakespeare.diy',
       fs: mockFS,
       projectPath: '/test/project',
-      domParser: expect.any(DOMParser),
     });
 
     expect(result.content).toContain('✅ Successfully built project!');
@@ -102,7 +101,6 @@ describe('BuildProjectTool', () => {
       esmUrl: 'https://esm.shakespeare.diy',
       fs: mockFS,
       projectPath: '/test/project',
-      domParser: expect.any(DOMParser),
     });
   });
 

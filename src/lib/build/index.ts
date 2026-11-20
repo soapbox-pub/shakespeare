@@ -16,7 +16,8 @@ import type { Plugin } from 'esbuild-wasm';
 export interface BuildProjectOptions {
   fs: JSRuntimeFS;
   projectPath: string;
-  domParser: DOMParser;
+  /** Defaults to the page's DOMParser, or linkedom's where there's none (the service worker). */
+  domParser?: DOMParser;
   target?: string;
   outputPath?: string;
   esmUrl: string;
@@ -160,10 +161,18 @@ export function createPlugins(
   ];
 }
 
+/** The page's DOMParser, or linkedom's in the service worker, which has no DOM. */
+async function createDOMParser(): Promise<DOMParser> {
+  if (typeof DOMParser !== "undefined") return new DOMParser();
+  const { DOMParser: LinkedomParser } = await import("linkedom/worker");
+  return new LinkedomParser() as unknown as DOMParser;
+}
+
 async function bundle(
   options: BuildProjectOptions,
 ): Promise<Record<string, Uint8Array>> {
-  const { fs, projectPath, domParser, target = "esnext", esmUrl } = options;
+  const { fs, projectPath, target = "esnext", esmUrl } = options;
+  const domParser = options.domParser ?? await createDOMParser();
   const esbuild = await getEsbuild();
 
   const indexHtmlText = await fs.readFile(
@@ -176,13 +185,14 @@ async function bundle(
 
   const doc = domParser.parseFromString(indexHtmlText, "text/html");
   const entryPoints: string[] = [];
-  const entryScripts: Record<string, HTMLScriptElement> = {};
+  const entryScripts: Record<string, Element> = {};
 
-  // Find all module scripts with relative paths in index.html
-  for (const script of doc.scripts) {
+  // Find all module scripts with relative paths in index.html. (Attributes and querySelectorAll
+  // rather than `doc.scripts` and `script.type`, which linkedom, used where there's no DOM, lacks.)
+  for (const script of doc.querySelectorAll("script")) {
     const scriptSrc = script.getAttribute("src");
 
-    if (scriptSrc && script.type === "module" && /^[./]/.test(scriptSrc)) {
+    if (scriptSrc && script.getAttribute("type") === "module" && /^[./]/.test(scriptSrc)) {
       const path = join(projectPath, scriptSrc);
 
       // Files in the public directory take precedence over source files
@@ -252,9 +262,9 @@ async function bundle(
       script.setAttribute("src", "/" + filename);
       dist[filename] = file.contents;
     } else if (ext === "js") {
-      const script = document.createElement("script");
-      script.type = "module";
-      script.src = "/" + filename;
+      const script = doc.createElement("script");
+      script.setAttribute("type", "module");
+      script.setAttribute("src", "/" + filename);
       doc.head.appendChild(script);
       dist[filename] = file.contents;
     } else if (ext === "css") {

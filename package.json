@@ -89,6 +89,7 @@
     "jsonc-parser": "^3.3.1",
     "jszip": "^3.10.1",
     "just-bash": "^3.6.0",
+    "linkedom": "^0.18.15",
     "lucide-react": "^0.562.0",
     "mime": "^4.1.0",
     "modern-screenshot": "^4.7.0",

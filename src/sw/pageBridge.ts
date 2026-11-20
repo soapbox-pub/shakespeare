@@ -41,6 +41,11 @@ export async function hostWindows(): Promise<SWWindowClient[]> {
   return windows.filter((client) => hosts.has(client.id));
 }
 
+/** Whether an open window has the project loaded (and so builds it as its files change). */
+export async function isProjectOpen(projectId: string): Promise<boolean> {
+  return (await hostWindows()).some((client) => hosts.get(client.id)?.has(projectId));
+}
+
 /** Whether the user is looking at Shakespeare now. */
 export async function isWindowFocused(): Promise<boolean> {
   return (await hostWindows()).some((client) => client.focused && client.visibilityState === 'visible');

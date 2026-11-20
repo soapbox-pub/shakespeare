@@ -19,7 +19,6 @@ import { useMCPTools } from '@/hooks/useMCPTools';
 import { useQueryClient } from '@tanstack/react-query';
 import { AIMessageItem } from '@/components/AIMessageItem';
 import { ToolCallDisplay } from '@/components/ToolCallDisplay';
-import { BuildProjectTool } from '@/lib/tools/BuildProjectTool';
 import { ReadConsoleMessagesTool } from '@/lib/tools/ReadConsoleMessagesTool';
 import { PreviewTool } from '@/lib/tools/PreviewTool';
 import { ViewAvailableModelsTool } from '@/lib/tools/ViewAvailableModelsTool';
@@ -196,6 +195,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
       projectsPath,
       tmpPath,
       corsProxy: config.corsProxy,
+      esmUrl: esmUrlRef.current,
       writeRelays: config.relayMetadata.relays.filter(r => r.write).map(r => r.url),
       user,
       signer: user?.signer,
@@ -206,7 +206,6 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     });
 
     // Tools that need this page
-    tools.build_project = new BuildProjectTool(fs, cwd, esmUrlRef.current);
     tools.read_console_messages = new ReadConsoleMessagesTool();
     tools.preview = new PreviewTool(fs, cwd, projectId, config.previewDomain, tmpPath);
     tools.webfetch = new WebFetchTool({ corsProxy: config.corsProxy });

@@ -76,15 +76,16 @@ describe('buildProject', () => {
             getAttribute: vi.fn(),
           };
         }),
-        scripts: [
+        querySelectorAll: vi.fn((selector: string) => selector === 'script' ? [
           {
             getAttribute: vi.fn((attr: string) => {
               if (attr === 'src') return '/src/main.tsx';
+              if (attr === 'type') return 'module';
               return null;
             }),
-            type: 'module',
+            setAttribute: vi.fn(),
           },
-        ],
+        ] : []),
         head: {
           appendChild: vi.fn(),
         },

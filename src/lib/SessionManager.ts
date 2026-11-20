@@ -97,13 +97,15 @@ export interface SessionManagerEvents {
   fileChanged: (projectId: string, filePath: string) => void;
   /** The assistant made a git commit */
   committed: (projectId: string) => void;
+  /** The project was built away from the page (in the service worker), so its preview should reload */
+  projectBuilt: (projectId: string) => void;
   finishReasonChanged: (projectId: string, finishReason: string | null) => void;
   queueChanged: (projectId: string, queuedMessages: QueuedMessage[]) => void;
 }
 
 export const SESSION_EVENTS: Array<keyof SessionManagerEvents> = [
   'sessionCreated', 'sessionDeleted', 'messageAdded', 'messagesReplaced', 'streamingUpdate', 'loadingChanged',
-  'costUpdated', 'contextUsageUpdated', 'fileChanged', 'committed', 'finishReasonChanged', 'queueChanged',
+  'costUpdated', 'contextUsageUpdated', 'fileChanged', 'committed', 'projectBuilt', 'finishReasonChanged', 'queueChanged',
 ];
 
 /** A session's state without what can't leave the context running it (tools, the abort controller). */

@@ -16,7 +16,8 @@ async function loadEsbuild(): Promise<ESBuild> {
   const { default: esbuild } = await import("esbuild-wasm");
 
   await esbuild.initialize({
-    worker: true,
+    // A service worker can't start Web Workers, so there esbuild runs on its own thread.
+    worker: typeof Worker !== "undefined",
     wasmURL: wasmUrl,
   });
 

@@ -17,6 +17,7 @@ import { LightningFSAdapter } from '@/lib/LightningFSAdapter';
 import { Git } from '@/lib/git';
 import { getAllSkills } from '@/lib/skills';
 import { SessionManager, SESSION_EVENTS, snapshotSession, type AIMessage, type UserMessageContent } from '@/lib/SessionManager';
+import { buildProject } from '@/lib/build';
 import { createWorkerTools } from '@/lib/tools/workerTools';
 import type { Tool } from '@/lib/tools/Tool';
 import {
@@ -28,7 +29,7 @@ import {
   type ToWorker,
 } from '@/lib/agent/protocol';
 
-import { hostWindows, isWindowFocused, registerHost, requestPage, send, settleRequest } from './pageBridge';
+import { hostWindows, isProjectOpen, isWindowFocused, registerHost, requestPage, send, settleRequest } from './pageBridge';
 import { sw, type SWClient, type SWMessageEvent, type TaskNotificationOptions } from './types';
 
 /** Changes each time the worker starts, so pages can tell it lost its sessions. */
@@ -238,6 +239,29 @@ function makeGit(): Git {
   });
 }
 
+/** Projects whose files the assistant changed since they were last built here. */
+const unbuilt = new Set<string>();
+manager.on('fileChanged', (projectId) => unbuilt.add(projectId));
+
+/**
+ * Build a project whose files changed in a turn when no window has it open to build it (as the
+ * page's auto-build does), so its preview and dist are up to date when it's next opened. Returns
+ * the error if the build failed.
+ */
+async function buildInBackground(projectId: string): Promise<unknown> {
+  if (!unbuilt.has(projectId) || await isProjectOpen(projectId)) return undefined;
+  const { config } = requireContext();
+  try {
+    await buildProject({ fs, projectPath: `${config.fsPathProjects}/${projectId}`, esmUrl: config.esmUrl });
+    unbuilt.delete(projectId);
+    manager.emit('projectBuilt', projectId);
+    return undefined;
+  } catch (error) {
+    console.warn(`Failed to build ${projectId} in the background:`, error);
+    return error;
+  }
+}
+
 /** A tool only a page can run, run by one. */
 function pageTool(projectId: string, name: string): Tool<unknown> {
   return {
@@ -261,6 +285,7 @@ async function buildTools(projectId: string, schemas: Record<string, OpenAI.Chat
     projectsPath: config.fsPathProjects,
     tmpPath: config.fsPathTmp,
     corsProxy: config.corsProxy,
+    esmUrl: config.esmUrl,
     writeRelays: config.relayMetadata.relays.filter((relay) => relay.write).map((relay) => relay.url),
     user,
     signer: user?.signer,
@@ -268,6 +293,10 @@ async function buildTools(projectId: string, schemas: Record<string, OpenAI.Chat
     imageGeneration,
     onFileChanged: (filePath) => manager.emit('fileChanged', projectId, filePath),
     onCommit: () => manager.emit('committed', projectId),
+    onBuilt: () => {
+      unbuilt.delete(projectId);
+      manager.emit('projectBuilt', projectId);
+    },
   });
 
   const tools: Record<string, Tool<unknown>> = {};
@@ -415,7 +444,7 @@ async function closeTaskNotification(projectId: string): Promise<void> {
 }
 
 /** A turn is over: the notification goes, or, if the user isn't looking, says how it went. */
-async function endTask(projectId: string, error?: unknown): Promise<void> {
+async function endTask(projectId: string, error?: unknown, buildError?: unknown): Promise<void> {
   const task = tasks.get(projectId);
   if (!task) return;
   tasks.delete(projectId);
@@ -428,9 +457,14 @@ async function endTask(projectId: string, error?: unknown): Promise<void> {
     }
     const failed = error !== undefined;
     const message = error instanceof Error ? error.message : String(error);
+    const buildMessage = buildError instanceof Error ? buildError.message : String(buildError);
     const options: TaskNotificationOptions = {
       tag: taskTag(projectId),
-      body: failed ? `Stopped with an error: ${message}` : 'Done. Open the project to see what changed.',
+      body: failed
+        ? `Stopped with an error: ${message}`
+        : buildError !== undefined
+          ? `Done, but the build failed: ${buildMessage}`
+          : 'Done. Open the project to see what changed.',
       icon: '/shakespeare-192x192.png',
       data: { projectId },
     };
@@ -450,7 +484,13 @@ async function runTurn(projectId: string, run: () => Promise<void>): Promise<voi
     throw error;
   } finally {
     // A message sent during a turn is queued, and the turn that's running goes on.
-    if (!manager.getSession(projectId)?.isLoading) await endTask(projectId, failure);
+    if (!manager.getSession(projectId)?.isLoading) {
+      // Not after a Stop, which leaves the worker only seconds
+      const stopped = tasks.get(projectId)?.stopped ?? false;
+      if (!stopped && tasks.has(projectId)) updateTask(projectId, 'Building the project');
+      const buildError = stopped ? undefined : await buildInBackground(projectId);
+      await endTask(projectId, failure, buildError);
+    }
   }
 }
 

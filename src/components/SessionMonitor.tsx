@@ -4,6 +4,11 @@ import { useToast } from '@/hooks/useToast';
 import { useNavigate, useLocation } from 'react-router';
 import { OPEN_PROJECT_EVENT } from '@/lib/agent/protocol';
 
+/** The web's Launch Handling API, which the DOM lib doesn't declare yet. */
+interface LaunchQueue {
+  setConsumer(consumer: (params: { targetURL?: string }) => void): void;
+}
+
 /**
  * Global component that monitors AI sessions and shows notifications
  * when sessions complete in the background
@@ -83,6 +88,20 @@ export function SessionMonitor() {
     };
     window.addEventListener(OPEN_PROJECT_EVENT, handleOpenProject);
     return () => window.removeEventListener(OPEN_PROJECT_EVENT, handleOpenProject);
+  }, [navigate]);
+
+  // A window Din opens for the service worker (a click on a finished task's notification, with no
+  // window open) starts at the start page, with where to go in its launch's `url` parameter.
+  useEffect(() => {
+    const launchQueue = (window as { launchQueue?: LaunchQueue }).launchQueue;
+    launchQueue?.setConsumer(({ targetURL }) => {
+      if (!targetURL) return;
+      const url = new URL(targetURL).searchParams.get('url');
+      if (!url) return;
+      const target = new URL(url, window.location.href);
+      if (target.origin !== window.location.origin || target.pathname === window.location.pathname) return;
+      navigate(target.pathname + target.search + target.hash);
+    });
   }, [navigate]);
 
   // This component doesn't render anything

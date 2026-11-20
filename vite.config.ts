@@ -1,3 +1,4 @@
+import { readdirSync } from "node:fs";
 import { createRequire } from "node:module";
 import { execSync } from "node:child_process";
 import path from "node:path";
@@ -32,9 +33,11 @@ function getCommitTag(): string {
 
 /**
  * In the service worker's build, modules that start Web Workers (which a service worker can't)
- * are swapped for ones that ask a page to do the work.
+ * are swapped for ones that ask a page to do the work, and esbuild's wasm is the file the app's
+ * build emitted (the service worker's build is a library build, which would inline its 12 MB).
  */
 function swPageModules(): Plugin {
+  const esbuildWasm = "\0esbuild-wasm-url";
   const replacements: Record<string, string> = {
     [path.resolve(__dirname, "src/lib/tsc/index.ts")]: path.resolve(__dirname, "src/sw/remoteTsc.ts"),
     [path.resolve(__dirname, "src/lib/python/index.ts")]: path.resolve(__dirname, "src/sw/remotePython.ts"),
@@ -43,11 +46,19 @@ function swPageModules(): Plugin {
     name: "shakespeare-sw-page-modules",
     enforce: "pre",
     async resolveId(source, importer, options) {
+      if (source === "esbuild-wasm/esbuild.wasm?url") return esbuildWasm;
       const resolved = await this.resolve(source, importer, { ...options, skipSelf: true });
       if (resolved && replacements[resolved.id] && importer !== replacements[resolved.id]) {
         return replacements[resolved.id];
       }
       return null;
+    },
+    load(id) {
+      if (id !== esbuildWasm) return null;
+      // The app's build has already written dist when the service worker is built.
+      const name = readdirSync(path.resolve(__dirname, "dist/assets")).find((file) => /^esbuild-.*\.wasm$/.test(file));
+      if (!name) throw new Error("esbuild's wasm isn't in dist/assets");
+      return `export default ${JSON.stringify(`/assets/${name}`)};`;
     },
   };
 }

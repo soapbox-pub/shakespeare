@@ -35,6 +35,7 @@ import { TodoReadTool } from './TodoReadTool';
 import { AppTool } from './AppTool';
 import { GenerateImageTool, type ImageGenerationMode } from './GenerateImageTool';
 import { EditImageTool } from './EditImageTool';
+import { BuildProjectTool } from './BuildProjectTool';
 
 /**
  * The order the built-in tools are offered to the model in. It has to stay the
@@ -100,6 +101,8 @@ export interface WorkerToolsEnv {
   projectsPath: string;
   tmpPath: string;
   corsProxy: string;
+  /** ESM CDN for builds */
+  esmUrl: string;
   /** Relays the user writes to */
   writeRelays: string[];
   user?: NUser;
@@ -108,12 +111,13 @@ export interface WorkerToolsEnv {
   imageGeneration?: ImageGeneration;
   onFileChanged?: (filePath: string) => void;
   onCommit?: () => void;
+  onBuilt?: () => void;
 }
 
 /**
  * The built-in tools that need no page: no DOM, no Web Workers, nothing only a
  * window has. They run wherever the assistant does, in the page or in the
- * service worker. The rest (building, the preview, its console, web pages,
+ * service worker. The rest (the preview, its console, web pages,
  * settings, MCP) are the page's.
  */
 export function createWorkerTools(env: WorkerToolsEnv): Record<string, Tool<unknown>> {
@@ -128,6 +132,7 @@ export function createWorkerTools(env: WorkerToolsEnv): Record<string, Tool<unkn
     git_commit: new GitCommitTool(fs, cwd, git, { onCommit }),
     npm_add_package: new NpmAddPackageTool(fs, cwd),
     npm_remove_package: new NpmRemovePackageTool(fs, cwd),
+    build_project: new BuildProjectTool(fs, cwd, env.esmUrl, { onBuilt: env.onBuilt }),
     nostr_read_nip: new NostrReadNipTool(),
     nostr_fetch_event: new NostrFetchEventTool(),
     nostr_read_kind: new NostrReadKindTool(),

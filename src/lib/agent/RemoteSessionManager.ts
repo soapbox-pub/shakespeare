@@ -315,6 +315,10 @@ export class RemoteSessionManager implements SessionManagerLike {
       case 'queueChanged':
         if (session) session.queuedMessages = args[1] as SessionSnapshot['queuedMessages'];
         break;
+      case 'projectBuilt':
+        // What a build in the page announces itself, for the preview
+        window.dispatchEvent(new CustomEvent('buildComplete', { detail: { projectId } }));
+        break;
     }
 
     this.dispatch(event, ...args);

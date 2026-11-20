@@ -8,6 +8,37 @@ export interface ResizeOptions {
 }
 
 /**
+ * Whether there's a DOM to decode and draw images with. Without one (in the
+ * service worker, where the assistant can run), `createImageBitmap` and
+ * `OffscreenCanvas` do the same work.
+ */
+const hasDOM = typeof document !== 'undefined' && typeof Image !== 'undefined';
+
+/** A decoded image, from an `<img>` or `createImageBitmap`. */
+type DecodedImage = HTMLImageElement | ImageBitmap;
+
+/** A canvas to draw on, and how to read it back as a file. */
+interface DrawingSurface {
+  ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
+  toBlob(type: string, quality?: number): Promise<Blob | null>;
+}
+
+function createSurface(width: number, height: number): DrawingSurface {
+  if (hasDOM) {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Failed to get canvas context');
+    return { ctx, toBlob: (type, quality) => new Promise((resolve) => canvas.toBlob(resolve, type, quality)) };
+  }
+  const canvas = new OffscreenCanvas(width, height);
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Failed to get canvas context');
+  return { ctx, toBlob: (type, quality) => canvas.convertToBlob({ type, quality }) };
+}
+
+/**
  * Resizes an image file if it exceeds size or dimension limits.
  * 
  * @param file - The image file to potentially resize
@@ -48,22 +79,10 @@ export async function resizeImageIfNeeded(file: File, opts: ResizeOptions = {}):
  * @returns Promise resolving to width and height
  */
 export async function getImageDimensions(file: File): Promise<{ width: number; height: number }> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      resolve({ width: img.width, height: img.height });
-    };
-
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error('Failed to load image'));
-    };
-
-    img.src = url;
-  });
+  const img = await loadImage(file);
+  const dimensions = { width: img.width, height: img.height };
+  if (!hasDOM) (img as ImageBitmap).close();
+  return dimensions;
 }
 
 /** Image types that every vision API accepts. */
@@ -95,66 +114,40 @@ export async function toApiImage(file: File): Promise<File> {
  * @returns Promise resolving to resized File
  */
 async function resizeImage(file: File, maxDimension: number, quality: number, type = file.type || 'image/jpeg'): Promise<File> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    const url = URL.createObjectURL(file);
+  let img: DecodedImage;
+  try {
+    img = await loadImage(file);
+  } catch {
+    throw new Error('Failed to load image for resizing');
+  }
 
-    img.onload = () => {
-      URL.revokeObjectURL(url);
+  // Calculate new dimensions maintaining aspect ratio
+  let { width, height } = img;
 
-      // Calculate new dimensions maintaining aspect ratio
-      let { width, height } = img;
-      
-      if (width > maxDimension || height > maxDimension) {
-        if (width > height) {
-          height = (height / width) * maxDimension;
-          width = maxDimension;
-        } else {
-          width = (width / height) * maxDimension;
-          height = maxDimension;
-        }
-      }
+  if (width > maxDimension || height > maxDimension) {
+    if (width > height) {
+      height = (height / width) * maxDimension;
+      width = maxDimension;
+    } else {
+      width = (width / height) * maxDimension;
+      height = maxDimension;
+    }
+  }
 
-      // Create canvas and draw resized image
-      const canvas = document.createElement('canvas');
-      canvas.width = width;
-      canvas.height = height;
-      
-      const ctx = canvas.getContext('2d');
-      if (!ctx) {
-        reject(new Error('Failed to get canvas context'));
-        return;
-      }
+  // Draw the resized image
+  const surface = createSurface(Math.round(width), Math.round(height));
+  surface.ctx.drawImage(img, 0, 0, width, height);
+  if (!hasDOM) (img as ImageBitmap).close();
 
-      ctx.drawImage(img, 0, 0, width, height);
+  const blob = await surface.toBlob(type, quality);
+  if (!blob) {
+    throw new Error('Failed to create blob from canvas');
+  }
 
-      // Convert canvas to blob
-      canvas.toBlob(
-        (blob) => {
-          if (!blob) {
-            reject(new Error('Failed to create blob from canvas'));
-            return;
-          }
-
-          // Create new File from blob with original name
-          const resizedFile = new File([blob], file.name, {
-            type: blob.type,
-            lastModified: Date.now(),
-          });
-
-          resolve(resizedFile);
-        },
-        type,
-        quality
-      );
-    };
-
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error('Failed to load image for resizing'));
-    };
-
-    img.src = url;
+  // Create new File from blob with original name
+  return new File([blob], file.name, {
+    type: blob.type,
+    lastModified: Date.now(),
   });
 }
 
@@ -191,17 +184,12 @@ export async function cropImage(
 
   const scale = Math.max(1, Math.min(maxScale, Math.floor(minSize / Math.max(width, height))));
 
-  const canvas = document.createElement('canvas');
-  canvas.width = width * scale;
-  canvas.height = height * scale;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) {
-    throw new Error('Failed to get canvas context');
-  }
-  ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(img, x, y, width, height, 0, 0, canvas.width, canvas.height);
+  const surface = createSurface(width * scale, height * scale);
+  surface.ctx.imageSmoothingEnabled = false;
+  surface.ctx.drawImage(img, x, y, width, height, 0, 0, width * scale, height * scale);
+  if (!hasDOM) (img as ImageBitmap).close();
 
-  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+  const blob = await surface.toBlob('image/png');
   if (!blob) {
     throw new Error('Failed to create blob from canvas');
   }
@@ -213,7 +201,12 @@ export async function cropImage(
   };
 }
 
-function loadImage(file: File): Promise<HTMLImageElement> {
+function loadImage(file: File): Promise<DecodedImage> {
+  if (!hasDOM) {
+    return createImageBitmap(file).catch(() => {
+      throw new Error('Failed to load image');
+    });
+  }
   return new Promise((resolve, reject) => {
     const img = new Image();
     const url = URL.createObjectURL(file);
@@ -236,6 +229,14 @@ function loadImage(file: File): Promise<HTMLImageElement> {
  * @returns Promise resolving to base64 data URL string
  */
 export async function fileToUrl(file: File): Promise<string> {
+  if (typeof FileReader === 'undefined') {
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    let binary = '';
+    for (let i = 0; i < bytes.length; i += 0x8000) {
+      binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    }
+    return `data:${file.type || 'application/octet-stream'};base64,${btoa(binary)}`;
+  }
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
@@ -251,4 +252,3 @@ export async function fileToUrl(file: File): Promise<string> {
     reader.readAsDataURL(file);
   });
 }
-

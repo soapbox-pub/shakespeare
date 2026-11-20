@@ -5,6 +5,26 @@ import type { NUser } from '@nostrify/react/login';
 import type { AIProvider } from '@/contexts/AISettingsContext';
 import { proxyUrl } from './proxyUrl';
 
+/** The user's signer couldn't sign a provider's NIP-98 authorization. */
+export class NostrAuthError extends Error {
+  constructor(provider: AIProvider, cause: unknown) {
+    const reason = cause instanceof Error ? cause.message : String(cause);
+    super(`Couldn't sign in to ${provider.name || provider.id}: ${reason}`, { cause });
+    this.name = 'NostrAuthError';
+  }
+}
+
+/**
+ * The signing failure behind an error from the OpenAI client, which wraps whatever its fetch
+ * threw as a connection error, or the error itself once revived from the worker; else null.
+ */
+export function nostrAuthError(error: unknown): Error | null {
+  if (!(error instanceof Error)) return null;
+  if (error.name === 'NostrAuthError') return error;
+  const cause = (error as { cause?: unknown }).cause;
+  return cause instanceof Error && cause.name === 'NostrAuthError' ? cause : null;
+}
+
 /**
  * Create an OpenAI client instance with the appropriate configuration.
  * If the connection requires Nostr authentication (NIP-98), it will use
@@ -40,7 +60,14 @@ export function createAIClient(provider: AIProvider, user?: NUser, corsProxy?: s
       if (provider.nostr && user?.signer) {
         // Create the NIP98 token
         const template = await NIP98.template(request);
-        const event = await user.signer.signEvent(template);
+        // The OpenAI client reports anything thrown here as "Connection error.", so a
+        // signing failure is marked as one (see nostrAuthError).
+        let event;
+        try {
+          event = await user.signer.signEvent(template);
+        } catch (error) {
+          throw new NostrAuthError(provider, error);
+        }
         const token = N64.encodeEvent(event);
 
         // Add the Authorization header

@@ -19,6 +19,7 @@ import type { PythonOptions } from '@/lib/python';
 import type { TscOptions } from '@/lib/tsc';
 import type { ImageGeneration } from '@/lib/tools/workerTools';
 import type { SessionManagerEvents, SessionSnapshot } from '@/lib/SessionManager';
+import { nostrAuthError } from '@/lib/ai-client';
 import { EmptyMessageError } from '@/lib/errors/EmptyMessageError';
 import { MalformedToolCallError } from '@/lib/errors/MalformedToolCallError';
 
@@ -119,6 +120,10 @@ export function serializeError(error: unknown): SerializedError {
   }
   if (error instanceof APIUserAbortError || (error instanceof Error && error.name === 'AbortError')) {
     return { kind: 'abort', name: 'AbortError', message: error.message };
+  }
+  const authError = nostrAuthError(error);
+  if (authError) {
+    return { kind: 'error', name: authError.name, message: authError.message };
   }
   if (error instanceof APIConnectionError) {
     return { kind: 'connection', name: error.name, message: error.message };

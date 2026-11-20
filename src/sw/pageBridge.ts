@@ -81,7 +81,9 @@ export async function requestPage(request: PageRequest, signal?: AbortSignal): P
   if (!client) {
     throw new WindowClosedError(request.kind === 'tool'
       ? `The ${request.name} tool needs Shakespeare open in a window with this project, and none is. Carry on without it, or ask the user to open the project.`
-      : undefined);
+      : request.kind === 'sign'
+        ? 'Signing with your Nostr account needs Shakespeare open in a window, and none is open.'
+        : undefined);
   }
 
   const id = crypto.randomUUID();

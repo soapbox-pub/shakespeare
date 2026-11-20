@@ -8,6 +8,7 @@ import { parseProviderModel } from '@/lib/parseProviderModel';
 import { useAICredits } from '@/hooks/useAICredits';
 import { AIProviderConfigDialog } from './AIProviderConfigDialog';
 import { ProjectPreviewConsoleError } from '@/lib/consoleMessages';
+import { nostrAuthError } from '@/lib/ai-client';
 import { useState } from 'react';
 import { MalformedToolCallError } from '@/lib/errors/MalformedToolCallError';
 import { EmptyMessageError } from '@/lib/errors/EmptyMessageError';
@@ -47,6 +48,21 @@ function QuillyContent({ error, onDismiss, onNewChat, onOpenModelSelector, onTry
   const { isOffline } = useOffline();
 
   const renderBody = (error: Error | APIError | MalformedToolCallError | ProjectPreviewConsoleError): ErrorBody & { showCreditsButton?: boolean } => {
+    // The provider's NIP-98 authorization couldn't be signed: not a network problem.
+    const authError = nostrAuthError(error);
+    if (authError) {
+      return {
+        message: authError.message,
+        actions: onTryAgain ? [{
+          label: 'Try again',
+          onClick: () => {
+            onTryAgain();
+            onDismiss();
+          },
+        }] : [],
+      };
+    }
+
     // Handle Project Preview Console Errors
     if (error instanceof ProjectPreviewConsoleError) {
       return {

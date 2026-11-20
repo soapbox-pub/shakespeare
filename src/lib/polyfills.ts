@@ -1,3 +1,13 @@
+import { Buffer } from 'buffer';
+
+/**
+ * isomorphic-git uses a global `Buffer`, which browsers don't have. Set here for the page and the
+ * service worker alike.
+ */
+if (!(globalThis as { Buffer?: typeof Buffer }).Buffer) {
+  (globalThis as { Buffer?: typeof Buffer }).Buffer = Buffer;
+}
+
 /**
  * Polyfill for AbortSignal.any()
  * 

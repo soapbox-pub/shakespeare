@@ -14,44 +14,19 @@ import { useAppContext } from '@/hooks/useAppContext';
 import { useAIChat } from '@/hooks/useAIChat';
 import { useProviderModels } from '@/hooks/useProviderModels';
 import { useSessionManager } from '@/hooks/useSessionManager';
+import { useSessionSubscription } from '@/hooks/useSessionSubscription';
 import { useMCPTools } from '@/hooks/useMCPTools';
 import { useQueryClient } from '@tanstack/react-query';
 import { AIMessageItem } from '@/components/AIMessageItem';
 import { ToolCallDisplay } from '@/components/ToolCallDisplay';
-import { ReadTool } from '@/lib/tools/ReadTool';
-import { WriteTool } from '@/lib/tools/WriteTool';
-import { EditTool } from '@/lib/tools/EditTool';
-import { GlobTool } from '@/lib/tools/GlobTool';
-import { GrepTool } from '@/lib/tools/GrepTool';
-import { NpmAddPackageTool } from '@/lib/tools/NpmAddPackageTool';
-import { NpmRemovePackageTool } from '@/lib/tools/NpmRemovePackageTool';
-import { GitCommitTool } from '@/lib/tools/GitCommitTool';
 import { BuildProjectTool } from '@/lib/tools/BuildProjectTool';
-import { NostrReadNipTool } from '@/lib/tools/NostrReadNipTool';
-import { NostrFetchEventTool } from '@/lib/tools/NostrFetchEventTool';
-import { NostrReadKindTool } from '@/lib/tools/NostrReadKindTool';
-import { NostrReadTagTool } from '@/lib/tools/NostrReadTagTool';
-import { NostrReadProtocolTool } from '@/lib/tools/NostrReadProtocolTool';
-import { NostrReadNipsIndexTool } from '@/lib/tools/NostrReadNipsIndexTool';
-import { NostrGenerateKindTool } from '@/lib/tools/NostrGenerateKindTool';
-import { NostrPublishEventsTool } from '@/lib/tools/NostrPublishEventsTool';
-import { NostrEncodeTool } from '@/lib/tools/NostrEncodeTool';
-import { NostrDecodeTool } from '@/lib/tools/NostrDecodeTool';
-import { BlossomUploadTool } from '@/lib/tools/BlossomUploadTool';
-import { ShellTool } from '@/lib/tools/ShellTool';
 import { ReadConsoleMessagesTool } from '@/lib/tools/ReadConsoleMessagesTool';
 import { PreviewTool } from '@/lib/tools/PreviewTool';
-import { SkillTool } from '@/lib/tools/SkillTool';
-import { GenerateImageTool } from '@/lib/tools/GenerateImageTool';
-import { EditImageTool } from '@/lib/tools/EditImageTool';
 import { ViewAvailableModelsTool } from '@/lib/tools/ViewAvailableModelsTool';
 import { ConfigureImageGenerationTool } from '@/lib/tools/ConfigureImageGenerationTool';
 import { WebFetchTool } from '@/lib/tools/WebFetchTool';
-import { WebSearchTool } from '@/lib/tools/WebSearchTool';
 import { createMCPTools } from '@/lib/tools/MCPTool';
-import { TodoWriteTool } from '@/lib/tools/TodoWriteTool';
-import { TodoReadTool } from '@/lib/tools/TodoReadTool';
-import { AppTool } from '@/lib/tools/AppTool';
+import { createWorkerTools, inToolOrder, resolveImageGeneration } from '@/lib/tools/workerTools';
 import { ProjectPreviewConsoleError } from '@/lib/consoleMessages';
 import { toolToOpenAI } from '@/lib/tools/openai-adapter';
 import { Tool } from '@/lib/tools/Tool';
@@ -63,7 +38,6 @@ import { ChatInput, SlashCommand } from '@/components/Shakespeare/ChatInput';
 import { ToolsDialog } from '@/components/Shakespeare/ToolsDialog';
 import { buildMessageContent } from '@/lib/buildMessageContent';
 import { DotAI } from '@/lib/DotAI';
-import { parseProviderModel } from '@/lib/parseProviderModel';
 import { AIMessage } from '@/lib/SessionManager';
 import { getAllSkills } from '@/lib/skills';
 import { warmTsc } from '@/lib/tsc';
@@ -179,11 +153,19 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
     sessionManager.emit('fileChanged', projectId, filePath);
   }, [sessionManager, projectId]);
 
-  // Callback to trigger sync after git commits
+  // Callback to announce git commits, through the session manager like file changes,
+  // since the assistant may be committing from the service worker
   const handleCommit = useCallback(() => {
-    // Invalidate the git-sync query to trigger an immediate sync
-    queryClient.invalidateQueries({ queryKey: ['git-sync', cwd] });
-  }, [queryClient, cwd]);
+    sessionManager.emit('committed', projectId);
+  }, [sessionManager, projectId]);
+
+  // Sync right after the assistant commits
+  useSessionSubscription('committed', (committedProjectId: string) => {
+    if (committedProjectId === projectId) {
+      // Invalidate the git-sync query to trigger an immediate sync
+      queryClient.invalidateQueries({ queryKey: ['git-sync', cwd] });
+    }
+  }, [projectId, queryClient, cwd]);
 
   // Load available skills
   useEffect(() => {
@@ -203,98 +185,39 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
 
   // Separate built-in tools from MCP tools for clarity
   const builtInTools = useMemo(() => {
-    const tools: Record<string, Tool<unknown>> = {
-      // File operation tools (OpenCode-compatible API)
-      read: new ReadTool(fs, cwd, { projectsPath }),
-      write: new WriteTool(fs, cwd, { projectsPath, tmpPath, onFileChanged: handleFileChanged }),
-      edit: new EditTool(fs, cwd, { projectsPath, tmpPath, onFileChanged: handleFileChanged }),
-      glob: new GlobTool(fs, cwd),
-      grep: new GrepTool(fs, cwd),
-      
-      // Other tools
-      git_commit: new GitCommitTool(fs, cwd, git, { onCommit: handleCommit }),
-      npm_add_package: new NpmAddPackageTool(fs, cwd),
-      npm_remove_package: new NpmRemovePackageTool(fs, cwd),
-      build_project: new BuildProjectTool(fs, cwd, esmUrlRef.current),
-      nostr_read_nip: new NostrReadNipTool(),
-      nostr_fetch_event: new NostrFetchEventTool(),
-      nostr_read_kind: new NostrReadKindTool(),
-      nostr_read_tag: new NostrReadTagTool(),
-      nostr_read_protocol: new NostrReadProtocolTool(),
-      nostr_read_nips_index: new NostrReadNipsIndexTool(),
-      nostr_generate_kind: new NostrGenerateKindTool(),
-      nostr_publish_events: new NostrPublishEventsTool(),
-      nostr_encode: new NostrEncodeTool(),
-      nostr_decode: new NostrDecodeTool(),
-      blossom_upload: new BlossomUploadTool(fs, cwd, user?.signer),
-      shell: new ShellTool(fs, cwd, git, config.corsProxy, user?.signer),
-      read_console_messages: new ReadConsoleMessagesTool(),
-      preview: new PreviewTool(fs, cwd, projectId, config.previewDomain, tmpPath),
-      skill: new SkillTool(fs, availableSkills),
-      webfetch: new WebFetchTool({ corsProxy: config.corsProxy }),
-      websearch: new WebSearchTool(),
-      todowrite: new TodoWriteTool(fs, projectId, { projectsPath }),
-      todoread: new TodoReadTool(fs, projectId, { projectsPath }),
-      app: new AppTool(
-        fs,
-        cwd,
-        user?.signer,
-        user?.pubkey,
-        config.relayMetadata.relays.filter(r => r.write).map(r => r.url),
-      ),
-    };
+    const imageGeneration = resolveImageGeneration(settings, models);
 
-    // Add generate_image tool if imageModel is configured
-    if (settings.imageModel) {
-      try {
-        const { provider, model } = parseProviderModel(settings.imageModel, settings.providers);
+    // Tools that run wherever the assistant does (this page, or the service worker)
+    const tools: Record<string, Tool<unknown>> = createWorkerTools({
+      fs,
+      git,
+      projectId,
+      cwd,
+      projectsPath,
+      tmpPath,
+      corsProxy: config.corsProxy,
+      writeRelays: config.relayMetadata.relays.filter(r => r.write).map(r => r.url),
+      user,
+      signer: user?.signer,
+      skills: availableSkills,
+      imageGeneration,
+      onFileChanged: handleFileChanged,
+      onCommit: handleCommit,
+    });
 
-        // Find the model data to determine the generation mode
-        const providerModel = models.find(m => m.fullId === settings.imageModel);
+    // Tools that need this page
+    tools.build_project = new BuildProjectTool(fs, cwd, esmUrlRef.current);
+    tools.read_console_messages = new ReadConsoleMessagesTool();
+    tools.preview = new PreviewTool(fs, cwd, projectId, config.previewDomain, tmpPath);
+    tools.webfetch = new WebFetchTool({ corsProxy: config.corsProxy });
 
-        // Determine mode: 'chat' if model supports image output modality, otherwise 'image'
-        let mode: 'chat' | 'image' = 'image';
-
-        if (providerModel?.type) {
-          switch (providerModel.type) {
-            case 'chat':
-              mode = 'chat';
-              break;
-            case 'image':
-              mode = 'image';
-              break;
-          }
-        } else if (providerModel?.modalities?.includes('image')) {
-          mode = 'chat';
-        }
-
-        const generateImage = new GenerateImageTool(
-          fs,
-          tmpPath,
-          provider,
-          model,
-          mode,
-          user,
-          config.corsProxy
-        );
-        tools.generate_image = generateImage;
-        tools.edit_image = new EditImageTool(fs, cwd, generateImage);
-      } catch (error) {
-        console.warn('Failed to parse imageModel:', error);
-      }
-    } else {
-      // If imageModel is not configured, provide tools to help configure it
-      tools.view_available_models = new ViewAvailableModelsTool(
-        models,
-        settings.imageModel
-      );
-      tools.configure_image_generation = new ConfigureImageGenerationTool(
-        aiSettings,
-        models
-      );
+    // If imageModel is not configured, provide tools to help configure it
+    if (!settings.imageModel) {
+      tools.view_available_models = new ViewAvailableModelsTool(models, settings.imageModel);
+      tools.configure_image_generation = new ConfigureImageGenerationTool(aiSettings, models);
     }
 
-    return tools;
+    return inToolOrder(tools);
   }, [fs, git, cwd, user, projectsPath, tmpPath, config.corsProxy, config.relayMetadata, config.previewDomain, settings, aiSettings, models, handleFileChanged, handleCommit, projectId, availableSkills]);
 
   // MCP tools wrapped for execution

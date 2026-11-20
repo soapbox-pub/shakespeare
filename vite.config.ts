@@ -4,6 +4,7 @@ import path from "node:path";
 
 import react from "@vitejs/plugin-react-swc";
 import { defineConfig } from "vitest/config";
+import type { Plugin } from "vite";
 import { VitePWA } from 'vite-plugin-pwa';
 
 const require = createRequire(import.meta.url);
@@ -29,6 +30,28 @@ function getCommitTag(): string {
   }
 }
 
+/**
+ * In the service worker's build, modules that start Web Workers (which a service worker can't)
+ * are swapped for ones that ask a page to do the work.
+ */
+function swPageModules(): Plugin {
+  const replacements: Record<string, string> = {
+    [path.resolve(__dirname, "src/lib/tsc/index.ts")]: path.resolve(__dirname, "src/sw/remoteTsc.ts"),
+    [path.resolve(__dirname, "src/lib/python/index.ts")]: path.resolve(__dirname, "src/sw/remotePython.ts"),
+  };
+  return {
+    name: "shakespeare-sw-page-modules",
+    enforce: "pre",
+    async resolveId(source, importer, options) {
+      const resolved = await this.resolve(source, importer, { ...options, skipSelf: true });
+      if (resolved && replacements[resolved.id] && importer !== replacements[resolved.id]) {
+        return replacements[resolved.id];
+      }
+      return null;
+    },
+  };
+}
+
 // https://vitejs.dev/config/
 export default defineConfig(() => ({
   server: {
@@ -44,14 +67,22 @@ export default defineConfig(() => ({
   plugins: [
     react(),
     VitePWA({
+      // A worker of our own: the precache, and the assistant where Din lets it run in the background
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
       includeAssets: ['shakespeare.svg', 'shakespeare-192x192.png', 'shakespeare-512x512.png', 'sine.mp3', 'CHANGELOG.md'],
       manifest: false, // Use existing manifest.webmanifest from public folder
-      workbox: {
+      injectManifest: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,wasm,mp3}'],
         // onnxruntime (~27 MB) is only for dictation, so it's fetched when first used.
         globIgnores: ['**/ort-wasm-*'],
         maximumFileSizeToCacheInBytes: 15 * 1024 * 1024, // 15 MB (to accommodate esbuild.wasm at ~12 MB)
-        cleanupOutdatedCaches: true,
+        // Registered as a classic script
+        rollupFormat: 'iife',
+        buildPlugins: {
+          vite: [swPageModules()],
+        },
       },
       devOptions: {
         enabled: false,

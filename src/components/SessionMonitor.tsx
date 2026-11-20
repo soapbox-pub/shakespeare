@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useSessionManager } from '@/hooks/useSessionManager';
 import { useToast } from '@/hooks/useToast';
 import { useNavigate, useLocation } from 'react-router';
+import { OPEN_PROJECT_EVENT } from '@/lib/agent/protocol';
 
 /**
  * Global component that monitors AI sessions and shows notifications
@@ -73,6 +74,16 @@ export function SessionMonitor() {
       sessionManager.off('sessionDeleted', handleSessionDeleted);
     };
   }, [sessionManager, toast, navigate, location.pathname]);
+
+  // A click on a project's notification from the service worker shows that project
+  useEffect(() => {
+    const handleOpenProject = (event: Event) => {
+      const { projectId } = (event as CustomEvent<{ projectId: string }>).detail;
+      navigate(`/project/${projectId}`);
+    };
+    window.addEventListener(OPEN_PROJECT_EVENT, handleOpenProject);
+    return () => window.removeEventListener(OPEN_PROJECT_EVENT, handleOpenProject);
+  }, [navigate]);
 
   // This component doesn't render anything
   return null;

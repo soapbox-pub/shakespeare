@@ -71,7 +71,7 @@ export function useAIChat({
 
   // Initialize session
   useEffect(() => {
-    initSession();
+    initSession().catch((error) => console.error('Failed to load the chat session:', error));
   }, [initSession]);
 
   // Subscribe to atomic session events for efficient updates

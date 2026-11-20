@@ -71,6 +71,16 @@ Shakespeare provides AI agents with specialized tools for project development (n
 - **Messaging**: the parent sends `agent.call` notifications. The script replies with `agent.result` *requests*, because iframe.diy's outer frame forwards responses from the inner frame to its Service Worker, not the parent.
 - **File serving**: both the user's preview and the agent frame serve `dist` through `src/lib/preview/servePreviewFile.ts`.
 
+#### The Assistant in the Service Worker
+
+Where Shakespeare runs as a Din app (`din://` or `din+file://`, e.g. `din apps add-folder dist`), its service worker can run a task with every window closed, held by an `ongoing` notification (Din's `docs/din/background.md`, "Running a task"). There, the assistant runs in the service worker instead of the page. Elsewhere it runs in the page as before.
+
+- **Deciding**: on load, `SessionManagerProvider` asks the worker (`detectWorkerAgent`), which says yes when `'ongoing' in Notification.prototype`. Until it answers, `DeferredSessionManager` stands in. The `shakespeare:workerAgent` localStorage key set to `on` forces the worker on (for testing in any browser), `off` keeps it off.
+- **The worker** (`src/sw.ts`, `src/sw/agentHost.ts`) has its own `SessionManager` over the same LightningFS database (LightningFS coordinates the two with Web Locks). It makes the AI requests, keeps the history, and runs every tool from `createWorkerTools` (`src/lib/tools/workerTools.ts`). Each turn shows an `ongoing` notification saying what it's doing; Din's Stop on it stops the turn. When a turn ends and no window has focus, the notification says it's done.
+- **The page** (`src/lib/agent/RemoteSessionManager.ts`) mirrors the worker's sessions from its events and sends it the user's actions with a snapshot of its state (`AgentContext`: config, AI and git settings, models, the login). It does what only a page can when the worker asks (`src/sw/pageBridge.ts`): the page-only tools (`build_project`, `preview`, `read_console_messages`, `webfetch`, image-model setup, MCP), `tsc` and `python3` (Web Workers, which a service worker can't start; the worker build swaps `src/lib/tsc` and `src/lib/python` for `src/sw/remoteTsc.ts` and `src/sw/remotePython.ts`), and signing for NIP-07 logins. nsec and bunker logins sign in the worker. With no window open, those requests fail and the model is told why.
+- **Protocol**: `src/lib/agent/protocol.ts`. Bump `AGENT_PROTOCOL_VERSION` whenever the messages change.
+- Tools must not touch the DOM unless they're page-only; `src/lib/imageUtils.ts` uses `OffscreenCanvas` and `createImageBitmap` where there's no `document`.
+
 #### Shell Commands
 
 The ShellTool runs scripts with [just-bash](https://github.com/vercel-labs/just-bash), a bash interpreter written in TypeScript, over the VFS. It supports the bash language (functions, arrays, `[[ ]]`, `set -e`, here-docs and here-strings, process substitution, ...) and the standard utilities (`cat`, `ls`, `grep`, `rg`, `sed`, `awk`, `jq`, `find`, `xargs`, `tee`, `tree`, ...). The working directory persists between calls; variables and functions don't.

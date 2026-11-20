@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import { Sparkles, X } from 'lucide-react';
+import { useAnyProjectBusy } from '@/hooks/useAnyProjectBusy';
 
 /**
  * Component that prompts users to update when a new service worker is available
@@ -47,9 +48,21 @@ export function PWAUpdatePrompt() {
     }
   }, [needRefresh]);
 
+  // Updating replaces the service worker and reloads the page, which would stop the assistant
+  // mid-turn (wherever it runs), so the update waits until it's done.
+  const anyProjectBusy = useAnyProjectBusy();
+
+  const updateStarted = useRef(false);
+
+  useEffect(() => {
+    if (isUpdating && !anyProjectBusy && !updateStarted.current) {
+      updateStarted.current = true;
+      updateServiceWorker(true);
+    }
+  }, [isUpdating, anyProjectBusy, updateServiceWorker]);
+
   const handleUpdate = () => {
     setIsUpdating(true);
-    updateServiceWorker(true);
   };
 
   const handleDismiss = (e: React.MouseEvent) => {
@@ -71,7 +84,9 @@ export function PWAUpdatePrompt() {
         >
           <Sparkles className={`h-4 w-4 text-amber-600 dark:text-amber-400 ${isUpdating ? 'animate-spin' : 'group-hover:rotate-12 transition-transform duration-300'}`} />
           <span className="text-sm font-medium whitespace-nowrap max-w-full truncate text-amber-900 dark:text-amber-100">
-            {isUpdating ? 'Updating...' : 'Update available — Click to refresh'}
+            {isUpdating
+              ? (anyProjectBusy ? 'Updating when Shakespeare finishes...' : 'Updating...')
+              : 'Update available — Click to refresh'}
           </span>
         </button>
         {!isUpdating && (

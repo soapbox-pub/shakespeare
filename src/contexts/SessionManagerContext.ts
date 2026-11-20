@@ -1,4 +1,4 @@
 import { createContext } from 'react';
-import type { SessionManager } from '@/lib/SessionManager';
+import type { SessionManagerLike } from '@/lib/SessionManager';
 
-export const SessionManagerContext = createContext<SessionManager | null>(null);
+export const SessionManagerContext = createContext<SessionManagerLike | null>(null);

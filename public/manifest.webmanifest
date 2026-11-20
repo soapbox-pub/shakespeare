@@ -11,6 +11,10 @@
   "orientation": "any",
   "background_color": "#2b0037",
   "theme_color": "#2b0037",
+  "din": {
+    "window": { "size": { "width": 1280, "height": 800 } },
+    "permissions": ["nostr", "notifications", "background"]
+  },
   "icons": [
     {
       "src": "/shakespeare-192x192.png",

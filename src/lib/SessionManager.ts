@@ -95,15 +95,62 @@ export interface SessionManagerEvents {
   costUpdated: (projectId: string, totalCost: number) => void;
   contextUsageUpdated: (projectId: string, inputTokens: number) => void;
   fileChanged: (projectId: string, filePath: string) => void;
+  /** The assistant made a git commit */
+  committed: (projectId: string) => void;
   finishReasonChanged: (projectId: string, finishReason: string | null) => void;
   queueChanged: (projectId: string, queuedMessages: QueuedMessage[]) => void;
+}
+
+export const SESSION_EVENTS: Array<keyof SessionManagerEvents> = [
+  'sessionCreated', 'sessionDeleted', 'messageAdded', 'messagesReplaced', 'streamingUpdate', 'loadingChanged',
+  'costUpdated', 'contextUsageUpdated', 'fileChanged', 'committed', 'finishReasonChanged', 'queueChanged',
+];
+
+/** A session's state without what can't leave the context running it (tools, the abort controller). */
+export type SessionSnapshot = Omit<SessionState, 'tools' | 'customTools' | 'abortController'>;
+
+export function snapshotSession(session: SessionState): SessionSnapshot {
+  const { tools: _tools, customTools: _customTools, abortController: _abortController, ...snapshot } = session;
+  return {
+    ...snapshot,
+    messages: [...snapshot.messages],
+    queuedMessages: [...snapshot.queuedMessages],
+    streamingMessage: snapshot.streamingMessage ? { ...snapshot.streamingMessage } : undefined,
+  };
+}
+
+/**
+ * What the app uses of a session manager. The assistant runs in this page (`SessionManager`), or in the
+ * service worker where it can keep going with the window closed (`RemoteSessionManager`).
+ */
+export interface SessionManagerLike {
+  loadSession(
+    projectId: string,
+    tools: Record<string, OpenAI.Chat.Completions.ChatCompletionTool>,
+    customTools: Record<string, Tool<unknown>>,
+    maxSteps?: number,
+  ): Promise<Pick<SessionState, keyof SessionSnapshot>>;
+  getSession(projectId: string): Pick<SessionState, keyof SessionSnapshot> | undefined;
+  getAllSessions(): Array<Pick<SessionState, keyof SessionSnapshot>>;
+  deleteSession(projectId: string): Promise<void>;
+  addMessage(projectId: string, message: AIMessage): Promise<void>;
+  sendMessage(projectId: string, content: UserMessageContent, providerModel: string): Promise<void>;
+  queueMessage(projectId: string, content: UserMessageContent): void;
+  removeQueuedMessage(projectId: string, id: string): void;
+  startGeneration(projectId: string, providerModel: string): Promise<void>;
+  stopGeneration(projectId: string): void;
+  startNewSession(projectId: string): Promise<void>;
+  on<K extends keyof SessionManagerEvents>(event: K, listener: SessionManagerEvents[K]): void;
+  off<K extends keyof SessionManagerEvents>(event: K, listener: SessionManagerEvents[K]): void;
+  emit<K extends keyof SessionManagerEvents>(event: K, ...args: Parameters<SessionManagerEvents[K]>): void;
+  cleanup(): Promise<void>;
 }
 
 /**
  * Global session manager that handles AI chat sessions keyed by project ID.
  * Only one session can be active per project at once.
  */
-export class SessionManager {
+export class SessionManager implements SessionManagerLike {
   private sessions = new Map<string, SessionState>();
   private queueWrites = new Map<string, Promise<void>>();
   private listeners: Partial<Record<keyof SessionManagerEvents, Set<(...args: unknown[]) => void>>> = {};

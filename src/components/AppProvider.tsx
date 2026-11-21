@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { AppContext, type AppConfig, type AppContextType, type Theme, type RelayMetadata, type GraspMetadata } from '@/contexts/AppContext';
 import i18n from '@/lib/i18n';
+import { MOBILE_BREAKPOINT } from '@/lib/mobileBreakpoint';
 
 interface AppProviderProps {
   children: ReactNode;
@@ -100,6 +101,7 @@ export function AppProvider(props: AppProviderProps) {
 
   // Apply theme effects to document
   useApplyTheme(config.theme);
+  useApplyThemeColor();
 
   // Apply language effects to i18n
   useApplyLanguage(config.language);
@@ -150,6 +152,42 @@ function useApplyTheme(theme: Theme) {
     mediaQuery.addEventListener('change', handleChange);
     return () => mediaQuery.removeEventListener('change', handleChange);
   }, [theme]);
+}
+
+/**
+ * Keep the browser's theme color (its title bar, or the status bar on phones)
+ * the same color as what's under it: the window's tint beside the panels on
+ * wide screens, and the page itself on narrow ones, where the header sits on
+ * it. Follows the light or dark theme by watching the root's class.
+ */
+function useApplyThemeColor(): void {
+  useEffect(() => {
+    const root = document.documentElement;
+    const narrow = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`);
+
+    const apply = () => {
+      const variable = narrow.matches ? '--background' : '--shell';
+      const [h, s, l] = getComputedStyle(root).getPropertyValue(variable).trim().split(/\s+/);
+      if (!h || !s || !l) return;
+
+      // One tag for every color scheme, replacing the media-specific ones in index.html.
+      const metas = document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]');
+      metas.forEach((meta, i) => i > 0 && meta.remove());
+      const meta = metas[0] ?? document.head.appendChild(Object.assign(document.createElement('meta'), { name: 'theme-color' }));
+      meta.removeAttribute('media');
+      meta.content = `hsl(${h}, ${s}, ${l})`;
+    };
+
+    apply();
+    const observer = new MutationObserver(apply);
+    observer.observe(root, { attributes: true, attributeFilter: ['class'] });
+    narrow.addEventListener('change', apply);
+
+    return () => {
+      observer.disconnect();
+      narrow.removeEventListener('change', apply);
+    };
+  }, []);
 }
 
 /**
